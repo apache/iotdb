@@ -70,14 +70,17 @@ Old data is automatically deleted by merging, see:
 * Corresponding interface
   * JDBC's execute interface, using delete SQL statements
 
-* Main entrance: public void delete(String deviceId, String measurementId, long timestamp) StorageEngine.java
-    * Find the corresponding StorageGroupProcessor
-    * Find all TsfileProcessor affected
-    * Pre-write log
-    * Find all TsfileResources affected
-    * Record the point in time of deletion in the mod file
-    * If the file is not closed (the corresponding TsfileProcessor exists), delete the data in memory
+Each StorageGroupProcessor maintains a ascending version for each partition, which is managed by SimpleFileVersionController.
+Each memtable will apply a version when submitted to flush. After flushing to TsFile, a current position-version will added to TsFileMetadata. 
+This information will be used to set version to ChunkMetadata when query.
 
+* main entrance: public void delete(String deviceId, String measurementId, long timestamp) StorageEngine.java
+  * Find the corresponding StorageGroupProcessor
+  * Find all impacted working TsFileProcessors to write WAL
+  * Find all impacted TsFileResources to record a Modification in its mods file, the Modification format is: path，deleteTime，version
+  * If the TsFile is not closed，get its TsFileProcessor
+    * If there exists the working memtable, delete data in it
+    * If there exists flushing memtable，record the deleted time in it for query.（Notice that the Modification is recorded in mods for these memtables）
 
 ## Data TTL setting
 
