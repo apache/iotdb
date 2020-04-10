@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class WrappedRunnable implements Runnable
 {
+    private static final Logger LOGGER = LoggerFactory.getLogger(WrappedRunnable.class);
     public final void run()
     {
         try
@@ -39,5 +40,4 @@ public abstract class WrappedRunnable implements Runnable
         }
     }
     abstract public void runMayThrow() throws Exception;
-    private static final Logger LOGGER = LoggerFactory.getLogger(WrappedRunnable.class);
 }
