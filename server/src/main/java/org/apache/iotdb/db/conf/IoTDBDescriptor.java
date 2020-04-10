@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -35,6 +41,7 @@ public class IoTDBDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   private IoTDBConfig conf = new IoTDBConfig();
+  private static CommandLine commandLine;
 
   private IoTDBDescriptor() {
     loadProps();
@@ -46,6 +53,35 @@ public class IoTDBDescriptor {
 
   public IoTDBConfig getConfig() {
     return conf;
+  }
+
+  public void replaceProps(String[] params) {
+    Options options = new Options();
+    Option rpcPort = new Option("rpc_port", "rpc_port", true, "The jdbc service listens on the port");
+    rpcPort.setRequired(false);
+    options.addOption(rpcPort);
+
+    boolean ok = parseCommandLine(options, params);
+    if (!ok) {
+      logger.error("replaces properties failed, use default conf params");
+      return;
+    } else {
+      if (commandLine.hasOption("rpc_port")) {
+        conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue("rpc_port")));
+        logger.debug("replace rpc port with={}", conf.getRpcPort());
+      }
+    }
+  }
+
+  private boolean parseCommandLine(Options options, String[] params) {
+    try {
+      CommandLineParser parser = new DefaultParser();
+      commandLine = parser.parse(options, params);
+    } catch (ParseException e) {
+      logger.error("parse conf params failed, {}", e.toString());
+      return false;
+    }
+    return true;
   }
 
   private String getPropsUrl() {
@@ -585,7 +621,8 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
-            "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an integer, which is "
+            "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an"
+                + " integer, which is "
                 + queryMemoryAllocateProportion);
       }
 

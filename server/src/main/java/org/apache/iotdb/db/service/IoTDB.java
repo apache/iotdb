@@ -50,6 +50,9 @@ public class IoTDB implements IoTDBMBean {
   }
 
   public static void main(String[] args) {
+    if (args.length > 0) {
+      IoTDBDescriptor.getInstance().replaceProps(args);
+    }
     IoTDBConfigCheck.getInstance().checkConfig();
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
@@ -122,7 +125,7 @@ public class IoTDB implements IoTDBMBean {
     logger.info("IoTDB is deactivated.");
   }
 
-  private void initMManager(){
+  private void initMManager() {
     MManager.getInstance().init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
     logger.info(
