@@ -66,7 +66,7 @@ public class TsFileIOWriterTest {
     writer.endCurrentChunk();
     writer.endChunkGroup();
 
-    writer.addVersionPair(new Pair<>(writer.getPos(), 0L));
+    writer.writeVersion(0L);
     // end file
     writer.endFile();
   }

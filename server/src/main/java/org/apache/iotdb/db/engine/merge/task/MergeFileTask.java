@@ -211,7 +211,7 @@ class MergeFileTask {
           chunkMetaData.getVersion() > maxVersion ? chunkMetaData.getVersion() : maxVersion;
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
     }
-    fileWriter.addVersionPair(new Pair<>(fileWriter.getPos(), maxVersion));
+    fileWriter.writeVersion(maxVersion);
     fileWriter.endChunkGroup();
   }
 
@@ -242,8 +242,7 @@ class MergeFileTask {
         fileWriter.startChunkGroup(path.getDevice());
         long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
             resource.getFileReader(seqFile), fileWriter);
-        Pair<Long, Long> versionPair = new Pair<>(fileWriter.getPos(), maxVersion + 1);
-        fileWriter.addVersionPair(versionPair);
+        fileWriter.writeVersion(maxVersion + 1);
         fileWriter.endChunkGroup();
       }
     }

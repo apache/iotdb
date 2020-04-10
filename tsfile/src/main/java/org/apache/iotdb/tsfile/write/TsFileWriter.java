@@ -364,7 +364,7 @@ public class TsFileWriter implements AutoCloseable {
     return this.fileWriter;
   }
 
-  public void addVersionPair(Pair<Long, Long> versionPair) {
-    fileWriter.addVersionPair(versionPair);
+  public void writeVersion(long versionPair) throws IOException {
+    fileWriter.writeVersion(versionPair);
   }
 }
