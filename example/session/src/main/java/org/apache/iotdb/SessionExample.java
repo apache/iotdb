@@ -46,8 +46,11 @@ public class SessionExample {
 
     try {
       session.setStorageGroup("root.sg1");
-    } catch (Exception e) {
-      // ignore duplicated set
+    } catch (StatementExecutionException e) {
+      if (!e.getMessage().contains("StorageGroupAlreadySetException")) {
+        throw e;
+      }
+//       ignore duplicated set
     }
 
     if (!session.checkTimeseriesExists("root.sg1.d1.s1")) {
