@@ -108,16 +108,31 @@ public class IoTDBRestartIT {
             "root");
         Statement statement = connection.createStatement()){
       statement.execute("delete from root.turbine.d1.s1 where time<=1");
-      statement.execute("flush");
-      statement.execute("delete from root.turbine.d1.s1 where time<=2");
 
       boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
       assertTrue(hasResultSet);
       String[] exp = new String[]{
+          "2,2",
           "3,3"
       };
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
+      while (resultSet.next()) {
+        String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
+        assertEquals(exp[cnt], result);
+        cnt++;
+      }
+
+      statement.execute("flush");
+      statement.execute("delete from root.turbine.d1.s1 where time<=2");
+
+      hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
+      assertTrue(hasResultSet);
+      exp = new String[]{
+          "3,3"
+      };
+      resultSet = statement.getResultSet();
+      cnt = 0;
       while (resultSet.next()) {
         String result = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(2);
         assertEquals(exp[cnt], result);
