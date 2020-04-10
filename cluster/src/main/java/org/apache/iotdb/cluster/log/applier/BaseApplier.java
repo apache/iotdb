@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -54,7 +55,14 @@ abstract class BaseApplier implements LogApplier {
     if (plan instanceof InsertPlan) {
       processInsertPlan((InsertPlan) plan);
     } else if (!plan.isQuery()) {
-      getQueryExecutor().processNonQuery(plan);
+      try {
+        getQueryExecutor().processNonQuery(plan);
+      } catch (QueryProcessException e) {
+        if (e.getCause() instanceof StorageGroupNotSetException) {
+          metaGroupMember.syncLeader();
+          getQueryExecutor().processNonQuery(plan);
+        }
+      }
     } else {
       // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported physical plan: {}", plan);
@@ -77,6 +85,9 @@ abstract class BaseApplier implements LogApplier {
         } catch (MetadataException e1) {
           throw new QueryProcessException(e1);
         }
+        getQueryExecutor().processNonQuery(plan);
+      } else if (e.getCause() instanceof StorageGroupNotSetException) {
+        metaGroupMember.syncLeader();
         getQueryExecutor().processNonQuery(plan);
       } else {
         throw e;
