@@ -49,6 +49,7 @@ public class IoTDBMultiSeriesIT {
   private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
+  private static long prevPartitionInterval;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -66,6 +67,7 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setPageSizeInByte(1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(100);
 
     EnvironmentUtils.envSetUp();
@@ -79,10 +81,9 @@ public class IoTDBMultiSeriesIT {
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
-
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
   }
 
   private static void insertData()
@@ -413,7 +414,7 @@ public class IoTDBMultiSeriesIT {
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals(
-          "401: Statement format is not right: Filter has some time series don't correspond to any known time series",
+          "411: Meet error in query process: Filter has some time series don't correspond to any known time series",
           e.getMessage());
     }
   }
@@ -431,7 +432,7 @@ public class IoTDBMultiSeriesIT {
     } catch (SQLException e) {
       e.printStackTrace();
       assertEquals(
-          "401: Statement format is not right: Path [root.vehicle.d0.s10] does not exist",
+          "411: Meet error in query process: org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.vehicle.d0.s10] does not exist",
           e.getMessage());
     }
   }

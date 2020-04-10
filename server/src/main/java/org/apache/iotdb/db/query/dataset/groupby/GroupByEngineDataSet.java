@@ -30,17 +30,20 @@ import java.io.IOException;
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long queryId;
-  private long interval;
-  private long slidingStep;
+  protected long interval;
+  protected long slidingStep;
   // total query [startTime, endTime)
-  private long startTime;
-  private long endTime;
+  protected long startTime;
+  protected long endTime;
 
   // current interval [curStartTime, curEndTime)
   protected long curStartTime;
   protected long curEndTime;
-  private int usedIndex;
+  protected int usedIndex;
   protected boolean hasCachedTimeInterval;
+
+  public GroupByEngineDataSet() {
+  }
 
   /**
    * groupBy query.

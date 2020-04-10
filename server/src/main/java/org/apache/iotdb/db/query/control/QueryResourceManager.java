@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.control;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -86,12 +87,11 @@ public class QueryResourceManager {
 
 
   public QueryDataSource getQueryDataSource(Path selectedPath,
-      QueryContext context, Filter filter) throws StorageEngineException {
+      QueryContext context, Filter filter) throws StorageEngineException, QueryProcessException {
 
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(selectedPath,
         filter);
-    return StorageEngine
-        .getInstance().query(singleSeriesExpression, context, filePathsManager);
+    return StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
   }
 
   /**
@@ -105,7 +105,7 @@ public class QueryResourceManager {
         try {
           deserializer.close();
         } catch (IOException e) {
-          throw new StorageEngineException(e.getMessage());
+          throw new StorageEngineException(e);
         }
       }
       externalSortFileMap.remove(queryId);

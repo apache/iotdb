@@ -23,11 +23,14 @@ import static org.apache.iotdb.db.qp.constant.SQLConstant.KW_OR;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -44,16 +47,18 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
 public class FilterOperator extends Operator implements Comparable<FilterOperator> {
 
   // it is the symbol of token. e.g. AND is & and OR is |
-  protected String tokenSymbol;
+  String tokenSymbol;
 
-  protected List<FilterOperator> childOperators;
+  private List<FilterOperator> childOperators;
   // leaf filter operator means it doesn't have left and right child filterOperator. Leaf filter
   // should set FunctionOperator.
-  protected boolean isLeaf = false;
+  protected boolean isLeaf;
   // isSingle being true means all recursive children of this filter belong to one seriesPath.
-  protected boolean isSingle = false;
+  boolean isSingle = false;
   // if isSingle = false, singlePath must be null
-  protected Path singlePath = null;
+  Path singlePath = null;
+  // all paths involved in this filter
+  Set<Path> pathSet;
 
   public FilterOperator(int tokenType) {
     super(tokenType);
@@ -105,17 +110,27 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
     return true;
   }
 
+  public void setPathSet(Set<Path> pathSet) {
+    this.pathSet = pathSet;
+  }
+
+  public Set<Path> getPathSet() {
+    return pathSet;
+  }
+
   /**
    * For a filter operator, if isSingle, call transformToSingleQueryFilter.<br> FilterOperator
    * cannot be leaf.
    *
    * @return QueryFilter in TsFile
+   * @param pathTSDataTypeHashMap
    */
-  public IExpression transformToExpression() throws QueryProcessException {
+  public IExpression transformToExpression(
+      Map<Path, TSDataType> pathTSDataTypeHashMap) throws QueryProcessException {
     if (isSingle) {
       Pair<IUnaryExpression, String> ret;
       try {
-        ret = transformToSingleQueryFilter();
+        ret = transformToSingleQueryFilter(pathTSDataTypeHashMap);
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       }
@@ -125,10 +140,10 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
         throw new LogicalOperatorException(String.valueOf(tokenIntType),
             "this filter is not leaf, but it's empty");
       }
-      IExpression retFilter = childOperators.get(0).transformToExpression();
+      IExpression retFilter = childOperators.get(0).transformToExpression(pathTSDataTypeHashMap);
       IExpression currentFilter;
       for (int i = 1; i < childOperators.size(); i++) {
-        currentFilter = childOperators.get(i).transformToExpression();
+        currentFilter = childOperators.get(i).transformToExpression(pathTSDataTypeHashMap);
         switch (tokenIntType) {
           case KW_AND:
             retFilter = BinaryExpression.and(retFilter, currentFilter);
@@ -151,21 +166,23 @@ public class FilterOperator extends Operator implements Comparable<FilterOperato
    * @return - pair.left: UnaryQueryFilter constructed by its one child; pair.right: Path
    * represented by this child.
    * @throws MetadataException exception in filter transforming
+   * @param pathTSDataTypeHashMap
    */
-  protected Pair<IUnaryExpression, String> transformToSingleQueryFilter()
+  protected Pair<IUnaryExpression, String> transformToSingleQueryFilter(
+      Map<Path, TSDataType> pathTSDataTypeHashMap)
       throws LogicalOperatorException, MetadataException {
     if (childOperators.isEmpty()) {
       throw new LogicalOperatorException(String.valueOf(tokenIntType),
           "TransformToSingleFilter: this filter is not a leaf, but it's empty.");
     }
     Pair<IUnaryExpression, String> currentPair = childOperators.get(0)
-        .transformToSingleQueryFilter();
+        .transformToSingleQueryFilter(pathTSDataTypeHashMap);
 
     IUnaryExpression retFilter = currentPair.left;
     String path = currentPair.right;
 
     for (int i = 1; i < childOperators.size(); i++) {
-      currentPair = childOperators.get(i).transformToSingleQueryFilter();
+      currentPair = childOperators.get(i).transformToSingleQueryFilter(pathTSDataTypeHashMap);
       if (!path.equals(currentPair.right)) {
         throw new LogicalOperatorException(
             "TransformToSingleFilter: paths among children are not inconsistent: one is: "

@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -34,10 +34,7 @@ import org.apache.thrift.TException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
 
@@ -49,10 +46,10 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
 
   // for disable align clause
   IoTDBNonAlignQueryResultSet(Statement statement, List<String> columnNameList,
-      List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
-      String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset)
+                              List<String> columnTypeList, Map<String, Integer> columnNameIndex,  boolean ignoreTimeStamp, TSIService.Iface client,
+                              String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset)
           throws SQLException {
-    super(statement, columnNameList, columnTypeList, ignoreTimeStamp, client, sql, queryId, sessionId);
+    super(statement, columnNameList, columnTypeList, columnNameIndex, ignoreTimeStamp, client, sql, queryId, sessionId);
 
     times = new byte[columnNameList.size()][Long.BYTES];
 
@@ -61,14 +58,18 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
     super.columnOrdinalMap = new HashMap<>();
     super.columnOrdinalMap.put(TIMESTAMP_STR, 1);
     super.columnTypeDeduplicatedList = new ArrayList<>();
-    int index = START_INDEX;
+    super.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
+    for (int i = 0; i < columnNameIndex.size(); i++) {
+      super.columnTypeDeduplicatedList.add(null);
+    }
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = columnNameList.get(i);
       super.columnNameList.add(TIMESTAMP_STR + name);
       super.columnNameList.add(name);
       if (!columnOrdinalMap.containsKey(name)) {
-        columnOrdinalMap.put(name, index++);
-        columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        int index = columnNameIndex.get(name);
+        columnOrdinalMap.put(name, index+START_INDEX);
+        columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
       }
     }
     this.tsQueryNonAlignDataSet = dataset;
@@ -101,7 +102,7 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
 
       try {
         RpcUtils.verifySuccess(resp.getStatus());
-      } catch (IoTDBRPCException e) {
+      } catch (StatementExecutionException e) {
         throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
       }
       if (!resp.hasResultSet) {

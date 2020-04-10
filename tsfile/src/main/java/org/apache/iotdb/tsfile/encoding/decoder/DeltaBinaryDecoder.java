@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
@@ -28,7 +29,9 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * This class is a decoder for decoding the byte array that encoded by {@code
- * DeltaBinaryEncoder}.DeltaBinaryDecoder just supports integer and long values.<br>.
+ * DeltaBinaryEncoder}.DeltaBinaryDecoder just supports integer and long
+ * values.<br>
+ * .
  *
  * @see DeltaBinaryEncoder
  */

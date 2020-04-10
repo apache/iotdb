@@ -26,9 +26,8 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -57,7 +56,7 @@ public class MergeOverLapTest extends MergeTest {
 
   @Before
   public void setUp()
-      throws IOException, WriteProcessException, MetadataException, PathException {
+      throws IOException, WriteProcessException, MetadataException {
     ptNum = 1000;
     super.setUp();
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
@@ -111,8 +110,11 @@ public class MergeOverLapTest extends MergeTest {
       long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      fileWriter.addMeasurement(measurementSchema);
+    for (String deviceId : deviceIds) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
+        fileWriter.registerTimeseries(
+            new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
+      }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (int j = 0; j < deviceNum; j++) {
@@ -139,7 +141,7 @@ public class MergeOverLapTest extends MergeTest {
         }
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushForTest();
+        fileWriter.flushAllChunkGroups();
       }
     }
     fileWriter.close();

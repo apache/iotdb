@@ -153,4 +153,20 @@
             </plugin>
         </plugins>
     </build>
+    <!-- org.pentaho:pentaho-aggdesigner-algorithm is in repo.spring.io and we have to claim
+    to use https-->
+    <repositories>
+        <repository>
+            <id>for_pentaho</id>
+            <name>spring.io</name>
+            <url>https://repo.spring.io/libs-milestone</url>
+            <layout>default</layout>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 </project>

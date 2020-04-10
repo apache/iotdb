@@ -60,13 +60,14 @@ public class MTreeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    boolean hasException = false;
     try {
       root.createTimeseries("root.laptop.d1.s1.b", TSDataType.INT32, TSEncoding.RLE,
               TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
     } catch (MetadataException e) {
-      Assert.assertEquals(
-          String.format("Path [%s] already exist", "root.laptop.d1.s1", "s1"), e.getMessage());
+      hasException = true;
     }
+    Assert.assertTrue(hasException);
   }
 
   @Test
@@ -278,6 +279,9 @@ public class MTreeTest {
       assertTrue(root.isStorageGroup("root.laptop.d1"));
       assertTrue(root.isStorageGroup("root.laptop.d2"));
       assertFalse(root.isStorageGroup("root.laptop.d3"));
+
+      root.setStorageGroup("root.1");
+      assertTrue(root.isStorageGroup("root.1"));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -293,7 +297,7 @@ public class MTreeTest {
       root.setStorageGroup("root.laptop.d2");
       root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
-      root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+      root.createTimeseries("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
           CompressionType.GZIP, null);
 
       List<String> list = new ArrayList<>();

@@ -124,7 +124,8 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([17, 48), 5ms) FILL(int32[previous])");
     } catch (IoTDBSQLException e) {
-      assertTrue(e.getMessage().contains("Statement format is not right: Group By Fill only support last_value function"));
+      System.out.println("error message: " + e.getMessage());
+      assertTrue(e.getMessage().contains("Group By Fill only support last_value function"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -310,7 +311,8 @@ public class IoTDBGroupByFillIT {
                       + "root.ln.wf01.wt01 "
                       + "GROUP BY ([17, 48), 5ms) FILL(int32[previousUntilLast])");
     } catch (IoTDBSQLException e) {
-      assertTrue(e.getMessage().contains("Statement format is not right: Group By Fill only support last_value function"));
+      System.out.println(e.getMessage());
+      assertTrue(e.getMessage().contains("Group By Fill only support last_value function"));
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

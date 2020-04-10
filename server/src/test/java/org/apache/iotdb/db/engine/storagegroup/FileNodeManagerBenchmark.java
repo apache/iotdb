@@ -24,9 +24,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.PathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -65,7 +62,7 @@ public class FileNodeManagerBenchmark {
   }
 
   private static void prepare()
-      throws MetadataException, PathException, IOException, StorageGroupException {
+      throws MetadataException {
     MManager manager = MManager.getInstance();
     manager.setStorageGroup(prefix);
     for (String device : devices) {
@@ -81,8 +78,8 @@ public class FileNodeManagerBenchmark {
   }
 
   public static void main(String[] args)
-      throws InterruptedException, IOException, MetadataException,
-      PathException, StorageEngineException, StorageGroupException {
+      throws InterruptedException, IOException,
+      MetadataException, StorageEngineException {
     tearDown();
     prepare();
     long startTime = System.currentTimeMillis();
@@ -119,7 +116,7 @@ public class FileNodeManagerBenchmark {
           TSRecord tsRecord = getRecord(deltaObject, time);
           StorageEngine.getInstance().insert(new InsertPlan(tsRecord));
         }
-      } catch (QueryProcessException | StorageEngineException e) {
+      } catch (StorageEngineException e) {
         e.printStackTrace();
       } finally {
         latch.countDown();

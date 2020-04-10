@@ -45,7 +45,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -54,12 +54,13 @@ import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +74,6 @@ public class TsFileProcessor {
    */
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
   private RestorableTsFileIOWriter writer;
-  private Schema schema;
   private TsFileResource tsFileResource;
   // time range index to indicate this processor belongs to which time range
   private long timeRangeId;
@@ -104,13 +104,12 @@ public class TsFileProcessor {
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE = "{}: {} get flushQueryLock write lock released";
 
-  TsFileProcessor(String storageGroupName, File tsfile, Schema schema,
+  TsFileProcessor(String storageGroupName, File tsfile,
       VersionController versionController,
       CloseTsFileCallBack closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.schema = schema;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
@@ -131,13 +130,12 @@ public class TsFileProcessor {
     this.versionController = versionController;
   }
 
-  public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource, Schema schema,
+  public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    this.schema = schema;
     this.versionController = versionController;
     this.writer = writer;
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
@@ -150,9 +148,8 @@ public class TsFileProcessor {
    * insert data in an InsertPlan into the workingMemtable.
    *
    * @param insertPlan physical plan of insertion
-   * @return succeed or fail
    */
-  public boolean insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertPlan insertPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
@@ -164,10 +161,9 @@ public class TsFileProcessor {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertPlan);
-      } catch (IOException e) {
-        logger.error("{}: {} write WAL failed", storageGroupName,
-            tsFileResource.getFile().getName(), e);
-        return false;
+      } catch (Exception e) {
+        throw new WriteProcessException(String.format("%s: %s write WAL failed",
+            storageGroupName, tsFileResource.getFile().getAbsolutePath()), e);
       }
     }
 
@@ -178,33 +174,32 @@ public class TsFileProcessor {
     if (!sequence) {
       tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
     }
-
-    return true;
   }
 
-  public boolean insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
-      Integer[] results) throws QueryProcessException {
+  public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
+      TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
     // insert insertPlan to the work memtable
-    workMemTable.insertBatch(batchInsertPlan, start, end);
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      try {
+    try {
+      workMemTable.insertBatch(batchInsertPlan, start, end);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         batchInsertPlan.setStart(start);
         batchInsertPlan.setEnd(end);
         getLogNode().write(batchInsertPlan);
-      } catch (IOException e) {
-        logger.error("{}: {} write WAL failed", storageGroupName,
-            tsFileResource.getFile().getName(), e);
-        for (int i = start; i < end; i++) {
-          results[i] = TSStatusCode.INTERNAL_SERVER_ERROR.getStatusCode();
-        }
-        return false;
       }
+    } catch (Exception e) {
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+      throw new WriteProcessException(e);
+    }
+
+    for (int i = start; i < end; i++) {
+      results[i] = RpcUtils.SUCCESS_STATUS;
     }
 
     tsFileResource
@@ -216,8 +211,6 @@ public class TsFileProcessor {
       tsFileResource
           .updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
     }
-
-    return true;
   }
 
   /**
@@ -435,9 +428,11 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    if(!updateLatestFlushTimeCallback.call(this)){
-      logger.error("{}: {} Memetable info: {}", storageGroupName,
-          tsFileResource.getFile().getName(), tobeFlushed.getMemTableMap());
+    if(!tobeFlushed.isSignalMemTable() &&
+        (!updateLatestFlushTimeCallback.call(this) || tobeFlushed.memSize() == 0)){
+      logger.warn("This normal memtable is empty, skip it in flush. {}: {} Memetable info: {}",
+          storageGroupName, tsFileResource.getFile().getName(), tobeFlushed.getMemTableMap());
+      return;
     }
     flushingMemTables.addLast(tobeFlushed);
     if (logger.isDebugEnabled()) {
@@ -511,7 +506,7 @@ public class TsFileProcessor {
     }
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
-      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, schema, writer,
+      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer,
           storageGroupName);
       try {
         writer.mark();
@@ -603,7 +598,7 @@ public class TsFileProcessor {
   private void endFile() throws IOException, TsFileProcessorException {
     long closeStartTime = System.currentTimeMillis();
     tsFileResource.serialize();
-    writer.endFile(schema);
+    writer.endFile();
     tsFileResource.cleanCloseFlag();
 
     // remove this processor from Closing list in StorageGroupProcessor,
@@ -673,12 +668,12 @@ public class TsFileProcessor {
    * ChunkMetadata of data on disk.
    *
    * @param deviceId device id
-   * @param measurementId sensor id
+   * @param measurementId measurements id
    * @param dataType data type
    * @param encoding encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
-  public Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> query(String deviceId,
+  public Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> query(String deviceId,
       String measurementId, TSDataType dataType, TSEncoding encoding, Map<String, String> props,
       QueryContext context) {
     if (logger.isDebugEnabled()) {
@@ -710,14 +705,14 @@ public class TsFileProcessor {
       List<Modification> modifications = context.getPathModifications(modificationFile,
           deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
 
-      List<ChunkMetaData> chunkMetaDataList = writer
+      List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);
-      QueryUtils.modifyChunkMetaData(chunkMetaDataList,
+      QueryUtils.modifyChunkMetaData(chunkMetadataList,
           modifications);
 
-      chunkMetaDataList.removeIf(context::chunkNotSatisfy);
+      chunkMetadataList.removeIf(context::chunkNotSatisfy);
 
-      return new Pair<>(readOnlyMemChunks, chunkMetaDataList);
+      return new Pair<>(readOnlyMemChunks, chunkMetadataList);
     } catch (Exception e) {
       logger.error("{}: {} get ReadOnlyMemChunk has error", storageGroupName,
           tsFileResource.getFile().getName(), e);

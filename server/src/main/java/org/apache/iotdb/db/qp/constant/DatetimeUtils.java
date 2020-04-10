@@ -464,6 +464,8 @@ public class DatetimeUtils {
     if (str.contains("Z")) {
       return convertDatetimeStrToLong(str.substring(0, str.indexOf('Z')) + "+00:00", offset,
           depth);
+    } else if (str.length() == 10) {
+      return convertDatetimeStrToLong(str + "T00:00:00", offset, depth);
     } else if (str.length() - str.lastIndexOf('+') != 6
         && str.length() - str.lastIndexOf('-') != 6) {
       return convertDatetimeStrToLong(str + offset, offset, depth + 1);

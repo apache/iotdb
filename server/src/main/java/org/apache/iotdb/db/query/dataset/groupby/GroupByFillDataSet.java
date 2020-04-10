@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
+import org.apache.iotdb.db.qp.physical.crud.GroupByFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -48,23 +48,23 @@ public class GroupByFillDataSet extends QueryDataSet {
 
   public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes,
       GroupByEngineDataSet groupByEngineDataSet,
-      Map<TSDataType, IFill> fillTypes, QueryContext context)
+      Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByFillPlan groupByFillPlan)
       throws StorageEngineException, IOException, QueryProcessException {
     super(paths, dataTypes);
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
-    initPreviousParis(context);
+    initPreviousParis(context, groupByFillPlan);
     initLastTimeArray(context);
   }
 
-  private void initPreviousParis(QueryContext context)
-      throws StorageEngineException, IOException, UnSupportedFillTypeException {
+  private void initPreviousParis(QueryContext context, GroupByFillPlan groupByFillPlan)
+          throws StorageEngineException, IOException, QueryProcessException {
     previousValue = new Object[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       TSDataType dataType = dataTypes.get(i);
       IFill fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(), -1L);
-      fill.constructReaders(path, context);
+      fill.constructReaders(path, groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -100,7 +100,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     for (int i = 0; i < paths.size(); i++) {
       Field field = rowRecord.getFields().get(i);
       // current group by result is null
-      if (field.getDataType() == null) {
+      if (field == null || field.getDataType() == null) {
         // the previous value is not null and
         // (fill type is not previous until last or now time is before last time)
         if (previousValue[i] != null

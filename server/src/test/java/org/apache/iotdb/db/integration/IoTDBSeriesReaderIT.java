@@ -36,6 +36,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -63,6 +64,8 @@ public class IoTDBSeriesReaderIT {
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int pageSizeInByte;
   private static int groupSizeInByte;
+  private static long prevPartitionInterval;
+  private static int prevChunkMergePointThreshold;
 
   private static Connection connection;
 
@@ -79,9 +82,13 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setMaxNumberOfPointsInPage(1000);
     tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
+    prevChunkMergePointThreshold = IoTDBDescriptor.getInstance().getConfig()
+        .getChunkMergePointThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
-    
+
     // test result of IBatchReader should not cross partition
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(2);
 
     EnvironmentUtils.envSetUp();
@@ -99,13 +106,15 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setMaxNumberOfPointsInPage(1024 * 1024 * 150);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(604800);
 
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setChunkMergePointThreshold(prevChunkMergePointThreshold);
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -240,7 +249,7 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void selectAllTest() throws IOException, StorageEngineException {
+  public void selectAllTest() throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -280,7 +289,8 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
+  public void selectOneSeriesWithValueFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -310,7 +320,8 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void seriesTimeDigestReadTest() throws IOException, StorageEngineException {
+  public void seriesTimeDigestReadTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     Path path = new Path(TestConstant.d0s0);
     List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
@@ -336,7 +347,8 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void crossSeriesReadUpdateTest() throws IOException, StorageEngineException {
+  public void crossSeriesReadUpdateTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     Path path1 = new Path(TestConstant.d0s0);
     Path path2 = new Path(TestConstant.d0s1);

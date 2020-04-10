@@ -18,11 +18,10 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
-import org.apache.iotdb.tsfile.read.common.Path;
-
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class contains several constants used in SQL.
@@ -34,7 +33,7 @@ public class SQLConstant {
     // forbidding instantiation
   }
 
-  public static final String GROUPBY_DEVICE_COLUMN_NAME = "Device";
+  public static final String ALIGNBY_DEVICE_COLUMN_NAME = "Device";
   public static final String RESERVED_TIME = "time";
   public static final String IS_AGGREGATION = "IS_AGGREGATION";
   public static final String NOW_FUNC = "now()";

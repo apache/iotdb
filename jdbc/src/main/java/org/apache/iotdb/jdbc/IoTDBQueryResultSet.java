@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -35,6 +35,7 @@ import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
@@ -49,12 +50,11 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
   private byte[] currentBitmap; // used to cache the current bitmap for every column
   private static final int FLAG = 0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
-
   public IoTDBQueryResultSet(Statement statement, List<String> columnNameList,
-      List<String> columnTypeList, boolean ignoreTimeStamp, TSIService.Iface client,
-      String sql, long queryId, long sessionId, TSQueryDataSet dataset)
-      throws SQLException {
-    super(statement, columnNameList, columnTypeList, ignoreTimeStamp, client, sql, queryId, sessionId);
+                             List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp, TSIService.Iface client,
+                             String sql, long queryId, long sessionId, TSQueryDataSet dataset)
+          throws SQLException {
+    super(statement, columnNameList, columnTypeList, columnNameIndex, ignoreTimeStamp, client, sql, queryId, sessionId);
     time = new byte[Long.BYTES];
     currentBitmap = new byte[columnNameList.size()];
     this.tsQueryDataSet = dataset;
@@ -83,7 +83,7 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
 
       try {
         RpcUtils.verifySuccess(resp.getStatus());
-      } catch (IoTDBRPCException e) {
+      } catch (StatementExecutionException e) {
         throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
       }
       if (!resp.hasResultSet) {

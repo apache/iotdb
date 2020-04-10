@@ -23,8 +23,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 /**
- * Field is component of one {@code RowRecord} which stores a value in specific data type. The value
- * type of Field is primitive(int long, float, double, binary, boolean).
+ * Field is component of one {@code RowRecord} which stores a value in specific
+ * data type. The value type of Field is primitive(int long, float, double,
+ * binary, boolean).
  */
 public class Field {
 
@@ -178,7 +179,7 @@ public class Field {
 
   public static Field getField(Object value, TSDataType dataType) {
     if (value == null) {
-      return new Field(null);
+      return null;
     }
     Field field = new Field(dataType);
     switch (dataType) {

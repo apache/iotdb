@@ -26,13 +26,13 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -99,7 +99,7 @@ public class IoTDBSequenceDataQueryIT {
     EnvironmentUtils.cleanEnv();
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -134,7 +134,7 @@ public class IoTDBSequenceDataQueryIT {
 
       // insert data (time from 1200-1499)
       for (long time = 1200; time < 1500; time++) {
-        String sql = null;
+        String sql;
         if (time % 2 == 0) {
           sql = String
               .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 17);
@@ -161,7 +161,8 @@ public class IoTDBSequenceDataQueryIT {
   }
 
   @Test
-  public void readWithoutFilterTest() throws IOException, StorageEngineException {
+  public void readWithoutFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
 
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
@@ -190,8 +191,7 @@ public class IoTDBSequenceDataQueryIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      // System.out.println("===" + rowRecord.toString());
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(1000, cnt);
@@ -200,7 +200,8 @@ public class IoTDBSequenceDataQueryIT {
   }
 
   @Test
-  public void readWithTimeFilterTest() throws IOException, StorageEngineException {
+  public void readWithTimeFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
@@ -226,7 +227,6 @@ public class IoTDBSequenceDataQueryIT {
       RowRecord rowRecord = queryDataSet.next();
       String value = rowRecord.getFields().get(0).getStringValue();
       long time = rowRecord.getTimestamp();
-      // System.out.println(time + "===" + rowRecord.toString());
       assertEquals("" + time % 17, value);
       cnt++;
     }
@@ -236,7 +236,8 @@ public class IoTDBSequenceDataQueryIT {
   }
 
   @Test
-  public void readWithValueFilterTest() throws IOException, StorageEngineException {
+  public void readWithValueFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
     // select * from root where root.vehicle.d0.s0 >=14
     QueryRouter queryRouter = new QueryRouter();
     List<Path> pathList = new ArrayList<>();
@@ -271,8 +272,7 @@ public class IoTDBSequenceDataQueryIT {
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      // System.out.println("readWithValueFilterTest===" + rowRecord.toString());
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(count, cnt);

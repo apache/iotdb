@@ -24,7 +24,7 @@ import static org.junit.Assert.fail;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -71,7 +71,7 @@ public class MManagerAdvancedTest {
     EnvironmentUtils.cleanEnv();
   }
 
-  @org.junit.Test
+  @Test
   public void test() {
 
     try {
@@ -104,14 +104,14 @@ public class MManagerAdvancedTest {
   }
 
   @Test
-  public void testCache() throws MetadataException, IOException, StorageGroupException {
+  public void testCache() throws MetadataException {
     mmanager.createTimeseries("root.vehicle.d2.s0", "DOUBLE", "RLE");
     mmanager.createTimeseries("root.vehicle.d2.s1", "BOOLEAN", "PLAIN");
     mmanager.createTimeseries("root.vehicle.d2.s2.g0", "TEXT", "PLAIN");
     mmanager.createTimeseries("root.vehicle.d2.s3", "TEXT", "PLAIN");
 
     MNode node = mmanager.getNodeByPath("root.vehicle.d0");
-    Assert.assertEquals(TSDataType.INT32, node.getChild("s0").getSchema().getType());
+    Assert.assertEquals(TSDataType.INT32, ((LeafMNode) node.getChild("s0")).getSchema().getType());
 
     try {
       mmanager.getNodeByPath("root.vehicle.d100");
@@ -122,8 +122,7 @@ public class MManagerAdvancedTest {
   }
 
   @Test
-  public void testCachedLastTimeValue()
-          throws MetadataException, IOException, StorageGroupException {
+  public void testCachedLastTimeValue() throws MetadataException {
     mmanager.createTimeseries("root.vehicle.d2.s0", "DOUBLE", "RLE");
 
     TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));

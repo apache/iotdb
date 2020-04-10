@@ -129,7 +129,7 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
-  class Element {
+  static class Element {
 
     IPointReader reader;
     TimeValuePair timeValuePair;

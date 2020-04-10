@@ -80,7 +80,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   @Override
   public synchronized void startService() throws StartupException {
-    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricsWebService()) {
+    if (!IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       return;
     }
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
