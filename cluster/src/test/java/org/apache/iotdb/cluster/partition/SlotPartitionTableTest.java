@@ -293,7 +293,7 @@ public class SlotPartitionTableTest {
     PhysicalPlan aggregationPlan = new AggregationPlan();
     assertTrue(PartitionUtils.isLocalPlan(aggregationPlan));
     PhysicalPlan deletePlan = new DeletePlan();
-    assertTrue(PartitionUtils.isGlobalPlan(deletePlan));
+    assertTrue(PartitionUtils.isGlobalMetaPlan(deletePlan));
     PhysicalPlan fillQueryPlan = new FillQueryPlan();
     assertTrue(PartitionUtils.isLocalPlan(fillQueryPlan));
     PhysicalPlan groupByPlan = new GroupByPlan();
@@ -312,22 +312,22 @@ public class SlotPartitionTableTest {
     }
     try {
       PhysicalPlan authorPlan = new AuthorPlan(AuthorType.CREATE_ROLE, "test", "test", "test", "test", new String[]{},  new Path("root.sg.l2.l3.l4.28.ld.l1.d0"));
-      assertTrue(PartitionUtils.isGlobalPlan(authorPlan));
+      assertTrue(PartitionUtils.isGlobalMetaPlan(authorPlan));
     } catch (AuthException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     PhysicalPlan deleteStorageGroup = new DeleteStorageGroupPlan(Collections.emptyList());
-    assertTrue(PartitionUtils.isGlobalPlan(deleteStorageGroup));
+    assertTrue(PartitionUtils.isGlobalMetaPlan(deleteStorageGroup));
     PhysicalPlan loadConfigPlan = new LoadConfigurationPlan();
-    assertTrue(PartitionUtils.isGlobalPlan(loadConfigPlan));
+    assertTrue(PartitionUtils.isGlobalMetaPlan(loadConfigPlan));
     PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.TABLESCAN);
     assertTrue(PartitionUtils.isLocalPlan(operateFilePlan));
 
     PhysicalPlan setStorageGroupPlan = new SetStorageGroupPlan();
-    assertTrue(PartitionUtils.isGlobalPlan(setStorageGroupPlan));
+    assertTrue(PartitionUtils.isGlobalMetaPlan(setStorageGroupPlan));
     PhysicalPlan setTTLPlan = new SetTTLPlan("");
-    assertTrue(PartitionUtils.isGlobalPlan(setTTLPlan));
+    assertTrue(PartitionUtils.isGlobalMetaPlan(setTTLPlan));
     PhysicalPlan showPlan = new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
     assertTrue(PartitionUtils.isLocalPlan(showPlan));
     showPlan = new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
@@ -503,7 +503,7 @@ public class SlotPartitionTableTest {
   public void testDataAuthPlan() {
     List<String> users = new ArrayList(Arrays.asList("user1", "user2"));
     PhysicalPlan dataAuthPlan = new DataAuthPlan(OperatorType.GRANT_WATERMARK_EMBEDDING, users);
-    Assert.assertTrue(PartitionUtils.isGlobalPlan(dataAuthPlan));
+    Assert.assertTrue(PartitionUtils.isGlobalMetaPlan(dataAuthPlan));
   }
 
   private Node getNode(int i) {
