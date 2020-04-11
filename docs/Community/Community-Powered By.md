@@ -19,15 +19,6 @@
 
 -->
 
-<!-- TOC -->
-
-## Outline
-
-- Powered By
-    - Project and Product names using "IoTDB"
-    - Companies and Organizations
-
-<!-- /TOC -->
 ## Powered By
 
 ### Project and Product names using "IoTDB"
