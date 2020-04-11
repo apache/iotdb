@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,26 +19,18 @@
 
 -->
 
-<!-- TOC -->
+## 技术支持
 
-## Outline
+### 使用“IoTDB”的项目和产品名称
 
-- Powered By
-    - Project and Product names using "IoTDB"
-    - Companies and Organizations
+使用Apache IoTDB和相关营销材料创建产品和项目的组织应注意尊重“ Apache IoTDB”中的商标及其徽标。 请参阅[ASF商标指南]（https://www.apache.org/foundation/marks/）和相关的[FAQ]（https://www.apache.org/foundation/marks/faq/），以获得全面的信息。 正确使用ASF商标的权威指南。
+建议不要在任何名称中包含”IoTDB“，以防止IoTDB项目出现潜在的商标问题。
+例如，不应使用诸如”IoTDB BigDataProduct“之类的名称，因为该名称通常包括“IoTDB”。 但是，以上链接描述了一些例外情况，例如“由Apache IoTDB支持的BigDataProduct”或“ Apache IoTDB的BigDataProduct”之类的名称。 总而言之，任何名称都包含“ Apache IoTDB”作为整体是可以接受的。  
+您可以采取的常见做法是创建软件标识符（Maven坐标，模块名称等），例如”iotdb-tool“。 这些是允许的。 还允许在说明中名义使用商标，例如”BigDataProduct”是Apache IoTDB的子产品”。
 
-<!-- /TOC -->
-## Powered By
+### 公司和组织
+要将自己添加到列表中，请给dev@iotdb.apache.org发送电子邮件，其中包含您的组织名称，URL，正在使用的IoTDB组件列表以及用例的简短描述。
 
-### Project and Product names using "IoTDB"
+- 清华大学软件学院和国家工程大数据软件实验室最初启动了IoTDB
+	- 我们有研究生和一组专业软件工程师在堆栈上工作
 
-Organizations creating products and projects using Apache IoTDB, along with associated marketing materials, should take care to respect the trademark in “Apache IoTDB” and its logo. Please refer to [ASF Trademarks Guidance](https://www.apache.org/foundation/marks/) and associated [FAQ](https://www.apache.org/foundation/marks/faq/) for comprehensive and authoritative guidance on proper usage of ASF trademarks.
-It is recommended to not include “IoTDB” in any names to prevent potential trademark issue with the IoTDB project.
-As an example, names like “IoTDB BigDataProduct” should not be used, as the name include “IoTDB” in general. The above links, however, describe some exceptions, like for names such as “BigDataProduct, powered by Apache IoTDB” or “BigDataProduct for Apache IoTDB”. In summary, any names contain "Apache IoTDB" as a whole are acceptable.  
-A common practice you can take is to create software identifiers (Maven coordinates, module names, etc.) like “iotdb-tool”. These are permitted. Nominative use of trademarks in descriptions is also allowed, as in “BigDataProduct is a subproduct for Apache IoTDB”.
-
-### Companies and Organizations
-To add yourself to the list, please email dev@iotdb.apache.org with your organization name, URL, a list of IoTDB components you are using, and a short description of your use case.
-
-- School of Software (Tsinghua University), and National Engineering Laboratery for Big Data Software  that initially launched IoTDB  
-	- We have both graduate students and a team of professional software engineers working on the stack

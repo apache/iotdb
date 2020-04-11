@@ -732,7 +732,7 @@ var config = {
 						]
 					},
 					{
-						title: '3-Server',
+						title: '3-服务器端',
 						children: [
 							['3-Server/1-Download','下载'],
 							['3-Server/2-Single Node Setup','单节点安装'],
@@ -742,7 +742,7 @@ var config = {
 						]
 					},
 					{
-						title: '4-Client',
+						title: '4-客户端',
 						children: [
 							['4-Client/1-Command Line Interface','命令行接口(CLI)'],
 							['4-Client/2-Programming - Native API','原生接口'],
@@ -754,7 +754,7 @@ var config = {
 						]
 					},
 					{
-						title: '5-Operation Manual',
+						title: '5-操作指南',
 						children: [
 							['5-Operation Manual/1-DDL Data Definition Language','DDL (数据定义语言)'],
 							['5-Operation Manual/2-DML Data Manipulation Language','DML (数据操作语言)'],
@@ -763,7 +763,7 @@ var config = {
 						]
 					},
 					{
-						title: '6-System Tools',
+						title: '6-系统工具',
 						children: [
 							['6-System Tools/1-Sync Tool','同步工具'],
 							['6-System Tools/2-Memory Estimation Tool','内存预估'],
@@ -776,7 +776,7 @@ var config = {
 						]
 					},
 					{
-						title: '7-Ecosystem Integration',
+						title: '7-生态集成',
 						children: [
 							['7-Ecosystem Integration/1-Grafana','Grafana'],
 							['7-Ecosystem Integration/2-MapReduce TsFile','MapReduce TsFile'],
@@ -786,7 +786,7 @@ var config = {
 						]
 					},
 					{
-						title: '8-Architecture',
+						title: '8-系统设计',
 						children: [
 							['8-Architecture/1-Files','文件'],
 							['8-Architecture/2-Writing Data on HDFS','使用HDFS存储数据'],

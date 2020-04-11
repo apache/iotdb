@@ -42,7 +42,3 @@ To add yourself to the list, please email dev@iotdb.apache.org with your organiz
 
 - School of Software (Tsinghua University), and National Engineering Laboratery for Big Data Software  that initially launched IoTDB  
   - We have both graduate students and a team of professional software engineers working on the stack
-
-
-
-<FooterFixed/>
