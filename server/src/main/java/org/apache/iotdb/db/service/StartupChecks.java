@@ -30,21 +30,14 @@ public class StartupChecks {
 
   private static final Logger logger = LoggerFactory.getLogger(StartupChecks.class);
   public static final StartupCheck checkJMXPort = () -> {
-    String jmxPort = System.getProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME);
+    String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
     if (jmxPort == null) {
-      logger.warn("JMX is not enabled to receive remote connection. "
-              + "Please check conf/{}.sh(Unix or OS X, if you use Windows, "
-              + "check conf/{}.bat) for more info",
-          IoTDBConstant.ENV_FILE_NAME, IoTDBConstant.ENV_FILE_NAME);
-      jmxPort = System.getProperty(IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME);
       if (jmxPort == null) {
         logger.warn("{} missing from {}.sh(Unix or OS X, if you use Windows,"
                 + " check conf/{}.bat)",
-            IoTDBConstant.IOTDB_LOCAL_JMX_PORT_NAME, IoTDBConstant.ENV_FILE_NAME,
+            IoTDBConstant.IOTDB_JMX_PORT, IoTDBConstant.ENV_FILE_NAME,
             IoTDBConstant.ENV_FILE_NAME);
       }
-    } else {
-      logger.info("JMX is enabled to receive remote connection on port {}", jmxPort);
     }
   };
   public static final StartupCheck checkJDK = () -> {
