@@ -70,7 +70,7 @@ The detail of each variables are as follows:
 |Name|JMX\_LOCAL|
 |:---:|:---|
 |Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring|
-|Type|Enum String: "true", "true"|
+|Type|Enum String: "true", "false"|
 |Default|true|
 |Effective|After restart system|
 
