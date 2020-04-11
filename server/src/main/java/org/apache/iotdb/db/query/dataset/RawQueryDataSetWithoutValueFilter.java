@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -43,7 +44,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
 
-  private static class ReadTask implements Runnable {
+  private static class ReadTask extends WrappedRunnable {
 
     private final ManagedSeriesReader reader;
     private final String pathName;
@@ -57,7 +58,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet {
     }
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         synchronized (reader) {
           // if the task is submitted, there must be free space in the queue

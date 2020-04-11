@@ -206,7 +206,9 @@ public class PhysicalGenerator {
     }
     if (queryPlan instanceof LastQueryPlan) {
       // Last query result set will not be affected by alignment
-      queryPlan.setAlignByTime(true);
+      if (!queryOperator.isAlignByTime()) {
+        throw new QueryProcessException("Disable align cannot be applied to LAST query.");
+      }
       List<Path> paths = queryOperator.getSelectedPaths();
       queryPlan.setPaths(paths);
     } else if (queryOperator.isAlignByDevice()) {

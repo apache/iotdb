@@ -16,19 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.exception.runtime;
 
-import org.apache.iotdb.db.exception.StartupException;
+public class RPCServiceException extends RuntimeException{
 
-public interface JDBCServiceMBean {
+  private static final long serialVersionUID = 520836932066897810L;
 
-  String getJDBCServiceStatus();
+  public RPCServiceException(String message) {
+    super(message);
+  }
 
-  int getRPCPort();
+  public RPCServiceException(String message, Throwable e) {
+    super(message + e.getMessage());
+  }
 
-  void startService() throws StartupException;
-
-  void restartService() throws StartupException;
-
-  void stopService();
 }
