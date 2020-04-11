@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.exception.*;
+import org.apache.iotdb.cluster.exception.EntryCompactedException;
+import org.apache.iotdb.cluster.exception.EntryUnavailableException;
+import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,8 +44,10 @@ public class RaftLogManager {
 
     private long committed;
     private long applied;
+    private LogApplier logApplier;
 
-    public RaftLogManager(CommittedEntryManager committedEntryManager, StableEntryManager stableEntryManager) {
+    public RaftLogManager(CommittedEntryManager committedEntryManager, StableEntryManager stableEntryManager, LogApplier applier) {
+        this.logApplier = applier;
         this.committedEntryManager = committedEntryManager;
         this.stableEntryManager = stableEntryManager;
         long last = committedEntryManager.getLastIndex();
@@ -281,11 +287,29 @@ public class RaftLogManager {
         if (committed < commitIndex) {
             List<Log> entries = unCommittedEntryManager.getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), commitIndex + 1);
             stableEntryManager.append(entries);
+            applyEntries(entries);
             committedEntryManager.append(entries);
             unCommittedEntryManager.stableTo(commitIndex, entries.get(entries.size() - 1).getCurrLogTerm());
             committed = commitIndex;
         }
         return committed;
+    }
+
+    /**
+     * Used by commitTo to apply newly committed entries
+     *
+     * @param entries applying entries
+     */
+    protected void applyEntries(List<Log> entries) {
+        for (Log entry : entries) {
+            try {
+                logApplier.apply(entry);
+            } catch (QueryProcessException e) {
+                if (!(e.getCause() instanceof PathAlreadyExistException)) {
+                    logger.error("Cannot apply a log {} in snapshot, ignored", entry, e);
+                }
+            }
+        }
     }
 
     /**
