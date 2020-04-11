@@ -72,7 +72,7 @@ var config = {
 				 {
 					text: 'Document',
 					items: [
-						{ text: 'In progress', link: '/UserGuide/master/0-Get Started/1-QuickStart' },
+						{ text: 'In progress', link: '/UserGuide/Master/0-Get Started/1-QuickStart' },
 						{ text: 'V0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
 					    { text: 'V0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
@@ -291,7 +291,7 @@ var config = {
 						]
 					},
 				],
-				'/UserGuide/master/': [
+				'/UserGuide/Master/': [
 					{
 						title:'IoTDB User Guide (In progress)',
 						collapsable: false,
@@ -481,7 +481,7 @@ var config = {
 				 {
 					text: '文档',
 					items: [
-					  { text: 'In progress', link: '/zh/UserGuide/master/0-Get Started/1-QuickStart' },
+					  { text: 'In progress', link: '/zh/UserGuide/Master/0-Get Started/1-QuickStart' },
 					  { text: 'V0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
 					  { text: 'V0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
@@ -700,7 +700,7 @@ var config = {
 						]
 					},
 				],
-				'/zh/UserGuide/master/': [
+				'/zh/UserGuide/Master/': [
 					{
 						title: 'IoTDB用户手册 (In progress)',
 						collapsable: false,
