@@ -667,6 +667,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           case MetaMarker.VERSION:
             long version = readVersion();
             versionInfo.add(new Pair<>(position(), version));
+            truncatedPosition = this.position();
             break;
           default:
             // the disk file is corrupted, using this file may be dangerous

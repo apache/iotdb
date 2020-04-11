@@ -147,14 +147,16 @@ public class RestorableTsFileIOWriterTest {
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushAllChunkGroups();
+    writer.writeVersion(0);
     long pos = writer.getIOWriter().getPos();
-    // let's delete one byte.
+    // let's delete one byte. the version is broken
     writer.getIOWriter().out.truncate(pos - 1);
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
-    assertEquals(TsFileIOWriter.magicStringBytes.length, rWriter.getTruncatedPosition());
+    // truncate version marker and version
+    assertEquals(pos - 1 - Long.BYTES, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
   }
 

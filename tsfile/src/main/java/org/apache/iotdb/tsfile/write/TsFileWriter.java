@@ -326,8 +326,7 @@ public class TsFileWriter implements AutoCloseable {
           throw new IOException(
               String.format(
                   "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
-                  dataSize,
-                  fileWriter.getPos() - pos));
+                  dataSize, fileWriter.getPos() - pos));
         }
         fileWriter.endChunkGroup();
       }

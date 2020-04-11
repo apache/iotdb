@@ -24,6 +24,9 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 public class VersionUtils {
 
   public static void applyVersion(List<ChunkMetadata> chunkMetadataList, List<Pair<Long, Long>> versionInfo) {
+    if (versionInfo == null || versionInfo.isEmpty()) {
+      return;
+    }
     int versionIndex = 0;
     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
       while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {

@@ -83,6 +83,9 @@ public class TsFileSequenceReaderTest {
           metadatas.add(pair);
           startOffset = endOffset;
           break;
+        case MetaMarker.VERSION:
+          reader.readVersion();
+          break;
         default:
           MetaMarker.handleUnexpectedMarker(marker);
       }

@@ -98,6 +98,10 @@ public class TsFileSequenceRead {
           ChunkGroupFooter chunkGroupFooter = reader.readChunkGroupFooter();
           System.out.println("device: " + chunkGroupFooter.getDeviceID());
           break;
+        case MetaMarker.VERSION:
+          long version = reader.readVersion();
+          System.out.println("version: " + version);
+          break;
         default:
           MetaMarker.handleUnexpectedMarker(marker);
       }
