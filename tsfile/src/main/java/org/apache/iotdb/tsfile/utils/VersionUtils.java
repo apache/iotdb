@@ -23,6 +23,10 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 public class VersionUtils {
 
+  private VersionUtils() {
+    throw new IllegalStateException("Utility class");
+  }
+
   public static void applyVersion(List<ChunkMetadata> chunkMetadataList, List<Pair<Long, Long>> versionInfo) {
     if (versionInfo == null || versionInfo.isEmpty()) {
       return;
