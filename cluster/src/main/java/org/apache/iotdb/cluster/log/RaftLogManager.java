@@ -57,12 +57,19 @@ public class RaftLogManager {
         this.applied = last;
     }
 
+    public void waitRemoteSnapshots() {
+    }
+
+    public Snapshot getSnapshot() {
+        return null;
+    }
+
     /**
      * Return the raftNode's commitIndex.
      *
      * @return commitIndex
      */
-    public long getCommitIndex() {
+    public long getCommitLogIndex() {
         return committed;
     }
 
@@ -71,7 +78,7 @@ public class RaftLogManager {
      *
      * @param commitIndex request commitIndex
      */
-    public void setCommitIndex(long commitIndex) {
+    public void setCommitLogIndex(long commitIndex) {
         this.committed = commitIndex;
     }
 
@@ -98,7 +105,7 @@ public class RaftLogManager {
      *
      * @return lastIndex
      */
-    public long getLastIndex() {
+    public long getLastLogIndex() {
         long last = unCommittedEntryManager.maybeLastIndex();
         if (last != -1) {
             return last;
@@ -121,7 +128,7 @@ public class RaftLogManager {
             logger.info("invalid getTerm: parameter: index({}) < compactIndex({})", index, dummyIndex);
             throw new EntryCompactedException(index, dummyIndex);
         }
-        long lastIndex = getLastIndex();
+        long lastIndex = getLastLogIndex();
         if (index > lastIndex) {
             logger.info("invalid getTerm: parameter: index({}) > lastIndex({})", index, lastIndex);
             throw new EntryUnavailableException(index, lastIndex);
@@ -138,10 +145,10 @@ public class RaftLogManager {
      *
      * @return last entry's term
      */
-    public long getLastTerm() {
+    public long getLastLogTerm() {
         long term = -1;
         try {
-            term = getTerm(getLastIndex());
+            term = getTerm(getLastLogIndex());
         } catch (Exception e) {
             logger.error("unexpected error when getting the last term : {}", e.getMessage());
         }
@@ -183,14 +190,14 @@ public class RaftLogManager {
      */
     public long append(List<Log> entries) {
         if (entries.size() == 0) {
-            return getLastIndex();
+            return getLastLogIndex();
         }
         long after = entries.get(0).getCurrLogIndex();
         if (after <= committed) {
             logger.error("after({}) is out of range [committed({})]", after, committed);
         }
         unCommittedEntryManager.truncateAndAppend(entries);
-        return getLastIndex();
+        return getLastLogIndex();
     }
 
     /**
@@ -215,7 +222,7 @@ public class RaftLogManager {
      * @return true or false
      */
     public boolean logValid(long index) {
-        return index >= getFirstIndex() && index <= getLastIndex();
+        return index >= getFirstIndex() && index <= getLastLogIndex();
     }
 
     /**
@@ -251,7 +258,7 @@ public class RaftLogManager {
      * @return true or false
      */
     public boolean isLogUpToDate(long lastTerm, long lastIndex) {
-        return lastTerm > getLastTerm() || (lastTerm == getLastTerm() && lastIndex >= getLastIndex());
+        return lastTerm > getLastLogTerm() || (lastTerm == getLastLogTerm() && lastIndex >= getLastLogIndex());
     }
 
     /**
@@ -277,8 +284,7 @@ public class RaftLogManager {
     }
 
     /**
-     * Used by MaybeCommit or MaybeAppend to persist committed entries
-     * from unCommittedEntryManager to stableEntryManager and committedEntryManager.
+     * Used by MaybeCommit or MaybeAppend or follower to commit newly committed entries.
      *
      * @param commitIndex request commitIndex
      * @return the newly commitIndex
@@ -368,7 +374,7 @@ public class RaftLogManager {
     protected long findConflict(List<Log> entries) {
         for (Log entry : entries) {
             if (!matchTerm(entry.getCurrLogTerm(), entry.getCurrLogIndex())) {
-                if (entry.getCurrLogIndex() <= getLastIndex()) {
+                if (entry.getCurrLogIndex() <= getLastLogIndex()) {
                     logger.info("found conflict at index {}",
                             entry.getCurrLogIndex());
                 }

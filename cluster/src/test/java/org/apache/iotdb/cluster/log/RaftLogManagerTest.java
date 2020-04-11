@@ -113,7 +113,7 @@ public class RaftLogManagerTest {
 	}
 
 	@Test
-	public void getLastIndex() {
+	public void getLastLogIndex() {
 		long offset = 100;
 		long num = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
@@ -124,12 +124,12 @@ public class RaftLogManagerTest {
 			instance.append(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(offset + index, offset + index));
 			}});
-			assertEquals(offset + index, instance.getLastIndex());
+			assertEquals(offset + index, instance.getLastLogIndex());
 		}
 	}
 
 	@Test
-	public void getLastTerm() {
+	public void getLastLogTerm() {
 		long offset = 100;
 		long num = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
@@ -140,7 +140,7 @@ public class RaftLogManagerTest {
 			instance.append(new ArrayList<Log>() {{
 				add(new PhysicalPlanLog(offset + index, offset + index));
 			}});
-			assertEquals(offset + index, instance.getLastTerm());
+			assertEquals(offset + index, instance.getLastLogTerm());
 		}
 	}
 
@@ -198,7 +198,7 @@ public class RaftLogManagerTest {
 			boolean answer = instance.maybeCommit(test.leaderCommit, test.term);
 			assertEquals(test.testCommittedEntryManagerSize, instance.committedEntryManager.getAllEntries().size());
 			assertEquals(test.testUnCommittedEntryManagerSize, instance.unCommittedEntryManager.getAllEntries().size());
-			assertEquals(test.testCommitIndex, instance.getCommitIndex());
+			assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
 			assertEquals(test.testCommit, answer);
 		}
 	}
@@ -248,7 +248,7 @@ public class RaftLogManagerTest {
 			instance.commitTo(test.commitTo);
 			assertEquals(test.testCommittedEntryManagerSize, instance.committedEntryManager.getAllEntries().size());
 			assertEquals(test.testUnCommittedEntryManagerSize, instance.unCommittedEntryManager.getAllEntries().size());
-			assertEquals(test.testCommitIndex, instance.getCommitIndex());
+			assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
 		}
 	}
 
@@ -381,12 +381,12 @@ public class RaftLogManagerTest {
 			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
 			RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
 			instance.append(previousEntries);
-			instance.setCommitIndex(commit);
+			instance.setCommitLogIndex(commit);
 			assertEquals(test.testLastIndex, instance.maybeAppend(test.lastIndex, test.lastTerm, test.leaderCommit, test.entries));
-			assertEquals(test.testCommitIndex, instance.getCommitIndex());
+			assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
 			if (test.testAppend) {
 				try {
-					List<Log> entries = instance.getEntries(instance.getLastIndex() - test.entries.size() + 1, Integer.MAX_VALUE);
+					List<Log> entries = instance.getEntries(instance.getLastLogIndex() - test.entries.size() + 1, Integer.MAX_VALUE);
 					assertEquals(test.entries, entries);
 				} catch (Exception e) {
 					fail("An unexpected exception was thrown.");
@@ -522,7 +522,7 @@ public class RaftLogManagerTest {
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(index, term));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
 		instance.applyingSnapshot(new SimpleSnapshot(index, term));
-		assertEquals(instance.getLastIndex(), term);
+		assertEquals(instance.getLastLogIndex(), term);
 		List<Log> entries = new ArrayList<>();
 		for (int i = 1; i <= 10; i++) {
 			entries.add(new PhysicalPlanLog(index + i, index + i));
@@ -530,22 +530,22 @@ public class RaftLogManagerTest {
 		instance.maybeAppend(index, term, index, entries);
 		assertEquals(1, instance.committedEntryManager.getAllEntries().size());
 		assertEquals(10, instance.unCommittedEntryManager.getAllEntries().size());
-		assertEquals(100, instance.getCommitIndex());
+		assertEquals(100, instance.getCommitLogIndex());
 		instance.commitTo(105);
 		assertEquals(101, instance.getFirstIndex());
 		assertEquals(6, instance.committedEntryManager.getAllEntries().size());
 		assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());
-		assertEquals(105, instance.getCommitIndex());
+		assertEquals(105, instance.getCommitLogIndex());
 		instance.applyingSnapshot(new SimpleSnapshot(103, 103));
 		assertEquals(104, instance.getFirstIndex());
 		assertEquals(3, instance.committedEntryManager.getAllEntries().size());
 		assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());
-		assertEquals(105, instance.getCommitIndex());
+		assertEquals(105, instance.getCommitLogIndex());
 		instance.applyingSnapshot(new SimpleSnapshot(108, 108));
 		assertEquals(109, instance.getFirstIndex());
 		assertEquals(1, instance.committedEntryManager.getAllEntries().size());
 		assertEquals(0, instance.unCommittedEntryManager.getAllEntries().size());
-		assertEquals(108, instance.getCommitIndex());
+		assertEquals(108, instance.getCommitLogIndex());
 	}
 
 	@Test
@@ -726,17 +726,17 @@ public class RaftLogManagerTest {
 		instance.append(previousEntries);
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
 			// greater term, ignore lastIndex
-			add(new RaftLogManagerTester(instance.getLastIndex() - 1, 3, true));
-			add(new RaftLogManagerTester(instance.getLastIndex(), 3, true));
-			add(new RaftLogManagerTester(instance.getLastIndex() + 1, 3, true));
+			add(new RaftLogManagerTester(instance.getLastLogIndex() - 1, 3, true));
+			add(new RaftLogManagerTester(instance.getLastLogIndex(), 3, true));
+			add(new RaftLogManagerTester(instance.getLastLogIndex() + 1, 3, true));
 			// smaller term, ignore lastIndex
-			add(new RaftLogManagerTester(instance.getLastIndex() - 1, 1, false));
-			add(new RaftLogManagerTester(instance.getLastIndex(), 1, false));
-			add(new RaftLogManagerTester(instance.getLastIndex() + 1, 1, false));
+			add(new RaftLogManagerTester(instance.getLastLogIndex() - 1, 1, false));
+			add(new RaftLogManagerTester(instance.getLastLogIndex(), 1, false));
+			add(new RaftLogManagerTester(instance.getLastLogIndex() + 1, 1, false));
 			// equal term, equal or lager lastIndex wins
-			add(new RaftLogManagerTester(instance.getLastIndex() - 1, 2, false));
-			add(new RaftLogManagerTester(instance.getLastIndex(), 2, true));
-			add(new RaftLogManagerTester(instance.getLastIndex() + 1, 2, true));
+			add(new RaftLogManagerTester(instance.getLastLogIndex() - 1, 2, false));
+			add(new RaftLogManagerTester(instance.getLastLogIndex(), 2, true));
+			add(new RaftLogManagerTester(instance.getLastLogIndex() + 1, 2, true));
 		}};
 		for (RaftLogManagerTester test : tests) {
 			assertEquals(test.isUpToDate, instance.isLogUpToDate(test.lastTerm, test.lastIndex));
