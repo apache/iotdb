@@ -30,7 +30,7 @@ import static org.apache.iotdb.db.rest.constant.RestConstant.INSERT;
 import static org.apache.iotdb.db.rest.constant.RestConstant.MEASUREMENTS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.NO_TARGET;
 import static org.apache.iotdb.db.rest.constant.RestConstant.RANGE;
-import static org.apache.iotdb.db.rest.constant.RestConstant.REQUEST_NULL;
+import static org.apache.iotdb.db.rest.constant.RestConstant.REQUEST_BODY_JSON_FAILED;
 import static org.apache.iotdb.db.rest.constant.RestConstant.SET_STORAGE_GROUP;
 import static org.apache.iotdb.db.rest.constant.RestConstant.SUCCESS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TABLE;
@@ -63,13 +63,12 @@ import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metrics.MetricsSystem;
 import org.apache.iotdb.db.rest.service.RestService;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * It’s used for mapping http request.
@@ -78,9 +77,8 @@ import org.slf4j.LoggerFactory;
 @Path("/")
 public class RestController {
 
-  private static final Logger logger = LoggerFactory.getLogger(RestController.class);
   private RestService restService = RestService.getInstance();
-  private MetricsSystem metricsSystem = new MetricsSystem();
+  private MetricsSystem metricsSystem = MetricsSystem.getInstance();
 
   /**
    *
@@ -90,13 +88,17 @@ public class RestController {
   @Path("/query")
   @POST
   @Produces(MediaType.APPLICATION_JSON)
-  @Consumes(MediaType.APPLICATION_JSON)
-  public JSONArray query(@Context HttpServletRequest request) {
-    JSONObject jsonObject = getRequestBodyJson(request);
-    if(jsonObject == null) {
-      JSONArray jsonArray = new JSONArray();
-      jsonArray.add(REQUEST_NULL);
-      return jsonArray;
+  public Response query(@Context HttpServletRequest request) {
+    boolean hasError = false;
+    JSONObject jsonObject;
+    try {
+      jsonObject = getRequestBodyJson(request);
+    } catch (IOException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(REQUEST_BODY_JSON_FAILED).build();
+    }
+    String type = (String) jsonObject.get(TYPE);
+    if(!type.equals(INSERT)) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(WRONG_TYPE).build();
     }
     JSONObject range = (JSONObject) jsonObject.get(RANGE);
     Pair<String, String> timeRange = new Pair<>((String) range.get(FROM), (String) range.get(TO));
@@ -104,43 +106,49 @@ public class RestController {
     JSONArray result = new JSONArray();
     for (int i = 0; i < array.size(); i++) {
       JSONObject object = (JSONObject) array.get(i);
-      if (!object.containsKey(TARGET)) {
-        result.add(JSON.parse("[]"));
-        return result;
-      }
       String timeseries = (String) object.get(TARGET);
-      String type = restService.getJsonType(jsonObject);
+      String showType = restService.getJsonType(jsonObject);
       JSONObject obj = new JSONObject();
       obj.put(TARGET, timeseries);
-      if (type.equals(TABLE)) {
+      if (showType.equals(TABLE)) {
         try {
           restService.setJsonTable(obj, timeseries, timeRange);
         } catch (Exception e) {
           result.add(i, timeseries + COLON + e.getMessage());
+          hasError = true;
         }
-      } else if (type.equals(TIMESERIE)) {
+      } else if (showType.equals(TIMESERIE)) {
         try {
           restService.setJsonTimeseries(obj, timeseries, timeRange);
         } catch (Exception e) {
           result.add(i, timeseries + COLON + e.getMessage());
+          hasError = true;
         }
       }
       result.add(i, obj);
     }
-    return result;
+
+    if(!hasError) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(result).build();
+    } else {
+      return Response.status(Response.Status.OK).entity(result).build();
+    }
   }
 
   @Path("/insert")
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
-  public String insert(@Context HttpServletRequest request) {
-    JSONObject jsonObject = getRequestBodyJson(request);
-    if(jsonObject == null) {
-      return REQUEST_NULL;
+  public Response insert(@Context HttpServletRequest request) {
+    boolean hasError = false;
+    JSONObject jsonObject;
+    try {
+      jsonObject = getRequestBodyJson(request);
+    } catch (IOException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(REQUEST_BODY_JSON_FAILED).build();
     }
     String type = (String) jsonObject.get(TYPE);
     if(!type.equals(INSERT)) {
-      return WRONG_TYPE;
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(WRONG_TYPE).build();
     }
     JSONArray array = (JSONArray) jsonObject.get(TARGETS);
     JSONArray result = new JSONArray();
@@ -155,26 +163,35 @@ public class RestController {
           result.add(deviceID + COLON + SUCCESS);
         } else {
           result.add(deviceID + COLON + FAIL);
+          hasError = true;
         }
       } catch (QueryProcessException e) {
         result.add(deviceID + COLON + e.getMessage());
+        hasError = true;
       }
     }
-    return result.toString();
+    if(!hasError) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(result).build();
+    } else {
+      return Response.status(Response.Status.OK).entity(result).build();
+    }
   }
 
   @Path("/createTimeSeries")
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
-  public String createTimeSeries(@Context HttpServletRequest request) {
-    JSONObject jsonObject = getRequestBodyJson(request);
-    if(jsonObject == null) {
-      return REQUEST_NULL;
+  public Response createTimeSeries(@Context HttpServletRequest request) {
+    JSONObject jsonObject;
+    try {
+      jsonObject = getRequestBodyJson(request);
+    } catch (IOException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(REQUEST_BODY_JSON_FAILED).build();
     }
     String type = (String) jsonObject.get(TYPE);
     if(!type.equals(CREATE_TIME_SERIES)) {
-      return WRONG_TYPE;
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(WRONG_TYPE).build();
     }
+    boolean hasError = false;
     JSONArray array = (JSONArray) jsonObject.get(TARGETS);
     JSONArray result = new JSONArray();
     for (Object o : array) {
@@ -194,25 +211,34 @@ public class RestController {
           result.add(timeseries + COLON + SUCCESS);
         } else {
           result.add(timeseries + COLON + FAIL);
+          hasError = true;
         }
       } catch (QueryProcessException e) {
         result.add(timeseries + COLON + e.getMessage());
+        hasError = true;
       }
     }
-    return result.toString();
+    if(!hasError) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(result).build();
+    } else {
+      return Response.status(Response.Status.OK).entity(result).build();
+    }
   }
 
   @Path("/setStorageGroup")
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
-  public String setStorageGroup(@Context HttpServletRequest request) {
-    JSONObject jsonObject = getRequestBodyJson(request);
-    if(jsonObject == null) {
-      return REQUEST_NULL;
+  public Response setStorageGroup(@Context HttpServletRequest request) {
+    JSONObject jsonObject;
+    boolean hasError = false;
+    try {
+      jsonObject = getRequestBodyJson(request);
+    } catch (IOException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(REQUEST_BODY_JSON_FAILED).build();
     }
     String type = (String) jsonObject.get(TYPE);
     if(!type.equals(SET_STORAGE_GROUP)) {
-      return WRONG_TYPE;
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(WRONG_TYPE).build();
     }
     JSONArray array = (JSONArray) jsonObject.get(TARGETS);
     JSONArray result = new JSONArray();
@@ -223,12 +249,18 @@ public class RestController {
           result.add(timeseries + COLON + SUCCESS);
         } else {
           result.add(timeseries + COLON + FAIL);
+          hasError = true;
         }
       } catch (QueryProcessException e) {
         result.add(timeseries + COLON + e.getMessage());
+        hasError = true;
       }
     }
-    return result.toString();
+    if(!hasError) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(result).build();
+    } else {
+      return Response.status(Response.Status.OK).entity(result).build();
+    }
   }
 
   /**
@@ -249,19 +281,14 @@ public class RestController {
    * @return request JSON
    * @throws JSONException JSONException
    */
-  private JSONObject getRequestBodyJson(HttpServletRequest request){
-    try {
-      BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
-      StringBuilder sb = new StringBuilder();
-      String line;
-      while ((line = br.readLine()) != null) {
-        sb.append(line);
-      }
-      return JSON.parseObject(sb.toString());
-    } catch (IOException e) {
-      logger.error("getRequestBodyJson failed", e);
+  private JSONObject getRequestBodyJson(HttpServletRequest request) throws IOException {
+    BufferedReader br = new BufferedReader(new InputStreamReader(request.getInputStream()));
+    StringBuilder sb = new StringBuilder();
+    String line;
+    while ((line = br.readLine()) != null) {
+      sb.append(line);
     }
-    return null;
+    return JSON.parseObject(sb.toString());
   }
 
   /**

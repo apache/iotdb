@@ -30,7 +30,7 @@ public class RestConstant {
 
   public static final String SET_STORAGE_GROUP = "setStorageGroup";
 
-  public static final String REQUEST_NULL = "Request json is null";
+  public static final String REQUEST_BODY_JSON_FAILED = "Get request body JSON failed";
 
   public static final String WRONG_TYPE = "Type is wrong";
 
