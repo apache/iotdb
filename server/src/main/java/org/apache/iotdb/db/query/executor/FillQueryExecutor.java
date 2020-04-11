@@ -77,8 +77,6 @@ public class FillQueryExecutor {
           case INT64:
           case FLOAT:
           case DOUBLE:
-            fill = new LinearFill(dataType, queryTime, defaultFillInterval, defaultFillInterval);
-            break;
           case BOOLEAN:
           case TEXT:
             fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
@@ -89,7 +87,8 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      configureFill(fill, dataType, path, fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context, queryTime);
+      fill.configureFill(path, dataType, queryTime,
+          fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -102,12 +101,5 @@ public class FillQueryExecutor {
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
-  }
-
-  protected void configureFill(IFill fill, TSDataType dataType, Path path, Set<String> allSensors, QueryContext context,
-                               long queryTime) throws StorageEngineException, QueryProcessException {
-    fill.setDataType(dataType);
-    fill.setQueryTime(queryTime);
-    fill.constructReaders(path, allSensors, context);
   }
 }
