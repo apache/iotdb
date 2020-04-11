@@ -2,10 +2,10 @@
   "name": "IoTDB",
   "version": "1.0.0",
   "description": "Apache IoTDB (incubating) Website",
-  "main": "",
+  "main": "index.js",
   "scripts": {
-    "dev": "vuepress dev docs",
-    "build": "vuepress build docs",
+    "dev": "vuepress dev src",
+    "build": "vuepress build src",
     "deploy": "node deploy.js"
   },
   "repository": {
