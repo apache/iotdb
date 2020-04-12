@@ -36,7 +36,10 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -119,6 +122,28 @@ public class ReadWriteIOUtils {
   public static boolean readIsNull(ByteBuffer buffer) {
     return readBool(buffer);
   }
+
+  public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
+    int length = 0;
+    byte[] bytes;
+    stream.write(map.size());
+    length += 4;
+    for (Entry<String, String> entry : map.entrySet()) {
+      bytes = entry.getKey().getBytes();
+      stream.write(bytes.length);
+      length += 4;
+      stream.write(bytes);
+      length += bytes.length;
+      bytes = entry.getValue().getBytes();
+      stream.write(bytes.length);
+      length += 4;
+      stream.write(bytes);
+      length += bytes.length;
+    }
+    return length;
+  }
+
+
 
   /**
    * write a int value to outputStream according to flag. If flag is true, write 1, else write 0.
@@ -552,6 +577,21 @@ public class ReadWriteIOUtils {
     }
     return bytes;
   }
+
+
+  public static Map<String, String> readMap(ByteBuffer buffer) {
+    int length = readInt(buffer);
+    Map<String, String> map = new HashMap<>(length);
+    for (int i = 0; i < length; i++) {
+      // key
+      String key = readString(buffer);
+      // value
+      String value = readString(buffer);
+      map.put(key, value);
+    }
+    return map;
+  }
+
 
   /**
    * unlike InputStream.read(bytes), this method makes sure that you can read length bytes or reach

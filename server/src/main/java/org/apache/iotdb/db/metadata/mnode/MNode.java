@@ -56,9 +56,9 @@ public abstract class MNode implements Serializable {
   public abstract boolean hasChild(String name);
 
   /**
-   * add the given child
+   * node key, name or alias
    */
-  public abstract void addChild(MNode child);
+  public abstract void addChild(String name, MNode chile);
 
   /**
    * delete a child

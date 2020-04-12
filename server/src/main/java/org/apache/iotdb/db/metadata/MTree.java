@@ -75,9 +75,10 @@ public class MTree implements Serializable {
    * @param encoding encoding
    * @param compressor compressor
    * @param props props
+   * @param alias alias of measurement
    */
-  void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props) throws MetadataException {
+  LeafMNode createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props, String alias) throws MetadataException {
     String[] nodeNames = MetaUtils.getNodeNames(path);
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path);
@@ -94,7 +95,7 @@ public class MTree implements Serializable {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        cur.addChild(new InternalMNode(cur, nodeName));
+        cur.addChild(nodeName, new InternalMNode(cur, nodeName));
       }
       cur = cur.getChild(nodeName);
     }
@@ -105,8 +106,13 @@ public class MTree implements Serializable {
     if (cur.hasChild(leafName)) {
       throw new PathAlreadyExistException(path);
     }
-    MNode leaf = new LeafMNode(cur, leafName, dataType, encoding, compressor, props);
-    cur.addChild(leaf);
+    MNode leaf = new LeafMNode(cur, leafName, alias, dataType, encoding, compressor, props);
+    cur.addChild(leafName, leaf);
+    // link alias to LeafMNode
+    if (alias != null) {
+      cur.addChild(alias, leaf);
+    }
+    return (LeafMNode) leaf;
   }
 
   /**
@@ -122,7 +128,7 @@ public class MTree implements Serializable {
     MNode cur = root;
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
-        cur.addChild(new InternalMNode(cur, nodeNames[i]));
+        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       }
       cur = cur.getChild(nodeNames[i]);
     }
@@ -167,7 +173,7 @@ public class MTree implements Serializable {
     while (i < nodeNames.length - 1) {
       MNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
-        cur.addChild(new InternalMNode(cur, nodeNames[i]));
+        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
       } else if (temp instanceof StorageGroupMNode) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
@@ -181,7 +187,7 @@ public class MTree implements Serializable {
     } else {
       StorageGroupMNode storageGroupMNode = new StorageGroupMNode(cur, nodeNames[i], path,
           IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-      cur.addChild(storageGroupMNode);
+      cur.addChild(nodeNames[i], storageGroupMNode);
     }
   }
 

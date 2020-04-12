@@ -19,10 +19,8 @@
 package org.apache.iotdb.db.metadata;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -53,13 +52,14 @@ import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -79,20 +79,30 @@ public class MManager {
   // the log file seriesPath
   private String logFilePath;
   private MTree mtree;
-  private BufferedWriter logWriter;
+  private MLogWriter logWriter;
   private boolean writeToLog;
-  private String schemaDir;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
+
+  // tag key -> tag value -> LeafMNode
+  private Map<String, Map<String, Set<LeafMNode>>> tagIndex = new HashMap<>();
 
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
 
+  private static class MManagerHolder {
+    private MManagerHolder() {
+      //allowed to do nothing
+    }
+
+    private static final MManager INSTANCE = new MManager();
+  }
+
   private MManager() {
     config = IoTDBDescriptor.getInstance().getConfig();
-    schemaDir = config.getSchemaDir();
+    String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!schemaFolder.exists()) {
       if (schemaFolder.mkdirs()) {
@@ -102,6 +112,14 @@ public class MManager {
       }
     }
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
+
+    try {
+      logWriter = new MLogWriter(schemaDir, MetadataConstant.METADATA_LOG);
+    } catch (IOException e) {
+      throw new RuntimeException("Can not init MLogWriter", e);
+    }
+
+    // do not write log when recover
     writeToLog = false;
 
     int cacheSize = config.getmManagerCacheSize();
@@ -203,19 +221,26 @@ public class MManager {
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
         Map<String, String> props = null;
-        if (args.length > 5) {
+        if (!args[5].isEmpty()){
+          String[] keyValues = args[5].split("&");
           String[] kv;
-          props = new HashMap<>(args.length - 5 + 1, 1);
-          for (int k = 5; k < args.length; k++) {
-            kv = args[k].split("=");
+          for (String keyValue : keyValues) {
+            kv = keyValue.split("=");
             props.put(kv[0], kv[1]);
           }
         }
 
-        createTimeseries(args[1], TSDataType.deserialize(Short.parseShort(args[2])),
+        String alias = null;
+        if (!args[6].isEmpty()) {
+          alias = args[6];
+        }
+
+        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(args[1]),
+            TSDataType.deserialize(Short.parseShort(args[2])),
             TSEncoding.deserialize(Short.parseShort(args[3])),
             CompressionType.deserialize(Short.parseShort(args[4])),
-            props);
+            props, null, null, alias);
+        createTimeseries(plan);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
         for (String deleteStorageGroup : deleteTimeseries(args[1])) {
@@ -238,42 +263,9 @@ public class MManager {
     }
   }
 
-  private BufferedWriter getLogWriter() throws IOException {
-    if (logWriter == null) {
-      File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
-      File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
-      if (!metadataDir.exists()) {
-        if (metadataDir.mkdirs()) {
-          logger.info("create schema folder {}.", metadataDir);
-        } else {
-          logger.info("create schema folder {} failed.", metadataDir);
-        }
-      }
-      FileWriter fileWriter;
-      fileWriter = new FileWriter(logFile, true);
-      logWriter = new BufferedWriter(fileWriter);
-    }
-    return logWriter;
-  }
-
-  public void createTimeseries(String path, MeasurementSchema schema) throws MetadataException {
-    createTimeseries(path, schema.getType(), schema.getEncodingType(), schema.getCompressor(),
-        schema.getProps());
-  }
-
-  /**
-   * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
-   *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
-   * @param compressor the compressor function {@code Compressor} of the time series
-   * @return whether the measurement occurs for the first time in this storage group (if true, the
-   * measurement should be registered to the StorageEngine too)
-   */
-  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props) throws MetadataException {
+  public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     lock.writeLock().lock();
+    String path = plan.getPath().getFullPath();
     try {
       /*
        * get the storage group with auto create schema
@@ -290,8 +282,33 @@ public class MManager {
         setStorageGroup(storageGroupName);
       }
 
-      // create time series with memory check
-      createTimeseriesWithMemoryCheckAndLog(path, dataType, encoding, compressor, props);
+      // create time series in MTree
+      LeafMNode leafMNode = mtree.createTimeseries(path, plan.getDataType(), plan.getEncoding(),
+          plan.getCompressor(), plan.getProps(), plan.getAlias());
+      try {
+        // check memory
+        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+      } catch (ConfigAdjusterException e) {
+        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+        throw new MetadataException(e);
+      }
+      try {
+        // write to log
+        if (writeToLog) {
+          logWriter.createTimeseries(plan);
+        }
+      } catch (IOException e) {
+        throw new MetadataException(e.getMessage());
+      }
+
+      if (plan.getTags() != null) {
+        // tag key, tag value
+        for (Entry<String, String> entry : plan.getTags().entrySet()) {
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new HashSet<>())
+              .add(leafMNode);
+        }
+      }
 
       // update statistics
       int size = seriesNumberInStorageGroups.get(storageGroupName);
@@ -304,52 +321,28 @@ public class MManager {
     }
   }
 
-  @TestOnly
-  public void createTimeseries(String path, String dataType, String encoding)
-      throws MetadataException {
-    lock.writeLock().lock();
-    try {
-      TSDataType tsDataType = TSDataType.valueOf(dataType);
-      TSEncoding tsEncoding = TSEncoding.valueOf(encoding);
-      CompressionType type = TSFileDescriptor.getInstance().getConfig().getCompressor();
-      createTimeseriesWithMemoryCheckAndLog(path, tsDataType, tsEncoding, type,
-          Collections.emptyMap());
-    } finally {
-      lock.writeLock().unlock();
-    }
+  public Set<LeafMNode> queryTimeseriesByTag(String tagKey, String tagValue) {
+    return tagIndex.getOrDefault(tagKey, Collections.emptyMap())
+        .getOrDefault(tagValue, Collections.emptySet());
   }
 
   /**
-   * timeseries will be added to MTree with check memory, and log to file
+   * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
+   *
+   * @param path the timeseries path
+   * @param dataType the dateType {@code DataType} of the timeseries
+   * @param encoding the encoding function {@code Encoding} of the timeseries
+   * @param compressor the compressor function {@code Compressor} of the time series
+   * @return whether the measurement occurs for the first time in this storage group (if true, the
+   * measurement should be registered to the StorageEngine too)
    */
-  private void createTimeseriesWithMemoryCheckAndLog(String timeseries, TSDataType dataType,
-      TSEncoding encoding, CompressionType compressor, Map<String, String> props)
-      throws MetadataException {
-    mtree.createTimeseries(timeseries, dataType, encoding, compressor, props);
-    try {
-      // check memory
-      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
-    } catch (ConfigAdjusterException e) {
-      mtree.deleteTimeseriesAndReturnEmptyStorageGroup(timeseries);
-      throw new MetadataException(e);
-    }
-    try {
-      if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
-            timeseries, dataType.serialize(), encoding.serialize(), compressor.serialize()));
-        if (props != null) {
-          for (Map.Entry entry : props.entrySet()) {
-            writer.write(String.format(",%s=%s", entry.getKey(), entry.getValue()));
-          }
-        }
-        writer.newLine();
-        writer.flush();
-      }
-    } catch (IOException e) {
-      throw new MetadataException(e.getMessage());
-    }
+  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props) throws MetadataException {
+    createTimeseries(
+        new CreateTimeSeriesPlan(new Path(path), dataType, encoding, compressor, props, null, null,
+            null));
   }
+
 
   /**
    * Delete all timeseries under the given path, may cross different storage group
@@ -400,10 +393,7 @@ public class MManager {
     try {
       String storageGroupName = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.DELETE_TIMESERIES + "," + path);
-        writer.newLine();
-        writer.flush();
+        logWriter.deleteTimeseries(path);
       }
       // TODO: delete the path node and all its ancestors
       mNodeCache.clear();
@@ -435,10 +425,7 @@ public class MManager {
     try {
       mtree.setStorageGroup(storageGroup);
       if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
-        writer.newLine();
-        writer.flush();
+        logWriter.setStorageGroup(storageGroup);
       }
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       ActiveTimeSeriesCounter.getInstance().init(storageGroup);
@@ -461,16 +448,13 @@ public class MManager {
   public void deleteStorageGroups(List<String> storageGroups) throws MetadataException {
     lock.writeLock().lock();
     try {
-      BufferedWriter writer = getLogWriter();
       for (String storageGroup : storageGroups) {
         // try to delete storage group
         mtree.deleteStorageGroup(storageGroup);
 
         // if success
         if (writeToLog) {
-          writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + storageGroup);
-          writer.newLine();
-          writer.flush();
+          logWriter.deleteTimeseries(storageGroup);
         }
         mNodeCache.clear();
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
@@ -777,24 +761,12 @@ public class MManager {
     return maxSeriesNumberAmongStorageGroup;
   }
 
-  private static class MManagerHolder {
-    private MManagerHolder() {
-      //allowed to do nothing
-    }
-
-    private static final MManager INSTANCE = new MManager();
-  }
-
   public void setTTL(String storageGroup, long dataTTL) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
       if (writeToLog) {
-        BufferedWriter writer = getLogWriter();
-        writer
-            .write(String.format("%s,%s,%s", MetadataOperationType.SET_TTL, storageGroup, dataTTL));
-        writer.newLine();
-        writer.flush();
+        logWriter.setTTL(storageGroup, dataTTL);
       }
     } finally {
       lock.writeLock().unlock();

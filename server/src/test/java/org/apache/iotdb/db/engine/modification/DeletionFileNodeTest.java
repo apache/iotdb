@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -56,8 +58,8 @@ public class DeletionFileNodeTest {
   private String processorName = "root.test";
 
   private static String[] measurements = new String[10];
-  private String dataType = TSDataType.DOUBLE.toString();
-  private String encoding = TSEncoding.PLAIN.toString();
+  private TSDataType dataType = TSDataType.DOUBLE;
+  private TSEncoding encoding = TSEncoding.PLAIN;
 
   static {
     for (int i = 0; i < 10; i++) {
@@ -72,7 +74,7 @@ public class DeletionFileNodeTest {
     MManager.getInstance().setStorageGroup(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().createTimeseries(processorName + "." + measurements[i], dataType,
-          encoding);
+          encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     }
   }
 

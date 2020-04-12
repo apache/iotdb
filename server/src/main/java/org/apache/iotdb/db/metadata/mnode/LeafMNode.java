@@ -34,13 +34,18 @@ public class LeafMNode extends MNode {
    * measurement's Schema for one timeseries represented by current leaf node
    */
   private MeasurementSchema schema;
+  private String alias;
 
   private TimeValuePair cachedLastValuePair = null;
 
-  public LeafMNode(MNode parent, String name, TSDataType dataType, TSEncoding encoding,
-      CompressionType type, Map<String, String> props) {
-    super(parent, name);
-    this.schema = new MeasurementSchema(name, dataType, encoding, type, props);
+  /**
+   * @param alias alias of measurementName
+   */
+  public LeafMNode(MNode parent, String measurementName, String alias, TSDataType dataType,
+      TSEncoding encoding, CompressionType type, Map<String, String> props) {
+    super(parent, measurementName);
+    this.schema = new MeasurementSchema(measurementName, dataType, encoding, type, props);
+    this.alias = alias;
   }
 
   @Override
@@ -49,7 +54,7 @@ public class LeafMNode extends MNode {
   }
 
   @Override
-  public void addChild(MNode child) {
+  public void addChild(String name, MNode child) {
     // Do nothing
   }
 

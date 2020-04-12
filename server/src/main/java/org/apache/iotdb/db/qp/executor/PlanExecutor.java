@@ -881,13 +881,8 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean createTimeSeries(CreateTimeSeriesPlan createTimeSeriesPlan)
       throws QueryProcessException {
-    Path path = createTimeSeriesPlan.getPath();
-    TSDataType dataType = createTimeSeriesPlan.getDataType();
-    CompressionType compressor = createTimeSeriesPlan.getCompressor();
-    TSEncoding encoding = createTimeSeriesPlan.getEncoding();
-    Map<String, String> props = createTimeSeriesPlan.getAttributes();
     try {
-      mManager.createTimeseries(path.getFullPath(), dataType, encoding, compressor, props);
+      mManager.createTimeseries(createTimeSeriesPlan);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }

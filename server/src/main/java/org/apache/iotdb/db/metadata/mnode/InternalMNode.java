@@ -38,9 +38,10 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void addChild(MNode child) {
-    this.children.put(child.getName(), child);
+  public void addChild(String name, MNode child) {
+    children.put(name, child);
   }
+
 
   @Override
   public void deleteChild(String name) {

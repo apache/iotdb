@@ -55,7 +55,7 @@ public class MTreeTest {
     root.setStorageGroup("root.laptop");
     try {
       root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -63,7 +63,7 @@ public class MTreeTest {
     boolean hasException = false;
     try {
       root.createTimeseries("root.laptop.d1.s1.b", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
     } catch (MetadataException e) {
       hasException = true;
     }
@@ -79,7 +79,7 @@ public class MTreeTest {
     assertFalse(root.isPathExist("root.laptop.d1"));
     try {
       root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
     } catch (MetadataException e1) {
       fail(e1.getMessage());
     }
@@ -88,7 +88,7 @@ public class MTreeTest {
     assertFalse(root.isPathExist("root.laptop.d1.s2"));
     try {
       root.createTimeseries("aa.bb.cc", TSDataType.INT32, TSEncoding.RLE,
-          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
     } catch (MetadataException e) {
       Assert.assertEquals(String.format("%s is not a legal path", "aa.bb.cc"),
           e.getMessage());
@@ -103,21 +103,21 @@ public class MTreeTest {
       assertFalse(root.checkStorageGroupByPath("root.a.d0"));
       root.setStorageGroup("root.a.d0");
       root.createTimeseries("root.a.d0.s0", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
       root.createTimeseries("root.a.d0.s1", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
 
       assertFalse(root.isPathExist("root.a.d1"));
       assertFalse(root.checkStorageGroupByPath("root.a.d1"));
       root.setStorageGroup("root.a.d1");
       root.createTimeseries("root.a.d1.s0", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
       root.createTimeseries("root.a.d1.s1", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
 
       root.setStorageGroup("root.a.b.d0");
       root.createTimeseries("root.a.b.d0.s0", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
 
     } catch (MetadataException e1) {
       e1.printStackTrace();
@@ -149,35 +149,35 @@ public class MTreeTest {
 
       root.setStorageGroup("root.a.d0");
       root.createTimeseries("root.a.d0.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
       root.createTimeseries("root.a.d0.s1", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
 
       root.setStorageGroup("root.a.d1");
       root.createTimeseries("root.a.d1.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
       root.createTimeseries("root.a.d1.s1", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
 
       root.setStorageGroup("root.a.b.d0");
       root.createTimeseries("root.a.b.d0.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
 
       root1.setStorageGroup("root.a.d0");
       root1.createTimeseries("root.a.d0.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
       root1.createTimeseries("root.a.d0.s1", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
 
       root2.setStorageGroup("root.a.d1");
       root2.createTimeseries("root.a.d1.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
       root2.createTimeseries("root.a.d1.s1", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
 
       root3.setStorageGroup("root.a.b.d0");
       root3.createTimeseries("root.a.b.d0.s0", TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap());
+          TSEncoding.valueOf("RLE"), compressionType, Collections.emptyMap(), null);
 
       String[] metadatas = new String[3];
       metadatas[0] = root1.toString();
@@ -227,16 +227,16 @@ public class MTreeTest {
     try {
       assertEquals("root.laptop.d1", root.getStorageGroupName("root.laptop.d1.s0"));
       root.createTimeseries("root.laptop.d1.s0", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
       assertEquals("root.laptop.d1", root.getStorageGroupName("root.laptop.d1.s1"));
       root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
       assertEquals("root.laptop.d2", root.getStorageGroupName("root.laptop.d2.s0"));
       root.createTimeseries("root.laptop.d2.s0", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
       assertEquals("root.laptop.d2", root.getStorageGroupName("root.laptop.d2.s1"));
       root.createTimeseries("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.RLE,
-              TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+          TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP, null);
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -296,9 +296,9 @@ public class MTreeTest {
       root.setStorageGroup("root.laptop.d1");
       root.setStorageGroup("root.laptop.d2");
       root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
-          CompressionType.GZIP, null);
+          CompressionType.GZIP, null, null);
       root.createTimeseries("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
-          CompressionType.GZIP, null);
+          CompressionType.GZIP, null, null);
 
       List<String> list = new ArrayList<>();
 
