@@ -28,7 +28,7 @@ set JMX_PORT="31999"
 # 0.0.0.0 is not allowed
 set JMX_IP="127.0.0.1"
 
-if [ ${JMX_LOCAL} = "false" ]; then
+if [ %JMX_LOCAL% = "false" ]; then
   echo "setting remote JMX..."
   #you may have no permission to run chmod. If so, contact your system administrator.
   set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote"
