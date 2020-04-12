@@ -81,7 +81,7 @@ matrix:
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -o C:\hadoop\bin
-        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -o C:\hadoop\bin
+        - wget --no pull-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -o C:\windows\system32
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -o C:\hadoop\bin
@@ -105,16 +105,6 @@ matrix:
         - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
         - export "HADOOP_HOME=/c/hadoop"
         - export "PATH=/c/hadoop/bin:$PATH"
-      script:
-        - java -version
-        - mvn -version
-        # Output something every 10 minutes or Travis kills the job
-        - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-        # we do not build site on Win
-        # we do not build distribution for save time
-        - travis_wait 40 mvn -B clean test integration-test -pl '!distribution' -am
-        # Killing background sleep loop
-        - kill %1
     - os: linux
       if: fork = false #only fork=true (i.e., the committer has permission to write the repo)
       name: sonar-analysis
@@ -139,12 +129,30 @@ matrix:
       after_success:
         - mvn coveralls:report -DserviceName=travis_ci -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
     - os: linux
-      name: website checker
+      name: linux-website checker
       dist: xenial
       jdk: openjdk8
       script:
         - mvn clean package -pl site
-
+    - os: windows
+      name: windows-website checker
+      language: c
+      before_install:
+        # - choco install openjdk11 --version=11.0.2.01 -y
+        # can get the download links from https://jdk.java.net/archive/
+        - wget --no-check-certificate https://download.java.net/java/GA/jdk11/9/GPL/openjdk-11.0.2_windows-x64_bin.zip
+        - wget --no-check-certificate https://www-eu.apache.org/dist/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.zip
+        - /C/Progra~1/7-Zip/7z.exe x apache-maven-3.6.3-bin.zip -o/c/mvn363
+        - /C/Progra~1/7-Zip/7z.exe x openjdk-11.0.2_windows-x64_bin.zip -o/c/java
+      before_script:
+        - export "JAVA_HOME=/c/java/jdk-11.0.2"
+        - export "PATH=$JAVA_HOME/bin:$PATH"
+        - export "PATH=$JAVA_HOME/jre/bin:$PATH"
+        - export "MAVEN_HOME=/c/mvn363/apache-maven-3.6.3"
+        - export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
+        - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
+      script:
+        - mvn clean package -pl site
 cache:
   directories:
     - '$HOME/.m2/repository'
