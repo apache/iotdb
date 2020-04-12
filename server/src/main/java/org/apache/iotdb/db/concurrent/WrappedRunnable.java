@@ -32,11 +32,16 @@ public abstract class WrappedRunnable implements Runnable {
     try {
       runMayThrow();
     } catch (Exception e) {
-      LOGGER.error("error", e);
-      throw Throwables.propagate(e);
+      LOGGER.error(e.getMessage(), e);
+      throw propagate(e);
     }
   }
 
   abstract public void runMayThrow() throws Exception;
 
+
+  public static RuntimeException propagate(Throwable throwable) {
+    Throwables.throwIfUnchecked(throwable);
+    throw new RuntimeException(throwable);
+  }
 }
