@@ -78,7 +78,7 @@ public abstract class DiskLogManager extends MemoryLogManager {
   public boolean appendLog(Log log) {
     boolean result = super.appendLog(log);
     if(result) {
-      logDequeSerializer.addLast(log, getMeta());
+      logDequeSerializer.append(log, getMeta());
     }
 
     return result;

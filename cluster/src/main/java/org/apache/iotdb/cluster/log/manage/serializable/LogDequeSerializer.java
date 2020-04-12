@@ -27,7 +27,13 @@ public interface LogDequeSerializer {
    * append a log
    * @param log appended log
    */
-  public void addLast(Log log, LogManagerMeta meta);
+  public void append(Log log, LogManagerMeta meta);
+
+  /**
+   * append log list
+   * @param logs appended log list
+   */
+  public void append(List<Log> logs, LogManagerMeta meta);
 
   /**
    * remove last log

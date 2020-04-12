@@ -78,8 +78,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   }
 
   /**
-   * log in disk is [size of log1 | log1 buffer] [size of log2 | log2 buffer]...
-   * log meta buffer
+   * log in disk is [size of log1 | log1 buffer] [size of log2 | log2 buffer]... log meta buffer
    */
   public SyncLogDequeSerializer() {
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
@@ -109,10 +108,9 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
           if (file.getName().startsWith("data")) {
             long fileTime = getFileTime(file);
             // this means system down between save meta and data
-            if(fileTime <= minAvailableTime || fileTime >= maxAvailableTime){
+            if (fileTime <= minAvailableTime || fileTime >= maxAvailableTime) {
               file.delete();
-            }
-            else{
+            } else {
               logFileList.add(file);
             }
           }
@@ -127,7 +125,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       }
 
       // add init log file
-      if(logFileList.isEmpty()){
+      if (logFileList.isEmpty()) {
         logFileList.add(createNewLogFile(metaFile.getParentFile().getPath()));
       }
 
@@ -146,7 +144,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   }
 
   @Override
-  public void addLast(Log log, LogManagerMeta meta) {
+  public void append(Log log, LogManagerMeta meta) {
     ByteBuffer data = log.serialize();
     int totalSize = 0;
     // write into disk
@@ -157,6 +155,35 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     }
 
     logSizeDeque.addLast(totalSize);
+    serializeMeta(meta);
+  }
+
+  @Override
+  public void append(List<Log> logs, LogManagerMeta meta) {
+    int bufferSize = 0;
+    List<ByteBuffer> bufferList = new ArrayList<>(logs.size());
+    for (Log log : logs) {
+      ByteBuffer data = log.serialize();
+      int size = data.capacity() + Integer.BYTES;
+      logSizeDeque.addLast(size);
+      bufferSize += size;
+
+      bufferList.add(data);
+    }
+
+    ByteBuffer finalBuffer = ByteBuffer.allocate(bufferSize);
+    for (ByteBuffer byteBuffer : bufferList) {
+      finalBuffer.putInt(byteBuffer.capacity());
+      finalBuffer.put(byteBuffer.array());
+    }
+
+    // write into disk
+    try {
+      ReadWriteIOUtils.writeWithoutSize(finalBuffer, currentLogOutputStream);
+    } catch (IOException e) {
+      logger.error("Error in log serialization: " + e.getMessage());
+    }
+
     serializeMeta(meta);
   }
 
@@ -186,10 +213,10 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       size += logSizeDeque.removeLast();
     }
     // truncate file
-    while(size > 0 ){
+    while (size > 0) {
       File currentLogFile = getCurrentLogFile();
       // if the last file is smaller than truncate size, we can delete it directly
-      if(currentLogFile.length() < size){
+      if (currentLogFile.length() < size) {
         size -= currentLogFile.length();
         try {
           currentLogOutputStream.close();
@@ -206,7 +233,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
         logFileList.remove(logFileList.size() - 1);
       }
       // else we just truncate it
-      else{
+      else {
         try {
           currentLogOutputStream.getChannel().truncate(getCurrentLogFile().length() - size);
           break;
@@ -240,7 +267,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       recoverMeta();
     }
     // if we can totally remove some old file, remove them
-    if(removedLogSize > 0){
+    if (removedLogSize > 0) {
       actuallyDeleteFile();
     }
 
@@ -349,7 +376,9 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
    * adjust maxRemovedLogSize to the first log file
    */
   private void adjustNextThreshold() {
-    maxRemovedLogSize = logFileList.get(0).length();
+    if(!logFileList.isEmpty()){
+      maxRemovedLogSize = logFileList.get(0).length();
+    }
   }
 
   /**
@@ -399,10 +428,11 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   /**
    * get file create time from file
+   *
    * @param file file
    * @return create time from file
    */
-  private long getFileTime(File file){
+  private long getFileTime(File file) {
     return Long.parseLong(file.getName().split("-")[1]);
   }
 }
