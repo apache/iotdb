@@ -885,7 +885,7 @@ public class PlanExecutor implements IPlanExecutor {
     TSDataType dataType = createTimeSeriesPlan.getDataType();
     CompressionType compressor = createTimeSeriesPlan.getCompressor();
     TSEncoding encoding = createTimeSeriesPlan.getEncoding();
-    Map<String, String> props = createTimeSeriesPlan.getProps();
+    Map<String, String> props = createTimeSeriesPlan.getAttributes();
     try {
       mManager.createTimeseries(path.getFullPath(), dataType, encoding, compressor, props);
     } catch (MetadataException e) {

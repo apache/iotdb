@@ -38,7 +38,9 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
-  private Map<String, String> props;
+  private String alias;
+  private Map<String, String> attributes;
+  private Map<String, String> tags;
 
   public CreateTimeSeriesPlan() {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
@@ -46,13 +48,15 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props) {
+      CompressionType compressor, Map<String, String> attributes, Map<String, String> tags, String alias) {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
     this.path = path;
     this.dataType = dataType;
     this.encoding = encoding;
     this.compressor = compressor;
-    this.props = props;
+    this.attributes = attributes;
+    this.tags = tags;
+    this.alias = alias;
     canbeSplit = false;
   }
   
@@ -88,14 +92,30 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.encoding = encoding;
   }
   
-  public Map<String, String> getProps() {
-    return props;
+  public Map<String, String> getAttributes() {
+    return attributes;
   }
 
-  public void setProps(Map<String, String> props) {
-    this.props = props;
+  public void setAttributes(Map<String, String> attributes) {
+    this.attributes = attributes;
   }
-  
+
+  public String getAlias() {
+    return alias;
+  }
+
+  public void setAlias(String alias) {
+    this.alias = alias;
+  }
+
+  public Map<String, String> getTags() {
+    return tags;
+  }
+
+  public void setTags(Map<String, String> tags) {
+    this.tags = tags;
+  }
+
   @Override
   public String toString() {
     return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s", path,

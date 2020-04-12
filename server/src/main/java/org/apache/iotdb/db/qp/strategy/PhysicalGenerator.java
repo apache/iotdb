@@ -77,7 +77,8 @@ public class PhysicalGenerator {
       case CREATE_TIMESERIES:
         CreateTimeSeriesOperator addPath = (CreateTimeSeriesOperator) operator;
         return new CreateTimeSeriesPlan(addPath.getPath(), addPath.getDataType(),
-            addPath.getEncoding(), addPath.getCompressor(), addPath.getAttributes());
+            addPath.getEncoding(), addPath.getCompressor(), addPath.getAttributes(),
+            addPath.getTags(), addPath.getAlias());
       case DELETE_TIMESERIES:
         DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
         return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
