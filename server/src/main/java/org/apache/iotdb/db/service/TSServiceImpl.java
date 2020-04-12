@@ -1203,6 +1203,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
+    //TODO : init tags
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
@@ -1213,7 +1214,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             TSDataType.values()[req.getDataType()],
             TSEncoding.values()[req.getEncoding()],
             CompressionType.values()[req.compressor],
-            new HashMap<>());
+            new HashMap<>(), null, null, null);
     TSStatus status = checkAuthority(plan, req.getSessionId());
     if (status != null) {
       return new TSStatus(status);
