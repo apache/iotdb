@@ -18,13 +18,13 @@
 @REM
 
 @echo off
-#true or false
-#DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
+@REM true or false
+@REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
 set JMX_LOCAL="true"
 set JMX_PORT="31999"
-#only take effect when the jmx_local=false
-#You need to change this IP as a public IP if you want to remotely connect IoTDB by JMX.
-# 0.0.0.0 is not allowed
+@REM only take effect when the jmx_local=false
+@REM You need to change this IP as a public IP if you want to remotely connect IoTDB by JMX.
+@REM  0.0.0.0 is not allowed
 set JMX_IP="127.0.0.1"
 
 if %JMX_LOCAL% == "false" (
