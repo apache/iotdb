@@ -39,8 +39,8 @@ public abstract class WrappedRunnable implements Runnable {
 
   abstract public void runMayThrow() throws Exception;
 
-
-  public static RuntimeException propagate(Throwable throwable) {
+  @SuppressWarnings("squid:S112")
+  private static RuntimeException propagate(Throwable throwable) {
     Throwables.throwIfUnchecked(throwable);
     throw new RuntimeException(throwable);
   }
