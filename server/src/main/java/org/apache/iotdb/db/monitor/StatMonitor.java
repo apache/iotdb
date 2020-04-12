@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -333,12 +334,12 @@ public class StatMonitor implements IService {
     private static final StatMonitor INSTANCE = new StatMonitor();
   }
 
-  class StatBackLoop implements Runnable {
+  class StatBackLoop extends WrappedRunnable {
 
     FileSize fileSize = FileSize.getInstance();
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         long currentTimeMillis = System.currentTimeMillis();
         long seconds = (currentTimeMillis - runningTimeMillis) / 1000;

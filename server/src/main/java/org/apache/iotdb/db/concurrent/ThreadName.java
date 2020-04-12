@@ -20,8 +20,8 @@ package org.apache.iotdb.db.concurrent;
 
 public enum ThreadName {
   METRICS_SERVICE("RESTful-ServerServiceImpl"),
-  JDBC_SERVICE("JDBC-ServerServiceImpl"),
-  JDBC_CLIENT("JDBC-Client"),
+  RPC_SERVICE("RPC-ServerServiceImpl"),
+  RPC_CLIENT("RPC-Client"),
   MERGE_SERVICE("Merge-ServerServiceImpl"),
   CLOSE_MERGE_SERVICE("Close-Merge-ServerServiceImpl"),
   CLOSE_MERGE_DAEMON("Close-Merge-Daemon-Thread"),

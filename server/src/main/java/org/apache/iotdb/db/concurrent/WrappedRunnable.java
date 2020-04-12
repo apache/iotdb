@@ -16,18 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.runtime;
+package org.apache.iotdb.db.concurrent;
 
-public class JDBCServiceException extends RuntimeException{
+import com.google.common.base.Throwables;
+import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-  private static final long serialVersionUID = 520836932066897810L;
 
-  public JDBCServiceException(String message) {
-    super(message);
+public abstract class WrappedRunnable implements Runnable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(WrappedRunnable.class);
+
+  public final void run() {
+    try {
+      runMayThrow();
+    } catch (Exception e) {
+      LOGGER.error("error", e);
+      throw Throwables.propagate(e);
+    }
   }
 
-  public JDBCServiceException(String message, Throwable e) {
-    super(message + e.getMessage());
-  }
+  abstract public void runMayThrow() throws Exception;
 
 }

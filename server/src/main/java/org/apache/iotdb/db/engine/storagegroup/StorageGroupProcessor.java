@@ -239,6 +239,7 @@ public class StorageGroupProcessor {
     }
 
     recover();
+
   }
 
   private void recover() throws StorageGroupProcessorException {
@@ -1149,7 +1150,7 @@ public class StorageGroupProcessor {
 
       // time partition to divide storage group
       long timePartitionId = StorageEngine.getTimePartition(timestamp);
-      // write log
+      // write log to impacted working TsFileProcessors
       logDeletion(timestamp, deviceId, measurementId, timePartitionId);
 
       Path fullPath = new Path(deviceId, measurementId);
@@ -1296,12 +1297,12 @@ public class StorageGroupProcessor {
    */
   public int countUpgradeFiles() {
     int cntUpgradeFileNum = 0;
-    for (TsFileResource seqTsFileResource : new ArrayList<>(sequenceFileTreeSet)) {
+    for (TsFileResource seqTsFileResource : sequenceFileTreeSet) {
       if (UpgradeUtils.isNeedUpgrade(seqTsFileResource)) {
         cntUpgradeFileNum += 1;
       }
     }
-    for (TsFileResource unseqTsFileResource : new ArrayList<>(unSequenceFileList)) {
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
       if (UpgradeUtils.isNeedUpgrade(unseqTsFileResource)) {
         cntUpgradeFileNum += 1;
       }
@@ -1310,10 +1311,10 @@ public class StorageGroupProcessor {
   }
 
   public void upgrade() {
-    for (TsFileResource seqTsFileResource : new ArrayList<>(sequenceFileTreeSet)) {
+    for (TsFileResource seqTsFileResource : sequenceFileTreeSet) {
       seqTsFileResource.doUpgrade();
     }
-    for (TsFileResource unseqTsFileResource : new ArrayList<>(unSequenceFileList)) {
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
       unseqTsFileResource.doUpgrade();
     }
   }

@@ -511,9 +511,9 @@ public class IoTDBConfig {
   private int memtableNumInEachStorageGroup = 10;
 
   /**
-   * the default fill interval in LinearFill and PreviousFill, 10min
+   * the default fill interval in LinearFill and PreviousFill, -1 means infinite past time
    */
-  private int defaultFillInterval = 600000;
+  private int defaultFillInterval = -1;
 
   /**
    * default TTL for storage groups that are not set TTL by statements, in ms

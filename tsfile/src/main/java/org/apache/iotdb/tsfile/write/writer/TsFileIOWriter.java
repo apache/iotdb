@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +84,7 @@ public class TsFileIOWriter {
   private long markedPosition;
   private String currentChunkGroupDeviceId;
   private long currentChunkGroupStartOffset;
-  private List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+  protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
 
   /**
    * empty construct function.
@@ -333,6 +334,7 @@ public class TsFileIOWriter {
     Map<String, List<ChunkMetadata>> deviceChunkMetadataMap = new HashMap<>();
 
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
+      VersionUtils.applyVersion(chunkGroupMetadata.getChunkMetadataList(), versionInfo);
       deviceChunkMetadataMap.computeIfAbsent(chunkGroupMetadata.getDevice(), k -> new ArrayList<>())
           .addAll(chunkGroupMetadata.getChunkMetadataList());
     }
@@ -416,8 +418,14 @@ public class TsFileIOWriter {
     }
   }
 
-  public void addVersionPair(Pair<Long, Long> versionPair) {
-    versionInfo.add(versionPair);
+  /**
+   * write MetaMarker.VERSION with version
+   * Then, cache offset-version in versionInfo
+   */
+  public void writeVersion(long version) throws IOException {
+    ReadWriteIOUtils.write(MetaMarker.VERSION, out.wrapAsStream());
+    ReadWriteIOUtils.write(version, out.wrapAsStream());
+    versionInfo.add(new Pair<>(getPos(), version));
   }
 
   public void setDefaultVersionPair() {
@@ -433,6 +441,6 @@ public class TsFileIOWriter {
    * @return TsFileOutput
    */
   public TsFileOutput getIOWriterOut() {
-    return this.out;
+    return out;
   }
 }

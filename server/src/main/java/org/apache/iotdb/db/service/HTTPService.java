@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -166,7 +167,7 @@ public class HTTPService implements HTTPServiceMBean, IService {
     private HTTPServiceHolder() {}
   }
 
-  private class MetricsServiceThread implements Runnable {
+  private class MetricsServiceThread extends WrappedRunnable {
 
     private Server server;
 
@@ -175,7 +176,7 @@ public class HTTPService implements HTTPServiceMBean, IService {
     }
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
         server.start();
