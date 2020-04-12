@@ -81,7 +81,7 @@ matrix:
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.cmd -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.exp -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.lib -o C:\hadoop\bin
-        - wget --no pull-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -o C:\hadoop\bin
+        - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hadoop.pdb -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.dll -o C:\windows\system32
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs -o C:\hadoop\bin
         - wget --no-check-certificate https://github.com/cdarlint/winutils/raw/master/hadoop-2.7.3/bin/hdfs.cmd -o C:\hadoop\bin
