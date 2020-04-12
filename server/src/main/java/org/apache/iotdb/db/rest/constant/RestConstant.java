@@ -58,6 +58,8 @@ public class RestConstant {
 
   public static final String INSERT = "insert";
 
+  public static final String QUERY = "query";
+
   public static final String VALUES = "values";
 
   public static final String UNCOMPRESSED = "UNCOMPRESSED";

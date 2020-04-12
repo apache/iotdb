@@ -24,13 +24,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Base64;
+import java.util.concurrent.TimeUnit;
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
 import javax.ws.rs.client.Entity;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
 import org.junit.Assert;
@@ -62,9 +62,8 @@ public class RestTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.setEnableRestService(true);
+    EnvironmentUtils.setEnableHttpService(true);
     EnvironmentUtils.envSetUp();
-    TSServiceImpl.clearSqlArgumentsList();
   }
 
   @After
@@ -73,7 +72,8 @@ public class RestTest {
   }
 
   @Test
-  public void testSQL(){
+  public void testSQL() throws InterruptedException {
+    TimeUnit.SECONDS.sleep(10);
     // set storage group
     String file1 = RestTest.class.getClassLoader().getResource("setStorageGroup.json").getFile();
     String json1 = readToString(file1);

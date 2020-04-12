@@ -29,6 +29,7 @@ import static org.apache.iotdb.db.rest.constant.RestConstant.FROM;
 import static org.apache.iotdb.db.rest.constant.RestConstant.INSERT;
 import static org.apache.iotdb.db.rest.constant.RestConstant.MEASUREMENTS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.NO_TARGET;
+import static org.apache.iotdb.db.rest.constant.RestConstant.QUERY;
 import static org.apache.iotdb.db.rest.constant.RestConstant.RANGE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.REQUEST_BODY_JSON_FAILED;
 import static org.apache.iotdb.db.rest.constant.RestConstant.SET_STORAGE_GROUP;
@@ -87,7 +88,7 @@ public class RestController {
    */
   @Path("/query")
   @POST
-  @Produces(MediaType.APPLICATION_JSON)
+  @Consumes(MediaType.APPLICATION_JSON)
   public Response query(@Context HttpServletRequest request) {
     boolean hasError = false;
     JSONObject jsonObject;
@@ -97,7 +98,7 @@ public class RestController {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(REQUEST_BODY_JSON_FAILED).build();
     }
     String type = (String) jsonObject.get(TYPE);
-    if(!type.equals(INSERT)) {
+    if(!type.equals(QUERY)) {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(WRONG_TYPE).build();
     }
     JSONObject range = (JSONObject) jsonObject.get(RANGE);

@@ -74,11 +74,11 @@ public class EnvironmentUtils {
 
   private static IoTDB daemon;
 
-  public static void setEnableRestService(boolean enableRestService) {
-    EnvironmentUtils.enableRestService = enableRestService;
+  public static void setEnableHttpService(boolean enableHttpService) {
+    EnvironmentUtils.enableHttpService = enableHttpService;
   }
 
-  private static boolean enableRestService = false;
+  private static boolean enableHttpService = false;
 
   public static void cleanEnv() throws IOException, StorageEngineException {
     logger.warn("EnvironmentUtil cleanEnv...");
@@ -195,8 +195,8 @@ public class EnvironmentUtils {
     logger.warn("EnvironmentUtil setup...");
     System.setProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME, "31999");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
-    //we do not start 8181 port in test.
-    IoTDBDescriptor.getInstance().getConfig().setEnableHTTPService(enableRestService);
+    //if not necessary, we do not start 8181 port in test.
+    IoTDBDescriptor.getInstance().getConfig().setEnableHTTPService(enableHttpService);
     if (daemon == null) {
       daemon = new IoTDB();
     }

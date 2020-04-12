@@ -1286,11 +1286,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
   }
 
-  @TestOnly
-  public static void clearSqlArgumentsList() {
-    sqlArgumentsList = new ArrayList<>();
-  }
-
   protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
       throws MetadataException {
     return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
