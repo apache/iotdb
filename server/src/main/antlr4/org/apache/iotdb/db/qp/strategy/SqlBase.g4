@@ -24,7 +24,7 @@ singleStatement
     ;
 
 statement
-    : CREATE TIMESERIES fullPath WITH attributeClauses #createTimeseries
+    : CREATE TIMESERIES fullPath LR_BRACKET ID RR_BRACKET WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
     | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
@@ -117,7 +117,18 @@ lastClause
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
+    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    attributeClause
+    tagClause
+    ;
+
+attributeClause
+    : (COMMA ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    ;
+
+tagClause
+    : (TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
     ;
 
 setClause
@@ -272,6 +283,7 @@ propertyValue
     : ID
     | MINUS? INT
     | MINUS? realLiteral
+    | STRING_LITERAL
     ;
 
 propertyLabelPair
@@ -744,6 +756,14 @@ COMPRESSION
 
 TIME
     : T I M E
+    ;
+
+ATTRIBUTES
+    : A T T R I B U T E S
+    ;
+
+TAGS
+    : T A G S
     ;
 //============================
 // End of the keywords list

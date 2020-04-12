@@ -64,6 +64,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AttributeClausesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AutoCreateSchemaContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
@@ -136,6 +137,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
@@ -300,6 +302,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     operatorType = SQLConstant.TOK_METADATA_CREATE;
     createTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
+    createTimeSeriesOperator.setAlias(ctx.ID().getText());
   }
 
   @Override
@@ -896,23 +899,42 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator.setDataType(TSDataType.valueOf(dataType));
     createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encoding));
     CompressionType compressor;
-    List<PropertyContext> properties = ctx.property();
-    Map<String, String> props = new HashMap<>(properties.size(), 1);
     if (ctx.propertyValue() != null) {
       compressor = CompressionType.valueOf(ctx.propertyValue().getText().toUpperCase());
     } else {
       compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
     checkMetadataArgs(dataType, encoding, compressor.toString().toUpperCase());
+    createTimeSeriesOperator.setCompressor(compressor);
+    initializedOperator = createTimeSeriesOperator;
+  }
+
+  @Override
+  public void enterAttributeClause(AttributeClauseContext ctx) {
+    super.enterAttributeClause(ctx);
+    List<PropertyContext> attributesList = ctx.property();
+    Map<String, String> attributes = new HashMap<>(attributesList.size(), 1);
     if (ctx.property(0) != null) {
-      for (PropertyContext property : properties) {
-        props.put(property.ID().getText().toLowerCase(),
+      for (PropertyContext property : attributesList) {
+        attributes.put(property.ID().getText().toLowerCase(),
             property.propertyValue().getText().toLowerCase());
       }
     }
-    createTimeSeriesOperator.setCompressor(compressor);
-    createTimeSeriesOperator.setProps(props);
-    initializedOperator = createTimeSeriesOperator;
+    createTimeSeriesOperator.setAttributes(attributes);
+  }
+
+  @Override
+  public void enterTagClause(TagClauseContext ctx) {
+    super.enterTagClause(ctx);
+    List<PropertyContext> tagsList = ctx.property();
+    Map<String, String> tags = new HashMap<>(tagsList.size(), 1);
+    if (ctx.property(0) != null) {
+      for (PropertyContext property : tagsList) {
+        tags.put(property.ID().getText().toLowerCase(),
+            property.propertyValue().getText().toLowerCase());
+      }
+    }
+    createTimeSeriesOperator.setTags(tags);
   }
 
   @Override

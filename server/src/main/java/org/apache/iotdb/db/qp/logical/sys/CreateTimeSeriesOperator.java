@@ -29,10 +29,12 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class CreateTimeSeriesOperator extends RootOperator {
 
   private Path path;
+  private String alias;
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
-  private Map<String, String> props;
+  private Map<String, String> attributes;
+  private Map<String, String> tags;
   
   public CreateTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
@@ -71,12 +73,28 @@ public class CreateTimeSeriesOperator extends RootOperator {
     return compressor;
   }
 
-  public Map<String, String> getProps() {
-    return props;
+  public Map<String, String> getAttributes() {
+    return attributes;
   }
 
-  public void setProps(Map<String, String> props) {
-    this.props = props;
+  public void setAttributes(Map<String, String> attributes) {
+    this.attributes = attributes;
+  }
+
+  public String getAlias() {
+    return alias;
+  }
+
+  public void setAlias(String alias) {
+    this.alias = alias;
+  }
+
+  public Map<String, String> getTags() {
+    return tags;
+  }
+
+  public void setTags(Map<String, String> tags) {
+    this.tags = tags;
   }
 
 }
