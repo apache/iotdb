@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.reader.series;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 /**
@@ -33,12 +33,12 @@ public class EmptyFileSeriesReader extends AbstractFileSeriesReader {
   }
 
   @Override
-  protected void initChunkReader(ChunkMetaData chunkMetaData) {
+  protected void initChunkReader(ChunkMetadata chunkMetaData) {
     //do nothing
   }
 
   @Override
-  protected boolean chunkSatisfied(ChunkMetaData chunkMetaData) {
+  protected boolean chunkSatisfied(ChunkMetadata chunkMetaData) {
     return false;
   }
 
@@ -49,11 +49,6 @@ public class EmptyFileSeriesReader extends AbstractFileSeriesReader {
 
   @Override
   public BatchData nextBatch() {
-    return data;
-  }
-
-  @Override
-  public BatchData currentBatch() {
     return data;
   }
 

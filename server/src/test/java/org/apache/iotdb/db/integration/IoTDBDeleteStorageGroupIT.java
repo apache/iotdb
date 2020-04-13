@@ -18,20 +18,23 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class IoTDBDeleteStorageGroupIT {
 
@@ -124,19 +127,7 @@ public class IoTDBDeleteStorageGroupIT {
       assertTrue(expectedList.containsAll(result));
     }
   }
-
-  @Test(expected = IoTDBSQLException.class)
-  public void testCreateTimeseriesInDeletedStorageGroup() throws Exception {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager.
-            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement();) {
-      statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt01");
-      statement.execute("DELETE STORAGE GROUP root.ln3.wf01.wt01");
-      statement.execute("CREATE TIMESERIES root.ln3.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
-    }
-  }
-
+  
   @Test(expected = IoTDBSQLException.class)
   public void deleteNonExistStorageGroup() throws Exception {
     Class.forName(Config.JDBC_DRIVER_NAME);

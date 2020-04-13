@@ -28,8 +28,11 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -38,10 +41,9 @@ import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,14 +52,12 @@ import org.slf4j.LoggerFactory;
  * WALs from the logNode and redoes them into a given MemTable and ModificationFile.
  */
 public class LogReplayer {
-  Logger logger = LoggerFactory.getLogger(LogReplayer.class);
+  private Logger logger = LoggerFactory.getLogger(LogReplayer.class);
   private String logNodePrefix;
   private String insertFilePath;
   private ModificationFile modFile;
   private VersionController versionController;
   private TsFileResource currentTsFileResource;
-  // schema is used to get the measurement data type
-  private Schema schema;
   private IMemTable recoverMemTable;
 
   // unsequence file tolerates duplicated data
@@ -66,17 +66,14 @@ public class LogReplayer {
   private Map<String, Long> tempStartTimeMap = new HashMap<>();
   private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
-  public LogReplayer(String logNodePrefix, String insertFilePath,
-      ModificationFile modFile,
-      VersionController versionController,
-      TsFileResource currentTsFileResource,
-      Schema schema, IMemTable memTable, boolean acceptDuplication) {
+  public LogReplayer(String logNodePrefix, String insertFilePath, ModificationFile modFile,
+      VersionController versionController, TsFileResource currentTsFileResource,
+      IMemTable memTable, boolean acceptDuplication) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
     this.versionController = versionController;
     this.currentTsFileResource = currentTsFileResource;
-    this.schema = schema;
     this.recoverMemTable = memTable;
     this.acceptDuplication = acceptDuplication;
   }
@@ -103,11 +100,8 @@ public class LogReplayer {
           replayBatchInsert((BatchInsertPlan) plan);
         }
       }
-    } catch (IOException e) {
-      throw new StorageGroupProcessorException("Cannot replay logs" + e.getMessage());
-    } catch (QueryProcessException e) {
-      throw new StorageGroupProcessorException(
-          "Cannot replay logs for query processor exception" + e.getMessage());
+    } catch (IOException | WriteProcessException | QueryProcessException e) {
+      throw new StorageGroupProcessorException(e);
     } finally {
       logReader.close();
       try {
@@ -129,7 +123,8 @@ public class LogReplayer {
     }
   }
 
-  private void replayBatchInsert(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
+  private void replayBatchInsert(BatchInsertPlan batchInsertPlan)
+      throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Long lastEndTime = currentTsFileResource.getEndTimeMap().get(batchInsertPlan.getDeviceId());
@@ -146,11 +141,17 @@ public class LogReplayer {
         tempEndTimeMap.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
       }
     }
-
+    MeasurementSchema[] schemas;
+    try {
+      schemas = MManager.getInstance().getSchemas(batchInsertPlan.getDeviceId(), batchInsertPlan.getMeasurements());
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    batchInsertPlan.setSchemas(schemas);
     recoverMemTable.insertBatch(batchInsertPlan, 0, batchInsertPlan.getRowCount());
   }
 
-  private void replayInsert(InsertPlan insertPlan) throws QueryProcessException {
+  private void replayInsert(InsertPlan insertPlan) {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId());
@@ -167,13 +168,10 @@ public class LogReplayer {
         tempEndTimeMap.put(insertPlan.getDeviceId(), insertPlan.getTime());
       }
     }
-    String[] measurementList = insertPlan.getMeasurements();
-    TSDataType[] dataTypes = new TSDataType[measurementList.length];
-    for (int i = 0; i < measurementList.length; i++) {
-      dataTypes[i] = schema.getMeasurementDataType(measurementList[i]);
-    }
-    insertPlan.setDataTypes(dataTypes);
     try {
+      MeasurementSchema[] schemas =
+          MManager.getInstance().getSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements());
+      insertPlan.setSchemas(schemas);
       recoverMemTable.insert(insertPlan);
     } catch (Exception e) {
       logger.error(

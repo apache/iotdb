@@ -30,13 +30,13 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 public class GroupByFilter implements Filter, Serializable {
 
   private static final long serialVersionUID = -1211805021419281440L;
-  private long unit;
+  private long interval;
   private long slidingStep;
   private long startTime;
   private long endTime;
 
-  public GroupByFilter(long unit, long slidingStep, long startTime, long endTime) {
-    this.unit = unit;
+  public GroupByFilter(long interval, long slidingStep, long startTime, long endTime) {
+    this.interval = interval;
     this.slidingStep = slidingStep;
     this.startTime = startTime;
     this.endTime = endTime;
@@ -56,7 +56,7 @@ public class GroupByFilter implements Filter, Serializable {
     if (time < startTime || time > endTime)
       return false;
     else
-      return (time - startTime) % slidingStep <= unit;
+      return (time - startTime) % slidingStep <= interval;
   }
 
   @Override
@@ -70,7 +70,7 @@ public class GroupByFilter implements Filter, Serializable {
     else {
       long minTime = startTime - this.startTime;
       long count = minTime / slidingStep;
-      if (minTime <= unit + count * slidingStep)
+      if (minTime <= interval + count * slidingStep)
         return true;
       else {
         if (this.endTime <= (count + 1) * slidingStep + this.startTime) {
@@ -89,14 +89,14 @@ public class GroupByFilter implements Filter, Serializable {
       long minTime = startTime - this.startTime;
       long maxTime = endTime - this.startTime;
       long count = minTime / slidingStep;
-      return minTime <= unit + count * slidingStep && maxTime <= unit + count * slidingStep;
+      return minTime <= interval + count * slidingStep && maxTime <= interval + count * slidingStep;
     }
     return false;
   }
 
   @Override
   public Filter copy() {
-    return new GroupByFilter(unit, slidingStep, startTime, endTime);
+    return new GroupByFilter(interval, slidingStep, startTime, endTime);
   }
 
   @Override
@@ -108,7 +108,7 @@ public class GroupByFilter implements Filter, Serializable {
   public void serialize(DataOutputStream outputStream) {
     try {
       outputStream.write(getSerializeId().ordinal());
-      outputStream.writeLong(unit);
+      outputStream.writeLong(interval);
       outputStream.writeLong(slidingStep);
       outputStream.writeLong(startTime);
       outputStream.writeLong(endTime);
@@ -119,7 +119,7 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    unit = buffer.getLong();
+    interval = buffer.getLong();
     slidingStep = buffer.getLong();
     startTime = buffer.getLong();
     endTime = buffer.getLong();
@@ -136,7 +136,7 @@ public class GroupByFilter implements Filter, Serializable {
       return false;
     }
     GroupByFilter other = ((GroupByFilter) obj);
-    return this.unit == other.unit
+    return this.interval == other.interval
         && this.slidingStep == other.slidingStep
         && this.startTime == other.startTime
         && this.endTime == other.endTime;
@@ -144,6 +144,14 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(unit, slidingStep, startTime, endTime);
+    return Objects.hash(interval, slidingStep, startTime, endTime);
+  }
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  public long getEndTime() {
+    return endTime;
   }
 }

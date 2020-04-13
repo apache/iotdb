@@ -245,8 +245,8 @@ public final class RamUsageEstimator {
       // Java 7+, HotSpot
       try {
         hotSpotBean = ManagementFactory.class
-            .getMethod("getPlatformMXBean", Class.class)
-            .invoke(null, beanClazz);
+                .getMethod("getPlatformMXBean", Class.class)
+                .invoke(null, beanClazz);
       } catch (Exception e1) {
         // Java 6, HotSpot
         try {
@@ -255,15 +255,15 @@ public final class RamUsageEstimator {
         } catch (Exception e2) {
           // Last resort option is an attempt to get it from ManagementFactory's server anyway (may start AWT).
           hotSpotBean = ManagementFactory.newPlatformMXBeanProxy(
-              ManagementFactory.getPlatformMBeanServer(),
-              "com.sun.management:type=HotSpotDiagnostic", beanClazz);
+                  ManagementFactory.getPlatformMBeanServer(),
+                  "com.sun.management:type=HotSpotDiagnostic", beanClazz);
         }
       }
       if (hotSpotBean != null) {
         final Method getVMOptionMethod = beanClazz.getMethod("getVMOption", String.class);
         final Object vmOption = getVMOptionMethod.invoke(hotSpotBean, "ObjectAlignmentInBytes");
         objectAlignment = Integer.parseInt(
-            vmOption.getClass().getMethod("getValue").invoke(vmOption).toString()
+                vmOption.getClass().getMethod("getValue").invoke(vmOption).toString()
         );
         supportedFeatures.add(JvmFeature.OBJECT_ALIGNMENT);
       }
@@ -274,8 +274,8 @@ public final class RamUsageEstimator {
     NUM_BYTES_OBJECT_ALIGNMENT = objectAlignment;
 
     JVM_INFO_STRING = "[JVM: " +
-        Constants.JVM_NAME + ", " + Constants.JVM_VERSION + ", " + Constants.JVM_VENDOR + ", " +
-        Constants.JAVA_VENDOR + ", " + Constants.JAVA_VERSION + "]";
+            Constants.JVM_NAME + ", " + Constants.JVM_VERSION + ", " + Constants.JVM_VENDOR + ", " +
+            Constants.JAVA_VENDOR + ", " + Constants.JAVA_VERSION + "]";
   }
 
   /**
@@ -565,8 +565,8 @@ public final class RamUsageEstimator {
     }
 
     cachedInfo = new ClassCache(
-        alignObjectSize(shallowInstanceSize),
-        referenceFields.toArray(new Field[referenceFields.size()]));
+            alignObjectSize(shallowInstanceSize),
+            referenceFields.toArray(new Field[referenceFields.size()]));
     return cachedInfo;
   }
 
@@ -583,7 +583,7 @@ public final class RamUsageEstimator {
     if (objectFieldOffsetMethod != null) {
       try {
         final long offsetPlusSize =
-            ((Number) objectFieldOffsetMethod.invoke(theUnsafe, f)).longValue() + fsize;
+                ((Number) objectFieldOffsetMethod.invoke(theUnsafe, f)).longValue() + fsize;
         return Math.max(sizeSoFar, offsetPlusSize);
       } catch (IllegalAccessException ex) {
         throw new RuntimeException("Access problem with sun.misc.Unsafe", ex);
@@ -598,8 +598,8 @@ public final class RamUsageEstimator {
         // this should never happen (Unsafe does not declare
         // checked Exceptions for this method), but who knows?
         throw new RuntimeException("Call to Unsafe's objectFieldOffset() throwed " +
-            "checked Exception when accessing field " +
-            f.getDeclaringClass().getName() + "#" + f.getName(), cause);
+                "checked Exception when accessing field " +
+                f.getDeclaringClass().getName() + "#" + f.getName(), cause);
       }
     } else {
       // TODO: No alignments based on field type/ subclass fields alignments?
@@ -628,7 +628,7 @@ public final class RamUsageEstimator {
    */
   public static String humanReadableUnits(long bytes) {
     return humanReadableUnits(bytes,
-        new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.ROOT)));
+            new DecimalFormat("0.#", DecimalFormatSymbols.getInstance(Locale.ROOT)));
   }
 
   /**
@@ -716,7 +716,7 @@ public final class RamUsageEstimator {
       initialCapacity = Math.max(MIN_CAPACITY, initialCapacity);
 
       assert initialCapacity > 0 : "Initial capacity must be between (0, "
-          + Integer.MAX_VALUE + "].";
+              + Integer.MAX_VALUE + "].";
       assert loadFactor > 0 && loadFactor < 1 : "Load factor must be between (0, 1).";
       this.loadFactor = loadFactor;
       allocateBuffers(roundCapacity(initialCapacity));
@@ -824,7 +824,7 @@ public final class RamUsageEstimator {
     protected int nextCapacity(int current) {
       assert current > 0 && Long.bitCount(current) == 1 : "Capacity must be a power of two.";
       assert ((current << 1) > 0) : "Maximum capacity exceeded ("
-          + (0x80000000 >>> 1) + ").";
+              + (0x80000000 >>> 1) + ").";
 
       if (current < MIN_CAPACITY / 2) {
         current = MIN_CAPACITY / 2;
@@ -957,7 +957,7 @@ public final class RamUsageEstimator {
      */
     @Deprecated
     public static final boolean JRE_IS_MINIMUM_JAVA6 =
-        new Boolean(true).booleanValue(); // prevent inlining in foreign class files
+            new Boolean(true).booleanValue(); // prevent inlining in foreign class files
 
     public static final boolean JRE_IS_MINIMUM_JAVA7;
     public static final boolean JRE_IS_MINIMUM_JAVA8;
@@ -975,7 +975,7 @@ public final class RamUsageEstimator {
         unsafeField.setAccessible(true);
         final Object unsafe = unsafeField.get(null);
         final int addressSize = ((Number) unsafeClass.getMethod("addressSize")
-            .invoke(unsafe)).intValue();
+                .invoke(unsafe)).intValue();
         //System.out.println("Address size: " + addressSize);
         is64Bit = addressSize >= 8;
       } catch (Exception e) {

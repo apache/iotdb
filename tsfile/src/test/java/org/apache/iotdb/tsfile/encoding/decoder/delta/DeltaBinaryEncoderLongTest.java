@@ -18,7 +18,10 @@
  */
 package org.apache.iotdb.tsfile.encoding.decoder.delta;
 
-import static org.junit.Assert.assertEquals;
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+import org.junit.Before;
+import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -33,10 +36,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
+
+import static org.junit.Assert.assertEquals;
+
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
 import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
-import org.junit.Before;
-import org.junit.Test;
 
 public class DeltaBinaryEncoderLongTest {
 
@@ -56,6 +60,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testBasic() throws IOException {
+    reader.reset();
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = i * i * BASIC_FACTOR;
@@ -65,6 +70,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testBoundInt() throws IOException {
+    reader.reset();
     long data[] = new long[ROW_NUM];
     for (int i = 2; i < 21; i++) {
       boundInt(i, data);
@@ -72,6 +78,7 @@ public class DeltaBinaryEncoderLongTest {
   }
 
   private void boundInt(int power, long[] data) throws IOException {
+    reader.reset();
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextInt((int) Math.pow(2, power)) * BASIC_FACTOR;
     }
@@ -80,6 +87,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testRandom() throws IOException {
+    reader.reset();
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = ran.nextLong();
@@ -89,6 +97,7 @@ public class DeltaBinaryEncoderLongTest {
 
   @Test
   public void testMaxMin() throws IOException {
+    reader.reset();
     long data[] = new long[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
       data[i] = (i & 1) == 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
@@ -97,7 +106,8 @@ public class DeltaBinaryEncoderLongTest {
   }
 
   @Test
-  public void testRegularEncoding() throws IOException{
+  public void testRegularEncoding() throws IOException {
+    reader.reset();
     List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
@@ -105,10 +115,10 @@ public class DeltaBinaryEncoderLongTest {
     ROW_NUM = dates.size();
 
     long[] data = new long[ROW_NUM];
-    for(int i = 0; i < dates.size(); i++) {
+    for (int i = 0; i < dates.size(); i++) {
       try {
         Date date = dateFormat.parse(dates.get(i));
-        data[i] =date.getTime();
+        data[i] = date.getTime();
       } catch (ParseException e) {
         e.printStackTrace();
       }
@@ -117,17 +127,17 @@ public class DeltaBinaryEncoderLongTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
-
   @Test
-  public void testRegularWithMissingPoints() throws IOException{
+  public void testRegularWithMissingPoints() throws IOException {
+    reader.reset();
     List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
 
     DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
 
     int kong = 0;
-    for(int i = 0; i < dates.size(); i++) {
-      if(i % 500 == 0) {
-        kong ++;
+    for (int i = 0; i < dates.size(); i++) {
+      if (i % 500 == 0) {
+        kong++;
       }
     }
 
@@ -135,8 +145,8 @@ public class DeltaBinaryEncoderLongTest {
 
     long[] data = new long[ROW_NUM];
     int j = 0;
-    for(int i = 0; i < dates.size(); i++) {
-      if(i % 500 == 0) {
+    for (int i = 0; i < dates.size(); i++) {
+      if (i % 500 == 0) {
         continue;
       }
 
@@ -151,7 +161,7 @@ public class DeltaBinaryEncoderLongTest {
     shouldReadAndWrite(data, ROW_NUM);
   }
 
-  private List<String> getBetweenDate(String start, String end){
+  private List<String> getBetweenDate(String start, String end) {
     List<String> list = new ArrayList<>();
     LocalDate startDate = LocalDate.parse(start);
     LocalDate endDate = LocalDate.parse(end);

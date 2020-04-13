@@ -27,13 +27,16 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Properties;
 import java.util.Set;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.utils.Loader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.Loader;
+
 /**
- * TSFileDescriptor is used to load TSFileConfig and provide configure information.
+ * TSFileDescriptor is used to load TSFileConfig and provide configure
+ * information.
  */
 public class TSFileDescriptor {
 
@@ -92,6 +95,8 @@ public class TSFileDescriptor {
           url = u.getFile();
         }
       }
+    } else {
+      url += (File.separatorChar + TSFileConfig.CONFIG_FILE_NAME);
     }
     try {
       inputStream = new FileInputStream(new File(url));
@@ -104,30 +109,27 @@ public class TSFileDescriptor {
     Properties properties = new Properties();
     try {
       properties.load(inputStream);
-      conf.setGroupSizeInByte(Integer
-          .parseInt(properties.getProperty("group_size_in_byte",
-              Integer.toString(conf.getGroupSizeInByte()))));
-      conf.setPageSizeInByte(Integer
-          .parseInt(properties.getProperty("page_size_in_byte",
-              Integer.toString(conf.getPageSizeInByte()))));
+      conf.setGroupSizeInByte(
+          Integer.parseInt(properties.getProperty("group_size_in_byte", Integer.toString(conf.getGroupSizeInByte()))));
+      conf.setPageSizeInByte(
+          Integer.parseInt(properties.getProperty("page_size_in_byte", Integer.toString(conf.getPageSizeInByte()))));
       if (conf.getPageSizeInByte() > conf.getGroupSizeInByte()) {
-        logger.warn("page_size is greater than group size, will set it as the same with group size");
+        logger
+            .warn("page_size is greater than group size, will set it as the same with group size");
         conf.setPageSizeInByte(conf.getGroupSizeInByte());
       }
-      conf.setMaxNumberOfPointsInPage(Integer
-          .parseInt(properties.getProperty("max_number_of_points_in_page",
-              Integer.toString(conf.getMaxNumberOfPointsInPage()))));
-      conf.setTimeSeriesDataType(properties
-          .getProperty("time_series_data_type", conf.getTimeSeriesDataType()));
-      conf.setMaxStringLength(Integer
-          .parseInt(properties.getProperty("max_string_length",
-              Integer.toString(conf.getMaxStringLength()))));
-      conf.setFloatPrecision(Integer
-          .parseInt(properties
-              .getProperty("float_precision", Integer.toString(conf.getFloatPrecision()))));
+      conf.setMaxNumberOfPointsInPage(Integer.parseInt(
+          properties.getProperty("max_number_of_points_in_page", Integer.toString(conf.getMaxNumberOfPointsInPage()))));
+      conf.setTimeSeriesDataType(properties.getProperty("time_series_data_type", conf.getTimeSeriesDataType()));
+      conf.setMaxStringLength(
+          Integer.parseInt(properties.getProperty("max_string_length", Integer.toString(conf.getMaxStringLength()))));
+      conf.setFloatPrecision(
+          Integer.parseInt(properties.getProperty("float_precision", Integer.toString(conf.getFloatPrecision()))));
       conf.setTimeEncoder(properties.getProperty("time_encoder", conf.getTimeEncoder()));
       conf.setValueEncoder(properties.getProperty("value_encoder", conf.getValueEncoder()));
-      conf.setCompressor(properties.getProperty("compressor", conf.getCompressor()));
+      conf.setCompressor(properties.getProperty("compressor", conf.getCompressor().toString()));
+      conf.setBatchSize(Integer.parseInt(properties.getProperty("batch_size",
+          Integer.toString(conf.getBatchSize()))));
     } catch (IOException e) {
       logger.warn("Cannot load config file, use default configuration", e);
     } catch (Exception e) {

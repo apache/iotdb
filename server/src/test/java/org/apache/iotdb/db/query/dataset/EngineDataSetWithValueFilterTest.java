@@ -23,10 +23,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.QueryProcessor;
-import org.apache.iotdb.db.qp.executor.AbstractQueryProcessExecutor;
-import org.apache.iotdb.db.qp.executor.QueryProcessExecutor;
+import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -36,8 +37,8 @@ import org.junit.Test;
 
 public class EngineDataSetWithValueFilterTest {
 
-  private AbstractQueryProcessExecutor queryExecutor = new QueryProcessExecutor();
-  private QueryProcessor processor = new QueryProcessor(queryExecutor);
+  private IPlanExecutor queryExecutor = new PlanExecutor();
+  private Planner processor = new Planner();
   private String[] sqls = {
       "SET STORAGE GROUP TO root.vehicle",
       "SET STORAGE GROUP TO root.test",
@@ -81,6 +82,9 @@ public class EngineDataSetWithValueFilterTest {
 
   static {
     MManager.getInstance().init();
+  }
+
+  public EngineDataSetWithValueFilterTest() throws QueryProcessException {
   }
 
   @Before

@@ -47,6 +47,37 @@ public class IoTDBConfig {
    * Port which the metrics service listens to.
    */
   private int metricsPort = 8181;
+
+  private boolean enableMetricService = false;
+
+  /**
+   * whether to enable the mqtt service.
+   */
+  private boolean enableMQTTService = true;
+
+  /**
+   * the mqtt service binding host.
+   */
+  private String mqttHost = "0.0.0.0";
+
+  /**
+   * the mqtt service binding port.
+   */
+  private int mqttPort = 1883;
+
+  /**
+   * the handler pool size for handing the mqtt messages.
+   */
+  private int mqttHandlerPoolSize = 1;
+
+  /**
+   * the mqtt message payload formatter.
+   */
+  private String mqttPayloadFormatter = "json";
+
+  /**
+   * Rpc binding address.
+   */
   private String rpcAddress = "0.0.0.0";
 
   /**
@@ -63,6 +94,16 @@ public class IoTDBConfig {
    * Max concurrent client number
    */
   private int rpcMaxConcurrentClientNum = 65535;
+
+  /**
+   * JMX user name
+   */
+  private String jmxUser = "admin";
+
+  /**
+   * JMX user password
+   */
+  private String jmxPassword = "password";
 
   /**
    * Memory allocated for the read process
@@ -117,27 +158,27 @@ public class IoTDBConfig {
   /**
    * System directory, including version file for each storage group and metadata
    */
-  private String systemDir = "data/system";
+  private String systemDir = "data" + File.separator + "system";
 
   /**
    * Schema directory, including storage set of values.
    */
-  private String schemaDir = "data/system/schema";
+  private String schemaDir = "data" + File.separator + "system" + File.separator + "schema";
 
   /**
    * Sync directory, including the lock file, uuid file, device owner map
    */
-  private String syncDir = "data/system/sync";
+  private String syncDir = "data" + File.separator + "system" + File.separator + "sync";
 
   /**
    * Query directory, stores temporary files of query
    */
-  private String queryDir = "data/query";
+  private String queryDir = "data" + File.separator + "query";
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
    */
-  private String[] dataDirs = {"data/data"};
+  private String[] dataDirs = {"data" + File.separator + "data"};
 
   /**
    * Strategy of multiple directories.
@@ -147,7 +188,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walFolder = "data/wal";
+  private String walFolder = "data" + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
@@ -155,7 +196,7 @@ public class IoTDBConfig {
   private int maxMemtableNumber = 20;
 
   /**
-   * The amount of data that is read every time.
+   * The amount of data iterate each time in server
    */
   private int batchSize = 100000;
 
@@ -188,12 +229,22 @@ public class IoTDBConfig {
   /**
    * Memory allocated for fileMetaData cache in read process
    */
-  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 3 / 19;
+  private long allocateMemoryForFileMetaDataCache = allocateMemoryForRead * 7 / 39;
+
+  /**
+   * Memory allocated for timeSeriesMetaData cache in read process
+   */
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 10 / 39;
 
   /**
    * Memory allocated for chunkMetaData cache in read process
    */
-  private long allocateMemoryForChumkMetaDataCache = allocateMemoryForRead * 6 / 19;
+  private long allocateMemoryForChunkMetaDataCache = allocateMemoryForRead * 5 / 39;
+
+  /**
+   * Memory allocated for chunk cache in read process
+   */
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 5 / 39;
 
   /**
    * The statMonitor writes statistics info into IoTDB every backLoopPeriodSec secs. The default
@@ -296,7 +347,7 @@ public class IoTDBConfig {
   /**
    * Switch of creating schema automatically
    */
-  private boolean enableAutoCreateSchema = false;
+  private boolean enableAutoCreateSchema = true;
 
   /**
    * Storage group level when creating schema automatically is enabled
@@ -459,6 +510,11 @@ public class IoTDBConfig {
   private int memtableNumInEachStorageGroup = 10;
 
   /**
+   * the default fill interval in LinearFill and PreviousFill, -1 means infinite past time
+   */
+  private int defaultFillInterval = -1;
+
+  /**
    * default TTL for storage groups that are not set TTL by statements, in ms
    * Notice: if this property is changed, previous created storage group which are not set TTL will
    * also be affected.
@@ -469,10 +525,11 @@ public class IoTDBConfig {
    */
   private long partitionInterval = 604800;
 
-
   //just for test
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
+
+  private int queryCacheSizeInMetric =50;
 
   public IoTDBConfig() {
     // empty constructor
@@ -482,8 +539,16 @@ public class IoTDBConfig {
     return memtableNumInEachStorageGroup;
   }
 
-  public void setMemtableNumInEachStorageGroup(int memtableNumInEachStorageGroup) {
+  void setMemtableNumInEachStorageGroup(int memtableNumInEachStorageGroup) {
     this.memtableNumInEachStorageGroup = memtableNumInEachStorageGroup;
+  }
+
+  public int getDefaultFillInterval() {
+    return defaultFillInterval;
+  }
+
+  public void setDefaultFillInterval(int defaultFillInterval) {
+    this.defaultFillInterval = defaultFillInterval;
   }
 
   public long getPartitionInterval() {
@@ -590,16 +655,40 @@ public class IoTDBConfig {
     return dataDirs;
   }
 
-  void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
-  }
-
   public int getMetricsPort() {
     return metricsPort;
   }
 
-  public void setMetricsPort(int metricsPort) {
+  void setMetricsPort(int metricsPort) {
     this.metricsPort = metricsPort;
+  }
+
+  public boolean isEnableMetricService() {
+    return enableMetricService;
+  }
+
+  public void setEnableMetricService(boolean enableMetricService) {
+    this.enableMetricService = enableMetricService;
+  }
+
+  public String getJmxUser() {
+    return jmxUser;
+  }
+
+  public void setJmxUser(String jmxUser) {
+    this.jmxUser = jmxUser;
+  }
+
+  public String getJmxPassword() {
+    return jmxPassword;
+  }
+
+  public void setJmxPassword(String jmxPassword) {
+    this.jmxPassword = jmxPassword;
+  }
+
+  void setDataDirs(String[] dataDirs) {
+    this.dataDirs = dataDirs;
   }
 
   public String getRpcAddress() {
@@ -622,7 +711,7 @@ public class IoTDBConfig {
     return timestampPrecision;
   }
 
-  public void setTimestampPrecision(String timestampPrecision) {
+  void setTimestampPrecision(String timestampPrecision) {
     this.timestampPrecision = timestampPrecision;
   }
 
@@ -670,7 +759,7 @@ public class IoTDBConfig {
     return syncDir;
   }
 
-  public void setSyncDir(String syncDir) {
+  void setSyncDir(String syncDir) {
     this.syncDir = syncDir;
   }
 
@@ -678,7 +767,7 @@ public class IoTDBConfig {
     return queryDir;
   }
 
-  public void setQueryDir(String queryDir) {
+  void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
   }
 
@@ -758,7 +847,7 @@ public class IoTDBConfig {
     return rpcMaxConcurrentClientNum;
   }
 
-  public void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
+  void setRpcMaxConcurrentClientNum(int rpcMaxConcurrentClientNum) {
     this.rpcMaxConcurrentClientNum = rpcMaxConcurrentClientNum;
   }
 
@@ -802,7 +891,7 @@ public class IoTDBConfig {
     this.syncServerPort = syncServerPort;
   }
 
-  public String getLanguageVersion() {
+  String getLanguageVersion() {
     return languageVersion;
   }
 
@@ -814,7 +903,7 @@ public class IoTDBConfig {
     return baseDir;
   }
 
-  public void setBaseDir(String baseDir) {
+  void setBaseDir(String baseDir) {
     this.baseDir = baseDir;
   }
 
@@ -870,7 +959,7 @@ public class IoTDBConfig {
     return mergeMemoryBudget;
   }
 
-  public void setMergeMemoryBudget(long mergeMemoryBudget) {
+  void setMergeMemoryBudget(long mergeMemoryBudget) {
     this.mergeMemoryBudget = mergeMemoryBudget;
   }
 
@@ -878,7 +967,7 @@ public class IoTDBConfig {
     return mergeThreadNum;
   }
 
-  public void setMergeThreadNum(int mergeThreadNum) {
+  void setMergeThreadNum(int mergeThreadNum) {
     this.mergeThreadNum = mergeThreadNum;
   }
 
@@ -886,7 +975,7 @@ public class IoTDBConfig {
     return continueMergeAfterReboot;
   }
 
-  public void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
+  void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
     this.continueMergeAfterReboot = continueMergeAfterReboot;
   }
 
@@ -894,7 +983,7 @@ public class IoTDBConfig {
     return mergeIntervalSec;
   }
 
-  public void setMergeIntervalSec(long mergeIntervalSec) {
+  void setMergeIntervalSec(long mergeIntervalSec) {
     this.mergeIntervalSec = mergeIntervalSec;
   }
 
@@ -914,11 +1003,11 @@ public class IoTDBConfig {
     this.allocateMemoryForWrite = allocateMemoryForWrite;
   }
 
-  public long getAllocateMemoryForRead() {
+  long getAllocateMemoryForRead() {
     return allocateMemoryForRead;
   }
 
-  public void setAllocateMemoryForRead(long allocateMemoryForRead) {
+  void setAllocateMemoryForRead(long allocateMemoryForRead) {
     this.allocateMemoryForRead = allocateMemoryForRead;
   }
 
@@ -926,7 +1015,7 @@ public class IoTDBConfig {
     return enableExternalSort;
   }
 
-  public void setEnableExternalSort(boolean enableExternalSort) {
+  void setEnableExternalSort(boolean enableExternalSort) {
     this.enableExternalSort = enableExternalSort;
   }
 
@@ -934,7 +1023,7 @@ public class IoTDBConfig {
     return externalSortThreshold;
   }
 
-  public void setExternalSortThreshold(int externalSortThreshold) {
+  void setExternalSortThreshold(int externalSortThreshold) {
     this.externalSortThreshold = externalSortThreshold;
   }
 
@@ -950,7 +1039,7 @@ public class IoTDBConfig {
     return performanceStatDisplayInterval;
   }
 
-  public void setPerformanceStatDisplayInterval(long performanceStatDisplayInterval) {
+  void setPerformanceStatDisplayInterval(long performanceStatDisplayInterval) {
     this.performanceStatDisplayInterval = performanceStatDisplayInterval;
   }
 
@@ -958,7 +1047,7 @@ public class IoTDBConfig {
     return performanceStatMemoryInKB;
   }
 
-  public void setPerformanceStatMemoryInKB(int performanceStatMemoryInKB) {
+  void setPerformanceStatMemoryInKB(int performanceStatMemoryInKB) {
     this.performanceStatMemoryInKB = performanceStatMemoryInKB;
   }
 
@@ -966,7 +1055,7 @@ public class IoTDBConfig {
     return forceFullMerge;
   }
 
-  public void setForceFullMerge(boolean forceFullMerge) {
+  void setForceFullMerge(boolean forceFullMerge) {
     this.forceFullMerge = forceFullMerge;
   }
 
@@ -999,7 +1088,7 @@ public class IoTDBConfig {
     return mergeChunkSubThreadNum;
   }
 
-  public void setMergeChunkSubThreadNum(int mergeChunkSubThreadNum) {
+  void setMergeChunkSubThreadNum(int mergeChunkSubThreadNum) {
     this.mergeChunkSubThreadNum = mergeChunkSubThreadNum;
   }
 
@@ -1007,7 +1096,7 @@ public class IoTDBConfig {
     return mergeFileSelectionTimeBudget;
   }
 
-  public void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
+  void setMergeFileSelectionTimeBudget(long mergeFileSelectionTimeBudget) {
     this.mergeFileSelectionTimeBudget = mergeFileSelectionTimeBudget;
   }
 
@@ -1015,7 +1104,7 @@ public class IoTDBConfig {
     return rpcThriftCompressionEnable;
   }
 
-  public void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
+  void setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
     this.rpcThriftCompressionEnable = rpcThriftCompressionEnable;
   }
 
@@ -1031,16 +1120,32 @@ public class IoTDBConfig {
     return allocateMemoryForFileMetaDataCache;
   }
 
-  public void setAllocateMemoryForFileMetaDataCache(long allocateMemoryForFileMetaDataCache) {
+  void setAllocateMemoryForFileMetaDataCache(long allocateMemoryForFileMetaDataCache) {
     this.allocateMemoryForFileMetaDataCache = allocateMemoryForFileMetaDataCache;
   }
 
-  public long getAllocateMemoryForChumkMetaDataCache() {
-    return allocateMemoryForChumkMetaDataCache;
+  public long getAllocateMemoryForTimeSeriesMetaDataCache() {
+    return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForChumkMetaDataCache(long allocateMemoryForChumkMetaDataCache) {
-    this.allocateMemoryForChumkMetaDataCache = allocateMemoryForChumkMetaDataCache;
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+    this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
+  }
+
+  public long getAllocateMemoryForChunkMetaDataCache() {
+    return allocateMemoryForChunkMetaDataCache;
+  }
+
+  public void setAllocateMemoryForChunkMetaDataCache(long allocateMemoryForChunkMetaDataCache) {
+    this.allocateMemoryForChunkMetaDataCache = allocateMemoryForChunkMetaDataCache;
+  }
+
+  public long getAllocateMemoryForChunkCache() {
+    return allocateMemoryForChunkCache;
+  }
+
+  public void setAllocateMemoryForChunkCache(long allocateMemoryForChunkCache) {
+    this.allocateMemoryForChunkCache = allocateMemoryForChunkCache;
   }
 
   public boolean isEnableWatermark() {
@@ -1067,7 +1172,7 @@ public class IoTDBConfig {
     this.watermarkBitString = watermarkBitString;
   }
 
-  public String getWatermarkMethod() {
+  String getWatermarkMethod() {
     return this.watermarkMethod;
   }
 
@@ -1087,7 +1192,7 @@ public class IoTDBConfig {
     return Integer.parseInt(getWatermarkParamValue("embed_lsb_num", "5"));
   }
 
-  public String getWatermarkParamValue(String key, String defaultValue) {
+  private String getWatermarkParamValue(String key, String defaultValue) {
     String res = getWatermarkParamValue(key);
     if (res != null) {
       return res;
@@ -1095,7 +1200,7 @@ public class IoTDBConfig {
     return defaultValue;
   }
 
-  public String getWatermarkParamValue(String key) {
+  private String getWatermarkParamValue(String key) {
     String pattern = key + "=(\\w*)";
     Pattern r = Pattern.compile(pattern);
     Matcher m = r.matcher(watermarkMethod);
@@ -1117,7 +1222,7 @@ public class IoTDBConfig {
     return defaultStorageGroupLevel;
   }
 
-  public void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
+  void setDefaultStorageGroupLevel(int defaultStorageGroupLevel) {
     this.defaultStorageGroupLevel = defaultStorageGroupLevel;
   }
 
@@ -1129,7 +1234,7 @@ public class IoTDBConfig {
     this.defaultBooleanEncoding = defaultBooleanEncoding;
   }
 
-  public void setDefaultBooleanEncoding(String defaultBooleanEncoding) {
+  void setDefaultBooleanEncoding(String defaultBooleanEncoding) {
     this.defaultBooleanEncoding = TSEncoding.valueOf(defaultBooleanEncoding);
   }
 
@@ -1141,7 +1246,7 @@ public class IoTDBConfig {
     this.defaultInt32Encoding = defaultInt32Encoding;
   }
 
-  public void setDefaultInt32Encoding(String defaultInt32Encoding) {
+  void setDefaultInt32Encoding(String defaultInt32Encoding) {
     this.defaultInt32Encoding = TSEncoding.valueOf(defaultInt32Encoding);
   }
 
@@ -1153,7 +1258,7 @@ public class IoTDBConfig {
     this.defaultInt64Encoding = defaultInt64Encoding;
   }
 
-  public void setDefaultInt64Encoding(String defaultInt64Encoding) {
+  void setDefaultInt64Encoding(String defaultInt64Encoding) {
     this.defaultInt64Encoding = TSEncoding.valueOf(defaultInt64Encoding);
   }
 
@@ -1165,7 +1270,7 @@ public class IoTDBConfig {
     this.defaultFloatEncoding = defaultFloatEncoding;
   }
 
-  public void setDefaultFloatEncoding(String defaultFloatEncoding) {
+  void setDefaultFloatEncoding(String defaultFloatEncoding) {
     this.defaultFloatEncoding = TSEncoding.valueOf(defaultFloatEncoding);
   }
 
@@ -1177,7 +1282,7 @@ public class IoTDBConfig {
     this.defaultDoubleEncoding = defaultDoubleEncoding;
   }
 
-  public void setDefaultDoubleEncoding(String defaultDoubleEncoding) {
+  void setDefaultDoubleEncoding(String defaultDoubleEncoding) {
     this.defaultDoubleEncoding = TSEncoding.valueOf(defaultDoubleEncoding);
   }
 
@@ -1189,7 +1294,7 @@ public class IoTDBConfig {
     this.defaultTextEncoding = defaultTextEncoding;
   }
 
-  public void setDefaultTextEncoding(String defaultTextEncoding) {
+  void setDefaultTextEncoding(String defaultTextEncoding) {
     this.defaultTextEncoding = TSEncoding.valueOf(defaultTextEncoding);
   }
 
@@ -1201,27 +1306,27 @@ public class IoTDBConfig {
     this.systemFileStorageFs = FSType.valueOf(systemFileStorageFs);
   }
 
-  public FSType getTsFileStorageFs() {
+  FSType getTsFileStorageFs() {
     return tsFileStorageFs;
   }
 
-  public void setTsFileStorageFs(String tsFileStorageFs) {
+  void setTsFileStorageFs(String tsFileStorageFs) {
     this.tsFileStorageFs = FSType.valueOf(tsFileStorageFs);
   }
 
-  public String getCoreSitePath() {
+  String getCoreSitePath() {
     return coreSitePath;
   }
 
-  public void setCoreSitePath(String coreSitePath) {
+  void setCoreSitePath(String coreSitePath) {
     this.coreSitePath = coreSitePath;
   }
 
-  public String getHdfsSitePath() {
+  String getHdfsSitePath() {
     return hdfsSitePath;
   }
 
-  public void setHdfsSitePath(String hdfsSitePath) {
+  void setHdfsSitePath(String hdfsSitePath) {
     this.hdfsSitePath = hdfsSitePath;
   }
 
@@ -1233,15 +1338,15 @@ public class IoTDBConfig {
     return hdfsIp;
   }
 
-  public void setHdfsIp(String[] hdfsIp) {
+  void setHdfsIp(String[] hdfsIp) {
     this.hdfsIp = String.join(",", hdfsIp);
   }
 
-  public String getHdfsPort() {
+  String getHdfsPort() {
     return hdfsPort;
   }
 
-  public void setHdfsPort(String hdfsPort) {
+  void setHdfsPort(String hdfsPort) {
     this.hdfsPort = hdfsPort;
   }
 
@@ -1249,15 +1354,15 @@ public class IoTDBConfig {
     return upgradeThreadNum;
   }
 
-  public void setUpgradeThreadNum(int upgradeThreadNum) {
+  void setUpgradeThreadNum(int upgradeThreadNum) {
     this.upgradeThreadNum = upgradeThreadNum;
   }
 
-  public String getDfsNameServices() {
+  String getDfsNameServices() {
     return dfsNameServices;
   }
 
-  public void setDfsNameServices(String dfsNameServices) {
+  void setDfsNameServices(String dfsNameServices) {
     this.dfsNameServices = dfsNameServices;
   }
 
@@ -1269,47 +1374,47 @@ public class IoTDBConfig {
     return dfsHaNamenodes;
   }
 
-  public void setDfsHaNamenodes(String[] dfsHaNamenodes) {
+  void setDfsHaNamenodes(String[] dfsHaNamenodes) {
     this.dfsHaNamenodes = String.join(",", dfsHaNamenodes);
   }
 
-  public boolean isDfsHaAutomaticFailoverEnabled() {
+  boolean isDfsHaAutomaticFailoverEnabled() {
     return dfsHaAutomaticFailoverEnabled;
   }
 
-  public void setDfsHaAutomaticFailoverEnabled(boolean dfsHaAutomaticFailoverEnabled) {
+  void setDfsHaAutomaticFailoverEnabled(boolean dfsHaAutomaticFailoverEnabled) {
     this.dfsHaAutomaticFailoverEnabled = dfsHaAutomaticFailoverEnabled;
   }
 
-  public String getDfsClientFailoverProxyProvider() {
+  String getDfsClientFailoverProxyProvider() {
     return dfsClientFailoverProxyProvider;
   }
 
-  public void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
+  void setDfsClientFailoverProxyProvider(String dfsClientFailoverProxyProvider) {
     this.dfsClientFailoverProxyProvider = dfsClientFailoverProxyProvider;
   }
 
-  public boolean isUseKerberos() {
+  boolean isUseKerberos() {
     return useKerberos;
   }
 
-  public void setUseKerberos(boolean useKerberos) {
+  void setUseKerberos(boolean useKerberos) {
     this.useKerberos = useKerberos;
   }
 
-  public String getKerberosKeytabFilePath() {
+  String getKerberosKeytabFilePath() {
     return kerberosKeytabFilePath;
   }
 
-  public void setKerberosKeytabFilePath(String kerberosKeytabFilePath) {
+  void setKerberosKeytabFilePath(String kerberosKeytabFilePath) {
     this.kerberosKeytabFilePath = kerberosKeytabFilePath;
   }
 
-  public String getKerberosPrincipal() {
+  String getKerberosPrincipal() {
     return kerberosPrincipal;
   }
 
-  public void setKerberosPrincipal(String kerberosPrincipal) {
+  void setKerberosPrincipal(String kerberosPrincipal) {
     this.kerberosPrincipal = kerberosPrincipal;
   }
 
@@ -1327,5 +1432,53 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
+  }
+
+  public int getQueryCacheSizeInMetric() {
+    return queryCacheSizeInMetric;
+  }
+
+  public void setQueryCacheSizeInMetric(int queryCacheSizeInMetric) {
+    this.queryCacheSizeInMetric = queryCacheSizeInMetric;
+  }
+
+  public boolean isEnableMQTTService() {
+    return enableMQTTService;
+  }
+
+  public void setEnableMQTTService(boolean enableMQTTService) {
+    this.enableMQTTService = enableMQTTService;
+  }
+
+  public String getMqttHost() {
+    return mqttHost;
+  }
+
+  public void setMqttHost(String mqttHost) {
+    this.mqttHost = mqttHost;
+  }
+
+  public int getMqttPort() {
+    return mqttPort;
+  }
+
+  public void setMqttPort(int mqttPort) {
+    this.mqttPort = mqttPort;
+  }
+
+  public int getMqttHandlerPoolSize() {
+    return mqttHandlerPoolSize;
+  }
+
+  public void setMqttHandlerPoolSize(int mqttHandlerPoolSize) {
+    this.mqttHandlerPoolSize = mqttHandlerPoolSize;
+  }
+
+  public String getMqttPayloadFormatter() {
+    return mqttPayloadFormatter;
+  }
+
+  public void setMqttPayloadFormatter(String mqttPayloadFormatter) {
+    this.mqttPayloadFormatter = mqttPayloadFormatter;
   }
 }

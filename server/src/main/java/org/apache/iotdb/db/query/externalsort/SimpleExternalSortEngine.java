@@ -18,19 +18,20 @@
  */
 package org.apache.iotdb.db.query.externalsort;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.query.externalsort.adapter.ByTimestampReaderAdapter;
-import org.apache.iotdb.db.query.reader.IPointReader;
-import org.apache.iotdb.db.query.reader.IReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.chunkRelated.ChunkReaderWrap;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.chunk.ChunkReaderWrap;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class SimpleExternalSortEngine implements ExternalSortJobEngine {
@@ -102,10 +103,10 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
         int toIndex = Math.min(i + minExternalSortSourceCount, ret.size());
         List<ExternalSortJobPart> partGroup = ret.subList(i, toIndex);
         i = toIndex;
-        StringBuilder tmpFilePath = new StringBuilder(queryDir).append(jobId).append("_")
-            .append(partId);
+        String tmpFilePath = queryDir + jobId + "_"
+            + partId;
         MultiSourceExternalSortJobPart part = new MultiSourceExternalSortJobPart(queryId,
-            tmpFilePath.toString(), partGroup);
+            tmpFilePath, partGroup);
         tmpPartList.add(part);
         partId++;
       }
@@ -114,19 +115,19 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
     return new ExternalSortJob(ret);
   }
 
-  public String getQueryDir() {
+  String getQueryDir() {
     return queryDir;
   }
 
-  public void setQueryDir(String queryDir) {
+  void setQueryDir(String queryDir) {
     this.queryDir = queryDir;
   }
 
-  public int getMinExternalSortSourceCount() {
+  int getMinExternalSortSourceCount() {
     return minExternalSortSourceCount;
   }
 
-  public void setMinExternalSortSourceCount(int minExternalSortSourceCount) {
+  void setMinExternalSortSourceCount(int minExternalSortSourceCount) {
     this.minExternalSortSourceCount = minExternalSortSourceCount;
   }
 
@@ -170,7 +171,7 @@ public class SimpleExternalSortEngine implements ExternalSortJobEngine {
 
   private static class SimpleExternalSortJobEngineHelper {
 
-    private static SimpleExternalSortEngine INSTANCE = new SimpleExternalSortEngine();
+    private static final SimpleExternalSortEngine INSTANCE = new SimpleExternalSortEngine();
   }
 
   public static SimpleExternalSortEngine getInstance() {

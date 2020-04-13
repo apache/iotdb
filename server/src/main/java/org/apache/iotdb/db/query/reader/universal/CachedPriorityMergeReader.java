@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.reader.universal;
 
 import java.io.IOException;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -44,7 +44,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
   }
 
   @Override
-  public boolean hasNext() {
+  public boolean hasNextTimeValuePair() {
     return cacheIdx < cacheLimit || !heap.isEmpty();
   }
 
@@ -72,7 +72,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
 
 
   @Override
-  public TimeValuePair next() throws IOException {
+  public TimeValuePair nextTimeValuePair() throws IOException {
     TimeValuePair ret;
     if (cacheIdx < cacheLimit) {
       ret = timeValuePairCache[cacheIdx++];
@@ -84,7 +84,7 @@ public class CachedPriorityMergeReader extends PriorityMergeReader {
   }
 
   @Override
-  public TimeValuePair current() throws IOException {
+  public TimeValuePair currentTimeValuePair() throws IOException {
     if (0 <= cacheIdx && cacheIdx < cacheLimit) {
       return timeValuePairCache[cacheIdx];
     } else {

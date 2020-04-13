@@ -18,27 +18,61 @@
  */
 package org.apache.iotdb.db.metadata;
 
-public class MetaUtils {
-  public static String[] getNodeNames(String path, String separator) {
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+
+class MetaUtils {
+
+  public static final String PATH_SEPARATOR = "\\.";
+
+  private MetaUtils() {
+
+  }
+
+  public static String[] getNodeNames(String path) {
     String[] nodeNames;
-    path = path.trim();
     if (path.contains("\"") || path.contains("\'")) {
-      String[] deviceAndMeasurement;
-      if (path.contains("\"")) {
-        deviceAndMeasurement = path.split("\"");
-      } else {
-        deviceAndMeasurement = path.split("\'");
-      }
-      String device = deviceAndMeasurement[0];
-      String measurement = deviceAndMeasurement[1];
-      String[] deviceNodeName = device.split(separator);
+      // e.g., root.sg.d1."s1.int"  ->  root.sg.d1, s1.int
+      String[] measurementDeviceNode = path.trim().replace("\'", "\"").split("\"");
+      // s1.int
+      String measurement = measurementDeviceNode[1];
+      // root.sg.d1 -> root, sg, d1
+      String[] deviceNodeName = measurementDeviceNode[0].split(PATH_SEPARATOR);
       int nodeNumber = deviceNodeName.length + 1;
       nodeNames = new String[nodeNumber];
       System.arraycopy(deviceNodeName, 0, nodeNames, 0, nodeNumber - 1);
+      // nodeNames = [root, sg, d1, s1.int]
       nodeNames[nodeNumber - 1] = measurement;
     } else {
-      nodeNames = path.split(separator);
+      nodeNames = path.split(PATH_SEPARATOR);
     }
     return nodeNames;
+  }
+
+  static String getNodeRegByIdx(int idx, String[] nodes) {
+    return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
+  }
+
+  /**
+   * Get storage group name when creating schema automatically is enable
+   *
+   * e.g., path = root.a.b.c and level = 2, return root.a
+   *
+   * @param path path
+   * @param level level
+   */
+  public static String getStorageGroupNameByLevel(String path, int level) throws MetadataException {
+    String[] nodeNames = MetaUtils.getNodeNames(path);
+    if (nodeNames.length < level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(path);
+    }
+    StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
+    for (int i = 1; i < level; i++) {
+      storageGroupName.append(IoTDBConstant.PATH_SEPARATOR).append(nodeNames[i]);
+    }
+    return storageGroupName.toString();
   }
 }

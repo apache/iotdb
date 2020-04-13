@@ -1,21 +1,22 @@
-/**
-  * Licensed to the Apache Software Foundation (ASF) under one
-  * or more contributor license agreements.  See the NOTICE file
-  * distributed with this work for additional information
-  * regarding copyright ownership.  The ASF licenses this file
-  * to you under the Apache License, Version 2.0 (the
-  * "License"); you may not use this file except in compliance
-  * with the License.  You may obtain a copy of the License at
-  *
-  * http://www.apache.org/licenses/LICENSE-2.0
-  *
-  * Unless required by applicable law or agreed to in writing,
-  * software distributed under the License is distributed on an
-  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-  * KIND, either express or implied.  See the License for the
-  * specific language governing permissions and limitations
-  * under the License.
-  */
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.spark.tsfile
 
 import java.util
@@ -24,7 +25,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput
 import org.apache.iotdb.tsfile.common.constant.QueryConstant
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata
 import org.apache.iotdb.tsfile.file.metadata.enums.{TSDataType, TSEncoding}
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader
 import org.apache.iotdb.tsfile.read.common.Path
@@ -34,11 +35,10 @@ import org.apache.iotdb.tsfile.read.filter.{TimeFilter, ValueFilter}
 import org.apache.iotdb.tsfile.utils.Binary
 import org.apache.iotdb.tsfile.write.record.TSRecord
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint
-import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema, SchemaBuilder}
+import org.apache.iotdb.tsfile.write.schema.{MeasurementSchema, Schema}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
-
 import scala.collection.JavaConversions._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -51,22 +51,24 @@ import scala.collection.mutable.ListBuffer
   */
 object WideConverter extends Converter {
 
+  val TEMPLATE_NAME = "spark_template"
+
   /**
     * Get series from the given tsFileMetaData.
     *
     * @param tsFileMetaData TsFileMetaData
     * @return union series
     */
-  def getSeries(tsFileMetaData: TsFileMetaData): util.ArrayList[Series] = {
+  def getSeries(tsFileMetaData: TsFileMetadata, reader: TsFileSequenceReader): util.ArrayList[Series] = {
     val series = new util.ArrayList[Series]()
 
-    val devices = tsFileMetaData.getDeviceMap.keySet()
-    val measurements = tsFileMetaData.getMeasurementSchema
+    val devices = tsFileMetaData.getDeviceMetadataIndex.keySet()
+    val measurements = reader.getAllMeasurements
 
     devices.foreach(d => {
       measurements.foreach(m => {
         val fullPath = d + "." + m._1
-        series.add(new Series(fullPath, m._2.getType)
+        series.add(new Series(fullPath, m._2)
         )
       })
     })
@@ -90,15 +92,15 @@ object WideConverter extends Converter {
       val in = new HDFSInput(f.getPath, conf)
       val reader = new TsFileSequenceReader(in)
       val tsFileMetaData = reader.readFileMetadata
-      val devices = tsFileMetaData.getDeviceMap.keySet()
-      val measurements = tsFileMetaData.getMeasurementSchema
+      val devices = tsFileMetaData.getDeviceMetadataIndex.keySet()
+      val measurements = reader.getAllMeasurements
 
       devices.foreach(d => {
         measurements.foreach(m => {
           val fullPath = d + "." + m._1
           if (!seriesSet.contains(fullPath)) {
             seriesSet += fullPath
-            unionSeries.add(new Series(fullPath, m._2.getType)
+            unionSeries.add(new Series(fullPath, m._2)
             )
           }
         })
@@ -116,7 +118,8 @@ object WideConverter extends Converter {
     * @param tsFileMetaData tsFileMetaData
     * @return
     */
-  def prepSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetaData): StructType = {
+  def prepSchema(requiredSchema: StructType, tsFileMetaData: TsFileMetadata,
+                 reader: TsFileSequenceReader): StructType = {
     var queriedSchema: StructType = new StructType()
 
     if (requiredSchema.isEmpty
@@ -124,14 +127,14 @@ object WideConverter extends Converter {
       QueryConstant.RESERVED_TIME)) {
       // for example, (i) select count(*) from table; (ii) select time from table
 
-      val fileSchema = WideConverter.getSeries(tsFileMetaData)
+      val fileSchema = WideConverter.getSeries(tsFileMetaData, reader)
       queriedSchema = StructType(toSqlField(fileSchema, false).toList)
 
     } else { // Remove nonexistent schema according to the current file's metadata.
       // This may happen when queried TsFiles in the same folder do not have the same schema.
 
-      val devices = tsFileMetaData.getDeviceMap.keySet()
-      val measurementIds = tsFileMetaData.getMeasurementSchema.keySet()
+      val devices = tsFileMetaData.getDeviceMetadataIndex.keySet()
+      val measurementIds = reader.getAllMeasurements.keySet()
       requiredSchema.foreach(f => {
         if (!QueryConstant.RESERVED_TIME.equals(f.name)) {
           val path = new org.apache.iotdb.tsfile.read.common.Path(f.name)
@@ -444,14 +447,14 @@ object WideConverter extends Converter {
     * @return TsFile schema
     */
   def toTsFileSchema(structType: StructType, options: Map[String, String]): Schema = {
-    val schemaBuilder = new SchemaBuilder()
+    val schema = new Schema()
     structType.fields.filter(f => {
       !QueryConstant.RESERVED_TIME.equals(f.name)
     }).foreach(f => {
       val seriesSchema = getSeriesSchema(f, options)
-      schemaBuilder.addSeries(seriesSchema)
+      schema.extendTemplate(TEMPLATE_NAME, seriesSchema)
     })
-    schemaBuilder.build()
+    schema
   }
 
   /**

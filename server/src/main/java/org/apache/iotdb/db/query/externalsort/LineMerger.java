@@ -25,7 +25,7 @@ import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeseria
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
-import org.apache.iotdb.db.query.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 
 
@@ -43,8 +43,8 @@ public class LineMerger {
       throws IOException {
     IExternalSortFileSerializer serializer = new FixLengthTimeValuePairSerializer(tmpFilePath);
     PriorityMergeReader reader = new PriorityMergeReader(prioritySeriesReaders, 1);
-    while (reader.hasNext()) {
-      serializer.write(reader.next());
+    while (reader.hasNextTimeValuePair()) {
+      serializer.write(reader.nextTimeValuePair());
     }
     reader.close();
     serializer.close();

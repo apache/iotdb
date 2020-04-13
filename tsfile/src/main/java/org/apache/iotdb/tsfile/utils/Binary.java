@@ -19,13 +19,13 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.io.Serializable;
-import java.nio.charset.Charset;
 import java.util.Arrays;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 /**
- * Override compareTo() and equals() function to Binary class. This class is used to accept Java
- * String type
+ * Override compareTo() and equals() function to Binary class. This class is
+ * used to accept Java String type
  */
 public class Binary implements Comparable<Binary>, Serializable {
 
@@ -108,7 +108,6 @@ public class Binary implements Comparable<Binary>, Serializable {
   public String getTextEncodingType() {
     return TSFileConfig.STRING_ENCODING;
   }
-
 
   @Override
   public String toString() {

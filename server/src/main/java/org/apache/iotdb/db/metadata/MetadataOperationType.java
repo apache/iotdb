@@ -24,16 +24,9 @@ public class MetadataOperationType {
     //allowed to do nothing
   }
 
-  public static final String ADD_PATH_TO_MTREE = "0";
-  public static final String DELETE_PATH_FROM_MTREE = "1";
-  public static final String SET_STORAGE_GROUP_TO_MTREE = "2";
-  public static final String ADD_A_PTREE = "3";
-  public static final String ADD_A_PATH_TO_PTREE = "4";
-  public static final String DELETE_PATH_FROM_PTREE = "5";
-  public static final String LINK_MNODE_TO_PTREE = "6";
-  public static final String UNLINK_MNODE_FROM_PTREE = "7";
-  public static final String ADD_INDEX_TO_PATH = "8";
-  public static final String DELETE_INDEX_FROM_PATH = "9";
+  public static final String CREATE_TIMESERIES = "0";
+  public static final String DELETE_TIMESERIES = "1";
+  public static final String SET_STORAGE_GROUP = "2";
   public static final String SET_TTL = "10";
-  public static final String DELETE_STORAGE_GROUP_FROM_MTREE = "11";
+  public static final String DELETE_STORAGE_GROUP = "11";
 }

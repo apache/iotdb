@@ -83,7 +83,7 @@ public class SyncSenderLogAnalyzerTest {
     Map<String, Map<Long, Set<File>>> allFileList = new HashMap<>();
 
     for (int i = 0; i < 3; i++) {
-      MManager.getInstance().setStorageGroupToMTree(getSgName(i));
+      MManager.getInstance().setStorageGroup(getSgName(i));
     }
     Random r = new Random(0);
     for (int i = 0; i < 3; i++) {

@@ -18,10 +18,11 @@
     under the License.
 
 -->
+[English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
 [![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
-[![codecov](https://codecov.io/gh/thulab/incubator-iotdb/branch/master/graph/badge.svg)](https://codecov.io/gh/thulab/incubator-iotdb)
+[![coveralls](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)
 [![GitHub release](https://img.shields.io/github/release/apache/incubator-iotdb.svg)](https://github.com/apache/incubator-iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/incubator-iotdb.svg)
@@ -29,6 +30,7 @@
 ![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
+[![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
 
 # Overview
 
@@ -42,7 +44,7 @@ Main features of IoTDB are as follows:
 2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage.
 3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structure from intelligent networking devices, organization for time series data from devices of the same type, fuzzy searching strategy for massive and complex directory of time series data.
 4. High-throughput read and write. IoTDB supports millions of low-power devices' strong connection data access, high-speed data read and write for intelligent networking devices and mixed devices mentioned above.
-5. Rich query semantics. IoTDB supports time alignment for time series data across devices and sensors, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
+5. Rich query semantics. IoTDB supports time alignment for time series data across devices and measurements, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
 6. Easy to get started. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
 7. Seamless integration with state-of-the-practice Open Source Ecosystem. IoTDB supports analysis ecosystems such as, Hadoop, Spark, and visualization tool, such as, Grafana.
 
@@ -78,7 +80,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.10.0/chap1/sec1).
+This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.9.x/chap1/sec1).
 
 ## Prerequisites
 
@@ -94,10 +96,10 @@ IoTDB provides three installation methods, you can refer to the following sugges
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
-* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/blob/master/docker/Dockerfile
+* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/tree/master/docker/src/main
 
 
-Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 4 of the User Guide.
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
 
 ## Build from source
 
@@ -107,6 +109,13 @@ You can download the source code from:
 git clone https://github.com/apache/incubator-iotdb.git
 ```
 
+The default master branch is the dev branch, If you want to use a released version x.x.x:
+
+```
+git checkout release/x.x.x
+```
+
+
 Under the root path of incubator-iotdb:
 
 ```
@@ -115,14 +124,14 @@ Under the root path of incubator-iotdb:
 
 Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
 
-> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr3" need to be added to sources roots to avoid compilation errors in the IDE.
+> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
 
 ### Configurations
 
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
 For more information, please see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.
@@ -137,11 +146,16 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> sbin/start-server.sh
+> sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port>
 
 # Windows
-> sbin\start-server.bat
+> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
 ```
+
+- "-c" and "-rpc_port" are optional.
+- option "-c" specifies the system configuration file directory.
+- option "-rpc_port" specifies the rpc port.
+- if both option specified, the *rpc_port* will overrides the rpc_port in *conf_path*.
 
 
 ### Use IoTDB

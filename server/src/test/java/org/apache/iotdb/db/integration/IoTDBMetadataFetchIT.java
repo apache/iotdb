@@ -87,15 +87,15 @@ public class IoTDBMetadataFetchIT {
           "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
       };
       String[] standards = new String[]{
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n",
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
               + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
               + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
-          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,UNCOMPRESSED,\n"
+          "root.ln.wf01.wt01.status,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,\n"
                   + "root.ln.wf01.wt01.temperature,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,\n",
 
           "",
@@ -399,7 +399,7 @@ public class IoTDBMetadataFetchIT {
             + "\t\t\t\t\t\t\"args\":\"{}\",\n"
             + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
             + "\t\t\t\t\t\t\"DataType\":\"BOOLEAN\",\n"
-            + "\t\t\t\t\t\t\"Compressor\":\"UNCOMPRESSED\",\n"
+            + "\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"
             + "\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
             + "\t\t\t\t\t}\n"
             + "\t\t\t\t}\n"

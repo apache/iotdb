@@ -18,57 +18,65 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
-import org.apache.iotdb.tsfile.file.metadata.TimeSeriesMetadataTest;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaDataTest;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestHelper {
 
-  public static TsFileMetaData createSimpleFileMetaData() {
-    TsFileMetaData metaData = new TsFileMetaData(generateDeviceIndexMetadataMap(), new HashMap<>());
-    metaData.addMeasurementSchema(TestHelper.createSimpleMeasurementSchema());
-    metaData.addMeasurementSchema(TestHelper.createSimpleMeasurementSchema());
-    metaData.setCreatedBy(TsFileMetaDataTest.CREATED_BY);
+  public static TsFileMetadata createSimpleFileMetaData() {
+    TsFileMetadata metaData = new TsFileMetadata();
+    metaData.setDeviceMetadataIndex(generateDeviceMetaDataIndex());
+    metaData.setVersionInfo(generateVersionInfo());
     return metaData;
   }
 
-  private static Map<String, TsDeviceMetadataIndex> generateDeviceIndexMetadataMap() {
-    Map<String, TsDeviceMetadataIndex> indexMap = new HashMap<>();
+  private static Map<String, Pair<Long, Integer>> generateDeviceMetaDataIndex() {
+    Map<String, Pair<Long, Integer>> deviceMetaDataIndex = new HashMap<>();
     for (int i = 0; i < 5; i++) {
-      indexMap.put("device_" + i, createSimpleDeviceIndexMetadata());
+      deviceMetaDataIndex.put("d" + i, new Pair<Long, Integer>((long) i * 5, 5));
     }
-    return indexMap;
+    return deviceMetaDataIndex;
   }
 
-  private static TsDeviceMetadataIndex createSimpleDeviceIndexMetadata() {
-    TsDeviceMetadataIndex index = new TsDeviceMetadataIndex();
-    index.setOffset(0);
-    index.setLen(10);
-    index.setStartTime(100);
-    index.setEndTime(200);
-    return index;
+  private static List<Pair<Long, Long>> generateVersionInfo() {
+    List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      versionInfo.add(new Pair<Long, Long>((long) i * 5, 0L));
+    }
+    return versionInfo;
   }
 
-  public static MeasurementSchema createSimpleMeasurementSchema() {
-    return new MeasurementSchema(TimeSeriesMetadataTest.measurementUID,
-        TSDataType.INT64,
-        TSEncoding.RLE);
+  public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
+    return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
-
+  
+  public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {
+    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    statistics.setEmpty(false);
+    TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
+    timeseriesMetaData.setMeasurementId(measurementuid);
+    timeseriesMetaData.setTSDataType(PageHeaderTest.DATA_TYPE);
+    timeseriesMetaData.setOffsetOfChunkMetaDataList(1000L);
+    timeseriesMetaData.setDataSizeOfChunkMetaDataList(200);
+    timeseriesMetaData.setStatistics(statistics);
+    return timeseriesMetaData;
+  }
 
   public static PageHeader createTestPageHeader() {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
-    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE,
-        PageHeaderTest.COMPRESSED_SIZE, statistics);
+    return new PageHeader(PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE,
+        statistics);
   }
 }

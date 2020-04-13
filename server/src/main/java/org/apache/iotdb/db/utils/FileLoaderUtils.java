@@ -18,19 +18,40 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.IOException;
-import java.util.List;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
+import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
+import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
+import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
+import org.apache.iotdb.db.query.reader.chunk.metadata.MemChunkMetadataLoader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.reader.IChunkReader;
+import org.apache.iotdb.tsfile.read.reader.IPageReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class FileLoaderUtils {
 
   private FileLoaderUtils() {
+
   }
 
   public static void checkTsFileResource(TsFileResource tsFileResource) throws IOException {
@@ -38,30 +59,156 @@ public class FileLoaderUtils {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader = new TsFileSequenceReader(
           tsFileResource.getFile().getAbsolutePath())) {
-        TsFileMetaData metaData = reader.readFileMetadata();
+        TsFileMetadata metaData = reader.readFileMetadata();
         updateTsFileResource(metaData, reader, tsFileResource);
       }
       // write .resource file
       tsFileResource.serialize();
     } else {
-      tsFileResource.deSerialize();
+      tsFileResource.deserialize();
+    }
+    tsFileResource.setClosed(true);
+  }
+
+  public static void updateTsFileResource(TsFileMetadata metaData, TsFileSequenceReader reader,
+      TsFileResource tsFileResource) throws IOException {
+    for (String device : metaData.getDeviceMetadataIndex().keySet()) {
+      Map<String, TimeseriesMetadata> chunkMetadataListInOneDevice = reader
+          .readDeviceMetadata(device);
+      for (TimeseriesMetadata timeseriesMetaData : chunkMetadataListInOneDevice.values()) {
+        tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
+        tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());
+      }
     }
   }
 
-  public static void updateTsFileResource(TsFileMetaData metaData, TsFileSequenceReader reader,
-      TsFileResource tsFileResource) throws IOException {
-    for (TsDeviceMetadataIndex index : metaData.getDeviceMap().values()) {
-      TsDeviceMetadata deviceMetadata = reader.readTsDeviceMetaData(index);
-      List<ChunkGroupMetaData> chunkGroupMetaDataList = deviceMetadata
-          .getChunkGroupMetaDataList();
-      for (ChunkGroupMetaData chunkGroupMetaData : chunkGroupMetaDataList) {
-        for (ChunkMetaData chunkMetaData : chunkGroupMetaData.getChunkMetaDataList()) {
-          tsFileResource.updateStartTime(chunkGroupMetaData.getDeviceID(),
-              chunkMetaData.getStartTime());
-          tsFileResource
-              .updateEndTime(chunkGroupMetaData.getDeviceID(), chunkMetaData.getEndTime());
+
+  /**
+   *
+   * @param resource TsFile
+   * @param seriesPath Timeseries path
+   * @param allSensors measurements queried at the same time of this device
+   */
+  public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
+      QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
+    TimeseriesMetadata timeSeriesMetadata;
+    if (resource.isClosed()) {
+      timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
+          .get(new TimeSeriesMetadataCache.TimeSeriesMetadataCacheKey(resource.getPath(),
+              seriesPath.getDevice(), seriesPath.getMeasurement()), allSensors);
+      if (timeSeriesMetadata != null) {
+        timeSeriesMetadata.setChunkMetadataLoader(
+            new DiskChunkMetadataLoader(resource, seriesPath, context, timeFilter));
+      }
+    } else {
+      timeSeriesMetadata = resource.getTimeSeriesMetadata();
+      if (timeSeriesMetadata != null) {
+        timeSeriesMetadata.setChunkMetadataLoader(
+            new MemChunkMetadataLoader(resource, seriesPath, context, timeFilter));
+      }
+    }
+
+    if (timeSeriesMetadata != null) {
+      List<Modification> pathModifications =
+          context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
+      timeSeriesMetadata.getStatistics().setCanUseStatistics(pathModifications.isEmpty());
+      if (timeSeriesMetadata.getStatistics().getStartTime() > timeSeriesMetadata.getStatistics()
+          .getEndTime()) {
+        return null;
+      }
+      if (timeFilter != null && !timeFilter
+          .satisfyStartEndTime(timeSeriesMetadata.getStatistics().getStartTime(),
+              timeSeriesMetadata.getStatistics().getEndTime())) {
+        return null;
+      }
+    }
+    return timeSeriesMetadata;
+  }
+
+  /**
+   * load all chunk metadata of one time series in one file.
+   * @param timeSeriesMetadata the corresponding TimeSeriesMetadata in that file.
+   */
+  public static List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeSeriesMetadata)
+      throws IOException {
+    return timeSeriesMetadata.loadChunkMetadataList();
+  }
+
+
+  /**
+   * load all page readers in one chunk that satisfying the timeFilter
+   * @param chunkMetaData the corresponding chunk metadata
+   * @param timeFilter it should be a TimeFilter instead of a ValueFilter
+   */
+  public static List<IPageReader> loadPageReaderList(ChunkMetadata chunkMetaData, Filter timeFilter)
+      throws IOException {
+    if (chunkMetaData == null) {
+      throw new IOException("Can't init null chunkMeta");
+    }
+    IChunkReader chunkReader;
+    IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
+    if (chunkLoader instanceof MemChunkLoader) {
+      MemChunkLoader memChunkLoader = (MemChunkLoader) chunkLoader;
+      chunkReader = new MemChunkReader(memChunkLoader.getChunk(), timeFilter);
+    } else {
+      Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
+      chunkReader = new ChunkReader(chunk, timeFilter);
+      chunkReader.hasNextSatisfiedPage();
+    }
+    return chunkReader.loadPageReaderList();
+  }
+
+
+  /**
+   * load all ChunkMetadatas belong to the seriesPath
+   */
+  public static List<ChunkMetadata> loadChunkMetadataFromTsFileResource(
+      TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
+    List<ChunkMetadata> chunkMetadataList;
+    if (resource == null) {
+      return new ArrayList<>();
+    }
+    if (resource.isClosed()) {
+      chunkMetadataList = ChunkMetadataCache.getInstance().get(resource.getPath(), seriesPath);
+    } else {
+      chunkMetadataList = resource.getChunkMetadataList();
+    }
+    List<Modification> pathModifications =
+        context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
+
+    if (!pathModifications.isEmpty()) {
+      QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
+    }
+
+    TsFileSequenceReader tsFileSequenceReader =
+        FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
+    for (ChunkMetadata data : chunkMetadataList) {
+      data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
+    }
+    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
+    if (memChunks != null) {
+      for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
+        if (!memChunks.isEmpty()) {
+          chunkMetadataList.add(readOnlyMemChunk.getChunkMetaData());
         }
       }
     }
+
+    /*
+     * remove empty or invalid chunk metadata
+     */
+    chunkMetadataList.removeIf(chunkMetaData -> (
+        chunkMetaData.getStartTime() > chunkMetaData.getEndTime()));
+    return chunkMetadataList;
+  }
+
+  public static List<ChunkMetadata> getChunkMetadataList(Path path, String filePath) throws IOException {
+    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
+    return tsFileReader.getChunkMetadataList(path);
+  }
+
+  public static TsFileMetadata getTsFileMetadata(String filePath) throws IOException {
+    TsFileSequenceReader reader = FileReaderManager.getInstance().get(filePath, true);
+    return reader.readFileMetadata();
   }
 }

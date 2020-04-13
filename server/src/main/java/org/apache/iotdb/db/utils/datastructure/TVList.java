@@ -21,13 +21,16 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
 
-@SuppressWarnings("unused")
 public abstract class TVList {
 
   private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
@@ -44,10 +47,12 @@ public abstract class TVList {
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
   private long timeOffset = Long.MIN_VALUE;
+  private long version;
 
   protected long pivotTime;
 
   protected long minTime;
+
 
   public TVList() {
     timestamps = new ArrayList<>();
@@ -170,6 +175,10 @@ public abstract class TVList {
     return minTime;
   }
 
+  public long getVersion() {
+    return version;
+  }
+
   protected abstract void set(int src, int dest);
 
   protected abstract void setFromSorted(int src, int dest);
@@ -181,6 +190,11 @@ public abstract class TVList {
   protected abstract void expandValues();
 
   public abstract TVList clone();
+
+  public TVList clone(long version) {
+    this.version = version;
+    return clone();
+  }
 
   protected abstract void releaseLastValueArray();
 
@@ -202,7 +216,7 @@ public abstract class TVList {
     // release primitive arrays that are empty
     int newArrayNum = newSize / ARRAY_SIZE;
     if (newSize % ARRAY_SIZE != 0) {
-      newArrayNum ++;
+      newArrayNum++;
     }
     for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
       releaseLastTimeArray();
@@ -256,7 +270,8 @@ public abstract class TVList {
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
       expandValues();
-      timestamps.add((long[]) PrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
+      timestamps.add(
+          (long[]) PrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
     }
   }
 
@@ -298,8 +313,9 @@ public abstract class TVList {
       }
       reverseRange(lo, runHi);
     } else {                              // Ascending
-      while (runHi < hi &&getTime(runHi) >= getTime(runHi - 1))
+      while (runHi < hi && getTime(runHi) >= getTime(runHi - 1)) {
         runHi++;
+      }
     }
 
     return runHi - lo;
@@ -325,7 +341,6 @@ public abstract class TVList {
 
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
-   * @return
    */
   public long getTimeOffset() {
     return timeOffset;
@@ -350,9 +365,10 @@ public abstract class TVList {
    */
   protected void binarySort(int lo, int hi, int start) {
     assert lo <= start && start <= hi;
-    if (start == lo)
+    if (start == lo) {
       start++;
-    for ( ; start < hi; start++) {
+    }
+    for (; start < hi; start++) {
 
       saveAsPivot(start);
       // Set left (and right) to the index where a[start] (pivot) belongs
@@ -366,10 +382,11 @@ public abstract class TVList {
        */
       while (left < right) {
         int mid = (left + right) >>> 1;
-        if (compare(start, mid) < 0)
+        if (compare(start, mid) < 0) {
           right = mid;
-        else
+        } else {
           left = mid + 1;
+        }
       }
       assert left == right;
 
@@ -404,15 +421,15 @@ public abstract class TVList {
     while (endSide == 0) {
       if (compare(leftIdx, rightIdx) <= 0) {
         setToSorted(leftIdx, lo + tmpIdx);
-        tmpIdx ++;
-        leftIdx ++;
+        tmpIdx++;
+        leftIdx++;
         if (leftIdx == mid) {
           endSide = 1;
         }
       } else {
         setToSorted(rightIdx, lo + tmpIdx);
-        tmpIdx ++;
-        rightIdx ++;
+        tmpIdx++;
+        rightIdx++;
         if (rightIdx == hi) {
           endSide = 2;
         }
@@ -431,7 +448,7 @@ public abstract class TVList {
     }
     for (; start < end; start++) {
       setToSorted(start, lo + tmpIdx);
-      tmpIdx ++;
+      tmpIdx++;
     }
 
     // copy from sorting buffer to the original arrays so that they can be further sorted
@@ -452,11 +469,86 @@ public abstract class TVList {
     boolean inputSorted = true;
     for (int i = start; i < end; i++) {
       inPutMinTime = inPutMinTime <= time[i] ? inPutMinTime : time[i];
-      if (inputSorted && i < length - 1 && time[i] > time[i+1]) {
+      if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
         inputSorted = false;
       }
     }
     minTime = inPutMinTime < minTime ? inPutMinTime : minTime;
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
   }
+
+  /**
+   * for log
+   */
+  public abstract TimeValuePair getTimeValuePair(int index);
+
+  protected abstract TimeValuePair getTimeValuePair(int index, long time,
+      Integer floatPrecision, TSEncoding encoding);
+
+  public IPointReader getIterator() {
+    return new Ite();
+  }
+
+  public IPointReader getIterator(int floatPrecision, TSEncoding encoding) {
+    return new Ite(floatPrecision, encoding);
+  }
+
+  private class Ite implements IPointReader {
+
+    private TimeValuePair cachedTimeValuePair;
+    private boolean hasCachedPair;
+    private int cur;
+    private Integer floatPrecision;
+    private TSEncoding encoding;
+
+    public Ite() {
+    }
+
+    public Ite(int floatPrecision, TSEncoding encoding) {
+      this.floatPrecision = floatPrecision;
+      this.encoding = encoding;
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      if (hasCachedPair) {
+        return true;
+      }
+
+      while (cur < size) {
+        long time = getTime(cur);
+        if (time < getTimeOffset() || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+          cur++;
+          continue;
+        }
+        cachedTimeValuePair = getTimeValuePair(cur, time, floatPrecision, encoding);
+        hasCachedPair = true;
+        cur++;
+        return true;
+      }
+      return hasCachedPair;
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() throws IOException {
+      if (hasCachedPair || hasNextTimeValuePair()) {
+        hasCachedPair = false;
+        return cachedTimeValuePair;
+      } else {
+        throw new IOException("no next time value pair");
+      }
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return cachedTimeValuePair;
+    }
+
+    @Override
+    public void close() throws IOException {
+      // Do nothing because of this is an in memory object
+    }
+  }
+
+
 }

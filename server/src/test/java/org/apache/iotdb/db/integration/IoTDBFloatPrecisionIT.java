@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.apache.iotdb.db.integration.Constant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 

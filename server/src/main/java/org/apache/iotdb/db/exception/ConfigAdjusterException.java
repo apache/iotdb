@@ -20,13 +20,12 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class ConfigAdjusterException extends ProcessException {
+public class ConfigAdjusterException extends IoTDBException {
 
   private static final long serialVersionUID = 3502288856999147687L;
   public static final String ERROR_MSG_FORMAT = "IoTDB system load is too large to %s, please increase memory or disable the enable_parameter_adapter in iotdb-engine.properties";
 
   public ConfigAdjusterException(String action) {
-    super(String.format(ERROR_MSG_FORMAT, action));
-    errorCode = TSStatusCode.CONFIG_ADJUSTER.getStatusCode();
+    super(String.format(ERROR_MSG_FORMAT, action), TSStatusCode.CONFIG_ADJUSTER.getStatusCode());
   }
 }

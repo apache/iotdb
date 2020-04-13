@@ -21,7 +21,7 @@ package org.apache.iotdb.db.utils.datastructure;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import org.apache.iotdb.db.utils.TimeValuePair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.junit.Assert;
 import org.junit.Test;

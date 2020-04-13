@@ -33,6 +33,9 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.thrift.TException;
 
+/**
+ * args[]: -h 127.0.0.1 -p 6667 -u root -pw root
+ */
 public class WinClient extends AbstractClient {
 
   private static CommandLine commandLine;
@@ -87,6 +90,9 @@ public class WinClient extends AbstractClient {
       if (commandLine.hasOption(HELP_ARGS)) {
         hf.printHelp(IOTDB_CLI_PREFIX, options, true);
         return false;
+      }
+      if (commandLine.hasOption(RPC_COMPRESS_ARGS)) {
+        Config.rpcThriftCompressionEnable = true;
       }
       if (commandLine.hasOption(ISO8601_ARGS)) {
         setTimeFormat("long");

@@ -127,6 +127,7 @@ public class IoTDBAuthorizationIT {
       userStmt.execute("GRANT USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.b.b");
 
       adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'ALL' ON root");
+      adminStmt.execute("REVOKE USER tempuser PRIVILEGES 'CREATE_TIMESERIES' ON root.b.b");
 
       caught = false;
       try {
@@ -434,7 +435,7 @@ public class IoTDBAuthorizationIT {
     // the user cannot delete the timeseries now
     caught = false;
     try {
-      // no privilege to create this one any more
+      // no privilege to delete this one any more
       userStmt.execute("DELETE TIMESERIES root.a.b");
     } catch (SQLException e) {
       caught = true;

@@ -19,16 +19,9 @@
 namespace java org.apache.iotdb.service.rpc.thrift
 
 // The return status code and message in each response.
-struct TSStatusType {
-  1: required i32 code
-  2: required string message
-}
-
-// The return status of a remote request
 struct TSStatus {
-  1: required TSStatusType statusType
-  2: optional list<string> infoMessages
-  3: optional string sqlState  // as defined in the ISO/IEF CLIENT specification
+  1: required i32 code
+  2: optional string message
 }
 
 struct TSExecuteStatementResp {
@@ -43,10 +36,12 @@ struct TSExecuteStatementResp {
   7: optional TSQueryDataSet queryDataSet
   // for disable align statements, queryDataSet is null and nonAlignQueryDataSet is not null
   8: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
+  9: optional map<string, i32> columnNameIndexMap
 }
 
 enum TSProtocolVersion {
   IOTDB_SERVICE_PROTOCOL_V1,
+  IOTDB_SERVICE_PROTOCOL_V2,//V2 is the first version that we can check version compatibility
 }
 
 struct TSOpenSessionResp {
@@ -65,7 +60,7 @@ struct TSOpenSessionResp {
 // OpenSession()
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
-  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
+  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
   2: optional string username
   3: optional string password
   4: optional map<string, string> configuration
@@ -96,15 +91,8 @@ struct TSExecuteStatementReq {
   4: optional i32 fetchSize
 }
 
-struct TSExecuteInsertRowInBatchResp{
-  1: required i64 sessionId
-	2: required list<TSStatus> statusList
-}
-
 struct TSExecuteBatchStatementResp{
-	1: required TSStatus status
-  // For each value in result, Statement.SUCCESS_NO_INFO represents success, Statement.EXECUTE_FAILED represents fail otherwise.
-	2: optional list<i32> result
+	1: required list<TSStatus> statusList
 }
 
 struct TSExecuteBatchStatementReq{
@@ -279,13 +267,13 @@ service TSIService {
 
   TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
 
-	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
+	TSExecuteBatchStatementResp insertRowInBatch(1:TSInsertInBatchReq req);
 
 	TSExecuteBatchStatementResp testInsertBatch(1:TSBatchInsertionReq req);
 
   TSStatus testInsertRow(1:TSInsertReq req);
 
-  TSExecuteInsertRowInBatchResp testInsertRowInBatch(1:TSInsertInBatchReq req);
+  TSExecuteBatchStatementResp testInsertRowInBatch(1:TSInsertInBatchReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 

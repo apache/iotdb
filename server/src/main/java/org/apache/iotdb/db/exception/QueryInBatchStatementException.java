@@ -21,12 +21,12 @@ package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class QueryInBatchStatementException extends ProcessException {
+public class QueryInBatchStatementException extends IoTDBException {
 
   private static final long serialVersionUID = 204423954433950490L;
 
   public QueryInBatchStatementException(String statement) {
-    super(String.format("Query statement not allowed in batch: [%s]", statement));
-    errorCode = TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode();
+    super(String.format("Query statement not allowed in batch: [%s]", statement),
+        TSStatusCode.QUERY_NOT_ALLOWED.getStatusCode());
   }
 }
