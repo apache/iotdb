@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.manage.serializable.LogDequeSerializer;
 import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +36,9 @@ public abstract class DiskLogManager extends MemoryLogManager {
   private LogManagerMeta managerMeta = new LogManagerMeta();
 
 
-  protected DiskLogManager(LogApplier logApplier) {
+  protected DiskLogManager(LogApplier logApplier, Node headerNode) {
     super(logApplier);
-    logDequeSerializer = new SyncLogDequeSerializer();
+    logDequeSerializer = new SyncLogDequeSerializer(headerNode);
     recovery();
   }
 

@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -46,10 +47,9 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   private static final Logger logger = LoggerFactory.getLogger(SyncLogDequeSerializer.class);
 
   List<File> logFileList;
-  File metaFile;
-  FileOutputStream currentLogOutputStream;
-  FileOutputStream metaOutputStream;
   LogParser parser = LogParser.getINSTANCE();
+  private File metaFile;
+  private FileOutputStream currentLogOutputStream;
   private Deque<Integer> logSizeDeque = new ArrayDeque<>();
   private LogManagerMeta meta;
   // mark first log position
@@ -63,8 +63,8 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   private long minAvailableTime = 0;
   // max time of available log
   private long maxAvailableTime = Long.MAX_VALUE;
-
-
+  // log dir
+  private String logDir;
   /**
    * for log tools
    *
@@ -72,20 +72,30 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
    */
   public SyncLogDequeSerializer(String logPath) {
     logFileList = new ArrayList<>();
-    metaFile = SystemFileFactory.INSTANCE
-        .getFile(logPath + File.separator + "logMeta");
+    logDir = logPath + File.separator;
     init();
   }
 
   /**
    * log in disk is [size of log1 | log1 buffer] [size of log2 | log2 buffer]... log meta buffer
+   * build serializer with node id
    */
-  public SyncLogDequeSerializer() {
+  public SyncLogDequeSerializer(Node headerNode) {
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     logFileList = new ArrayList<>();
-    metaFile = SystemFileFactory.INSTANCE
-        .getFile(systemDir + File.separator + "raftLog" + File.separator + "logMeta");
+    logDir = systemDir + File.separator + "raftLog" + File.separator +
+        headerNode.nodeIdentifier + File.separator;
     init();
+  }
+
+  @TestOnly
+  public String getLogDir() {
+    return logDir;
+  }
+
+  @TestOnly
+  public File getMetaFile() {
+    return metaFile;
   }
 
   @TestOnly
@@ -99,30 +109,28 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   // init output stream
   private void init() {
+    recoverMetaFile();
+    recoverMeta();
     try {
-      if (!metaFile.getParentFile().exists()) {
-        metaFile.getParentFile().mkdir();
-        metaFile.createNewFile();
-      } else {
-        for (File file : metaFile.getParentFile().listFiles()) {
-          if (file.getName().startsWith("data")) {
-            long fileTime = getFileTime(file);
-            // this means system down between save meta and data
-            if (fileTime <= minAvailableTime || fileTime >= maxAvailableTime) {
-              file.delete();
-            } else {
-              logFileList.add(file);
-            }
+      for (File file : metaFile.getParentFile().listFiles()) {
+        if (file.getName().startsWith("data")) {
+          long fileTime = getFileTime(file);
+          // this means system down between save meta and data
+          if (fileTime <= minAvailableTime || fileTime >= maxAvailableTime) {
+            file.delete();
+          } else {
+            logFileList.add(file);
           }
         }
-        logFileList.sort(new Comparator<File>() {
-          @Override
-          public int compare(File o1, File o2) {
-            return Long.compare(Long.parseLong(o1.getName().split("-")[1]),
-                Long.parseLong(o2.getName().split("-")[1]));
-          }
-        });
       }
+
+      logFileList.sort(new Comparator<File>() {
+        @Override
+        public int compare(File o1, File o2) {
+          return Long.compare(Long.parseLong(o1.getName().split("-")[1]),
+              Long.parseLong(o2.getName().split("-")[1]));
+        }
+      });
 
       // add init log file
       if (logFileList.isEmpty()) {
@@ -130,9 +138,43 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       }
 
       currentLogOutputStream = new FileOutputStream(getCurrentLogFile(), true);
-      metaOutputStream = new FileOutputStream(metaFile, true);
     } catch (IOException e) {
       logger.error("Error in init log file: " + e.getMessage());
+    }
+  }
+
+  private void recoverMetaFile() {
+    metaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta");
+
+    // build dir
+    if (!metaFile.getParentFile().getParentFile().exists()) {
+      metaFile.getParentFile().getParentFile().mkdir();
+    }
+
+    if (!metaFile.getParentFile().exists()) {
+      metaFile.getParentFile().mkdir();
+    }
+
+    File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
+    // if we have temp file
+    if (tempMetaFile.exists()) {
+      // if temp file is empty, just return
+      if (tempMetaFile.length() == 0) {
+        tempMetaFile.delete();
+      }
+      // else use temp file rather than meta file
+      else {
+        if (metaFile.exists()) {
+          metaFile.delete();
+        }
+        tempMetaFile.renameTo(metaFile);
+      }
+    } else if (!metaFile.exists()) {
+      try {
+        metaFile.createNewFile();
+      } catch (IOException e) {
+        logger.error("Error in log serialization: " + e.getMessage());
+      }
     }
   }
 
@@ -225,9 +267,11 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
           serializeMeta(meta);
 
           currentLogFile.delete();
+          logFileList.remove(logFileList.size() - 1);
+          logFileList.add(createNewLogFile(logDir));
           currentLogOutputStream = new FileOutputStream(getCurrentLogFile());
         } catch (IOException e) {
-          e.printStackTrace();
+          logger.error("Error in log serialization: " + e.getMessage());
         }
 
         logFileList.remove(logFileList.size() - 1);
@@ -263,9 +307,6 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   @Override
   public List<Log> recoverLog() {
-    if (meta == null) {
-      recoverMeta();
-    }
     // if we can totally remove some old file, remove them
     if (removedLogSize > 0) {
       actuallyDeleteFile();
@@ -344,12 +385,20 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   @Override
   public void serializeMeta(LogManagerMeta meta) {
     try {
-      metaOutputStream.getChannel().truncate(0);
-      ReadWriteIOUtils.write(firstLogPosition, metaOutputStream);
-      ReadWriteIOUtils.write(removedLogSize, metaOutputStream);
-      ReadWriteIOUtils.write(minAvailableTime, metaOutputStream);
-      ReadWriteIOUtils.write(maxAvailableTime, metaOutputStream);
-      ReadWriteIOUtils.write(meta.serialize(), metaOutputStream);
+      File tempMetaFile = new File(logDir + "logMeta.tmp");
+      FileOutputStream tempMetaFileOutputStream = new FileOutputStream(tempMetaFile);
+      ReadWriteIOUtils.write(firstLogPosition, tempMetaFileOutputStream);
+      ReadWriteIOUtils.write(removedLogSize, tempMetaFileOutputStream);
+      ReadWriteIOUtils.write(minAvailableTime, tempMetaFileOutputStream);
+      ReadWriteIOUtils.write(maxAvailableTime, tempMetaFileOutputStream);
+      ReadWriteIOUtils.write(meta.serialize(), tempMetaFileOutputStream);
+
+      // close stream
+      tempMetaFileOutputStream.close();
+      // rename
+      metaFile.delete();
+      tempMetaFile.renameTo(metaFile);
+      // rebuild meta stream
 
       this.meta = meta;
     } catch (IOException e) {
@@ -362,21 +411,16 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   public void close() {
     try {
       currentLogOutputStream.close();
-      metaOutputStream.close();
     } catch (IOException e) {
       logger.error("Error in log serialization: " + e.getMessage());
     }
-  }
-
-  private String getLogDir() {
-    return IoTDBDescriptor.getInstance().getConfig().getSystemDir() + File.separator + "raftLog";
   }
 
   /**
    * adjust maxRemovedLogSize to the first log file
    */
   private void adjustNextThreshold() {
-    if(!logFileList.isEmpty()){
+    if (!logFileList.isEmpty()) {
       maxRemovedLogSize = logFileList.get(0).length();
     }
   }
@@ -413,9 +457,9 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
     // 2. create a new log file for new log data
     try {
-      File newLogFile = createNewLogFile(getLogDir());
+      File newLogFile = createNewLogFile(logDir);
       // save meta first
-      maxAvailableTime = getFileTime(newLogFile);
+      maxAvailableTime = getFileTime(newLogFile) + 1;
       serializeMeta(meta);
 
       logFileList.add(newLogFile);

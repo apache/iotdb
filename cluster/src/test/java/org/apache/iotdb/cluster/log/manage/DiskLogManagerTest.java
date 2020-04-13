@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.junit.Before;
@@ -57,7 +58,7 @@ public class DiskLogManagerTest extends IoTDBTest {
   }
 
   private DiskLogManager buildLogManager() {
-    return new DiskLogManager(logApplier) {
+    return new DiskLogManager(logApplier, getNode(1)) {
       @Override
       public Snapshot getSnapshot() {
         return null;
@@ -124,4 +125,7 @@ public class DiskLogManagerTest extends IoTDBTest {
     logManager.close();
   }
 
+  private Node getNode(int i) {
+    return new Node("localhost", 30000 + i, i, 40000 + i);
+  }
 }

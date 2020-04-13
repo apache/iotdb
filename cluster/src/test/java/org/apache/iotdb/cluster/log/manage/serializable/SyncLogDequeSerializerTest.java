@@ -20,7 +20,10 @@ package org.apache.iotdb.cluster.log.manage.serializable;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +34,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.MemoryLogManager;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.junit.Test;
 
 public class SyncLogDequeSerializerTest extends IoTDBTest {
@@ -67,7 +71,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testReadAndWrite() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
     List<Log> testLogs1 = TestUtils.prepareNodeLogs(10);
 
@@ -92,7 +96,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRecovery() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
     int logNum = 10;
     List<Log> testLogs1 = TestUtils.prepareNodeLogs(logNum);
@@ -107,7 +111,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     syncLogDequeSerializer.close();
 
     // recovery
-    syncLogDequeSerializer = new SyncLogDequeSerializer();
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     LogManagerMeta managerMeta = syncLogDequeSerializer.recoverMeta();
     assertEquals(memoryLogManager.getMeta(), managerMeta);
 
@@ -121,7 +125,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRecoveryAfterRemoveFirst() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
     List<Log> testLogs1 = TestUtils.prepareNodeLogs(10);
 
@@ -131,7 +135,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     }
 
     assertEquals(10, syncLogDequeSerializer.getLogSizeDeque().size());
-
 
     List<Log> testLogs2 = TestUtils.prepareNodeLogs(5);
 
@@ -161,7 +164,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testDeleteLogs() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
     syncLogDequeSerializer.setMaxRemovedLogSize(10);
     List<Log> testLogs1 = TestUtils.prepareNodeLogs(10);
@@ -189,7 +192,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testDeleteLogsByRecovery() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     syncLogDequeSerializer.setMaxRemovedLogSize(10);
 
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
@@ -201,7 +204,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     }
 
     assertEquals(10, syncLogDequeSerializer.getLogSizeDeque().size());
-
 
     List<Log> testLogs2 = TestUtils.prepareNodeLogs(5);
 
@@ -217,7 +219,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     syncLogDequeSerializer.close();
 
     // recovery
-    syncLogDequeSerializer = new SyncLogDequeSerializer();
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     List<Log> logs = syncLogDequeSerializer.recoverLog();
     assertEquals(12, logs.size());
 
@@ -232,7 +234,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRemoveOldFile() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     syncLogDequeSerializer.setMaxRemovedLogSize(10);
 
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
@@ -266,7 +268,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     syncLogDequeSerializer.close();
 
     // recovery
-    syncLogDequeSerializer = new SyncLogDequeSerializer();
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     List<Log> logs = syncLogDequeSerializer.recoverLog();
     assertEquals(9, logs.size());
 
@@ -278,7 +280,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRemoveOldFileAtRecovery() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     syncLogDequeSerializer.setMaxRemovedLogSize(10);
 
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
@@ -313,7 +315,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     syncLogDequeSerializer.close();
 
     // recovery
-    syncLogDequeSerializer = new SyncLogDequeSerializer();
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     List<Log> logs = syncLogDequeSerializer.recoverLog();
     assertEquals(9, logs.size());
 
@@ -326,7 +328,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testTruncate() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     syncLogDequeSerializer.setMaxRemovedLogSize(10);
 
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
@@ -371,7 +373,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     syncLogDequeSerializer.close();
 
     // recovery
-    syncLogDequeSerializer = new SyncLogDequeSerializer();
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     List<Log> logs = syncLogDequeSerializer.recoverLog();
     assertEquals(9, logs.size());
 
@@ -384,7 +386,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRecoveryByAppendList() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
     int logNum = 10;
     List<Log> testLogs1 = TestUtils.prepareNodeLogs(logNum);
@@ -400,7 +402,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     syncLogDequeSerializer.close();
 
     // recovery
-    syncLogDequeSerializer = new SyncLogDequeSerializer();
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     LogManagerMeta managerMeta = syncLogDequeSerializer.recoverMeta();
     assertEquals(memoryLogManager.getMeta(), managerMeta);
 
@@ -414,7 +416,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testTruncateByAppendList() {
-    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer();
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     syncLogDequeSerializer.setMaxRemovedLogSize(10);
 
     MemoryLogManager memoryLogManager = buildMemoryLogManager();
@@ -459,12 +461,124 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     syncLogDequeSerializer.close();
 
     // recovery
-    syncLogDequeSerializer = new SyncLogDequeSerializer();
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
     List<Log> logs = syncLogDequeSerializer.recoverLog();
     assertEquals(9, logs.size());
 
     for (int i = 0; i < 8; i++) {
       assertEquals(testLogs2.get(i + 1), logs.get(i));
     }
+  }
+
+  @Test
+  public void testRecoveryWithTempLog() {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
+    MemoryLogManager memoryLogManager = buildMemoryLogManager();
+    int logNum = 10;
+    List<Log> testLogs1 = TestUtils.prepareNodeLogs(logNum);
+
+    for (Log log : testLogs1) {
+      memoryLogManager.appendLog(log);
+      syncLogDequeSerializer.append(log, memoryLogManager.getMeta());
+    }
+
+    assertEquals(logNum, syncLogDequeSerializer.getLogSizeDeque().size());
+
+    syncLogDequeSerializer.close();
+
+    // build temp log
+    File tempMetaFile = new File(syncLogDequeSerializer.getLogDir() + "logMeta.tmp");
+    syncLogDequeSerializer.getMetaFile().renameTo(tempMetaFile);
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
+    LogManagerMeta managerMeta = syncLogDequeSerializer.recoverMeta();
+    assertEquals(memoryLogManager.getMeta(), managerMeta);
+
+    List<Log> logDeque = syncLogDequeSerializer.recoverLog();
+    assertEquals(logNum, logDeque.size());
+
+    for (int i = 0; i < logNum; i++) {
+      assertEquals(testLogs1.get(i), logDeque.get(i));
+    }
+  }
+
+  @Test
+  public void testRecoveryWithEmptyTempLog() {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
+    MemoryLogManager memoryLogManager = buildMemoryLogManager();
+    int logNum = 10;
+    List<Log> testLogs1 = TestUtils.prepareNodeLogs(logNum);
+
+    for (Log log : testLogs1) {
+      memoryLogManager.appendLog(log);
+      syncLogDequeSerializer.append(log, memoryLogManager.getMeta());
+    }
+
+    assertEquals(logNum, syncLogDequeSerializer.getLogSizeDeque().size());
+
+    syncLogDequeSerializer.close();
+
+    // build empty temp log
+    File tempMetaFile = new File(syncLogDequeSerializer.getLogDir() + "logMeta.tmp");
+    try {
+      tempMetaFile.createNewFile();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
+    LogManagerMeta managerMeta = syncLogDequeSerializer.recoverMeta();
+    assertEquals(memoryLogManager.getMeta(), managerMeta);
+
+    List<Log> logDeque = syncLogDequeSerializer.recoverLog();
+    assertEquals(logNum, logDeque.size());
+
+    for (int i = 0; i < logNum; i++) {
+      assertEquals(testLogs1.get(i), logDeque.get(i));
+    }
+  }
+
+  @Test
+  public void testRecoveryWithTempLogWithoutOriginalLog() {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
+    MemoryLogManager memoryLogManager = buildMemoryLogManager();
+    int logNum = 10;
+    List<Log> testLogs1 = TestUtils.prepareNodeLogs(logNum);
+
+    for (Log log : testLogs1) {
+      memoryLogManager.appendLog(log);
+      syncLogDequeSerializer.append(log, memoryLogManager.getMeta());
+    }
+
+    assertEquals(logNum, syncLogDequeSerializer.getLogSizeDeque().size());
+
+    syncLogDequeSerializer.close();
+
+    // build temp log
+    File tempMetaFile = new File(syncLogDequeSerializer.getLogDir() + "logMeta.tmp");
+    try {
+      Files.copy(syncLogDequeSerializer.getMetaFile().toPath(),
+          tempMetaFile.toPath());
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(getNode(1));
+    LogManagerMeta managerMeta = syncLogDequeSerializer.recoverMeta();
+    assertEquals(memoryLogManager.getMeta(), managerMeta);
+
+    List<Log> logDeque = syncLogDequeSerializer.recoverLog();
+    assertEquals(logNum, logDeque.size());
+
+    for (int i = 0; i < logNum; i++) {
+      assertEquals(testLogs1.get(i), logDeque.get(i));
+    }
+  }
+
+  private Node getNode(int i) {
+    return new Node("localhost", 30000 + i, i, 40000 + i);
   }
 }
