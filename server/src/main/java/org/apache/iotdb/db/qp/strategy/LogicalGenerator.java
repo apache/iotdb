@@ -61,6 +61,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AliasContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AndExpressionContext;
@@ -302,6 +303,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     operatorType = SQLConstant.TOK_METADATA_CREATE;
     createTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
+  }
+
+  @Override
+  public void enterAlias(AliasContext ctx) {
+    super.enterAlias(ctx);
     createTimeSeriesOperator.setAlias(ctx.ID().getText());
   }
 
