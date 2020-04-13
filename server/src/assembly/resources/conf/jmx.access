@@ -1,0 +1,3 @@
+# see https://docs.oracle.com/javase/8/docs/technotes/guides/management/agent.html#gdeup
+iotdb readonly
+root readwrite
