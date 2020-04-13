@@ -192,6 +192,7 @@ public class TsFileRecoverPerformer {
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
+    recoverMemTable.setVersion(versionController.nextVersion());
     LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, resource.getModFile(),
         versionController, resource, recoverMemTable, acceptUnseq);
     logReplayer.replayLogs();

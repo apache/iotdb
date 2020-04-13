@@ -20,6 +20,8 @@ package org.apache.iotdb.db.engine.flush;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ThreadPoolExecutor;
+
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
@@ -81,10 +83,10 @@ public class FlushManager implements FlushManagerMBean, IService {
     return FlushSubTaskPoolManager.getInstance().getWaitingTasksNumber();
   }
 
-  class FlushThread implements Runnable {
+  class FlushThread extends WrappedRunnable{
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       TsFileProcessor tsFileProcessor = tsFileProcessorQueue.poll();
       tsFileProcessor.flushOneMemTable();
       tsFileProcessor.setManagedByFlushManager(false);

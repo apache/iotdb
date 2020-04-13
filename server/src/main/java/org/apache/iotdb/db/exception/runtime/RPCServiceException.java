@@ -16,25 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception.runtime;
 
-package org.apache.iotdb.tsfile.file;
+public class RPCServiceException extends RuntimeException{
 
-import java.io.IOException;
+  private static final long serialVersionUID = 520836932066897810L;
 
-/**
- * MetaMarker denotes the type of headers and footers. Enum is not used for space saving.
- */
-public class MetaMarker {
-
-  public static final byte CHUNK_GROUP_FOOTER = 0;
-  public static final byte CHUNK_HEADER = 1;
-  public static final byte SEPARATOR = 2;
-  public static final byte VERSION = 3;
-
-  private MetaMarker() {
+  public RPCServiceException(String message) {
+    super(message);
   }
 
-  public static void handleUnexpectedMarker(byte marker) throws IOException {
-    throw new IOException("Unexpected marker " + marker);
+  public RPCServiceException(String message, Throwable e) {
+    super(message + e.getMessage());
   }
+
 }

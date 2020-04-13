@@ -16,25 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.service;
 
-package org.apache.iotdb.tsfile.file;
+import org.apache.iotdb.db.exception.StartupException;
 
-import java.io.IOException;
+public interface RPCServiceMBean {
 
-/**
- * MetaMarker denotes the type of headers and footers. Enum is not used for space saving.
- */
-public class MetaMarker {
+  String getRPCServiceStatus();
 
-  public static final byte CHUNK_GROUP_FOOTER = 0;
-  public static final byte CHUNK_HEADER = 1;
-  public static final byte SEPARATOR = 2;
-  public static final byte VERSION = 3;
+  int getRPCPort();
 
-  private MetaMarker() {
-  }
+  void startService() throws StartupException;
 
-  public static void handleUnexpectedMarker(byte marker) throws IOException {
-    throw new IOException("Unexpected marker " + marker);
-  }
+  void restartService() throws StartupException;
+
+  void stopService();
 }

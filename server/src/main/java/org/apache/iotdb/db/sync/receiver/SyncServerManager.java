@@ -28,7 +28,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
-import org.apache.iotdb.db.service.JDBCServiceEventHandler;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
