@@ -37,7 +37,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class RestTest {
+public class HTTPTest {
 
   private Client client = ClientBuilder.newClient();
 
@@ -72,10 +72,9 @@ public class RestTest {
   }
 
   @Test
-  public void testSQL() throws InterruptedException {
-    TimeUnit.SECONDS.sleep(5);
+  public void testSQL() {
     // set storage group
-    String file1 = RestTest.class.getClassLoader().getResource("setStorageGroup.json").getFile();
+    String file1 = HTTPTest.class.getClassLoader().getResource("setStorageGroup.json").getFile();
     String json1 = readToString(file1);
     String userAndPassword = "root:root";
     String encodedUserPassword = new String(Base64.getEncoder().encode(userAndPassword.getBytes()));
@@ -86,7 +85,7 @@ public class RestTest {
     Assert.assertEquals("[\"root.ln.wf01.wt01:success\"]", result1);
 
     //create time series
-    String file2 = RestTest.class.getClassLoader().getResource("createTimeSeries.json").getFile();
+    String file2 = HTTPTest.class.getClassLoader().getResource("createTimeSeries.json").getFile();
     String json2 = readToString(file2);
     Response response2 = client.target(CREATE_TIME_SERIES_URI)
         .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
@@ -95,7 +94,7 @@ public class RestTest {
     Assert.assertEquals("[\"root.ln.wf01.wt01.status:success\",\"root.ln.wf01.wt01.temperature:success\",\"root.ln.wf01.wt01.hardware:success\"]", result2);
 
     //insert
-    String file3 = RestTest.class.getClassLoader().getResource("insert.json").getFile();
+    String file3 = HTTPTest.class.getClassLoader().getResource("insert.json").getFile();
     String json3 = readToString(file3);
     Response response3 = client.target(INSERT_URI)
         .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
@@ -104,7 +103,7 @@ public class RestTest {
     Assert.assertEquals("[\"root.ln.wf01.wt01:success\",\"root.ln.wf01.wt01:success\",\"root.ln.wf01.wt01:success\",\"root.ln.wf01.wt01:success\",\"root.ln.wf01.wt01:success\"]", result3);
 
     //query
-    String file4 = RestTest.class.getClassLoader().getResource("query.json").getFile();
+    String file4 = HTTPTest.class.getClassLoader().getResource("query.json").getFile();
     String json4 = readToString(file4);
     Response response4 = client.target(QUERY_URI)
         .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
@@ -133,9 +132,8 @@ public class RestTest {
   }
 
   @Test
-  public void testWrongType() throws InterruptedException {
-    TimeUnit.SECONDS.sleep(5);
-    String file = RestTest.class.getClassLoader().getResource("setStorageGroupTypeError.json").getFile();
+  public void testWrongType() {
+    String file = HTTPTest.class.getClassLoader().getResource("setStorageGroupTypeError.json").getFile();
     String json = readToString(file);
     String userAndPassword = "root:root";
     String encodedUserPassword = new String(Base64.getEncoder().encode(userAndPassword.getBytes()));
@@ -149,7 +147,7 @@ public class RestTest {
   @Test
   public void testWrongSQL() throws InterruptedException {
     TimeUnit.SECONDS.sleep(5);
-    String file = RestTest.class.getClassLoader().getResource("setStorageGroupTypeError.json").getFile();
+    String file = HTTPTest.class.getClassLoader().getResource("setStorageGroupTypeError.json").getFile();
     String json = readToString(file);
     String userAndPassword = "root:root";
     String encodedUserPassword = new String(Base64.getEncoder().encode(userAndPassword.getBytes()));

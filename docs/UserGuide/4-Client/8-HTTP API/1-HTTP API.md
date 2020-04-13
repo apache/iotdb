@@ -19,3 +19,28 @@
 
 -->
 
+### Queries
+
+IoTDB can be queried by JSON objects. Queries can be posted like this:
+
+```
+curl -X POST '<host>:<port>/rest/?' -H 'Content-Type:application/json' -H 'Accept:application/json' -H 'Authorization:Basic root:root'-d @<query_json_file>
+```
+
+Note: "root:root" should be encoded by Base64.
+
+The query language is JSON over HTTP, The Content-Type/Accept Headers can also take 'text/plain'.
+
+```
+curl -X POST '<queryable_host>:<port>/druid/v2/?pretty' -H 'Content-Type:application/json' -H 'Accept:text/plain' -H 'Authorization:Basic root:root' -d @<query_json_file>
+```
+
+Note: If Accept header is not provided, it defaults to value of 'Content-Type' header.
+
+### Available queries
+
+* [Set Storage Group](./2-Set%20Storage%20Group.md)
+* [Create TimeSeries](./3-Create%20TimeSeries)
+* [Insert](4-Insert.md)
+
+

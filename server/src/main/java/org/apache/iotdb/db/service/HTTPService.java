@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -43,8 +44,9 @@ public class HTTPService implements HTTPServiceMBean, IService {
 
   private Server server;
   private ExecutorService executorService;
+  private CountDownLatch startLatch;
 
-  public static final HTTPService getInstance() {
+  public static HTTPService getInstance() {
     return HTTPServiceHolder.INSTANCE;
   }
 
@@ -92,19 +94,26 @@ public class HTTPService implements HTTPServiceMBean, IService {
     server = RestUtil.getJettyServer(RestUtil.getRestContextHandler(), port);
     server.setStopTimeout(10000);
     try {
-      executorService.execute(new HTTPServiceThread(server));
+      reset();
+      executorService.execute(new HTTPServiceThread(server, startLatch));
       logger.info("{}: start {} successfully, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
           IoTDBDescriptor.getInstance().getConfig().getRestPort());
-    } catch (NullPointerException e) {
+      startLatch.await();
+    } catch (NullPointerException | InterruptedException e) {
       //issue IOTDB-415, we need to stop the service.
       logger.error("{}: start {} failed, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
           IoTDBDescriptor.getInstance().getConfig().getRestPort());
+      Thread.currentThread().interrupt();
       stopService();
     }
+  }
+
+  private void reset() {
+    startLatch = new CountDownLatch(1);
   }
 
   @Override
@@ -133,6 +142,7 @@ public class HTTPService implements HTTPServiceMBean, IService {
         }
         executorService = null;
       }
+      reset();
     } catch (Exception e) {
       logger
           .error("{}: close {} failed because {}", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(),
@@ -145,16 +155,14 @@ public class HTTPService implements HTTPServiceMBean, IService {
 
   private void checkAndWaitPortIsClosed() {
     SocketAddress socketAddress = new InetSocketAddress("localhost", getHTTPPort());
-    @SuppressWarnings("squid:S2095")
-    Socket socket = new Socket();
-    try {
+    boolean isClose = false;
+    try(Socket socket = new Socket()) {
       socket.connect(socketAddress, 1000);
     } catch (IOException e) {
-      logger.debug("Close post successfully.");
+      logger.debug("Close port successfully.");
+      isClose = true;
     } finally {
-      try {
-        socket.close();
-      } catch (IOException e) {
+      if (!isClose) {
         logger.error("Port {} can not be closed.", getHTTPPort());
       }
     }
@@ -170,9 +178,11 @@ public class HTTPService implements HTTPServiceMBean, IService {
   private class HTTPServiceThread extends WrappedRunnable {
 
     private Server server;
+    private CountDownLatch threadStartLatch;
 
-    HTTPServiceThread(Server server) {
+    HTTPServiceThread(Server server, CountDownLatch threadStartLatch) {
       this.server = server;
+      this.threadStartLatch = threadStartLatch;
     }
 
     @Override
@@ -180,13 +190,13 @@ public class HTTPService implements HTTPServiceMBean, IService {
       try {
         Thread.currentThread().setName(ThreadName.HTTP_SERVICE.getName());
         server.start();
-        server.join();
       } catch (@SuppressWarnings("squid:S2142") InterruptedException e1) {
         //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
         logger.error(e1.getMessage(), e1);
       } catch (Exception e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       }
+      threadStartLatch.countDown();
     }
   }
 }

@@ -34,6 +34,12 @@ An example set storage group query object is shown below:
 }
 ```
 
+If successfully, you will get a result below:
+
+```json
+["root.ln.wf01.wt01:success"]
+```
+
 | property | description | required? | 
 | --- | --- | --- | 
 | type | describe query type | yes | 
@@ -41,7 +47,8 @@ An example set storage group query object is shown below:
 
 You possibly get several errors below:
 
-| status | error | description |
+| HTTP status | error | description |
 | --- | --- | --- |
 | 500 | Get request body JSON failed | Get request body JSON failed |
-| 500 | <storage group> : errorMessage | you will  |    
+| 500 | <storage group> : errorMessage | you will find the wrong message in each storage group if it encounters an exception|
+| 500 | Type is wrong | occur when url isn't compatible with key "type" in json |     
