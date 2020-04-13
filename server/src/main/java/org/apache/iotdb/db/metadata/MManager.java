@@ -203,6 +203,7 @@ public class MManager {
         logWriter.close();
         logWriter = null;
       }
+      initialized = false;
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     } finally {
