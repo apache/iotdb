@@ -121,7 +121,7 @@ public class IoTDBLastIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute(
-              "select last temperature,status,id from root.ln.wf01.wt01 disable align");
+              "select last temperature,status,id from root.ln.wf01.wt01");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
