@@ -26,6 +26,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -46,7 +47,8 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
 
   @Test
   public void testQuery()
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException {
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException,
+          MetadataException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
@@ -63,6 +65,22 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
     List<String> allMatchedPaths = queryExecutor.getPaths("root.*.s0");
     for (int i = 0; i < allMatchedPaths.size(); i++) {
       assertEquals(pathList.get(i).getFullPath(), allMatchedPaths.get(i));
+    }
+  }
+
+  @Test
+  public void testGetAllStorageGroupNodes() throws MetadataException {
+    List<StorageGroupMNode> allStorageGroupNodes = queryExecutor.getAllStorageGroupNodes();
+    for (int i = 0; i < allStorageGroupNodes.size(); i++) {
+      assertEquals(testMetaMember.getAllStorageGroupNodes().get(i).getFullPath(), allStorageGroupNodes.get(i).getFullPath());
+    }
+  }
+
+  @Test
+  public void testGetAllStorageGroupNames() throws MetadataException {
+    List<String> allStorageGroupNames = queryExecutor.getAllStorageGroupNames();
+    for (int i = 0; i < allStorageGroupNames.size(); i++) {
+      assertEquals(testMetaMember.getAllStorageGroupNames().get(i), allStorageGroupNames.get(i));
     }
   }
 }

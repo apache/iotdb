@@ -126,6 +126,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -2033,6 +2034,18 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
 
     return result;
+  }
+
+  public List<String> getAllStorageGroupNames() {
+    // make sure this node knows all storage groups
+    syncLeader();
+    return MManager.getInstance().getAllStorageGroupNames();
+  }
+
+  public List<StorageGroupMNode> getAllStorageGroupNodes() {
+    // make sure this node knows all storage groups
+    syncLeader();
+    return MManager.getInstance().getAllStorageGroupNodes();
   }
 
   public Map<Node, Boolean> getAllNodeStatus() {
