@@ -27,57 +27,15 @@ An example set storage group query object is shown below:
 
 ```json
 {
-  "type" : "insert",
-  "targets" : [
+  "type": "query",
+  "range": {
+    "from": "0",
+    "to": "6"
+  },
+  "targets": [
     {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 1,
-      "values" : [
-        "1.1", "false", "11"
-      ]
-    },
-    {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 2,
-      "values" : [
-        "2.2", "true", "22"
-      ]
-    },
-    {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 3,
-      "values" : [
-        "3.3", "false", "33"
-      ]
-    },
-    {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 4,
-      "values" : [
-        "4.4", "false", "44"
-      ]
-    },
-    {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 5,
-      "values" : [
-        "5.5", "false", "55"
-      ]
+    "target": "root.ln.wf01.wt01.temperature",
+    "type": "timeserie"
     }
   ]
 }
@@ -86,17 +44,15 @@ An example set storage group query object is shown below:
 If successfully, you will get a result below:
 
 ```json
-["root.ln.wf01.wt01:success","root.ln.wf01.wt01:success","root.ln.wf01.wt01:success","root.ln.wf01.wt01:success","root.ln.wf01.wt01:success"]
+[{"datapoints":[[1,"1.1"],[2,"2.2"],[3,"3.3"],[4,"4.4"],[5,"5.5"]],"target":"root.ln.wf01.wt01.temperature"}]
 ```
 
 | property | description | required? | 
 | --- | --- | --- | 
 | type | describe query type | yes | 
-| targets | values will be inserted | yes |
-| deviceId | deviceId | yes |
-| measurements | measurements | yes |
-| time | time | yes |
-| values | values | yes |
+| targets | data will be queried | yes |
+| target | one time series | yes |
+| type | table or timeserie | yes |
 
 You possibly get several errors below:
 
@@ -104,4 +60,4 @@ You possibly get several errors below:
 | --- | --- | --- |
 | 500 | Get request body JSON failed | Get request body JSON failed |
 | 500 | <storage group> : errorMessage | you will find the wrong message in each time series if it encounters an exception|
-| 500 | Type is wrong | occur when url isn't compatible with key "type" in json |     
+| 500 | Type is wrong | occur when url isn't compatible with key "type" in json |    
