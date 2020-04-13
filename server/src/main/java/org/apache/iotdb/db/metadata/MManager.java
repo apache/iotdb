@@ -113,12 +113,6 @@ public class MManager {
     }
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
 
-    try {
-      logWriter = new MLogWriter(schemaDir, MetadataConstant.METADATA_LOG);
-    } catch (IOException e) {
-      throw new RuntimeException("Can not init MLogWriter", e);
-    }
-
     // do not write log when recover
     writeToLog = false;
 
@@ -168,6 +162,7 @@ public class MManager {
         maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
             .max(Integer::compareTo).get();
       }
+      logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       writeToLog = true;
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
