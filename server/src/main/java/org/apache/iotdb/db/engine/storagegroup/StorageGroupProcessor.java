@@ -224,6 +224,15 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Set<Long>> partitionDirectFileVersions = new HashMap<>();
 
+  /**
+   * The max file versions in each partition. By recording this, if several IoTDB instances have
+   * the same policy of closing file and their ingestion is identical, then files of the same
+   * version in different IoTDB instance will have identical data, providing convenience for data
+   * comparison across different instances.
+   * partition number -> max version number
+   */
+  private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
+
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
@@ -239,6 +248,7 @@ public class StorageGroupProcessor {
     }
 
     recover();
+
   }
 
   private void recover() throws StorageGroupProcessorException {
@@ -257,10 +267,12 @@ public class StorageGroupProcessor {
       for (TsFileResource resource : sequenceFileTreeSet) {
         long partitionNum = resource.getTimePartition();
         partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>()).addAll(resource.getHistoricalVersions());
+        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
       }
       for (TsFileResource resource : unSequenceFileList) {
         long partitionNum = resource.getTimePartition();
         partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>()).addAll(resource.getHistoricalVersions());
+        updatePartitionFileVersion(partitionNum, Collections.max(resource.getHistoricalVersions()));
       }
 
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
@@ -293,6 +305,12 @@ public class StorageGroupProcessor {
     }
   }
 
+  private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
+    long oldVersion = partitionMaxFileVersions.getOrDefault(partitionNum, 0L);
+    if (fileVersion > oldVersion) {
+      partitionMaxFileVersions.put(partitionNum, fileVersion);
+    }
+  }
 
   /**
    * get version controller by time partition Id Thread-safety should be ensure by caller
@@ -783,7 +801,8 @@ public class StorageGroupProcessor {
    * @return file name
    */
   private String getNewTsFileName(long timePartitionId) {
-    long version = getVersionControllerByTimePartitionId(timePartitionId).nextVersion();
+    long version = partitionMaxFileVersions.getOrDefault(timePartitionId, 0L) + 1;
+    partitionMaxFileVersions.put(timePartitionId, version);
     partitionDirectFileVersions.computeIfAbsent(timePartitionId, p -> new HashSet<>()).add(version);
     return getNewTsFileName(System.currentTimeMillis(), version, 0);
   }
@@ -1149,7 +1168,7 @@ public class StorageGroupProcessor {
 
       // time partition to divide storage group
       long timePartitionId = StorageEngine.getTimePartition(timestamp);
-      // write log
+      // write log to impacted working TsFileProcessors
       logDeletion(timestamp, deviceId, measurementId, timePartitionId);
 
       Path fullPath = new Path(deviceId, measurementId);
@@ -1296,12 +1315,12 @@ public class StorageGroupProcessor {
    */
   public int countUpgradeFiles() {
     int cntUpgradeFileNum = 0;
-    for (TsFileResource seqTsFileResource : new ArrayList<>(sequenceFileTreeSet)) {
+    for (TsFileResource seqTsFileResource : sequenceFileTreeSet) {
       if (UpgradeUtils.isNeedUpgrade(seqTsFileResource)) {
         cntUpgradeFileNum += 1;
       }
     }
-    for (TsFileResource unseqTsFileResource : new ArrayList<>(unSequenceFileList)) {
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
       if (UpgradeUtils.isNeedUpgrade(unseqTsFileResource)) {
         cntUpgradeFileNum += 1;
       }
@@ -1310,10 +1329,10 @@ public class StorageGroupProcessor {
   }
 
   public void upgrade() {
-    for (TsFileResource seqTsFileResource : new ArrayList<>(sequenceFileTreeSet)) {
+    for (TsFileResource seqTsFileResource : sequenceFileTreeSet) {
       seqTsFileResource.doUpgrade();
     }
-    for (TsFileResource unseqTsFileResource : new ArrayList<>(unSequenceFileList)) {
+    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
       unseqTsFileResource.doUpgrade();
     }
   }
@@ -1567,6 +1586,7 @@ public class StorageGroupProcessor {
       long partitionNum = newTsFileResource.getTimePartition();
       partitionDirectFileVersions.computeIfAbsent(partitionNum, p -> new HashSet<>())
           .addAll(newTsFileResource.getHistoricalVersions());
+      updatePartitionFileVersion(partitionNum, Collections.max(newTsFileResource.getHistoricalVersions()));
     } catch (DiskSpaceInsufficientException e) {
       logger.error(
           "Failed to append the tsfile {} to storage group processor {} because the disk space is insufficient.",
@@ -1869,6 +1889,7 @@ public class StorageGroupProcessor {
     }
     partitionDirectFileVersions.computeIfAbsent(filePartitionId,
         p -> new HashSet<>()).addAll(tsFileResource.getHistoricalVersions());
+    updatePartitionFileVersion(filePartitionId, Collections.max(tsFileResource.getHistoricalVersions()));
     return true;
   }
 

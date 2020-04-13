@@ -24,19 +24,18 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.server.TServerEventHandler;
 import org.apache.thrift.transport.TTransport;
 
-public class JDBCServiceEventHandler implements TServerEventHandler {
+public class RPCServiceEventHandler implements TServerEventHandler {
 
   private TSServiceImpl serviceImpl;
   private CountDownLatch startLatch;
 
-  JDBCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch startLatch) {
+  RPCServiceEventHandler(TSServiceImpl serviceImpl, CountDownLatch startLatch) {
     this.serviceImpl = serviceImpl;
     this.startLatch = startLatch;
   }
 
   @Override
   public ServerContext createContext(TProtocol arg0, TProtocol arg1) {
-    // TODO Auto-generated method stub
     return null;
   }
 
@@ -52,8 +51,6 @@ public class JDBCServiceEventHandler implements TServerEventHandler {
 
   @Override
   public void processContext(ServerContext arg0, TTransport arg1, TTransport arg2) {
-    // TODO Auto-generated method stub
-
   }
 
 }

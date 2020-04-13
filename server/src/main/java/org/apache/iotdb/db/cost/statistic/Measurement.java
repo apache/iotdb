@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -380,18 +381,18 @@ public class Measurement implements MeasurementMBean, IService {
         "=================================================================================================================");
   }
 
-  class DisplayRunnable implements Runnable {
+  class DisplayRunnable extends WrappedRunnable {
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       showMeasurements();
     }
   }
 
-  class QueueConsumerThread implements Runnable {
+  class QueueConsumerThread extends WrappedRunnable {
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       consumer();
     }
 

@@ -165,7 +165,7 @@
 
 <script>
 export default {
-  name: "Home",
+  name: "IoTDB",
   data() {
     return {
       msg: "Welcome to Home Page",

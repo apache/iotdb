@@ -622,7 +622,7 @@ public class PhysicalPlanTest {
   @Test
   public void testLastPlanPaths() throws QueryProcessException {
     String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
-    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2 disable align";
+    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr2);
     Path path1 = new Path("root.vehicle.d1.s1");

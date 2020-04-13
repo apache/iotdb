@@ -117,7 +117,7 @@ pipeline {
                     // Then run the analysis
                     // 'my-sonarcloud-token' needs to be defined for this job and contains the user token
                     withCredentials([string(credentialsId: 'xiangdong-iotdb-sonarcloud-token', variable: 'SONAR_TOKEN')]) {
-                        sh 'mvn verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests'
+                        sh "mvn verify sonar:sonar -Dsonar.branch.name=master -Dsonar.host.url=https://sonarcloud.io -Dsonar.organization=apache -Dsonar.projectKey=apache_incubator-iotdb -Dsonar.login=${SONAR_TOKEN} -DskipTests -pl '!site'"
                     }
                 }
             }

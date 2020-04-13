@@ -44,16 +44,24 @@ public class SessionExample {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open(true);
 
-    session.setStorageGroup("root.sg1");
-    if (session.checkTimeseriesExists("root.sg1.d1.s1")) {
+    try {
+      session.setStorageGroup("root.sg1");
+    } catch (StatementExecutionException e) {
+      if (!e.getMessage().contains("StorageGroupAlreadySetException")) {
+        throw e;
+      }
+//       ignore duplicated set
+    }
+
+    if (!session.checkTimeseriesExists("root.sg1.d1.s1")) {
       session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
-    if (session.checkTimeseriesExists("root.sg1.d1.s2")) {
+    if (!session.checkTimeseriesExists("root.sg1.d1.s2")) {
       session.createTimeseries("root.sg1.d1.s2", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
-    if (session.checkTimeseriesExists("root.sg1.d1.s3")) {
+    if (!session.checkTimeseriesExists("root.sg1.d1.s3")) {
       session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
@@ -191,33 +199,51 @@ public class SessionExample {
     schema2.registerTimeseries(new Path("root.sg1.d2.s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     schema2.registerTimeseries(new Path("root.sg1.d2.s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    RowBatch rowBatch2 = schema1.createRowBatch("root.sg1.d2", 100);
-
+    RowBatch rowBatch2 = schema2.createRowBatch("root.sg1.d2", 100);
+    
+    Schema schema3 = new Schema();
+    Map<String, MeasurementSchema> template = new HashMap<>();
+    template.put("s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    template.put("s2", new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE));
+    schema3.registerDeviceTemplate("template3", template);
+    schema3.extendTemplate("template3", new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.RLE));
+    schema3.registerDevice("root.sg1.d3", "template3");
+    
+    RowBatch rowBatch3 = schema3.createRowBatch("root.sg1.d3", 100);
+    
     Map<String, RowBatch> rowBatchMap = new HashMap<>();
     rowBatchMap.put("root.sg1.d1", rowBatch1);
     rowBatchMap.put("root.sg1.d2", rowBatch2);
+    rowBatchMap.put("root.sg1.d3", rowBatch3);
 
     long[] timestamps1 = rowBatch1.timestamps;
     Object[] values1 = rowBatch1.values;
     long[] timestamps2 = rowBatch2.timestamps;
     Object[] values2 = rowBatch2.values;
+    long[] timestamps3 = rowBatch3.timestamps;
+    Object[] values3 = rowBatch3.values;
 
     for (long time = 0; time < 100; time++) {
       int row1 = rowBatch1.batchSize++;
       int row2 = rowBatch2.batchSize++;
+      int row3 = rowBatch3.batchSize++;
       timestamps1[row1] = time;
       timestamps2[row2] = time;
+      timestamps3[row3] = time;
       for (int i = 0; i < 3; i++) {
         long[] sensor1 = (long[]) values1[i];
         sensor1[row1] = i;
         long[] sensor2 = (long[]) values2[i];
         sensor2[row2] = i;
+        long[] sensor3 = (long[]) values3[i];
+        sensor3[row3] = i;
       }
       if (rowBatch1.batchSize == rowBatch1.getMaxBatchSize()) {
         session.insertMultipleDeviceBatch(rowBatchMap);
 
         rowBatch1.reset();
         rowBatch2.reset();
+        rowBatch3.reset();
       }
     }
 
@@ -225,6 +251,7 @@ public class SessionExample {
       session.insertMultipleDeviceBatch(rowBatchMap);
       rowBatch1.reset();
       rowBatch2.reset();
+      rowBatch3.reset();
     }
   }
 

@@ -281,7 +281,7 @@ public class TsFileResource {
   }
 
   public List<ChunkMetadata> getChunkMetadataList() {
-    return chunkMetadataList;
+    return new ArrayList<>(chunkMetadataList);
   }
 
   public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {

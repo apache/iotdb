@@ -159,7 +159,7 @@ Apache IoTDB（孵化中）（物联网数据库）是一个集成数据专为�
 
 <script>
 export default {
-  name: "Home",
+  name: "IoTDBZH",
   data() {
     return {
       msg: "Welcome to Home Page",
