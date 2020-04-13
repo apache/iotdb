@@ -18,11 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
 import java.lang.management.ManagementFactory;
-import java.net.InetAddress;
-import java.util.HashMap;
-import java.util.Map;
 import javax.management.InstanceAlreadyExistsException;
 import javax.management.InstanceNotFoundException;
 import javax.management.MBeanRegistrationException;
@@ -30,13 +26,7 @@ import javax.management.MBeanServer;
 import javax.management.MalformedObjectNameException;
 import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorServer;
-import javax.management.remote.JMXConnectorServerFactory;
-import javax.management.remote.JMXServiceURL;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,8 +34,6 @@ import org.slf4j.LoggerFactory;
 public class JMXService implements IService {
 
   private static final Logger logger = LoggerFactory.getLogger(JMXService.class);
-
-  private JMXConnectorServer jmxConnectorServer;
 
   private JMXService() {
   }
@@ -97,14 +85,13 @@ public class JMXService implements IService {
   public void start() throws StartupException {
     String jmxPort = System.getProperty(IoTDBConstant.IOTDB_JMX_PORT);
     if (jmxPort == null) {
-      logger.warn("JMX port is undefined", this.getID().getName());
-      return;
+      logger.warn("{} JMX port is undefined", this.getID().getName());
     }
   }
 
   @Override
   public void stop() {
-
+    // do nothing.
   }
 
   private static class JMXServerHolder {
