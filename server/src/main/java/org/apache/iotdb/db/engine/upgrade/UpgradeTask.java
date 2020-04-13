@@ -22,9 +22,9 @@ import java.io.IOException;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
+import org.apache.iotdb.db.tools.upgrade.UpgradeTool;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.tool.upgrade.UpgradeTool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,12 +44,12 @@ public class UpgradeTask implements Runnable {
     try {
       upgradeResource.getWriteQueryLock().readLock().lock();
       String tsfilePathBefore = upgradeResource.getFile().getAbsolutePath();
-      String tsfilePathAfter = UpgradeUtils.getUpgradeFileName(upgradeResource.getFile());
+      String tsfileDiractoryAfter = UpgradeUtils.getUpgradeFileName(upgradeResource.getFile());
 
       UpgradeLog.writeUpgradeLogFile(
           tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
       try {
-        UpgradeTool.upgradeOneTsfile(tsfilePathBefore, tsfilePathAfter);
+        UpgradeTool.upgradeOneTsfile(tsfilePathBefore, tsfileDiractoryAfter);
         UpgradeLog.writeUpgradeLogFile(
             tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
       } catch (IOException e) {

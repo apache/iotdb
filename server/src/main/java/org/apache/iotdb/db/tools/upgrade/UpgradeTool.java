@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.tool.upgrade;
+package org.apache.iotdb.db.tools.upgrade;
 
 import java.io.File;
 import java.io.IOException;
@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 public class UpgradeTool {
@@ -99,8 +100,9 @@ public class UpgradeTool {
    *
    * @param tsfileName old version tsfile's absolute path
    * @param updateFileName new version tsfile's absolute path
+   * @throws WriteProcessException 
    */
-  public static void upgradeOneTsfile(String tsfileName, String updateFileName) throws IOException {
+  public static void upgradeOneTsfile(String tsfileName, String updateFileName) throws IOException, WriteProcessException {
     TsfileUpgradeToolV0_9_0 updater = new TsfileUpgradeToolV0_9_0(tsfileName);
     updater.upgradeFile(updateFileName);
   }

@@ -16,38 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.tool.upgrade;
+package org.apache.iotdb.db.tools.upgrade;
 
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.compress.ICompressor.SnappyCompressor;
-import org.apache.iotdb.tsfile.compress.IUnCompressor.SnappyUnCompressor;
-import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
-import org.apache.iotdb.tsfile.exception.write.PageException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.compress.IUnCompressor;
+import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadata;
 import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.file.metadata.OldTsFileMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.TsFileWriter;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,7 +61,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -71,6 +76,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
   private int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   protected String file;
+  private Map<Long, TsFileWriter> partitionWriterMap;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -94,6 +100,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     this.file = file;
     final java.nio.file.Path path = Paths.get(file);
     tsFileInput = new LocalTsFileInput(path);
+    partitionWriterMap = new HashMap<>();
     try {
       if (loadMetadataSize) {
         loadMetadataSize();
@@ -206,6 +213,20 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, true);
   }
 
+  public ByteBuffer readPage(PageHeader header, CompressionType type)
+      throws IOException {
+    ByteBuffer buffer = readData(-1, header.getCompressedSize());
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
+    ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
+    if (type == CompressionType.UNCOMPRESSED) {
+      return buffer;
+    }// FIXME if the buffer is not array-implemented.
+    unCompressor.uncompress(buffer.array(), buffer.position(), buffer.remaining(),
+        uncompressedBuffer.array(),
+        0);
+    return uncompressedBuffer;
+  }
+
 
   public long position() throws IOException {
     return tsFileInput.position();
@@ -263,8 +284,9 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
 
   /**
    * upgrade file and return the boolean value whether upgrade task completes
+   * @throws WriteProcessException 
    */
-  public boolean upgradeFile(String updateFileName) throws IOException {
+  public boolean upgradeFile(String updateDirectoryName) throws IOException, WriteProcessException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
@@ -273,17 +295,14 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     } else {
       fileSize = checkFile.length();
     }
-    File upgradeFile = FSFactoryProducer.getFSFactory().getFile(updateFileName);
+    // TODO file parentFile
+    File upgradeFile = FSFactoryProducer.getFSFactory().getFile(updateDirectoryName);
     if (!upgradeFile.getParentFile().exists()) {
       upgradeFile.getParentFile().mkdirs();
     }
-    upgradeFile.createNewFile();
-    TsFileIOWriter tsFileIOWriter = new TsFileIOWriter(upgradeFile);
+    //upgradeFile.createNewFile();
 
     List<ChunkHeader> chunkHeaders = new ArrayList<>();
-    List<List<PageHeader>> pageHeadersList = new ArrayList<>();
-    List<List<ByteBuffer>> pagesList = new ArrayList<>();
-    Map<Path, MeasurementSchema> newSchema = new HashMap<>();
 
     String magic = readHeadMagic(true);
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
@@ -294,32 +313,46 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     if (fileSize == TSFileConfig.MAGIC_STRING.length()) {
       logger.error("the file only contains magic string, file path: {}", checkFile.getPath());
       return false;
-    } else if (readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
-      loadMetadataSize();
-      OldTsFileMetadata oldTsFileMetaData = readFileMetadata();
-    } else {
+    } else if (!readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
       logger.error("the file cannot upgrade, file path: {}", checkFile.getPath());
+      return false;
+    }
+    OldTsFileMetadata fileMetadata = readFileMetadata();
+    long patition = -1;
+
+    // check if all data in this TsFile in same time partition
+    boolean allDataInSamePartition = false;
+    for (OldTsDeviceMetadataIndex index : fileMetadata.getDeviceMap().values()) {
+      long startPartition = StorageEngine.getTimePartition(index.getStartTime());
+      long endPartition = StorageEngine.getTimePartition(index.getEndTime());
+      if (patition == -1) {
+        patition = startPartition;
+      }
+      if (patition != startPartition || patition != endPartition) {
+        allDataInSamePartition = true;
+        break;
+      }
+    }
+    // if all data in same partition
+    // do a quick rewrite without inserting points one by one
+    if (allDataInSamePartition) {
+      quickRewrite();
     }
 
-    ChunkMetadata currentChunkMetaData;
-    List<ChunkMetadata> chunkMetaDataList = null;
     long startOffsetOfChunkGroup = 0;
     boolean newChunkGroup = true;
     long versionOfChunkGroup = 0;
     List<ChunkGroupMetadata> newMetaData = new ArrayList<>();
-    List<Statistics<?>> chunkStatisticsList = new ArrayList<>();
-
-    boolean goon = true;
+    List<BatchData> datas = new ArrayList<>();
     byte marker;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
-      while (goon && (marker = this.readMarker()) != MetaMarker.SEPARATOR) {
+      while ((marker = this.readMarker()) != MetaMarker.SEPARATOR) {
         switch (marker) {
           case MetaMarker.CHUNK_HEADER:
             // this is the first chunk of a new ChunkGroup.
             if (newChunkGroup) {
               newChunkGroup = false;
-              chunkMetaDataList = new ArrayList<>();
               startOffsetOfChunkGroup = this.position() - 1;
             }
 
@@ -331,71 +364,30 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
                 header.getEncodingType(), 
                 header.getCompressionType());
             measurementSchemaList.add(measurementSchema);
-            List<PageHeader> pageHeaders = new ArrayList<>();
-            List<ByteBuffer> pages = new ArrayList<>();
-            TSDataType dataType = header.getDataType();
-            Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
-            chunkStatisticsList.add(chunkStatistics);
+            Decoder defaultTimeDecoder = Decoder.getDecoderByType(
+                TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+                TSDataType.INT64);
+            Decoder valueDecoder = Decoder
+                .getDecoderByType(header.getEncodingType(), header.getDataType());
             for (int j = 0; j < header.getNumOfPages(); j++) {
-              // a new Page
-              PageHeader pageHeader = this.readPageHeader(header.getDataType());
-              pageHeaders.add(pageHeader);
-              chunkStatistics.mergeStatistics(pageHeader.getStatistics());
-              pages.add(readData(-1, pageHeader.getCompressedSize()));
+              valueDecoder.reset();
+              PageHeader pageHeader = readPageHeader(header.getDataType());
+              ByteBuffer pageData = readPage(pageHeader, header.getCompressionType());
+              PageReader pageReader = new PageReader(pageData, header.getDataType(), valueDecoder,
+                  defaultTimeDecoder, null);
+              BatchData batchData = pageReader.getAllSatisfiedPageData();
+              datas.add(batchData);
             }
-            currentChunkMetaData = new ChunkMetadata(header.getMeasurementID(), dataType,
-                fileOffsetOfChunk, chunkStatistics);
-            chunkMetaDataList.add(currentChunkMetaData);
-            pageHeadersList.add(pageHeaders);
-            pagesList.add(pages);
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
-            if (newSchema != null) {
-              for (MeasurementSchema tsSchema : measurementSchemaList) {
-                newSchema.putIfAbsent(new Path(deviceID, tsSchema.getMeasurementId()), tsSchema);
-              }
-            }
-            newChunkGroup = true;
-            newMetaData.add(new ChunkGroupMetadata(deviceID, chunkMetaDataList));
-            
-            
-            
-            
-            // TODO: writer
-            
-            
-            
-            tsFileIOWriter.startChunkGroup(deviceID);
-            for (int i = 0; i < chunkHeaders.size(); i++) {
-              TSDataType tsDataType = chunkHeaders.get(i).getDataType();
-              TSEncoding encodingType = chunkHeaders.get(i).getEncodingType();
-              CompressionType compressionType = chunkHeaders.get(i).getCompressionType();
-              ChunkHeader chunkHeader = chunkHeaders.get(i);
-              List<PageHeader> pageHeaderList = pageHeadersList.get(i);
-              List<ByteBuffer> pageList = pagesList.get(i);
-              Path path = new Path(deviceID, chunkHeader.getMeasurementID());
 
-              if (newSchema.get(path) != null) {
-                ChunkWriterImpl chunkWriter = new ChunkWriterImpl(newSchema.get(path));
-                for (int j = 0; j < pageHeaderList.size(); j++) {
-                  if (encodingType.equals(TSEncoding.PLAIN)) {
-                    pageList.set(j, rewrite(pageList.get(j), tsDataType, compressionType,
-                        pageHeaderList.get(j)));
-                  }
-                  chunkWriter
-                      .writePageHeaderAndDataIntoBuff(pageList.get(j), pageHeaderList.get(j));
-                }
-                chunkWriter
-                    .writeAllPagesOfChunkToTsFile(tsFileIOWriter, chunkStatisticsList.get(i));
-              }
-            }
-            tsFileIOWriter.endChunkGroup();
-            chunkStatisticsList.clear();
-            chunkHeaders.clear();
-            pageHeadersList.clear();
-            pagesList.clear();
+            versionOfChunkGroup++;
+            rewrite(updateDirectoryName, deviceID, measurementSchemaList, datas);
+            
+            datas.clear();
+            measurementSchemaList.clear();
             newChunkGroup = true;
             break;
 
@@ -405,9 +397,11 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
             return false;
         }
       }
-      tsFileIOWriter.endFile();
+      for (TsFileWriter tsFileWriter : partitionWriterMap.values()) {
+        tsFileWriter.close();
+      }
       return true;
-    } catch (IOException | PageException e2) {
+    } catch (IOException e2) {
       logger.info("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
           + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
       return false;
@@ -415,88 +409,56 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       if (tsFileInput != null) {
         tsFileInput.close();
       }
-      if (tsFileIOWriter != null) {
-        tsFileIOWriter.close();
-      }
     }
   }
 
-  static ByteBuffer rewrite(ByteBuffer page, TSDataType tsDataType,
-      CompressionType compressionType, PageHeader pageHeader) {
-    switch (compressionType) {
-      case UNCOMPRESSED:
-        break;
-      case SNAPPY:
-        SnappyUnCompressor snappyUnCompressor = new SnappyUnCompressor();
-        page = ByteBuffer.wrap(snappyUnCompressor.uncompress(page.array()));
-        break;
-      default:
-        throw new CompressionTypeNotSupportedException(compressionType.toString());
-    }
-    ByteBuffer modifiedPage = ByteBuffer.allocate(page.capacity());
-
-    int timeBufferLength = ReadWriteForEncodingUtils.readUnsignedVarInt(page);
-    ByteBuffer timeBuffer = page.slice();
-    ByteBuffer valueBuffer = page.slice();
-
-    timeBuffer.limit(timeBufferLength);
-    valueBuffer.position(timeBufferLength);
-    valueBuffer.order(ByteOrder.LITTLE_ENDIAN);
-
-    ReadWriteForEncodingUtils.writeUnsignedVarInt(timeBufferLength, modifiedPage);
-    modifiedPage.put(timeBuffer);
-    modifiedPage.order(ByteOrder.BIG_ENDIAN);
-    switch (tsDataType) {
-      case BOOLEAN:
-        modifiedPage.put(valueBuffer);
-        break;
-      case INT32:
-        while (valueBuffer.remaining() > 0) {
-          modifiedPage.putInt(valueBuffer.getInt());
-        }
-        break;
-      case INT64:
-        while (valueBuffer.remaining() > 0) {
-          modifiedPage.putLong(valueBuffer.getLong());
-        }
-        break;
-      case FLOAT:
-        while (valueBuffer.remaining() > 0) {
-          modifiedPage.putFloat(valueBuffer.getFloat());
-        }
-        break;
-      case DOUBLE:
-        while (valueBuffer.remaining() > 0) {
-          modifiedPage.putDouble(valueBuffer.getDouble());
-        }
-        break;
-      case TEXT:
-        while (valueBuffer.remaining() > 0) {
-          int length = valueBuffer.getInt();
-          byte[] buf = new byte[length];
-          valueBuffer.get(buf, 0, buf.length);
-          modifiedPage.putInt(length);
-          modifiedPage.put(buf);
-        }
-        break;
-    }
-    switch (compressionType) {
-      case UNCOMPRESSED:
-        modifiedPage.flip();
-        break;
-      case SNAPPY:
-        pageHeader.setUncompressedSize(modifiedPage.array().length);
-        SnappyCompressor snappyCompressor = new SnappyCompressor();
+  void rewrite(String upgradeDir, String deviceId, List<MeasurementSchema> schemas, 
+      List<BatchData> datas) throws IOException, WriteProcessException {
+    for (int i = 0; i < schemas.size(); i++) {
+      MeasurementSchema schema = schemas.get(i);
+      BatchData batchData = datas.get(i);
+      while (batchData.hasCurrent()) {
+        long time = batchData.currentTime();
+        Object value = batchData.currentValue();
+        long partition = StorageEngine.getTimePartition(time);
+        TSRecord tsRecord = new TSRecord(time, deviceId);
+        DataPoint dataPoint;
+        switch (schema.getType()) {
+          case INT32:
+            dataPoint = new IntDataPoint(schema.getMeasurementId(), (int) value);
+            break;
+          case INT64:
+            dataPoint = new LongDataPoint(schema.getMeasurementId(), (long) value);
+            break;
+          case FLOAT:
+            dataPoint = new FloatDataPoint(schema.getMeasurementId(), (float) value);
+            break;
+          case DOUBLE:
+            dataPoint = new DoubleDataPoint(schema.getMeasurementId(), (double) value);
+            break;
+          case BOOLEAN:
+            dataPoint = new BooleanDataPoint(schema.getMeasurementId(), (boolean) value);
+            break;
+          case TEXT:
+            dataPoint = new StringDataPoint(schema.getMeasurementId(), (Binary) value);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String.format("Data type %s is not supported.", schema.getType()));
+          }
+        tsRecord.addTuple(dataPoint);
+        TsFileWriter tsFileWriter = partitionWriterMap
+            .getOrDefault(partition, new TsFileWriter(new File(upgradeDir 
+                + File.separator + partition + File.separator+ file)));
         try {
-          modifiedPage = ByteBuffer.wrap(snappyCompressor.compress(modifiedPage.array()));
-          pageHeader.setCompressedSize(modifiedPage.array().length);
-        } catch (IOException e) {
-          logger.error("failed to compress page as snappy", e);
+          tsFileWriter.registerTimeseries(new Path(deviceId, schema.getMeasurementId()), schema);
         }
-        break;
-      default:
-        throw new CompressionTypeNotSupportedException(compressionType.toString());
+        catch (WriteProcessException e) {
+          // do nothing
+        }
+        tsFileWriter.write(tsRecord);
+        batchData.next();
+      }
     }
-    return modifiedPage;
   }
 }

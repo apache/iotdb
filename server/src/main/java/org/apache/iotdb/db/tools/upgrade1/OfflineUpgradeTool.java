@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.tools.upgrade;
+package org.apache.iotdb.db.tools.upgrade1;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -26,8 +26,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+
+import org.apache.iotdb.db.tools.upgrade.UpgradeTool;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.tool.upgrade.UpgradeTool;
 
 public class OfflineUpgradeTool {
 
