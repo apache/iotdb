@@ -493,4 +493,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     }
     return dataMemberReports;
   }
+
+  public Map<Node, DataGroupMember> getHeaderGroupMap() {
+    return headerGroupMap;
+  }
 }

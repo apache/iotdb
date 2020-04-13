@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -87,14 +88,13 @@ public class PartitionUtils {
   }
 
   /**
-   * GlobalPlan will be executed on all nodes.
+   * GlobalMetaPlan will be executed on all meta group nodes.
    * @param plan
    * @return
    */
-  public static boolean isGlobalPlan(PhysicalPlan plan) {
+  public static boolean isGlobalMetaPlan(PhysicalPlan plan) {
     // TODO-Cluster#348: support more plans
     return plan instanceof SetStorageGroupPlan
-          || plan instanceof DeletePlan // because deletePlan has an infinite time range.
           || plan instanceof SetTTLPlan
           || plan instanceof ShowTTLPlan
           || plan instanceof LoadConfigurationPlan
@@ -102,7 +102,18 @@ public class PartitionUtils {
           //delete timeseries plan is global because all nodes may have its data
           || plan instanceof AuthorPlan
           || plan instanceof DeleteStorageGroupPlan
+          // DataAuthPlan is global because all nodes must have all user info
+          || plan instanceof DataAuthPlan
     ;
+  }
+
+  /**
+   * GlobalDataPlan will be executed on all data group nodes.
+   * @param plan the plan to check
+   * @return is globalDataPlan or not
+   */
+  public static boolean isGlobalDataPlan(PhysicalPlan plan){
+    return plan instanceof DeletePlan; // because deletePlan has an infinite time range.
   }
 
   public static int calculateStorageGroupSlotByTime(String storageGroupName, long timestamp,
