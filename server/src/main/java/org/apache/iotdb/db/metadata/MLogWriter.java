@@ -43,7 +43,7 @@ public class MLogWriter {
       }
     }
 
-    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.pathSeparator + logFileName);
+    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
 
     FileWriter fileWriter;
     fileWriter = new FileWriter(logFile, true);
@@ -95,7 +95,7 @@ public class MLogWriter {
   }
 
   public void deleteStorageGroup(String storageGroup) throws IOException {
-    writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + storageGroup);
+    writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + "," + storageGroup);
     writer.newLine();
     writer.flush();
   }

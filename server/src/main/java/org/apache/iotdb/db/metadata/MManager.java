@@ -454,7 +454,7 @@ public class MManager {
 
         // if success
         if (writeToLog) {
-          logWriter.deleteTimeseries(storageGroup);
+          logWriter.deleteStorageGroup(storageGroup);
         }
         mNodeCache.clear();
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
