@@ -64,7 +64,7 @@ public class GroupByFillDataSet extends QueryDataSet {
       Path path = paths.get(i);
       TSDataType dataType = dataTypes.get(i);
       IFill fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(), -1L);
-      fill.constructReaders(path, groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
+      fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(), groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {

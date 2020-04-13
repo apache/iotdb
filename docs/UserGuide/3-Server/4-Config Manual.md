@@ -47,25 +47,6 @@ The environment configuration file is mainly used to configure the Java environm
 
 The detail of each variables are as follows:
 
-* LOCAL\_JMX
-
-|Name|LOCAL\_JMX|
-|:---:|:---|
-|Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring|
-|Type|Enum String: "yes", "no"|
-|Default|yes|
-|Effective|After restart system|
-
-
-* JMX\_PORT
-
-|Name|JMX\_PORT|
-|:---:|:---|
-|Description|JMX listening port. Please confirm that the port is not a system reserved port and is not occupied|
-|Type|Short Int: [0,65535]|
-|Default|31999|
-|Effective|After restart system|
-
 * MAX\_HEAP\_SIZE
 
 |Name|MAX\_HEAP\_SIZE|
@@ -83,6 +64,42 @@ The detail of each variables are as follows:
 |Type|String|
 |Default| On Linux or MacOS, the default is min{cores * 100M, one quarter of MAX\_HEAP\_SIZE}. On Windows, the default value for 32-bit systems is 512M, and the default for 64-bit systems is 2G.|
 |Effective|After restart system|
+
+* JMX\_LOCAL
+
+|Name|JMX\_LOCAL|
+|:---:|:---|
+|Description|JMX monitoring mode, configured as yes to allow only local monitoring, no to allow remote monitoring|
+|Type|Enum String: "true", "false"|
+|Default|true|
+|Effective|After restart system|
+
+
+* JMX\_PORT
+
+|Name|JMX\_PORT|
+|:---:|:---|
+|Description|JMX listening port. Please confirm that the port is not a system reserved port and is not occupied|
+|Type|Short Int: [0,65535]|
+|Default|31999|
+|Effective|After restart system|
+
+* JMX\_IP
+
+|Name|JMX\_IP|
+|:---:|:---|
+|Description|JMX listening address. Only take effect if JMX\_LOCAL=false. 0.0.0.0 is never allowed|
+|Type|String|
+|Default|127.0.0.1|
+|Effective|After restart system|
+
+## JMX Authorization
+
+We **STRONGLY RECOMMENDED** you CHANGE the PASSWORD for the JMX remote connection.
+
+The user and passwords are in ${IOTDB\_CONF}/conf/jmx.password.
+
+The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ## IoTDB System Configuration File
 

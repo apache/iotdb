@@ -63,5 +63,3 @@ Find all releases in the [Archive incubating repository](https://archive.apache.
 # Verifying Hashes and Signatures
 
 Along with our releases, we also provide sha512 hashes in *.sha512 files and cryptographic signatures in *.asc files. The Apache Software Foundation has an extensive tutorial to [verify hashes and signatures ](http://www.apache.org/info/verification.html)which you can follow by using any of these release-signing [KEYS ](https://downloads.apache.org/incubator/iotdb/KEYS).
-
-<FooterFixed/>
