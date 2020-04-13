@@ -19,80 +19,12 @@
 
 package org.apache.iotdb.cluster.common;
 
-import java.util.List;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.LogManager;
-import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.CommittedEntryManager;
+import org.apache.iotdb.cluster.log.RaftLogManager;
+import org.apache.iotdb.cluster.log.StableEntryManager;
 
-public class TestLogManager implements LogManager {
-
-  private long lastLogIndex;
-  private long lastLogTerm;
-  private long commitLogIndex;
-
-  @Override
-  public long getLastLogIndex() {
-    return lastLogIndex;
-  }
-
-  @Override
-  public long getLastLogTerm() {
-    return lastLogTerm;
-  }
-
-  @Override
-  public long getCommitLogIndex() {
-    return commitLogIndex;
-  }
-
-  @Override
-  public boolean appendLog(Log log) {
-    return true;
-  }
-
-  @Override
-  public void commitLog(long maxLogIndex) {
-    commitLogIndex = Math.max(commitLogIndex, maxLogIndex);
-  }
-
-  @Override
-  public List<Log> getLogs(long startIndex, long endIndex) {
-    return null;
-  }
-
-  @Override
-  public boolean logValid(long logIndex) {
-    return false;
-  }
-
-  @Override
-  public Snapshot getSnapshot() {
-    return null;
-  }
-
-  @Override
-  public void takeSnapshot() {
-
-  }
-
-  @Override
-  public LogApplier getApplier() {
-    return null;
-  }
-
-  @Override
-  public void setLastLogId(long lastLogId) {
-    lastLogIndex = lastLogId;
-  }
-
-  @Override
-  public void setLastLogTerm(long lastLogTerm) {
-    this.lastLogTerm = lastLogTerm;
-  }
-
-  @Override
-  public void setCommitIndex(long commitLogIndex) {
-    this.commitLogIndex = commitLogIndex;
+public class TestLogManager extends RaftLogManager {
+  public TestLogManager() {
+    super(new CommittedEntryManager(), new StableEntryManager(), new TestLogApplier());
   }
 }

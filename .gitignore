@@ -84,4 +84,5 @@ venv/
 partitions.tmp
 partitions
 node_identifier
+cluster/raft
 

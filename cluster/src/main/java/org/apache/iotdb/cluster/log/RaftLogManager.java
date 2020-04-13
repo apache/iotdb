@@ -28,6 +28,8 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,11 +38,11 @@ public class RaftLogManager {
     private static final Logger logger = LoggerFactory.getLogger(RaftLogManager.class);
 
     // manage uncommitted entries
-    UnCommittedEntryManager unCommittedEntryManager;
+    public UnCommittedEntryManager unCommittedEntryManager;
     // manage committed entries in memory as a cache
-    CommittedEntryManager committedEntryManager;
+    public CommittedEntryManager committedEntryManager;
     // manage committed entries in disk for safety
-    StableEntryManager stableEntryManager;
+    public StableEntryManager stableEntryManager;
 
     private long committed;
     private long applied;
@@ -57,13 +59,23 @@ public class RaftLogManager {
         this.applied = last;
     }
 
+    // placeholder method
     public void waitRemoteSnapshots() {
     }
 
+    // placeholder method
     public Snapshot getSnapshot() {
         return null;
     }
 
+    // placeholder method
+    public void takeSnapshot() throws IOException {
+
+    }
+
+    public LogApplier getApplier(){
+        return logApplier;
+    }
     /**
      * Return the raftNode's commitIndex.
      *
@@ -289,14 +301,16 @@ public class RaftLogManager {
      * @param commitIndex request commitIndex
      * @return the newly commitIndex
      */
-    protected long commitTo(long commitIndex) {
+    public long commitTo(long commitIndex) {
         if (committed < commitIndex) {
             List<Log> entries = unCommittedEntryManager.getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), commitIndex + 1);
-            stableEntryManager.append(entries);
-            applyEntries(entries);
-            committedEntryManager.append(entries);
-            unCommittedEntryManager.stableTo(commitIndex, entries.get(entries.size() - 1).getCurrLogTerm());
-            committed = commitIndex;
+            if(entries.size() != 0) {
+                stableEntryManager.append(entries);
+                applyEntries(entries);
+                committedEntryManager.append(entries);
+                unCommittedEntryManager.stableTo(entries.get(entries.size() - 1).getCurrLogIndex(), entries.get(entries.size() - 1).getCurrLogTerm());
+                committed = commitIndex;
+            }
         }
         return committed;
     }

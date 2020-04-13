@@ -19,44 +19,19 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.LogManager;
 import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.RaftLogManager;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.catchup.LogCatchUpTask;
 import org.apache.iotdb.cluster.log.catchup.SnapshotCatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.rpc.thrift.*;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -73,6 +48,17 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * RaftMember process the common raft logic like leader election, log appending, catch-up and so
@@ -100,7 +86,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   volatile long lastHeartbeatReceivedTime;
 
   // the raft logs are all stored and maintained in the log manager
-  LogManager logManager;
+  RaftLogManager logManager;
 
   // the single thread pool that runs the heartbeat thread
   ExecutorService heartBeatService;
@@ -152,7 +138,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     logger.info("{} started", name);
   }
 
-  public LogManager getLogManager() {
+  public RaftLogManager getLogManager() {
     return logManager;
   }
 
@@ -213,7 +199,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // safety, otherwise it may come from an invalid leader and is not committed
         if (logManager.getLastLogTerm() == leaderTerm) {
           synchronized (syncLock) {
-            logManager.commitLog(request.getCommitLogIndex());
+            logManager.commitTo(request.getCommitLogIndex());
             syncLock.notifyAll();
           }
         }
@@ -303,8 +289,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   private long appendEntry(Log log) {
     long resp;
     synchronized (logManager) {
-      boolean success = logManager.appendLog(log);
-      if (success) {
+      long success = logManager.append(new ArrayList<Log>(){{add(log);}});
+      if (success != -1) {
         if (logger.isDebugEnabled()) {
           logger.debug("{} append a new log {}", name, log);
         }
@@ -665,17 +651,22 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     AsyncClient client = connectNode(follower);
     if (client != null) {
-      List<Log> logs;
+      List<Log> logs = new ArrayList<>();
       boolean allLogsValid;
       Snapshot snapshot = null;
       synchronized (logManager) {
         // check if the very first log has been snapshot
         allLogsValid = logManager.logValid(followerLastLogIndex);
-        logs = logManager.getLogs(followerLastLogIndex, Long.MAX_VALUE);
         if (!allLogsValid) {
           // if the first log has been snapshot, the snapshot should also be sent to the
           // follower, otherwise some data will be missing
           snapshot = logManager.getSnapshot();
+        }else{
+          try {
+            logs = logManager.getEntries(followerLastLogIndex, Long.MAX_VALUE);
+          }catch (Exception e){
+              logger.error("Unexpected error: {}" ,e.getMessage());
+          }
         }
       }
 
@@ -788,7 +779,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       log.setPlan(plan);
-      logManager.appendLog(log);
+      logManager.append(new ArrayList<Log>(){{add(log);}});
     }
 
     if (appendLogInGroup(log)) {
@@ -814,7 +805,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       switch (result) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
-          logManager.commitLog(log.getCurrLogIndex());
+          logManager.commitTo(log.getCurrLogIndex());
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
@@ -991,7 +982,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   @TestOnly
-  public void setLogManager(LogManager logManager) {
+  public void setLogManager(RaftLogManager logManager) {
     this.logManager = logManager;
   }
 }

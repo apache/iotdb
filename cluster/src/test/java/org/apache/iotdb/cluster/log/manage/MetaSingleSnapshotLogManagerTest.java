@@ -36,8 +36,7 @@ import static org.junit.Assert.assertEquals;
 
 public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
 
-  private MetaSingleSnapshotLogManager logManager =
-      new MetaSingleSnapshotLogManager(new TestLogApplier());
+  private MetaSingleSnapshotLogManager logManager;
 
   @Override
   @Before
@@ -50,10 +49,8 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
   @Test
   public void testTakeSnapshot() {
     List<Log> testLogs = TestUtils.prepareTestLogs(10);
-    for (Log testLog : testLogs) {
-      logManager.appendLog(testLog);
-    }
-    logManager.commitLog(4);
+    logManager.append(testLogs);
+    logManager.commitTo(4);
 
     logManager.takeSnapshot();
     MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();

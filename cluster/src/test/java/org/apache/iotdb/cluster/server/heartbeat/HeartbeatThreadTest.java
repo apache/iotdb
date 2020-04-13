@@ -19,17 +19,12 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-
-import java.util.HashSet;
-import java.util.Set;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.RaftLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -43,6 +38,12 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.Assert.*;
 
 public class HeartbeatThreadTest {
 
@@ -58,7 +59,7 @@ public class HeartbeatThreadTest {
   RaftMember getMember() {
     return new TestMetaGroupMember() {
       @Override
-      public LogManager getLogManager() {
+      public RaftLogManager getLogManager() {
         return HeartbeatThreadTest.this.logManager;
       }
 
@@ -73,11 +74,11 @@ public class HeartbeatThreadTest {
     return new TestClient(node.nodeIdentifier) {
       @Override
       public void sendHeartbeat(HeartBeatRequest request,
-          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+                                AsyncMethodCallback<HeartBeatResponse> resultHandler) {
         new Thread(() -> {
           if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), request.getLeader());
-            assertEquals(7, request.getCommitLogIndex());
+            assertEquals(6, request.getCommitLogIndex());
             assertEquals(10, request.getTerm());
             assertNull(request.getHeader());
             synchronized (receivedNodes) {
@@ -99,12 +100,12 @@ public class HeartbeatThreadTest {
 
       @Override
       public void startElection(ElectionRequest request,
-          AsyncMethodCallback<Long> resultHandler) {
+                                AsyncMethodCallback<Long> resultHandler) {
         new Thread(() -> {
           assertEquals(TestUtils.getNode(0), request.getElector());
           assertEquals(11, request.getTerm());
-          assertEquals(9, request.getLastLogIndex());
-          assertEquals(8, request.getLastLogTerm());
+          assertEquals(6, request.getLastLogIndex());
+          assertEquals(6, request.getLastLogTerm());
           if (respondToElection) {
             resultHandler.onComplete(Response.RESPONSE_AGREE);
           }
@@ -125,9 +126,9 @@ public class HeartbeatThreadTest {
     HeartbeatThread heartBeatThread = getHeartbeatThread(member);
     testThread = new Thread(heartBeatThread);
     member.getTerm().set(10);
-    logManager.setLastLogId(9);
-    logManager.setLastLogTerm(8);
-    logManager.setCommitIndex(7);
+    List<Log> logs = TestUtils.prepareTestLogs(7);
+    logManager.append(logs);
+    logManager.commitTo(6);
 
     respondToElection = false;
     testHeartbeat = false;

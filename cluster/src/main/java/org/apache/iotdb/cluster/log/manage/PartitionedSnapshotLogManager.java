@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.*;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -40,7 +39,7 @@ import java.util.Map.Entry;
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to
  * a sub-snapshot according to its slot and stores timeseries schemas of each slot.
  */
-public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends MemoryLogManager {
+public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
@@ -57,7 +56,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode, SnapshotFactory<T> factory) {
-    super(logApplier);
+    super(new CommittedEntryManager(), new StableEntryManager(), logApplier);
     this.partitionTable = partitionTable;
     this.header = header;
     this.factory = factory;
@@ -87,10 +86,10 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
       int slot = PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, 0,
-          partitionTable.getTotalSlotNumbers());
+              partitionTable.getTotalSlotNumbers());
 
       Collection<MeasurementSchema> schemas = slotTimeseries.computeIfAbsent(slot,
-          s -> new HashSet<>());
+              s -> new HashSet<>());
       MManager.getInstance().collectSeries(sgNode, schemas);
       logger.debug("{} timeseries are snapshot in slot {}", schemas.size(), slot);
     }

@@ -87,9 +87,9 @@ public abstract class Log {
     }
     Log log = (Log) o;
     return currLogIndex == log.currLogIndex &&
-        currLogTerm == log.currLogTerm &&
-        previousLogIndex == log.previousLogIndex &&
-        previousLogTerm == log.previousLogTerm;
+            currLogTerm == log.currLogTerm &&
+            previousLogIndex == log.previousLogIndex &&
+            previousLogTerm == log.previousLogTerm;
   }
 
   @Override

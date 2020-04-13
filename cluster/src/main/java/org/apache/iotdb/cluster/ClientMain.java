@@ -19,21 +19,11 @@
 
 package org.apache.iotdb.cluster;
 
-import java.util.Collections;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client.Factory;
-import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -46,12 +36,14 @@ import org.apache.thrift.transport.TTransport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+
 public class ClientMain {
-  
+
   private static final Logger logger = LoggerFactory.getLogger(ClientMain.class);
 
   public static void main(String[] args)
-      throws TException, InterruptedException, StatementExecutionException, IoTDBConnectionException {
+          throws TException, StatementExecutionException, IoTDBConnectionException {
     String ip = "127.0.0.1";
     int port = 55560;
     TSIService.Client.Factory factory = new Factory();
@@ -71,13 +63,13 @@ public class ClientMain {
 
     testQuery(client, sessionId);
 
-    client.closeSession(new TSCloseSessionReq(openResp.getSessionId()));
+    client.closeSession(new TSCloseSessionReq(sessionId));
   }
 
   private static void testQuery(Client client, long sessionId)
-      throws TException, StatementExecutionException, IoTDBConnectionException {
+          throws TException, StatementExecutionException, IoTDBConnectionException {
     long statementId = client.requestStatementId(sessionId);
-    executeQuery(client, sessionId,"SELECT * FROM root", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root", statementId);
     executeQuery(client, sessionId, "SELECT * FROM root WHERE time <= 691200000", statementId);
     executeQuery(client, sessionId, "SELECT * FROM root WHERE time >= 391200000 and time <= "
             + "691200000", statementId);
@@ -92,18 +84,18 @@ public class ClientMain {
     executeQuery(client, sessionId, "SELECT sum(s1) FROM root.*.*", statementId);
     executeQuery(client, sessionId, "SELECT max_value(s1) FROM root.*.*", statementId);
     executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.* where time <= 691200000",
-        statementId);
+            statementId);
     executeQuery(client, sessionId, "SELECT count(s1) FROM root.*.* where s1 <= 0.7", statementId);
-    executeQuery(client, sessionId,"SELECT * FROM root GROUP BY DEVICE", statementId);
+    executeQuery(client, sessionId, "SELECT * FROM root GROUP BY DEVICE", statementId);
 
     executeQuery(client, sessionId, "SELECT s1 FROM root.beijing.d1 WHERE time = 86400000 FILL "
-        + "(DOUBLE[PREVIOUS,1d])", statementId);
+            + "(DOUBLE[PREVIOUS,1d])", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.shanghai.d1 WHERE time = 86400000 FILL "
-        + "(DOUBLE[LINEAR,1d,1d])", statementId);
+            + "(DOUBLE[LINEAR,1d,1d])", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.guangzhou.d1 WHERE time = 126400000 FILL "
-        + "(DOUBLE[PREVIOUS,1d])", statementId);
+            + "(DOUBLE[PREVIOUS,1d])", statementId);
     executeQuery(client, sessionId, "SELECT s1 FROM root.shenzhen.d1 WHERE time = 126400000 FILL "
-        + "(DOUBLE[LINEAR,1d,1d])", statementId);
+            + "(DOUBLE[LINEAR,1d,1d])", statementId);
 
     executeQuery(client, sessionId, "SELECT COUNT(*) FROM root.*.* GROUP BY ([0, 864000000), 3d, "
             + "3d)", statementId);
@@ -116,15 +108,15 @@ public class ClientMain {
   }
 
   private static void executeQuery(Client client, long sessionId, String query, long statementId)
-      throws TException, StatementExecutionException, IoTDBConnectionException {
+          throws TException, StatementExecutionException, IoTDBConnectionException {
     logger.info(query);
     TSExecuteStatementResp resp = client
-        .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId));
+            .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId));
     long queryId = resp.getQueryId();
     logger.info(resp.columns.toString());
 
     SessionDataSet dataSet = new SessionDataSet(query, resp.getColumns(),
-        resp.getDataTypeList(), queryId, client, sessionId, resp.queryDataSet);
+            resp.getDataTypeList(), queryId, client, sessionId, resp.queryDataSet);
 
     while (dataSet.hasNext()) {
       logger.info(dataSet.next().toString());
@@ -134,7 +126,6 @@ public class ClientMain {
     tsCloseOperationReq.setQueryId(queryId);
     client.closeOperation(tsCloseOperationReq);
   }
-
 
 
   private static void testInsertion(Client client, long sessionId) throws TException {
@@ -160,7 +151,7 @@ public class ClientMain {
     TSInsertReq insertReq = new TSInsertReq();
     insertReq.setMeasurements(Collections.singletonList("s1"));
     insertReq.setSessionId(sessionId);
-    for (int i = 0; i < 10; i ++) {
+    for (int i = 0; i < 10; i++) {
       insertReq.setTimestamp(i * 24 * 3600 * 1000L);
       insertReq.setValues(Collections.singletonList(Double.toString(i * 0.1)));
       insertReq.setDeviceId("root.beijing.d1");
@@ -177,5 +168,4 @@ public class ClientMain {
       logger.info(client.insert(insertReq).toString());
     }
   }
-
 }

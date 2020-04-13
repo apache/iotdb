@@ -19,21 +19,19 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static junit.framework.TestCase.assertEquals;
-import static junit.framework.TestCase.assertFalse;
-import static junit.framework.TestCase.assertTrue;
-
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.junit.Before;
 import org.junit.Test;
+
+import static junit.framework.TestCase.*;
 
 public class HeartbeatHandlerTest {
 
@@ -52,7 +50,7 @@ public class HeartbeatHandlerTest {
       }
 
       @Override
-      public LogManager getLogManager() {
+      public RaftLogManager getLogManager() {
         return new TestLogManager();
       }
     };
@@ -63,7 +61,7 @@ public class HeartbeatHandlerTest {
     HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     HeartBeatResponse response = new HeartBeatResponse();
     response.setTerm(Response.RESPONSE_AGREE);
-    response.setLastLogIndex(-1);
+    response.setLastLogIndex(-2);
     catchUpFlag = false;
     synchronized (metaGroupMember) {
       new Thread(() -> handler.onComplete(response)).start();

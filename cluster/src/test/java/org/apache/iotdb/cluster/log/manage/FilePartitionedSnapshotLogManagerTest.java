@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
-
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.cluster.common.IoTDBTest;
@@ -41,17 +40,16 @@ import org.junit.Test;
 public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
 
   @Test
-  public void testSnapshot() throws QueryProcessException, StorageGroupNotSetException, IOException {
+  public void testSnapshot()
+      throws QueryProcessException, StorageGroupNotSetException, IOException {
     PartitionTable partitionTable = TestUtils.getPartitionTable(3);
     LogApplier applier = new TestLogApplier();
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
         partitionTable, TestUtils.getNode(0), TestUtils.getNode(0));
 
     List<Log> logs = TestUtils.prepareTestLogs(10);
-    for (Log log : logs) {
-      manager.appendLog(log);
-    }
-    manager.commitLog(10);
+    manager.append(logs);
+    manager.commitTo(10);
 
     // create files for sgs
     for (int i = 1; i < 4; i++) {

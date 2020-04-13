@@ -25,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class UnCommittedEntryManager {
@@ -167,7 +168,7 @@ public class UnCommittedEntryManager {
             // don't throw a exception to support
             // getEntries(low, Integer.MAX_VALUE) if low is larger than lastIndex.
             logger.info("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}] , return empty ArrayList", low, high, offset, upper);
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
         if (low < offset) {
             logger.debug("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}]", low, high, offset, upper);
