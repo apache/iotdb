@@ -57,7 +57,6 @@ public class ForceAppendTsFileWriterTest {
     writer.close();
     ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(file);
     assertEquals(firstMetadataPosition, fwriter.getTruncatePosition());
-    assertTrue(file.delete());
 
   }
 
