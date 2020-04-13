@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.utils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -98,6 +99,16 @@ public class SerializeUtils {
     node.setMetaPort(buffer.getInt());
     node.setNodeIdentifier(buffer.getInt());
     node.setDataPort(buffer.getInt());
+  }
+
+  public static void deserialize(Node node, DataInputStream stream) throws IOException {
+    int ipLength = stream.readInt();
+    byte[] ipBytes = new byte[ipLength];
+    stream.read(ipBytes);
+    node.setIp(new String(ipBytes));
+    node.setMetaPort(stream.readInt());
+    node.setNodeIdentifier(stream.readInt());
+    node.setDataPort(stream.readInt());
   }
 
   public static void serializeBatchData(BatchData batchData, DataOutputStream outputStream) {
