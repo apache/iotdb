@@ -1,0 +1,6 @@
+{
+  "type" : "query",
+  "targets" : [
+    "root.ln.wf01.wt01"
+  ]
+}

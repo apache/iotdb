@@ -73,7 +73,7 @@ public class RestTest {
 
   @Test
   public void testSQL() throws InterruptedException {
-    TimeUnit.SECONDS.sleep(10);
+    TimeUnit.SECONDS.sleep(5);
     // set storage group
     String file1 = RestTest.class.getClassLoader().getResource("setStorageGroup.json").getFile();
     String json1 = readToString(file1);
@@ -131,6 +131,35 @@ public class RestTest {
       Assert.fail();
     }
   }
+
+  @Test
+  public void testWrongType() throws InterruptedException {
+    TimeUnit.SECONDS.sleep(5);
+    String file = RestTest.class.getClassLoader().getResource("setStorageGroupTypeError.json").getFile();
+    String json = readToString(file);
+    String userAndPassword = "root:root";
+    String encodedUserPassword = new String(Base64.getEncoder().encode(userAndPassword.getBytes()));
+    Response response = client.target(SET_STORAGE_GROUP_URI)
+        .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
+        .post(Entity.entity(JSONObject.parse(json), MediaType.APPLICATION_JSON));
+    String result = response.readEntity(String.class);
+    Assert.assertEquals("Type is wrong", result);
+  }
+
+  @Test
+  public void testWrongSQL() throws InterruptedException {
+    TimeUnit.SECONDS.sleep(5);
+    String file = RestTest.class.getClassLoader().getResource("setStorageGroupTypeError.json").getFile();
+    String json = readToString(file);
+    String userAndPassword = "root:root";
+    String encodedUserPassword = new String(Base64.getEncoder().encode(userAndPassword.getBytes()));
+    Response response = client.target(SET_STORAGE_GROUP_URI)
+        .request(MediaType.APPLICATION_JSON).header("Authorization", "Basic " + encodedUserPassword)
+        .post(Entity.entity(JSONObject.parse(json), MediaType.APPLICATION_JSON));
+    String result = response.readEntity(String.class);
+    Assert.assertEquals("Type is wrong", result);
+  }
+
 
   private static String readToString(String fileName) {
     String encoding = "UTF-8";

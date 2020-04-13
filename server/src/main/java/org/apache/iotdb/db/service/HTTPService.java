@@ -54,7 +54,7 @@ public class HTTPService implements HTTPServiceMBean, IService {
   }
 
   @Override
-  public int getRestPort() {
+  public int getHTTPPort() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return config.getRestPort();
   }
@@ -88,11 +88,11 @@ public class HTTPService implements HTTPServiceMBean, IService {
     }
     logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     executorService = Executors.newSingleThreadExecutor();
-    int port = getRestPort();
+    int port = getHTTPPort();
     server = RestUtil.getJettyServer(RestUtil.getRestContextHandler(), port);
     server.setStopTimeout(10000);
     try {
-      executorService.execute(new MetricsServiceThread(server));
+      executorService.execute(new HTTPServiceThread(server));
       logger.info("{}: start {} successfully, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
@@ -144,7 +144,7 @@ public class HTTPService implements HTTPServiceMBean, IService {
   }
 
   private void checkAndWaitPortIsClosed() {
-    SocketAddress socketAddress = new InetSocketAddress("localhost", getRestPort());
+    SocketAddress socketAddress = new InetSocketAddress("localhost", getHTTPPort());
     @SuppressWarnings("squid:S2095")
     Socket socket = new Socket();
     try {
@@ -155,7 +155,7 @@ public class HTTPService implements HTTPServiceMBean, IService {
       try {
         socket.close();
       } catch (IOException e) {
-        logger.error("Port {} can not be closed.", getRestPort());
+        logger.error("Port {} can not be closed.", getHTTPPort());
       }
     }
   }
@@ -167,18 +167,18 @@ public class HTTPService implements HTTPServiceMBean, IService {
     private HTTPServiceHolder() {}
   }
 
-  private class MetricsServiceThread extends WrappedRunnable {
+  private class HTTPServiceThread extends WrappedRunnable {
 
     private Server server;
 
-    MetricsServiceThread(Server server) {
+    HTTPServiceThread(Server server) {
       this.server = server;
     }
 
     @Override
     public void runMayThrow() {
       try {
-        Thread.currentThread().setName(ThreadName.METRICS_SERVICE.getName());
+        Thread.currentThread().setName(ThreadName.HTTP_SERVICE.getName());
         server.start();
         server.join();
       } catch (@SuppressWarnings("squid:S2142") InterruptedException e1) {
