@@ -69,7 +69,7 @@ public class PhysicalPlanTest {
   private Planner processor = new Planner();
 
   @Before
-  public void before() throws QueryProcessException, MetadataException {
+  public void before() throws MetadataException {
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup("root.vehicle");
     MManager.getInstance().createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
@@ -102,6 +102,15 @@ public class PhysicalPlanTest {
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+  }
+
+  @Test
+  public void testtestMetadata3() throws QueryProcessException {
+    String metadata = "create timeseries root.vehicle.d1.s2(温度) with datatype=int32,encoding=rle, compression=SNAPPY, attributes(attr1=v1, attr2=v2), tags(tag1=v1, tag2=v2)";
+    System.out.println(metadata.length());
+    Planner processor = new Planner();
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
+    System.out.println(plan.toString());
   }
 
   @Test

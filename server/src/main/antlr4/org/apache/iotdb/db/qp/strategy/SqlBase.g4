@@ -24,7 +24,7 @@ singleStatement
     ;
 
 statement
-    : CREATE TIMESERIES fullPath LR_BRACKET ID RR_BRACKET WITH attributeClauses #createTimeseries
+    : CREATE TIMESERIES fullPath alias? attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
     | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
@@ -116,6 +116,10 @@ lastClause
     : LAST suffixPath (COMMA suffixPath)*
     ;
 
+alias
+    : LR_BRACKET ID RR_BRACKET WITH
+    ;
+
 attributeClauses
     : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
@@ -128,7 +132,7 @@ attributeClause
     ;
 
 tagClause
-    : (TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : (COMMA TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
     ;
 
 setClause
@@ -165,7 +169,7 @@ specialClause
     : specialLimit
     | groupByClause specialLimit?
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
-    | alignByDeviceClauseOrDisableAlign?
+    | alignByDeviceClauseOrDisableAlign
     ;
 
 specialLimit
