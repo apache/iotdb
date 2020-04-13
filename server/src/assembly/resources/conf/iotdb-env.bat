@@ -18,14 +18,33 @@
 @REM
 
 @echo off
-set LOCAL_JMX=no
-set JMX_PORT=31999
 
-if "%LOCAL_JMX%" == "yes" (
-		set IOTDB_JMX_OPTS="-Diotdb.jmx.local.port=%JMX_PORT%" "-Dcom.sun.management.jmxremote.authenticate=false" "-Dcom.sun.management.jmxremote.ssl=false"
-	) else (
-		set IOTDB_JMX_OPTS="-Dcom.sun.management.jmxremote" "-Dcom.sun.management.jmxremote.authenticate=false"  "-Dcom.sun.management.jmxremote.ssl=false" "-Dcom.sun.management.jmxremote.port=%JMX_PORT%"
-	)
+@REM true or false
+@REM DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (%IOTDB_CONF%\jmx.password and %{IOTDB_CONF%\jmx.access)
+set JMX_LOCAL="true"
+set JMX_PORT="31999"
+@REM only take effect when the jmx_local=false
+@REM You need to change this IP as a public IP if you want to remotely connect IoTDB by JMX.
+@REM  0.0.0.0 is not allowed
+set JMX_IP="127.0.0.1"
+
+if %JMX_LOCAL% == "false" (
+  echo "setting remote JMX..."
+  #you may have no permission to run chmod. If so, contact your system administrator.
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.port=%JMX_PORT%"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Djava.rmi.server.randomIDs=true"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.authenticate=true"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.ssl=false"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.authenticate=true"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.password.file=%IOTDB_CONF%\jmx.password"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.access.file=%IOTDB_CONF%\jmx.access"
+  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Djava.rmi.server.hostname=%JMX_IP%"
+) else (
+  echo "setting local JMX..."
+)
+
+
 
 IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 	rem detect Java 8 or 11
