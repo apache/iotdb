@@ -19,6 +19,36 @@
 
 -->
 
+# Apache IoTDB (incubating) 0.9.2
+
+## Bug Fixs
+- IOTDB-553 Fix Return Empty ResultSet when queried series doesn't exist
+- IOTDB-575 add default jmx user and password; fix issues that jmx can't be accessed remotely
+- IOTDB-584 Fix InitializerError when recovering files on HDFS
+- Fix batch insert once an illegal sql occurs all the sqls after that will not succeed
+- Fix concurrent modification exception when iterator TsFileResourceList 
+- Fix some HDFS config issues 
+- Fix runtime exception not catched and sync schema pos was nullpointer bug in DataTransferManager
+- Fix python rpc grammar mistakes
+- Fix upgrade ConcurrentModificationException
+
+## Miscellaneous changes
+- IOTDB-332 support Chinese characters in path
+- IOTDB-316 add AVG function to 4-SQL Reference.md and modify style 
+- improve start-server.bat by using quotes to protect against empty entries
+- Add Chinese documents for chapter 4.2
+- change download-maven-plugin to 1.3.0
+- add session pool 
+- add insertInBatch in Session
+- add insertInBatch to SessionPool
+- modify 0.9 docs to fit website
+- remove tsfile-format.properties
+- add bloom filter in iotdb-engien.properties
+- update server download doc
+- typos fix in Rel/0.9 docs
+- support 0.12.0 and 0.13.0 thrift
+
+
 # Apache IoTDB (incubating) 0.9.1
 
 ## Bug Fixes

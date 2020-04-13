@@ -26,7 +26,7 @@ public class IoTDBConstant {
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
-  public static final String VERSION = "0.9.1";
+  public static final String VERSION = "0.9.2";
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String JMX_TYPE = "type";

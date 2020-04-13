@@ -27,7 +27,7 @@ Spark和Java所需的版本如下：
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | ------------- | ------------- | ------------ |------------ |
-| `2.4.3`        | `2.11`        | `1.8`        | `0.9.1`|
+| `2.4.3`        | `2.11`        | `1.8`        | `0.9.2`|
 
 
 ## 安装
@@ -40,7 +40,7 @@ mvn clean scala：compile编译安装
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.9.1</version>
+      <version>0.9.2</version>
     </dependency>
 ```
 
@@ -48,7 +48,7 @@ mvn clean scala：compile编译安装
 # 2. Spark-shell用户指南
 
 ```
-spark-shell --jars spark-iotdb-connector-0.9.1.jar,iotdb-jdbc-0.9.1-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.9.2.jar,iotdb-jdbc-0.9.2-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -61,7 +61,7 @@ df.show()
 
 ### 如果要对rdd进行分区，可以执行以下操作
 ```
-spark-shell --jars spark-iotdb-connector-0.9.1.jar,iotdb-jdbc-0.9.1-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.9.2.jar,iotdb-jdbc-0.9.2-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
