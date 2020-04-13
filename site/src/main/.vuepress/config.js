@@ -845,7 +845,7 @@ var config = {
 						children: [
 							['5-DataQuery/1-DataQuery','数据查询'],
 							['5-DataQuery/2-SeriesReader','查询基础组件'],
-							['5-DataQuery/3-ModificationHandle','查询中的数据修改处理']
+							['5-DataQuery/3-ModificationHandle','查询中的数据修改处理'],
 							['5-DataQuery/4-RawDataQuery','原始数据查询'],
 							['5-DataQuery/5-AggregationQuery','聚合查询'],
 							['5-DataQuery/6-GroupByQuery','降采样查询'],
