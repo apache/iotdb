@@ -104,7 +104,7 @@ public class MemTableFlushTask {
     ioTaskFuture.get();
 
     try {
-      writer.addVersionPair(new Pair<>(writer.getPos(), memTable.getVersion()));
+      writer.writeVersion(memTable.getVersion());
     } catch (IOException e) {
       throw new ExecutionException(e);
     }

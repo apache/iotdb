@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
@@ -46,7 +47,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 
 public class NonAlignEngineDataSet extends QueryDataSet {
 
-  private class ReadTask implements Runnable {
+  private class ReadTask extends WrappedRunnable {
 
     private final ManagedSeriesReader reader;
     private BlockingQueue<Pair<ByteBuffer, ByteBuffer>> blockingQueue;
@@ -64,7 +65,7 @@ public class NonAlignEngineDataSet extends QueryDataSet {
     }
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       PublicBAOS timeBAOS = new PublicBAOS();
       PublicBAOS valueBAOS = new PublicBAOS();
       try {

@@ -183,8 +183,7 @@ public class TsFileProcessorTest {
     Map<String, List<ChunkMetadata>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
         .getDeviceChunkMetadataMap();
     assertEquals(chunkMetaDataListInChunkGroups.size(), restoredChunkMetaDataListInChunkGroups.size());
-    for (Map.Entry<String, List<ChunkMetadata>> entry1
-        : chunkMetaDataListInChunkGroups.entrySet()) {
+    for (Map.Entry<String, List<ChunkMetadata>> entry1 : chunkMetaDataListInChunkGroups.entrySet()) {
       for (Map.Entry<String, List<ChunkMetadata>> entry2
           : restoredChunkMetaDataListInChunkGroups.entrySet()) {
         assertEquals(entry1.getKey(), entry2.getKey());

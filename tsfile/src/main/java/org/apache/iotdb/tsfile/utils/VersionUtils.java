@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,25 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.utils;
 
-package org.apache.iotdb.tsfile.file;
+import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
-import java.io.IOException;
+public class VersionUtils {
 
-/**
- * MetaMarker denotes the type of headers and footers. Enum is not used for space saving.
- */
-public class MetaMarker {
-
-  public static final byte CHUNK_GROUP_FOOTER = 0;
-  public static final byte CHUNK_HEADER = 1;
-  public static final byte SEPARATOR = 2;
-  public static final byte VERSION = 3;
-
-  private MetaMarker() {
+  private VersionUtils() {
+    throw new IllegalStateException("Utility class");
   }
 
-  public static void handleUnexpectedMarker(byte marker) throws IOException {
-    throw new IOException("Unexpected marker " + marker);
+  public static void applyVersion(List<ChunkMetadata> chunkMetadataList, List<Pair<Long, Long>> versionInfo) {
+    if (versionInfo == null || versionInfo.isEmpty()) {
+      return;
+    }
+    int versionIndex = 0;
+    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+      while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
+        versionIndex++;
+      }
+      chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
+    }
   }
+
 }

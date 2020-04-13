@@ -16,25 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.concurrent;
 
-package org.apache.iotdb.tsfile.file;
+import com.google.common.base.Throwables;
+import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 
-/**
- * MetaMarker denotes the type of headers and footers. Enum is not used for space saving.
- */
-public class MetaMarker {
+public abstract class WrappedRunnable implements Runnable {
 
-  public static final byte CHUNK_GROUP_FOOTER = 0;
-  public static final byte CHUNK_HEADER = 1;
-  public static final byte SEPARATOR = 2;
-  public static final byte VERSION = 3;
+  private static final Logger LOGGER = LoggerFactory.getLogger(WrappedRunnable.class);
 
-  private MetaMarker() {
+  public final void run() {
+    try {
+      runMayThrow();
+    } catch (Exception e) {
+      LOGGER.error("error", e);
+      throw Throwables.propagate(e);
+    }
   }
 
-  public static void handleUnexpectedMarker(byte marker) throws IOException {
-    throw new IOException("Unexpected marker " + marker);
-  }
+  abstract public void runMayThrow() throws Exception;
+
 }

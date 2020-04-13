@@ -23,7 +23,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
@@ -34,10 +33,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -326,8 +323,7 @@ public class TsFileWriter implements AutoCloseable {
           throw new IOException(
               String.format(
                   "Flushed data size is inconsistent with computation! Estimated: %d, Actual: %d",
-                  dataSize,
-                  fileWriter.getPos() - pos));
+                  dataSize, fileWriter.getPos() - pos));
         }
         fileWriter.endChunkGroup();
       }
@@ -364,7 +360,7 @@ public class TsFileWriter implements AutoCloseable {
     return this.fileWriter;
   }
 
-  public void addVersionPair(Pair<Long, Long> versionPair) {
-    fileWriter.addVersionPair(versionPair);
+  public void writeVersion(long versionPair) throws IOException {
+    fileWriter.writeVersion(versionPair);
   }
 }
