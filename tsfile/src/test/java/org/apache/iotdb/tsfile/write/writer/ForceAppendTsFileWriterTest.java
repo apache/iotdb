@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.write.writer;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.File;
 
 import org.apache.iotdb.tsfile.constant.TestConstant;
@@ -55,6 +57,7 @@ public class ForceAppendTsFileWriterTest {
     writer.close();
     ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(file);
     assertEquals(firstMetadataPosition, fwriter.getTruncatePosition());
+    assertTrue(file.delete());
 
   }
 
