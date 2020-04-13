@@ -193,6 +193,7 @@ class SeriesReader {
     if (!cachedPageReaders.isEmpty()
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
+      // cachedPageReaders.isEmpty() is false firstPageReader != null is false mergeReader.hasNextTimeValuePair() = false
       System.out.println("cachedPageReaders.isEmpty() is " + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader.hasNextTimeValuePair());
       throw new IOException("all cached pages should be consumed first");
     }
@@ -276,7 +277,7 @@ class SeriesReader {
     if (hasCachedNextOverlappedPage) {
       return true;
     } else if (mergeReader.hasNextTimeValuePair()) {
-      if (hasNextOverlappedPage()) {
+      while (hasNextOverlappedPage()) {
         cachedBatchData = nextOverlappedPage();
         if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
           hasCachedNextOverlappedPage = true;
@@ -313,7 +314,7 @@ class SeriesReader {
       /*
        * next page is overlapped, read overlapped data and cache it
        */
-      if (hasNextOverlappedPage()) {
+      while (hasNextOverlappedPage()) {
         cachedBatchData = nextOverlappedPage();
         if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
           hasCachedNextOverlappedPage = true;
