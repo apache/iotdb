@@ -35,9 +35,10 @@ In order to achieve the above kinds of queries, a basic query component for a si
 ## Related documents
 
 * [Basic query components](/SystemDesign/5-DataQuery/2-SeriesReader.html)
-* [Raw data query](/SystemDesign/5-DataQuery/3-RawDataQuery.html)
-* [Aggregate query](/SystemDesign/5-DataQuery/4-AggregationQuery.html)
-* [Downsampling query](/SystemDesign/5-DataQuery/5-GroupByQuery.html)
-* [Recent timestamp query](/SystemDesign/5-DataQuery/6-LastQuery.html)
-* [Align by device query](/SystemDesign/5-DataQuery/7-AlignByDeviceQuery.html)
-* [Modification handle](/SystemDesign/5-DataQuery/8-ModificationHandle.html)
+* [Modification handle](/SystemDesign/5-DataQuery/3-ModificationHandle.html)
+* [Raw data query](/SystemDesign/5-DataQuery/4-RawDataQuery.html)
+* [Aggregate query](/SystemDesign/5-DataQuery/5-AggregationQuery.html)
+* [Downsampling query](/SystemDesign/5-DataQuery/6-GroupByQuery.html)
+* [Recent timestamp query](/SystemDesign/5-DataQuery/7-LastQuery.html)
+* [Align by device query](/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html)
+* [Fill function](/SystemDesign/5-DataQuery/9-FillFunction.html)
