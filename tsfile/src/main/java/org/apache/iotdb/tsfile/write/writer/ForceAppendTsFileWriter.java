@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -60,13 +61,16 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
       }
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
       Map<String, Pair<Long, Integer>> deviceMap = tsFileMetadata.getDeviceMetadataIndex();
-      long firstDeviceMetaPos = Long.MAX_VALUE;
-      for (Pair<Long, Integer> deviceMetadataIndex : deviceMap.values()) {
-        firstDeviceMetaPos = firstDeviceMetaPos > deviceMetadataIndex.left ?
-            deviceMetadataIndex.left : firstDeviceMetaPos;
+      long firstChunkMetaPos = Long.MAX_VALUE;
+      for (String deviceId : deviceMap.keySet()) {
+        Map<String, TimeseriesMetadata> deviceMetadata = reader.readDeviceMetadata(deviceId);
+        for (TimeseriesMetadata timeseriesMetadata : deviceMetadata.values()) {
+          firstChunkMetaPos = firstChunkMetaPos > timeseriesMetadata.getOffsetOfChunkMetaDataList() ?
+              timeseriesMetadata.getOffsetOfChunkMetaDataList() : firstChunkMetaPos;
+        }
       }
       // truncate metadata and marker
-      truncatePosition = firstDeviceMetaPos - 1;
+      truncatePosition = firstChunkMetaPos - 1;
     }
   }
 
