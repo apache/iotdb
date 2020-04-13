@@ -435,13 +435,14 @@ var config = {
 						children: [
 							['5-DataQuery/1-DataQuery','DataQuery'],
 							['5-DataQuery/2-SeriesReader','SeriesReader'],
-							['5-DataQuery/3-RawDataQuery','RawDataQuery'],
-							['5-DataQuery/4-AggregationQuery','AggregationQuery'],
-							['5-DataQuery/5-GroupByQuery','GroupByQuery'],
-							['5-DataQuery/6-LastQuery','LastQuery'],
-							['5-DataQuery/7-AlignByDeviceQuery','AlignByDeviceQuery'],
-							['5-DataQuery/8-ModificationHandle','ModificationHandle'],
-					        ['5-DataQuery/9-GroupByFillQuery', 'GroupByFillQuery']
+							['5-DataQuery/3-ModificationHandle','ModificationHandle'],
+							['5-DataQuery/4-RawDataQuery','RawDataQuery'],
+							['5-DataQuery/5-AggregationQuery','AggregationQuery'],
+							['5-DataQuery/6-GroupByQuery','GroupByQuery'],
+							['5-DataQuery/7-LastQuery','LastQuery'],
+							['5-DataQuery/8-AlignByDeviceQuery','AlignByDeviceQuery'],
+							['5-DataQuery/9-FillFunction','FillFunction'],
+	                        ['5-DataQuery/10-GroupByFillQuery', 'GroupByFillQuery']
 						]
 					},
 					{
@@ -845,13 +846,14 @@ var config = {
 						children: [
 							['5-DataQuery/1-DataQuery','数据查询'],
 							['5-DataQuery/2-SeriesReader','查询基础组件'],
-							['5-DataQuery/3-RawDataQuery','原始数据查询'],
-							['5-DataQuery/4-AggregationQuery','聚合查询'],
-							['5-DataQuery/5-GroupByQuery','降采样查询'],
-							['5-DataQuery/6-LastQuery','最近时间戳 Last 查询'],
-							['5-DataQuery/7-AlignByDeviceQuery','按设备对齐查询'],
-							['5-DataQuery/8-ModificationHandle','查询中的数据修改处理'],
-							['5-DataQuery/9-GroupByFillQuery', '降采样补空值查询']
+							['5-DataQuery/3-ModificationHandle','查询中的数据修改处理'],
+							['5-DataQuery/4-RawDataQuery','原始数据查询'],
+							['5-DataQuery/5-AggregationQuery','聚合查询'],
+							['5-DataQuery/6-GroupByQuery','降采样查询'],
+							['5-DataQuery/7-LastQuery','最近时间戳 Last 查询'],
+							['5-DataQuery/8-AlignByDeviceQuery','按设备对齐查询'],
+							['5-DataQuery/9-FillFunction','空值填充'],
+		                    ['5-DataQuery/10-GroupByFillQuery', '降采样补空值查询']
 						]
 					},
 					{

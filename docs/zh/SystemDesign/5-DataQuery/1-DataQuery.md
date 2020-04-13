@@ -36,10 +36,11 @@
 ## 相关文档
 
 * [基础查询组件](/zh/SystemDesign/5-DataQuery/2-SeriesReader.html)
-* [原始数据查询](/zh/SystemDesign/5-DataQuery/3-RawDataQuery.html)
-* [聚合查询](/zh/SystemDesign/5-DataQuery/4-AggregationQuery.html)
-* [降采样查询](/zh/SystemDesign/5-DataQuery/5-GroupByQuery.html)
-* [最近时间戳查询](/zh/SystemDesign/5-DataQuery/6-LastQuery.html)
-* [按设备对齐查询](/zh/SystemDesign/5-DataQuery/7-AlignByDeviceQuery.html)
-* [查询中的数据删改处理](/zh/SystemDesign/5-DataQuery/8-ModificationHandle.html)
-* [降采样补空值查询](/zh/SystemDesign/5-DataQuery/9-GroupByFillQuery.html)
+* [查询中的数据删改处理](/zh/SystemDesign/5-DataQuery/3-ModificationHandle.html)
+* [原始数据查询](/zh/SystemDesign/5-DataQuery/4-RawDataQuery.html)
+* [聚合查询](/zh/SystemDesign/5-DataQuery/5-AggregationQuery.html)
+* [降采样查询](/zh/SystemDesign/5-DataQuery/6-GroupByQuery.html)
+* [最近时间戳查询](/zh/SystemDesign/5-DataQuery/7-LastQuery.html)
+* [按设备对齐查询](/zh/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html)
+* [空值填充](/zh/SystemDesign/5-DataQuery/9-FillFunction.html)
+* [降采样补空值查询](/zh/SystemDesign/5-DataQuery/10-GroupByFillQuery.html)
