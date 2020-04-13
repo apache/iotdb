@@ -24,7 +24,7 @@ singleStatement
     ;
 
 statement
-    : CREATE TIMESERIES fullPath alias? attributeClauses #createTimeseries
+    : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
     | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
@@ -117,7 +117,7 @@ lastClause
     ;
 
 alias
-    : LR_BRACKET ID RR_BRACKET WITH
+    : LR_BRACKET ID RR_BRACKET
     ;
 
 attributeClauses
