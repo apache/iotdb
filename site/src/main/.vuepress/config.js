@@ -425,12 +425,13 @@ var config = {
 						children: [
 							'5-DataQuery/1-DataQuery',
 							'5-DataQuery/2-SeriesReader',
-							'5-DataQuery/3-RawDataQuery',
-							'5-DataQuery/4-AggregationQuery',
-							'5-DataQuery/5-GroupByQuery',
-							'5-DataQuery/6-LastQuery',
-							'5-DataQuery/7-AlignByDeviceQuery',
-							'5-DataQuery/8-ModificationHandle',
+							'5-DataQuery/3-ModificationHandle',
+							'5-DataQuery/4-RawDataQuery',
+							'5-DataQuery/5-AggregationQuery',
+							'5-DataQuery/6-GroupByQuery',
+							'5-DataQuery/7-LastQuery',
+							'5-DataQuery/8-AlignByDeviceQuery',
+							'5-DataQuery/9-FillFunction',
 						]
 					},
 					{
@@ -823,12 +824,13 @@ var config = {
 						children: [
 							'5-DataQuery/1-DataQuery',
 							'5-DataQuery/2-SeriesReader',
-							'5-DataQuery/3-RawDataQuery',
-							'5-DataQuery/4-AggregationQuery',
-							'5-DataQuery/5-GroupByQuery',
-							'5-DataQuery/6-LastQuery',
-							'5-DataQuery/7-AlignByDeviceQuery',
-							'5-DataQuery/8-ModificationHandle',
+							'5-DataQuery/3-ModificationHandle',
+							'5-DataQuery/4-RawDataQuery',
+							'5-DataQuery/5-AggregationQuery',
+							'5-DataQuery/6-GroupByQuery',
+							'5-DataQuery/7-LastQuery',
+							'5-DataQuery/8-AlignByDeviceQuery',
+							'5-DataQuery/9-FillFunction',
 						]
 					},
 					{
