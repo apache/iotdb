@@ -15,17 +15,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+@require './config'
 
-/**
- * 扩展 VuePress 应用
- */
-import Element from 'element-ui'
-import 'element-ui/lib/theme-chalk/index.css'
-
- 
-export default ({
-  Vue // VuePress 正在使用的 Vue 构造函数
-}) => {
-  // ...做一些其他的应用级别的优化
-  Vue.use(Element)
-}
+.arrow
+  display inline-block
+  width 0
+  height 0
+  &.up
+    border-left 4px solid transparent
+    border-right 4px solid transparent
+    border-bottom 6px solid $arrowBgColor
+  &.down
+    border-left 4px solid transparent
+    border-right 4px solid transparent
+    border-top 6px solid $arrowBgColor
+  &.right
+    border-top 4px solid transparent
+    border-bottom 4px solid transparent
+    border-left 6px solid $arrowBgColor
+  &.left
+    border-top 4px solid transparent
+    border-bottom 4px solid transparent
+    border-right 6px solid $arrowBgColor
