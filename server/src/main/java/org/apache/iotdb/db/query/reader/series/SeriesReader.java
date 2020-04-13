@@ -146,6 +146,7 @@ class SeriesReader {
     if (!cachedPageReaders.isEmpty()
             || firstPageReader != null
             || mergeReader.hasNextTimeValuePair()) {
+      System.out.println("cachedPageReaders.isEmpty() is " + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader.hasNextTimeValuePair());
       throw new IOException("all cached pages should be consumed first");
     }
 
@@ -192,6 +193,7 @@ class SeriesReader {
     if (!cachedPageReaders.isEmpty()
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
+      System.out.println("cachedPageReaders.isEmpty() is " + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader.hasNextTimeValuePair());
       throw new IOException("all cached pages should be consumed first");
     }
 
