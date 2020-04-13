@@ -42,5 +42,6 @@ Note: If Accept header is not provided, it defaults to value of 'Content-Type' h
 * [Set Storage Group](./2-Set%20Storage%20Group.md)
 * [Create TimeSeries](./3-Create%20TimeSeries)
 * [Insert](4-Insert.md)
+* [Query](5-Query.md)
 
 
