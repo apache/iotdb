@@ -25,28 +25,41 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // TODO-Cluster#351: implement a serializable LogManager.
+
 /**
  * MemoryLogManager stores all logs in a memory deque without providing snapshots.
  */
 public abstract class MemoryLogManager implements LogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MemoryLogManager.class);
-
+  protected long lastLogId = -1;
+  protected long lastLogTerm = -1;
+  protected LogApplier logApplier;
   long commitLogIndex = -1;
-  private long lastLogId = -1;
-  private long lastLogTerm = -1;
-
   List<Log> logBuffer = new ArrayList<>();
-  private LogApplier logApplier;
-
   protected MemoryLogManager(LogApplier logApplier) {
     this.logApplier = logApplier;
+  }
+
+  public void setLogBuffer(List<Log> logBuffer) {
+    this.logBuffer = logBuffer;
+  }
+
+  public long getLastLogId() {
+    return lastLogId;
+  }
+
+  @Override
+  public void setLastLogId(long lastLogId) {
+    this.lastLogId = lastLogId;
   }
 
   @Override
@@ -60,8 +73,17 @@ public abstract class MemoryLogManager implements LogManager {
   }
 
   @Override
+  public void setLastLogTerm(long lastLogTerm) {
+    this.lastLogTerm = lastLogTerm;
+  }
+
+  @Override
   public long getCommitLogIndex() {
     return commitLogIndex;
+  }
+
+  public void setCommitLogIndex(long commitLogIndex) {
+    this.commitLogIndex = commitLogIndex;
   }
 
   @Override
@@ -72,7 +94,7 @@ public abstract class MemoryLogManager implements LogManager {
     long appendingCurrIndex = appendingLog.getCurrLogIndex();
     if (logBuffer.isEmpty()) {
       // the logs are empty, check the appendingLog with the recorded last log index and term
-      if(appendingPrevIndex == lastLogId && appendingPrevTerm == lastLogTerm) {
+      if (appendingPrevIndex == lastLogId && appendingPrevTerm == lastLogTerm) {
         logBuffer.add(appendingLog);
         lastLogId = appendingLog.getCurrLogIndex();
         lastLogTerm = appendingLog.getCurrLogTerm();
@@ -86,7 +108,8 @@ public abstract class MemoryLogManager implements LogManager {
     int insertPos = logBuffer.size() - 1;
     for (; insertPos >= 0; insertPos--) {
       Log currLog = logBuffer.get(insertPos);
-      if (currLog.getCurrLogIndex() == appendingCurrIndex && currLog.getCurrLogTerm() == appendingCurrTerm) {
+      if (currLog.getCurrLogIndex() == appendingCurrIndex
+          && currLog.getCurrLogTerm() == appendingCurrTerm) {
         // the log is already appended
         return true;
       }
@@ -96,7 +119,7 @@ public abstract class MemoryLogManager implements LogManager {
           // log mismatch
           return false;
         } else {
-          insertPos ++;
+          insertPos++;
           break;
         }
       } else if (currLog.getCurrLogIndex() < appendingPrevIndex) {
@@ -121,7 +144,7 @@ public abstract class MemoryLogManager implements LogManager {
       return;
     }
     for (Log log : logBuffer) {
-      long i  = log.getCurrLogIndex();
+      long i = log.getCurrLogIndex();
       if (commitLogIndex < i && i <= maxLogIndex) {
         try {
           logApplier.apply(log);
@@ -162,14 +185,24 @@ public abstract class MemoryLogManager implements LogManager {
     return logApplier;
   }
 
-  @Override
-  public void setLastLogId(long lastLogId) {
-    this.lastLogId = lastLogId;
+  public void removeFromHead(int length) {
+    logBuffer.subList(0, length).clear();
   }
 
-  @Override
-  public void setLastLogTerm(long lastLogTerm) {
-    this.lastLogTerm = lastLogTerm;
+  @TestOnly
+  public LogManagerMeta getMeta() {
+    LogManagerMeta managerMeta = new LogManagerMeta();
+    managerMeta.setCommitLogIndex(commitLogIndex);
+    managerMeta.setLastLogId(lastLogId);
+    managerMeta.setLastLogTerm(lastLogTerm);
+    return managerMeta;
+  }
+
+  @TestOnly
+  public void setMeta(LogManagerMeta meta) {
+    commitLogIndex = meta.getCommitLogIndex();
+    lastLogId = meta.getLastLogId();
+    lastLogTerm = meta.getLastLogTerm();
   }
 
   @Override

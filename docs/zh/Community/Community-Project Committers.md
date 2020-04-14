@@ -20,5 +20,3 @@
 -->
 
 <Contributor/>
-
-<FooterFixed/>

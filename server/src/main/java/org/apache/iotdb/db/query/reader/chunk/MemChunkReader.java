@@ -121,5 +121,4 @@ public class MemChunkReader implements IChunkReader, IPointReader {
     return Collections.singletonList(
         new MemPageReader(nextPageData(), readOnlyMemChunk.getChunkMetaData().getStatistics()));
   }
-
 }

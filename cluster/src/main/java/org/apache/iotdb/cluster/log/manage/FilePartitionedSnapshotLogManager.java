@@ -59,6 +59,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
 
+
       int i = 0;
       for (; i < logBuffer.size(); i++) {
         if (logBuffer.get(i).getCurrLogIndex() > commitLogIndex) {
@@ -67,7 +68,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
         snapshotLastLogId = logBuffer.get(i).getCurrLogIndex();
         snapshotLastLogTerm = logBuffer.get(i).getCurrLogTerm();
       }
-      logBuffer.subList(0, i).clear();
+      removeFromHead(i);
 
       collectTsFiles();
 
