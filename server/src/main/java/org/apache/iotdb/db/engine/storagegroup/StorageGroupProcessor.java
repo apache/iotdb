@@ -403,6 +403,9 @@ public class StorageGroupProcessor {
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
+          if (partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+            continue;
+          }
           // some TsFileResource may be being persisted when the system crashed, try recovering such
           // resources
           continueFailedRenames(partitionFolder, TEMP_SUFFIX);
@@ -1396,12 +1399,12 @@ public class StorageGroupProcessor {
    */
   public int countUpgradeFiles() {
     int cntUpgradeFileNum = 0;
-    for (TsFileResource seqTsFileResource : sequenceFileTreeSet) {
+    for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
       if (UpgradeUtils.isNeedUpgrade(seqTsFileResource)) {
         cntUpgradeFileNum += 1;
       }
     }
-    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+    for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
       if (UpgradeUtils.isNeedUpgrade(unseqTsFileResource)) {
         cntUpgradeFileNum += 1;
       }
@@ -1410,10 +1413,10 @@ public class StorageGroupProcessor {
   }
 
   public void upgrade() {
-    for (TsFileResource seqTsFileResource : sequenceFileTreeSet) {
+    for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
       seqTsFileResource.doUpgrade();
     }
-    for (TsFileResource unseqTsFileResource : unSequenceFileList) {
+    for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
       unseqTsFileResource.doUpgrade();
     }
   }

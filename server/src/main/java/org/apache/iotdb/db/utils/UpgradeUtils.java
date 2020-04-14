@@ -81,6 +81,7 @@ public class UpgradeUtils {
         + File.separator + UPGRADE_FILE_PREFIX + upgradeResource.getName();
   }
 
+  // FIXME
   public static void recoverUpgrade() {
     if (FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
       try (BufferedReader upgradeLogReader = new BufferedReader(

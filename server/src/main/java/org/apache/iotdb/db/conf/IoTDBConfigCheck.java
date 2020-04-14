@@ -106,6 +106,9 @@ public class IoTDBConfigCheck {
       // need to upgrade
       if (!properties.containsKey("storage_group_time_range")) {
         properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
+      }
+      if (!properties.containsKey("tsfile_storage_fs")) {
+        properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
       } else {
         checkProperties();
         return;

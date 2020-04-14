@@ -27,7 +27,10 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UpgradeTask extends WrappedRunnable {
 
@@ -44,37 +47,47 @@ public class UpgradeTask extends WrappedRunnable {
   public void runMayThrow() {
     try {
       upgradeResource.getWriteQueryLock().readLock().lock();
-      String tsfilePathBefore = upgradeResource.getFile().getAbsolutePath();
-      String tsfileDiractoryAfter = UpgradeUtils.getUpgradeFileName(upgradeResource.getFile());
-
+      String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
+      List<String> upgradedFiles = new ArrayList<>();
+      System.out.println(oldTsfilePath);
       UpgradeLog.writeUpgradeLogFile(
-          tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
+          oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
       try {
-        UpgradeTool.upgradeOneTsfile(tsfilePathBefore, tsfileDiractoryAfter);
+        UpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedFiles);
         UpgradeLog.writeUpgradeLogFile(
-            tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
+            oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
       } catch (IOException e) {
         logger
-            .error("generate upgrade file failed, the file to be upgraded:{}", tsfilePathBefore, e);
+            .error("generate upgrade file failed, the file to be upgraded:{}", oldTsfilePath, e);
         return;
       } finally {
         upgradeResource.getWriteQueryLock().readLock().unlock();
       }
       upgradeResource.getWriteQueryLock().writeLock().lock();
       try {
-        FSFactoryProducer.getFSFactory().getFile(tsfilePathBefore).delete();
-        FSFactoryProducer.getFSFactory()
-            .moveFile(FSFactoryProducer.getFSFactory().getFile(tsfilePathAfter),
-                FSFactoryProducer.getFSFactory().getFile(tsfilePathBefore));
+        // delete old TsFile
+        FSFactoryProducer.getFSFactory().getFile(oldTsfilePath).delete();
+        // move upgraded TsFiles to their own partition directories
+        for (String upgradedFilePath : upgradedFiles) {
+          File upgradedFile = FSFactoryProducer.getFSFactory().getFile(upgradedFilePath);
+          String partition = upgradedFile.getParent();
+          String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
+          File patitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition);
+          if (!patitionDir.exists()) {
+            patitionDir.mkdir();
+          }
+          FSFactoryProducer.getFSFactory().moveFile(upgradedFile,
+              FSFactoryProducer.getFSFactory().getFile(patitionDir, upgradedFile.getName()));
+        }
+        
         UpgradeLog.writeUpgradeLogFile(
-            tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.UPGRADE_SUCCESS);
-        FSFactoryProducer.getFSFactory().getFile(tsfilePathAfter).getParentFile().delete();
+            oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.UPGRADE_SUCCESS);
       } finally {
         upgradeResource.getWriteQueryLock().writeLock().unlock();
       }
       UpgradeSevice.setCntUpgradeFileNum(UpgradeSevice.getCntUpgradeFileNum() - 1);
       logger.info("Upgrade completes, file path:{} , the remaining upgraded file num: {}",
-          tsfilePathBefore, UpgradeSevice.getCntUpgradeFileNum());
+          oldTsfilePath, UpgradeSevice.getCntUpgradeFileNum());
     } catch (Exception e) {
       logger.error("meet error when upgrade file:{}", upgradeResource.getFile().getAbsolutePath(),
           e);

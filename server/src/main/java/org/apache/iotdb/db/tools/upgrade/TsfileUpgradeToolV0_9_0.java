@@ -318,35 +318,29 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
    * upgrade file and return the boolean value whether upgrade task completes
    * @throws WriteProcessException 
    */
-  public boolean upgradeFile(String updateDirectoryName) throws IOException, WriteProcessException {
-    File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
+  public boolean upgradeFile(List<String> upgradedFileList) throws IOException, WriteProcessException {
+    File oldTsFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
-    if (!checkFile.exists()) {
-      logger.error("the file to be updated does not exist, file path: {}", checkFile.getPath());
+    if (!oldTsFile.exists()) {
+      logger.error("the file to be updated does not exist, file path: {}", oldTsFile.getPath());
       return false;
     } else {
-      fileSize = checkFile.length();
+      fileSize = oldTsFile.length();
     }
-    // TODO file parentFile
-    File upgradeFile = FSFactoryProducer.getFSFactory().getFile(updateDirectoryName);
-    if (!upgradeFile.getParentFile().exists()) {
-      upgradeFile.getParentFile().mkdirs();
-    }
-    //upgradeFile.createNewFile();
 
     List<ChunkHeader> chunkHeaders = new ArrayList<>();
 
     String magic = readHeadMagic(true);
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
-      logger.error("the file's MAGIC STRING is incorrect, file path: {}", checkFile.getPath());
+      logger.error("the file's MAGIC STRING is incorrect, file path: {}", oldTsFile.getPath());
       return false;
     }
 
     if (fileSize == TSFileConfig.MAGIC_STRING.length()) {
-      logger.error("the file only contains magic string, file path: {}", checkFile.getPath());
+      logger.error("the file only contains magic string, file path: {}", oldTsFile.getPath());
       return false;
     } else if (!readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
-      logger.error("the file cannot upgrade, file path: {}", checkFile.getPath());
+      logger.error("the file cannot upgrade, file path: {}", oldTsFile.getPath());
       return false;
     }
     OldTsFileMetadata fileMetadata = readFileMetadata();
@@ -368,14 +362,23 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       OldTsDeviceMetadata oldDeviceMetadata = readTsDeviceMetaData(index);
       oldDeviceMetadataList.add(oldDeviceMetadata);
     }
+    File partitionDir = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
+        + File.separator + partition);
+    partitionDir.mkdirs();
+    File f = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
+        + File.separator + partition + File.separator+ oldTsFile.getName());
+    System.out.println(f);
+    f.createNewFile();
+    partitionWriterMap.put(partition, new TsFileWriter(f));
     
-    partitionWriterMap.put(partition, new TsFileWriter(new File(updateDirectoryName 
-        + File.separator + partition + File.separator+ file)));
+    Map<Long, Long> oldVersionInfo = new HashMap<>();
 
     for (OldTsDeviceMetadata oldTsDeviceMetadata : oldDeviceMetadataList) {
       for (OldChunkGroupMetaData oldChunkGroupMetadata : oldTsDeviceMetadata
           .getChunkGroupMetaDataList()) {
         long version = oldChunkGroupMetadata.getVersion();
+        long offsetOfChunkGroupMetaData = oldChunkGroupMetadata.getEndOffsetOfChunkGroup();
+        oldVersionInfo.put(offsetOfChunkGroupMetaData, version);
       }
     }
     
@@ -420,7 +423,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
             String deviceID = chunkGroupFooter.getDeviceID();
 
             versionOfChunkGroup++;
-            rewrite(updateDirectoryName, deviceID, measurementSchemaList, 
+            rewrite(oldTsFile, deviceID, measurementSchemaList, 
                 datasInOneChunkGroup, allDataInSamePartition);
 
             datasInOneChunkGroup.clear();
@@ -436,6 +439,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
         }
       }
       for (TsFileWriter tsFileWriter : partitionWriterMap.values()) {
+        upgradedFileList.add(tsFileWriter.getIOWriter().getFile().getAbsolutePath());
         tsFileWriter.close();
       }
       return true;
@@ -450,14 +454,14 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     }
   }
 
-  void rewrite(String upgradeDir, String deviceId, List<MeasurementSchema> schemas, 
+  void rewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas, 
       List<List<ByteBuffer>> datasInOneChunkGroup, boolean allDataInSamePartition) 
           throws IOException, WriteProcessException {
 
     // if all data is in same time partition, 
     // do a quick rewrite without inserting points one by one
     if (allDataInSamePartition) {
-      quickRewrite(upgradeDir, deviceId, schemas, datasInOneChunkGroup);
+      //quickRewrite(upgradeDir, deviceId, schemas, datasInOneChunkGroup);
     }
     else {
       for (int i = 0; i < schemas.size(); i++) {
@@ -504,8 +508,22 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
               }
             tsRecord.addTuple(dataPoint);
             TsFileWriter tsFileWriter = partitionWriterMap
-                .getOrDefault(partition, new TsFileWriter(new File(upgradeDir 
-                    + File.separator + partition + File.separator+ file)));
+                .computeIfAbsent(partition, k -> 
+                  {
+                    File partitionDir = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
+                        + File.separator + partition);
+                    partitionDir.mkdirs();
+                    File newFile = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
+                        + File.separator + partition + File.separator+ oldTsFile.getName());
+                    try {
+                      newFile.createNewFile();
+                      return new TsFileWriter(newFile);
+                    } catch (IOException e) {
+                      
+                    }
+                    return null;
+                  }
+                );
             try {
               tsFileWriter.registerTimeseries(new Path(deviceId, schema.getMeasurementId()), schema);
             }
@@ -529,4 +547,5 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       TsFileIOWriter tsFileIOWriter = tsFileWriter.getIOWriter();
     }
   }
+
 }

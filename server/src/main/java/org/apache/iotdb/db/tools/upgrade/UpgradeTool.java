@@ -82,7 +82,7 @@ public class UpgradeTool {
     for (String tsfile : tsfiles) {
       offlineUpgradeThreadPool.submit(() -> {
         try {
-          upgradeOneTsfile(tsfile, tsfile.replace(dir, upgradeDir));
+          //upgradeOneTsfile(tsfile, tsfile.replace(dir, upgradeDir));
           System.out.println(
               String.format("upgrade file success, file name:%s, remaining file num:%s", tsfile,
                   dirUpgradeFileNum.decrementAndGet()));
@@ -98,13 +98,13 @@ public class UpgradeTool {
   /**
    * upgrade a single tsfile
    *
-   * @param tsfileName old version tsfile's absolute path
-   * @param updateFileName new version tsfile's absolute path
+   * @param tsfileName old version tsFile's absolute path
+   * @param tsfileList new version tsFiles' absolute paths
    * @throws WriteProcessException 
    */
-  public static void upgradeOneTsfile(String tsfileName, String updateFileName) throws IOException, WriteProcessException {
-    TsfileUpgradeToolV0_9_0 updater = new TsfileUpgradeToolV0_9_0(tsfileName);
-    updater.upgradeFile(updateFileName);
+  public static void upgradeOneTsfile(String tsFileName, List<String> tsFileList) throws IOException, WriteProcessException {
+    TsfileUpgradeToolV0_9_0 updater = new TsfileUpgradeToolV0_9_0(tsFileName);
+    updater.upgradeFile(tsFileList);
   }
 
 }
