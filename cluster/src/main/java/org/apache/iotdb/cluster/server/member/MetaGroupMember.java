@@ -116,6 +116,8 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
@@ -1049,6 +1051,29 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           logger.error("{}: Cannot add storage group {} in snapshot", name, storageGroup);
         }
       }
+
+      for (Map.Entry<String, Long> entry: snapshot.getStorageGroupTTL().entrySet()){
+        try {
+          MManager.getInstance().setTTL(entry.getKey(), entry.getValue());
+          StorageEngine.getInstance().setTTL(entry.getKey(), entry.getValue());
+        } catch (MetadataException | StorageEngineException | IOException e) {
+          logger.error("{}: Cannot set ttl in storage group {} , error is: {}", name, entry.getKey(), e);
+        }
+      }
+
+      try {
+        LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+        for (Map.Entry<String, Boolean> entry: snapshot.getUserWaterMarkStatus().entrySet()) {
+          try {
+            authorizer.setUserUseWaterMark(entry.getKey(), entry.getValue());
+          } catch (AuthException e){
+            logger.error("{}: Cannot set user {}, error is: {}", name, entry.getKey(), e);
+          }
+        }
+      } catch (AuthException e) {
+        logger.error("{}: Cannot get authorizer instance, error is: {}", name, e);
+      }
+
       // apply other logs like node removal and addition
       for (Log log : snapshot.getSnapshot()) {
         try {

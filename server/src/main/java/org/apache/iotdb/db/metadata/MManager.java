@@ -802,6 +802,24 @@ public class MManager {
   }
 
   /**
+   * get all storageGroups ttl
+   * @return key-> storageGroupName, value->ttl
+   */
+  public Map<String, Long> getStorageGroupsTTL() {
+    Map<String, Long> storageGroupsTTL  = new HashMap<>();
+    try {
+      List<String> storageGroups = this.getAllStorageGroupNames();
+      for(String storageGroup : storageGroups){
+        long ttl = getStorageGroupNode(storageGroup).getDataTTL();
+        storageGroupsTTL.put(storageGroup, ttl);
+      }
+    } catch (MetadataException e) {
+      logger.error("get storage groups ttl failed.", e);
+    }
+    return storageGroupsTTL;
+  }
+
+  /**
    * Check whether the given path contains a storage group
    */
   boolean checkStorageGroupByPath(String path) {
