@@ -34,9 +34,9 @@ public class JDBCExample {
       Statement statement = connection.createStatement()) {
       try {
         statement.execute("SET STORAGE GROUP TO root.sg1");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, CompressionType=SNAPPY");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, CompressionType=SNAPPY");
-        statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, CompressionType=SNAPPY");
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
+        statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, COMPRESSOR=SNAPPY");
       } catch (IoTDBSQLException e) {
         System.out.println(e.getMessage());
       }
