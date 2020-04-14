@@ -120,7 +120,7 @@ public class RawDataQueryExecutor {
 
     TimeGenerator timestampGenerator = getTimeGenerator(
         optimizedExpression, context, queryPlan);
-    List<Boolean> cached = markFilterdPaths(optimizedExpression, deduplicatedPaths);
+    List<Boolean> cached = markFilterdPaths(optimizedExpression, deduplicatedPaths, timestampGenerator.hasOrNode());
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
