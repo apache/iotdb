@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.write.writer;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 
@@ -36,7 +35,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 public class ForceAppendTsFileWriterTest {
-  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.ts");
+  private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   @Test
@@ -57,7 +56,6 @@ public class ForceAppendTsFileWriterTest {
     writer.close();
     ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(file);
     assertEquals(firstMetadataPosition, fwriter.getTruncatePosition());
-
   }
 
 }
