@@ -321,8 +321,21 @@ class SeriesReader {
     }
 
     // make sure firstPageReader won't be null while cachedPageReaders has more cached page readers
-    if (firstPageReader == null && !cachedPageReaders.isEmpty()) {
+    while (firstPageReader == null && !cachedPageReaders.isEmpty()) {
       firstPageReader = cachedPageReaders.poll();
+      if (!cachedPageReaders.isEmpty()
+              && firstPageReader.getEndTime() >= cachedPageReaders.peek().getStartTime()) {
+        /*
+         * next page is overlapped, read overlapped data and cache it
+         */
+        if (hasNextOverlappedPage()) {
+          cachedBatchData = nextOverlappedPage();
+          if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
+            hasCachedNextOverlappedPage = true;
+            return true;
+          }
+        }
+      }
     }
     return firstPageReader != null;
   }
