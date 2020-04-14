@@ -221,8 +221,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // load the identifier from the disk or generate a new one
     loadIdentifier();
 
-    LogApplier dataLogApplier = new DataLogApplier(this);
-    Factory dataMemberFactory = new Factory(factory, this, dataLogApplier);
+    Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory);
     clientServer = new ClientServer(this);
     startUpStatus = getStartUpStatus();

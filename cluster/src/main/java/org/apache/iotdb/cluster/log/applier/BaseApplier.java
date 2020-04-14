@@ -44,7 +44,7 @@ abstract class BaseApplier implements LogApplier {
 
   private static final Logger logger = LoggerFactory.getLogger(BaseApplier.class);
 
-  private MetaGroupMember metaGroupMember;
+  MetaGroupMember metaGroupMember;
   private PlanExecutor queryExecutor;
 
   BaseApplier(MetaGroupMember metaGroupMember) {

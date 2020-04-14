@@ -20,6 +20,8 @@
 package org.apache.iotdb.cluster.common;
 
 import java.util.List;
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.partition.SlotManager;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
@@ -29,12 +31,14 @@ public class TestDataGroupMember extends DataGroupMember {
   public TestDataGroupMember() {
     super();
     setQueryManager(new ClusterQueryManager());
+    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
   }
 
   public TestDataGroupMember(Node thisNode, List<Node> allNodes) {
     super();
     this.thisNode = thisNode;
     this.allNodes = allNodes;
+    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
     setQueryManager(new ClusterQueryManager());
   }
 }

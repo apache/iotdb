@@ -581,9 +581,7 @@ public class TsFileResource {
   public long getMaxVersion() {
     long maxVersion = 0;
     if (historicalVersions != null) {
-      for (Long historicalVersion : historicalVersions) {
-        maxVersion = Math.max(historicalVersion, maxVersion);
-      }
+      maxVersion = Collections.max(historicalVersions);
     }
     return maxVersion;
   }

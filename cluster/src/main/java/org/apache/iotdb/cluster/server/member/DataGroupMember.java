@@ -48,8 +48,8 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
-import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
@@ -165,7 +165,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * "slotManager" tracks the status of slots during data transfers so that we can know whether
    * the slot has non-pulled data.
    */
-  private SlotManager slotManager;
+  protected SlotManager slotManager;
 
   @TestOnly
   public DataGroupMember() {
@@ -173,16 +173,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
-      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) {
+       MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
         new ClientPool(new DataClient.Factory(factory)));
     this.thisNode = thisNode;
-    this.logManager = logManager;
-    super.logManager = logManager;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
+    this.logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
+        this), metaGroupMember.getPartitionTable(), allNodes.get(0));
+    super.logManager = logManager;
   }
 
   /**
@@ -239,18 +240,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public static class Factory {
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
-    private LogApplier applier;
 
-    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember, LogApplier applier) {
+    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
       this.protocolFactory = protocolFactory;
       this.metaGroupMember = metaGroupMember;
-      this.applier = applier;
     }
 
     public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
-      return new DataGroupMember(protocolFactory, partitionGroup, thisNode,
-          new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
-              partitionGroup.getHeader()), metaGroupMember);
+      return new DataGroupMember(protocolFactory, partitionGroup, thisNode, metaGroupMember);
     }
   }
 
@@ -378,7 +375,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     logger.debug("{}: applying snapshot {}", name, snapshot);
     if (snapshot instanceof FileSnapshot) {
       try {
-        applyFileSnapshot((FileSnapshot) snapshot);
+        applyFileSnapshot((FileSnapshot) snapshot, slot);
       } catch (PullFileException e) {
         throw new SnapshotApplicationException(e);
       }
@@ -393,8 +390,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * "RemoteTsFileResources" will be loaded into the IoTDB instance if they do not totally
    * overlap with existing files.
    * @param snapshot
+   * @param slot
    */
-  private void applyFileSnapshot(FileSnapshot snapshot)
+  private void applyFileSnapshot(FileSnapshot snapshot, int slot)
       throws PullFileException, SnapshotApplicationException {
     synchronized (logManager) {
       // load metadata in the snapshot
@@ -418,12 +416,20 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           throw new SnapshotApplicationException(e);
         }
       }
+      SlotStatus status = slotManager.getStatus(slot);
+      if (status == SlotStatus.PULLING) {
+        // as the partition versions are set, writes can proceed without generating incorrect
+        // versions
+        slotManager.setToPullingWritable(slot);
+      }
       // pull file
       for (RemoteTsFileResource resource : remoteTsFileResources) {
         if (!isFileAlreadyPulled(resource)) {
           loadRemoteFile(resource);
         }
       }
+      // all files are loaded, the slot can be queried without accessing the previous holder
+      slotManager.setToNull(slot);
     }
   }
 
@@ -1501,6 +1507,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     } catch (IOException | QueryProcessException e) {
       resultHandler.onError(e);
     }
+  }
+
+  public SlotManager getSlotManager() {
+    return slotManager;
   }
 }
 

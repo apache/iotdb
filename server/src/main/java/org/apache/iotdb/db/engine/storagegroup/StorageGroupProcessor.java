@@ -1705,23 +1705,35 @@ public class StorageGroupProcessor {
     closeQueryLock.writeLock().lock();
     try {
       Iterator<TsFileResource> iterator = sequenceFileTreeSet.iterator();
-      removeFullyOverlapFiles(resource, iterator);
+      removeFullyOverlapFiles(resource, iterator, true);
 
       iterator = unSequenceFileList.iterator();
-      removeFullyOverlapFiles(resource, iterator);
+      removeFullyOverlapFiles(resource, iterator, false);
     } finally {
       closeQueryLock.writeLock().unlock();
       writeUnlock();
     }
   }
 
-  private void removeFullyOverlapFiles(TsFileResource resource, Iterator<TsFileResource> iterator) {
+  private void removeFullyOverlapFiles(TsFileResource resource, Iterator<TsFileResource> iterator
+      , boolean isSeq) {
     while (iterator.hasNext()) {
       TsFileResource seqFile = iterator.next();
       if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())
           && !resource.getHistoricalVersions().equals(seqFile.getHistoricalVersions())
           && seqFile.getWriteQueryLock().writeLock().tryLock()) {
         try {
+          if (!seqFile.isClosed()) {
+            // also remove the TsFileProcessor if the overlapped file is not closed
+            long timePartition = seqFile.getTimePartition();
+            Map<Long, TsFileProcessor> fileProcessorMap = isSeq ? workSequenceTsFileProcessors :
+                workUnsequenceTsFileProcessors;
+            TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
+            if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == seqFile) {
+              tsFileProcessor.syncClose();
+              fileProcessorMap.remove(timePartition);
+            }
+          }
           iterator.remove();
           seqFile.remove();
         } catch (Exception e) {
