@@ -145,9 +145,16 @@ public class StorageGroupProcessor {
         return rangeCompare == 0 ? compareFileName(o1.getFile(), o2.getFile()) : rangeCompare;
       });
 
+  // upgrading sequence TsFile resource list
+  private List<TsFileResource> upgradeSeqFileList = new LinkedList<>();
+
   private CopyOnReadLinkedList<TsFileProcessor> closingSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   // includes sealed and unsealed unSequence TsFiles
   private List<TsFileResource> unSequenceFileList = new ArrayList<>();
+
+  // upgrading sequence TsFile resource list
+  private List<TsFileResource> upgradeUnseqFileList = new LinkedList<>();
+
   private CopyOnReadLinkedList<TsFileProcessor> closingUnSequenceTsFileProcessor = new CopyOnReadLinkedList<>();
   /*
    * time partition id -> map, which contains
@@ -164,6 +171,11 @@ public class StorageGroupProcessor {
    * unsequential file.
    */
   private Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice = new HashMap<>();
+
+  /**
+   * used to record the latest flush time while upgrading and inserting
+   */
+  private Map<Long, Map<String, Long>> newlyFlushedPartitionLatestFlushedTimeForEachDevice = new HashMap<>();
   /**
    * global mapping of device -> largest timestamp of the latest memtable to * be submitted to
    * asyncTryToFlush, globalLatestFlushedTimeForEachDevice is utilized to maintain global
@@ -236,11 +248,12 @@ public class StorageGroupProcessor {
               DirectoryManager.getInstance().getAllSequenceFileFolders());
       List<TsFileResource> tmpSeqTsFiles = seqTsFilesPair.left;
       List<TsFileResource> oldSeqTsFiles = seqTsFilesPair.right;
-
+      upgradeSeqFileList.addAll(oldSeqTsFiles);
       Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair = getAllFiles(
               DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = seqTsFilesPair.right;
+      upgradeUnseqFileList.addAll(oldUnseqTsFiles);
 
       recoverSeqFiles(tmpSeqTsFiles);
       recoverUnseqFiles(tmpUnseqTsFiles);
@@ -269,9 +282,12 @@ public class StorageGroupProcessor {
       if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
         mergingMods.delete();
       }
+
+      doUpdate();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
     }
+
 
     for (TsFileResource resource : sequenceFileTreeSet) {
       long timePartitionId = resource.getTimePartition();
@@ -284,6 +300,44 @@ public class StorageGroupProcessor {
     }
   }
 
+
+  /**
+   * use old seq file to update latestTimeForEachDevice, globalLatestFlushedTimeForEachDevice,
+   * partitionLatestFlushedTimeForEachDevice and timePartitionIdVersionControllerMap
+   *
+   */
+  private void doUpdate() throws IOException {
+
+    VersionController versionController = new SimpleFileVersionController(storageGroupSysDir.getPath());
+    long currentVersion = versionController.currVersion();
+    for (TsFileResource resource : upgradeSeqFileList) {
+      for (Entry<String, Long> entry : resource.getEndTimeMap().entrySet()) {
+        String deviceId = entry.getKey();
+        long endTime = entry.getValue();
+        long endTimePartitionId = StorageEngine.getTimePartition(endTime);
+        latestTimeForEachDevice.computeIfAbsent(endTimePartitionId, l -> new HashMap<>())
+                .put(deviceId, endTime);
+        globalLatestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
+
+        // set all the covered partition's LatestFlushedTime to Long.MAX_VALUE
+        long partitionId = StorageEngine.getTimePartition(resource.startTimeMap.get(deviceId));
+        while (partitionId <= endTimePartitionId) {
+          partitionLatestFlushedTimeForEachDevice.computeIfAbsent(partitionId, l -> new HashMap<>())
+                  .put(deviceId, Long.MAX_VALUE);
+          if (!timePartitionIdVersionControllerMap.containsKey(partitionId)) {
+            File directory = SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, String.valueOf(partitionId));
+            if(!directory.exists()){
+              directory.mkdirs();
+            }
+            File versionFile = SystemFileFactory.INSTANCE.getFile(directory, SimpleFileVersionController.FILE_PREFIX + currentVersion);
+            versionFile.createNewFile();
+            timePartitionIdVersionControllerMap.put(partitionId, new SimpleFileVersionController(storageGroupSysDir.getPath(), partitionId));
+          }
+          partitionId++;
+        }
+      }
+    }
+  }
 
   /**
    * get version controller by time partition Id Thread-safety should be ensure by caller
@@ -303,7 +357,7 @@ public class StorageGroupProcessor {
         });
   }
 
-  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders) {
+  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders) throws IOException {
     List<File> tsFiles = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
@@ -374,7 +428,12 @@ public class StorageGroupProcessor {
     tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
     upgradeFiles.sort(this::compareFileName);
     List<TsFileResource> upgradeRet = new ArrayList<>();
-    upgradeFiles.forEach(f -> upgradeRet.add(new TsFileResource(f)));
+    for (File f : upgradeFiles) {
+      TsFileResource fileResource = new TsFileResource(f);
+      // make sure the flush command is called before IoTDB is down.
+      fileResource.deserialize();
+      upgradeRet.add(fileResource);
+    }
     return new Pair<>(ret, upgradeRet);
   }
 
@@ -1287,12 +1346,23 @@ public class StorageGroupProcessor {
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
           .put(entry.getKey(), entry.getValue());
+      updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(processor.getTimeRangeId(), entry.getKey(), entry.getValue());
       if (globalLatestFlushedTimeForEachDevice
           .getOrDefault(entry.getKey(), Long.MIN_VALUE) < entry.getValue()) {
         globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
       }
     }
     return true;
+  }
+
+
+  /**
+   * used for upgrading
+   */
+  public void updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(long partitionId, String deviceId, long time) {
+    newlyFlushedPartitionLatestFlushedTimeForEachDevice
+            .computeIfAbsent(partitionId, id -> new HashMap<>())
+            .compute(deviceId, (k, v) -> v == null ? time : Math.max(v, time));
   }
 
   /**
