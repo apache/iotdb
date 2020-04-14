@@ -219,12 +219,15 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
-    if(!CONFIG.isEnableParameterAdapter()){
-      return;
-    }
     totalStorageGroup += diff;
     maxMemTableNum += IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
-    CONFIG.setMaxMemtableNumber(maxMemTableNum);
+
+    if(!CONFIG.isEnableParameterAdapter()){
+      // the maxMemTableNum will also be set in tryToAdaptParameters, this should not move out
+      CONFIG.setMaxMemtableNumber(maxMemTableNum);
+      return;
+    }
+
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
       maxMemTableNum -= IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
