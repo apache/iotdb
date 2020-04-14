@@ -441,7 +441,8 @@ var config = {
 							['5-DataQuery/6-GroupByQuery','GroupByQuery'],
 							['5-DataQuery/7-LastQuery','LastQuery'],
 							['5-DataQuery/8-AlignByDeviceQuery','AlignByDeviceQuery'],
-							['5-DataQuery/9-FillFunction','FillFunction']
+							['5-DataQuery/9-FillFunction','FillFunction'],
+	                        ['5-DataQuery/10-GroupByFillQuery', 'GroupByFillQuery']
 						]
 					},
 					{
@@ -851,7 +852,8 @@ var config = {
 							['5-DataQuery/6-GroupByQuery','降采样查询'],
 							['5-DataQuery/7-LastQuery','最近时间戳 Last 查询'],
 							['5-DataQuery/8-AlignByDeviceQuery','按设备对齐查询'],
-							['5-DataQuery/9-FillFunction','空值填充']
+							['5-DataQuery/9-FillFunction','空值填充'],
+		                    ['5-DataQuery/10-GroupByFillQuery', '降采样补空值查询']
 						]
 					},
 					{

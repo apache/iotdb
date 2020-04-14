@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.query.fill;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -40,10 +35,11 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-
-import java.io.IOException;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.io.IOException;
+import java.util.*;
 
 public class PreviousFill extends IFill {
 
@@ -57,19 +53,35 @@ public class PreviousFill extends IFill {
 
   private List<TimeseriesMetadata> unseqTimeseriesMetadataList;
 
+  private boolean untilLast;
+
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
-    super(dataType, queryTime);
-    this.beforeRange = beforeRange;
-    this.unseqTimeseriesMetadataList = new ArrayList<>();
+    this(dataType, queryTime, beforeRange, false);
   }
 
   public PreviousFill(long beforeRange) {
-    this.beforeRange = beforeRange;
+    this(beforeRange, false);
   }
+
+
+  public PreviousFill(long beforeRange, boolean untilLast) {
+    this.beforeRange = beforeRange;
+    this.untilLast = untilLast;
+  }
+
+
+  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange, boolean untilLast) {
+    super(dataType, queryTime);
+    this.beforeRange = beforeRange;
+    this.unseqTimeseriesMetadataList = new ArrayList<>();
+    this.untilLast = untilLast;
+  }
+
+
 
   @Override
   public IFill copy() {
-    return new PreviousFill(dataType,  queryTime, beforeRange);
+    return new PreviousFill(dataType,  queryTime, beforeRange, untilLast);
   }
 
   @Override
@@ -268,5 +280,13 @@ public class PreviousFill extends IFill {
 
   private TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
     return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
+  }
+
+  public boolean isUntilLast() {
+    return untilLast;
+  }
+
+  public void setUntilLast(boolean untilLast) {
+    this.untilLast = untilLast;
   }
 }

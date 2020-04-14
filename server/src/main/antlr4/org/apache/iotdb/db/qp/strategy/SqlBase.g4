@@ -153,6 +153,7 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
+    | groupByFillClause
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign?
     ;
@@ -205,9 +206,18 @@ groupByClause
       RR_BRACKET
     ;
 
+groupByFillClause
+    : GROUP BY LR_BRACKET
+      timeInterval
+      COMMA DURATION
+      RR_BRACKET
+      FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
+     ;
+
 typeClause
     : dataType LS_BRACKET linearClause RS_BRACKET
-    | dataType LS_BRACKET  previousClause RS_BRACKET
+    | dataType LS_BRACKET previousClause RS_BRACKET
+    | dataType LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
@@ -216,6 +226,10 @@ linearClause
 
 previousClause
     : PREVIOUS (COMMA DURATION)?
+    ;
+
+previousUntilLastClause
+    : PREVIOUSUNTILLAST (COMMA DURATION)?
     ;
 
 indexWithClause
@@ -307,7 +321,7 @@ nodeNameWithoutStar
     ;
 
 dataType
-    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
+    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT | ALL
     ;
 
 dateFormat
@@ -443,6 +457,10 @@ LINEAR
 
 PREVIOUS
     : P R E V I O U S
+    ;
+
+PREVIOUSUNTILLAST
+    : P R E V I O U S U N T I L L A S T
     ;
 
 METADATA

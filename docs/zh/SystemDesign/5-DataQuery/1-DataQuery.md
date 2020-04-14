@@ -29,6 +29,7 @@
 * 单点补空值查询
 * 最新数据查询
 * 按设备对齐查询
+* 降采样补空值查询
 
 为了实现以上几种查询，IoTDB 查询引擎中设计了针对单个时间序列的基础查询组件，在此基础上，实现了多种查询功能。
 
@@ -42,3 +43,4 @@
 * [最近时间戳查询](/zh/SystemDesign/5-DataQuery/7-LastQuery.html)
 * [按设备对齐查询](/zh/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html)
 * [空值填充](/zh/SystemDesign/5-DataQuery/9-FillFunction.html)
+* [降采样补空值查询](/zh/SystemDesign/5-DataQuery/10-GroupByFillQuery.html)
