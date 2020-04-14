@@ -139,7 +139,7 @@ public class PreviousFill extends IFill {
       TsFileResource resource = seqFileResource.get(index);
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              resource, seriesPath, context, timeFilter, allSensors);
+              resource, seriesPath, context, timeFilter, allSensors, false);
       if (timeseriesMetadata != null) {
         if (timeseriesMetadata.getStatistics().canUseStatistics()
             && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
@@ -180,7 +180,7 @@ public class PreviousFill extends IFill {
       }
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
+              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors, true);
       if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()
           && lBoundTime <= timeseriesMetadata.getStatistics().getEndTime()) {
         // The last timeseriesMetadata will be used as a pivot to filter the rest unseq files.
@@ -196,7 +196,7 @@ public class PreviousFill extends IFill {
         && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
+              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors, true);
       unseqTimeseriesMetadataList.add(timeseriesMetadata);
       // update lBoundTime if current unseq timeseriesMetadata's last point is a valid result
       if (timeseriesMetadata.getStatistics().canUseStatistics()

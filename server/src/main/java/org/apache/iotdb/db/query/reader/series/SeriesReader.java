@@ -543,7 +543,7 @@ class SeriesReader {
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
     while (seqTimeSeriesMetadata.isEmpty() && !seqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter, allSensors, false);
       if (timeseriesMetadata != null) {
         seqTimeSeriesMetadata.add(timeseriesMetadata);
       }
@@ -553,7 +553,7 @@ class SeriesReader {
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
     while (unSeqTimeSeriesMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter, allSensors, true);
       if (timeseriesMetadata != null) {
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
@@ -608,13 +608,13 @@ class SeriesReader {
 
   private void unpackAllOverlappedTsFilesToTimeSeriesMetadata(long endTime) throws IOException {
     while (!unseqFileResource.isEmpty() && endTime >= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter, allSensors, true);
       if (timeseriesMetadata != null) {
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
     while (!seqFileResource.isEmpty() && endTime >= seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter, allSensors, false);
       if (timeseriesMetadata != null) {
         seqTimeSeriesMetadata.add(timeseriesMetadata);
       }
