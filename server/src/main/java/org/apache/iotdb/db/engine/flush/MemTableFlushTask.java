@@ -83,7 +83,9 @@ public class MemTableFlushTask {
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
         // register active time series to the ActiveTimeSeriesCounter
-        ActiveTimeSeriesCounter.getInstance().offer(storageGroup, deviceId, measurementId);
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+          ActiveTimeSeriesCounter.getInstance().offer(storageGroup, deviceId, measurementId);
+        }
       }
       encodingTaskQueue.add(new EndChunkGroupIoTask());
     }
