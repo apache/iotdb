@@ -28,7 +28,6 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class JDBCExample {
-
   public static void main(String[] args) throws ClassNotFoundException, SQLException {
     Class.forName("org.apache.iotdb.jdbc.IoTDBDriver");
     try (Connection connection = DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -54,7 +53,7 @@ public class JDBCExample {
       outputResult(resultSet);
       resultSet = statement.executeQuery("select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
       outputResult(resultSet);
-    }catch (IoTDBSQLException e){
+    } catch (IoTDBSQLException e){
         System.out.println(e.getMessage());
     }
   }
