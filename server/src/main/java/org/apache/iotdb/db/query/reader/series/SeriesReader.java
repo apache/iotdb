@@ -145,8 +145,12 @@ class SeriesReader {
 
     if (!cachedPageReaders.isEmpty()
             || firstPageReader != null
-            || mergeReader.hasNextTimeValuePair()) {
-      throw new IOException("all cached pages should be consumed first cachedPageReaders.isEmpty() is " + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader.hasNextTimeValuePair());
+        || mergeReader.hasNextTimeValuePair()) {
+      throw new IOException(
+          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+              + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader
+              != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader
+              .hasNextTimeValuePair());
     }
 
     if (firstChunkMetadata != null
@@ -192,7 +196,11 @@ class SeriesReader {
     if (!cachedPageReaders.isEmpty()
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
-      throw new IOException("all cached pages should be consumed first cachedPageReaders.isEmpty() is " + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader.hasNextTimeValuePair());
+      throw new IOException(
+          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+              + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader
+              != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader
+              .hasNextTimeValuePair());
     }
 
     if (firstChunkMetadata != null) {
@@ -560,7 +568,9 @@ class SeriesReader {
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
     while (seqTimeSeriesMetadata.isEmpty() && !seqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils
+          .loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, getAnyFilter(),
+              allSensors);
       if (timeseriesMetadata != null) {
         seqTimeSeriesMetadata.add(timeseriesMetadata);
       }
@@ -570,7 +580,9 @@ class SeriesReader {
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
     while (unSeqTimeSeriesMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils
+          .loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(),
+              allSensors);
       if (timeseriesMetadata != null) {
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
