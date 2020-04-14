@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.executor;
 
+
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -44,7 +45,11 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
   private List<Path> selectedSeries;
@@ -53,6 +58,11 @@ public class LastQueryExecutor {
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
+  }
+
+  public LastQueryExecutor(List<Path> selectedSeries, List<TSDataType> dataTypes) {
+    this.selectedSeries = selectedSeries;
+    this.dataTypes = dataTypes;
   }
 
   /**
@@ -93,7 +103,7 @@ public class LastQueryExecutor {
    * @param context query context
    * @return TimeValuePair
    */
-  private TimeValuePair calculateLastPairForOneSeries(
+  public static TimeValuePair calculateLastPairForOneSeries(
       Path seriesPath, TSDataType tsDataType, QueryContext context)
       throws IOException, QueryProcessException, StorageEngineException {
 
@@ -153,7 +163,7 @@ public class LastQueryExecutor {
     return resultPair;
   }
 
-  private TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
+  private static TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
     return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
   }
 }
