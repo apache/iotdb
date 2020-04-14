@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.executor;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -35,6 +36,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -70,7 +72,7 @@ public class LastQueryExecutor {
    *
    * @param context query context
    */
-  public QueryDataSet execute(QueryContext context)
+  public QueryDataSet execute(QueryContext context, LastQueryPlan lastQueryPlan)
       throws StorageEngineException, IOException, QueryProcessException {
 
     ListDataSet dataSet = new ListDataSet(
@@ -78,8 +80,9 @@ public class LastQueryExecutor {
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
 
     for (int i = 0; i < selectedSeries.size(); i++) {
-      TimeValuePair lastTimeValuePair =
-          calculateLastPairForOneSeries(selectedSeries.get(i), dataTypes.get(i), context);
+      TimeValuePair lastTimeValuePair = calculateLastPairForOneSeries(
+              selectedSeries.get(i), dataTypes.get(i), context,
+              lastQueryPlan.getAllMeasurementsInDevice(selectedSeries.get(i).getDevice()));
       if (lastTimeValuePair.getValue() != null) {
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
@@ -104,7 +107,7 @@ public class LastQueryExecutor {
    * @return TimeValuePair
    */
   public static TimeValuePair calculateLastPairForOneSeries(
-      Path seriesPath, TSDataType tsDataType, QueryContext context)
+      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> sensors)
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
@@ -128,13 +131,13 @@ public class LastQueryExecutor {
 
     if (!seqFileResources.isEmpty()) {
       for (int i = seqFileResources.size() - 1; i >= 0; i--) {
-        List<ChunkMetadata> chunkMetadata = FileLoaderUtils.loadChunkMetadataFromTsFileResource(
-                seqFileResources.get(i), seriesPath, context);
-        if (!chunkMetadata.isEmpty()) {
-          ChunkMetadata lastChunkMetaData = chunkMetadata.get(chunkMetadata.size() - 1);
-          Statistics chunkStatistics = lastChunkMetaData.getStatistics();
+        TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
+                seqFileResources.get(i), seriesPath, context, null, sensors);
+        if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()) {
+          Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
           resultPair = constructLastPair(
-                  chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+              timeseriesMetadataStats.getEndTime(),
+              timeseriesMetadataStats.getLastValue(), tsDataType);
           break;
         }
       }
@@ -145,9 +148,9 @@ public class LastQueryExecutor {
       if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         continue;
       }
-      List<ChunkMetadata> chunkMetadata =
-          FileLoaderUtils.loadChunkMetadataFromTsFileResource(resource, seriesPath, context);
-      for (ChunkMetadata chunkMetaData : chunkMetadata) {
+      TimeseriesMetadata timeseriesMetadata =
+          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
+      for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
         if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
             && chunkMetaData.getVersion() > version) {
           Statistics chunkStatistics = chunkMetaData.getStatistics();

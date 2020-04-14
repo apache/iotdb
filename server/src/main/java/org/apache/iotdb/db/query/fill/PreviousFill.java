@@ -148,8 +148,7 @@ public class PreviousFill extends IFill {
               timeseriesMetadata.getStatistics().getLastValue(),
               dataType);
         } else {
-          List<ChunkMetadata> seqChunkMetadataList =
-              FileLoaderUtils.loadChunkMetadataList(timeseriesMetadata);
+          List<ChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
 
           for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
             lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
