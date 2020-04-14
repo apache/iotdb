@@ -85,7 +85,7 @@ public class MManager {
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
 
-  private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
+  private Map<String, Integer> seriesNumberInStorageGroups;
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
@@ -456,8 +456,8 @@ public class MManager {
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
         ActiveTimeSeriesCounter.getInstance().init(storageGroup);
+        seriesNumberInStorageGroups.put(storageGroup, 0);
       }
-      seriesNumberInStorageGroups.put(storageGroup, 0);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     } catch (ConfigAdjusterException e) {
