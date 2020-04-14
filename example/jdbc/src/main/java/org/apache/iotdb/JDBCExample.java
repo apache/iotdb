@@ -37,7 +37,7 @@ public class JDBCExample {
         statement.execute("CREATE TIMESERIES root.sg1.d1.s1 WITH DATATYPE=INT64, ENCODING=RLE, CompressionType=SNAPPY");
         statement.execute("CREATE TIMESERIES root.sg1.d1.s2 WITH DATATYPE=INT64, ENCODING=RLE, CompressionType=SNAPPY");
         statement.execute("CREATE TIMESERIES root.sg1.d1.s3 WITH DATATYPE=INT64, ENCODING=RLE, CompressionType=SNAPPY");
-      } catch (SQLException e) {
+      } catch (IoTDBSQLException e) {
         System.out.println(e.getMessage());
       }
 
