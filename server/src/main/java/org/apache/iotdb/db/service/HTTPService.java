@@ -190,13 +190,13 @@ public class HTTPService implements HTTPServiceMBean, IService {
       try {
         Thread.currentThread().setName(ThreadName.HTTP_SERVICE.getName());
         server.start();
+        threadStartLatch.countDown();
       } catch (@SuppressWarnings("squid:S2142") InterruptedException e1) {
         //we do not sure why InterruptedException happens, but it indeed occurs in Travis WinOS
         logger.error(e1.getMessage(), e1);
       } catch (Exception e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       }
-      threadStartLatch.countDown();
     }
   }
 }
