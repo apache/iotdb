@@ -90,7 +90,7 @@ public class FileLoaderUtils {
    * @param allSensors measurements queried at the same time of this device
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
-      QueryContext context, Filter timeFilter, Set<String> allSensors, boolean isUnseq) throws IOException {
+      QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
@@ -121,9 +121,6 @@ public class FileLoaderUtils {
               timeSeriesMetadata.getStatistics().getEndTime())) {
         return null;
       }
-    }
-    if (timeSeriesMetadata != null && timeSeriesMetadata.getStatistics() != null && isUnseq) {
-      timeSeriesMetadata.getStatistics().setCanUseStatistics(false);
     }
     return timeSeriesMetadata;
   }
