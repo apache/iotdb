@@ -40,6 +40,7 @@ public class AddNodeLog extends Log {
     this.newNode = newNode;
   }
 
+
   @Override
   public ByteBuffer serialize() {
     byte[] ipBytes = newNode.getIp().getBytes();

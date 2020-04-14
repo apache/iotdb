@@ -45,6 +45,7 @@ public class PhysicalPlanLog extends Log {
   private PhysicalPlan plan;
 
   public PhysicalPlanLog() {
+
   }
 
   public PhysicalPlanLog(PhysicalPlan plan) {

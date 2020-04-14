@@ -33,8 +33,9 @@ import io.airlift.airline.ParseOptionConversionException;
 import io.airlift.airline.ParseOptionMissingException;
 import io.airlift.airline.ParseOptionMissingValueException;
 import java.util.List;
-import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.cluster.utils.nodetool.function.Host;
+import org.apache.iotdb.cluster.utils.nodetool.function.LogView;
+import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.cluster.utils.nodetool.function.Ring;
 import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 
@@ -46,7 +47,8 @@ public class NodeTool {
         Ring.class,
         Partition.class,
         Host.class,
-        Status.class
+        Status.class,
+        LogView.class
     );
 
     Cli.CliBuilder<Runnable> builder = Cli.builder("nodetool");

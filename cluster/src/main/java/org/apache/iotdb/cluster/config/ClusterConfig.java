@@ -43,7 +43,19 @@ public class ClusterConfig {
   private int replicationNum = 3;
 
   private int connectionTimeoutInMS = 20 * 1000;
+  /**
+   * This parameter controls when to actually delete snapshoted logs because we can't remove
+   * snapshoted logs directly from disk now
+   */
+  private long maxRemovedLogSize = 1024 * 1024 * 128;
 
+  public long getMaxRemovedLogSize() {
+    return maxRemovedLogSize;
+  }
+
+  public void setMaxRemovedLogSize(long maxRemovedLogSize) {
+    this.maxRemovedLogSize = maxRemovedLogSize;
+  }
 
   public String getLocalIP() {
     return localIP;
