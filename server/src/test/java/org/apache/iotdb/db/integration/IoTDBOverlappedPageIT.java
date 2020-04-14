@@ -68,16 +68,7 @@ public class IoTDBOverlappedPageIT {
 
   @Test
   public void selectOverlappedPageTest() {
-    String[] res = {"1,101",
-            "2,102",
-            "3,103",
-            "4,104",
-            "5,105",
-            "6,106",
-            "7,107",
-            "8,108",
-            "9,109",
-            "10,110",
+    String[] res = {
             "11,111",
             "12,112",
             "13,113",
@@ -88,22 +79,12 @@ public class IoTDBOverlappedPageIT {
             "18,118",
             "19,119",
             "20,120",
-            "100,100",
-            "101,101",
-            "102,102",
-            "103,103",
-            "104,104",
-            "105,105",
-            "106,106",
-            "107,107",
-            "108,108",
-            "109,109",
-            "110,110"};
+    };
 
     try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
-      String sql = "select s0 from root.vehicle.d0 where time >= 1 and time <= 110 AND root.vehicle.d0.s0 > 3";
+      String sql = "select s0 from root.vehicle.d0 where time >= 1 and time <= 110 AND root.vehicle.d0.s0 > 110";
       ResultSet resultSet = statement.executeQuery(sql);
       int cnt = 0;
       while (resultSet.next()) {

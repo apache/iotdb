@@ -274,7 +274,7 @@ class SeriesReader {
     if (hasCachedNextOverlappedPage) {
       return true;
     } else if (mergeReader.hasNextTimeValuePair()) {
-      while (hasNextOverlappedPage()) {
+      if (hasNextOverlappedPage()) {
         cachedBatchData = nextOverlappedPage();
         if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
           hasCachedNextOverlappedPage = true;
@@ -311,7 +311,7 @@ class SeriesReader {
       /*
        * next page is overlapped, read overlapped data and cache it
        */
-      while (hasNextOverlappedPage()) {
+      if (hasNextOverlappedPage()) {
         cachedBatchData = nextOverlappedPage();
         if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
           hasCachedNextOverlappedPage = true;
@@ -320,6 +320,10 @@ class SeriesReader {
       }
     }
 
+    // make sure firstPageReader won't be null while cachedPageReaders has more cached page readers
+    if (firstPageReader == null && !cachedPageReaders.isEmpty()) {
+      firstPageReader = cachedPageReaders.poll();
+    }
     return firstPageReader != null;
   }
 
