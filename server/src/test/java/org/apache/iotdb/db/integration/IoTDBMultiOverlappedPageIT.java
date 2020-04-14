@@ -24,7 +24,6 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -34,6 +33,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
@@ -73,23 +73,27 @@ public class IoTDBMultiOverlappedPageIT {
             "12,112",
             "13,113",
             "14,114",
-            "15,115",
-            "16,116",
-            "17,117",
-            "18,118",
-            "19,119",
-            "20,120",
+            "15,215",
+            "16,216",
+            "17,217",
+            "18,218",
+            "19,219",
+            "20,220",
+            "21,221",
+            "22,222",
+            "23,223",
+            "24,224"
     };
 
     try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
-      String sql = "select s0 from root.vehicle.d0 where time >= 1 and time <= 50 AND root.vehicle.d0.s0 >= 110";
+      String sql = "select s0 from root.vehicle.d0 where time >= 1 and time <= 50 AND root.vehicle.d0.s0 >= 111";
       ResultSet resultSet = statement.executeQuery(sql);
       int cnt = 0;
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString("root.vehicle.d0.s0");
-        Assert.assertEquals(res[cnt], ans);
+        assertEquals(res[cnt], ans);
         cnt++;
       }
     } catch (Exception e) {
@@ -110,16 +114,26 @@ public class IoTDBMultiOverlappedPageIT {
                 .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
         statement.execute(sql);
       }
+      for (long time = 11; time <= 20; time++) {
+        String sql = String
+                .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 100+time);
+        statement.execute(sql);
+      }
       statement.execute("flush");
-      for (long time = 100; time <= 120; time++) {
+      for (long time = 101; time <= 110; time++) {
         String sql = String
                 .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
         statement.execute(sql);
       }
       statement.execute("flush");
-      for (long time = 1; time <= 20; time++) {
+      for (long time = 1; time <= 10; time++) {
         String sql = String
                 .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+100);
+        statement.execute(sql);
+      }
+      for (long time = 15; time <= 24; time++) {
+        String sql = String
+                .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time+200);
         statement.execute(sql);
       }
       statement.execute("flush");

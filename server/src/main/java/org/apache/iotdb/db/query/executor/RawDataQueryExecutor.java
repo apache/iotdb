@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
+
 /**
  * IoTDB query executor.
  */
@@ -118,16 +120,21 @@ public class RawDataQueryExecutor {
 
     TimeGenerator timestampGenerator = getTimeGenerator(
         optimizedExpression, context, queryPlan);
+    List<Boolean> cached = markFilterdPaths(optimizedExpression, deduplicatedPaths);
 
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     for (int i = 0; i < deduplicatedPaths.size(); i++) {
+      if (cached.get(i)) {
+        readersOfSelectedSeries.add(null);
+        continue;
+      }
       Path path = deduplicatedPaths.get(i);
       IReaderByTimestamp seriesReaderByTimestamp = getReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()),
           deduplicatedDataTypes.get(i), context);
       readersOfSelectedSeries.add(seriesReaderByTimestamp);
     }
     return new RawQueryDataSetWithValueFilter(deduplicatedPaths, deduplicatedDataTypes,
-        timestampGenerator, readersOfSelectedSeries);
+        timestampGenerator, readersOfSelectedSeries, cached);
   }
 
   protected IReaderByTimestamp getReaderByTimestamp(Path path, Set<String> allSensors, TSDataType dataType,
