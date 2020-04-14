@@ -20,13 +20,9 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,11 +34,10 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
 
   private long truncatePosition;
   private static Logger logger = LoggerFactory.getLogger(ForceAppendTsFileWriter.class);
-  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
 
   public ForceAppendTsFileWriter(File file) throws IOException {
-    if (resourceLogger.isInfoEnabled()) {
-      resourceLogger.info("{} writer is opened.", file.getName());
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} writer is opened.", file.getName());
     }
     this.out = new LocalTsFileOutput(file, true);
     this.file = file;
@@ -60,17 +55,8 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
             "File " + file.getPath() + " is not a complete TsFile");
       }
       TsFileMetadata tsFileMetadata = reader.readFileMetadata();
-      Map<String, Pair<Long, Integer>> deviceMap = tsFileMetadata.getDeviceMetadataIndex();
-      long firstChunkMetaPos = Long.MAX_VALUE;
-      for (String deviceId : deviceMap.keySet()) {
-        Map<String, TimeseriesMetadata> deviceMetadata = reader.readDeviceMetadata(deviceId);
-        for (TimeseriesMetadata timeseriesMetadata : deviceMetadata.values()) {
-          firstChunkMetaPos = firstChunkMetaPos > timeseriesMetadata.getOffsetOfChunkMetaDataList() ?
-              timeseriesMetadata.getOffsetOfChunkMetaDataList() : firstChunkMetaPos;
-        }
-      }
       // truncate metadata and marker
-      truncatePosition = firstChunkMetaPos - 1;
+      truncatePosition = tsFileMetadata.getMetaOffset();
     }
   }
 
