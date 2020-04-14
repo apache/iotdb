@@ -87,7 +87,7 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      fill.configureFill(path, dataType, queryTime,
+      fill = configureFill(fill, path, dataType, queryTime,
           fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();
@@ -101,5 +101,12 @@ public class FillQueryExecutor {
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
+  }
+
+  protected IFill configureFill(IFill fill, Path path, TSDataType dataType, long queryTime,
+      Set<String> deviceMeasurements, QueryContext context)
+      throws QueryProcessException, StorageEngineException {
+    fill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
+    return fill;
   }
 }

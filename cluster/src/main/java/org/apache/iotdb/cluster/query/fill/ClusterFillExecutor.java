@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query;
+package org.apache.iotdb.cluster.query.fill;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.FillQueryExecutor;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -44,13 +45,10 @@ public class ClusterFillExecutor extends FillQueryExecutor {
   }
 
   @Override
-  protected void configureFill(IFill fill, TSDataType dataType, Path path, Set<String> deviceMeasurements,
-      QueryContext context,
-      long queryTime) throws StorageEngineException {
-    fill.setDataType(dataType);
-    fill.setQueryTime(queryTime);
-    fill.setAllDataReader(metaGroupMember.getSeriesReader(path, deviceMeasurements, dataType,
-        fill.getFilter(), null,
-     context));
+  protected IFill configureFill(IFill fill, Path path, TSDataType dataType, long queryTime,
+      Set<String> deviceMeasurements, QueryContext context)
+      throws QueryProcessException, StorageEngineException {
+    // TODO-Cluster complete
+    return null;
   }
 }
