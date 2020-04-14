@@ -18,8 +18,6 @@
 
 <template >
   <div style="background:linear-gradient(top,#A2A2A2,#fff);">
-
-    <gh-btns-fork slug="vuejs/vue" show-count></gh-btns-fork>
     
     <div style="width:100%;margin: 0 auto;position: relative;height:480px;text-align:center;">
       <h2 class="h2">Apache IoTDB</h2>
@@ -52,13 +50,11 @@ Apache IoTDB（孵化中）（物联网数据库）是一个集成数据专为�
       </el-row>
     </div>
 
-
-
     <p class="home-title" style="font-size: 50px;">应用场景</p>
 
     <div class="block">
         <el-carousel trigger="click" height="700px">
-          <el-carousel-item v-for="item in imgBlock" :key="item" style="text-align:center;">
+          <el-carousel-item v-for="(item,index) in imgBlock" :key="index" style="text-align:center;">
             <img :src="item.src" height="500px">
             <h3 style="font-size: 30px;color: #fcac45;text-align: center;line-height: 0px;">{{item.des}}</h3>
             <p style="font-size: 18px;padding:10px;line-height: 22px;text-align:justify!important;font-weight:bold;">{{item.detail}}</p>
