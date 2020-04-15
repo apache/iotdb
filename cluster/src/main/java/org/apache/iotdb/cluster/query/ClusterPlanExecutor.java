@@ -35,6 +35,7 @@ import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -100,15 +101,17 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected List<String> getNodesList(String schemaPattern, int level)
       throws IOException, TException, InterruptedException, MetadataException {
-    Set<String> nodeListSet = new HashSet<>(
+    Set<String> nodeSet = new HashSet<>(
         MManager.getInstance().getNodesList(schemaPattern, level));
-
-    GetNodesListHandler handler = new GetNodesListHandler();
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
     for (Node node : metaGroupMember.getAllNodes()) {
+      if (node.equals(metaGroupMember.getThisNode())) {
+        continue;
+      }
       pool.submit(() -> {
+        GetNodesListHandler handler = new GetNodesListHandler();
         DataClient client = null;
         try {
           client = metaGroupMember.getDataClient(node);
@@ -128,31 +131,33 @@ public class ClusterPlanExecutor extends PlanExecutor {
             logger.error("Error occurs when getting node lists in node {}.", node, e);
           } catch (InterruptedException e) {
             logger.error("Interrupted when getting node lists in node {}.", node, e);
+            Thread.currentThread().interrupt();
           }
         }
         List<String> paths = response.get();
         if (paths != null) {
-          nodeListSet.addAll(response.get());
+          nodeSet.addAll(paths);
         }
       });
     }
     pool.shutdown();
     pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
-    return new ArrayList<>(nodeListSet);
+    return new ArrayList<>(nodeSet);
   }
 
   @Override
   protected Set<String> getPathNextChildren(String path)
       throws MetadataException, InterruptedException {
-    Set<String> nodeListSet = new HashSet<>(
+    Set<String> resultSet = new HashSet<>(
         MManager.getInstance().getChildNodePathInNextLevel(path));
 
-    GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
-
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
-
     for (Node node : metaGroupMember.getAllNodes()) {
+      if (node.equals(metaGroupMember.getThisNode())) {
+        continue;
+      }
       pool.submit(() -> {
+        GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
         DataClient client = null;
         try {
           client = metaGroupMember.getDataClient(node);
@@ -172,23 +177,66 @@ public class ClusterPlanExecutor extends PlanExecutor {
             logger.error("Error occurs when getting node lists in node {}.", node, e);
           } catch (InterruptedException e) {
             logger.error("Interrupted when getting node lists in node {}.", node, e);
+            Thread.currentThread().interrupt();
           }
         }
-        List<String> paths = response.get();
-        if (paths != null) {
-          nodeListSet.addAll(response.get());
+        List<String> nextChildren = response.get();
+        if (nextChildren != null) {
+          resultSet.addAll(nextChildren);
         }
       });
     }
     pool.shutdown();
     pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
-    return nodeListSet;
+    return resultSet;
   }
 
   @Override
-  protected List<String[]> getTimeseriesSchemas(String path) {
-    // TODO-Cluster: enable meta queries
-    throw new UnsupportedOperationException("Not implemented");
+  protected List<String[]> getTimeseriesSchemas(String path)
+      throws MetadataException, InterruptedException {
+    Set<String[]> resultSet = new HashSet<>(
+        MManager.getInstance().getAllMeasurementSchema(path));
+
+    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+
+    for (Node node : metaGroupMember.getAllNodes()) {
+      if (node.equals(metaGroupMember.getThisNode())) {
+        continue;
+      }
+      pool.submit(() -> {
+        GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
+        DataClient client = null;
+        try {
+          client = metaGroupMember.getDataClient(node);
+        } catch (IOException e) {
+          logger.error("Failed to connect to node: {}", node, e);
+        }
+        AtomicReference<List<List<String>>> response = new AtomicReference<>(null);
+        handler.setResponse(response);
+        handler.setContact(node);
+        synchronized (response) {
+          try {
+            if (client != null) {
+              client.getAllMeasurementSchema(null, path, handler);
+              response.wait(connectionTimeoutInMS);
+            }
+          } catch (TException e) {
+            logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
+            Thread.currentThread().interrupted();
+          }
+        }
+        if (response.get() != null) {
+          for (List<String> element : response.get()) {
+            resultSet.add(element.toArray(new String[0]));
+          }
+        }
+      });
+    }
+    pool.shutdown();
+    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    return new ArrayList<>(resultSet);
   }
 
   @Override

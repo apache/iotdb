@@ -426,7 +426,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected List<String[]> getTimeseriesSchemas(String path) throws MetadataException {
+  protected List<String[]> getTimeseriesSchemas(String path) throws MetadataException, InterruptedException {
     return MManager.getInstance().getAllMeasurementSchema(path);
   }
 

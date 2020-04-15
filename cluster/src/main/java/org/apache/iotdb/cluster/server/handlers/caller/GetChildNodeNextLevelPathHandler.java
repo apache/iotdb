@@ -35,7 +35,7 @@ public class GetChildNodeNextLevelPathHandler implements AsyncMethodCallback<Set
 
   @Override
   public void onComplete(Set<String> resp) {
-    logger.info("Received node lists of size {} from {}", resp.size(), contact);
+    logger.info("Received child node next level path from {}", contact);
     synchronized (result) {
       result.set(resp);
       result.notifyAll();
@@ -44,7 +44,7 @@ public class GetChildNodeNextLevelPathHandler implements AsyncMethodCallback<Set
 
   @Override
   public void onError(Exception exception) {
-    logger.warn("Cannot get node list from {}, because", contact, exception);
+    logger.warn("Cannot get child node next level path from {}, because", contact, exception);
   }
 
   public void setResponse(AtomicReference response) {

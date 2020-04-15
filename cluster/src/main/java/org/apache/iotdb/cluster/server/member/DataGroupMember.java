@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1364,6 +1365,24 @@ public class DataGroupMember  extends RaftMember implements TSDataService.AsyncI
     }
     try {
       resultHandler.onComplete(MManager.getInstance().getChildNodePathInNextLevel(path));
+    } catch (MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void getAllMeasurementSchema(Node header, String path,
+      AsyncMethodCallback<List<List<String>>> resultHandler) throws TException {
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+    try {
+      List<List<String>> res = new ArrayList<>();
+      for(String[] element : MManager.getInstance().getAllMeasurementSchema(path)){
+        res.add(Arrays.asList(element));
+      }
+      resultHandler.onComplete(res);
     } catch (MetadataException e) {
       resultHandler.onError(e);
     }
