@@ -106,38 +106,39 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
-      Node node = group.getHeader();
-      if (node.equals(metaGroupMember.getThisNode())) {
+      Node header = group.getHeader();
+      if (header.equals(metaGroupMember.getThisNode())) {
         continue;
       }
       pool.submit(() -> {
         GetNodesListHandler handler = new GetNodesListHandler();
-        DataClient client = null;
-        try {
-          client = metaGroupMember.getDataClient(node);
-        } catch (IOException e) {
-          logger.error("Failed to connect to node: {}", node, e);
-        }
         AtomicReference<List<String>> response = new AtomicReference<>(null);
         handler.setResponse(response);
-        handler.setContact(node);
-        synchronized (response) {
-          try {
-            if (client != null) {
-              client.getNodeList(node, schemaPattern, level, handler);
-              response.wait(connectionTimeoutInMS);
+        try {
+          for (Node node : group) {
+            DataClient client = metaGroupMember.getDataClient(node);
+            handler.setContact(node);
+            synchronized (response) {
+              if (client != null) {
+                client.getNodeList(header, schemaPattern, level, handler);
+                response.wait(connectionTimeoutInMS);
+              }
             }
-          } catch (TException e) {
-            logger.error("Error occurs when getting node lists in node {}.", node, e);
-          } catch (InterruptedException e) {
-            logger.error("Interrupted when getting node lists in node {}.", node, e);
-            Thread.currentThread().interrupt();
+            List<String> paths = response.get();
+            if (paths != null) {
+              nodeSet.addAll(paths);
+              break;
+            }
           }
+        } catch (IOException e) {
+          logger.error("Failed to connect to node: {}", header, e);
+        } catch (TException e) {
+          logger.error("Error occurs when getting node lists in node {}.", header, e);
+        } catch (InterruptedException e) {
+          logger.error("Interrupted when getting node lists in node {}.", header, e);
+          Thread.currentThread().interrupt();
         }
-        List<String> paths = response.get();
-        if (paths != null) {
-          nodeSet.addAll(paths);
-        }
+
       });
     }
     pool.shutdown();
@@ -152,6 +153,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         MManager.getInstance().getChildNodePathInNextLevel(path));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
       Node node = group.getHeader();
       if (node.equals(metaGroupMember.getThisNode())) {
