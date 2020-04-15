@@ -50,7 +50,8 @@ public class PreviousFill extends IFill {
   private Path seriesPath;
   private QueryContext context;
   private long beforeRange;
-  private Set<String> allSensors;
+  // measurements of the same device as "seriesPath"
+  private Set<String> deviceMeasurements;
   private Filter timeFilter;
 
   private QueryDataSource dataSource;
@@ -60,7 +61,6 @@ public class PreviousFill extends IFill {
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
-    this.unseqTimeseriesMetadataList = new ArrayList<>();
   }
 
   public PreviousFill(long beforeRange) {
@@ -73,7 +73,7 @@ public class PreviousFill extends IFill {
   }
 
   @Override
-  Filter constructFilter() {
+  protected Filter constructFilter() {
     Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
         : TimeFilter.gtEq(queryTime - beforeRange);
     // time in [queryTime - beforeRange, queryTime]
@@ -86,17 +86,18 @@ public class PreviousFill extends IFill {
 
   @Override
   public void configureFill(Path path, TSDataType dataType, long queryTime,
-      Set<String> sensors, QueryContext context)
+      Set<String> deviceMeasurements, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     this.seriesPath = path;
     this.dataType = dataType;
     this.context = context;
     this.queryTime = queryTime;
-    this.allSensors = sensors;
+    this.deviceMeasurements = deviceMeasurements;
     this.timeFilter = constructFilter();
     this.dataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
+    this.unseqTimeseriesMetadataList = new ArrayList<>();
   }
 
   @Override
@@ -127,7 +128,7 @@ public class PreviousFill extends IFill {
       TsFileResource resource = seqFileResource.get(index);
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              resource, seriesPath, context, timeFilter, allSensors);
+              resource, seriesPath, context, timeFilter, deviceMeasurements);
       if (timeseriesMetadata != null) {
         if (timeseriesMetadata.getStatistics().canUseStatistics()
             && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
@@ -168,7 +169,7 @@ public class PreviousFill extends IFill {
       }
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
+              unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
       if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()
           && lBoundTime <= timeseriesMetadata.getStatistics().getEndTime()) {
         // The last timeseriesMetadata will be used as a pivot to filter the rest unseq files.
@@ -184,7 +185,7 @@ public class PreviousFill extends IFill {
         && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
+              unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
       unseqTimeseriesMetadataList.add(timeseriesMetadata);
       // update lBoundTime if current unseq timeseriesMetadata's last point is a valid result
       if (timeseriesMetadata.getStatistics().canUseStatistics()

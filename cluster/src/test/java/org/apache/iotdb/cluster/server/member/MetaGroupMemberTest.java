@@ -124,7 +124,7 @@ public class MetaGroupMemberTest extends MemberTest {
     DataGroupMember dataGroupMember = getDataGroupMember(allNodes, TestUtils.getNode(0));
     dataGroupMember.setCharacter(LEADER);
     dataClusterServer = new DataClusterServer(TestUtils.getNode(0),
-        new DataGroupMember.Factory(null, metaGroupMember, null) {
+        new DataGroupMember.Factory(null, metaGroupMember) {
           @Override
           public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
             return getDataGroupMember(partitionGroup, thisNode);
@@ -140,8 +140,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
-    return new DataGroupMember(null, group, node, new TestPartitionedLogManager(null,
-        partitionTable, group.getHeader(), TestSnapshot::new),
+    DataGroupMember dataGroupMember = new DataGroupMember(null, group, node,
         metaGroupMember) {
       @Override
       public boolean syncLeader() {
@@ -176,6 +175,9 @@ public class MetaGroupMemberTest extends MemberTest {
         mockedPullTimeSeriesSchema(request, resultHandler);
       }
     };
+    dataGroupMember.setLogManager(new TestPartitionedLogManager(null,
+        partitionTable, group.getHeader(), TestSnapshot::new));
+    return dataGroupMember;
   }
 
   private void mockedPullTimeSeriesSchema(PullSchemaRequest request,

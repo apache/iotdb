@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.version;
 
+import java.io.IOException;
+
 /**
  * VersionController controls the version(a monotonic increasing long) of a FileNode.
  */
@@ -34,4 +36,5 @@ public interface VersionController {
    * @return the current version number.
    */
   long currVersion();
+
 }

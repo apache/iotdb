@@ -587,7 +587,7 @@ public class MManager {
    *
    * @return storage group in the given path
    */
-  public String getStorageGroupName(String path) throws MetadataException {
+  public String getStorageGroupName(String path) throws StorageGroupNotSetException {
     lock.readLock().lock();
     try {
       return mtree.getStorageGroupName(path);

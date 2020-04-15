@@ -80,10 +80,5 @@ public interface LogManager {
 
   void setLastLogTerm(long lastLogTerm);
 
-  /**
-   * Wait until all remote snapshots are pulled locally.
-   */
-  default void waitRemoteSnapshots() {
-
-  };
+  void setCommitIndex(long commitIndex);
 }

@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -496,5 +497,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   public Map<Node, DataGroupMember> getHeaderGroupMap() {
     return headerGroupMap;
+  }
+
+  @Override
+  public void previousFill(PreviousFillRequest request,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
+    dataMember.previousFill(request, resultHandler);
   }
 }

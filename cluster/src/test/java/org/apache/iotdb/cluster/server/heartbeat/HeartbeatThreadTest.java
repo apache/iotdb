@@ -127,7 +127,7 @@ public class HeartbeatThreadTest {
     member.getTerm().set(10);
     logManager.setLastLogId(9);
     logManager.setLastLogTerm(8);
-    logManager.setCommitLogIndex(7);
+    logManager.setCommitIndex(7);
 
     respondToElection = false;
     testHeartbeat = false;

@@ -19,23 +19,26 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.ClientPool;
@@ -45,18 +48,19 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
-import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
-import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
+import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.SlotManager;
+import org.apache.iotdb.cluster.partition.SlotManager.SlotStatus;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
@@ -65,6 +69,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -77,6 +82,7 @@ import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
@@ -97,6 +103,7 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
@@ -107,6 +114,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -161,7 +169,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * "slotManager" tracks the status of slots during data transfers so that we can know whether
    * the slot has non-pulled data.
    */
-  private SlotManager slotManager;
+  protected SlotManager slotManager;
 
   @TestOnly
   public DataGroupMember() {
@@ -169,20 +177,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
-      PartitionedSnapshotLogManager logManager, MetaGroupMember metaGroupMember) {
+       MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
         new ClientPool(new DataClient.Factory(factory)));
     this.thisNode = thisNode;
-    this.logManager = logManager;
-    super.logManager = logManager;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
+    this.logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
+        this), metaGroupMember.getPartitionTable(), allNodes.get(0));
+    super.logManager = logManager;
   }
 
   /**
-   * Start heartbeat, catch-up and pull snapshot services.
+   * Start heartbeat, catch-up, pull snapshot services and start all unfinished pull-snapshot-tasks.
    * Calling the method twice does not induce side effects.
    * @throws TTransportException
    */
@@ -194,6 +203,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     super.start();
     heartBeatService.submit(new DataHeartbeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    resumePullSnapshotTasks();
   }
 
   /**
@@ -234,18 +244,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public static class Factory {
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
-    private LogApplier applier;
 
-    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember, LogApplier applier) {
+    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
       this.protocolFactory = protocolFactory;
       this.metaGroupMember = metaGroupMember;
-      this.applier = applier;
     }
 
     public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
-      return new DataGroupMember(protocolFactory, partitionGroup, thisNode,
-          new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
-              partitionGroup.getHeader()), metaGroupMember);
+      return new DataGroupMember(protocolFactory, partitionGroup, thisNode, metaGroupMember);
     }
   }
 
@@ -369,11 +375,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * supported in the future.
    * @param snapshot
    */
-  public void applySnapshot(Snapshot snapshot) throws SnapshotApplicationException {
+  public void applySnapshot(Snapshot snapshot, int slot) throws SnapshotApplicationException {
     logger.debug("{}: applying snapshot {}", name, snapshot);
     if (snapshot instanceof FileSnapshot) {
       try {
-        applyFileSnapshot((FileSnapshot) snapshot);
+        applyFileSnapshot((FileSnapshot) snapshot, slot);
       } catch (PullFileException e) {
         throw new SnapshotApplicationException(e);
       }
@@ -388,8 +394,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * "RemoteTsFileResources" will be loaded into the IoTDB instance if they do not totally
    * overlap with existing files.
    * @param snapshot
+   * @param slot
    */
-  private void applyFileSnapshot(FileSnapshot snapshot) throws PullFileException {
+  private void applyFileSnapshot(FileSnapshot snapshot, int slot)
+      throws PullFileException, SnapshotApplicationException {
     synchronized (logManager) {
       // load metadata in the snapshot
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
@@ -400,11 +408,32 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // load data in the snapshot
       // TODO-Cluster: deal with the failure of pulling a file
       List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
+      // set partition versions
+      for (RemoteTsFileResource remoteTsFileResource : remoteTsFileResources) {
+        String[] pathSegments = FilePathUtils.splitTsFilePath(remoteTsFileResource);
+        int segSize = pathSegments.length;
+        String storageGroupName = pathSegments[segSize - 3];
+        try {
+          StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
+              remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
+        } catch (StorageEngineException e) {
+          throw new SnapshotApplicationException(e);
+        }
+      }
+      SlotStatus status = slotManager.getStatus(slot);
+      if (status == SlotStatus.PULLING) {
+        // as the partition versions are set, writes can proceed without generating incorrect
+        // versions
+        slotManager.setToPullingWritable(slot);
+      }
+      // pull file
       for (RemoteTsFileResource resource : remoteTsFileResources) {
         if (!isFileAlreadyPulled(resource)) {
           loadRemoteFile(resource);
         }
       }
+      // all files are loaded, the slot can be queried without accessing the previous holder
+      slotManager.setToNull(slot);
     }
   }
 
@@ -438,11 +467,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Integer slot : slots) {
         Snapshot subSnapshot = snapshot.getSnapshot(slot);
         if (subSnapshot != null) {
-          applySnapshot(subSnapshot);
+          applySnapshot(subSnapshot, slot);
         }
       }
       logManager.setLastLogId(snapshot.getLastLogId());
       logManager.setLastLogTerm(snapshot.getLastLogTerm());
+      logManager.setCommitIndex(snapshot.getLastLogId());
     }
   }
 
@@ -524,12 +554,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     int segSize = pathSegments.length;
     // the new file is stored at:
     // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
-    String tempFileName =
+    // the file in the snapshot is a hardlink, remove the hardlink suffix
+    String tempFileName = pathSegments[segSize - 1].substring(0,
+        pathSegments[segSize - 1].lastIndexOf('.'));
+    String tempFilePath =
         node.getNodeIdentifier() + File.separator + pathSegments[segSize - 3] +
-            File.separator + pathSegments[segSize - 2] + File.separator + pathSegments[segSize - 1];
-    File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName);
+            File.separator + pathSegments[segSize - 2] + File.separator + tempFileName;
+    File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath);
     tempFile.getParentFile().mkdirs();
-    File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFileName + ModificationFile.FILE_SUFFIX);
+    File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath + ModificationFile.FILE_SUFFIX);
     if (pullRemoteFile(resource.getFile().getAbsolutePath(), node, tempFile)) {
       if (!checkMd5(tempFile, resource.getMd5())) {
         logger.error("The downloaded file of {} does not have the right MD5", resource);
@@ -637,16 +670,29 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       setReadOnly();
     }
 
+    List<Integer> requiredSlots = request.getRequiredSlots();
+    for (Integer requiredSlot : requiredSlots) {
+      // wait if the data of the slot is in another node
+      slotManager.waitSlot(requiredSlot);
+    }
+    logger.debug("{}: {} slots are requested", name, requiredSlots.size());
+
+    // If the logs between [currCommitLogIndex, currLastLogIndex] are committed after the
+    // snapshot is generated, they will be invisible to the new slot owner and thus lost forever
+    long currLastLogIndex = logManager.getLastLogIndex();
+    logger.info("{}: Waiting for logs to commit before snapshot, {}/{}", name,
+        logManager.getCommitLogIndex(), currLastLogIndex);
+    while (logManager.getCommitLogIndex() < currLastLogIndex) {
+      try {
+        Thread.sleep(10);
+      } catch (InterruptedException e) {
+        logger.warn("{}: Unexpected interruption when waiting for logs to commit", name, e);
+      }
+    }
+
     // this synchronized should work with the one in AppendEntry when a log is going to commit,
     // which may prevent the newly arrived data from being invisible to the new header.
     synchronized (logManager) {
-      List<Integer> requiredSlots = request.getRequiredSlots();
-      for (Integer requiredSlot : requiredSlots) {
-        // wait if the data of the slot is in another node
-        slotManager.waitSlot(requiredSlot);
-      }
-      logger.debug("{}: {} slots are requested", name, requiredSlots.size());
-
       PullSnapshotResp resp = new PullSnapshotResp();
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
       try {
@@ -695,7 +741,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (Entry<Node, List<Integer>> entry : holderSlotsMap.entrySet()) {
         Node node = entry.getKey();
         List<Integer> nodeSlots = entry.getValue();
-        pullFileSnapshot(metaGroupMember.getPartitionTable().getHeaderGroup(node),  nodeSlots, false);
+        PullSnapshotTaskDescriptor taskDescriptor =
+            new PullSnapshotTaskDescriptor(metaGroupMember.getPartitionTable().getHeaderGroup(node),
+            nodeSlots, false);
+        pullFileSnapshot(taskDescriptor, null);
       }
     }
   }
@@ -703,24 +752,73 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   /**
    * Pull FileSnapshots (timeseries schemas and lists of TsFiles) of "nodeSlots" from one of the
    * "prevHolders".
-   * The actual pulling will be performed in a separate thread, and placeholders
-   * (RemoteFileSnapshots) will be placed in those slots of the logManager to prevent the
-   * logManager from taking snapshots before the data has been pulled.
-   * @param prevHolders
-   * @param nodeSlots
-   * @param requireReadOnly set to true if the previous holder has been removed from the cluster.
-   *                       This will make the previous holder read-only so that different new
-   *                        replicas can pull the same snapshot.
+   * The actual pulling will be performed in a separate thread.
+   * @param descriptor
+   * @param snapshotSave set to the corresponding disk file if the task is resumed from disk, or
+   *                     set ot null otherwise
    */
-  private void pullFileSnapshot(PartitionGroup prevHolders, List<Integer> nodeSlots, boolean requireReadOnly) {
-    Future<Map<Integer, FileSnapshot>> snapshotFuture =
-        pullSnapshotService.submit(new PullSnapshotTask(prevHolders.getHeader(), nodeSlots, this,
-            prevHolders, FileSnapshot::new, requireReadOnly));
-    for (int slot : nodeSlots) {
-      logManager.setSnapshot(new RemoteFileSnapshot(snapshotFuture, slot), slot);
+  private void pullFileSnapshot(PullSnapshotTaskDescriptor descriptor, File snapshotSave) {
+    Iterator<Integer> iterator = descriptor.getSlots().iterator();
+    while (iterator.hasNext()) {
+      Integer nodeSlot = iterator.next();
+      SlotStatus status = slotManager.getStatus(nodeSlot);
+      if (status != SlotStatus.NULL) {
+        // the pulling may already be issued during restart, skip it in that case
+        iterator.remove();
+      } else {
+        // mark the slot as pulling to control reads and writes of the pulling slot
+        slotManager.setToPulling(nodeSlot, descriptor.getPreviousHolders().getHeader());
+      }
+    }
+    if (descriptor.getSlots().isEmpty()) {
+      return;
+    }
+
+    pullSnapshotService.submit(new PullSnapshotTask(descriptor, this, FileSnapshot::new, null));
+  }
+
+  /**
+   * Restart all unfinished pull-snapshot-tasks of the member.
+   */
+  public void resumePullSnapshotTasks() {
+    File snapshotTaskDir = new File(getPullSnapshotTaskDir());
+    if (!snapshotTaskDir.exists()) {
+      return;
+    }
+
+    File[] files = snapshotTaskDir.listFiles();
+    if (files != null) {
+      for (File file : files) {
+        if (file.getName().endsWith(PullSnapshotTask.TASK_SUFFIX)) {
+          try (DataInputStream dataInputStream =
+              new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
+            PullSnapshotTaskDescriptor descriptor = new PullSnapshotTaskDescriptor();
+            descriptor.deserialize(dataInputStream);
+            pullFileSnapshot(descriptor, file);
+          } catch (IOException e) {
+            logger.error("Cannot resume pull-snapshot-task in file {}", file, e);
+            file.delete();
+          }
+        }
+      }
     }
   }
 
+  /**
+   *
+   * @return a directory that stores the information of ongoing pulling snapshot tasks.
+   */
+  public String getPullSnapshotTaskDir() {
+    return getMemberDir() + "snapshot_task" + File.separator;
+  }
+
+  /**
+   *
+   * @return the path of the directory that is provided exclusively for the member.
+   */
+  public String getMemberDir() {
+    return "raft" + File.separator + getHeader().nodeIdentifier + File.separator;
+  }
 
   public MetaGroupMember getMetaGroupMember() {
     return metaGroupMember;
@@ -1180,7 +1278,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       List<Integer> slotsToPull = removalResult.getNewSlotOwners().get(getHeader());
       if (slotsToPull != null) {
         // pull the slots that should be taken over
-        pullFileSnapshot(removalResult.getRemovedGroup(), slotsToPull, true);
+        PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(removalResult.getRemovedGroup(),
+            slotsToPull, true);
+        pullFileSnapshot(taskDescriptor, null);
       }
     }
   }
@@ -1411,6 +1511,58 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     } catch (IOException | QueryProcessException e) {
       resultHandler.onError(e);
     }
+  }
+
+  public SlotManager getSlotManager() {
+    return slotManager;
+  }
+
+  @Override
+  public void previousFill(PreviousFillRequest request,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    Path path = new Path(request.getPath());
+    TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
+    long queryId = request.getQueryId();
+    long queryTime = request.getQueryTime();
+    long beforeRange = request.getBeforeRange();
+    Node requester = request.getRequester();
+    Set<String> deviceMeasurements = request.getDeviceMeasurements();
+    RemoteQueryContext queryContext = queryManager.getQueryContext(requester, queryId);
+
+    try {
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      TimeValuePair timeValuePair = localPreviousFill(path, dataType, queryTime, beforeRange,
+          deviceMeasurements, queryContext);
+      SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
+      resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  /**
+   * Perform a local previous fill and return the fill result.
+   * @param path
+   * @param dataType
+   * @param queryTime
+   * @param beforeRange
+   * @param deviceMeasurements
+   * @param context
+   * @return
+   * @throws QueryProcessException
+   * @throws StorageEngineException
+   * @throws IOException
+   */
+  public TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
+      Set<String> deviceMeasurements, QueryContext context)
+      throws QueryProcessException, StorageEngineException, IOException, LeaderUnknownException {
+    if (!syncLeader()) {
+      throw new LeaderUnknownException(getAllNodes());
+    }
+    PreviousFill previousFill = new PreviousFill(dataType, queryTime, beforeRange);
+    previousFill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
+    return previousFill.getFillResult();
   }
 }
 

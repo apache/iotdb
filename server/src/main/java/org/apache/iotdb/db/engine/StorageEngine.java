@@ -553,4 +553,15 @@ public class StorageEngine implements IService {
   public static long getTimePartition(long time) {
     return time / timePartitionInterval;
   }
+
+  /**
+   * Set the version of given partition to newMaxVersion if it is larger than the current version.
+   * @param storageGroup
+   * @param partitionId
+   * @param newMaxVersion
+   */
+  public void setPartitionVersionToMax(String storageGroup, long partitionId, long newMaxVersion)
+      throws StorageEngineException {
+    getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
+  }
 }

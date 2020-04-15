@@ -17,12 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log.snapshot;
+package org.apache.iotdb.cluster.exception;
 
-public interface RemoteSnapshot {
+public class QueryTimeOutException extends Exception {
 
-  /**
-   * Wait until the remote snapshot is ready.
-   */
-  void getRemoteSnapshot();
+  public QueryTimeOutException(String query) {
+    super("Query: " + query + " timed out");
+  }
 }

@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import junit.framework.TestCase;
 import org.apache.iotdb.cluster.common.IoTDBTest;
+import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -70,7 +71,9 @@ public class DataLogApplierTest extends IoTDBTest {
     }
   };
 
-  private LogApplier applier = new DataLogApplier(testMetaGroupMember);
+  private TestDataGroupMember testDataGroupMember = new TestDataGroupMember();
+
+  private LogApplier applier = new DataLogApplier(testMetaGroupMember, testDataGroupMember);
 
   @Test
   public void testApplyInsert()

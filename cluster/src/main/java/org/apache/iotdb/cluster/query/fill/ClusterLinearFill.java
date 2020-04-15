@@ -17,40 +17,37 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.query;
+package org.apache.iotdb.cluster.query.fill;
 
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.FillQueryExecutor;
-import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-public class ClusterFillExecutor extends FillQueryExecutor {
+/**
+ * ClusterLinearFill overrides the dataReader in LinearFill so that it can read data from the
+ * whole cluster instead of only the local node.
+ */
+public class ClusterLinearFill extends LinearFill {
 
   private MetaGroupMember metaGroupMember;
 
-  public ClusterFillExecutor(List<Path> selectedSeries,
-      List<TSDataType> dataTypes,
-      long queryTime,
-      Map<TSDataType, IFill> typeIFillMap,
-      MetaGroupMember metaGroupMember) {
-    super(selectedSeries, dataTypes, queryTime, typeIFillMap);
+  public ClusterLinearFill(LinearFill fill, MetaGroupMember metaGroupMember) {
+    super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange(), fill.getAfterRange());
     this.metaGroupMember = metaGroupMember;
   }
 
   @Override
-  protected void configureFill(IFill fill, TSDataType dataType, Path path, Set<String> deviceMeasurements,
-      QueryContext context,
-      long queryTime) throws StorageEngineException {
-    fill.setDataType(dataType);
-    fill.setQueryTime(queryTime);
-    fill.setAllDataReader(metaGroupMember.getSeriesReader(path, deviceMeasurements, dataType,
-        fill.getFilter(), null,
-     context));
+  public void configureFill(Path path, TSDataType dataType, long queryTime, Set<String> deviceMeasurements,
+      QueryContext context) throws StorageEngineException {
+    this.dataType = dataType;
+    this.queryTime = queryTime;
+    Filter timeFilter = constructFilter();
+    dataReader = metaGroupMember.getSeriesReader(path, deviceMeasurements, dataType, timeFilter,
+        null, context);
   }
 }
