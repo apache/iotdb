@@ -42,7 +42,7 @@ public abstract class Log {
   public enum Types {
     // TODO-Cluster#348 support more logs
     // DO CHECK LogParser when you add a new type of log
-    ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE
+    ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE, EMPTY_CONTENT
   }
 
   public long getPreviousLogIndex() {
@@ -87,9 +87,9 @@ public abstract class Log {
     }
     Log log = (Log) o;
     return currLogIndex == log.currLogIndex &&
-            currLogTerm == log.currLogTerm &&
-            previousLogIndex == log.previousLogIndex &&
-            previousLogTerm == log.previousLogTerm;
+        currLogTerm == log.currLogTerm &&
+        previousLogIndex == log.previousLogIndex &&
+        previousLogTerm == log.previousLogTerm;
   }
 
   @Override

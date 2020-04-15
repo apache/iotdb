@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log.Types;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.slf4j.Logger;
@@ -79,6 +80,11 @@ public class LogParser {
         RemoveNodeLog removeNodeLog = new RemoveNodeLog();
         removeNodeLog.deserialize(buffer);
         log = removeNodeLog;
+        break;
+      case EMPTY_CONTENT:
+        EmptyContentLog emptyLog = new EmptyContentLog();
+        emptyLog.deserialize(buffer);
+        log = emptyLog;
         break;
       default:
         throw new IllegalArgumentException(type.toString());

@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
+import static junit.framework.TestCase.assertEquals;
+import static junit.framework.TestCase.assertFalse;
+import static junit.framework.TestCase.assertTrue;
+
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -30,8 +34,6 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.junit.Before;
 import org.junit.Test;
-
-import static junit.framework.TestCase.*;
 
 public class HeartbeatHandlerTest {
 
@@ -51,7 +53,7 @@ public class HeartbeatHandlerTest {
 
       @Override
       public RaftLogManager getLogManager() {
-        return new TestLogManager();
+        return new TestLogManager(1);
       }
     };
   }

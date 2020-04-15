@@ -19,22 +19,26 @@
 
 package org.apache.iotdb.cluster.log;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.Assert.*;
 
 public class RaftLogManagerTest {
 
@@ -51,9 +55,19 @@ public class RaftLogManagerTest {
 		appliedLogs = new HashSet<>();
 	}
 
+	@After
+	public void tearDown() {
+		File dir = new File(new SyncLogDequeSerializer(1).getLogDir());
+		for (File file : dir.listFiles()) {
+			file.delete();
+		}
+		dir.delete();
+	}
+
 	@Test
 	public void getTerm() {
 		class RaftLogManagerTester {
+
 			public long index;
 			public long testTerm;
 			public Class throwClass;
@@ -70,11 +84,12 @@ public class RaftLogManagerTest {
 		long last = offset + num;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		for (long i = 1; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
@@ -105,7 +120,8 @@ public class RaftLogManagerTest {
 		long offset = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		assertEquals(offset + 1, instance.getFirstIndex());
 		long newOffset = offset + 20;
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(newOffset, newOffset));
@@ -118,11 +134,12 @@ public class RaftLogManagerTest {
 		long num = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		for (long i = 1; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 			assertEquals(offset + index, instance.getLastLogIndex());
 		}
@@ -134,11 +151,12 @@ public class RaftLogManagerTest {
 		long num = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		for (long i = 1; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 			assertEquals(offset + index, instance.getLastLogTerm());
 		}
@@ -147,6 +165,7 @@ public class RaftLogManagerTest {
 	@Test
 	public void maybeCommit() {
 		class RaftLogManagerTester {
+
 			public long leaderCommit;
 			public long term;
 			public long testCommittedEntryManagerSize;
@@ -154,7 +173,8 @@ public class RaftLogManagerTest {
 			public long testCommitIndex;
 			public boolean testCommit;
 
-			public RaftLogManagerTester(long leaderCommit, long term, long testCommittedEntryManagerSize, long testUnCommittedEntryManagerSize, long testCommitIndex, boolean testCommit) {
+			public RaftLogManagerTester(long leaderCommit, long term, long testCommittedEntryManagerSize,
+					long testUnCommittedEntryManagerSize, long testCommitIndex, boolean testCommit) {
 				this.leaderCommit = leaderCommit;
 				this.term = term;
 				this.testCommittedEntryManagerSize = testCommittedEntryManagerSize;
@@ -172,14 +192,15 @@ public class RaftLogManagerTest {
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
@@ -196,8 +217,10 @@ public class RaftLogManagerTest {
 		}};
 		for (RaftLogManagerTester test : tests) {
 			boolean answer = instance.maybeCommit(test.leaderCommit, test.term);
-			assertEquals(test.testCommittedEntryManagerSize, instance.committedEntryManager.getAllEntries().size());
-			assertEquals(test.testUnCommittedEntryManagerSize, instance.unCommittedEntryManager.getAllEntries().size());
+			assertEquals(test.testCommittedEntryManagerSize,
+					instance.committedEntryManager.getAllEntries().size());
+			assertEquals(test.testUnCommittedEntryManagerSize,
+					instance.unCommittedEntryManager.getAllEntries().size());
 			assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
 			assertEquals(test.testCommit, answer);
 		}
@@ -206,12 +229,14 @@ public class RaftLogManagerTest {
 	@Test
 	public void commitTo() {
 		class RaftLogManagerTester {
+
 			public long commitTo;
 			public long testCommittedEntryManagerSize;
 			public long testUnCommittedEntryManagerSize;
 			public long testCommitIndex;
 
-			public RaftLogManagerTester(long commitTo, long testCommittedEntryManagerSize, long testUnCommittedEntryManagerSize, long testCommitIndex) {
+			public RaftLogManagerTester(long commitTo, long testCommittedEntryManagerSize,
+					long testUnCommittedEntryManagerSize, long testCommitIndex) {
 				this.commitTo = commitTo;
 				this.testCommittedEntryManagerSize = testCommittedEntryManagerSize;
 				this.testUnCommittedEntryManagerSize = testUnCommittedEntryManagerSize;
@@ -227,14 +252,15 @@ public class RaftLogManagerTest {
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
@@ -246,8 +272,10 @@ public class RaftLogManagerTest {
 		}};
 		for (RaftLogManagerTester test : tests) {
 			instance.commitTo(test.commitTo);
-			assertEquals(test.testCommittedEntryManagerSize, instance.committedEntryManager.getAllEntries().size());
-			assertEquals(test.testUnCommittedEntryManagerSize, instance.unCommittedEntryManager.getAllEntries().size());
+			assertEquals(test.testCommittedEntryManagerSize,
+					instance.committedEntryManager.getAllEntries().size());
+			assertEquals(test.testUnCommittedEntryManagerSize,
+					instance.unCommittedEntryManager.getAllEntries().size());
 			assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
 		}
 	}
@@ -255,7 +283,7 @@ public class RaftLogManagerTest {
 	@Test
 	public void applyEntries() {
 		List<Log> testLogs = TestUtils.prepareTestLogs(10);
-		RaftLogManager instance = new RaftLogManager(new CommittedEntryManager(), new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(logApplier);
 		instance.applyEntries(testLogs);
 		assertTrue(appliedLogs.containsAll(testLogs.subList(0, 10)));
 	}
@@ -263,6 +291,7 @@ public class RaftLogManagerTest {
 	@Test
 	public void matchTerm() {
 		class RaftLogManagerTester {
+
 			public long index;
 			public long term;
 			public boolean testMatch;
@@ -282,14 +311,15 @@ public class RaftLogManagerTest {
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
@@ -309,6 +339,7 @@ public class RaftLogManagerTest {
 	@Test
 	public void maybeAppend() {
 		class RaftLogManagerTester {
+
 			public List<Log> entries;
 			public long lastIndex;
 			public long lastTerm;
@@ -318,7 +349,8 @@ public class RaftLogManagerTest {
 			public boolean testAppend;
 
 
-			public RaftLogManagerTester(List<Log> entries, long lastIndex, long lastTerm, long leaderCommit, long testLastIndex, long testCommitIndex, boolean testAppend) {
+			public RaftLogManagerTester(List<Log> entries, long lastIndex, long lastTerm,
+					long leaderCommit, long testLastIndex, long testCommitIndex, boolean testAppend) {
 				this.entries = entries;
 				this.lastIndex = lastIndex;
 				this.lastTerm = lastTerm;
@@ -329,81 +361,93 @@ public class RaftLogManagerTest {
 			}
 		}
 		List<Log> previousEntries = new ArrayList<Log>() {{
-			add(new PhysicalPlanLog(1, 1));
-			add(new PhysicalPlanLog(2, 2));
-			add(new PhysicalPlanLog(3, 3));
+			add(new EmptyContentLog(1, 1));
+			add(new EmptyContentLog(2, 2));
+			add(new EmptyContentLog(3, 3));
 		}};
 		long lastIndex = 3;
 		long lastTerm = 3;
 		long commit = 1;
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
 			// not match: term is different
-			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm - 1, lastIndex, -1, commit, false));
+			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm - 1, lastIndex, -1,
+					commit, false));
 			// not match: index out of bound
-			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex + 1, lastTerm, lastIndex, -1, commit, false));
+			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex + 1, lastTerm, lastIndex, -1,
+					commit, false));
 			// match with the last existing entry
-			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm, lastIndex, lastIndex, lastIndex, true));
+			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm, lastIndex, lastIndex,
+					lastIndex, true));
 			// do not increase commit higher than newLastIndex
-			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm, lastIndex + 1, lastIndex, lastIndex, true));
+			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm, lastIndex + 1, lastIndex,
+					lastIndex, true));
 			// commit up to the commit in the message
-			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm, lastIndex - 1, lastIndex, lastIndex - 1, true));
+			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm, lastIndex - 1, lastIndex,
+					lastIndex - 1, true));
 			// commit do not decrease
-			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm, 0, lastIndex, commit, true));
+			add(new RaftLogManagerTester(new ArrayList<>(), lastIndex, lastTerm, 0, lastIndex, commit,
+					true));
 			// normal case
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(lastIndex + 1, 4));
+				add(new EmptyContentLog(lastIndex + 1, 4));
 			}}, lastIndex, lastTerm, lastIndex, lastIndex + 1, lastIndex, true));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(lastIndex + 1, 4));
+				add(new EmptyContentLog(lastIndex + 1, 4));
 			}}, lastIndex, lastTerm, lastIndex + 1, lastIndex + 1, lastIndex + 1, true));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(lastIndex + 1, 4));
-				add(new PhysicalPlanLog(lastIndex + 2, 4));
+				add(new EmptyContentLog(lastIndex + 1, 4));
+				add(new EmptyContentLog(lastIndex + 2, 4));
 			}}, lastIndex, lastTerm, lastIndex + 2, lastIndex + 2, lastIndex + 2, true));
 			// do not increase commit higher than newLastIndex
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(lastIndex + 1, 4));
+				add(new EmptyContentLog(lastIndex + 1, 4));
 			}}, lastIndex, lastTerm, lastIndex + 2, lastIndex + 1, lastIndex + 1, true));
 			// match with the the entry in the middle
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(lastIndex, 4));
+				add(new EmptyContentLog(lastIndex, 4));
 			}}, lastIndex - 1, lastTerm - 1, lastIndex, lastIndex, lastIndex, true));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(lastIndex - 1, 4));
+				add(new EmptyContentLog(lastIndex - 1, 4));
 			}}, lastIndex - 2, lastTerm - 2, lastIndex, lastIndex - 1, lastIndex - 1, true));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(lastIndex - 1, 4));
-				add(new PhysicalPlanLog(lastIndex, 4));
+				add(new EmptyContentLog(lastIndex - 1, 4));
+				add(new EmptyContentLog(lastIndex, 4));
 			}}, lastIndex - 2, lastTerm - 2, lastIndex, lastIndex, lastIndex, true));
 		}};
 		for (RaftLogManagerTester test : tests) {
 			CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
-			RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+			RaftLogManager instance = new RaftLogManager(committedEntryManager,
+					new SyncLogDequeSerializer(1), logApplier);
 			instance.append(previousEntries);
 			instance.setCommitLogIndex(commit);
-			assertEquals(test.testLastIndex, instance.maybeAppend(test.lastIndex, test.lastTerm, test.leaderCommit, test.entries));
+			assertEquals(test.testLastIndex,
+					instance.maybeAppend(test.lastIndex, test.lastTerm, test.leaderCommit, test.entries));
 			assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
 			if (test.testAppend) {
 				try {
-					List<Log> entries = instance.getEntries(instance.getLastLogIndex() - test.entries.size() + 1, Integer.MAX_VALUE);
+					List<Log> entries = instance
+							.getEntries(instance.getLastLogIndex() - test.entries.size() + 1, Integer.MAX_VALUE);
 					assertEquals(test.entries, entries);
 				} catch (Exception e) {
 					fail("An unexpected exception was thrown.");
 				}
 			}
+			tearDown();
 		}
 	}
 
 	@Test
 	public void append() {
 		class RaftLogManagerTester {
+
 			public List<Log> appendingEntries;
 			public long testLastIndexAfterAppend;
 			public List<Log> testEntries;
 			public long testOffset;
 
-			public RaftLogManagerTester(List<Log> appendingEntries, List<Log> testEntries, long testLastIndexAfterAppend, long testOffset) {
+			public RaftLogManagerTester(List<Log> appendingEntries, List<Log> testEntries,
+					long testLastIndexAfterAppend, long testOffset) {
 				this.appendingEntries = appendingEntries;
 				this.testEntries = testEntries;
 				this.testLastIndexAfterAppend = testLastIndexAfterAppend;
@@ -411,41 +455,42 @@ public class RaftLogManagerTest {
 			}
 		}
 		List<Log> previousEntries = new ArrayList<Log>() {{
-			add(new PhysicalPlanLog(1, 1));
-			add(new PhysicalPlanLog(2, 2));
+			add(new EmptyContentLog(1, 1));
+			add(new EmptyContentLog(2, 2));
 		}};
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
 			add(new RaftLogManagerTester(new ArrayList<>(), new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
-				add(new PhysicalPlanLog(2, 2));
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 2));
 			}}, 2, 3));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 2));
+				add(new EmptyContentLog(3, 2));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
-				add(new PhysicalPlanLog(2, 2));
-				add(new PhysicalPlanLog(3, 2));
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 2));
+				add(new EmptyContentLog(3, 2));
 			}}, 3, 3));
 			// conflicts with index 1
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 2));
+				add(new EmptyContentLog(1, 2));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 2));
+				add(new EmptyContentLog(1, 2));
 			}}, 1, 1));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(2, 3));
-				add(new PhysicalPlanLog(3, 3));
+				add(new EmptyContentLog(2, 3));
+				add(new EmptyContentLog(3, 3));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
-				add(new PhysicalPlanLog(2, 3));
-				add(new PhysicalPlanLog(3, 3));
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 3));
+				add(new EmptyContentLog(3, 3));
 			}}, 3, 2));
 		}};
 		for (RaftLogManagerTester test : tests) {
 			CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
 			committedEntryManager.append(previousEntries);
-			RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+			RaftLogManager instance = new RaftLogManager(committedEntryManager,
+					new SyncLogDequeSerializer(1), logApplier);
 			instance.append(test.appendingEntries);
 			try {
 				List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);
@@ -460,6 +505,7 @@ public class RaftLogManagerTest {
 	@Test
 	public void checkBound() {
 		class RaftLogManagerTester {
+
 			public long low;
 			public long high;
 			public Class throwClass;
@@ -479,14 +525,15 @@ public class RaftLogManagerTest {
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
@@ -520,12 +567,13 @@ public class RaftLogManagerTest {
 		long term = 100;
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(index, term));
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		instance.applyingSnapshot(new SimpleSnapshot(index, term));
 		assertEquals(instance.getLastLogIndex(), term);
 		List<Log> entries = new ArrayList<>();
 		for (int i = 1; i <= 10; i++) {
-			entries.add(new PhysicalPlanLog(index + i, index + i));
+			entries.add(new EmptyContentLog(index + i, index + i));
 		}
 		instance.maybeAppend(index, term, index, entries);
 		assertEquals(1, instance.committedEntryManager.getAllEntries().size());
@@ -551,6 +599,7 @@ public class RaftLogManagerTest {
 	@Test
 	public void getEntries() {
 		class RaftLogManagerTester {
+
 			public long low;
 			public long high;
 			public List<Log> testEntries;
@@ -572,39 +621,41 @@ public class RaftLogManagerTest {
 		for (long i = 1; i < num / 2; i++) {
 			long index = i;
 			committedEntryManager.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
-		RaftLogManager instance = new RaftLogManager(committedEntryManager, new StableEntryManager(), logApplier);
+		RaftLogManager instance = new RaftLogManager(committedEntryManager,
+				new SyncLogDequeSerializer(1), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + index, offset + index));
+				add(new EmptyContentLog(offset + index, offset + index));
 			}});
 		}
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
 			add(new RaftLogManagerTester(offset + 1, offset + 1, new ArrayList<>(), null));
 			add(new RaftLogManagerTester(offset + 1, offset + 2, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(offset + 1, offset + 1));
+				add(new EmptyContentLog(offset + 1, offset + 1));
 			}}, null));
 			add(new RaftLogManagerTester(half - 1, half + 1, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(half - 1, half - 1));
-				add(new PhysicalPlanLog(half, half));
+				add(new EmptyContentLog(half - 1, half - 1));
+				add(new EmptyContentLog(half, half));
 			}}, null));
 			add(new RaftLogManagerTester(half, half + 1, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(half, half));
+				add(new EmptyContentLog(half, half));
 			}}, null));
 			add(new RaftLogManagerTester(last - 1, last, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(last - 1, last - 1));
+				add(new EmptyContentLog(last - 1, last - 1));
 			}}, null));
 			// test EntryUnavailable
 			add(new RaftLogManagerTester(last - 1, last + 1, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(last - 1, last - 1));
+				add(new EmptyContentLog(last - 1, last - 1));
 			}}, null));
 			add(new RaftLogManagerTester(last, last + 1, new ArrayList<>(), null));
 			add(new RaftLogManagerTester(last + 1, last + 2, new ArrayList<>(), null));
 			// test GetEntriesWrongParametersException
-			add(new RaftLogManagerTester(offset + 1, offset, null, GetEntriesWrongParametersException.class));
+			add(new RaftLogManagerTester(offset + 1, offset, null,
+					GetEntriesWrongParametersException.class));
 			// test EntryCompactedException
 			add(new RaftLogManagerTester(offset - 1, offset + 1, null, EntryCompactedException.class));
 			add(new RaftLogManagerTester(offset, offset + 1, null, EntryCompactedException.class));
@@ -628,6 +679,7 @@ public class RaftLogManagerTest {
 	@Test
 	public void findConflict() {
 		class RaftLogManagerTester {
+
 			public List<Log> conflictEntries;
 			public long testConflict;
 
@@ -637,66 +689,66 @@ public class RaftLogManagerTest {
 			}
 		}
 		List<Log> previousEntries = new ArrayList<Log>() {{
-			add(new PhysicalPlanLog(0, 0));
-			add(new PhysicalPlanLog(1, 1));
-			add(new PhysicalPlanLog(2, 2));
+			add(new EmptyContentLog(0, 0));
+			add(new EmptyContentLog(1, 1));
+			add(new EmptyContentLog(2, 2));
 		}};
-		RaftLogManager instance = new RaftLogManager();
+		RaftLogManager instance = new RaftLogManager(logApplier);
 		instance.append(previousEntries);
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
 			// no conflict, empty ent
 			add(new RaftLogManagerTester(new ArrayList<>(), 0));
 			// no conflict
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(0, 0));
-				add(new PhysicalPlanLog(1, 1));
-				add(new PhysicalPlanLog(2, 2));
+				add(new EmptyContentLog(0, 0));
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 2));
 			}}, 0));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
-				add(new PhysicalPlanLog(2, 2));
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 2));
 			}}, 0));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(2, 2));
+				add(new EmptyContentLog(2, 2));
 			}}, 0));
 			// no conflict, but has new entries
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(0, 0));
-				add(new PhysicalPlanLog(1, 1));
-				add(new PhysicalPlanLog(2, 2));
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 3));
+				add(new EmptyContentLog(0, 0));
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 2));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 3));
 			}}, 3));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
-				add(new PhysicalPlanLog(2, 2));
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 3));
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 2));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 3));
 			}}, 3));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(2, 2));
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 3));
+				add(new EmptyContentLog(2, 2));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 3));
 			}}, 3));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 3));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 3));
 			}}, 3));
 			// conflicts with existing entries
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(0, 4));
-				add(new PhysicalPlanLog(1, 4));
+				add(new EmptyContentLog(0, 4));
+				add(new EmptyContentLog(1, 4));
 			}}, 0));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 2));
-				add(new PhysicalPlanLog(2, 4));
-				add(new PhysicalPlanLog(3, 4));
+				add(new EmptyContentLog(1, 2));
+				add(new EmptyContentLog(2, 4));
+				add(new EmptyContentLog(3, 4));
 			}}, 1));
 			add(new RaftLogManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(2, 1));
-				add(new PhysicalPlanLog(3, 2));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 4));
+				add(new EmptyContentLog(2, 1));
+				add(new EmptyContentLog(3, 2));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 4));
 			}}, 2));
 		}};
 		for (RaftLogManagerTester test : tests) {
@@ -707,6 +759,7 @@ public class RaftLogManagerTest {
 	@Test
 	public void isLogUpToDate() {
 		class RaftLogManagerTester {
+
 			public long lastIndex;
 			public long lastTerm;
 			public boolean isUpToDate;
@@ -718,11 +771,11 @@ public class RaftLogManagerTest {
 			}
 		}
 		List<Log> previousEntries = new ArrayList<Log>() {{
-			add(new PhysicalPlanLog(0, 0));
-			add(new PhysicalPlanLog(1, 1));
-			add(new PhysicalPlanLog(2, 2));
+			add(new EmptyContentLog(0, 0));
+			add(new EmptyContentLog(1, 1));
+			add(new EmptyContentLog(2, 2));
 		}};
-		RaftLogManager instance = new RaftLogManager();
+		RaftLogManager instance = new RaftLogManager(logApplier);
 		instance.append(previousEntries);
 		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
 			// greater term, ignore lastIndex

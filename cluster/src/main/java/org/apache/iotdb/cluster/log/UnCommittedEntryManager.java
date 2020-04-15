@@ -19,14 +19,13 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public class UnCommittedEntryManager {
 
@@ -65,31 +64,34 @@ public class UnCommittedEntryManager {
     }
 
     /**
-     * Return the entry's term for given index.
-     * Note that the called should ensure index >= offset.
+     * Return the entry's term for given index. Note that the called should ensure index >= offset.
      *
      * @param index request entry index
-     * @return -1 if index < offset, throw EntryUnavailableException if
-     * index > last or entries is empty, or return the entry's term for given index
+     * @return -1 if index < offset, throw EntryUnavailableException if index > last or entries is
+     * empty, or return the entry's term for given index
      * @throws EntryUnavailableException
      */
     public long maybeTerm(long index) throws EntryUnavailableException {
         if (index < offset) {
-            logger.debug("invalid unCommittedEntryManager maybeTerm : parameter: index({}) < offset({})", index, offset);
+            logger.debug(
+                "invalid unCommittedEntryManager maybeTerm : parameter: index({}) < offset({})",
+                index, offset);
             return -1;
         }
         long last = maybeLastIndex();
         if (last == -1 || index > last) {
             long boundary = last == -1 ? offset - 1 : last;
-            logger.info("unCommittedEntryManager maybeTerm out of bound : parameter: index({}) > lastIndex({})", index, boundary);
+            logger.info(
+                "unCommittedEntryManager maybeTerm out of bound : parameter: index({}) > lastIndex({})",
+                index, boundary);
             throw new EntryUnavailableException(index, boundary);
         }
         return entries.get((int) (index - offset)).getCurrLogTerm();
     }
 
     /**
-     * Remove useless prefix entries as long as these entries has been committed and persisted.
-     * This method is only called after persisting newly committed entries.
+     * Remove useless prefix entries as long as these entries has been committed and persisted. This
+     * method is only called after persisting newly committed entries.
      *
      * @param index request entry's index
      * @param term  request entry's term
@@ -108,8 +110,8 @@ public class UnCommittedEntryManager {
     }
 
     /**
-     * Update offset and clear entries because leader's snapshot is more up-to-date.
-     * This method is only called for applying snapshot from leader.
+     * Update offset and clear entries because leader's snapshot is more up-to-date. This method is
+     * only called for applying snapshot from leader.
      *
      * @param snapshot leader's snapshot
      */
@@ -119,10 +121,10 @@ public class UnCommittedEntryManager {
     }
 
     /**
-     * TruncateAndAppend uncommitted entries.
-     * This method will truncate conflict entries if it finds inconsistencies.
-     * Note that the caller should ensure appendingEntries[0].index <= entries[entries.size()-1].index + 1.
-     * Note that the caller should ensure not to truncate entries which have been committed.
+     * TruncateAndAppend uncommitted entries. This method will truncate conflict entries if it finds
+     * inconsistencies. Note that the caller should ensure appendingEntries[0].index <=
+     * entries[entries.size()-1].index + 1. Note that the caller should ensure not to truncate entries
+     * which have been committed.
      *
      * @param appendingEntries request entries
      */
@@ -132,9 +134,10 @@ public class UnCommittedEntryManager {
         if (len < 0) {
             // the logs are being truncated to before our current offset portion, which is committed entries
             // unconditional obedience to the leader's request. Maybe throw a exception here is better
-            offset = after;
-            entries = appendingEntries;
-            logger.error("The logs which first index is {} are going to truncate committed logs", after);
+//            offset = after;
+//            entries = appendingEntries;
+            logger.error("The logs which first index is {} are going to truncate committed logs",
+                after);
         } else if (len == entries.size()) {
             // after is the next index in the entries
             // directly append
@@ -152,30 +155,36 @@ public class UnCommittedEntryManager {
     }
 
     /**
-     * Pack entries from low through high - 1, just like slice (entries[low:high]).
-     * offset <= low <= high.
-     * Note that caller must ensure low <= high.
+     * Pack entries from low through high - 1, just like slice (entries[low:high]). offset <= low <=
+     * high. Note that caller must ensure low <= high.
      *
      * @param low  request index low bound
      * @param high request index upper bound
      */
     public List<Log> getEntries(long low, long high) {
         if (low > high) {
-            logger.debug("invalid unCommittedEntryManager getEntries: parameter: low({}) > high({})", low, high);
+            logger
+                .debug("invalid unCommittedEntryManager getEntries: parameter: low({}) > high({})",
+                    low, high);
         }
         long upper = offset + entries.size();
         if (low > upper) {
             // don't throw a exception to support
             // getEntries(low, Integer.MAX_VALUE) if low is larger than lastIndex.
-            logger.info("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}] , return empty ArrayList", low, high, offset, upper);
+            logger.info(
+                "unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}] , return empty ArrayList",
+                low, high, offset, upper);
             return Collections.emptyList();
         }
         if (low < offset) {
-            logger.debug("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}]", low, high, offset, upper);
+            logger.debug("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}]", low,
+                high, offset, upper);
             low = offset;
         }
         if (high > upper) {
-            logger.info("unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}] , adjust parameter 'high' to {}", low, high, offset, upper, upper);
+            logger.info(
+                "unCommittedEntryManager getEntries[{},{}) out of bound : [{},{}] , adjust parameter 'high' to {}",
+                low, high, offset, upper, upper);
             // don't throw a exception to support getEntries(low, Integer.MAX_VALUE).
             high = upper;
         }

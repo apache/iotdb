@@ -19,6 +19,27 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
@@ -45,7 +66,18 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.filter.SlotTsFileFilter;
 import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.rpc.thrift.*;
+import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -73,7 +105,11 @@ import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.fill.PreviousFill;
-import org.apache.iotdb.db.query.reader.series.*;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
+import org.apache.iotdb.db.query.reader.series.SeriesReader;
+import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -95,28 +131,19 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
-
-
 public class DataGroupMember extends RaftMember implements TSDataService.AsyncIface {
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
   /**
-   * When a DataGroupMember pulls data from another node, the data files will be firstly stored
-   * in the "REMOTE_FILE_TEMP_DIR", and then load file functionality of IoTDB will be used to
-   * load the files into the IoTDB instance.
+   * When a DataGroupMember pulls data from another node, the data files will be firstly stored in
+   * the "REMOTE_FILE_TEMP_DIR", and then load file functionality of IoTDB will be used to load the
+   * files into the IoTDB instance.
    */
   private static final String REMOTE_FILE_TEMP_DIR = "remote";
 
   /**
-   * The MetaGroupMember that in charge of the DataGroupMember. Mainly for providing partition
-   * table and MetaLogManager.
+   * The MetaGroupMember that in charge of the DataGroupMember. Mainly for providing partition table
+   * and MetaLogManager.
    */
   private MetaGroupMember metaGroupMember;
 
@@ -127,21 +154,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * "logManager" manages the logs of this DataGroupMember. Although the logs of different data
-   * partitions (slots) are mixed together before a snapshot is taken, after the taking of
-   * snapshot, logs of different logs will be stored separately.
+   * partitions (slots) are mixed together before a snapshot is taken, after the taking of snapshot,
+   * logs of different logs will be stored separately.
    */
   private PartitionedSnapshotLogManager logManager;
 
   /**
    * "queryManger" records the remote nodes which have queried this node, and the readers or
-   * executors this member has created for those queries. When the queries end, an
-   * EndQueryRequest will be sent to this member and related resources will be released.
+   * executors this member has created for those queries. When the queries end, an EndQueryRequest
+   * will be sent to this member and related resources will be released.
    */
   private ClusterQueryManager queryManager;
 
   /**
-   * "slotManager" tracks the status of slots during data transfers so that we can know whether
-   * the slot has non-pulled data.
+   * "slotManager" tracks the status of slots during data transfers so that we can know whether the
+   * slot has non-pulled data.
    */
   protected SlotManager slotManager;
 
@@ -151,15 +178,15 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
-                  MetaGroupMember metaGroupMember) {
+      MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-            new ClientPool(new DataClient.Factory(factory)));
+        new ClientPool(new DataClient.Factory(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
-    this.logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
+    logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
         this), metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode);
     super.logManager = logManager;
   }
@@ -182,8 +209,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
-   * Stop heartbeat, catch-up and pull snapshot services and release all query resources.
-   * Calling the method twice does not induce side effects.
+   * Stop heartbeat, catch-up and pull snapshot services and release all query resources. Calling
+   * the method twice does not induce side effects.
    */
   @Override
   public void stop() {
@@ -200,8 +227,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   /**
    * The first node (on the hash ring) in this data group is the header. It determines the duty
    * (what range on the ring do the group take responsibility for) of the group and although other
-   * nodes in this may change, this node is unchangeable unless the data group is dismissed. It
-   * is also the identifier of this data group.
+   * nodes in this may change, this node is unchangeable unless the data group is dismissed. It is
+   * also the identifier of this data group.
    */
   @Override
   public Node getHeader() {
@@ -217,6 +244,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   public static class Factory {
+
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
 
@@ -254,8 +282,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         Node prev = allNodes.get(i);
         Node next = allNodes.get(i + 1);
         if (prev.nodeIdentifier < node.nodeIdentifier && node.nodeIdentifier < next.nodeIdentifier
-                || prev.nodeIdentifier < node.nodeIdentifier && next.nodeIdentifier < prev.nodeIdentifier
-                || node.nodeIdentifier < next.nodeIdentifier && next.nodeIdentifier < prev.nodeIdentifier
+            || prev.nodeIdentifier < node.nodeIdentifier
+            && next.nodeIdentifier < prev.nodeIdentifier
+            || node.nodeIdentifier < next.nodeIdentifier
+            && next.nodeIdentifier < prev.nodeIdentifier
         ) {
           insertIndex = i + 1;
           break;
@@ -276,14 +306,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Process the election request from another node in the group. To win the vote from the local
-   * member, a node must have both meta and data logs no older than then local member, or it will
-   * be turned down.
+   * member, a node must have both meta and data logs no older than then local member, or it will be
+   * turned down.
    *
    * @param electionRequest
    * @return Response.RESPONSE_META_LOG_STALE if the meta logs of the elector fall behind
-   * Response.RESPONSE_LOG_MISMATCH if the data logs of the elector fall behind
-   * Response.SUCCESS if the vote is given to the elector
-   * the term of local member if the elector's term is no bigger than the local member
+   * Response.RESPONSE_LOG_MISMATCH if the data logs of the elector fall behind Response.SUCCESS if
+   * the vote is given to the elector the term of local member if the elector's term is no bigger
+   * than the local member
    */
   @Override
   long processElectionRequest(ElectionRequest electionRequest) {
@@ -293,7 +323,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     long thatMetaLastLogId = electionRequest.getLastLogIndex();
     long thatMetaLastLogTerm = electionRequest.getLastLogTerm();
     logger.info("{} received an election request, term:{}, metaLastLogId:{}, metaLastLogTerm:{}",
-            name, thatTerm, thatMetaLastLogId, thatMetaLastLogTerm);
+        name, thatTerm, thatMetaLastLogId, thatMetaLastLogTerm);
 
     long thisMetaLastLogIndex = metaGroupMember.getLogManager().getLastLogIndex();
     long thisMetaLastLogTerm = metaGroupMember.getLogManager().getLastLogTerm();
@@ -302,7 +332,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // term of the electors's MetaGroupMember is not verified, so 0 and 1 are used to make sure
     // the verification does not fail
     long metaResponse = verifyElector(0, thisMetaLastLogIndex, thisMetaLastLogTerm,
-            1, thatMetaLastLogId, thatMetaLastLogTerm);
+        1, thatMetaLastLogId, thatMetaLastLogTerm);
     if (metaResponse == Response.RESPONSE_LOG_MISMATCH) {
       return Response.RESPONSE_META_LOG_STALE;
     }
@@ -311,10 +341,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     long thatDataLastLogId = electionRequest.getDataLogLastIndex();
     long thatDataLastLogTerm = electionRequest.getDataLogLastTerm();
     logger.info("{} received an election request, term:{}, dataLastLogId:{}, dataLastLogTerm:{}",
-            name, thatTerm, thatDataLastLogId, thatDataLastLogTerm);
+        name, thatTerm, thatDataLastLogId, thatDataLastLogTerm);
 
     long resp = verifyElector(term.get(), logManager.getLastLogIndex(),
-            logManager.getLastLogTerm(), thatTerm, thatDataLastLogId, thatDataLastLogTerm);
+        logManager.getLastLogTerm(), thatTerm, thatDataLastLogId, thatDataLastLogTerm);
     if (resp == Response.RESPONSE_AGREE) {
       // the elector wins the vote, follow it
       term.set(thatTerm);
@@ -348,9 +378,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Apply a snapshot to the state machine, i.e., load the data and meta data contained in the
-   * snapshot into the IoTDB instance.
-   * Currently the type of the snapshot should be ony FileSnapshot, but more types may be
-   * supported in the future.
+   * snapshot into the IoTDB instance. Currently the type of the snapshot should be ony
+   * FileSnapshot, but more types may be supported in the future.
    *
    * @param snapshot
    */
@@ -370,14 +399,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   /**
    * Apply a FileSnapshot, which consists of MeasurementSchemas and RemoteTsFileResources. The
    * timeseries in the MeasurementSchemas will be registered and the files in the
-   * "RemoteTsFileResources" will be loaded into the IoTDB instance if they do not totally
-   * overlap with existing files.
+   * "RemoteTsFileResources" will be loaded into the IoTDB instance if they do not totally overlap
+   * with existing files.
    *
    * @param snapshot
    * @param slot
    */
   private void applyFileSnapshot(FileSnapshot snapshot, int slot)
-          throws PullFileException, SnapshotApplicationException {
+      throws PullFileException, SnapshotApplicationException {
     synchronized (logManager) {
       // load metadata in the snapshot
       for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
@@ -395,7 +424,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         String storageGroupName = pathSegments[segSize - 3];
         try {
           StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
-                  remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
+              remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
         } catch (StorageEngineException e) {
           throw new SnapshotApplicationException(e);
         }
@@ -419,9 +448,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Check if the file "resource" is a duplication of some local files. As all data file close is
-   * controlled by the data group leader, the files with the same version should contain
-   * identical data if without merge. Even with merge, the files that the merged file is from are
-   * recorded so we can still find out if the data of a file is already replicated in this member.
+   * controlled by the data group leader, the files with the same version should contain identical
+   * data if without merge. Even with merge, the files that the merged file is from are recorded so
+   * we can still find out if the data of a file is already replicated in this member.
    *
    * @param resource
    * @return
@@ -432,18 +461,19 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // {storageGroupName}/{partitionNum}/{fileName}
     String storageGroupName = pathSegments[segSize - 3];
     long partitionNumber = Long.parseLong(pathSegments[segSize - 2]);
-    return StorageEngine.getInstance().isFileAlreadyExist(resource, storageGroupName, partitionNumber);
+    return StorageEngine.getInstance()
+        .isFileAlreadyExist(resource, storageGroupName, partitionNumber);
   }
 
   /**
-   * Apply a PartitionedSnapshot, which is a slotNumber -> FileSnapshot map. Only the slots that
-   * are managed by the the group will be applied. The lastLogId and lastLogTerm are also updated
+   * Apply a PartitionedSnapshot, which is a slotNumber -> FileSnapshot map. Only the slots that are
+   * managed by the the group will be applied. The lastLogId and lastLogTerm are also updated
    * according to the snapshot.
    *
    * @param snapshot
    */
   private void applyPartitionedSnapshot(PartitionedSnapshot snapshot)
-          throws SnapshotApplicationException {
+      throws SnapshotApplicationException {
     synchronized (logManager) {
       List<Integer> slots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
       for (Integer slot : slots) {
@@ -457,9 +487,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
-   * Load a remote file from the header of the data group that the file is in.
-   * As different IoTDB instances will name the file with the same version differently, we can
-   * only pull the file from the header currently.
+   * Load a remote file from the header of the data group that the file is in. As different IoTDB
+   * instances will name the file with the same version differently, we can only pull the file from
+   * the header currently.
    *
    * @param resource
    */
@@ -489,9 +519,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
-   * When a file is successfully pulled to the local storage, load it into IoTDB with the
-   * resource and remove the files that is a subset of the new file. Also change the modification
-   * file if the new file is with one.
+   * When a file is successfully pulled to the local storage, load it into IoTDB with the resource
+   * and remove the files that is a subset of the new file. Also change the modification file if the
+   * new file is with one.
    *
    * @param resource
    */
@@ -502,7 +532,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     int segSize = pathSegments.length;
     String storageGroupName = pathSegments[segSize - 3];
     File remoteModFile =
-            new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
+        new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
     try {
       StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
       StorageEngine.getInstance().getProcessor(storageGroupName).removeFullyOverlapFiles(resource);
@@ -514,7 +544,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // when successfully loaded, the filepath of the resource will be changed to the IoTDB data
       // dir, so we can add a suffix to find the old modification file.
       File localModFile =
-              new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
+          new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
       localModFile.delete();
       remoteModFile.renameTo(localModFile);
     }
@@ -539,10 +569,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
     // the file in the snapshot is a hardlink, remove the hardlink suffix
     String tempFileName = pathSegments[segSize - 1].substring(0,
-            pathSegments[segSize - 1].lastIndexOf('.'));
+        pathSegments[segSize - 1].lastIndexOf('.'));
     String tempFilePath =
-            node.getNodeIdentifier() + File.separator + pathSegments[segSize - 3] +
-                    File.separator + pathSegments[segSize - 2] + File.separator + tempFileName;
+        node.getNodeIdentifier() + File.separator + pathSegments[segSize - 3] +
+            File.separator + pathSegments[segSize - 2] + File.separator + tempFileName;
     File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath);
     tempFile.getParentFile().mkdirs();
     File tempModFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath + ModificationFile.FILE_SUFFIX);
@@ -566,8 +596,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
-   * Download the file "remotePath" from "node" and store it to "dest" using up to 64KB chunks.
-   * If the network is bad, this method will retry upto 5 times before returning a failure.
+   * Download the file "remotePath" from "node" and store it to "dest" using up to 64KB chunks. If
+   * the network is bad, this method will retry upto 5 times before returning a failure.
    *
    * @param remotePath the file to be downloaded
    * @param node       where to download the file
@@ -585,7 +615,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     int pullFileRetry = 5;
     for (int i = 0; i < pullFileRetry; i++) {
       try (BufferedOutputStream bufferedOutputStream =
-                   new BufferedOutputStream(new FileOutputStream(dest))) {
+          new BufferedOutputStream(new FileOutputStream(dest))) {
         int offset = 0;
         // TODO-Cluster: use elaborate downloading techniques
         int fetchSize = 64 * 1024;
@@ -606,7 +636,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
           // not the size of the downloaded chunk
           bufferedOutputStream.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
-                  buffer.limit() - buffer.position());
+              buffer.limit() - buffer.position());
           offset += buffer.limit() - buffer.position();
         }
         bufferedOutputStream.flush();
@@ -666,7 +696,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // snapshot is generated, they will be invisible to the new slot owner and thus lost forever
     long currLastLogIndex = logManager.getLastLogIndex();
     logger.info("{}: Waiting for logs to commit before snapshot, {}/{}", name,
-            logManager.getCommitLogIndex(), currLastLogIndex);
+        logManager.getCommitLogIndex(), currLastLogIndex);
     while (logManager.getCommitLogIndex() < currLastLogIndex) {
       try {
         Thread.sleep(10);
@@ -709,7 +739,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     synchronized (logManager) {
       logger.info("{} pulling {} slots from remote", name, slots.size());
       PartitionedSnapshot snapshot = (PartitionedSnapshot) logManager.getSnapshot();
-      Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable().getPreviousNodeMap(newNode);
+      Map<Integer, Node> prevHolders = metaGroupMember.getPartitionTable()
+          .getPreviousNodeMap(newNode);
 
       // group the slots by their owners
       Map<Node, List<Integer>> holderSlotsMap = new HashMap<>();
@@ -728,8 +759,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         Node node = entry.getKey();
         List<Integer> nodeSlots = entry.getValue();
         PullSnapshotTaskDescriptor taskDescriptor =
-                new PullSnapshotTaskDescriptor(metaGroupMember.getPartitionTable().getHeaderGroup(node),
-                        nodeSlots, false);
+            new PullSnapshotTaskDescriptor(metaGroupMember.getPartitionTable().getHeaderGroup(node),
+                nodeSlots, false);
         pullFileSnapshot(taskDescriptor, null);
       }
     }
@@ -737,12 +768,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Pull FileSnapshots (timeseries schemas and lists of TsFiles) of "nodeSlots" from one of the
-   * "prevHolders".
-   * The actual pulling will be performed in a separate thread.
+   * "prevHolders". The actual pulling will be performed in a separate thread.
    *
    * @param descriptor
-   * @param snapshotSave set to the corresponding disk file if the task is resumed from disk, or
-   *                     set ot null otherwise
+   * @param snapshotSave set to the corresponding disk file if the task is resumed from disk, or set
+   *                     ot null otherwise
    */
   private void pullFileSnapshot(PullSnapshotTaskDescriptor descriptor, File snapshotSave) {
     Iterator<Integer> iterator = descriptor.getSlots().iterator();
@@ -778,7 +808,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       for (File file : files) {
         if (file.getName().endsWith(PullSnapshotTask.TASK_SUFFIX)) {
           try (DataInputStream dataInputStream =
-                       new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
+              new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
             PullSnapshotTaskDescriptor descriptor = new PullSnapshotTaskDescriptor();
             descriptor.deserialize(dataInputStream);
             pullFileSnapshot(descriptor, file);
@@ -868,7 +898,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void pullTimeSeriesSchema(PullSchemaRequest request,
-                                   AsyncMethodCallback<PullSchemaResp> resultHandler) {
+      AsyncMethodCallback<PullSchemaResp> resultHandler) {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
     if (!syncLeader()) {
@@ -913,8 +943,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IPointReader of "path" with “timeFilter” and "valueFilter". A synchronization with
-   * the leader will be performed first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * the leader will be performed first to preserve strong consistency. TODO-Cluster: also support
+   * weak consistency
    *
    * @param path
    * @param dataType
@@ -925,13 +955,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws StorageEngineException
    */
   IPointReader getSeriesPointReader(Path path, Set<String> allSensors, TSDataType dataType,
-                                    Filter timeFilter,
-                                    Filter valueFilter, QueryContext context)
-          throws StorageEngineException, QueryProcessException {
+      Filter timeFilter,
+      Filter valueFilter, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     // pull the newest data
     if (syncLeader()) {
       return new SeriesRawDataPointReader(getSeriesReader(path, allSensors, dataType, timeFilter,
-              valueFilter, context));
+          valueFilter, context));
     } else {
       throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
     }
@@ -939,8 +969,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IBatchReader of "path" with “timeFilter” and "valueFilter". A synchronization with
-   * the leader will be performed first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * the leader will be performed first to preserve strong consistency. TODO-Cluster: also support
+   * weak consistency
    *
    * @param path
    * @param dataType
@@ -951,13 +981,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws StorageEngineException
    */
   IBatchReader getSeriesBatchReader(Path path, Set<String> allSensors, TSDataType dataType,
-                                    Filter timeFilter,
-                                    Filter valueFilter, QueryContext context)
-          throws StorageEngineException, QueryProcessException {
+      Filter timeFilter,
+      Filter valueFilter, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     // pull the newest data
     if (syncLeader()) {
       SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType, timeFilter,
-              valueFilter, context);
+          valueFilter, context);
       if (seriesReader.isEmpty()) {
         return null;
       }
@@ -980,19 +1010,19 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws StorageEngineException
    */
   private SeriesReader getSeriesReader(Path path, Set<String> allSensors, TSDataType dataType,
-                                       Filter timeFilter,
-                                       Filter valueFilter, QueryContext context) throws StorageEngineException, QueryProcessException {
+      Filter timeFilter,
+      Filter valueFilter, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
     QueryDataSource queryDataSource =
-            QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     return new SeriesReader(path, allSensors, dataType, context, queryDataSource,
-            timeFilter, valueFilter, new SlotTsFileFilter(nodeSlots));
+        timeFilter, valueFilter, new SlotTsFileFilter(nodeSlots));
   }
 
   /**
    * Create an IReaderByTimestamp of "path". A synchronization with the leader will be performed
-   * first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * first to preserve strong consistency. TODO-Cluster: also support weak consistency
    *
    * @param path
    * @param dataType
@@ -1001,12 +1031,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws StorageEngineException
    */
   IReaderByTimestamp getReaderByTimestamp(Path path, Set<String> allSensors, TSDataType dataType,
-                                          QueryContext context)
-          throws StorageEngineException, QueryProcessException {
+      QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     if (syncLeader()) {
       SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType,
-              TimeFilter.gtEq(Long.MIN_VALUE),
-              null, context);
+          TimeFilter.gtEq(Long.MIN_VALUE),
+          null, context);
       if (seriesReader.isEmpty()) {
         return null;
       }
@@ -1018,17 +1048,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IBatchReader of a path, register it in the query manager to get a reader id for it
-   * and send the id back to the requester. If the reader does not have any data, an id of -1
-   * will be returned.
+   * and send the id back to the requester. If the reader does not have any data, an id of -1 will
+   * be returned.
    *
    * @param request
    * @param resultHandler
    */
   @Override
   public void querySingleSeries(SingleSeriesQueryRequest request,
-                                AsyncMethodCallback<Long> resultHandler) {
+      AsyncMethodCallback<Long> resultHandler) {
     logger.debug("{}: {} is querying {}, queryId: {}", name, request.getRequester(),
-            request.getPath(), request.getQueryId());
+        request.getPath(), request.getQueryId());
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
@@ -1048,12 +1078,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     // the same query from a requester correspond to a context here
     RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
-            request.getQueryId());
+        request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
-            request.getPath(), queryContext.getQueryId());
+        request.getPath(), queryContext.getQueryId());
     try {
-      IBatchReader batchReader = getSeriesBatchReader(path, deviceMeasurements, dataType, timeFilter,
-              valueFilter, queryContext);
+      IBatchReader batchReader = getSeriesBatchReader(path, deviceMeasurements, dataType,
+          timeFilter,
+          valueFilter, queryContext);
 
       // if the reader contains no data, send a special id of -1 to prevent the requester from
       // meaninglessly fetching data
@@ -1061,11 +1092,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         long readerId = getQueryManager().registerReader(batchReader);
         queryContext.registerLocalReader(readerId);
         logger.debug("{}: Build a reader of {} for {}#{}, readerId: {}", name, path,
-                request.getRequester(), request.getQueryId(), readerId);
+            request.getRequester(), request.getQueryId(), readerId);
         resultHandler.onComplete(readerId);
       } else {
         logger.debug("{}: There is no data {} for {}#{}", name, path,
-                request.getRequester(), request.getQueryId());
+            request.getRequester(), request.getQueryId());
         resultHandler.onComplete(-1L);
         if (batchReader != null) {
           batchReader.close();
@@ -1078,17 +1109,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IReaderByTime of a path, register it in the query manager to get a reader id for it
-   * and send the id back to the requester. If the reader does not have any data, an id of -1
-   * will be returned.
+   * and send the id back to the requester. If the reader does not have any data, an id of -1 will
+   * be returned.
    *
    * @param request
    * @param resultHandler
    */
   @Override
   public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
-                                           AsyncMethodCallback<Long> resultHandler) {
+      AsyncMethodCallback<Long> resultHandler) {
     logger.debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
-            request.getPath(), request.getQueryId());
+        request.getPath(), request.getQueryId());
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
@@ -1099,22 +1130,23 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     RemoteQueryContext queryContext = getQueryManager().getQueryContext(request.getRequester(),
-            request.getQueryId());
+        request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
-            request.getPath(), queryContext.getQueryId());
+        request.getPath(), queryContext.getQueryId());
     try {
-      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, deviceMeasurements, dataType,
-              queryContext);
+      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, deviceMeasurements,
+          dataType,
+          queryContext);
       if (readerByTimestamp != null) {
         long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
         queryContext.registerLocalReader(readerId);
 
         logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
-                request.getRequester(), readerId);
+            request.getRequester(), readerId);
         resultHandler.onComplete(readerId);
       } else {
         logger.debug("{}: There is no data {} for {}#{}", name, path,
-                request.getRequester(), request.getQueryId());
+            request.getRequester(), request.getQueryId());
         resultHandler.onComplete(-1L);
       }
     } catch (StorageEngineException | QueryProcessException e) {
@@ -1123,8 +1155,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
-   * Find the QueryContext related a query of "queryId" in "requester" and release all resources
-   * of the context.
+   * Find the QueryContext related a query of "queryId" in "requester" and release all resources of
+   * the context.
    *
    * @param header
    * @param requester
@@ -1133,7 +1165,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void endQuery(Node header, Node requester, long queryId,
-                       AsyncMethodCallback<Void> resultHandler) {
+      AsyncMethodCallback<Void> resultHandler) {
     try {
       getQueryManager().endQuery(requester, queryId);
       resultHandler.onComplete(null);
@@ -1152,7 +1184,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
-                                           AsyncMethodCallback<ByteBuffer> resultHandler) {
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     IReaderByTimestamp reader = getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
       resultHandler.onError(new ReaderNotFoundException(readerId));
@@ -1183,7 +1215,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void fetchSingleSeries(Node header, long readerId,
-                                AsyncMethodCallback<ByteBuffer> resultHandler) {
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     IBatchReader reader = getQueryManager().getReader(readerId);
     if (reader == null) {
       resultHandler.onError(new ReaderNotFoundException(readerId));
@@ -1216,7 +1248,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void getAllPaths(Node header, List<String> paths,
-                          AsyncMethodCallback<List<String>> resultHandler) {
+      AsyncMethodCallback<List<String>> resultHandler) {
     try {
       List<String> ret = new ArrayList<>();
       for (String path : paths) {
@@ -1237,7 +1269,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void getAllDevices(Node header, List<String> paths,
-                            AsyncMethodCallback<Set<String>> resultHandler) {
+      AsyncMethodCallback<Set<String>> resultHandler) {
     try {
       Set<String> results = new HashSet<>();
       for (String path : paths) {
@@ -1260,8 +1292,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
-   * When a node is removed and IT IS NOT THE HEADER of the group, the member should take over
-   * some slots from the removed group, and add a new node to the group the removed node was in the
+   * When a node is removed and IT IS NOT THE HEADER of the group, the member should take over some
+   * slots from the removed group, and add a new node to the group the removed node was in the
    * group.
    */
   public void removeNode(Node removedNode, NodeRemovalResult removalResult) {
@@ -1280,23 +1312,25 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       List<Integer> slotsToPull = removalResult.getNewSlotOwners().get(getHeader());
       if (slotsToPull != null) {
         // pull the slots that should be taken over
-        PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(removalResult.getRemovedGroup(),
-                slotsToPull, true);
+        PullSnapshotTaskDescriptor taskDescriptor = new PullSnapshotTaskDescriptor(
+            removalResult.getRemovedGroup(),
+            slotsToPull, true);
         pullFileSnapshot(taskDescriptor, null);
       }
     }
   }
 
   /**
-   * Generate a report containing the character, leader, term, last log term, last log index,
-   * header and readOnly or not of this member.
+   * Generate a report containing the character, leader, term, last log term, last log index, header
+   * and readOnly or not of this member.
    *
    * @return
    */
   public DataMemberReport genReport() {
     return new DataMemberReport(character, leader, term.get(),
-            logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly,
-            QueryCoordinator.getINSTANCE().getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime);
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly,
+        QueryCoordinator.getINSTANCE().getLastResponseLatency(getHeader()),
+        lastHeartbeatReceivedTime);
   }
 
   @TestOnly
@@ -1315,7 +1349,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void getNodeList(Node header, String path, int nodeLevel,
-                          AsyncMethodCallback<List<String>> resultHandler) {
+      AsyncMethodCallback<List<String>> resultHandler) {
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
@@ -1335,9 +1369,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void getAggrResult(GetAggrResultRequest request,
-                            AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     logger.debug("{}: {} is querying {} by aggregation, queryId: {}", name, request.getRequestor(),
-            request.getPath(), request.getQueryId());
+        request.getPath(), request.getQueryId());
 
     List<String> aggregations = request.getAggregations();
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
@@ -1347,13 +1381,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
     }
     RemoteQueryContext queryContext = queryManager
-            .getQueryContext(request.getRequestor(), request.queryId);
+        .getQueryContext(request.getRequestor(), request.queryId);
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     // do the aggregations locally
     List<AggregateResult> results;
     try {
-      results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter, queryContext);
+      results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter,
+          queryContext);
       logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
     } catch (StorageEngineException | IOException | QueryProcessException | LeaderUnknownException e) {
       resultHandler.onError(e);
@@ -1391,9 +1426,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws LeaderUnknownException
    */
   public List<AggregateResult> getAggrResult(List<String> aggregations,
-                                             Set<String> allSensors, TSDataType dataType, String path,
-                                             Filter timeFilter, QueryContext context)
-          throws IOException, StorageEngineException, QueryProcessException, LeaderUnknownException {
+      Set<String> allSensors, TSDataType dataType, String path,
+      Filter timeFilter, QueryContext context)
+      throws IOException, StorageEngineException, QueryProcessException, LeaderUnknownException {
     if (!syncLeader()) {
       throw new LeaderUnknownException(getAllNodes());
     }
@@ -1403,7 +1438,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
     AggregationExecutor.aggregateOneSeries(new Path(path), allSensors, context, timeFilter,
-            dataType, results, new SlotTsFileFilter(nodeSlots));
+        dataType, results, new SlotTsFileFilter(nodeSlots));
     return results;
   }
 
@@ -1426,18 +1461,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws StorageEngineException
    */
   public LocalGroupByExecutor getGroupByExecutor(Path path,
-                                                 Set<String> deviceMeasurements, TSDataType dataType,
-                                                 Filter timeFilter,
-                                                 List<Integer> aggregationTypes, QueryContext context)
-          throws StorageEngineException, QueryProcessException {
+      Set<String> deviceMeasurements, TSDataType dataType,
+      Filter timeFilter,
+      List<Integer> aggregationTypes, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
     // pull the newest data
     if (syncLeader()) {
       List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
       LocalGroupByExecutor executor = new LocalGroupByExecutor(path, deviceMeasurements, dataType
-              , context, timeFilter, new SlotTsFileFilter(nodeSlots));
+          , context, timeFilter, new SlotTsFileFilter(nodeSlots));
       for (Integer aggregationType : aggregationTypes) {
         executor.addAggregateResult(AggregateResultFactory
-                .getAggrResultByType(AggregationType.values()[aggregationType], dataType));
+            .getAggrResultByType(AggregationType.values()[aggregationType], dataType));
       }
       return executor;
     } else {
@@ -1464,22 +1499,22 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     long queryId = request.getQueryId();
     logger.debug("{}: {} is querying {} using group by, queryId: {}", name,
-            request.getRequestor(), path, queryId);
+        request.getRequestor(), path, queryId);
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
     RemoteQueryContext queryContext = queryManager.getQueryContext(request.getRequestor(), queryId);
     try {
       LocalGroupByExecutor executor = getGroupByExecutor(path, deviceMeasurements, dataType,
-              timeFilter, aggregationTypeOrdinals, queryContext);
+          timeFilter, aggregationTypeOrdinals, queryContext);
       if (!executor.isEmpty()) {
         long executorId = queryManager.registerGroupByExecutor(executor);
         logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
-                request.getRequestor(), executor);
+            request.getRequestor(), executor);
         queryContext.registerLocalGroupByExecutor(executorId);
         resultHandler.onComplete(executorId);
       } else {
         logger.debug("{}: There is no data {} for {}#{}", name, path,
-                request.getRequestor(), request.getQueryId());
+            request.getRequestor(), request.getQueryId());
         resultHandler.onComplete(-1L);
       }
     } catch (StorageEngineException | QueryProcessException e) {
@@ -1499,7 +1534,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
-                               AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     GroupByExecutor executor = getQueryManager().getGroupByExecutor(executorId);
     if (executor == null) {
       resultHandler.onError(new ReaderNotFoundException(executorId));
@@ -1515,7 +1550,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         byteArrayOutputStream.reset();
       }
       logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
-              resultBuffers.size());
+          resultBuffers.size());
       resultHandler.onComplete(resultBuffers);
     } catch (IOException | QueryProcessException e) {
       resultHandler.onError(e);
@@ -1528,7 +1563,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void previousFill(PreviousFillRequest request,
-                           AsyncMethodCallback<ByteBuffer> resultHandler) {
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     Path path = new Path(request.getPath());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     long queryId = request.getQueryId();
@@ -1542,7 +1577,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
       TimeValuePair timeValuePair = localPreviousFill(path, dataType, queryTime, beforeRange,
-              deviceMeasurements, queryContext);
+          deviceMeasurements, queryContext);
       SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
       resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
     } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
@@ -1564,9 +1599,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws StorageEngineException
    * @throws IOException
    */
-  public TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
-                                         Set<String> deviceMeasurements, QueryContext context)
-          throws QueryProcessException, StorageEngineException, IOException, LeaderUnknownException {
+  public TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime,
+      long beforeRange,
+      Set<String> deviceMeasurements, QueryContext context)
+      throws QueryProcessException, StorageEngineException, IOException, LeaderUnknownException {
     if (!syncLeader()) {
       throw new LeaderUnknownException(getAllNodes());
     }

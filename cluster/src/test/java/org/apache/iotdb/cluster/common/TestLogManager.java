@@ -19,12 +19,26 @@
 
 package org.apache.iotdb.cluster.common;
 
+import java.io.File;
 import org.apache.iotdb.cluster.log.CommittedEntryManager;
 import org.apache.iotdb.cluster.log.RaftLogManager;
-import org.apache.iotdb.cluster.log.StableEntryManager;
+import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 
 public class TestLogManager extends RaftLogManager {
-  public TestLogManager() {
-    super(new CommittedEntryManager(), new StableEntryManager(), new TestLogApplier());
+
+  private int nodeIdentifier;
+
+  public TestLogManager(int nodeIdentifier) {
+    super(new CommittedEntryManager(), new SyncLogDequeSerializer(nodeIdentifier),
+        new TestLogApplier());
+    this.nodeIdentifier = nodeIdentifier;
+  }
+
+  public void tearDown() {
+    File dir = new File(new SyncLogDequeSerializer(nodeIdentifier).getLogDir());
+    for (File file : dir.listFiles()) {
+      file.delete();
+    }
+    dir.delete();
   }
 }

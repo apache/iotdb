@@ -19,23 +19,24 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.util.Collections;
 import java.util.List;
 
 public class StableEntryManager {
 
-    public StableEntryManager() {
+    public List<Log> getAllEntries(){
+        return Collections.emptyList();
     }
 
-    public List<Log> recover() {
+    public void append(List<Log> entries){}
+
+    public void applyingSnapshot(Snapshot snapshot){}
+
+    public void removeCompactedEntries(long index){}
+
+    public void setHardStateAndFlush(HardState state){}
+
+    public HardState getHardState(){
         return null;
-    }
-
-    public void append(List<Log> entries) {
-    }
-
-    public void applyingSnapshot(Snapshot snapshot) {
-    }
-
-    public void removeCompactedEntries(long index) {
     }
 }

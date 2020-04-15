@@ -15,7 +15,8 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- */
+ *//*
+
 package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
@@ -129,3 +130,4 @@ public class DiskLogManagerTest extends IoTDBTest {
     return new Node("localhost", 30000 + i, i, 40000 + i);
   }
 }
+*/

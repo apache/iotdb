@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -39,14 +48,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 
-import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.junit.Assert.*;
-
 public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
   private Set<Node> idConflictNodes = new HashSet<>();
@@ -59,7 +60,8 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
     @Override
     public int getPartitionKey(String storageGroupName, long timestamp) {
-      return PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
+      return PartitionUtils
+          .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
     }
 
     @Override
@@ -187,7 +189,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
             } else if (node.getNodeIdentifier() < 6) {
               assertTrue(requestCopy.isRequireIdentifier());
             } else if (node.getNodeIdentifier() < 9) {
-              assertEquals(partitionTableBuffer, requestCopy .partitionTableBytes);
+              assertEquals(partitionTableBuffer, requestCopy.partitionTableBytes);
             }
             synchronized (receivedNodes) {
               receivedNodes.add(getSerialNum());

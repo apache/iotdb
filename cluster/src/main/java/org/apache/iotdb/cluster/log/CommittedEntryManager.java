@@ -19,55 +19,36 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class CommittedEntryManager {
 
     private static final Logger logger = LoggerFactory.getLogger(CommittedEntryManager.class);
 
-    // the state that the raft node must persist such as voteFor, currentTerm and so on.
-    private HardState hardState;
     // memory cache for logs which have been persisted in disk.
     private List<Log> entries;
 
     /**
-     * Note that it is better to use applyingSnapshot to
-     * update dummy entry immediately after this instance is created.
+     * Note that it is better to use applyingSnapshot to update dummy entry immediately after this
+     * instance is created.
      */
     public CommittedEntryManager() {
         entries = new ArrayList<Log>() {{
-            add(new PhysicalPlanLog(-1, -1));
+            add(new EmptyContentLog(-1, -1));
         }};
     }
 
     /**
-     * Set the hardState.
-     */
-    public void setHardState(HardState hardState) {
-        this.hardState = hardState;
-    }
-
-    /**
-     * Return the raftNode hardState.
-     *
-     * @return hardState
-     */
-    public HardState getHardState() {
-        return hardState;
-    }
-
-    /**
-     * Overwrite the contents of this object with those of the given snapshot.
-     * Note that this function is only used if you want to override all the contents,
-     * otherwise please use compactEntries(snapshot.lastIndex()).
+     * Overwrite the contents of this object with those of the given snapshot. Note that this function
+     * is only used if you want to override all the contents, otherwise please use
+     * compactEntries(snapshot.lastIndex()).
      *
      * @param snapshot snapshot
      */
@@ -79,7 +60,7 @@ public class CommittedEntryManager {
             return;
         }
         entries.clear();
-        entries.add(new PhysicalPlanLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm()));
+        entries.add(new EmptyContentLog(snapshot.getLastLogIndex(), snapshot.getLastLogTerm()));
     }
 
     /**
@@ -110,31 +91,34 @@ public class CommittedEntryManager {
     }
 
     /**
-     * Return the entry's term for given index.
-     * Note that the called should ensure index <= entries[entries.size()-1].index.
+     * Return the entry's term for given index. Note that the called should ensure index <=
+     * entries[entries.size()-1].index.
      *
      * @param index request entry index
-     * @return -1 if index > entries[entries.size()-1].index, throw EntryCompactedException if
-     * index < dummyIndex, or return the entry's term for given index
+     * @return -1 if index > entries[entries.size()-1].index, throw EntryCompactedException if index <
+     * dummyIndex, or return the entry's term for given index
      * @throws EntryCompactedException
      */
     public long maybeTerm(long index) throws EntryCompactedException {
         long dummyIndex = getDummyIndex();
         if (index < dummyIndex) {
-            logger.info("invalid committedEntryManager maybeTerm: parameter: index({}) < compactIndex({})", index, dummyIndex);
+            logger.info(
+                "invalid committedEntryManager maybeTerm: parameter: index({}) < compactIndex({})",
+                index, dummyIndex);
             throw new EntryCompactedException(index, dummyIndex);
         }
         if ((int) (index - dummyIndex) >= entries.size()) {
-            logger.debug("invalid committedEntryManager maybeTerm : parameter: index({}) > lastIndex({})", index, getLastIndex());
+            logger.debug(
+                "invalid committedEntryManager maybeTerm : parameter: index({}) > lastIndex({})",
+                index, getLastIndex());
             return -1;
         }
         return entries.get((int) (index - dummyIndex)).getCurrLogTerm();
     }
 
     /**
-     * Pack entries from low through high - 1, just like slice (entries[low:high]).
-     * dummyIndex < low <= high.
-     * Note that caller must ensure low <= high.
+     * Pack entries from low through high - 1, just like slice (entries[low:high]). dummyIndex < low
+     * <= high. Note that caller must ensure low <= high.
      *
      * @param low  request index low bound
      * @param high request index upper bound
@@ -146,12 +130,16 @@ public class CommittedEntryManager {
         }
         long dummyIndex = getDummyIndex();
         if (low <= dummyIndex || entries.size() == 1) {
-            logger.info("entries before request index ({}) have been compacted, and the compactIndex is ({})", low, dummyIndex);
+            logger.info(
+                "entries before request index ({}) have been compacted, and the compactIndex is ({})",
+                low, dummyIndex);
             throw new EntryCompactedException(low, dummyIndex);
         }
         long lastIndex = getLastIndex();
         if (high > lastIndex + 1) {
-            logger.debug("entries high ({}) is out of bound lastIndex ({}), adjust parameter 'high' to {}", high, lastIndex, lastIndex);
+            logger.debug(
+                "entries high ({}) is out of bound lastIndex ({}), adjust parameter 'high' to {}",
+                high, lastIndex, lastIndex);
             high = lastIndex + 1;
         }
         return entries.subList((int) (low - dummyIndex), (int) (high - dummyIndex));
@@ -166,21 +154,25 @@ public class CommittedEntryManager {
     public void compactEntries(long compactIndex) throws EntryUnavailableException {
         long dummyIndex = getDummyIndex();
         if (compactIndex <= dummyIndex) {
-            logger.info("entries before request index ({}) have been compacted, and the compactIndex is ({})", compactIndex, dummyIndex);
+            logger.info(
+                "entries before request index ({}) have been compacted, and the compactIndex is ({})",
+                compactIndex, dummyIndex);
             return;
         }
         if (compactIndex > getLastIndex()) {
-            logger.info("compact ({}) is out of bound lastIndex ({})", compactIndex, getLastIndex());
+            logger
+                .info("compact ({}) is out of bound lastIndex ({})", compactIndex, getLastIndex());
             throw new EntryUnavailableException(compactIndex, getLastIndex());
         }
         int index = (int) (compactIndex - dummyIndex);
-        entries.set(0, new PhysicalPlanLog(entries.get(index).getCurrLogTerm(), entries.get(index).getCurrLogIndex()));
+        entries.set(0, new EmptyContentLog(entries.get(index).getCurrLogTerm(),
+            entries.get(index).getCurrLogIndex()));
         entries.subList(1, index + 1).clear();
     }
 
     /**
-     * Append committed entries.
-     * This method will truncate conflict entries if it finds inconsistencies.
+     * Append committed entries. This method will truncate conflict entries if it finds
+     * inconsistencies.
      *
      * @param appendingEntries request entries
      */
@@ -189,12 +181,15 @@ public class CommittedEntryManager {
             return;
         }
         long localFirstIndex = getFirstIndex();
-        long appendingLastIndex = appendingEntries.get(0).getCurrLogIndex() + appendingEntries.size() - 1;
+        long appendingLastIndex =
+            appendingEntries.get(0).getCurrLogIndex() + appendingEntries.size() - 1;
         if (appendingLastIndex < localFirstIndex) {
             return;
         }
         if (localFirstIndex > appendingEntries.get(0).getCurrLogIndex()) {
-            appendingEntries.subList(0, (int) (localFirstIndex - appendingEntries.get(0).getCurrLogIndex())).clear();
+            appendingEntries
+                .subList(0, (int) (localFirstIndex - appendingEntries.get(0).getCurrLogIndex()))
+                .clear();
         }
         long offset = appendingEntries.get(0).getCurrLogIndex() - getDummyIndex();
         if (entries.size() - offset == 0) {
@@ -203,10 +198,11 @@ public class CommittedEntryManager {
             // maybe not throw a exception is better.It depends on the caller's implementation.
 //            logger.error("The logs which first index is {} are going to truncate committed logs", appendingEntries.get(0).getCurrLogIndex());
 //            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),getLastIndex());
-            entries.subList((int) offset, entries.size()).clear();
-            entries.addAll(appendingEntries);
+//            entries.subList((int) offset, entries.size()).clear();
+//            entries.addAll(appendingEntries);
         } else {
-            logger.error("missing log entry [last: {}, append at: {}]", getLastIndex(), appendingEntries.get(0).getCurrLogIndex());
+            logger.error("missing log entry [last: {}, append at: {}]", getLastIndex(),
+                appendingEntries.get(0).getCurrLogIndex());
         }
     }
 

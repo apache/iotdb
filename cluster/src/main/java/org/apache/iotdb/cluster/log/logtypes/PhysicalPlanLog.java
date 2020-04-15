@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.cluster.log.logtypes;
 
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.iotdb.cluster.log.Log.Types.PHYSICAL_PLAN;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
-
-import static org.apache.iotdb.cluster.log.Log.Types.PHYSICAL_PLAN;
-
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * PhysicalPlanLog contains a non-partitioned physical plan like set storage group.
@@ -42,11 +40,6 @@ public class PhysicalPlanLog extends Log {
   private PhysicalPlan plan;
 
   public PhysicalPlanLog() {
-  }
-
-  public PhysicalPlanLog(long index, long term) {
-    this.setCurrLogIndex(index);
-    this.setCurrLogTerm(term);
   }
 
   public PhysicalPlanLog(PhysicalPlan plan) {
@@ -100,7 +93,7 @@ public class PhysicalPlanLog extends Log {
   @Override
   public String toString() {
     return plan.toString() + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex() +
-            ",prevTerm:" + getPreviousLogTerm() + ",prevIndex:" + getPreviousLogIndex();
+        ",prevTerm:" + getPreviousLogTerm() + ",prevIndex:" + getPreviousLogIndex();
   }
 
   @Override

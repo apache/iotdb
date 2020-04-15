@@ -19,8 +19,22 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.client.DataClient;
-import org.apache.iotdb.cluster.common.*;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.cluster.common.TestDataClient;
+import org.apache.iotdb.cluster.common.TestDataGroupMember;
+import org.apache.iotdb.cluster.common.TestLogManager;
+import org.apache.iotdb.cluster.common.TestMetaClient;
+import org.apache.iotdb.cluster.common.TestMetaGroupMember;
+import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.RaftLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -43,15 +57,8 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
-
 public class MemberTest {
+
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
   protected Map<Node, DataGroupMember> dataGroupMemberMap;
@@ -84,7 +91,7 @@ public class MemberTest {
 
     dataGroupMemberMap = new HashMap<>();
     metaGroupMemberMap = new HashMap<>();
-    metaLogManager = new TestLogManager();
+    metaLogManager = new TestLogManager(3);
     testMetaMember = getMetaGroupMember(TestUtils.getNode(0));
     for (Node node : allNodes) {
       // pre-create data members

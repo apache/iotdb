@@ -122,5 +122,4 @@ public class ElectionHandlerTest {
     assertFalse(electionValid.get());
     assertFalse(terminated.get());
   }
-
 }

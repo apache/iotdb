@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.List;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
@@ -35,11 +38,8 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
-
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
 
 public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
@@ -70,7 +70,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
     return new TestClient(node.nodeIdentifier) {
       @Override
       public void sendHeartbeat(HeartBeatRequest request,
-                                AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
         new Thread(() -> {
           if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), request.getLeader());
@@ -96,7 +96,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
       @Override
       public void startElection(ElectionRequest request,
-                                AsyncMethodCallback<Long> resultHandler) {
+          AsyncMethodCallback<Long> resultHandler) {
         new Thread(() -> {
           assertEquals(TestUtils.getNode(0), request.getElector());
           assertEquals(11, request.getTerm());
@@ -116,10 +116,17 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
   @Before
   public void setUp() {
     super.setUp();
-    dataLogManager = new TestLogManager();
+    dataLogManager = new TestLogManager(2);
     List<Log> logs = TestUtils.prepareTestLogs(14);
     dataLogManager.append(logs);
     dataLogManager.commitTo(13);
+  }
+
+  @Override
+  @After
+  public void tearDown() {
+    super.tearDown();
+    dataLogManager.tearDown();
   }
 
   @Override

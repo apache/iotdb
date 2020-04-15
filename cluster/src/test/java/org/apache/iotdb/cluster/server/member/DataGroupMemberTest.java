@@ -19,6 +19,28 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.common.TestDataClient;
 import org.apache.iotdb.cluster.common.TestException;
@@ -37,8 +59,15 @@ import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.rpc.thrift.*;
+import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
@@ -75,17 +104,6 @@ import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.Assert.*;
 
 public class DataGroupMemberTest extends MemberTest {
 
@@ -202,8 +220,10 @@ public class DataGroupMemberTest extends MemberTest {
         TestUtils.getNode(50), TestUtils.getNode(90));
     DataGroupMember firstMember = getDataGroupMember(TestUtils.getNode(0),
         new PartitionGroup(partitionGroup));
-    DataGroupMember midMember = getDataGroupMember(TestUtils.getNode(50), new PartitionGroup(partitionGroup));
-    DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90), new PartitionGroup(partitionGroup));
+    DataGroupMember midMember = getDataGroupMember(TestUtils.getNode(50),
+        new PartitionGroup(partitionGroup));
+    DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90),
+        new PartitionGroup(partitionGroup));
 
     Node newNodeBeforeGroup = TestUtils.getNode(-5);
     assertFalse(firstMember.addNode(newNodeBeforeGroup));
@@ -328,7 +348,7 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[]{"s0"});
-    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
     insertPlan.setValues(new String[]{"1.0"});
     processor.insert(insertPlan);
     processor.syncCloseAllWorkingTsFileProcessors();
@@ -377,7 +397,7 @@ public class DataGroupMemberTest extends MemberTest {
         TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot::new);
     synchronized (reference) {
       dataGroupMember.pullSnapshot(request, handler);
-      reference.wait( 500);
+      reference.wait(500);
     }
     assertEquals(requiredSlots.size() - 1, reference.get().size());
     for (int i = 0; i < requiredSlots.size() - 1; i++) {
@@ -459,11 +479,11 @@ public class DataGroupMemberTest extends MemberTest {
   public void testQuerySingleSeries() throws QueryProcessException, InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i)});
+      insertPlan.setValues(new String[]{String.valueOf(i)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -518,11 +538,11 @@ public class DataGroupMemberTest extends MemberTest {
       InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i)});
+      insertPlan.setValues(new String[]{String.valueOf(i)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -573,14 +593,15 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testQuerySingleSeriesByTimestamp() throws QueryProcessException, InterruptedException {
+  public void testQuerySingleSeriesByTimestamp()
+      throws QueryProcessException, InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i)});
+      insertPlan.setValues(new String[]{String.valueOf(i)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -619,7 +640,7 @@ public class DataGroupMemberTest extends MemberTest {
             dataHandler);
         dataResult.wait(200);
       }
-      Object value =  SerializeUtils.deserializeObject(dataResult.get());
+      Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
 
@@ -632,11 +653,11 @@ public class DataGroupMemberTest extends MemberTest {
       InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[] {String.valueOf(i)});
+      insertPlan.setValues(new String[]{String.valueOf(i)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -674,10 +695,9 @@ public class DataGroupMemberTest extends MemberTest {
             dataHandler);
         dataResult.wait(200);
       }
-      Object value =  SerializeUtils.deserializeObject(dataResult.get());
+      Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
-
 
     dataGroupMember.endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
@@ -883,7 +903,7 @@ public class DataGroupMemberTest extends MemberTest {
     for (ByteBuffer byteBuffer : byteBuffers) {
       aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
     }
-    answers = new Object[] {15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0};
+    answers = new Object[]{15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0};
     checkAggregates(answers, aggregateResults);
 
     // get an executor from a node not holding this timeseries

@@ -33,21 +33,21 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
   private MetaGroupMember metaGroupMember;
 
   public ClusterFileFlushPolicy(
-          MetaGroupMember metaGroupMember) {
+      MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
   }
 
   @Override
   public void apply(StorageGroupProcessor storageGroupProcessor, TsFileProcessor processor,
-                    boolean isSeq) {
+      boolean isSeq) {
     logger.info("The memtable size {} reaches the threshold, async flush it to tsfile: {}",
-            processor.getWorkMemTableMemory(),
-            processor.getTsFileResource().getFile().getAbsolutePath());
+        processor.getWorkMemTableMemory(),
+        processor.getTsFileResource().getFile().getAbsolutePath());
 
     if (processor.shouldClose()) {
       // find the related DataGroupMember and close the processor through it
       if (!metaGroupMember.closePartition(storageGroupProcessor.getStorageGroupName(),
-              processor.getTimeRangeId(), isSeq)) {
+          processor.getTimeRangeId(), isSeq)) {
         // the corresponding DataGroupMember is not a leader, just do a flush
         processor.asyncFlush();
       }

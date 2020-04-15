@@ -43,7 +43,8 @@ import org.slf4j.LoggerFactory;
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 
-  private static final Logger logger = LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
+  private static final Logger logger = LoggerFactory
+      .getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode) {
@@ -79,22 +80,22 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     while (true) {
       slotSnapshots.clear();
       Map<String, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
-              .getInstance().getAllClosedStorageGroupTsFile();
+          .getInstance().getAllClosedStorageGroupTsFile();
       List<TsFileResource> createdHardlinks = new ArrayList<>();
       // group the TsFiles by their slots
       for (Entry<String, Map<Long, List<TsFileResource>>> entry :
-              allClosedStorageGroupTsFile.entrySet()) {
+          allClosedStorageGroupTsFile.entrySet()) {
         String storageGroupName = entry.getKey();
         Map<Long, List<TsFileResource>> storageGroupsFiles = entry.getValue();
         for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
           Long partitionNum = storageGroupFiles.getKey();
           int slotNum = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName,
-                  partitionNum, partitionTable.getTotalSlotNumbers());
+              partitionNum, partitionTable.getTotalSlotNumbers());
           FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
-                  s -> new FileSnapshot());
+              s -> new FileSnapshot());
           if (snapshot.getTimeseriesSchemas().isEmpty()) {
             snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
-                    Collections.emptySet()));
+                Collections.emptySet()));
           }
 
           for (TsFileResource tsFileResource : storageGroupFiles.getValue()) {

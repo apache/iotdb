@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 
 
 public class HardState {
+
     public long currentTerm;
     public long voteFor;
 
@@ -79,16 +80,16 @@ public class HardState {
         }
         HardState that = (HardState) o;
         return new EqualsBuilder()
-                .append(currentTerm, that.currentTerm)
-                .append(voteFor, that.voteFor)
-                .isEquals();
+            .append(currentTerm, that.currentTerm)
+            .append(voteFor, that.voteFor)
+            .isEquals();
     }
 
     @Override
     public int hashCode() {
         return new HashCodeBuilder(17, 37)
-                .append(currentTerm)
-                .append(voteFor)
-                .toHashCode();
+            .append(currentTerm)
+            .append(voteFor)
+            .toHashCode();
     }
 }

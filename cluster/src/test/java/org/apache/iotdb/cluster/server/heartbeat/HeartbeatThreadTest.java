@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -36,14 +43,9 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.junit.Assert.*;
 
 public class HeartbeatThreadTest {
 
@@ -74,7 +76,7 @@ public class HeartbeatThreadTest {
     return new TestClient(node.nodeIdentifier) {
       @Override
       public void sendHeartbeat(HeartBeatRequest request,
-                                AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+          AsyncMethodCallback<HeartBeatResponse> resultHandler) {
         new Thread(() -> {
           if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), request.getLeader());
@@ -100,7 +102,7 @@ public class HeartbeatThreadTest {
 
       @Override
       public void startElection(ElectionRequest request,
-                                AsyncMethodCallback<Long> resultHandler) {
+          AsyncMethodCallback<Long> resultHandler) {
         new Thread(() -> {
           assertEquals(TestUtils.getNode(0), request.getElector());
           assertEquals(11, request.getTerm());
@@ -120,7 +122,7 @@ public class HeartbeatThreadTest {
 
   @Before
   public void setUp() {
-    logManager = new TestLogManager();
+    logManager = new TestLogManager(0);
     member = getMember();
 
     HeartbeatThread heartBeatThread = getHeartbeatThread(member);
@@ -139,6 +141,11 @@ public class HeartbeatThreadTest {
     member.setAllNodes(partitionGroup);
     member.setThisNode(TestUtils.getNode(0));
     receivedNodes.clear();
+  }
+
+  @After
+  public void tearDown() {
+    logManager.tearDown();
   }
 
   @Test

@@ -19,29 +19,30 @@
 
 package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.exception.EntryCompactedException;
-import org.apache.iotdb.cluster.exception.EntryUnavailableException;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.cluster.exception.EntryCompactedException;
+import org.apache.iotdb.cluster.exception.EntryUnavailableException;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.junit.Test;
 
 public class CommittedEntryManagerTest {
 
 	@Test
 	public void applyingSnapshot() {
 		class CommittedEntryManagerTester {
+
 			public List<Log> entries;
 			public Snapshot snapshot;
 			public Snapshot applyingSnapshot;
 			public long testIndex;
 
-			public CommittedEntryManagerTester(List<Log> entries, Snapshot snapshot, Snapshot applyingSnapshot, long testIndex) {
+			public CommittedEntryManagerTester(List<Log> entries, Snapshot snapshot,
+					Snapshot applyingSnapshot, long testIndex) {
 				this.entries = entries;
 				this.snapshot = snapshot;
 				this.applyingSnapshot = applyingSnapshot;
@@ -50,24 +51,24 @@ public class CommittedEntryManagerTest {
 		}
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new SimpleSnapshot(3, 3), new SimpleSnapshot(3, 3), 3));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new SimpleSnapshot(3, 3), new SimpleSnapshot(4, 4), 4));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new SimpleSnapshot(3, 3), new SimpleSnapshot(5, 5), 5));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new SimpleSnapshot(3, 3), new SimpleSnapshot(7, 7), 7));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
@@ -80,6 +81,7 @@ public class CommittedEntryManagerTest {
 	@Test
 	public void getDummyIndex() {
 		class CommittedEntryManagerTester {
+
 			public List<Log> entries;
 			public long testIndex;
 
@@ -90,12 +92,12 @@ public class CommittedEntryManagerTest {
 		}
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
+				add(new EmptyContentLog(1, 1));
 			}}, 1));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 3));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
@@ -108,6 +110,7 @@ public class CommittedEntryManagerTest {
 	@Test
 	public void getFirstIndex() {
 		class CommittedEntryManagerTester {
+
 			public List<Log> entries;
 			public long testIndex;
 
@@ -118,12 +121,12 @@ public class CommittedEntryManagerTest {
 		}
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
+				add(new EmptyContentLog(1, 1));
 			}}, 2));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 4));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
@@ -136,6 +139,7 @@ public class CommittedEntryManagerTest {
 	@Test
 	public void getLastIndex() {
 		class CommittedEntryManagerTester {
+
 			public List<Log> entries;
 			public long testIndex;
 
@@ -146,12 +150,12 @@ public class CommittedEntryManagerTest {
 		}
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
+				add(new EmptyContentLog(1, 1));
 			}}, 1));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 5));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
@@ -164,6 +168,7 @@ public class CommittedEntryManagerTest {
 	@Test
 	public void maybeTerm() {
 		class CommittedEntryManagerTester {
+
 			public long index;
 			public long testTerm;
 			public Class throwClass;
@@ -175,9 +180,9 @@ public class CommittedEntryManagerTest {
 			}
 		}
 		List<Log> entries = new ArrayList<Log>() {{
-			add(new PhysicalPlanLog(3, 3));
-			add(new PhysicalPlanLog(4, 4));
-			add(new PhysicalPlanLog(5, 5));
+			add(new EmptyContentLog(3, 3));
+			add(new EmptyContentLog(4, 4));
+			add(new EmptyContentLog(5, 5));
 		}};
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
 			add(new CommittedEntryManagerTester(3, 3, null));
@@ -208,12 +213,14 @@ public class CommittedEntryManagerTest {
 	@Test
 	public void getEntries() {
 		class CommittedEntryManagerTester {
+
 			public long low;
 			public long high;
 			public List<Log> testEntries;
 			public Class throwClass;
 
-			public CommittedEntryManagerTester(long low, long high, List<Log> testEntries, Class throwClass) {
+			public CommittedEntryManagerTester(long low, long high, List<Log> testEntries,
+					Class throwClass) {
 				this.low = low;
 				this.high = high;
 				this.testEntries = testEntries;
@@ -221,30 +228,30 @@ public class CommittedEntryManagerTest {
 			}
 		}
 		List<Log> entries = new ArrayList<Log>() {{
-			add(new PhysicalPlanLog(3, 3));
-			add(new PhysicalPlanLog(4, 4));
-			add(new PhysicalPlanLog(5, 5));
-			add(new PhysicalPlanLog(6, 6));
+			add(new EmptyContentLog(3, 3));
+			add(new EmptyContentLog(4, 4));
+			add(new EmptyContentLog(5, 5));
+			add(new EmptyContentLog(6, 6));
 		}};
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
 			add(new CommittedEntryManagerTester(4, 4, new ArrayList<>(), null));
 			add(new CommittedEntryManagerTester(4, 5, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(4, 4));
+				add(new EmptyContentLog(4, 4));
 			}}, null));
 			add(new CommittedEntryManagerTester(4, 6, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, null));
 			add(new CommittedEntryManagerTester(4, 7, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
-				add(new PhysicalPlanLog(6, 6));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
+				add(new EmptyContentLog(6, 6));
 			}}, null));
 			// entries that have not been committed;
 			add(new CommittedEntryManagerTester(4, 8, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
-				add(new PhysicalPlanLog(6, 6));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
+				add(new EmptyContentLog(6, 6));
 			}}, null));
 			// entries that have been compacted;
 			add(new CommittedEntryManagerTester(2, 6, null, EntryCompactedException.class));
@@ -270,12 +277,14 @@ public class CommittedEntryManagerTest {
 	@Test
 	public void compactEntries() {
 		class CommittedEntryManagerTester {
+
 			public List<Log> entries;
 			public long compactIndex;
 			public List<Log> testEntries;
 			public Class throwClass;
 
-			public CommittedEntryManagerTester(List<Log> entries, long compactIndex, List<Log> testEntries, Class throwClass) {
+			public CommittedEntryManagerTester(List<Log> entries, long compactIndex,
+					List<Log> testEntries, Class throwClass) {
 				this.entries = entries;
 				this.compactIndex = compactIndex;
 				this.testEntries = testEntries;
@@ -284,47 +293,47 @@ public class CommittedEntryManagerTest {
 		}
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 2, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, null));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 3, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, null));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 4, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, null));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 5, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(5, 5));
 			}}, null));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 6, null, EntryUnavailableException.class));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, 10, null, EntryUnavailableException.class));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
@@ -347,11 +356,13 @@ public class CommittedEntryManagerTest {
 	@Test
 	public void append() {
 		class CommittedEntryManagerTester {
+
 			public List<Log> entries;
 			public List<Log> toAppend;
 			public List<Log> testEntries;
 
-			public CommittedEntryManagerTester(List<Log> entries, List<Log> toAppend, List<Log> testEntries) {
+			public CommittedEntryManagerTester(List<Log> entries, List<Log> toAppend,
+					List<Log> testEntries) {
 				this.entries = entries;
 				this.toAppend = toAppend;
 				this.testEntries = testEntries;
@@ -359,94 +370,94 @@ public class CommittedEntryManagerTest {
 		}
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(1, 1));
-				add(new PhysicalPlanLog(2, 2));
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 2));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 6));
-				add(new PhysicalPlanLog(5, 6));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 6));
+				add(new EmptyContentLog(5, 6));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 6));
-				add(new PhysicalPlanLog(5, 6));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 6));
+				add(new EmptyContentLog(5, 6));
 			}}));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
-				add(new PhysicalPlanLog(6, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
+				add(new EmptyContentLog(6, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
-				add(new PhysicalPlanLog(6, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
+				add(new EmptyContentLog(6, 5));
 			}}));
 			// truncate incoming entries, truncate the existing entries and append
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(2, 3));
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 5));
+				add(new EmptyContentLog(2, 3));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 5));
 			}}));
 			// truncate the existing entries and append
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(4, 5));
+				add(new EmptyContentLog(4, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 5));
 			}}));
 			// direct append
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(6, 5));
+				add(new EmptyContentLog(6, 5));
 			}}, new ArrayList<Log>() {{
-				add(new PhysicalPlanLog(3, 3));
-				add(new PhysicalPlanLog(4, 4));
-				add(new PhysicalPlanLog(5, 5));
-				add(new PhysicalPlanLog(6, 5));
+				add(new EmptyContentLog(3, 3));
+				add(new EmptyContentLog(4, 4));
+				add(new EmptyContentLog(5, 5));
+				add(new EmptyContentLog(6, 5));
 			}}));
 		}};
 		for (CommittedEntryManagerTester test : tests) {

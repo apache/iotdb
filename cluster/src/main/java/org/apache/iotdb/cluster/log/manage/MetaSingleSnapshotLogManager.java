@@ -28,7 +28,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.RaftLogManager;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.StableEntryManager;
+import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.db.auth.AuthException;
@@ -36,7 +36,6 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * MetaSingleSnapshotLogManager provides a MetaSimpleSnapshot as snapshot.
@@ -50,13 +49,14 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   private Map<String, Boolean> userWaterMarkStatus;
 
   public MetaSingleSnapshotLogManager(LogApplier logApplier) {
-    super(new CommittedEntryManager(), new StableEntryManager(), logApplier);
+    super(new CommittedEntryManager(), new SyncLogDequeSerializer(0), logApplier);
   }
 
   public void takeSnapshot() {
     //TODO remove useless logs which have been compacted
     try {
-      List<Log> entries = committedEntryManager.getEntries(committedEntryManager.getFirstIndex(), Long.MAX_VALUE);
+      List<Log> entries = committedEntryManager
+          .getEntries(committedEntryManager.getFirstIndex(), Long.MAX_VALUE);
       snapshot.addAll(entries);
     } catch (EntryCompactedException e) {
       logger.error("Unexpected error: {}", e.getMessage());

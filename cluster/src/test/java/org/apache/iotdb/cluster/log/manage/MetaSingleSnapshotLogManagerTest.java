@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.List;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -29,10 +32,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
 
 public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
 
@@ -73,5 +72,4 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
     MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
     assertEquals(testLogs, snapshot.getSnapshot());
   }
-
 }

@@ -28,7 +28,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 public class TestPartitionedLogManager extends PartitionedSnapshotLogManager {
 
   public TestPartitionedLogManager() {
-    super(new TestLogApplier(), null, null, null, null);
+    super(new TestLogApplier(), null, new Node("127.0.0.1",40000,0,40001), new Node("127.0.0.1",40000,0,40001),null);
   }
 
   public TestPartitionedLogManager(LogApplier logApplier,

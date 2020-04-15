@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
+
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.cluster.common.IoTDBTest;

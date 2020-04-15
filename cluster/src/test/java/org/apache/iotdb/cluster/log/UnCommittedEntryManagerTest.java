@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.exception.EntryUnavailableException;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
-import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.cluster.exception.EntryUnavailableException;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.junit.Test;
 
 public class UnCommittedEntryManagerTest {
 
   static class UnCommitEntryManagerTesterBase {
+
     public List<Log> entries;
     public long offset;
 
@@ -45,6 +45,7 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void getFirstUnCommittedIndex() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
+
       public long testOffset;
 
       public UnCommittedEntryManagerTester(List<Log> entries, long offset, long testOffset) {
@@ -58,7 +59,7 @@ public class UnCommittedEntryManagerTest {
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
       }}, 5, 5));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(6, 1));
+        add(new EmptyContentLog(6, 1));
       }}, 5, 5));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
@@ -71,6 +72,7 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void maybeLastIndex() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
+
       public long testIndex;
 
       public UnCommittedEntryManagerTester(List<Log> entries, long offset, long testIndex) {
@@ -82,11 +84,11 @@ public class UnCommittedEntryManagerTest {
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
       }}, 0, -1));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5, 5));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
-        add(new PhysicalPlanLog(6, 1));
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 1));
       }}, 5, 6));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
@@ -99,11 +101,13 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void maybeTerm() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
+
       public long index;
       public long testTerm;
       public Class throwClass;
 
-      public UnCommittedEntryManagerTester(List<Log> entries, long offset, long index, long testTerm, Class throwClass) {
+      public UnCommittedEntryManagerTester(List<Log> entries, long offset, long index,
+          long testTerm, Class throwClass) {
         super(entries, offset);
         this.index = index;
         this.testTerm = testTerm;
@@ -112,29 +116,29 @@ public class UnCommittedEntryManagerTest {
     }
     List<UnCommittedEntryManagerTester> tests = new ArrayList<UnCommittedEntryManagerTester>() {{
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5, 5, 1, null));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5, 4, -1, null));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
-        add(new PhysicalPlanLog(6, 4));
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 4));
       }}, 5, 5, 1, null));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
-        add(new PhysicalPlanLog(6, 4));
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 4));
       }}, 5, 6, 4, null));
       // entries that have been committed;
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
-        add(new PhysicalPlanLog(6, 4));
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 4));
       }}, 5, 4, -1, null));
       // entries which are unavailable.
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
       }}, 0, 0, -1, EntryUnavailableException.class));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5, 6, -1, EntryUnavailableException.class));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
@@ -157,12 +161,14 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void stableTo() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
+
       public long index;
       public long term;
       public long testOffset;
       public long testLen;
 
-      public UnCommittedEntryManagerTester(List<Log> entries, long offset, long index, long term, long testOffset, long testLen) {
+      public UnCommittedEntryManagerTester(List<Log> entries, long offset, long index, long term,
+          long testOffset, long testLen) {
         super(entries, offset);
         this.index = index;
         this.term = term;
@@ -176,24 +182,24 @@ public class UnCommittedEntryManagerTest {
       }}, 0, 5, 1, 0, 0));
       // stable to the first entry
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5, 5, 1, 6, 0));
       // stable to the first entry
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
-        add(new PhysicalPlanLog(6, 1));
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 1));
       }}, 5, 5, 1, 6, 1));
       // stable to the first entry and term mismatch
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(6, 2));
+        add(new EmptyContentLog(6, 2));
       }}, 6, 6, 1, 6, 1));
       // stable to old entry
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5, 4, 1, 5, 1));
       // stable to old entry
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5, 2, 2, 5, 1));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
@@ -207,10 +213,12 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void applyingSnapshot() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
+
       public Snapshot snapshot;
       public long testOffset;
 
-      public UnCommittedEntryManagerTester(List<Log> entries, long offset, Snapshot snapshot, long testOffset) {
+      public UnCommittedEntryManagerTester(List<Log> entries, long offset, Snapshot snapshot,
+          long testOffset) {
         super(entries, offset);
         this.snapshot = snapshot;
         this.testOffset = testOffset;
@@ -221,7 +229,7 @@ public class UnCommittedEntryManagerTest {
       add(new UnCommittedEntryManagerTester(new ArrayList<>(), 5, new SimpleSnapshot(6, 6), 7));
       // normal case
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5, new SimpleSnapshot(20, 20), 21));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
@@ -235,11 +243,13 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void truncateAndAppend() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
+
       public List<Log> toAppend;
       public long testOffset;
       public List<Log> testEntries;
 
-      public UnCommittedEntryManagerTester(List<Log> entries, long offset, List<Log> toAppend, long testOffset, List<Log> testEntries) {
+      public UnCommittedEntryManagerTester(List<Log> entries, long offset, List<Log> toAppend,
+          long testOffset, List<Log> testEntries) {
         super(entries, offset);
         this.toAppend = toAppend;
         this.testOffset = testOffset;
@@ -249,75 +259,75 @@ public class UnCommittedEntryManagerTest {
     List<UnCommittedEntryManagerTester> tests = new ArrayList<UnCommittedEntryManagerTester>() {{
       // append to the end
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(6, 1));
-                add(new PhysicalPlanLog(7, 1));
-              }}
-              , 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(5, 1));
-                add(new PhysicalPlanLog(6, 1));
-                add(new PhysicalPlanLog(7, 1));
-              }}));
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(6, 1));
+            add(new EmptyContentLog(7, 1));
+          }}
+          , 5,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 1));
+            add(new EmptyContentLog(6, 1));
+            add(new EmptyContentLog(7, 1));
+          }}));
       // replace the uncommitted entries
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(5, 2));
-                add(new PhysicalPlanLog(6, 2));
-              }}
-              , 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(5, 2));
-                add(new PhysicalPlanLog(6, 2));
-              }}));
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 2));
+            add(new EmptyContentLog(6, 2));
+          }}
+          , 5,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 2));
+            add(new EmptyContentLog(6, 2));
+          }}));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
+        add(new EmptyContentLog(5, 1));
       }}, 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(4, 2));
-                add(new PhysicalPlanLog(5, 2));
-                add(new PhysicalPlanLog(6, 2));
-              }}
-              , 4,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(4, 2));
-                add(new PhysicalPlanLog(5, 2));
-                add(new PhysicalPlanLog(6, 2));
-              }}));
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(4, 2));
+            add(new EmptyContentLog(5, 2));
+            add(new EmptyContentLog(6, 2));
+          }}
+          , 4,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(4, 2));
+            add(new EmptyContentLog(5, 2));
+            add(new EmptyContentLog(6, 2));
+          }}));
       // truncate the existing entries and append
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
-        add(new PhysicalPlanLog(6, 1));
-        add(new PhysicalPlanLog(7, 1));
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 1));
+        add(new EmptyContentLog(7, 1));
       }}, 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(6, 2));
-              }}
-              , 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(5, 1));
-                add(new PhysicalPlanLog(6, 2));
-              }}));
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(6, 2));
+          }}
+          , 5,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 1));
+            add(new EmptyContentLog(6, 2));
+          }}));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(5, 1));
-        add(new PhysicalPlanLog(6, 1));
-        add(new PhysicalPlanLog(7, 1));
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 1));
+        add(new EmptyContentLog(7, 1));
       }}, 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(7, 2));
-                add(new PhysicalPlanLog(8, 2));
-              }}
-              , 5,
-              new ArrayList<Log>() {{
-                add(new PhysicalPlanLog(5, 1));
-                add(new PhysicalPlanLog(6, 1));
-                add(new PhysicalPlanLog(7, 2));
-                add(new PhysicalPlanLog(8, 2));
-              }}));
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(7, 2));
+            add(new EmptyContentLog(8, 2));
+          }}
+          , 5,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 1));
+            add(new EmptyContentLog(6, 1));
+            add(new EmptyContentLog(7, 2));
+            add(new EmptyContentLog(8, 2));
+          }}));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
       UnCommittedEntryManager instance = new UnCommittedEntryManager(test.offset, test.entries);
@@ -330,6 +340,7 @@ public class UnCommittedEntryManagerTest {
   @Test
   public void getEntries() {
     class UnCommittedEntryManagerTester {
+
       public long low;
       public long high;
       public List<Log> testEntries;
@@ -345,22 +356,22 @@ public class UnCommittedEntryManagerTest {
     long last = offset + num;
     List<Log> entries = new ArrayList<>();
     for (int i = 0; i < num; i++) {
-      entries.add(new PhysicalPlanLog(offset + i, offset + i));
+      entries.add(new EmptyContentLog(offset + i, offset + i));
     }
     UnCommittedEntryManager instance = new UnCommittedEntryManager(offset, entries);
     List<UnCommittedEntryManagerTester> tests = new ArrayList<UnCommittedEntryManagerTester>() {{
       add(new UnCommittedEntryManagerTester(offset, offset + num, entries));
       add(new UnCommittedEntryManagerTester(offset - 1, offset + 1, new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(offset, offset));
+        add(new EmptyContentLog(offset, offset));
       }}));
       add(new UnCommittedEntryManagerTester(offset, offset + 1, new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(offset, offset));
+        add(new EmptyContentLog(offset, offset));
       }}));
       add(new UnCommittedEntryManagerTester(last - 1, last, new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(last - 1, last - 1));
+        add(new EmptyContentLog(last - 1, last - 1));
       }}));
       add(new UnCommittedEntryManagerTester(last - 1, last + 1, new ArrayList<Log>() {{
-        add(new PhysicalPlanLog(last - 1, last - 1));
+        add(new EmptyContentLog(last - 1, last - 1));
       }}));
       add(new UnCommittedEntryManagerTester(offset, offset, new ArrayList<>()));
       add(new UnCommittedEntryManagerTester(last, last + 1, new ArrayList<>()));
