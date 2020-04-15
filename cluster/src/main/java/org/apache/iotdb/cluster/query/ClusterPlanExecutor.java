@@ -188,8 +188,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
             Thread.currentThread().interrupt();
           }
         }
-
-
       });
     }
     pool.shutdown();
