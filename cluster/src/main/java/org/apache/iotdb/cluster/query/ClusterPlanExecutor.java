@@ -114,8 +114,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
         GetNodesListHandler handler = new GetNodesListHandler();
         AtomicReference<List<String>> response = new AtomicReference<>(null);
         handler.setResponse(response);
-        try {
-          for (Node node : group) {
+
+        for (Node node : group) {
+          try {
             DataClient client = metaGroupMember.getDataClient(node);
             handler.setContact(node);
             synchronized (response) {
@@ -129,16 +130,15 @@ public class ClusterPlanExecutor extends PlanExecutor {
               nodeSet.addAll(paths);
               break;
             }
+          } catch (IOException e) {
+            logger.error("Failed to connect to node: {}", node, e);
+          } catch (TException e) {
+            logger.error("Error occurs when getting node lists in node {}.", node, e);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when getting node lists in node {}.", node, e);
+            Thread.currentThread().interrupt();
           }
-        } catch (IOException e) {
-          logger.error("Failed to connect to node: {}", header, e);
-        } catch (TException e) {
-          logger.error("Error occurs when getting node lists in node {}.", header, e);
-        } catch (InterruptedException e) {
-          logger.error("Interrupted when getting node lists in node {}.", header, e);
-          Thread.currentThread().interrupt();
         }
-
       });
     }
     pool.shutdown();
@@ -155,27 +155,32 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
-      Node node = group.getHeader();
-      if (node.equals(metaGroupMember.getThisNode())) {
+      Node header = group.getHeader();
+      if (header.equals(metaGroupMember.getThisNode())) {
         continue;
       }
       pool.submit(() -> {
         GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
-        DataClient client = null;
-        try {
-          client = metaGroupMember.getDataClient(node);
-        } catch (IOException e) {
-          logger.error("Failed to connect to node: {}", node, e);
-        }
         AtomicReference<List<String>> response = new AtomicReference<>(null);
         handler.setResponse(response);
-        handler.setContact(node);
-        synchronized (response) {
+
+        for (Node node : group) {
           try {
-            if (client != null) {
-              client.getChildNodePathInNextLevel(node, path, handler);
-              response.wait(connectionTimeoutInMS);
+            DataClient client = metaGroupMember.getDataClient(node);
+            handler.setContact(node);
+            synchronized (response) {
+              if (client != null) {
+                client.getChildNodePathInNextLevel(header, path, handler);
+                response.wait(connectionTimeoutInMS);
+              }
             }
+            List<String> nextChildren = response.get();
+            if (nextChildren != null) {
+              resultSet.addAll(nextChildren);
+              break;
+            }
+          } catch (IOException e) {
+            logger.error("Failed to connect to node: {}", node, e);
           } catch (TException e) {
             logger.error("Error occurs when getting node lists in node {}.", node, e);
           } catch (InterruptedException e) {
@@ -183,10 +188,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
             Thread.currentThread().interrupt();
           }
         }
-        List<String> nextChildren = response.get();
-        if (nextChildren != null) {
-          resultSet.addAll(nextChildren);
-        }
+
+
       });
     }
     pool.shutdown();
@@ -203,37 +206,38 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
-      Node node = group.getHeader();
-      if (node.equals(metaGroupMember.getThisNode())) {
+      Node header = group.getHeader();
+      if (header.equals(metaGroupMember.getThisNode())) {
         continue;
       }
       pool.submit(() -> {
         GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
-        DataClient client = null;
-        try {
-          client = metaGroupMember.getDataClient(node);
-        } catch (IOException e) {
-          logger.error("Failed to connect to node: {}", node, e);
-        }
         AtomicReference<List<List<String>>> response = new AtomicReference<>(null);
         handler.setResponse(response);
-        handler.setContact(node);
-        synchronized (response) {
+
+        for (Node node : group) {
           try {
-            if (client != null) {
-              client.getAllMeasurementSchema(node, path, handler);
-              response.wait(connectionTimeoutInMS);
+            DataClient client = metaGroupMember.getDataClient(node);
+            handler.setContact(node);
+            synchronized (response) {
+              if (client != null) {
+                client.getAllMeasurementSchema(node, path, handler);
+                response.wait(connectionTimeoutInMS);
+              }
             }
+            if (response.get() != null) {
+              for (List<String> element : response.get()) {
+                resultSet.add(element.toArray(new String[0]));
+              }
+              break;
+            }
+          } catch (IOException e) {
+            logger.error("Failed to connect to node: {}", node, e);
           } catch (TException e) {
             logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
           } catch (InterruptedException e) {
             logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
             Thread.currentThread().interrupted();
-          }
-        }
-        if (response.get() != null) {
-          for (List<String> element : response.get()) {
-            resultSet.add(element.toArray(new String[0]));
           }
         }
       });
