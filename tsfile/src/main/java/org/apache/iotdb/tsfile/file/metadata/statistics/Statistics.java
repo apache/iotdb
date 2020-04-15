@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
  * writing processing, the processor records the statistics information. Statistics includes
  * maximum, minimum and null value count up to version 0.0.1.<br> Each data type extends this
  * Statistic as super class.<br>
+ * <br>For the statistics in the Unseq file TimeSeriesMetadata, only firstValue, lastValue, startTime and endTime can be used.</br>
  */
 public abstract class Statistics<T> {
 

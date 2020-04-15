@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class DoubleStatistics extends Statistics<Double> {
 
@@ -70,6 +71,25 @@ public class DoubleStatistics extends Statistics<Double> {
     }
     this.sumValue += sumValue;
     this.lastValue = lastValue;
+  }
+
+  private void updateStats(double minValue, double maxValue, double firstValue, double lastValue, double sumValue, long startTime, long endTime) {
+    if (minValue < this.minValue) {
+      this.minValue = minValue;
+    }
+    if (maxValue > this.maxValue) {
+      this.maxValue = maxValue;
+    }
+    this.sumValue += sumValue;
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = firstValue;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = lastValue;
+    }
   }
 
   @Override
@@ -128,8 +148,8 @@ public class DoubleStatistics extends Statistics<Double> {
           doubleStats.getLastValue(), doubleStats.getSumValue());
       isEmpty = false;
     } else {
-      updateStats(doubleStats.getMinValue(), doubleStats.getMaxValue(),
-          doubleStats.getLastValue(), doubleStats.getSumValue());
+      updateStats(doubleStats.getMinValue(), doubleStats.getMaxValue(), doubleStats.getFirstValue(),
+          doubleStats.getLastValue(), doubleStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
     }
   }
 
