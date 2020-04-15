@@ -23,7 +23,6 @@ import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -32,6 +31,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
@@ -105,7 +105,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
-    for (Node node : metaGroupMember.getAllNodes()) {
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
+      Node node = group.getHeader();
       if (node.equals(metaGroupMember.getThisNode())) {
         continue;
       }
@@ -123,7 +124,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         synchronized (response) {
           try {
             if (client != null) {
-              client.getNodeList(null, schemaPattern, level, handler);
+              client.getNodeList(node, schemaPattern, level, handler);
               response.wait(connectionTimeoutInMS);
             }
           } catch (TException e) {
@@ -151,7 +152,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
         MManager.getInstance().getChildNodePathInNextLevel(path));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
-    for (Node node : metaGroupMember.getAllNodes()) {
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
+      Node node = group.getHeader();
       if (node.equals(metaGroupMember.getThisNode())) {
         continue;
       }
@@ -169,7 +171,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         synchronized (response) {
           try {
             if (client != null) {
-              client.getChildNodePathInNextLevel(null, path, handler);
+              client.getChildNodePathInNextLevel(node, path, handler);
               response.wait(connectionTimeoutInMS);
             }
           } catch (TException e) {
@@ -198,7 +200,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
-    for (Node node : metaGroupMember.getAllNodes()) {
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
+      Node node = group.getHeader();
       if (node.equals(metaGroupMember.getThisNode())) {
         continue;
       }
@@ -216,7 +219,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         synchronized (response) {
           try {
             if (client != null) {
-              client.getAllMeasurementSchema(null, path, handler);
+              client.getAllMeasurementSchema(node, path, handler);
               response.wait(connectionTimeoutInMS);
             }
           } catch (TException e) {
