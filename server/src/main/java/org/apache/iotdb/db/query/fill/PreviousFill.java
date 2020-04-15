@@ -141,7 +141,8 @@ public class PreviousFill extends IFill {
           FileLoaderUtils.loadTimeSeriesMetadata(
               resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+        if (timeseriesMetadata.getStatistics().canUseStatistics()
+            && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
           return constructLastPair(
               timeseriesMetadata.getStatistics().getEndTime(),
               timeseriesMetadata.getStatistics().getLastValue(),
@@ -211,7 +212,7 @@ public class PreviousFill extends IFill {
     }
     Statistics chunkStatistics = chunkMetaData.getStatistics();
 
-    if (endtimeContainedByTimeFilter(chunkStatistics)) {
+    if (chunkStatistics.canUseStatistics() && endtimeContainedByTimeFilter(chunkStatistics)) {
       return constructLastPair(
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
@@ -219,7 +220,7 @@ public class PreviousFill extends IFill {
     for (int i = pageReaders.size() - 1; i >= 0; i--) {
       IPageReader pageReader = pageReaders.get(i);
       Statistics pageStatistics = pageReader.getStatistics();
-      if (endtimeContainedByTimeFilter(pageStatistics)) {
+      if (pageStatistics.canUseStatistics() && endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint = constructLastPair(
             pageStatistics.getEndTime(), pageStatistics.getLastValue(), dataType);
       } else {
