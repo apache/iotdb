@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
 public class TestDataClient extends DataClient {
@@ -158,5 +160,9 @@ public class TestDataClient extends DataClient {
         startTime, endTime, resultHandler)).start();
   }
 
-
+  @Override
+  public void previousFill(PreviousFillRequest request,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).previousFill(request, resultHandler)).start();
+  }
 }

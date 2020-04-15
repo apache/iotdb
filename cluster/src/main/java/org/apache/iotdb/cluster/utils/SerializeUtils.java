@@ -258,6 +258,9 @@ public class SerializeUtils {
   }
 
   public static void serializeTVPair(TimeValuePair timeValuePair, DataOutputStream dataOutputStream) {
+    if (timeValuePair.getValue() == null) {
+      return;
+    }
     TSDataType dataType = timeValuePair.getValue().getDataType();
     try {
       dataOutputStream.write(dataType.ordinal());
@@ -352,6 +355,9 @@ public class SerializeUtils {
 
   public static TimeValuePair deserializeTVPair(ByteBuffer buffer)
       throws UnsupportedDataTypeException {
+    if (buffer == null || (buffer.limit() - buffer.position() == 0)) {
+      return null;
+    }
     TSDataType dataType = TSDataType.values()[buffer.get()];
     switch (dataType) {
       case DOUBLE:

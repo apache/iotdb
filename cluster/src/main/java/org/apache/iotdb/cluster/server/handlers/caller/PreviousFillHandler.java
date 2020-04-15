@@ -47,7 +47,7 @@ public class PreviousFillHandler implements AsyncMethodCallback<ByteBuffer> {
     } else {
       try {
         TimeValuePair timeValuePair = SerializeUtils.deserializeTVPair(response);
-        if (timeValuePair.getTimestamp() > result.getTimestamp()) {
+        if (timeValuePair != null && timeValuePair.getTimestamp() > result.getTimestamp()) {
           result = timeValuePair;
         }
         latch.countDown();

@@ -2626,8 +2626,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         try {
           dataClient.previousFill(request, nodeHandler);
           resultRef.wait(queryTimeOutInSec * 1000L);
-        } catch (TException | InterruptedException e) {
-          logger.error("{}: Cannot perform previous fill of {} to {}", name, path, node);
+        } catch (Exception e) {
+          logger.error("{}: Cannot perform previous fill of {} to {}", name, path, node, e);
         }
       }
 

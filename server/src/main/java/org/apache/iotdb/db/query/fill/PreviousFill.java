@@ -186,9 +186,11 @@ public class PreviousFill extends IFill {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
-      unseqTimeseriesMetadataList.add(timeseriesMetadata);
+      if (timeseriesMetadata != null) {
+        unseqTimeseriesMetadataList.add(timeseriesMetadata);
+      }
       // update lBoundTime if current unseq timeseriesMetadata's last point is a valid result
-      if (timeseriesMetadata.getStatistics().canUseStatistics()
+      if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()
           && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
         lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getEndTime());
       }
@@ -258,7 +260,9 @@ public class PreviousFill extends IFill {
               return Long.compare(o2.getVersion(), o1.getVersion());
             });
     for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
-      chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+      if (timeseriesMetadata != null) {
+        chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+      }
     }
     return chunkMetadataList;
   }
