@@ -42,6 +42,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   protected int usedIndex;
   protected boolean hasCachedTimeInterval;
 
+  protected boolean leftCRightO;
+
   public GroupByEngineDataSet() {
   }
 
@@ -55,7 +57,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.slidingStep = groupByPlan.getSlidingStep();
     this.startTime = groupByPlan.getStartTime();
     this.endTime = groupByPlan.getEndTime();
-
+    this.leftCRightO = groupByPlan.isLeftCRightO();
     // init group by time partition
     this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
@@ -75,6 +77,10 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     if (curStartTime < endTime) {
       hasCachedTimeInterval = true;
       curEndTime = Math.min(curStartTime + interval, endTime);
+      if (!leftCRightO) {
+        curStartTime++;
+        curEndTime++;
+      }
       return true;
     } else {
       return false;

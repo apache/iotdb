@@ -184,6 +184,7 @@ public class PhysicalGenerator {
       ((GroupByFillPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
       ((GroupByFillPlan) queryPlan).setStartTime(queryOperator.getStartTime());
       ((GroupByFillPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      ((GroupByFillPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
       ((GroupByFillPlan) queryPlan)
               .setAggregations(queryOperator.getSelectOperator().getAggregations());
       for (String aggregation : queryPlan.getAggregations()) {
@@ -198,6 +199,7 @@ public class PhysicalGenerator {
       ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
       ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
       ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      ((GroupByPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
       ((GroupByPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {

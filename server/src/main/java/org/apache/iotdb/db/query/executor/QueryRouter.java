@@ -119,6 +119,11 @@ public class QueryRouter implements IQueryRouter {
     long startTime = groupByPlan.getStartTime();
     long endTime = groupByPlan.getEndTime();
 
+    if (!groupByPlan.isLeftCRightO()) {
+      startTime++;
+      endTime++;
+    }
+
     IExpression expression = groupByPlan.getExpression();
     List<Path> selectedSeries = groupByPlan.getDeduplicatedPaths();
 
