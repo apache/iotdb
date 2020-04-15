@@ -92,7 +92,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   /**
    * Metadata size of per chunk, the default value is 1.5 KB.
    */
-  private static final long CHUNK_METADATA_SIZE_IN_BYTE = 1536L;
+  private static long CHUNK_METADATA_SIZE_IN_BYTE = 1536L;
 
   /**
    * Average queue length in memtable pool
@@ -263,6 +263,11 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   public int getTotalStorageGroup() {
     return totalStorageGroup;
+  }
+
+
+  public static void setChunkMetadataSizeInByte(long chunkMetadataSizeInByte) {
+    CHUNK_METADATA_SIZE_IN_BYTE = chunkMetadataSizeInByte;
   }
 
   /**

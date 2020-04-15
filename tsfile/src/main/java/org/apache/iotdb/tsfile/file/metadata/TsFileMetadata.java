@@ -54,6 +54,8 @@ public class TsFileMetadata {
   // offset -> version
   private List<Pair<Long, Long>> versionInfo;
 
+  // offset of MetaMarker.SEPARATOR
+  private long metaOffset;
 
   /**
    * deserialize data from the buffer.
@@ -90,6 +92,9 @@ public class TsFileMetadata {
     }
     fileMetaData.setVersionInfo(versionInfo);
 
+    // metaOffset
+    long metaOffset = ReadWriteIOUtils.readLong(buffer);
+    fileMetaData.setMetaOffset(metaOffset);
 
     // read bloom filter
     if (buffer.hasRemaining()) {
@@ -134,9 +139,12 @@ public class TsFileMetadata {
     // versionInfo
     byteLen += ReadWriteIOUtils.write(versionInfo.size(), outputStream);
     for (Pair<Long, Long> versionPair : versionInfo) {
-      byteLen +=ReadWriteIOUtils.write(versionPair.left, outputStream);
-      byteLen +=ReadWriteIOUtils.write(versionPair.right, outputStream);
+      byteLen += ReadWriteIOUtils.write(versionPair.left, outputStream);
+      byteLen += ReadWriteIOUtils.write(versionPair.right, outputStream);
     }
+
+    // metaOffset
+    byteLen += ReadWriteIOUtils.write(metaOffset, outputStream);
 
     return byteLen;
   }
@@ -190,6 +198,14 @@ public class TsFileMetadata {
 
   public void setInvalidChunkNum(int invalidChunkNum) {
     this.invalidChunkNum = invalidChunkNum;
+  }
+
+  public long getMetaOffset() {
+    return metaOffset;
+  }
+
+  public void setMetaOffset(long metaOffset) {
+    this.metaOffset = metaOffset;
   }
 
   public Map<String, Pair<Long, Integer>> getDeviceMetadataIndex() {

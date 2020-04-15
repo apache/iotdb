@@ -18,17 +18,10 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
-import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import static org.junit.Assert.*;
 
 public class LongStatisticsTest {
 
@@ -52,7 +45,11 @@ public class LongStatisticsTest {
   @Test
   public void testMerge() {
     Statistics<Long> longStats1 = new LongStatistics();
+    longStats1.setStartTime(0);
+    longStats1.setEndTime(2);
     Statistics<Long> longStats2 = new LongStatistics();
+    longStats2.setStartTime(3);
+    longStats2.setEndTime(5);
     assertTrue(longStats1.isEmpty());
     assertTrue(longStats2.isEmpty());
     long max1 = 100000000000L;
@@ -95,6 +92,27 @@ public class LongStatisticsTest {
     assertEquals(max2 + max1 + 1, (long) longStats3.getSumValue());
     assertEquals(1, (long) longStats3.getFirstValue());
     assertEquals(max2, (long) longStats3.getLastValue());
+
+    // Unseq Merge
+    LongStatistics longStats4 = new LongStatistics();
+    longStats4.setStartTime(0);
+    longStats4.setEndTime(5);
+    LongStatistics longStats5 = new LongStatistics();
+    longStats5.setStartTime(1);
+    longStats5.setEndTime(4);
+
+    longStats4.updateStats(111L);
+    longStats4.updateStats(114L);
+
+    longStats5.updateStats(116L);
+
+    longStats3.mergeStatistics(longStats4);
+    assertEquals(111L, (long) longStats3.getFirstValue());
+    assertEquals(114L, (long) longStats3.getLastValue());
+
+    longStats3.mergeStatistics(longStats5);
+    assertEquals(111L, (long) longStats3.getFirstValue());
+    assertEquals(114L, (long) longStats3.getLastValue());
   }
 
 }

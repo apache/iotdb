@@ -88,9 +88,10 @@ public class FileLoaderUtils {
    * @param resource TsFile
    * @param seriesPath Timeseries path
    * @param allSensors measurements queried at the same time of this device
+   * @param filter any filter, only used to check time range
    */
   public static TimeseriesMetadata loadTimeSeriesMetadata(TsFileResource resource, Path seriesPath,
-      QueryContext context, Filter timeFilter, Set<String> allSensors) throws IOException {
+      QueryContext context, Filter filter, Set<String> allSensors) throws IOException {
     TimeseriesMetadata timeSeriesMetadata;
     if (resource.isClosed()) {
       timeSeriesMetadata = TimeSeriesMetadataCache.getInstance()
@@ -98,13 +99,13 @@ public class FileLoaderUtils {
               seriesPath.getDevice(), seriesPath.getMeasurement()), allSensors);
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
-            new DiskChunkMetadataLoader(resource, seriesPath, context, timeFilter));
+            new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
       }
     } else {
       timeSeriesMetadata = resource.getTimeSeriesMetadata();
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
-            new MemChunkMetadataLoader(resource, seriesPath, context, timeFilter));
+            new MemChunkMetadataLoader(resource, seriesPath, context, filter));
       }
     }
 
@@ -116,7 +117,7 @@ public class FileLoaderUtils {
           .getEndTime()) {
         return null;
       }
-      if (timeFilter != null && !timeFilter
+      if (filter != null && !filter
           .satisfyStartEndTime(timeSeriesMetadata.getStatistics().getStartTime(),
               timeSeriesMetadata.getStatistics().getEndTime())) {
         return null;
