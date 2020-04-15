@@ -19,10 +19,21 @@
 
 package org.apache.iotdb.cluster.query;
 
+import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -41,6 +52,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +60,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPlanExecutor.class);
   private MetaGroupMember metaGroupMember;
+
+  private static final int THREAD_POOL_SIZE = 6;
+  private static final int WAIT_GET_NODES_LIST_TIME = 5;
+  private static final TimeUnit WAIT_GET_NODES_LIST_TIME_UNIT = TimeUnit.MINUTES;
 
   public ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
@@ -58,7 +74,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-          MetadataException {
+      MetadataException, TException, InterruptedException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -81,10 +97,48 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<String> getNodesList(String schemaPattern, int level) {
-    // TODO-Cluster: enable meta queries
-    throw new UnsupportedOperationException("Not implemented");
-    //return metaGroupMember.getNodeList(schemaPattern, level);
+  protected List<String> getNodesList(String schemaPattern, int level)
+      throws IOException, TException, InterruptedException, MetadataException {
+    Set<String> nodeListSet = new HashSet<>(
+        MManager.getInstance().getNodesList(schemaPattern, level));
+
+    GetNodesListHandler handler = new GetNodesListHandler();
+
+    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+
+    for (Node node : metaGroupMember.getAllNodes()) {
+      if (node.equals(metaGroupMember.getThisNode())) {
+        continue;
+      }
+      pool.submit(() -> {
+        DataClient client = null;
+        try {
+          client = metaGroupMember.getDataClient(node);
+        } catch (IOException e) {
+          logger.error("Failed to connect to node: {}", node, e);
+        }
+        AtomicReference<List<String>> response = new AtomicReference<>(null);
+        handler.setResponse(response);
+        handler.setContact(node);
+        synchronized (response) {
+          try {
+            if(client!= null){
+              client.getNodeList(null, schemaPattern, level, handler);
+              response.wait(connectionTimeoutInMS);
+            }
+          } catch (TException e) {
+            logger.error("Error occurs when getting node lists in node {}.", node, e);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when getting node lists in node {}.", node, e);
+          }
+        }
+        List<String> paths = response.get();
+        if (paths != null) {
+          nodeListSet.addAll(response.get());
+        }
+      });
+    }
+    return new ArrayList<>(nodeListSet);
   }
 
   @Override

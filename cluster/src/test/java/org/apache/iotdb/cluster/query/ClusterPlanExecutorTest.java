@@ -32,6 +32,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.thrift.TException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -48,7 +49,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
   @Test
   public void testQuery()
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException,
-          MetadataException {
+      MetadataException, TException, InterruptedException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);
