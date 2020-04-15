@@ -3,6 +3,7 @@
 **/logs/*
 **/lib/**
 **/data/**
+**/raft/**
 
 # Eclipse IDE files
 **/.classpath
