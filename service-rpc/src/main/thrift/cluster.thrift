@@ -163,6 +163,17 @@ struct SingleSeriesQueryRequest {
   8: required set<string> deviceMeasurements
 }
 
+struct PreviousFillRequest {
+  1: required string path
+  2: required long queryTime
+  3: required long beforeRange
+  4: required long queryId
+  5: required Node requester
+  6: required Node header
+  7: required int dataTypeOrdinal
+  8: required set<string> deviceMeasurements
+}
+
 // the spec and load of a node, for query coordinating
 struct TNodeStatus {
 
@@ -321,6 +332,11 @@ service TSDataService extends RaftService {
   * Pull all timeseries schemas prefixed by a given path.
   **/
   PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
+
+  /**
+  * Perform a previous fill and return the timevalue pair in binary.
+  **/
+  binary previousFill(1: PreviousFillRequest request)
 }
 
 service TSMetaService extends RaftService {

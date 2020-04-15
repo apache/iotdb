@@ -17,60 +17,41 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.fill;
+package org.apache.iotdb.cluster.query.fill;
 
+import java.io.IOException;
+import java.util.Set;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.io.IOException;
-import java.util.Set;
+public class ClusterPreviousFill extends PreviousFill {
 
-public abstract class IFill {
+  private MetaGroupMember metaGroupMember;
+  private TimeValuePair fillResult;
 
-  protected long queryTime;
-  protected TSDataType dataType;
-
-  public IFill(TSDataType dataType, long queryTime) {
-    this.dataType = dataType;
-    this.queryTime = queryTime;
+  public ClusterPreviousFill(PreviousFill fill, MetaGroupMember metaGroupMember) {
+    super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange());
+    this.metaGroupMember = metaGroupMember;
   }
 
-  public IFill() {
+  @Override
+  public void configureFill(Path path, TSDataType dataType, long queryTime, Set<String> deviceMeasurements,
+      QueryContext context) throws StorageEngineException, QueryProcessException {
+    super.configureFill(path, dataType, queryTime, deviceMeasurements, context);
+    Filter timeFilter = constructFilter();
+    fillResult = metaGroupMember.performPreviousFill(path, dataType, queryTime, getBeforeRange(),
+        deviceMeasurements, context, timeFilter);
   }
 
-  public abstract IFill copy();
-
-  public abstract void configureFill(Path path, TSDataType dataType, long queryTime,
-      Set<String> sensors, QueryContext context)
-      throws StorageEngineException, QueryProcessException;
-
-  public Filter getFilter() {
-    return constructFilter();
-  }
-
-  public abstract TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException;
-
-  public TSDataType getDataType() {
-    return this.dataType;
-  }
-
-  public void setDataType(TSDataType dataType) {
-    this.dataType = dataType;
-  }
-
-  public void setQueryTime(long queryTime) {
-    this.queryTime = queryTime;
-  }
-
-  abstract Filter constructFilter();
-
-  public long getQueryTime() {
-    return queryTime;
+  @Override
+  public TimeValuePair getFillResult() {
+    return fillResult;
   }
 }

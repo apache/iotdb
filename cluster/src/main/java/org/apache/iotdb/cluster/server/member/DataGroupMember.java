@@ -69,6 +69,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -81,6 +82,7 @@ import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
@@ -101,6 +103,7 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
@@ -111,6 +114,7 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
@@ -1511,6 +1515,54 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   public SlotManager getSlotManager() {
     return slotManager;
+  }
+
+  @Override
+  public void previousFill(PreviousFillRequest request,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    Path path = new Path(request.getPath());
+    TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
+    long queryId = request.getQueryId();
+    long queryTime = request.getQueryTime();
+    long beforeRange = request.getBeforeRange();
+    Node requester = request.getRequester();
+    Set<String> deviceMeasurements = request.getDeviceMeasurements();
+    RemoteQueryContext queryContext = queryManager.getQueryContext(requester, queryId);
+
+    try {
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      TimeValuePair timeValuePair = localPreviousFill(path, dataType, queryTime, beforeRange,
+          deviceMeasurements, queryContext);
+      SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
+      resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  /**
+   * Perform a local previous fill and return the fill result.
+   * @param path
+   * @param dataType
+   * @param queryTime
+   * @param beforeRange
+   * @param deviceMeasurements
+   * @param context
+   * @return
+   * @throws QueryProcessException
+   * @throws StorageEngineException
+   * @throws IOException
+   */
+  public TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
+      Set<String> deviceMeasurements, QueryContext context)
+      throws QueryProcessException, StorageEngineException, IOException, LeaderUnknownException {
+    if (!syncLeader()) {
+      throw new LeaderUnknownException(getAllNodes());
+    }
+    PreviousFill previousFill = new PreviousFill(dataType, queryTime, beforeRange);
+    previousFill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
+    return previousFill.getFillResult();
   }
 }
 
