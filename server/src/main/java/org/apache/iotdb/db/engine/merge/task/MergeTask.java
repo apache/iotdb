@@ -162,6 +162,7 @@ public class MergeTask implements Callable<Void> {
     resource.clear();
     logger.info("resource is clean up");
     mergeContext.clear();
+    logger.info("context is clean up");
 
     if (mergeLogger != null) {
       mergeLogger.close();
