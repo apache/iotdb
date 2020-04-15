@@ -31,7 +31,7 @@ public class GroupByPlan extends AggregationPlan {
   private long slidingStep;
 
   // if it is left close and right open interval
-  private boolean leftCRightO;
+  private boolean leftCRightO = true;
 
   public GroupByPlan() {
     super();
