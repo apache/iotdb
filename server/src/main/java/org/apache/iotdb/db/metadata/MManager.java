@@ -87,7 +87,7 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<LeafMNode>>> tagIndex = new HashMap<>();
 
-  private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
+  private Map<String, Integer> seriesNumberInStorageGroups;
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
@@ -148,20 +148,22 @@ public class MManager {
     try {
       initFromLog(logFile);
 
-      // storage group name -> the series number
-      seriesNumberInStorageGroups = new HashMap<>();
-      List<String> storageGroups = mtree.getAllStorageGroupNames();
-      for (String sg : storageGroups) {
-        MNode node = mtree.getNodeByPath(sg);
-        seriesNumberInStorageGroups.put(sg, node.getLeafCount());
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+        // storage group name -> the series number
+        seriesNumberInStorageGroups = new HashMap<>();
+        List<String> storageGroups = mtree.getAllStorageGroupNames();
+        for (String sg : storageGroups) {
+          MNode node = mtree.getNodeByPath(sg);
+          seriesNumberInStorageGroups.put(sg, node.getLeafCount());
+        }
+        if (seriesNumberInStorageGroups.isEmpty()) {
+          maxSeriesNumberAmongStorageGroup = 0;
+        } else {
+          maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
+              .max(Integer::compareTo).get();
+        }
       }
 
-      if (seriesNumberInStorageGroups.isEmpty()) {
-        maxSeriesNumberAmongStorageGroup = 0;
-      } else {
-        maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
-            .max(Integer::compareTo).get();
-      }
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
       writeToLog = true;
     } catch (IOException | MetadataException e) {
@@ -197,7 +199,9 @@ public class MManager {
     try {
       this.mtree = new MTree();
       this.mNodeCache.clear();
-      this.seriesNumberInStorageGroups.clear();
+      if (seriesNumberInStorageGroups != null) {
+        this.seriesNumberInStorageGroups.clear();
+      }
       this.maxSeriesNumberAmongStorageGroup = 0;
       if (logWriter != null) {
         logWriter.close();
@@ -307,10 +311,12 @@ public class MManager {
       }
 
       // update statistics
-      int size = seriesNumberInStorageGroups.get(storageGroupName);
-      seriesNumberInStorageGroups.put(storageGroupName, size + 1);
-      if (size + 1 > maxSeriesNumberAmongStorageGroup) {
-        maxSeriesNumberAmongStorageGroup = size + 1;
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+        int size = seriesNumberInStorageGroups.get(storageGroupName);
+        seriesNumberInStorageGroups.put(storageGroupName, size + 1);
+        if (size + 1 > maxSeriesNumberAmongStorageGroup) {
+          maxSeriesNumberAmongStorageGroup = size + 1;
+        }
       }
     } finally {
       lock.writeLock().unlock();
@@ -350,12 +356,16 @@ public class MManager {
   public Set<String> deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
     if (isStorageGroup(prefixPath)) {
-      int size = seriesNumberInStorageGroups.get(prefixPath);
-      seriesNumberInStorageGroups.put(prefixPath, 0);
-      if (size == maxSeriesNumberAmongStorageGroup) {
-        seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
-            .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
+
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+        int size = seriesNumberInStorageGroups.get(prefixPath);
+        seriesNumberInStorageGroups.put(prefixPath, 0);
+        if (size == maxSeriesNumberAmongStorageGroup) {
+          seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
+              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
+        }
       }
+
       mNodeCache.clear();
     }
     try {
@@ -398,12 +408,15 @@ public class MManager {
       } catch (ConfigAdjusterException e) {
         throw new MetadataException(e);
       }
-      String storageGroup = getStorageGroupName(path);
-      int size = seriesNumberInStorageGroups.get(storageGroup);
-      seriesNumberInStorageGroups.put(storageGroup, size - 1);
-      if (size == maxSeriesNumberAmongStorageGroup) {
-        seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
-            .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
+
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+        String storageGroup = getStorageGroupName(path);
+        int size = seriesNumberInStorageGroups.get(storageGroup);
+        seriesNumberInStorageGroups.put(storageGroup, size - 1);
+        if (size == maxSeriesNumberAmongStorageGroup) {
+          seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
+              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
+        }
       }
       return storageGroupName;
     } finally {
@@ -424,8 +437,10 @@ public class MManager {
         logWriter.setStorageGroup(storageGroup);
       }
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-      ActiveTimeSeriesCounter.getInstance().init(storageGroup);
-      seriesNumberInStorageGroups.put(storageGroup, 0);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+        ActiveTimeSeriesCounter.getInstance().init(storageGroup);
+        seriesNumberInStorageGroups.put(storageGroup, 0);
+      }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     } catch (ConfigAdjusterException e) {
@@ -453,17 +468,20 @@ public class MManager {
           logWriter.deleteStorageGroup(storageGroup);
         }
         mNodeCache.clear();
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
-        int size = seriesNumberInStorageGroups.get(storageGroup);
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
-        ActiveTimeSeriesCounter.getInstance().delete(storageGroup);
-        seriesNumberInStorageGroups.remove(storageGroup);
-        if (size == maxSeriesNumberAmongStorageGroup) {
-          if (seriesNumberInStorageGroups.isEmpty()) {
-            maxSeriesNumberAmongStorageGroup = 0;
-          } else {
-            maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
-                .max(Integer::compareTo).get();
+
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
+          int size = seriesNumberInStorageGroups.get(storageGroup);
+          IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
+          ActiveTimeSeriesCounter.getInstance().delete(storageGroup);
+          seriesNumberInStorageGroups.remove(storageGroup);
+          if (size == maxSeriesNumberAmongStorageGroup) {
+            if (seriesNumberInStorageGroups.isEmpty()) {
+              maxSeriesNumberAmongStorageGroup = 0;
+            } else {
+              maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
+                  .max(Integer::compareTo).get();
+            }
           }
         }
       }

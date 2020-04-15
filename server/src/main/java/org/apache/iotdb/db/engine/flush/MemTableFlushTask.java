@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -82,11 +83,15 @@ public class MemTableFlushTask {
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
         // register active time series to the ActiveTimeSeriesCounter
-        ActiveTimeSeriesCounter.getInstance().offer(storageGroup, deviceId, measurementId);
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+          ActiveTimeSeriesCounter.getInstance().offer(storageGroup, deviceId, measurementId);
+        }
       }
       encodingTaskQueue.add(new EndChunkGroupIoTask());
     }
-    ActiveTimeSeriesCounter.getInstance().updateActiveRatio(storageGroup);
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      ActiveTimeSeriesCounter.getInstance().updateActiveRatio(storageGroup);
+    }
     noMoreEncodingTask = true;
     logger.debug(
         "Storage group {} memtable {}, flushing into disk: data sort time cost {} ms.",
