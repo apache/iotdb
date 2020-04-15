@@ -23,6 +23,8 @@ import static org.junit.Assert.assertEquals;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -96,7 +98,7 @@ public class ActiveTimeSeriesCounterTest {
     }
   }
 
-  private static class OfferThreads implements Runnable {
+  private static class OfferThreads extends WrappedRunnable {
     private int sensorNum;
     private String storageGroup;
     private CountDownLatch finished;
@@ -108,15 +110,16 @@ public class ActiveTimeSeriesCounterTest {
     }
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         for (int j = 0; j < sensorNum; j++) {
           ActiveTimeSeriesCounter.getInstance().offer(storageGroup, "device_0", "sensor_" + j);
         }
-      } finally {
+      }finally {
         finished.countDown();
       }
     }
   }
+
 
 } 

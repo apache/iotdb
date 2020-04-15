@@ -40,7 +40,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
@@ -167,7 +166,7 @@ public interface PartitionTable {
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
       logger.error("{} is a local plan. Please run it locally directly", plan);
-    } else if (PartitionUtils.isGlobalPlan(plan)) {
+    } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
     }
     if (plan.canbeSplit()) {
@@ -206,8 +205,6 @@ public interface PartitionTable {
       return splitAndRoutePlan((UpdatePlan) plan);
     } else if (plan instanceof CountPlan) {
       return splitAndRoutePlan((CountPlan) plan);
-    } else if (plan instanceof DataAuthPlan) {
-      return splitAndRoutePlan((DataAuthPlan) plan);
     } else if (plan instanceof ShowDevicesPlan) {
       return splitAndRoutePlan((ShowDevicesPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
@@ -218,7 +215,7 @@ public interface PartitionTable {
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
       logger.error("{} is a local plan. Please run it locally directly", plan);
-    } else if (PartitionUtils.isGlobalPlan(plan)) {
+    } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
     }
     if (!plan.canbeSplit()) {
@@ -365,12 +362,6 @@ public interface PartitionTable {
       }
     }
     return result;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(DataAuthPlan plan) {
-    //TODO
-    //why this plan has not Path field?
-    return null;
   }
 
   //TODO this case can be optimized, see the related UT for better understanding.

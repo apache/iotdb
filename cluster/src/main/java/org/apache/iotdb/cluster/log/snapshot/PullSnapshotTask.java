@@ -19,9 +19,16 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import java.io.BufferedOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOError;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
@@ -33,6 +40,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,38 +53,37 @@ import org.slf4j.LoggerFactory;
 public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Integer,
     T>> {
 
+  public static final String TASK_SUFFIX = ".task";
   private static final Logger logger = LoggerFactory.getLogger(PullSnapshotTask.class);
 
-  private List<Integer> slots;
-  // the new member created by a node addition
+  private PullSnapshotTaskDescriptor descriptor;
   private DataGroupMember newMember;
-  // the nodes the may hold the target slot
-  private List<Node> previousHolders;
-  // the header of the old members
-  private Node header;
-  // set to true if the previous holder has been removed from the cluster.
-  // This will make the previous holder read-only so that different new
-  // replicas can pull the same snapshot.
-  private boolean requireReadOnly;
 
   private PullSnapshotRequest request;
   private SnapshotFactory snapshotFactory;
 
-  public PullSnapshotTask(Node header, List<Integer> slots,
-      DataGroupMember newMember, List<Node> previousHolders, SnapshotFactory snapshotFactory,
-      boolean requireReadOnly) {
-    this.header = header;
-    this.slots = slots;
+  private File snapshotSave;
+
+  /**
+   *
+   * @param descriptor
+   * @param newMember
+   * @param snapshotFactory
+   * @param snapshotSave if the task is resumed from a disk file, this should that file,
+   *                     otherwise it should bu null
+   */
+  public PullSnapshotTask(PullSnapshotTaskDescriptor descriptor,
+      DataGroupMember newMember, SnapshotFactory snapshotFactory, File snapshotSave) {
+    this.descriptor = descriptor;
     this.newMember = newMember;
-    this.previousHolders = previousHolders;
     this.snapshotFactory = snapshotFactory;
-    this.requireReadOnly = requireReadOnly;
+    this.snapshotSave = snapshotSave;
   }
 
   private boolean pullSnapshot(AtomicReference<Map<Integer, T>> snapshotRef, int nodeIndex)
       throws InterruptedException, TException {
-    Node node = previousHolders.get(nodeIndex);
-    logger.debug("Pulling {} snapshots from {}", slots.size(), node);
+    Node node = descriptor.getPreviousHolders().get(nodeIndex);
+    logger.debug("Pulling {} snapshots from {}", descriptor.getSlots().size(), node);
 
     DataClient client =
         (DataClient) newMember.connectNode(node);
@@ -86,17 +93,17 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
     } else {
       synchronized (snapshotRef) {
         client.pullSnapshot(request, new PullSnapshotHandler<>(snapshotRef,
-            node, slots, snapshotFactory));
+            node, descriptor.getSlots(), snapshotFactory));
         snapshotRef.wait(RaftServer.connectionTimeoutInMS);
       }
       Map<Integer, T> result = snapshotRef.get();
       if (result != null) {
         if (logger.isInfoEnabled()) {
-          logger.info("Received a snapshot {} from {}", result, previousHolders.get(nodeIndex));
+          logger.info("Received a snapshot {} from {}", result, descriptor.getPreviousHolders().get(nodeIndex));
         }
         for (Entry<Integer, T> entry : result.entrySet()) {
           try {
-            newMember.applySnapshot(entry.getValue());
+            newMember.applySnapshot(entry.getValue(), entry.getKey());
           } catch (SnapshotApplicationException e) {
             logger.error("Apply snapshot failed, retry...", e);
             Thread.sleep(ClusterConstant.PULL_SNAPSHOT_RETRY_INTERVAL);
@@ -113,26 +120,59 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
 
   @Override
   public Map<Integer, T> call() {
+    persistTask();
     request = new PullSnapshotRequest();
-    request.setHeader(header);
-    request.setRequiredSlots(slots);
-    request.setRequireReadOnly(requireReadOnly);
+    request.setHeader(descriptor.getPreviousHolders().getHeader());
+    request.setRequiredSlots(descriptor.getSlots());
+    request.setRequireReadOnly(descriptor.isRequireReadOnly());
     AtomicReference<Map<Integer, T>> snapshotRef = new AtomicReference<>();
     boolean finished = false;
     int nodeIndex = -1;
     while (!finished) {
       try {
         // sequentially pick up a node that may have this slot
-        nodeIndex = (nodeIndex + 1) % previousHolders.size();
+        nodeIndex = (nodeIndex + 1) % descriptor.getPreviousHolders().size();
         finished = pullSnapshot(snapshotRef, nodeIndex);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when pulling slot {}", slots, e);
+        logger.error("Unexpected interruption when pulling slot {}", descriptor.getSlots(), e);
         finished = true;
       } catch (TException e) {
-        logger.debug("Cannot pull slot {} from {}, retry", slots, previousHolders.get(nodeIndex), e);
+        logger.debug("Cannot pull slot {} from {}, retry", descriptor.getSlots(),
+            descriptor.getPreviousHolders().get(nodeIndex), e);
       }
     }
+    removeTask();
     return snapshotRef.get();
+  }
+
+  private void persistTask() {
+    if (snapshotSave != null) {
+      // the task is resumed from disk, do not persist it again
+      return;
+    }
+
+    Random random = new Random();
+    while (true) {
+      String saveName = System.currentTimeMillis() + "_" + random.nextLong() + ".task";
+      snapshotSave = new File(newMember.getPullSnapshotTaskDir(), saveName);
+      if (snapshotSave.exists()) {
+        continue;
+      }
+      snapshotSave.getParentFile().mkdirs();
+      break;
+    }
+
+    try (DataOutputStream dataOutputStream =
+        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(snapshotSave)))) {
+      descriptor.serialize(dataOutputStream);
+    } catch (IOException e) {
+      logger.error("Cannot save the pulling task: pull {} from {}", descriptor.getSlots(),
+          descriptor.getPreviousHolders(), e);
+    }
+  }
+
+  private void removeTask() {
+    snapshotSave.delete();
   }
 }

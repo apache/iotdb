@@ -144,7 +144,7 @@ public class SlotManager {
   }
 
 
-  enum SlotStatus {
+  public enum SlotStatus {
     // the slot has pulled data or does not belong to this member
     NULL,
     // the slot is pulling data and writes into it should be blocked and reads of it should merge

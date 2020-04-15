@@ -32,7 +32,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -174,6 +173,10 @@ public class ClusterDescriptor {
     config
         .setConnectionTimeoutInMS(Integer.parseInt(properties.getProperty("CONNECTION_TIME_OUT_MS",
             String.valueOf(config.getConnectionTimeoutInMS()))));
+
+    config
+        .setMaxRemovedLogSize(Long.parseLong(properties.getProperty("MAX_REMOVED_LOG_SIZE",
+            String.valueOf(config.getMaxRemovedLogSize()))));
 
     String seedUrls = properties.getProperty("SEED_NODES");
     if (seedUrls != null) {

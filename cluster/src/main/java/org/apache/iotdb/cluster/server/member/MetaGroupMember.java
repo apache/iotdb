@@ -126,6 +126,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -221,8 +222,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // load the identifier from the disk or generate a new one
     loadIdentifier();
 
-    LogApplier dataLogApplier = new DataLogApplier(this);
-    Factory dataMemberFactory = new Factory(factory, this, dataLogApplier);
+    Factory dataMemberFactory = new Factory(factory, this);
     dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory);
     clientServer = new ClientServer(this);
     startUpStatus = getStartUpStatus();
@@ -1075,8 +1075,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (PartitionUtils.isLocalPlan(plan)) {// run locally
       //TODO run locally.
       return null;
-    } else if (PartitionUtils.isGlobalPlan(plan)) {// forward the plan to all nodes
-      return processNonPartitionedPlan(plan);
+    } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
+      return processNonPartitionedMetaPlan(plan);
+    } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
+      return processNonPartitionedDataPlan(plan);
     } else { //split the plan and forward them to some PartitionGroups
       try {
         return processPartitionedPlan(plan);
@@ -1089,19 +1091,60 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   /**
-   * A non-partitioned plan (like storage group creation) should be executed on all nodes, so the
-   * MetaLeader should take the responsible to make sure that every node receives the plan. Thus the
-   * plan will be processed locally only by the MetaLeader and forwarded by non-leader nodes.
+   * A non-partitioned plan (like storage group creation) should be executed on all meta group
+   * nodes, so the MetaLeader should take the responsible to make sure that every node receives the
+   * plan. Thus the plan will be processed locally only by the MetaLeader and forwarded by
+   * non-leader nodes.
    *
    * @param plan
    * @return
    */
-  private TSStatus processNonPartitionedPlan(PhysicalPlan plan) {
+  private TSStatus processNonPartitionedMetaPlan(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
       TSStatus status = processPlanLocally(plan);
       if (status != null) {
         return status;
       }
+    }
+    return forwardPlan(plan, leader, null);
+  }
+
+  /**
+   * A non-partitioned plan (like DeleteData) should be executed on all data group nodes, so the
+   * DataGroupLeader should take the responsible to make sure that every node receives the plan.
+   * Thus the plan will be processed locally only by the DataGroupLeader and forwarded by non-leader
+   * nodes.
+   *
+   * @param plan
+   * @return
+   */
+  private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
+    if (character == NodeCharacter.LEADER) {
+      TSStatus status;
+      Map<Node, DataGroupMember> headerGroupMap = dataClusterServer.getHeaderGroupMap();
+      // the error codes from the DataGroups that cannot execute the plan
+      List<String> errorCodeDataGroups = new ArrayList<>();
+      for (Map.Entry<Node, DataGroupMember> entry : headerGroupMap.entrySet()) {
+        TSStatus subStatus;
+        subStatus = entry.getValue().executeNonQuery(plan);
+        if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          // execution failed, record the error message
+          errorCodeDataGroups.add(String.format("[%s@%s:%s]",
+              subStatus.getCode(), entry.getValue().getHeader(),
+              subStatus.getMessage()));
+        }
+      }
+
+      if (errorCodeDataGroups.isEmpty()) {
+        // no error occurs, the plan is successfully executed
+        status = StatusUtils.OK;
+      } else {
+        status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+        status.setMessage("The following errors occurred when executing the query, "
+            + "please retry or contact the DBA: " + errorCodeDataGroups.toString());
+        //TODO-Cluster: abort the succeeded ones if necessary.
+      }
+      return status;
     }
     return forwardPlan(plan, leader, null);
   }
@@ -1601,7 +1644,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @throws StorageEngineException
    */
   private List<AggregateResult> getAggregateResult(Path path,
-      Set<String> deviceMeasurements,  List<String> aggregations,
+      Set<String> deviceMeasurements, List<String> aggregations,
       TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
       QueryContext context) throws StorageEngineException {
     if (!partitionGroup.contains(thisNode)) {
@@ -1748,8 +1791,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param partitionGroup
    * @param path
    * @param deviceMeasurements
-   * @param timeFilter     nullable
-   * @param valueFilter    nullable
+   * @param timeFilter         nullable
+   * @param valueFilter        nullable
    * @param context
    * @param dataType
    * @return
@@ -1783,8 +1826,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * the id of the reader will be returned so that we can fetch data from that node using the reader
    * id.
    *
-   * @param timeFilter     nullable
-   * @param valueFilter    nullable
+   * @param timeFilter         nullable
+   * @param valueFilter        nullable
    * @param dataType
    * @param path
    * @param deviceMeasurements
@@ -2035,6 +2078,18 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return result;
   }
 
+  public List<String> getAllStorageGroupNames() {
+    // make sure this node knows all storage groups
+    syncLeader();
+    return MManager.getInstance().getAllStorageGroupNames();
+  }
+
+  public List<StorageGroupMNode> getAllStorageGroupNodes() {
+    // make sure this node knows all storage groups
+    syncLeader();
+    return MManager.getInstance().getAllStorageGroupNodes();
+  }
+
   public Map<Node, Boolean> getAllNodeStatus() {
     if (getPartitionTable() == null) {
       // the cluster is being built.
@@ -2281,7 +2336,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private MetaMemberReport genMemberReport() {
     return new MetaMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly, lastHeartbeatReceivedTime);
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly,
+        lastHeartbeatReceivedTime);
   }
 
   /**
@@ -2369,7 +2425,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // create an executor for each group
     List<GroupByExecutor> executors = new ArrayList<>();
     for (PartitionGroup partitionGroup : partitionGroups) {
-      GroupByExecutor groupByExecutor = getGroupByExecutor(path, deviceMeasurements,partitionGroup,
+      GroupByExecutor groupByExecutor = getGroupByExecutor(path, deviceMeasurements, partitionGroup,
           timeFilter, context, dataType, aggregationTypes);
       executors.add(groupByExecutor);
     }
@@ -2384,7 +2440,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param path
    * @param deviceMeasurements
    * @param partitionGroup
-   * @param timeFilter       nullable
+   * @param timeFilter         nullable
    * @param context
    * @param dataType
    * @param aggregationTypes
@@ -2414,7 +2470,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * "partitionGroup". Send a request to one node in the group to create an executor there and use
    * the return executor id to fetch result later.
    *
-   * @param timeFilter       nullable
+   * @param timeFilter         nullable
    * @param aggregationTypes
    * @param dataType
    * @param path
@@ -2482,7 +2538,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     throw new StorageEngineException(
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
-}
+  }
 
 
 }

@@ -55,7 +55,6 @@ import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
-import org.apache.iotdb.cluster.log.snapshot.RemoteFileSnapshot;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -99,7 +98,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
@@ -109,7 +108,6 @@ public class DataGroupMemberTest extends MemberTest {
 
   private DataGroupMember dataGroupMember;
   private Map<Integer, FileSnapshot> snapshotMap;
-  private Map<Integer, RemoteFileSnapshot> receivedSnapshots;
   private Set<Integer> pulledSnapshots;
   private boolean hasInitialSnapshots;
   private boolean enableSyncLeader;
@@ -127,7 +125,6 @@ public class DataGroupMemberTest extends MemberTest {
       fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestSchema(1, i)));
       snapshotMap.put(i, fileSnapshot);
     }
-    receivedSnapshots = new HashMap<>();
     pulledSnapshots = new HashSet<>();
   }
 
@@ -138,7 +135,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup) {
-    return new TestPartitionedLogManager(new DataLogApplier(testMetaMember),
+    return new TestPartitionedLogManager(new DataLogApplier(testMetaMember, dataGroupMember),
         testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
       @Override
       public Snapshot getSnapshot() {
@@ -150,11 +147,6 @@ public class DataGroupMemberTest extends MemberTest {
         }
         return snapshot;
       }
-
-      @Override
-      public void setSnapshot(Snapshot snapshot, int slot) {
-        receivedSnapshots.put(slot, (RemoteFileSnapshot) snapshot);
-      }
     };
   }
 
@@ -164,7 +156,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
-    return new DataGroupMember(new TCompactProtocol.Factory(), nodes, node, getLogManager(nodes),
+    DataGroupMember dataGroupMember = new DataGroupMember(new Factory(), nodes, node,
         testMetaMember) {
       @Override
       public boolean syncLeader() {
@@ -187,7 +179,7 @@ public class DataGroupMemberTest extends MemberTest {
                   if (fileSnapshot != null) {
                     snapshotBufferMap.put(requiredSlot, fileSnapshot.serialize());
                   }
-                  synchronized (dataGroupMember) {
+                  synchronized (DataGroupMemberTest.this.dataGroupMember) {
                     pulledSnapshots.add(requiredSlot);
                   }
                 }
@@ -212,6 +204,8 @@ public class DataGroupMemberTest extends MemberTest {
         }
       }
     };
+    dataGroupMember.setLogManager(getLogManager(nodes));
+    return dataGroupMember;
   }
 
   @Test
@@ -326,11 +320,13 @@ public class DataGroupMemberTest extends MemberTest {
     }
     snapshot.setTimeseriesSchemas(schemaList);
 
-    // resource1 exists locally, resource2 does not exist locally and without modification,
-    // resource2 does not exist locally and with modification
+    // resource0, resource1 exists locally, resource0 is closed but resource1 is not
+    // resource2 does not exist locally and without modification,
+    // resource3 does not exist locally and with modification
     snapshot.addFile(prepareResource(0, false), TestUtils.getNode(0));
     snapshot.addFile(prepareResource(1, false), TestUtils.getNode(0));
-    snapshot.addFile(prepareResource(2, true), TestUtils.getNode(0));
+    snapshot.addFile(prepareResource(2, false), TestUtils.getNode(0));
+    snapshot.addFile(prepareResource(3, true), TestUtils.getNode(0));
 
     // create a local resource1
     StorageGroupProcessor processor = StorageEngine.getInstance()
@@ -342,11 +338,15 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(0, 0)});
     insertPlan.setValues(new String[]{"1.0"});
     processor.insert(insertPlan);
-    processor.asyncCloseAllWorkingTsFileProcessors();
+    processor.syncCloseAllWorkingTsFileProcessors();
 
-    dataGroupMember.applySnapshot(snapshot);
+    // create a local resource2
+    insertPlan.setTime(1);
+    processor.insert(insertPlan);
+
+    dataGroupMember.applySnapshot(snapshot, 0);
     assertEquals(3, processor.getSequenceFileTreeSet().size());
-    assertEquals(0, processor.getUnSequenceFileList().size());
+    assertEquals(1, processor.getUnSequenceFileList().size());
     Deletion deletion = new Deletion(new Path(TestUtils.getTestSg(0)), 0, 0);
     assertTrue(processor.getSequenceFileTreeSet().get(2).getModFile().getModifications()
         .contains(deletion));
@@ -390,25 +390,6 @@ public class DataGroupMemberTest extends MemberTest {
     for (int i = 0; i < requiredSlots.size() - 1; i++) {
       Integer requiredSlot = requiredSlots.get(i);
       assertEquals(snapshotMap.get(requiredSlot), reference.get().get(requiredSlot));
-    }
-  }
-
-  @Test
-  public void testPullRemoteSnapshot() throws TTransportException {
-    dataGroupMember.start();
-    try {
-      hasInitialSnapshots = false;
-      partitionTable.addNode(TestUtils.getNode(100));
-      List<Integer> requiredSlots =
-          new ArrayList<>(partitionTable.getPreviousNodeMap(TestUtils.getNode(100)).keySet());
-      dataGroupMember.pullNodeAdditionSnapshots(requiredSlots, TestUtils.getNode(100));
-      assertEquals(requiredSlots.size(), receivedSnapshots.size());
-      for (Integer requiredSlot : requiredSlots) {
-        receivedSnapshots.get(requiredSlot).getRemoteSnapshot();
-        assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(1, requiredSlot)));
-      }
-    } finally {
-      dataGroupMember.stop();
     }
   }
 
@@ -789,12 +770,12 @@ public class DataGroupMemberTest extends MemberTest {
       throws IOException {
     TsFileResource resource = new RemoteTsFileResource();
     File file = new File("target" + File.separator + TestUtils.getTestSg(0) + File.separator + "0",
-        "0-" + (serialNum + 101L) + "-0.tsfile");
+        "0-" + (serialNum + 1L) + "-0.tsfile");
     file.getParentFile().mkdirs();
     file.createNewFile();
 
     resource.setFile(file);
-    resource.setHistoricalVersions(Collections.singleton(serialNum + 101L));
+    resource.setHistoricalVersions(Collections.singleton(serialNum + 1L));
     resource.updateStartTime(TestUtils.getTestSg(0), serialNum * 100);
     resource.updateEndTime(TestUtils.getTestSg(0), (serialNum + 1) * 100 - 1);
     if (withModification) {

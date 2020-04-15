@@ -116,7 +116,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
     dataLogManager = new TestLogManager();
     dataLogManager.setLastLogTerm(11);
     dataLogManager.setLastLogId(12);
-    dataLogManager.setCommitLogIndex(13);
+    dataLogManager.setCommitIndex(13);
   }
 
   @Override

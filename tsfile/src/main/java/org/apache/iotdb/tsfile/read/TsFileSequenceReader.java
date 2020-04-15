@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -347,20 +348,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     // set version in ChunkMetadata
     List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
     for (Entry<String, List<ChunkMetadata>> entry : seriesMetadata.entrySet()) {
-      setVersion(entry.getValue(), versionInfo);
+      VersionUtils.applyVersion(entry.getValue(), versionInfo);
     }
     return seriesMetadata;
-  }
-
-
-  private void setVersion(List<ChunkMetadata> chunkMetadataList, List<Pair<Long, Long>> versionInfo) {
-    int versionIndex = 0;
-    for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-      while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
-        versionIndex++;
-      }
-      chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
-    }
   }
 
   /**
@@ -409,6 +399,15 @@ public class TsFileSequenceReader implements AutoCloseable {
   public ChunkGroupFooter readChunkGroupFooter(long position, boolean markerRead)
       throws IOException {
     return ChunkGroupFooter.deserializeFrom(tsFileInput, position, markerRead);
+  }
+
+  public long readVersion() throws IOException {
+    ByteBuffer buffer = ByteBuffer.allocate(Long.BYTES);
+    if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) == 0) {
+      throw new IOException("reach the end of the file.");
+    }
+    buffer.flip();
+    return buffer.getLong();
   }
 
   /**
@@ -570,7 +569,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
 
   public long selfCheck(Map<Path, MeasurementSchema> newSchema,
-      List<ChunkGroupMetadata> chunkGroupMetadataList, boolean fastFinish) throws IOException {
+      List<ChunkGroupMetadata> chunkGroupMetadataList,
+      List<Pair<Long, Long>> versionInfo,
+      boolean fastFinish) throws IOException {
     File checkFile = FSFactoryProducer.getFSFactory().getFile(this.file);
     long fileSize;
     if (!checkFile.exists()) {
@@ -587,18 +588,18 @@ public class TsFileSequenceReader implements AutoCloseable {
     List<ChunkMetadata> chunkMetadataList = null;
     String deviceID;
 
-    int position = TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
             .getBytes().length;
-    if (fileSize < position) {
+    if (fileSize < headerLength) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
     String magic = readHeadMagic(true);
-    tsFileInput.position(position);
+    tsFileInput.position(headerLength);
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
 
-    if (fileSize == position) {
+    if (fileSize == headerLength) {
       return TsFileCheckStatus.ONLY_MAGIC_HEAD;
     } else if (readTailMagic().equals(magic)) {
       loadMetadataSize();
@@ -663,6 +664,11 @@ public class TsFileSequenceReader implements AutoCloseable {
             chunkCnt = 0;
             measurementSchemaList = new ArrayList<>();
             break;
+          case MetaMarker.VERSION:
+            long version = readVersion();
+            versionInfo.add(new Pair<>(position(), version));
+            truncatedPosition = this.position();
+            break;
           default:
             // the disk file is corrupted, using this file may be dangerous
             throw new IOException("Unexpected marker " + marker);
@@ -721,7 +727,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       chunkMetadataList.add(ChunkMetadata.deserializeFrom(buffer));
     }
 
-    setVersion(chunkMetadataList, versionInfo);
+    VersionUtils.applyVersion(chunkMetadataList, versionInfo);
 
     return chunkMetadataList;
   }

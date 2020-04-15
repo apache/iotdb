@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;

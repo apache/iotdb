@@ -21,16 +21,10 @@ package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestLogApplier;
-import org.apache.iotdb.cluster.common.TestRemoteFileSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.log.Log;
@@ -42,7 +36,6 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
 
 public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
@@ -80,37 +73,6 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
               TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
       assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
       assertEquals(5, fileSnapshot.getDataFiles().size());
-    }
-  }
-
-  @Test
-  public void testRemoteSnapshots() throws IOException {
-    PartitionTable partitionTable = TestUtils.getPartitionTable(3);
-    LogApplier applier = new TestLogApplier();
-    FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
-        partitionTable, TestUtils.getNode(0));
-
-    // fake remote snapshots
-    for (int i = 6; i < 9; i++) {
-      List<RemoteTsFileResource> resources = new ArrayList<>();
-      Set<MeasurementSchema> measurementSchemas = new HashSet<>();
-      for (int j = 0; j < 10; j++) {
-        RemoteTsFileResource resource = new RemoteTsFileResource();
-        resource.setFile(new File(TestUtils.getTestSg(i) + File.separator + "TsFile" + j));
-        resources.add(resource);
-        measurementSchemas.add(TestUtils.getTestSchema(i, j));
-      }
-      manager.setSnapshot(new TestRemoteFileSnapshot(resources, measurementSchemas), i);
-    }
-
-    // remote snapshots will be pulled when a new snapshot is taken
-    manager.takeSnapshot();
-    PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
-    for (int i = 6; i < 9; i++) {
-      FileSnapshot fileSnapshot =
-          (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlotByTime(TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
-      assertEquals(10, fileSnapshot.getDataFiles().size());
-      assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
     }
   }
 }

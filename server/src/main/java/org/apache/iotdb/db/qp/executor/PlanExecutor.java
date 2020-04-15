@@ -257,7 +257,7 @@ public class PlanExecutor implements IPlanExecutor {
     return queryDataSet;
   }
 
-  private QueryDataSet processShowQuery(ShowPlan showPlan)
+  protected QueryDataSet processShowQuery(ShowPlan showPlan)
       throws QueryProcessException, MetadataException {
     switch (showPlan.getShowContentType()) {
       case TTL:
@@ -379,11 +379,15 @@ public class PlanExecutor implements IPlanExecutor {
      return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
+  protected List<String> getAllStorageGroupNames() {
+    return MManager.getInstance().getAllStorageGroupNames();
+  }
+
   private QueryDataSet processShowStorageGroup() {
     ListDataSet listDataSet = new ListDataSet(
         Collections.singletonList(new Path(COLUMN_STORAGE_GROUP)),
         Collections.singletonList(TSDataType.TEXT));
-    List<String> storageGroupList = MManager.getInstance().getAllStorageGroupNames();
+    List<String> storageGroupList = getAllStorageGroupNames();
     for (String s : storageGroupList) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
@@ -422,13 +426,17 @@ public class PlanExecutor implements IPlanExecutor {
     return MManager.getInstance().getAllMeasurementSchema(path);
   }
 
+  protected List<StorageGroupMNode> getAllStorageGroupNodes() {
+    return MManager.getInstance().getAllStorageGroupNodes();
+  }
+
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
     ListDataSet listDataSet = new ListDataSet(
         Arrays.asList(new Path(COLUMN_STORAGE_GROUP), new Path(COLUMN_TTL))
         , Arrays.asList(TSDataType.TEXT, TSDataType.INT64));
     List<String> selectedSgs = showTTLPlan.getStorageGroups();
 
-    List<StorageGroupMNode> storageGroups = MManager.getInstance().getAllStorageGroupNodes();
+    List<StorageGroupMNode> storageGroups = getAllStorageGroupNodes();
     int timestamp = 0;
     for (StorageGroupMNode mNode : storageGroups) {
       String sgName = mNode.getFullPath();
@@ -576,9 +584,11 @@ public class PlanExecutor implements IPlanExecutor {
       }
       Map<Path, MeasurementSchema> schemaMap = new HashMap<>();
 
+      List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+
       List<ChunkGroupMetadata> chunkGroupMetadataList = new ArrayList<>();
       try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
-        reader.selfCheck(schemaMap, chunkGroupMetadataList, false);
+        reader.selfCheck(schemaMap, chunkGroupMetadataList, versionInfo, false);
       }
 
       FileLoaderUtils.checkTsFileResource(tsFileResource);

@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.log;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 /**
  * LogManager manages the logs that are still in memory and the last snapshot which can be used
@@ -81,10 +80,5 @@ public interface LogManager {
 
   void setLastLogTerm(long lastLogTerm);
 
-  /**
-   * Wait until all remote snapshots are pulled locally.
-   */
-  default void waitRemoteSnapshots() {
-
-  };
+  void setCommitIndex(long commitIndex);
 }
