@@ -124,13 +124,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
         }
       }
 
-      logFileList.sort(new Comparator<File>() {
-        @Override
-        public int compare(File o1, File o2) {
-          return Long.compare(Long.parseLong(o1.getName().split("-")[1]),
-              Long.parseLong(o2.getName().split("-")[1]));
-        }
-      });
+      logFileList.sort(Comparator.comparingLong(o -> Long.parseLong(o.getName().split("-")[1])));
 
       // add init log file
       if (logFileList.isEmpty()) {
@@ -317,8 +311,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     boolean shouldSkip = true;
 
     for (File logFile : logFileList) {
-      try {
-        FileInputStream logReader = new FileInputStream(logFile);
+      try (FileInputStream logReader = new FileInputStream(logFile)) {
         FileChannel logChannel = logReader.getChannel();
         if (shouldSkip) {
           long actuallySkippedBytes = logReader.skip(removedLogSize);
@@ -335,7 +328,6 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
           Log log = readLog(logReader);
           result.add(log);
         }
-        logReader.close();
       } catch (IOException e) {
         logger.error("Error in log serialization: " + e.getMessage());
       }
@@ -365,15 +357,13 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   @Override
   public LogManagerMeta recoverMeta() {
     if (meta == null && metaFile.exists() && metaFile.length() > 0) {
-      try {
-        FileInputStream metaReader = new FileInputStream(metaFile);
+      try (FileInputStream metaReader = new FileInputStream(metaFile)) {
         firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
         removedLogSize = ReadWriteIOUtils.readLong(metaReader);
         minAvailableTime = ReadWriteIOUtils.readLong(metaReader);
         maxAvailableTime = ReadWriteIOUtils.readLong(metaReader);
         meta = LogManagerMeta.deserialize(
             ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
-        metaReader.close();
       } catch (IOException e) {
         logger.error("Error in log serialization: " + e.getMessage());
       }
@@ -384,9 +374,9 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   @Override
   public void serializeMeta(LogManagerMeta meta) {
-    try {
-      File tempMetaFile = new File(logDir + "logMeta.tmp");
-      FileOutputStream tempMetaFileOutputStream = new FileOutputStream(tempMetaFile);
+    File tempMetaFile = new File(logDir + "logMeta.tmp");
+    try (FileOutputStream tempMetaFileOutputStream = new FileOutputStream(tempMetaFile)) {
+
       ReadWriteIOUtils.write(firstLogPosition, tempMetaFileOutputStream);
       ReadWriteIOUtils.write(removedLogSize, tempMetaFileOutputStream);
       ReadWriteIOUtils.write(minAvailableTime, tempMetaFileOutputStream);
