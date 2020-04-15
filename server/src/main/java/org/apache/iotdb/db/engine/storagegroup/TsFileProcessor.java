@@ -261,13 +261,15 @@ public class TsFileProcessor {
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if(!config.isEnableParameterAdapter()){
+      return config.getMemtableSizeThreshold();
+    }
     long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
         / IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup()
         * ActiveTimeSeriesCounter.getInstance()
         .getActiveRatio(storageGroupName));
     return Math.max(memTableSize, config.getMemtableSizeThreshold());
   }
-
 
   public boolean shouldClose() {
     long fileSize = tsFileResource.getFileSize();

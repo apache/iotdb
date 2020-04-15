@@ -18,6 +18,4 @@
     under the License.
 
 -->
-<Home_zh/>
-
-<FooterFixed/>
+<IoTDBZH/>

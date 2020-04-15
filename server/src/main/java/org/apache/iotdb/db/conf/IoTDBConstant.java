@@ -27,13 +27,9 @@ public class IoTDBConstant {
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
   public static final String VERSION = "0.10.0-SNAPSHOT";
-  public static final String REMOTE_JMX_PORT_NAME = "com.sun.management.jmxremote.port";
-  public static final String IOTDB_LOCAL_JMX_PORT_NAME = "iotdb.jmx.local.port";
-  public static final String IOTDB_REMOTE_JMX_PORT_NAME = "iotdb.jmx.remote.port";
-  public static final String SERVER_RMI_ID = "java.rmi.server.randomIDs";
-  public static final String RMI_SERVER_HOST_NAME = "java.rmi.server.hostname";
-  public static final String JMX_REMOTE_RMI_PORT = "com.sun.management.jmxremote.rmi.port";
-  public static final String JMX_REMOTE_AUTHENTICATE = "com.sun.management.jmxremote.authenticate";
+
+  public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
+
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String JMX_TYPE = "type";
 

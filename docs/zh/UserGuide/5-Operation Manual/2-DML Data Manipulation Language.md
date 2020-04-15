@@ -273,6 +273,36 @@ GROUP BY的SELECT子句里的查询路径必须是聚合函数，否则系统将
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
 
+#### 降频聚合查询补空值
+
+降频聚合出的各个时间段的结果，支持使用前值补空。
+
+不允许设置滑动步长，默认为聚合时间区间，实际为定长采样。现在只支持 last_value 聚合函数。
+
+补空值的时间段为正无穷。
+
+目前不支持线性插值补空值。
+
+
+##### PREVIOUS 和 PREVIOUSUNTILLAST 的区别
+
+* PREVIOUS：只要空值前边有值，就会用其填充空值。
+* PREVIOUSUNTILLAST：不会填充此序列最新点后的空值
+
+SQL 示例:
+
+```
+SELECT last_value(temperature) as last_temperature FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+```
+
+解释:
+
+使用 PREVIOUSUNTILLAST 方式填充降频聚合的结果。
+
+所有路径必须都伴随聚合函数，否则会报以下错误信息：
+
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116099-0b715300-0ac6-11ea-8074-84e04797b8c7.png"></center>
+
 ### 最新数据查询
 
 SQL语法：
