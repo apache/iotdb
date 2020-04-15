@@ -39,7 +39,6 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   // current interval [curStartTime, curEndTime)
   protected long curStartTime;
   protected long curEndTime;
-  protected int usedIndex;
   protected boolean hasCachedTimeInterval;
 
   protected boolean leftCRightO;
@@ -59,8 +58,8 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.endTime = groupByPlan.getEndTime();
     this.leftCRightO = groupByPlan.isLeftCRightO();
     // init group by time partition
-    this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
+    this.curStartTime = this.startTime - slidingStep;
     this.curEndTime = -1;
   }
 
@@ -71,16 +70,11 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    curStartTime = usedIndex * slidingStep + startTime;
-    usedIndex++;
+    curStartTime += slidingStep;
     //This is an open interval , [0-100)
     if (curStartTime < endTime) {
       hasCachedTimeInterval = true;
       curEndTime = Math.min(curStartTime + interval, endTime);
-      if (!leftCRightO) {
-        curStartTime++;
-        curEndTime++;
-      }
       return true;
     } else {
       return false;

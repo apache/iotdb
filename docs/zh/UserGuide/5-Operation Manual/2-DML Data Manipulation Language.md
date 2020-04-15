@@ -278,7 +278,7 @@ GROUP BY的SELECT子句里的查询路径必须是聚合函数，否则系统将
 对应的SQL语句是:
 
 ```
-select count(status) from root.ln.wf01.wt01 group by((5, 40], 1ms);
+select count(status) from root.ln.wf01.wt01 group by((5, 40], 5ms);
 ```
 
 这条查询语句的时间区间是左开右闭的，结果中不会包含时间点5的数据，但是会包含时间点40的数据。

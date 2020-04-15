@@ -245,7 +245,7 @@ Then the system will use the time and value filtering condition in the WHERE cla
 The SQL statement is:
 
 ```
-select count(status) from root.ln.wf01.wt01 group by((5, 40], 1ms);
+select count(status) from root.ln.wf01.wt01 group by((5, 40], 5ms);
 ```
 
 In this sql, the time interval is left open and right close, so we won't include the value of timestamp 5 and instead we will include the value of timestamp 40.
