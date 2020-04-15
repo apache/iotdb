@@ -220,7 +220,7 @@ class MergeFileTask {
     RestorableTsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile);
 
     mergeLogger.logFileMergeStart(fileWriter.getFile(), fileWriter.getFile().length());
-    logger.debug("{} moving unmerged chunks of {} to the new file", taskName, seqFile);
+    logger.info("{} moving unmerged chunks of {} to the new file", taskName, seqFile);
 
     int unmergedChunkNum = context.getUnmergedChunkCnt().getOrDefault(seqFile, 0);
 
@@ -251,7 +251,7 @@ class MergeFileTask {
     updateHistoricalVersions(seqFile);
     seqFile.serialize();
     mergeLogger.logFileMergeEnd();
-    logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
+    logger.info("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
     seqFile.getWriteQueryLock().writeLock().lock();
     try {

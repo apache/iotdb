@@ -46,10 +46,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
- * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
- *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
- *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
- *        3. remove unseqFiles
+ * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
+ * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
+ * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
 public class MergeTask implements Callable<Void> {
 
@@ -92,14 +91,15 @@ public class MergeTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
-    try  {
+    try {
       doMerge();
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
       cleanUp(false);
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
-      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
+      callback.call(Collections.emptyList(), Collections.emptyList(),
+          new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
       throw e;
     }
     return null;
@@ -132,7 +132,8 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
+    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
+        mergeLogger, resource,
         fullMerge, unmergedSeries, concurrentMergeSeriesNum);
     mergeChunkTask.mergeSeries();
 
@@ -159,6 +160,7 @@ public class MergeTask implements Callable<Void> {
     logger.info("{} is cleaning up", taskName);
 
     resource.clear();
+    logger.info("resource is clean up");
     mergeContext.clear();
 
     if (mergeLogger != null) {
@@ -168,7 +170,9 @@ public class MergeTask implements Callable<Void> {
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       File mergeFile = new File(seqFile.getPath() + MERGE_SUFFIX);
       mergeFile.delete();
+      logger.info("{} is deleted", mergeFile.getName());
       seqFile.setMerging(false);
+      logger.info("{} is set merging false", seqFile.getFile().getName());
     }
     for (TsFileResource unseqFile : resource.getUnseqFiles()) {
       unseqFile.setMerging(false);
