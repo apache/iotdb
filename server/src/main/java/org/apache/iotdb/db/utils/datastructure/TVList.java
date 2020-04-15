@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
@@ -114,9 +115,11 @@ public abstract class TVList extends AbstractTVList {
   @Override
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
+      long time = System.currentTimeMillis();
       expandValues();
       timestamps.add((long[]) PrimitiveArrayPool.getInstance().getPrimitiveDataListByType(
           TSDataType.INT64));
+      PerfMonitor.add("TVList.expand", System.currentTimeMillis() - time);
     }
   }
 

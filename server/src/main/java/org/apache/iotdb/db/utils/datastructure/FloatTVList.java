@@ -100,18 +100,15 @@ public class FloatTVList extends TVList {
       sortedValues = (float[][]) PrimitiveArrayPool
           .getInstance().getDataListsByType(TSDataType.FLOAT, size);
     }
-    System.out.println("init arr:" + (System.currentTimeMillis() - time));
     PerfMonitor.add("sort-initarr", System.currentTimeMillis() - time);
 
     time = System.currentTimeMillis();
     sort(0, size);
-    System.out.println("sort:" + (System.currentTimeMillis() - time));
     PerfMonitor.add("sort-sort", System.currentTimeMillis() - time);
 
     time = System.currentTimeMillis();
     clearSortedValue();
     clearSortedTime();
-    System.out.println("clear arr:" + (System.currentTimeMillis() - time));
     PerfMonitor.add("sort-cleararr", System.currentTimeMillis() - time);
 
     sorted = true;
@@ -200,6 +197,7 @@ public class FloatTVList extends TVList {
 
     updateMinTimeAndSorted(time);
 
+    long startTime = System.currentTimeMillis();
     while (idx < length) {
       int inputRemaining = length - idx;
       int arrayIdx = size / ARRAY_SIZE;
@@ -221,6 +219,7 @@ public class FloatTVList extends TVList {
         checkExpansion();
       }
     }
+    PerfMonitor.add("TVList.puts", System.currentTimeMillis() - startTime);
   }
 
   void addBatchValue(float[] batch) {

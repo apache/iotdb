@@ -223,7 +223,7 @@ public class TsFileRecoverPerformer {
 
     long time = System.currentTimeMillis();
     logReplayer.replayLogs();
-    PerfMonitor.add("LogReplayer.replayLogs", System.currentTimeMillis() - time);
+    PerfMonitor.add("LogReplayer.replayLogs-ALL", System.currentTimeMillis() - time);
 
     flushRecoverdMemtable(recoverMemTable, restorableTsFileIOWriter);
   }

@@ -2,6 +2,7 @@ package org.apache.iotdb.db.nvm.rescon;
 
 import java.util.ArrayDeque;
 import java.util.EnumMap;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.exception.NVMSpaceManagerException;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
@@ -15,7 +16,7 @@ public class NVMPrimitiveArrayPool {
    */
   private static final EnumMap<TSDataType, ArrayDeque<NVMDataSpace>> primitiveArraysMap = new EnumMap<>(TSDataType.class);
 
-  public static final int ARRAY_SIZE = 128;
+  public static final int ARRAY_SIZE = IoTDBDescriptor.getInstance().getConfig().getArraySize();
 
   static {
     primitiveArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque());

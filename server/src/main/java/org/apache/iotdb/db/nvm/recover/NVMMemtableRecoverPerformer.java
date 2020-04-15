@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.memtable.NVMPrimitiveMemTable;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
@@ -30,7 +31,9 @@ public class NVMMemtableRecoverPerformer {
 
   public void init() throws StartupException {
     try {
+      long time = System.currentTimeMillis();
       dataMap = recoverDataInNVM();
+      PerfMonitor.add("NVMMemtableRecoverPerformer.init", System.currentTimeMillis() - time);
     } catch (IOException e) {
       throw new StartupException(e);
     }

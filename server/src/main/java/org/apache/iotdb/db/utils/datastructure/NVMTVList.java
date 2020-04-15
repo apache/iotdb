@@ -165,10 +165,12 @@ public abstract class NVMTVList extends AbstractTVList {
   @Override
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
+      long time = System.currentTimeMillis();
       NVMDataSpace valueSpace = expandValues();
       NVMDataSpace timeSpace = NVMPrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64, true);
       timestamps.add(timeSpace);
       NVMSpaceMetadataManager.getInstance().registerTVSpace(timeSpace, valueSpace, sgId, deviceId, measurementId);
+      PerfMonitor.add("NVMTVList.expand", System.currentTimeMillis() - time);
     }
   }
 
@@ -236,28 +238,23 @@ public abstract class NVMTVList extends AbstractTVList {
   public void sort() {
     long time = System.currentTimeMillis();
     initTempArrays();
-//    System.out.println("init arr:" + (System.currentTimeMillis() - time));
     PerfMonitor.add("sort-initarr", System.currentTimeMillis() - time);
 
     time = System.currentTimeMillis();
     copyTVToTempArrays();
-//    System.out.println("copy to arr:" + (System.currentTimeMillis() - time));
     PerfMonitor.add("sort-copytoarr", System.currentTimeMillis() - time);
 
     time = System.currentTimeMillis();
     sort(0, size);
-//    System.out.println("sort:" + (System.currentTimeMillis() - time));
     PerfMonitor.add("sort-sort", System.currentTimeMillis() - time);
 
     time = System.currentTimeMillis();
     copyTVFromTempArrays();
-//    System.out.println("copy from arr:" + (System.currentTimeMillis() - time));
     PerfMonitor.add("sort-copyfromarr", System.currentTimeMillis() - time);
 
     time = System.currentTimeMillis();
     clearSortedValue();
     clearSortedTime();
-//    System.out.println("clear arr:" + (System.currentTimeMillis() - time));
     PerfMonitor.add("sort-cleararr", System.currentTimeMillis() - time);
 
     sorted = true;

@@ -22,6 +22,7 @@ package org.apache.iotdb.db.writelog.io;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.NoSuchElementException;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
 /**
@@ -47,6 +48,7 @@ public class MultiFileLogReader implements ILogReader {
 
   @Override
   public boolean hasNext() throws FileNotFoundException {
+    long time = System.currentTimeMillis();
     if (files == null || files.length == 0) {
       return false;
     }
@@ -54,14 +56,17 @@ public class MultiFileLogReader implements ILogReader {
       currentReader = new SingleFileLogReader(files[fileIdx++]);
     }
     if (currentReader.hasNext()) {
+      PerfMonitor.add("LogReader.hasNext", System.currentTimeMillis() - time);
       return true;
     }
     while (fileIdx < files.length) {
       currentReader.open(files[fileIdx++]);
       if (currentReader.hasNext()) {
+        PerfMonitor.add("LogReader.hasNext", System.currentTimeMillis() - time);
         return true;
       }
     }
+    PerfMonitor.add("LogReader.hasNext", System.currentTimeMillis() - time);
     return false;
   }
 
@@ -70,6 +75,9 @@ public class MultiFileLogReader implements ILogReader {
     if (!hasNext()) {
       throw new NoSuchElementException();
     }
-    return currentReader.next();
+    long time = System.currentTimeMillis();
+    PhysicalPlan plan = currentReader.next();
+    PerfMonitor.add("LogReader.next", System.currentTimeMillis() - time);
+    return plan;
   }
 }

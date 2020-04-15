@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -93,6 +94,7 @@ public class LogReplayer {
     ILogReader logReader = logNode.getLogReader();
     try {
       while (logReader.hasNext()) {
+        long time = System.currentTimeMillis();
         PhysicalPlan plan = logReader.next();
         if (plan instanceof InsertPlan) {
           replayInsert((InsertPlan) plan);
@@ -103,6 +105,7 @@ public class LogReplayer {
         } else if (plan instanceof BatchInsertPlan) {
           replayBatchInsert((BatchInsertPlan) plan);
         }
+        PerfMonitor.add("LogReplayer.replay", System.currentTimeMillis() - time);
       }
     } catch (IOException e) {
       throw new StorageGroupProcessorException("Cannot replay logs" + e.getMessage());

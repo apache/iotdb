@@ -2,11 +2,16 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
+import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
+import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
+import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 
+// TODO how to organize data
 public class NVMBinaryTVList extends NVMTVList {
 
   // TODO
@@ -21,8 +26,8 @@ public class NVMBinaryTVList extends NVMTVList {
   @Override
   public void putBinary(long timestamp, Binary value) {
     checkExpansion();
-    int arrayIndex = size / ARRAY_SIZE;
-    int elementIndex = size % ARRAY_SIZE;
+    int arrayIndex = size;
+    int elementIndex = 0;
     minTime = minTime <= timestamp ? minTime : timestamp;
     timestamps.get(arrayIndex).setData(elementIndex, timestamp);
     values.get(arrayIndex).setData(elementIndex, value);
@@ -33,12 +38,22 @@ public class NVMBinaryTVList extends NVMTVList {
   }
 
   @Override
+  protected void checkExpansion() {
+    NVMDataSpace valueSpace = expandValues();
+    NVMDataSpace timeSpace = NVMPrimitiveArrayPool
+        .getInstance().getPrimitiveDataListByType(TSDataType.INT64, true);
+    timestamps.add(timeSpace);
+    NVMSpaceMetadataManager
+        .getInstance().registerTVSpace(timeSpace, valueSpace, sgId, deviceId, measurementId);
+  }
+
+  @Override
   public Binary getBinary(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
+    int arrayIndex = index;
+    int elementIndex = 0;
     return (Binary) values.get(arrayIndex).getData(elementIndex);
   }
 
@@ -73,8 +88,8 @@ public class NVMBinaryTVList extends NVMTVList {
     int arrayIndex = 0;
     int elementIndex = 0;
     for (int i = 0; i < size; i++) {
-      long time = (long) timestamps.get(arrayIndex).getData(elementIndex);
-      Binary value = (Binary) values.get(arrayIndex).getData(elementIndex);
+      long time = (long) timestamps.get(i).getData(0);
+      Binary value = (Binary) values.get(i).getData(0);
       tempTimestampsForSort[arrayIndex][elementIndex] = time;
       tempValuesForSort[arrayIndex][elementIndex] = value;
 
@@ -94,8 +109,8 @@ public class NVMBinaryTVList extends NVMTVList {
       long time = tempTimestampsForSort[arrayIndex][elementIndex];
       Binary value = tempValuesForSort[arrayIndex][elementIndex];
 
-      timestamps.get(arrayIndex).setData(elementIndex, time);
-      values.get(arrayIndex).setData(elementIndex, value);
+      timestamps.get(i).setData(0, time);
+      values.get(i).setData(0, value);
 
       elementIndex++;
       if (elementIndex == ARRAY_SIZE) {
@@ -188,5 +203,18 @@ public class NVMBinaryTVList extends NVMTVList {
 //        checkExpansion();
 //      }
 //    }
+  }
+
+  public static void main(String[] args) throws StartupException {
+    NVMSpaceManager.getInstance().init();
+
+    NVMBinaryTVList tvList = new NVMBinaryTVList("sg", "d0", "s0");
+    int size = 5000;
+    for (int i = 0; i < size; i++) {
+      String v = String.valueOf(size - i);
+      tvList.putBinary(i, Binary.valueOf(v));
+    }
+
+    tvList.sort();
   }
 }

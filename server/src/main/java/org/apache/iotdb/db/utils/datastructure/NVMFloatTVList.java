@@ -2,6 +2,7 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
+import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -160,9 +161,11 @@ public class NVMFloatTVList extends NVMTVList {
     int idx = 0;
     int length = time.length;
 
+    long startTime = System.currentTimeMillis();
     for (int i = 0; i < length; i++) {
       putFloat(time[i], value[i]);
     }
+    PerfMonitor.add("NVMTVList.puts", System.currentTimeMillis() - startTime);
 
 //    updateMinTimeAndSorted(time);
 //
