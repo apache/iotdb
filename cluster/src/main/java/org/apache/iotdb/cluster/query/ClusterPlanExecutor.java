@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -107,9 +108,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
     for (Node node : metaGroupMember.getAllNodes()) {
-      if (node.equals(metaGroupMember.getThisNode())) {
-        continue;
-      }
       pool.submit(() -> {
         DataClient client = null;
         try {
@@ -122,7 +120,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         handler.setContact(node);
         synchronized (response) {
           try {
-            if(client!= null){
+            if (client != null) {
               client.getNodeList(null, schemaPattern, level, handler);
               response.wait(connectionTimeoutInMS);
             }
@@ -138,13 +136,53 @@ public class ClusterPlanExecutor extends PlanExecutor {
         }
       });
     }
+    pool.shutdown();
+    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
     return new ArrayList<>(nodeListSet);
   }
 
   @Override
-  protected Set<String> getPathNextChildren(String path) {
-    // TODO-Cluster: enable meta queries
-    throw new UnsupportedOperationException("Not implemented");
+  protected Set<String> getPathNextChildren(String path)
+      throws MetadataException, InterruptedException {
+    Set<String> nodeListSet = new HashSet<>(
+        MManager.getInstance().getChildNodePathInNextLevel(path));
+
+    GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
+
+    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+
+    for (Node node : metaGroupMember.getAllNodes()) {
+      pool.submit(() -> {
+        DataClient client = null;
+        try {
+          client = metaGroupMember.getDataClient(node);
+        } catch (IOException e) {
+          logger.error("Failed to connect to node: {}", node, e);
+        }
+        AtomicReference<List<String>> response = new AtomicReference<>(null);
+        handler.setResponse(response);
+        handler.setContact(node);
+        synchronized (response) {
+          try {
+            if (client != null) {
+              client.getChildNodePathInNextLevel(null, path, handler);
+              response.wait(connectionTimeoutInMS);
+            }
+          } catch (TException e) {
+            logger.error("Error occurs when getting node lists in node {}.", node, e);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when getting node lists in node {}.", node, e);
+          }
+        }
+        List<String> paths = response.get();
+        if (paths != null) {
+          nodeListSet.addAll(response.get());
+        }
+      });
+    }
+    pool.shutdown();
+    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    return nodeListSet;
   }
 
   @Override

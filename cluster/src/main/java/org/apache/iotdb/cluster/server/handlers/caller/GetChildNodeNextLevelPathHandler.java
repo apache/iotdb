@@ -17,25 +17,24 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GetNodesListHandler implements AsyncMethodCallback<List<String>> {
+public class GetChildNodeNextLevelPathHandler implements AsyncMethodCallback<Set<String>> {
 
   private static final Logger logger = LoggerFactory.getLogger(GetNodesListHandler.class);
 
   private Node contact;
-  private AtomicReference<List<String>> result;
+  private AtomicReference<Set<String>> result;
 
   @Override
-  public void onComplete(List<String> resp) {
+  public void onComplete(Set<String> resp) {
     logger.info("Received node lists of size {} from {}", resp.size(), contact);
     synchronized (result) {
       result.set(resp);

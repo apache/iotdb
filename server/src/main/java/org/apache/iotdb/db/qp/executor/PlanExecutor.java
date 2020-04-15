@@ -363,7 +363,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
-      throws MetadataException {
+      throws MetadataException, InterruptedException {
     Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath().toString());
     ListDataSet listDataSet = new ListDataSet(
         Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
@@ -378,7 +378,8 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getPathNextChildren(String path) throws MetadataException {
+  protected Set<String> getPathNextChildren(String path)
+      throws MetadataException, InterruptedException {
      return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
