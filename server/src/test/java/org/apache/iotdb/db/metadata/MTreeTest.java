@@ -39,16 +39,6 @@ import org.junit.Test;
 
 public class MTreeTest {
 
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
-
   @Test
   public void testAddLeftNodePath() throws MetadataException {
     MTree root = new MTree();
