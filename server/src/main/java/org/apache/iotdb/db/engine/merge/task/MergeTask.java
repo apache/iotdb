@@ -176,6 +176,7 @@ public class MergeTask implements Callable<Void> {
     }
     for (TsFileResource unseqFile : resource.getUnseqFiles()) {
       unseqFile.setMerging(false);
+      logger.info("{} is set merging false", unseqFile.getFile().getName());
     }
 
     File logFile = new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME);
