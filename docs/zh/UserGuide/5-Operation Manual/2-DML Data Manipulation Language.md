@@ -275,7 +275,7 @@ GROUP BY的SELECT子句里的查询路径必须是聚合函数，否则系统将
 
 #### 左开右闭区间
 
-对应的SQL语句是:
+每个区间的结果时间戳为区间右端点，对应的SQL语句是:
 
 ```
 select count(status) from root.ln.wf01.wt01 group by((5, 40], 5ms);
