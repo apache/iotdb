@@ -26,8 +26,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -48,7 +48,6 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -101,7 +100,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected List<String> getNodesList(String schemaPattern, int level)
       throws IOException, TException, InterruptedException, MetadataException {
-    Set<String> nodeSet = new HashSet<>(
+    ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>(
         MManager.getInstance().getNodesList(schemaPattern, level));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
@@ -148,7 +147,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected Set<String> getPathNextChildren(String path)
       throws MetadataException, InterruptedException {
-    Set<String> resultSet = new HashSet<>(
+    ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>(
         MManager.getInstance().getChildNodePathInNextLevel(path));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
@@ -194,7 +193,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected List<String[]> getTimeseriesSchemas(String path)
       throws MetadataException, InterruptedException {
-    Set<String[]> resultSet = new HashSet<>(
+    ConcurrentSkipListSet<String[]> resultSet = new ConcurrentSkipListSet<>(
         MManager.getInstance().getAllMeasurementSchema(path));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
