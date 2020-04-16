@@ -29,7 +29,7 @@ Apache IoTDB [Committer](https://www.apache.org/foundation/how-it-works.html#com
 - 公开活动
 - PMC推荐
 
-PMC已经为成为提交者制定了以下的指导准则
+对于想成为Committer的贡献者，PMC制定了以下的指导准则
 
 ## Apache IoTDB Committer
 
