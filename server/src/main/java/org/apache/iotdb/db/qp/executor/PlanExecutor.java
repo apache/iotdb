@@ -403,7 +403,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan)
-      throws MetadataException {
+      throws MetadataException, InterruptedException {
     ListDataSet listDataSet = new ListDataSet(Arrays.asList(
         new Path(COLUMN_TIMESERIES),
         new Path(COLUMN_STORAGE_GROUP),
@@ -412,8 +412,7 @@ public class PlanExecutor implements IPlanExecutor {
         new Path(COLUMN_TIMESERIES_COMPRESSION)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
             TSDataType.TEXT));
-    List<String[]> timeseriesList = MManager.getInstance()
-        .getAllMeasurementSchema(timeSeriesPlan.getPath().toString());
+    List<String[]> timeseriesList =getTimeseriesSchemas(timeSeriesPlan.getPath().toString());
     for (String[] list : timeseriesList) {
       RowRecord record = new RowRecord(0);
       for (String s : list) {

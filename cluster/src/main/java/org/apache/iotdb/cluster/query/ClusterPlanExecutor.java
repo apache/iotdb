@@ -23,6 +23,7 @@ import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -198,8 +199,29 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected List<String[]> getTimeseriesSchemas(String path)
       throws MetadataException, InterruptedException {
-    ConcurrentSkipListSet<String[]> resultSet = new ConcurrentSkipListSet<>(
-        MManager.getInstance().getAllMeasurementSchema(path));
+    ConcurrentSkipListSet<String[]> resultSet = new ConcurrentSkipListSet<>((o1, o2) -> {
+      Arrays.sort(o1);
+      Arrays.sort(o2);
+      for (int i = 0; i < o1.length; i++) {
+        String e1, e2;
+        try {
+          e1 = o1[i];
+        } catch (ArrayIndexOutOfBoundsException e) {
+          return -1;
+        }
+        try {
+          e2 = o2[i];
+        } catch (ArrayIndexOutOfBoundsException e) {
+          return 1;
+        }
+        int res = e1.compareTo(e2);
+        if (res != 0) {
+          return res;
+        }
+      }
+      return 0;
+    });
+    resultSet.addAll(MManager.getInstance().getAllMeasurementSchema(path));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
