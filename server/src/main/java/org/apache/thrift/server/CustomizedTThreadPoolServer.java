@@ -44,7 +44,7 @@ import org.slf4j.LoggerFactory;
 public class CustomizedTThreadPoolServer extends TServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(TThreadPoolServer.class.getName());
 
-  private volatile boolean stopped_ = false;
+  private volatile boolean myStop = true;
 
   public static class Args extends AbstractServerArgs<Args> {
     public int minWorkerThreads = 5;
@@ -162,7 +162,8 @@ public class CustomizedTThreadPoolServer extends TServer {
     if (eventHandler_ != null) {
       eventHandler_.preServe();
     }
-    stopped_ = false;
+    LOGGER.info("set myStop to false");
+    myStop = false;
     super.stopped_ = false;
     setServing(true);
 
@@ -182,7 +183,7 @@ public class CustomizedTThreadPoolServer extends TServer {
 
   protected void execute() {
     int failureCount = 0;
-    while (!this.stopped_) {
+    while (!this.myStop) {
       try {
         TTransport client = serverTransport_.accept();
         WorkerProcess wp = new WorkerProcess(client);
@@ -227,9 +228,9 @@ public class CustomizedTThreadPoolServer extends TServer {
           }
         }
       } catch (TTransportException ttx) {
-        if (!stopped_) {
+        if (!myStop) {
           ++failureCount;
-          LOGGER.warn("Stopped: {}. Transport error occurred during acceptance of message.", stopped_, ttx);
+          LOGGER.warn("Stopped: {}. Transport error occurred during acceptance of message.", myStop, ttx);
         }
       }
     }
@@ -257,7 +258,8 @@ public class CustomizedTThreadPoolServer extends TServer {
   }
 
   public void stop() {
-    this.stopped_ = true;
+    LOGGER.info("set myStop to true");
+    this.myStop = true;
     super.stopped_ = true;
     serverTransport_.interrupt();
   }
@@ -310,7 +312,7 @@ public class CustomizedTThreadPoolServer extends TServer {
             eventHandler.processContext(connectionContext, inputTransport, outputTransport);
           }
 
-          if (stopped_) {
+          if (myStop) {
             break;
           }
           processor.process(inputProtocol, outputProtocol);
