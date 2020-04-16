@@ -123,16 +123,16 @@ alias
 attributeClauses
     : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
-    attributeClause
     tagClause
+    attributeClause
     ;
 
 attributeClause
-    : (COMMA ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : (ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
     ;
 
 tagClause
-    : (COMMA TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    : (TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
     ;
 
 setClause

@@ -18,32 +18,12 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
-import java.io.Serializable;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -52,7 +32,16 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.io.Serializable;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.regex.Pattern;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -106,13 +95,13 @@ public class MTree implements Serializable {
     if (cur.hasChild(leafName)) {
       throw new PathAlreadyExistException(path);
     }
-    MNode leaf = new LeafMNode(cur, leafName, alias, dataType, encoding, compressor, props);
+    LeafMNode leaf = new LeafMNode(cur, leafName, alias, dataType, encoding, compressor, props);
     cur.addChild(leafName, leaf);
     // link alias to LeafMNode
     if (alias != null) {
-      cur.addChild(alias, leaf);
+      cur.addAlias(alias, leaf);
     }
-    return (LeafMNode) leaf;
+    return leaf;
   }
 
   /**
@@ -243,7 +232,7 @@ public class MTree implements Serializable {
    * @param path Format: root.node(.node)+
    */
 
-  String deleteTimeseriesAndReturnEmptyStorageGroup(String path) throws MetadataException {
+  Pair<String, LeafMNode> deleteTimeseriesAndReturnEmptyStorageGroup(String path) throws MetadataException {
     MNode curNode = getNodeByPath(path);
     if (!(curNode instanceof LeafMNode)) {
       throw new PathNotExistException(path);
@@ -254,18 +243,22 @@ public class MTree implements Serializable {
     }
     // delete the last node of path
     curNode.getParent().deleteChild(curNode.getName());
+    LeafMNode deletedNode = (LeafMNode) curNode;
+    if (deletedNode.getAlias() != null) {
+      curNode.getParent().deleteAliasChild(((LeafMNode)curNode).getAlias());
+    }
     curNode = curNode.getParent();
     // delete all empty ancestors except storage group
     while (!IoTDBConstant.PATH_ROOT.equals(curNode.getName())
         && curNode.getChildren().size() == 0) {
       // if current storage group has no time series, return the storage group name
       if (curNode instanceof StorageGroupMNode) {
-        return curNode.getFullPath();
+        return new Pair<>(curNode.getFullPath(), deletedNode);
       }
       curNode.getParent().deleteChild(curNode.getName());
       curNode = curNode.getParent();
     }
-    return null;
+    return new Pair<>(null, deletedNode);
   }
 
   /**

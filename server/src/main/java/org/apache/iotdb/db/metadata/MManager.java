@@ -18,23 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
@@ -60,9 +43,18 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -80,6 +72,7 @@ public class MManager {
   private String logFilePath;
   private MTree mtree;
   private MLogWriter logWriter;
+  private TagLogFile tagLogFile;
   private boolean writeToLog;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
@@ -87,7 +80,7 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<LeafMNode>>> tagIndex = new HashMap<>();
 
-  private Map<String, Integer> seriesNumberInStorageGroups;
+  private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
@@ -146,6 +139,7 @@ public class MManager {
     File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
+      tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
       initFromLog(logFile);
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
@@ -207,6 +201,10 @@ public class MManager {
         logWriter.close();
         logWriter = null;
       }
+      if (tagLogFile != null) {
+        tagLogFile.close();
+        tagLogFile = null;
+      }
       initialized = false;
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
@@ -220,7 +218,7 @@ public class MManager {
     String[] args = cmd.trim().split(",");
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
-        Map<String, String> props = null;
+        Map<String, String> props = new HashMap<>();
         if (!args[5].isEmpty()){
           String[] keyValues = args[5].split("&");
           String[] kv;
@@ -234,13 +232,19 @@ public class MManager {
         if (!args[6].isEmpty()) {
           alias = args[6];
         }
+        long offset = -1L;
+        Map<String, String>  tagMap = null;
+        if (!args[7].isEmpty()) {
+          offset = Long.parseLong(args[7]);
+          tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
+        }
 
         CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(args[1]),
             TSDataType.deserialize(Short.parseShort(args[2])),
             TSEncoding.deserialize(Short.parseShort(args[3])),
             CompressionType.deserialize(Short.parseShort(args[4])),
-            props, null, null, alias);
-        createTimeseries(plan);
+            props, tagMap, null, alias);
+        createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
         for (String deleteStorageGroup : deleteTimeseries(args[1])) {
@@ -264,6 +268,10 @@ public class MManager {
   }
 
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
+    createTimeseries(plan, -1);
+  }
+
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
     String path = plan.getPath().getFullPath();
     try {
@@ -289,17 +297,26 @@ public class MManager {
         // check memory
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
       } catch (ConfigAdjusterException e) {
-        mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+        try {
+          removeFromTagInvertedIndex(mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path).right);
+        } catch (IOException ex) {
+          throw new MetadataException(ex);
+        }
         throw new MetadataException(e);
       }
       try {
         // write to log
         if (writeToLog) {
-          logWriter.createTimeseries(plan);
+          // either tags or attributes is not empty
+          if ((plan.getTags() != null && !plan.getTags().isEmpty()) || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
+            offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
+          }
+          logWriter.createTimeseries(plan, offset);
         }
       } catch (IOException e) {
         throw new MetadataException(e.getMessage());
       }
+      leafMNode.setOffset(offset);
 
       if (plan.getTags() != null) {
         // tag key, tag value
@@ -318,6 +335,7 @@ public class MManager {
           maxSeriesNumberAmongStorageGroup = size + 1;
         }
       }
+
     } finally {
       lock.writeLock().unlock();
     }
@@ -390,6 +408,23 @@ public class MManager {
   }
 
   /**
+   * remove the node from the tag inverted index
+   * @param node
+   * @throws IOException
+   */
+  private void removeFromTagInvertedIndex(LeafMNode node) throws IOException {
+    if (node.getOffset() < 0) {
+      return;
+    }
+    Map<String, String> tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
+    if (tagMap != null) {
+      for (Entry<String, String> entry : tagMap.entrySet()) {
+        tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
+      }
+    }
+  }
+
+  /**
    * @param path full path from root to leaf node
    * @return after delete if the storage group is empty, return its name, otherwise return null
    */
@@ -397,7 +432,9 @@ public class MManager {
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      String storageGroupName = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+      Pair<String, LeafMNode> pair = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
+      removeFromTagInvertedIndex(pair.right);
+      String storageGroupName = pair.left;
       if (writeToLog) {
         logWriter.deleteTimeseries(path);
       }

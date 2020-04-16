@@ -1215,7 +1215,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             TSDataType.values()[req.getDataType()],
             TSEncoding.values()[req.getEncoding()],
             CompressionType.values()[req.compressor],
-            new HashMap<>(), null, null, null);
+            new HashMap<>(), req.tags, req.attributes, req.aliasPath);
     TSStatus status = checkAuthority(plan, req.getSessionId());
     if (status != null) {
       return new TSStatus(status);

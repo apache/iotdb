@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.util.Collections;
-import java.util.Map;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.Collections;
+import java.util.Map;
 
 public class LeafMNode extends MNode {
 
@@ -35,6 +36,7 @@ public class LeafMNode extends MNode {
    */
   private MeasurementSchema schema;
   private String alias;
+  private long offset;
 
   private TimeValuePair cachedLastValuePair = null;
 
@@ -64,6 +66,11 @@ public class LeafMNode extends MNode {
   }
 
   @Override
+  public void deleteAliasChild(String alias) {
+    // Do nothing
+  }
+
+  @Override
   public MNode getChild(String name) {
     return null;
   }
@@ -71,6 +78,11 @@ public class LeafMNode extends MNode {
   @Override
   public int getLeafCount() {
     return 1;
+  }
+
+  @Override
+  public void addAlias(String alias, MNode child) {
+    // Do nothing
   }
 
   @Override
@@ -106,5 +118,21 @@ public class LeafMNode extends MNode {
 
   public void resetCache() {
     cachedLastValuePair = null;
+  }
+
+  public long getOffset() {
+    return offset;
+  }
+
+  public void setOffset(long offset) {
+    this.offset = offset;
+  }
+
+  public String getAlias() {
+    return alias;
+  }
+
+  public void setAlias(String alias) {
+    this.alias = alias;
   }
 }

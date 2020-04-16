@@ -859,14 +859,17 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterAttributeClause(AttributeClauseContext ctx) {
     super.enterAttributeClause(ctx);
     List<PropertyContext> attributesList = ctx.property();
-    String value = "";
-    Map<String, String> attributes = new HashMap<>(attributesList.size(), 1);
+    String value;
+    Map<String, String> attributes = new HashMap<>(attributesList.size());
     if (ctx.property(0) != null) {
       for (PropertyContext property : attributesList) {
         if(property.propertyValue().STRING_LITERAL() != null) {
-          value = removeStringQuote(property.propertyValue().getText().toLowerCase());
+          value = removeStringQuote(property.propertyValue().getText());
+        } else {
+          value = property.propertyValue().getText();
+
         }
-        attributes.put(property.ID().getText().toLowerCase(), value);
+        attributes.put(property.ID().getText(), value);
       }
     }
     createTimeSeriesOperator.setAttributes(attributes);
@@ -876,14 +879,16 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterTagClause(TagClauseContext ctx) {
     super.enterTagClause(ctx);
     List<PropertyContext> tagsList = ctx.property();
-    String value = "";
-    Map<String, String> tags = new HashMap<>(tagsList.size(), 1);
+    String value;
+    Map<String, String> tags = new HashMap<>(tagsList.size());
     if (ctx.property(0) != null) {
       for (PropertyContext property : tagsList) {
         if(property.propertyValue().STRING_LITERAL() != null) {
-          value = removeStringQuote(property.propertyValue().getText().toLowerCase());
+          value = removeStringQuote(property.propertyValue().getText());
+        } else {
+          value = property.propertyValue().getText();
         }
-        tags.put(property.ID().getText().toLowerCase(), value);
+        tags.put(property.ID().getText(), value);
       }
     }
     createTimeSeriesOperator.setTags(tags);

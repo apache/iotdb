@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+
 import java.io.Serializable;
 import java.util.Map;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -58,12 +59,17 @@ public abstract class MNode implements Serializable {
   /**
    * node key, name or alias
    */
-  public abstract void addChild(String name, MNode chile);
+  public abstract void addChild(String name, MNode child);
 
   /**
    * delete a child
    */
   public abstract void deleteChild(String name);
+
+  /**
+   * delete the alias of a child
+   */
+  public abstract void deleteAliasChild(String alias);
 
   /**
    * get the child with the name
@@ -74,6 +80,11 @@ public abstract class MNode implements Serializable {
    * get the count of all leaves whose ancestor is current node
    */
   public abstract int getLeafCount();
+
+  /**
+   * add an alias
+   */
+  public abstract void addAlias(String alias, MNode child);
 
   /**
    * get full path

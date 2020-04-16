@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Map;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MLogWriter {
 
@@ -55,15 +56,10 @@ public class MLogWriter {
     writer.close();
   }
 
-  public void createTimeseries(CreateTimeSeriesPlan plan) throws IOException {
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
     writer.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
         plan.getPath().getFullPath(), plan.getDataType().serialize(), plan.getEncoding().serialize(),
         plan.getCompressor().serialize()));
-
-    writer.write(",");
-    if (plan.getAlias() != null) {
-      writer.write(plan.getAlias());
-    }
 
     writer.write(",");
     if (plan.getProps() != null) {
@@ -77,6 +73,18 @@ public class MLogWriter {
         }
       }
     }
+
+    writer.write(",");
+    if (plan.getAlias() != null) {
+      writer.write(plan.getAlias());
+    }
+
+    writer.write(",");
+    if (offset >= 0) {
+      writer.write(String.valueOf(offset));
+    }
+
+    writer.write(",");
 
     writer.newLine();
     writer.flush();

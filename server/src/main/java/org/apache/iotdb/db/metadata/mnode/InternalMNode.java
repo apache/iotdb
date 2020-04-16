@@ -26,15 +26,17 @@ public class InternalMNode extends MNode {
   private static final long serialVersionUID = 7999036474525817732L;
 
   private Map<String, MNode> children;
+  private Map<String, MNode> aliasChildren;
 
   public InternalMNode(MNode parent, String name) {
     super(parent, name);
     this.children = new LinkedHashMap<>();
+    this.aliasChildren = new LinkedHashMap<>();
   }
 
   @Override
   public boolean hasChild(String name) {
-    return this.children.containsKey(name);
+    return this.children.containsKey(name) || this.aliasChildren.containsKey(name);
   }
 
   @Override
@@ -49,8 +51,13 @@ public class InternalMNode extends MNode {
   }
 
   @Override
+  public void deleteAliasChild(String alias) {
+    aliasChildren.remove(alias);
+  }
+
+  @Override
   public MNode getChild(String name) {
-    return children.get(name);
+    return children.containsKey(name) ? children.get(name) : aliasChildren.get(name);
   }
 
   @Override
@@ -60,6 +67,11 @@ public class InternalMNode extends MNode {
       leafCount += child.getLeafCount();
     }
     return leafCount;
+  }
+
+  @Override
+  public void addAlias(String alias, MNode child) {
+    aliasChildren.put(alias, child);
   }
 
   @Override
