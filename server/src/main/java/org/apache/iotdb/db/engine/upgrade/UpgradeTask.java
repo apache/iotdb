@@ -49,7 +49,6 @@ public class UpgradeTask extends WrappedRunnable {
       upgradeResource.getWriteQueryLock().readLock().lock();
       String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
       List<String> upgradedFiles = new ArrayList<>();
-      System.out.println(oldTsfilePath);
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
       try {
@@ -70,7 +69,7 @@ public class UpgradeTask extends WrappedRunnable {
         // move upgraded TsFiles to their own partition directories
         for (String upgradedFilePath : upgradedFiles) {
           File upgradedFile = FSFactoryProducer.getFSFactory().getFile(upgradedFilePath);
-          String partition = upgradedFile.getParent();
+          String partition = upgradedFile.getParentFile().getName();
           String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
           File patitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition);
           if (!patitionDir.exists()) {

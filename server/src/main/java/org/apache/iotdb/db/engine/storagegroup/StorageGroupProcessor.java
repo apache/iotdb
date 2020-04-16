@@ -252,7 +252,7 @@ public class StorageGroupProcessor {
       Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair = getAllFiles(
               DirectoryManager.getInstance().getAllUnSequenceFileFolders());
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
-      List<TsFileResource> oldUnseqTsFiles = seqTsFilesPair.right;
+      List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
 
       recoverSeqFiles(tmpSeqTsFiles);

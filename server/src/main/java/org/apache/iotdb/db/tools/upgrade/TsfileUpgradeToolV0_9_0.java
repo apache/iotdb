@@ -43,21 +43,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.LocalTsFileInput;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.StringDataPoint;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
@@ -81,7 +73,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
   private int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   protected String file;
-  private Map<Long, TsFileWriter> partitionWriterMap;
+  private Map<Long, TsFileIOWriter> partitionWriterMap;
 
   /**
    * Create a file reader of the given file. The reader will read the tail of the file to get the
@@ -171,6 +163,18 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     }
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
+  }
+
+  /**
+   * this function reads version number and checks compatibility of TsFile.
+   */
+  public String readVersionNumber() throws IOException {
+    ByteBuffer versionNumberBytes = ByteBuffer
+        .allocate(TSFileConfig.VERSION_NUMBER.getBytes().length);
+    tsFileInput.position(TSFileConfig.MAGIC_STRING.getBytes().length);
+    tsFileInput.read(versionNumberBytes);
+    versionNumberBytes.flip();
+    return new String(versionNumberBytes.array());
   }
 
   /**
@@ -280,6 +284,10 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     return markerBuffer.get();
   }
 
+  public byte readMarker(long position) throws IOException {
+    return readData(position, Byte.BYTES).get();
+  }
+
   public void close() throws IOException {
     this.tsFileInput.close();
   }
@@ -335,6 +343,12 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       logger.error("the file's MAGIC STRING is incorrect, file path: {}", oldTsFile.getPath());
       return false;
     }
+    
+    String versionNumber = readVersionNumber();
+    if (!versionNumber.equals(TSFileConfig.OLD_VERSION)) {
+      logger.error("the file's Version Number is incorrect, file path: {}", oldTsFile.getPath());
+      return false;
+    }
 
     if (fileSize == TSFileConfig.MAGIC_STRING.length()) {
       logger.error("the file only contains magic string, file path: {}", oldTsFile.getPath());
@@ -344,41 +358,46 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       return false;
     }
     OldTsFileMetadata fileMetadata = readFileMetadata();
-    long partition = -1;
-
-    boolean allDataInSamePartition = true;
     List<OldTsDeviceMetadata> oldDeviceMetadataList = new ArrayList<>();
     for (OldTsDeviceMetadataIndex index : fileMetadata.getDeviceMap().values()) {
-
-      // check if all data in this TsFile are in same time partition
-      long startPartition = StorageEngine.getTimePartition(index.getStartTime());
-      long endPartition = StorageEngine.getTimePartition(index.getEndTime());
-      if (partition == -1) {
-        partition = startPartition;
-      }
-      if (partition != startPartition || partition != endPartition) {
-        allDataInSamePartition = false;
-      }
       OldTsDeviceMetadata oldDeviceMetadata = readTsDeviceMetaData(index);
       oldDeviceMetadataList.add(oldDeviceMetadata);
     }
-    File partitionDir = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
-        + File.separator + partition);
-    partitionDir.mkdirs();
-    File f = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
-        + File.separator + partition + File.separator+ oldTsFile.getName());
-    System.out.println(f);
-    f.createNewFile();
-    partitionWriterMap.put(partition, new TsFileWriter(f));
-    
+
+    // ChunkGroupOffset -> version
     Map<Long, Long> oldVersionInfo = new HashMap<>();
+
+    // ChunkGroupOffset -> time partition, ChunkGroupData those offsets in this map are in same partition
+    Map<Long, Long> chunkGroupTimePartitionInfo = new HashMap<>();
+
+    // ChunkGroupOffset -> ChunkGroupMetaData, ChunkGroupData those offsets in this map are in same partition
+    Map<Long, OldChunkGroupMetaData> groupMetadatas = new HashMap<>();
 
     for (OldTsDeviceMetadata oldTsDeviceMetadata : oldDeviceMetadataList) {
       for (OldChunkGroupMetaData oldChunkGroupMetadata : oldTsDeviceMetadata
           .getChunkGroupMetaDataList()) {
         long version = oldChunkGroupMetadata.getVersion();
-        long offsetOfChunkGroupMetaData = oldChunkGroupMetadata.getEndOffsetOfChunkGroup();
+        long offsetOfChunkGroupMetaData = oldChunkGroupMetadata.getStartOffsetOfChunkGroup();
         oldVersionInfo.put(offsetOfChunkGroupMetaData, version);
+
+        // check if data of a chunk group is in a same time partition 
+        long chunkGroupPartition = -1;
+        boolean chunkGroupInSamePartition = true;
+        for (OldChunkMetadata oldChunkMetadata : oldChunkGroupMetadata.getChunkMetaDataList()) {
+          if (chunkGroupPartition == -1) {
+            chunkGroupPartition = StorageEngine.getTimePartition(oldChunkMetadata.getStartTime());
+          }
+          long startPartition = StorageEngine.getTimePartition(oldChunkMetadata.getStartTime());
+          long endPartition = StorageEngine.getTimePartition(oldChunkMetadata.getEndTime());
+          if (chunkGroupPartition != startPartition || chunkGroupPartition != endPartition) {
+            chunkGroupInSamePartition = false;
+            break;
+          }
+        }
+        if (chunkGroupInSamePartition) {
+          chunkGroupTimePartitionInfo.put(offsetOfChunkGroupMetaData, chunkGroupPartition);
+          groupMetadatas.put(offsetOfChunkGroupMetaData, oldChunkGroupMetadata);
+        }
       }
     }
     
@@ -388,8 +407,9 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     long startOffsetOfChunkGroup = 0;
     boolean newChunkGroup = true;
     long versionOfChunkGroup = 0;
+    boolean chunkGroupInSamePartition = false;
     List<ChunkGroupMetadata> newMetaData = new ArrayList<>();
-    List<List<ByteBuffer>> datasInOneChunkGroup = new ArrayList<>();
+    List<List<ByteBuffer>> dataInChunkGroup = new ArrayList<>();
     byte marker;
     List<MeasurementSchema> measurementSchemaList = new ArrayList<>();
     try {
@@ -400,9 +420,20 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
             if (newChunkGroup) {
               newChunkGroup = false;
               startOffsetOfChunkGroup = this.position() - 1;
+              versionOfChunkGroup = oldVersionInfo.get(startOffsetOfChunkGroup);
+              chunkGroupInSamePartition = chunkGroupTimePartitionInfo
+                  .containsKey(startOffsetOfChunkGroup);
             }
-
-            long fileOffsetOfChunk = this.position() - 1;
+            if (chunkGroupInSamePartition) {
+              System.out.println(this.position());
+              OldChunkGroupMetaData oldChunkGroupMetadata = groupMetadatas.get(startOffsetOfChunkGroup);
+              quickRewrite(oldTsFile, oldChunkGroupMetadata, 
+                  versionOfChunkGroup, chunkGroupTimePartitionInfo.get(startOffsetOfChunkGroup));
+              tsFileInput.position(oldChunkGroupMetadata.getEndOffsetOfChunkGroup());
+              System.out.println(this.position());
+              newChunkGroup = true;
+              break;
+            }
             ChunkHeader header = this.readChunkHeader();
             chunkHeaders.add(header);
             MeasurementSchema measurementSchema = new MeasurementSchema(header.getMeasurementID(),
@@ -410,23 +441,21 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
                 header.getEncodingType(), 
                 header.getCompressionType());
             measurementSchemaList.add(measurementSchema);
-            List<ByteBuffer> datasInOneChunk = new ArrayList<>();
+            List<ByteBuffer> dataInChunk = new ArrayList<>();
             for (int j = 0; j < header.getNumOfPages(); j++) {
               PageHeader pageHeader = readPageHeader(header.getDataType());
               ByteBuffer pageData = readPage(pageHeader, header.getCompressionType());
-              datasInOneChunk.add(pageData);
+              dataInChunk.add(pageData);
             }
-            datasInOneChunkGroup.add(datasInOneChunk);
+            dataInChunkGroup.add(dataInChunk);
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
-
-            versionOfChunkGroup++;
             rewrite(oldTsFile, deviceID, measurementSchemaList, 
-                datasInOneChunkGroup, allDataInSamePartition);
+              dataInChunkGroup, versionOfChunkGroup);
 
-            datasInOneChunkGroup.clear();
+            dataInChunkGroup.clear();
             chunkHeaders.clear();
             measurementSchemaList.clear();
             newChunkGroup = true;
@@ -438,9 +467,10 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
             return false;
         }
       }
-      for (TsFileWriter tsFileWriter : partitionWriterMap.values()) {
-        upgradedFileList.add(tsFileWriter.getIOWriter().getFile().getAbsolutePath());
-        tsFileWriter.close();
+      
+      for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
+        upgradedFileList.add(tsFileIOWriter.getFile().getAbsolutePath());
+        tsFileIOWriter.endFile();
       }
       return true;
     } catch (IOException e2) {
@@ -454,98 +484,119 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     }
   }
 
-  void rewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas, 
-      List<List<ByteBuffer>> datasInOneChunkGroup, boolean allDataInSamePartition) 
+  /*
+   * 
+   */
+  private void rewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas, 
+      List<List<ByteBuffer>> dataInChunkGroup, long versionOfChunkGroup) 
           throws IOException, WriteProcessException {
 
-    // if all data is in same time partition, 
-    // do a quick rewrite without inserting points one by one
-    if (allDataInSamePartition) {
-      //quickRewrite(upgradeDir, deviceId, schemas, datasInOneChunkGroup);
-    }
-    else {
-      for (int i = 0; i < schemas.size(); i++) {
-        MeasurementSchema schema = schemas.get(i);
-        Decoder defaultTimeDecoder = Decoder.getDecoderByType(
-            TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
-            TSDataType.INT64);
-        Decoder valueDecoder = Decoder
-            .getDecoderByType(schema.getEncodingType(), schema.getType());
-        List<ByteBuffer> datasInOneChunk = datasInOneChunkGroup.get(i);
-        for (ByteBuffer pageData : datasInOneChunk) {
-          valueDecoder.reset();
-          PageReader pageReader = new PageReader(pageData, schema.getType(), valueDecoder,
-              defaultTimeDecoder, null);
-          BatchData batchData = pageReader.getAllSatisfiedPageData();
-          while (batchData.hasCurrent()) {
-            long time = batchData.currentTime();
-            Object value = batchData.currentValue();
-            long partition = StorageEngine.getTimePartition(time);
-            TSRecord tsRecord = new TSRecord(time, deviceId);
-            DataPoint dataPoint;
-            switch (schema.getType()) {
-              case INT32:
-                dataPoint = new IntDataPoint(schema.getMeasurementId(), (int) value);
-                break;
-              case INT64:
-                dataPoint = new LongDataPoint(schema.getMeasurementId(), (long) value);
-                break;
-              case FLOAT:
-                dataPoint = new FloatDataPoint(schema.getMeasurementId(), (float) value);
-                break;
-              case DOUBLE:
-                dataPoint = new DoubleDataPoint(schema.getMeasurementId(), (double) value);
-                break;
-              case BOOLEAN:
-                dataPoint = new BooleanDataPoint(schema.getMeasurementId(), (boolean) value);
-                break;
-              case TEXT:
-                dataPoint = new StringDataPoint(schema.getMeasurementId(), (Binary) value);
-                break;
-              default:
-                throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", schema.getType()));
-              }
-            tsRecord.addTuple(dataPoint);
-            TsFileWriter tsFileWriter = partitionWriterMap
-                .computeIfAbsent(partition, k -> 
-                  {
-                    File partitionDir = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
-                        + File.separator + partition);
-                    partitionDir.mkdirs();
-                    File newFile = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
-                        + File.separator + partition + File.separator+ oldTsFile.getName());
-                    try {
-                      newFile.createNewFile();
-                      return new TsFileWriter(newFile);
-                    } catch (IOException e) {
-                      
-                    }
-                    return null;
+    Map<Long, Map<MeasurementSchema, IChunkWriter>> chunkWritersInChunkGroup = new HashMap<>();
+    for (int i = 0; i < schemas.size(); i++) {
+      MeasurementSchema schema = schemas.get(i);
+      Decoder defaultTimeDecoder = Decoder.getDecoderByType(
+          TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+          TSDataType.INT64);
+      Decoder valueDecoder = Decoder
+          .getDecoderByType(schema.getEncodingType(), schema.getType());
+      List<ByteBuffer> dataInChunk = dataInChunkGroup.get(i);
+      for (ByteBuffer pageData : dataInChunk) {
+        valueDecoder.reset();
+        PageReader pageReader = new PageReader(pageData, schema.getType(), valueDecoder,
+            defaultTimeDecoder, null);
+        BatchData batchData = pageReader.getAllSatisfiedPageData();
+        while (batchData.hasCurrent()) {
+          long time = batchData.currentTime();
+          Object value = batchData.currentValue();
+          long partition = StorageEngine.getTimePartition(time);
+          
+          Map<MeasurementSchema, IChunkWriter> chunkWriters = chunkWritersInChunkGroup.getOrDefault(partition, new HashMap<>());
+          IChunkWriter chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
+          TsFileIOWriter tsFileIOWriter = partitionWriterMap
+              .computeIfAbsent(partition, k -> 
+                {
+                  File partitionDir = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
+                      + File.separator + partition);
+                  partitionDir.mkdirs();
+                  File newFile = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
+                      + File.separator + partition + File.separator+ oldTsFile.getName());
+                  try {
+                    newFile.createNewFile();
+                    TsFileIOWriter writer = new TsFileIOWriter(newFile);
+                    return writer;
+                  } catch (IOException e) {
                   }
-                );
-            try {
-              tsFileWriter.registerTimeseries(new Path(deviceId, schema.getMeasurementId()), schema);
+                  return null;
+                }
+              );
+          partitionWriterMap.put(partition, tsFileIOWriter);
+          switch (schema.getType()) {
+            case INT32:
+              chunkWriter.write(time, (int) value);
+              break;
+            case INT64:
+              chunkWriter.write(time, (long) value);
+              break;
+            case FLOAT:
+              chunkWriter.write(time, (float) value);
+              break;
+            case DOUBLE:
+              chunkWriter.write(time, (double) value);
+              break;
+            case BOOLEAN:
+              chunkWriter.write(time, (boolean) value);
+              break;
+            case TEXT:
+              chunkWriter.write(time, (Binary) value);
+              break;
+            default:
+              throw new UnSupportedDataTypeException(
+                  String.format("Data type %s is not supported.", schema.getType()));
             }
-            catch (WriteProcessException e) {
-              // do nothing
-            }
-            tsFileWriter.write(tsRecord);
-            batchData.next();
-          }
+          chunkWriters.put(schema, chunkWriter);
+          chunkWritersInChunkGroup.put(partition, chunkWriters);
+          batchData.next();
         }
       }
     }
+    // set version info to each upgraded tsFile 
+    for (long partition : chunkWritersInChunkGroup.keySet()) {
+      TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partition);
+      tsFileIOWriter.startChunkGroup(deviceId);
+      for (IChunkWriter chunkWriter : chunkWritersInChunkGroup.get(partition).values()) {
+        chunkWriter.writeToFileWriter(tsFileIOWriter);
+      }
+      tsFileIOWriter.endChunkGroup();
+      tsFileIOWriter.writeVersion(versionOfChunkGroup);
+    }
   }
-  
-  void quickRewrite(String upgradeDir, String deviceId, List<MeasurementSchema> schemas, 
-      List<List<ByteBuffer>> datasInOneChunkGroup) throws IOException {
-    if (partitionWriterMap.size() != 1) {
-      throw new IOException("This TsFile cannot do a quick rewrite.");
+
+  private void quickRewrite(File oldTsFile, OldChunkGroupMetaData oldChunkGroupMetadata, 
+      long versionOfChunkGroup, long partition) throws IOException {
+    TsFileIOWriter tsFileIOWriter = partitionWriterMap
+        .computeIfAbsent(partition, k -> 
+          {
+            File partitionDir = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
+                + File.separator + partition);
+            partitionDir.mkdirs();
+            File newFile = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
+                + File.separator + partition + File.separator+ oldTsFile.getName());
+            try {
+              newFile.createNewFile();
+              TsFileIOWriter writer = new TsFileIOWriter(newFile);
+              return writer;
+            } catch (IOException e) {
+            }
+            return null;
+          }
+        );
+    tsFileIOWriter.startChunkGroup(oldChunkGroupMetadata.getDeviceID());
+    for (OldChunkMetadata oldChunkMetadata : oldChunkGroupMetadata.getChunkMetaDataList()) {
+      Chunk chunk = readChunk(oldChunkMetadata);
+      tsFileIOWriter.writeChunk(chunk, new ChunkMetadata(oldChunkMetadata));
     }
-    for (TsFileWriter tsFileWriter : partitionWriterMap.values()) {
-      TsFileIOWriter tsFileIOWriter = tsFileWriter.getIOWriter();
-    }
+    tsFileIOWriter.endChunkGroup();
+    tsFileIOWriter.writeVersion(versionOfChunkGroup);
   }
 
 }
