@@ -231,7 +231,7 @@ public class CustomizedTThreadPoolServer extends TServer {
       } catch (TTransportException ttx) {
         if (!stopped_) {
           ++failureCount;
-          LOGGER.warn("Stopped: {}. Transport error occurred during acceptance of message. Memory instance {}", stopped_, ttx, this);
+          LOGGER.warn("Stopped: {}. Transport error occurred during acceptance of message. Memory instance {}", stopped_, this, ttx);
           stopped_ = stoppedCheck.get();
           LOGGER.info("update Stopped to {}.", stopped_);
         }

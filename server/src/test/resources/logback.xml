@@ -52,6 +52,8 @@
     <logger name="org.apache.iotdb.db.sync.receiver.SyncServerManager" level="INFO"/>
     <logger name="org.apache.thrift.server.CustomizedTThreadPoolServer" level="INFO" />
     <logger name="org.apache.thrift.transport.CustomizedTServerSocket" level="INFO" />
+    <logger name="org.apache.iotdb.db.metadata.MTreeTest" level="INFO" />
+
     <root level="WARN">
         <appender-ref ref="stdout"/>
     </root>
