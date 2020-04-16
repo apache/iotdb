@@ -35,7 +35,7 @@ Apache IoTDB [Committer](https://www.apache.org/foundation/how-it-works.html#com
 
 ### 采取多种形式
 
-除了编码之外，还有许多其他活动可以建立我们对提交者的信任-代码审查，设计讨论，用户支持，社区扩展，改善基础架构，文档，项目管理等。
+除了贡献代码之外，还有许多其他形式可以提高我们对贡献者的信任，例如代码审查，设计讨论，为其他用户提供支持，发展社区，改善IoTDB基础设施，文档，项目管理等。
 
 ### 知道，坚持并加强Apache Software Foundation的行为准则
 
@@ -43,7 +43,7 @@ Apache IoTDB [Committer](https://www.apache.org/foundation/how-it-works.html#com
 
 - 开放
 - 善解人意
-- 热情欢迎
+- 热情
 - 友善
 - 耐心
 - 协作
