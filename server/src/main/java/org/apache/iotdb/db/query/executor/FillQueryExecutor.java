@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
