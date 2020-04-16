@@ -226,7 +226,33 @@ public class Session {
   }
 
   /**
-   * use batch interface to insert sorted data times in row batch must be sorted before!
+   * insert multiple sorted RowBatches, make sure times in each RowBatch are in ascending order
+   *
+   * @param rowBatchMap data batch in multiple device
+   */
+  public void insertSortedBatches(Map<String, RowBatch> rowBatchMap)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()) {
+      checkSorted(dataInOneDevice.getValue());
+      insertSortedBatchIntern(dataInOneDevice.getValue());
+    }
+  }
+
+  /**
+   * insert multiple RowBatches
+   *
+   * @param rowBatchMap data batch in multiple device
+   */
+  public void insertBatches(Map<String, RowBatch> rowBatchMap)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()) {
+      sortRowBatch(dataInOneDevice.getValue());
+      insertBatch(dataInOneDevice.getValue());
+    }
+  }
+
+  /**
+   * insert one RowBatch, make sure times in RowBatch are in ascending order
    *
    * @param rowBatch data batch
    */
@@ -240,34 +266,7 @@ public class Session {
   }
 
   /**
-   * use batch interface to insert data in multiple device
-   *
-   * @param rowBatchMap data batch in multiple device
-   */
-  public void insertMultipleDeviceBatch
-  (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
-    for (Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()) {
-      sortRowBatch(dataInOneDevice.getValue());
-      insertBatch(dataInOneDevice.getValue());
-    }
-  }
-
-  /**
-   * use batch interface to insert sorted data in multiple device times in row batch must be sorted
-   * before!
-   *
-   * @param rowBatchMap data batch in multiple device
-   */
-  public void insertMultipleDeviceSortedBatch
-  (Map<String, RowBatch> rowBatchMap) throws IoTDBConnectionException, BatchExecutionException {
-    for (Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()) {
-      checkSorted(dataInOneDevice.getValue());
-      insertSortedBatchIntern(dataInOneDevice.getValue());
-    }
-  }
-
-  /**
-   * use batch interface to insert data
+   * insert a RowBatch
    *
    * @param rowBatch data batch
    */
@@ -355,13 +354,15 @@ public class Session {
   }
 
   /**
-   * Insert data in batch format, which can reduce the overhead of network. This method is just like
-   * jdbc batch insert, we pack some insert request in batch and send them to server If you want
-   * improve your performance, please see insertBatch method
+   * Insert multiple rows, which can reduce the overhead of network. This method is just like
+   * jdbc executeBatch, we pack some insert request in batch and send them to server.
+   * If you want improve your performance, please see insertBatch method
+   *
+   * Each row is independent, which could have different deviceId, time, number of measurements
    *
    * @see Session#insertBatch(RowBatch)
    */
-  public void insertInBatch(List<String> deviceIds, List<Long> times,
+  public void insertRows(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     // check params size
@@ -386,10 +387,10 @@ public class Session {
   }
 
   /**
-   * insert data in one row, if you want improve your performance, please use insertInBatch method
+   * insert data in one row, if you want to improve your performance, please use insertRows method
    * or insertBatch method
    *
-   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertRows(List, List, List, List)
    * @see Session#insertBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements,
@@ -403,10 +404,10 @@ public class Session {
   }
 
   /**
-   * insert data in one row, if you want improve your performance, please use insertInBatch method
+   * insert data in one row, if you want to improve your performance, please use insertRows method
    * or insertBatch method
    *
-   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertRows(List, List, List, List)
    * @see Session#insertBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements,
@@ -457,7 +458,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertInBatch(List<String> deviceIds, List<Long> times,
+  public void testInsertRows(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     // check params size

@@ -125,7 +125,7 @@ public class SessionExample {
       valuesList.add(values);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        session.insertRows(deviceIds, timestamps, measurementsList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -133,7 +133,7 @@ public class SessionExample {
       }
     }
 
-    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+    session.insertRows(deviceIds, timestamps, measurementsList, valuesList);
   }
 
   /**
@@ -239,7 +239,7 @@ public class SessionExample {
         sensor3[row3] = i;
       }
       if (rowBatch1.batchSize == rowBatch1.getMaxBatchSize()) {
-        session.insertMultipleDeviceBatch(rowBatchMap);
+        session.insertBatches(rowBatchMap);
 
         rowBatch1.reset();
         rowBatch2.reset();
@@ -248,7 +248,7 @@ public class SessionExample {
     }
 
     if (rowBatch1.batchSize != 0) {
-      session.insertMultipleDeviceBatch(rowBatchMap);
+      session.insertBatches(rowBatchMap);
       rowBatch1.reset();
       rowBatch2.reset();
       rowBatch3.reset();

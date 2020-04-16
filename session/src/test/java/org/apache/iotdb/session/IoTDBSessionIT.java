@@ -31,9 +31,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.BatchExecutionException;
@@ -213,7 +211,7 @@ public class IoTDBSessionIT {
       valuesList.add(values);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.testInsertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        session.testInsertRows(deviceIds, timestamps, measurementsList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -221,7 +219,7 @@ public class IoTDBSessionIT {
       }
     }
 
-    session.testInsertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+    session.testInsertRows(deviceIds, timestamps, measurementsList, valuesList);
   }
 
   @Test
@@ -407,7 +405,7 @@ public class IoTDBSessionIT {
       valuesList.add(values);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        session.insertRows(deviceIds, timestamps, measurementsList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -415,7 +413,7 @@ public class IoTDBSessionIT {
       }
     }
 
-    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+    session.insertRows(deviceIds, timestamps, measurementsList, valuesList);
   }
 
   private void insertInObject() throws IoTDBConnectionException, StatementExecutionException {

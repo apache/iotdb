@@ -280,12 +280,12 @@ public class SessionPool {
    *
    * @param rowBatchMap multiple batch
    */
-  public void insertMultipleSortedBatch(Map<String, RowBatch> rowBatchMap)
+  public void insertSortedBatches(Map<String, RowBatch> rowBatchMap)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertMultipleDeviceSortedBatch(rowBatchMap);
+        session.insertSortedBatches(rowBatchMap);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -306,12 +306,12 @@ public class SessionPool {
    *
    * @param rowBatchMap multiple batch
    */
-  public void insertMultipleBatch(Map<String, RowBatch> rowBatchMap)
+  public void insertBatches(Map<String, RowBatch> rowBatchMap)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertMultipleDeviceBatch(rowBatchMap);
+        session.insertBatches(rowBatchMap);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -334,13 +334,13 @@ public class SessionPool {
    *
    * @see Session#insertBatch(RowBatch)
    */
-  public void insertInBatch(List<String> deviceIds, List<Long> times,
+  public void insertRows(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertInBatch(deviceIds, times, measurementsList, valuesList);
+        session.insertRows(deviceIds, times, measurementsList, valuesList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -357,10 +357,10 @@ public class SessionPool {
   }
 
   /**
-   * insert data in one row, if you want improve your performance, please use insertInBatch method
+   * insert data in one row, if you want improve your performance, please use insertRows method
    * or insertBatch method
    *
-   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertRows(List, List, List, List)
    * @see Session#insertBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
@@ -413,14 +413,14 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertInBatch(List<String> deviceIds, List<Long> times,
+  public void testInsertRows(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         session
-            .testInsertInBatch(deviceIds, times, measurementsList, valuesList);
+            .testInsertRows(deviceIds, times, measurementsList, valuesList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
