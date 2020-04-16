@@ -609,7 +609,7 @@ Statement statement = connection.createStatement()) {
   @Test
   public void PreviousFillWithDeletionTest() throws SQLException {
     String[] retArray1 = new String[]{
-        "990,1020.5,true",
+        "1080,21.6,true",
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
