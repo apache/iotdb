@@ -89,7 +89,7 @@ git push origin fix
 
 在浏览器切换到自己的 github 仓库页面，切换分支到提交的分支 <your_branch_name> ，依次点击 `New pull request` 和 `Create pull request` 按钮进行创建，如果您解决的是[issues](https://issues.apache.org/jira/projects/IOTDB/issues)，需要在开头加上[IOTDB-xxx]，如下图所示：
 
-
+![](https://user-images.githubusercontent.com/37333508/79414865-5f815480-7fde-11ea-800c-47c7dbad7648.png)
 
 至此，您的PR创建完成，更多关于 PR 请阅读 [collaborating-with-issues-and-pull-requests](https://help.github.com/categories/collaborating-with-issues-and-pull-requests/)
 
