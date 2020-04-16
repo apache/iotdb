@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for float type.
@@ -65,6 +65,25 @@ public class FloatStatistics extends Statistics<Float> {
     }
     this.sumValue += sumValue;
     this.lastValue = last;
+  }
+
+  private void updateStats(float minValue, float maxValue, float first, float last, double sumValue, long startTime, long endTime) {
+    if (minValue < this.minValue) {
+      this.minValue = minValue;
+    }
+    if (maxValue > this.maxValue) {
+      this.maxValue = maxValue;
+    }
+    this.sumValue += sumValue;
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = first;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = last;
+    }
   }
 
   @Override
@@ -123,8 +142,8 @@ public class FloatStatistics extends Statistics<Float> {
           floatStats.getLastValue(), floatStats.getSumValue());
       isEmpty = false;
     } else {
-      updateStats(floatStats.getMinValue(), floatStats.getMaxValue(),
-          floatStats.getLastValue(), floatStats.getSumValue());
+      updateStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getFirstValue(),
+          floatStats.getLastValue(), floatStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
     }
   }
 

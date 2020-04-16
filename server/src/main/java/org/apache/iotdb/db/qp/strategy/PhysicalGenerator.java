@@ -182,8 +182,14 @@ public class PhysicalGenerator {
       queryPlan = new GroupByFillPlan();
       ((GroupByFillPlan) queryPlan).setInterval(queryOperator.getUnit());
       ((GroupByFillPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-      ((GroupByFillPlan) queryPlan).setStartTime(queryOperator.getStartTime());
-      ((GroupByFillPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      ((GroupByFillPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+      if (!queryOperator.isLeftCRightO()) {
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime()+1);
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime()+1);
+      } else {
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      }
       ((GroupByFillPlan) queryPlan)
               .setAggregations(queryOperator.getSelectOperator().getAggregations());
       for (String aggregation : queryPlan.getAggregations()) {
@@ -196,8 +202,14 @@ public class PhysicalGenerator {
       queryPlan = new GroupByPlan();
       ((GroupByPlan) queryPlan).setInterval(queryOperator.getUnit());
       ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-      ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
-      ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      ((GroupByPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+      if (!queryOperator.isLeftCRightO()) {
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime()+1);
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime()+1);
+      } else {
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      }
       ((GroupByPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {

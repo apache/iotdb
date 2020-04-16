@@ -36,25 +36,11 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class MTreeTest {
 
-  private static Logger logger = LoggerFactory.getLogger(MTreeTest.class);
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.envSetUp();
-  }
-
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
-
   @Test
   public void testAddLeftNodePath() throws MetadataException {
-    logger.info("testAddLeftNodePath");
     MTree root = new MTree();
     root.setStorageGroup("root.laptop");
     try {
@@ -76,7 +62,6 @@ public class MTreeTest {
 
   @Test
   public void testAddAndPathExist() throws MetadataException {
-    logger.info("testAddAndPathExist");
     MTree root = new MTree();
     String path1 = "root";
     root.setStorageGroup("root.laptop");
@@ -102,7 +87,6 @@ public class MTreeTest {
 
   @Test
   public void testAddAndQueryPath() {
-    logger.info("testAddAndQueryPath");
     MTree root = new MTree();
     try {
       assertFalse(root.isPathExist("root.a.d0"));
@@ -146,7 +130,6 @@ public class MTreeTest {
 
   @Test
   public void testCombineMetadataInStrings() {
-    logger.info("testCombineMetadataInStrings");
     MTree root = new MTree();
     MTree root1 = new MTree();
     MTree root2 = new MTree();
@@ -199,7 +182,6 @@ public class MTreeTest {
 
   @Test
   public void testSetStorageGroup() {
-    logger.info("testSetStorageGroup");
     // set storage group first
     MTree root = new MTree();
     try {
@@ -271,7 +253,6 @@ public class MTreeTest {
 
   @Test
   public void testCheckStorageGroup() {
-    logger.info("testCheckStorageGroup");
     // set storage group first
     MTree root = new MTree();
     try {
@@ -299,7 +280,6 @@ public class MTreeTest {
 
   @Test
   public void testGetAllFileNamesByPath() {
-    logger.info("testGetAllFileNamesByPath");
     // set storage group first
     MTree root = new MTree();
     try {
@@ -327,7 +307,6 @@ public class MTreeTest {
 
   @Test
   public void testCheckStorageExistOfPath() {
-    logger.info("testCheckStorageExistOfPath");
     // set storage group first
     MTree root = new MTree();
     try {
