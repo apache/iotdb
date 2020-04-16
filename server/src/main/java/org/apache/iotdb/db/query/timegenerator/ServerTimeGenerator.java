@@ -71,7 +71,7 @@ public class ServerTimeGenerator extends TimeGenerator {
     QueryDataSource queryDataSource;
     try {
       dataType = MManager.getInstance().getSeriesType(path.getFullPath());
-      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, null);
+      queryDataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, filter);
       // update filter by TTL
       filter = queryDataSource.updateFilterUsingTTL(filter);
     } catch (Exception e) {

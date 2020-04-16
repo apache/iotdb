@@ -26,7 +26,6 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
-import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -38,7 +37,6 @@ import javax.activation.UnsupportedDataTypeException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class FillQueryExecutor {
 

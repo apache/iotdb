@@ -157,7 +157,7 @@ public class IoTDBDaemonIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,root.vehicle.d0.s0,root.vehicle.d0.s0,root.vehicle.d0.s1,",
+        assertEquals("Time,root.vehicle.d0.s0,root.vehicle.d0.s0,root.vehicle.d0.s1,",
             header.toString());
 
         int cnt = 0;
@@ -166,10 +166,10 @@ public class IoTDBDaemonIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        Assert.assertEquals(12, cnt);
+        assertEquals(12, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -197,7 +197,7 @@ public class IoTDBDaemonIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
+        assertEquals("count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
             + "sum(root.vehicle.d0.s0),count(root.vehicle.d0.s1),", header.toString());
 
         int cnt = 0;
@@ -206,10 +206,10 @@ public class IoTDBDaemonIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -243,10 +243,10 @@ public class IoTDBDaemonIT {
               + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2) + "," + resultSet
               .getString(d0s3)
               + "," + resultSet.getString(d1s0);
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(17, cnt);
+        assertEquals(17, cnt);
       }
 
       retArray = new String[]{"100,true"};
@@ -257,10 +257,10 @@ public class IoTDBDaemonIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
-          Assert.assertEquals(ans, retArray[cnt]);
+          assertEquals(ans, retArray[cnt]);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -284,10 +284,10 @@ public class IoTDBDaemonIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
-          Assert.assertEquals(ans, retArray[cnt]);
+          assertEquals(ans, retArray[cnt]);
           cnt++;
         }
-        Assert.assertEquals(6, cnt);
+        assertEquals(6, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -318,7 +318,7 @@ public class IoTDBDaemonIT {
           assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(9, cnt);
+        assertEquals(9, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -344,10 +344,10 @@ public class IoTDBDaemonIT {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
               + resultSet.getString(d0s1) + "," + resultSet.getString(d1s0);
-          Assert.assertEquals(ans, retArray[cnt]);
+          assertEquals(ans, retArray[cnt]);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -373,10 +373,10 @@ public class IoTDBDaemonIT {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
               + resultSet.getString(d0s1);
-          Assert.assertEquals(ans, retArray[cnt]);
+          assertEquals(ans, retArray[cnt]);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -401,9 +401,9 @@ public class IoTDBDaemonIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
-          Assert.assertEquals(retArray[cnt++], ans);
+          assertEquals(retArray[cnt++], ans);
         }
-        Assert.assertEquals(3, cnt);
+        assertEquals(3, cnt);
       }
 
     } catch (Exception e) {
