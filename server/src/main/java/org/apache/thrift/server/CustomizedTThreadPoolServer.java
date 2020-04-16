@@ -26,6 +26,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.thrift.TException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TProtocol;
@@ -44,7 +45,7 @@ import org.slf4j.LoggerFactory;
 public class CustomizedTThreadPoolServer extends TServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(TThreadPoolServer.class.getName());
 
-  private volatile boolean myStop = true;
+  private volatile AtomicBoolean stoppedCheck = new AtomicBoolean(true);
 
   public static class Args extends AbstractServerArgs<Args> {
     public int minWorkerThreads = 5;
@@ -162,9 +163,9 @@ public class CustomizedTThreadPoolServer extends TServer {
     if (eventHandler_ != null) {
       eventHandler_.preServe();
     }
-    LOGGER.info("set myStop to false");
-    myStop = false;
-    super.stopped_ = false;
+    LOGGER.info("set stopped_ to false");
+    stoppedCheck.set(false);
+    stopped_ = false;
     setServing(true);
 
     return true;
@@ -183,7 +184,7 @@ public class CustomizedTThreadPoolServer extends TServer {
 
   protected void execute() {
     int failureCount = 0;
-    while (!this.myStop) {
+    while (!this.stopped_) {
       try {
         TTransport client = serverTransport_.accept();
         WorkerProcess wp = new WorkerProcess(client);
@@ -228,9 +229,11 @@ public class CustomizedTThreadPoolServer extends TServer {
           }
         }
       } catch (TTransportException ttx) {
-        if (!myStop) {
+        if (!stopped_) {
           ++failureCount;
-          LOGGER.warn("Stopped: {}. Transport error occurred during acceptance of message.", myStop, ttx);
+          LOGGER.warn("Stopped: {}. Transport error occurred during acceptance of message.", stopped_, ttx);
+          stopped_ = stoppedCheck.get();
+          LOGGER.info("update Stopped to {}.", stopped_);
         }
       }
     }
@@ -258,8 +261,8 @@ public class CustomizedTThreadPoolServer extends TServer {
   }
 
   public void stop() {
-    LOGGER.info("set myStop to true");
-    this.myStop = true;
+    LOGGER.info("set stopped_ to true");
+    stoppedCheck.set(true);
     super.stopped_ = true;
     serverTransport_.interrupt();
   }
@@ -312,7 +315,7 @@ public class CustomizedTThreadPoolServer extends TServer {
             eventHandler.processContext(connectionContext, inputTransport, outputTransport);
           }
 
-          if (myStop) {
+          if (stopped_) {
             break;
           }
           processor.process(inputProtocol, outputProtocol);
