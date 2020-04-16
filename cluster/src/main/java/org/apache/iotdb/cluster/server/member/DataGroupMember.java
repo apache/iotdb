@@ -86,6 +86,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -817,7 +818,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @return the path of the directory that is provided exclusively for the member.
    */
   public String getMemberDir() {
-    return "raft" + File.separator + getHeader().nodeIdentifier + File.separator;
+    return IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator +
+        "raft" + File.separator + getHeader().nodeIdentifier + File.separator;
   }
 
   public MetaGroupMember getMetaGroupMember() {

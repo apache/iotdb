@@ -71,7 +71,6 @@ public class IoTDBTest {
   public void tearDown() throws IOException, StorageEngineException {
     daemon.stop();
     EnvironmentUtils.cleanEnv();
-    EnvironmentUtils.cleanDir("raft");
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(prevEnableAutoSchema);
   }
 
