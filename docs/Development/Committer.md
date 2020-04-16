@@ -25,9 +25,7 @@ An Apache IoTDB [committer](https://www.apache.org/foundation/how-it-works.html#
 
 The [PMC](https://www.apache.org/foundation/how-it-works.html#pmc-members) makes someone a committer via nomination, discussion, and then majority vote. We use data from as many sources as possible to inform our reasoning. Here are some examples:
 
-- Git metrics for [incubator-iotdb](https://github.com/apache/incubator-iotdb/graphs/contributors) 
-- Code reviews given and received on [incubator-iotdb](https://github.com/apache/incubator-iotdb/pulls)
-- Clear areas of ownership (a runner, a DSL, IO connector, documentation, etc.)
+- IoTDB expert and evangelist (documentations, blogs, etc..)
 - Public events
 - Firsthand PMC testimonials
 
