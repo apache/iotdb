@@ -32,10 +32,9 @@ import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.server.CustomizedTThreadPoolServer;
 import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.CustomizedTThreadPoolServer.Args;
-import org.apache.thrift.transport.CustomizedTServerSocket;
+import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +53,7 @@ public class RPCService implements RPCServiceMBean, IService {
   private RPCServiceThread rpcServiceThread;
   private TProtocolFactory protocolFactory;
   private Processor<TSIService.Iface> processor;
-  private CustomizedTThreadPoolServer.Args poolArgs;
+  private TThreadPoolServer.Args poolArgs;
   private TSServiceImpl impl;
 
   private CountDownLatch stopLatch;
@@ -179,7 +178,7 @@ public class RPCService implements RPCServiceMBean, IService {
 
   private class RPCServiceThread extends Thread {
 
-    private CustomizedTServerSocket serverTransport;
+    private TServerSocket serverTransport;
     private TServer poolServer;
     private CountDownLatch threadStopLatch;
 
@@ -203,13 +202,13 @@ public class RPCService implements RPCServiceMBean, IService {
       logger.info("The RPC service thread begin to run...");
       try {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        serverTransport = new CustomizedTServerSocket(new InetSocketAddress(config.getRpcAddress(),
+        serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
             config.getRpcPort()));
         //this is for testing.
         if (!serverTransport.getServerSocket().isBound()) {
           logger.error("The RPC service port is not bound.");
         }
-        poolArgs = new Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
+        poolArgs = new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
             getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1)
             .stopTimeoutVal(
                 IoTDBDescriptor.getInstance().getConfig().getThriftServerAwaitTimeForStopService());
@@ -217,7 +216,7 @@ public class RPCService implements RPCServiceMBean, IService {
             ThreadName.RPC_CLIENT.getName());
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
-        poolServer = new CustomizedTThreadPoolServer(poolArgs);
+        poolServer = new TThreadPoolServer(poolArgs);
         poolServer.serve();
       } catch (TTransportException e) {
         throw new RPCServiceException(String.format("%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME,
