@@ -182,7 +182,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {
-    RowRecord record = new RowRecord(curStartTime);
+    RowRecord record;
+    if (leftCRightO) {
+      record = new RowRecord(curStartTime);
+    } else {
+      record = new RowRecord(curEndTime-1);
+    }
     for (int i = 0; i < paths.size(); i++) {
       AggregateResult aggregateResult = aggregateResultList.get(i);
       record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());

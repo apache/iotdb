@@ -584,6 +584,7 @@ class SeriesReader {
           .loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(),
               allSensors);
       if (timeseriesMetadata != null) {
+        timeseriesMetadata.getStatistics().setCanUseStatistics(false);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
@@ -639,6 +640,7 @@ class SeriesReader {
     while (!unseqFileResource.isEmpty() && endTime >= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
       if (timeseriesMetadata != null) {
+        timeseriesMetadata.getStatistics().setCanUseStatistics(false);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }

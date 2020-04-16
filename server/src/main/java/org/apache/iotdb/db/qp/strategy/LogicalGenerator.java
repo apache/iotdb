@@ -569,6 +569,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterGroupByFillClause(ctx);
     queryOp.setGroupBy(true);
     queryOp.setFill(true);
+    queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+
 
     // parse timeUnit
     queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
@@ -629,7 +631,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterGroupByClause(GroupByClauseContext ctx) {
     super.enterGroupByClause(ctx);
     queryOp.setGroupBy(true);
-
+    queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
     // parse timeUnit
     queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
     queryOp.setSlidingStep(queryOp.getUnit());
