@@ -37,7 +37,7 @@ Apache IoTDB [Committer](https://www.apache.org/foundation/how-it-works.html#com
 
 除了贡献代码之外，还有许多其他形式可以提高我们对贡献者的信任，例如代码审查，设计讨论，为其他用户提供支持，发展社区，改善IoTDB基础设施，文档，项目管理等。
 
-### 知道，坚持并加强Apache Software Foundation的行为准则
+### 知道、支持并不断强化Apache Software Foundation的行为准则
 
 请参阅[ASF文档](https://www.apache.org/foundation/policies/conduct.html)。特别是，他们显然致力于：
 
@@ -45,18 +45,18 @@ Apache IoTDB [Committer](https://www.apache.org/foundation/how-it-works.html#com
 - 善解人意
 - 热情
 - 友善
-- 耐心
-- 协作
+- 有耐心
+- 团队协作力强
 - 好奇心强
-- 在选择上谨慎
+- 注意言行
 
-### 知道，维护并加强Apache Software Foundation提交者的职责
+### 知道、支持并不断强化作为Apache Software Foundation提交者的职责
 
 请参阅[ASF文档](https://www.apache.org/dev/committers.html#committer-responsibilities)。
 
-- 他们帮助创造了一种产品，将超越任何特定志愿者（包括他们自己）的兴趣
-- 他们成长并维护Apache社区的健康
-- 他们为周围的工作提供帮助，例如网站和文档
+- 他们帮助创造的是一个产品，而不仅仅是某个贡献者的兴趣
+- 他们维护Apache社区的健康，并帮助社区成长
+- 他们帮忙做一些周边工作，例如维护网站、维护文档。
 - 他们帮助用户
 - 可以信任他们来决定何时准备发布代码，或何时要求他人做出判断。
 - 可以信任他们来决定何时合并代码（如果是代码贡献者）或何时要求其他人做出判断
