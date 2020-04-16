@@ -134,3 +134,6 @@ git rebase --continue
 git push -f origin fix
 ```
 
+
+
+该指导文档修改于[Apache ServiceComb](http://servicecomb.apache.org/developers/submit-codes/)

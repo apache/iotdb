@@ -63,14 +63,17 @@ See the [ASF documentation](https://www.apache.org/dev/committers.html#committer
 - They can be trusted to decide when code is ready for release, or when to ask someone else to make the judgment
 - They can be trusted to decide when to merge code (if a code contributor) or when to ask someone else to make the judgment
 
-### Knows, upholds, and reinforces the Beam community’s practices
+### Knows, upholds, and reinforces the IoTDB community’s practices
 
 - They have a proven commitment to the project
 - They share their intentions with the community
 - They accept and integrate community feedback in their plans, designs, code, etc.
-- They earnestly try to make Beam better with their contributions
+- They earnestly try to make IoTDB better with their contributions
 - In particular, if a code contributor:
   - They earnestly try to make IoTDB better with their own code
   - They earnestly try to make IoTDB better with code review
   - They accept and integrate feedback on their code
   - They know, follow, and enforce IoTDB's practices while reviewing/merging code - style, documentation, testing, backward compatibility, etc.
+
+
+The code of conduct is derived from [Apache Beam](https://beam.apache.org/contribute/become-a-committer/).

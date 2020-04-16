@@ -60,7 +60,7 @@ The content of all IoTDB official websites is in the docs of the project root di
 * docs/Community: community English Version
 * docs/zh/Community: community Chinese Version
 * docs/Development: Development Guide English Version
-* docs/Development: Development Guide Chinese Version
+* docs/zh/Development: Development Guide Chinese Version
 
 Correspondence between versions and branches on the official website:
 

@@ -74,3 +74,7 @@ PMC已经为成为提交者制定了以下的指导准则
   - 他们认真地尝试通过代码审查使IoTDB更好
   - 他们接受并整合有关其代码的反馈
   - 他们在查看/合并代码（样式，文档，测试，向后兼容性等）时知道，遵循并执行IoTDB的实践。
+
+
+
+该指导文档修改于[Apache Beam](https://beam.apache.org/contribute/become-a-committer/)
