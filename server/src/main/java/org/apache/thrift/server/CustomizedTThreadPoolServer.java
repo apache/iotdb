@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * Because there may be bug in TThreadPoolServer, we have to copy it here and see what is wrong.
  */
 public class CustomizedTThreadPoolServer extends TServer {
-  private static final Logger LOGGER = LoggerFactory.getLogger(TThreadPoolServer.class.getName());
+  private static final Logger LOGGER = LoggerFactory.getLogger(CustomizedTThreadPoolServer.class);
 
   private volatile AtomicBoolean stoppedCheck = new AtomicBoolean(true);
 
