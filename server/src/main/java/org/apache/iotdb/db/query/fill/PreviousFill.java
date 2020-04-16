@@ -141,8 +141,7 @@ public class PreviousFill extends IFill {
           FileLoaderUtils.loadTimeSeriesMetadata(
               resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        if (timeseriesMetadata.getStatistics().canUseStatistics()
-            && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+        if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
           return constructLastPair(
               timeseriesMetadata.getStatistics().getEndTime(),
               timeseriesMetadata.getStatistics().getLastValue(),
