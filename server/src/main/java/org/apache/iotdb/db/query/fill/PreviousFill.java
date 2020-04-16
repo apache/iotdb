@@ -172,8 +172,7 @@ public class PreviousFill extends IFill {
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
 
     while (!unseqFileResource.isEmpty()
-        && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice())))
-    {
+        && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
