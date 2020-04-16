@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.auth.authorizer;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -257,4 +258,10 @@ public interface IAuthorizer {
    * @throws AuthException if the user does not exist.
    */
   void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException;
+
+  /**
+   * get all user water mark status
+   * @return key->userName, value->useWaterMark or not
+   */
+  Map<String, Boolean> getAllUserWaterMarkStatus();
 }
