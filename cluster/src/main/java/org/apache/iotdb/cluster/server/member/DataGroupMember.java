@@ -187,7 +187,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
     this.logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
-        this), metaGroupMember.getPartitionTable(), allNodes.get(0));
+        this), metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode);
     super.logManager = logManager;
   }
 
