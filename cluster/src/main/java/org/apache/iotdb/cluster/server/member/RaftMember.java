@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.server.member;
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -211,7 +212,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
         // The term of the last log needs to be the same with leader's term in order to preserve
         // safety, otherwise it may come from an invalid leader and is not committed
-        if (logManager.getLastLogTerm() == leaderTerm) {
+        if (logManager.getCommitLogIndex() < request.getCommitLogIndex() &&
+            logManager.getLogTerm(request.getCommitLogIndex()) == request.getCommitLogTerm()) {
           synchronized (syncLock) {
             logManager.commitLog(request.getCommitLogIndex());
             syncLock.notifyAll();
@@ -224,6 +226,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         setLeader(request.getLeader());
         if (character != NodeCharacter.FOLLOWER) {
           setCharacter(NodeCharacter.FOLLOWER);
+          // interrupt election
+          term.notifyAll();
         }
         setLastHeartbeatReceivedTime(System.currentTimeMillis());
         if (logger.isTraceEnabled()) {
@@ -397,6 +401,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // synchronized: avoid concurrent modification
       synchronized (allNodes) {
         for (Node node : allNodes) {
+          if (node.equals(thisNode)) {
+            continue;
+          }
           AsyncClient client = connectNode(node);
           if (client != null) {
             AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
@@ -448,7 +455,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return an asynchronous thrift client or null if the caller tries to connect the local node.
    */
   public AsyncClient connectNode(Node node) {
-    if (node == null || node.equals(thisNode)) {
+    if (node == null) {
       return null;
     }
 
@@ -557,7 +564,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         term.set(newTerm);
         setCharacter(NodeCharacter.FOLLOWER);
         setLeader(null);
-        setLastHeartbeatReceivedTime(System.currentTimeMillis());
       }
     }
   }
@@ -956,27 +962,38 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   /**
    * An ftp-like interface that is used for a node to pull chunks of files like TsFiles.
-   *
+   * Once the file is totally read, it will be removed.
    * @param filePath
    * @param offset
    * @param length
-   * @param header        to determine the DataGroupMember in data groups
    * @param resultHandler
    */
   @Override
-  public void readFile(String filePath, long offset, int length, Node header,
+  public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
+    File file = new File(filePath);
+    if (!file.exists()) {
+      resultHandler.onComplete(ByteBuffer.allocate(0));
+      return;
+    }
+
+    boolean fileExhausted = false;
     try (BufferedInputStream bufferedInputStream =
-        new BufferedInputStream(new FileInputStream(filePath))) {
+        new BufferedInputStream(new FileInputStream(file))) {
       bufferedInputStream.skip(offset);
       byte[] bytes = new byte[length];
       ByteBuffer result = ByteBuffer.wrap(bytes);
       int len = bufferedInputStream.read(bytes);
       result.limit(Math.max(len, 0));
+      fileExhausted = bufferedInputStream.available() <= 0;
 
       resultHandler.onComplete(result);
     } catch (IOException e) {
       resultHandler.onError(e);
+    }
+
+    if (fileExhausted) {
+      file.delete();
     }
   }
 

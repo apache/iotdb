@@ -31,6 +31,9 @@ public interface LogManager {
   long getLastLogIndex();
   long getLastLogTerm();
   long getCommitLogIndex();
+  long getCommitLogTerm();
+
+  long getLogTerm(long logIndex);
 
   /**
    * Append log to a proper place in the log chain.

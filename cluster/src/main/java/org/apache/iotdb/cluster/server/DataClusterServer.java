@@ -235,11 +235,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length, Node header,
+  public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler, "Read file:" + filePath);
+    DataGroupMember member = getDataMember(thisNode, resultHandler, "Read file:" + filePath);
     if (member != null) {
-      member.readFile(filePath, offset, length, header, resultHandler);
+      member.readFile(filePath, offset, length, resultHandler);
     }
   }
 

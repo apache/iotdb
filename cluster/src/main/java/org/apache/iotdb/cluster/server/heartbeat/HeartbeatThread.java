@@ -109,6 +109,7 @@ public class HeartbeatThread implements Runnable {
       request.setTerm(localMember.getTerm().get());
       request.setLeader(localMember.getThisNode());
       request.setCommitLogIndex(localMember.getLogManager().getCommitLogIndex());
+      request.setCommitLogTerm(localMember.getLogManager().getCommitLogTerm());
 
       sendHeartbeats(localMember.getAllNodes());
     }
@@ -124,6 +125,10 @@ public class HeartbeatThread implements Runnable {
     synchronized (nodes) {
       // avoid concurrent modification
       for (Node node : nodes) {
+        if (node.equals(localMember.getThisNode())) {
+          continue;
+        }
+
         if (localMember.getCharacter() != NodeCharacter.LEADER) {
           // if the character changes, abort the remaining heartbeats
           return;
@@ -248,6 +253,10 @@ public class HeartbeatThread implements Runnable {
     synchronized (nodes) {
       // avoid concurrent modification
       for (Node node : nodes) {
+        if (node.equals(localMember.getThisNode())) {
+          continue;
+        }
+
         AsyncClient client = localMember.connectNode(node);
         if (client != null) {
           logger.info("{}: Requesting a vote from {}", memberName, node);

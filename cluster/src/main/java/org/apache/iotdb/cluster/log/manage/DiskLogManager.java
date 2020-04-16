@@ -46,6 +46,7 @@ public abstract class DiskLogManager extends MemoryLogManager {
     // recover meta
     LogManagerMeta logManagerMeta = logDequeSerializer.recoverMeta();
     if(logManagerMeta != null){
+      setCommitLogTerm(logManagerMeta.getCommitLogTerm());
       setCommitLogIndex(logManagerMeta.getCommitLogIndex());
       setLastLogId(logManagerMeta.getLastLogId());
       setLastLogTerm(logManagerMeta.getLastLogTerm());
@@ -114,6 +115,7 @@ public abstract class DiskLogManager extends MemoryLogManager {
    * @return meta info
    */
   public LogManagerMeta getMeta(){
+    managerMeta.setCommitLogTerm(commitLogTerm);
     managerMeta.setCommitLogIndex(commitLogIndex);
     managerMeta.setLastLogId(lastLogId);
     managerMeta.setLastLogTerm(lastLogTerm);

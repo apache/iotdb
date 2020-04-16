@@ -378,6 +378,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   public void applySnapshot(Snapshot snapshot, int slot) throws SnapshotApplicationException {
     logger.debug("{}: applying snapshot {}", name, snapshot);
+    metaGroupMember.syncLeader();
     if (snapshot instanceof FileSnapshot) {
       try {
         applyFileSnapshot((FileSnapshot) snapshot, slot);
@@ -415,6 +416,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         int segSize = pathSegments.length;
         String storageGroupName = pathSegments[segSize - 3];
         try {
+          try {
+            // the storage group may not exists because the meta member is not synchronized
+            MManager.getInstance().setStorageGroup(storageGroupName);
+          } catch (MetadataException e) {
+            // ignore
+          }
           StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
               remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
         } catch (StorageEngineException e) {
@@ -611,7 +618,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         while (true) {
           result.set(null);
           synchronized (result) {
-            client.readFile(remotePath, offset, fetchSize, getHeader(), handler);
+            client.readFile(remotePath, offset, fetchSize, handler);
             result.wait(RaftServer.connectionTimeoutInMS);
           }
           ByteBuffer buffer = result.get();
@@ -627,7 +634,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           offset += buffer.limit() - buffer.position();
         }
         bufferedOutputStream.flush();
-        logger.info("{}: remote file {} is pulled at {}", name, remotePath, dest);
+        if (logger.isInfoEnabled()) {
+          logger.info("{}: remote file {} is pulled at {}, length: {}", name, remotePath, dest,
+              dest.length());
+        }
         return true;
       } catch (TException | InterruptedException e) {
         logger.warn("{}: Cannot pull file {} from {}, wait 5s to retry", name, remotePath, node, e);
@@ -1294,7 +1304,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   public DataMemberReport genReport() {
     return new DataMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), getHeader(), readOnly,
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), logManager.getCommitLogIndex()
+        , getHeader(), readOnly,
         QueryCoordinator.getINSTANCE().getLastResponseLatency(getHeader()), lastHeartbeatReceivedTime);
   }
 
