@@ -44,6 +44,8 @@ import org.slf4j.LoggerFactory;
 public class CustomizedTThreadPoolServer extends TServer {
   private static final Logger LOGGER = LoggerFactory.getLogger(TThreadPoolServer.class.getName());
 
+  private volatile boolean stopped_ = false;
+
   public static class Args extends AbstractServerArgs<Args> {
     public int minWorkerThreads = 5;
     public int maxWorkerThreads = Integer.MAX_VALUE;
@@ -161,6 +163,7 @@ public class CustomizedTThreadPoolServer extends TServer {
       eventHandler_.preServe();
     }
     stopped_ = false;
+    super.stopped_ = false;
     setServing(true);
 
     return true;
@@ -179,7 +182,7 @@ public class CustomizedTThreadPoolServer extends TServer {
 
   protected void execute() {
     int failureCount = 0;
-    while (!stopped_) {
+    while (!this.stopped_) {
       try {
         TTransport client = serverTransport_.accept();
         WorkerProcess wp = new WorkerProcess(client);
@@ -254,7 +257,8 @@ public class CustomizedTThreadPoolServer extends TServer {
   }
 
   public void stop() {
-    stopped_ = true;
+    this.stopped_ = true;
+    super.stopped_ = true;
     serverTransport_.interrupt();
   }
 
