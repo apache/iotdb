@@ -182,7 +182,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
                         measurementsList.add(event.getMeasurements());
                         valuesList.add(event.getValues());
                     }
-                    pool.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+                    pool.insertRows(deviceIds, timestamps, measurementsList, valuesList);
                     LOG.debug("send event successfully");
                     batchList.clear();
                 }
