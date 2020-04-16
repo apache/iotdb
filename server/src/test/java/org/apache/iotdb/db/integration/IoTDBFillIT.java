@@ -568,6 +568,83 @@ Statement statement = connection.createStatement()) {
     }
   }
 
+  @Test
+  public void PreviousFillWithNullUnseqFilesTest() throws SQLException {
+    String[] retArray1 = new String[]{
+        "990,1020.5,true",
+    };
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      int cnt = 0;
+      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status) values(1030, 21.6, true)");
+      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,status) values(940, true)");
+      statement.execute("flush");
+
+      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,status) values(740, false)");
+      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,status) values(980, true)");
+      statement.execute("flush");
+
+      {
+        ResultSet resultSet = statement.executeQuery(
+            "select temperature,status from root.ln.wf01.wt02 where time = 990 "
+                + "Fill(double[previous])");
+
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + ","
+              + resultSet.getString(TEMPERATURE_STR_2) + ","
+              + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void PreviousFillWithDeletionTest() throws SQLException {
+    String[] retArray1 = new String[]{
+        "990,1020.5,true",
+    };
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      int cnt = 0;
+      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status) values(1030, 21.6, true)");
+      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp, temperature, status) values(940, 188.2, false)");
+
+
+      statement.execute("DELETE FROM root.ln.wf01.wt02.temperature WHERE time < 1000");
+      statement.execute("flush");
+      statement.execute("INSERT INTO root.ln.wf01.wt02(timestamp,temperature,status) values(980, 47.22, true)");
+      statement.execute("flush");
+
+      {
+        ResultSet resultSet = statement.executeQuery(
+            "select temperature,status from root.ln.wf01.wt02 where time = 1080 "
+                + "Fill(double[previous])");
+
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + ","
+              + resultSet.getString(TEMPERATURE_STR_2) + ","
+              + resultSet.getString(STATUS_STR_2);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private void prepareData() {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
