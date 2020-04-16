@@ -30,6 +30,9 @@ public class GroupByPlan extends AggregationPlan {
   // sliding step
   private long slidingStep;
 
+  // if it is left close and right open interval
+  private boolean leftCRightO = true;
+
   public GroupByPlan() {
     super();
     setOperatorType(Operator.OperatorType.GROUPBY);
@@ -65,5 +68,13 @@ public class GroupByPlan extends AggregationPlan {
 
   public void setSlidingStep(long slidingStep) {
     this.slidingStep = slidingStep;
+  }
+
+  public boolean isLeftCRightO() {
+    return leftCRightO;
+  }
+
+  public void setLeftCRightO(boolean leftCRightO) {
+    this.leftCRightO = leftCRightO;
   }
 }
