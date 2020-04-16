@@ -820,6 +820,5 @@ public class PhysicalPlanTest {
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals(OperatorType.DELETE, plan.getOperatorType());
     assertEquals(pathList, ((DeletePlan) plan).getPaths());
-    System.out.println("add by qihouliang, "+plan.getPaths().get(0).getFullPath());
   }
 }

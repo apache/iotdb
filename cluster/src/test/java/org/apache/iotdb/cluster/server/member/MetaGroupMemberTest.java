@@ -36,7 +36,9 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
@@ -71,6 +73,8 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -460,7 +464,10 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testSendSnapshot() throws InterruptedException {
     SendSnapshotRequest request = new SendSnapshotRequest();
-    List<String> newSgs = Collections.singletonList(TestUtils.getTestSg(10));
+    List<String> newSgs = new ArrayList<>();
+    for (int i=0; i<=10; i++){
+      newSgs.add(TestUtils.getTestSg(i));
+    }
     List<Log> logs = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       PhysicalPlanLog log = new PhysicalPlanLog();
@@ -474,7 +481,28 @@ public class MetaGroupMemberTest extends MemberTest {
       log.setPlan(createTimeSeriesPlan);
       logs.add(log);
     }
-    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(logs, newSgs);
+
+    Map<String, Long> storageGroupTTL = new HashMap<>();
+    storageGroupTTL.put("root.test0", 3600L);
+    storageGroupTTL.put("root.test1", 72000L);
+
+    Map<String, Boolean> userWaterMarkStatus = new HashMap<>();
+    userWaterMarkStatus.put("user_1", true);
+    userWaterMarkStatus.put("user_2", true);
+    userWaterMarkStatus.put("user_3", false);
+    userWaterMarkStatus.put("user_4", false);
+
+    try {
+      LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+      authorizer.createUser("user_1","password_1");
+      authorizer.createUser("user_2","password_2");
+      authorizer.createUser("user_3","password_3");
+      authorizer.createUser("user_4","password_4");
+    } catch (AuthException e){
+      assertEquals("why failed?", e.getMessage());
+    }
+
+    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(logs, newSgs, storageGroupTTL, userWaterMarkStatus);
     request.setSnapshotBytes(snapshot.serialize());
     AtomicReference<Void> reference = new AtomicReference<>();
     synchronized (reference) {
@@ -484,6 +512,26 @@ public class MetaGroupMemberTest extends MemberTest {
 
     for (int i = 0; i < 10; i++) {
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(10, i)));
+    }
+
+    // check whether the snapshot applied or not
+    assertEquals(newSgs, MManager.getInstance().getAllStorageGroupNames());
+
+    Map<String, Long> localStorageGroupTTL = MManager.getInstance().getStorageGroupsTTL();
+    assertNotNull(localStorageGroupTTL);
+    assertTrue(localStorageGroupTTL.containsKey("root.test0"));
+    assertTrue(localStorageGroupTTL.containsKey("root.test1"));
+    assertEquals(3600L, localStorageGroupTTL.get("root.test0").longValue());
+    assertEquals(72000L, localStorageGroupTTL.get("root.test1").longValue());
+
+    try {
+      LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+      assertTrue(authorizer.isUserUseWaterMark("user_1"));
+      assertTrue(authorizer.isUserUseWaterMark("user_2"));
+      assertFalse(authorizer.isUserUseWaterMark("user_3"));
+      assertFalse(authorizer.isUserUseWaterMark("user_4"));
+    } catch (AuthException e){
+      assertEquals("why failed?", e.getMessage());
     }
   }
 

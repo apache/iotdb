@@ -21,11 +21,15 @@ package org.apache.iotdb.cluster.log.manage;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +42,8 @@ public class MetaSingleSnapshotLogManager extends MemoryLogManager {
   private static final Logger logger = LoggerFactory.getLogger(MetaSingleSnapshotLogManager.class);
   private List<Log> snapshot = new ArrayList<>();
   private List<String> storageGroups;
+  private Map<String, Long> storageGroupTTL;
+  private Map<String, Boolean> userWaterMarkStatus;
 
   public MetaSingleSnapshotLogManager(LogApplier logApplier) {
     super(logApplier);
@@ -45,7 +51,6 @@ public class MetaSingleSnapshotLogManager extends MemoryLogManager {
 
   @Override
   public void takeSnapshot() {
-
     int i = 0;
     for (; i < logBuffer.size(); i++) {
       if (logBuffer.get(i).getCurrLogIndex() > commitLogIndex) {
@@ -56,11 +61,19 @@ public class MetaSingleSnapshotLogManager extends MemoryLogManager {
     removeFromHead(i);
 
     storageGroups = MManager.getInstance().getAllStorageGroupNames();
+    storageGroupTTL = MManager.getInstance().getStorageGroupsTTL();
+    try {
+      LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+      userWaterMarkStatus = authorizer.getAllUserWaterMarkStatus();
+    } catch (AuthException e) {
+      logger.error("get all user water mark status failed", e);
+    }
   }
 
   @Override
   public Snapshot getSnapshot() {
-    return new MetaSimpleSnapshot(new ArrayList<>(this.snapshot), storageGroups);
+    return new MetaSimpleSnapshot(new ArrayList<>(this.snapshot), storageGroups, storageGroupTTL,
+        userWaterMarkStatus);
   }
 
   public void setSnapshot(SimpleSnapshot snapshot) {
