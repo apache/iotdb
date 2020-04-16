@@ -32,9 +32,9 @@ import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.server.CustomizedTThreadPoolServer;
 import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.server.TThreadPoolServer.Args;
+import org.apache.thrift.server.CustomizedTThreadPoolServer.Args;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -54,7 +54,7 @@ public class RPCService implements RPCServiceMBean, IService {
   private Thread rpcServiceThread;
   private TProtocolFactory protocolFactory;
   private Processor<TSIService.Iface> processor;
-  private TThreadPoolServer.Args poolArgs;
+  private CustomizedTThreadPoolServer.Args poolArgs;
   private TSServiceImpl impl;
   private CountDownLatch startLatch;
   private CountDownLatch stopLatch;
@@ -214,7 +214,7 @@ public class RPCService implements RPCServiceMBean, IService {
             ThreadName.RPC_CLIENT.getName());
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
-        poolServer = new TThreadPoolServer(poolArgs);
+        poolServer = new CustomizedTThreadPoolServer(poolArgs);
         poolServer.setServerEventHandler(new RPCServiceEventHandler(impl, threadStartLatch));
         poolServer.serve();
       } catch (TTransportException e) {
