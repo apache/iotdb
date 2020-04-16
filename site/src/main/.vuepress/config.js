@@ -98,6 +98,7 @@ var config = {
 					items: [
 					  { text: 'How to vote', link: '/Development/VoteRelease'},
 					  { text: 'How to Commit', link: '/Development/HowToCommit'},
+					  { text: 'Become a Committer', link: '/Development/HowToCommit'},
 					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
@@ -510,6 +511,7 @@ var config = {
 					items: [
 					  { text: '如何投票', link: '/zh/Development/VoteRelease'},
 					  { text: '如何提交代码', link: '/Development/HowToCommit'},
+					  { text: '成为提交者', link: '/Development/HowToCommit'},
 					  { text: '项目开发指南', link: '/zh/Development/ContributeGuide'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
