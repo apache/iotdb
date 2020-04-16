@@ -46,6 +46,7 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
@@ -763,12 +764,20 @@ public class MManager {
       }
     } finally {
       lock.readLock().unlock();
-      if (autoCreateSchema) {
-        if (shouldSetStorageGroup) {
-          String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
-          setStorageGroup(storageGroupName);
+      lock.writeLock().lock();
+      try {
+        if (autoCreateSchema) {
+          if (shouldSetStorageGroup) {
+            String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
+            setStorageGroup(storageGroupName);
+          }
+          node = mtree.getDeviceNodeWithAutoCreating(path);
         }
+      } catch (StorageGroupAlreadySetException e) {
+        // ignore set storage group concurrently
         node = mtree.getDeviceNodeWithAutoCreating(path);
+      } finally {
+        lock.writeLock().unlock();
       }
     }
     return node;
