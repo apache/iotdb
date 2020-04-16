@@ -21,12 +21,10 @@
 
 # Become a Committer
 
-An Apache Beam [committer](https://www.apache.org/foundation/how-it-works.html#committers) has write access to the repository for merging pull requests, but you don’t have to be a code contributor to become a committer. Becoming a committer means that you have the project’s trust. Read the [ASF documentation](https://www.apache.org/dev/committers.html#committer-responsibilities) for more about being a committer in the Apache Software Foundation.
+An Apache IoTDB [committer](https://www.apache.org/foundation/how-it-works.html#committers) has write access to the repository for merging pull requests, but you don’t have to be a code contributor to become a committer. Becoming a committer means that you have the project’s trust. Read the [ASF documentation](https://www.apache.org/dev/committers.html#committer-responsibilities) for more about being a committer in the Apache Software Foundation.
 
 The [PMC](https://www.apache.org/foundation/how-it-works.html#pmc-members) makes someone a committer via nomination, discussion, and then majority vote. We use data from as many sources as possible to inform our reasoning. Here are some examples:
 
-- [dev@ archives](https://lists.apache.org/list.html?dev@beam.apache.org) and [statistics](https://lists.apache.org/trends.html?dev@beam.apache.org)
-- [user@ archives](https://lists.apache.org/list.html?user@beam.apache.org) and [statistics](https://lists.apache.org/trends.html?user@beam.apache.org)
 - Git metrics for [incubator-iotdb](https://github.com/apache/incubator-iotdb/graphs/contributors) 
 - Code reviews given and received on [incubator-iotdb](https://github.com/apache/incubator-iotdb/pulls)
 - Clear areas of ownership (a runner, a DSL, IO connector, documentation, etc.)
@@ -35,7 +33,7 @@ The [PMC](https://www.apache.org/foundation/how-it-works.html#pmc-members) makes
 
 The PMC has assembled the following set of guidelines for becoming a committer.
 
-## An Apache Beam committer…
+## An Apache IoTDBcommitter…
 
 ### Takes many forms
 
@@ -72,7 +70,7 @@ See the [ASF documentation](https://www.apache.org/dev/committers.html#committer
 - They accept and integrate community feedback in their plans, designs, code, etc.
 - They earnestly try to make Beam better with their contributions
 - In particular, if a code contributor:
-  - They earnestly try to make Beam better with their own code
-  - They earnestly try to make Beam better with code review
+  - They earnestly try to make IoTDB better with their own code
+  - They earnestly try to make IoTDB better with code review
   - They accept and integrate feedback on their code
-  - They know, follow, and enforce Beam’s practices while reviewing/merging code - style, documentation, testing, backward compatibility, etc.
+  - They know, follow, and enforce IoTDB's practices while reviewing/merging code - style, documentation, testing, backward compatibility, etc.
