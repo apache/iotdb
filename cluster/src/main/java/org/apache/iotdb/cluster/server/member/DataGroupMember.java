@@ -30,6 +30,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -82,7 +83,6 @@ import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
@@ -370,6 +370,42 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   /**
+   * Apply FileSnapshots, which consist of MeasurementSchemas and RemoteTsFileResources. The
+   * timeseries in the MeasurementSchemas will be registered and the files in the
+   * "RemoteTsFileResources" will be loaded into the IoTDB instance if they do not totally
+   * overlap with existing files.
+   * @param snapshotMap
+   */
+  public void applySnapshot(Map<Integer, Snapshot> snapshotMap) throws SnapshotApplicationException {
+    for (Snapshot value : snapshotMap.values()) {
+      if (value instanceof FileSnapshot) {
+        FileSnapshot fileSnapshot = (FileSnapshot) value;
+        applyFileSnapshotSchema(fileSnapshot);
+      }
+    }
+
+    for (Entry<Integer, Snapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
+      Integer slot = integerSnapshotEntry.getKey();
+      Snapshot snapshot = integerSnapshotEntry.getValue();
+      if (snapshot instanceof FileSnapshot) {
+        applyFileSnapshotVersions((FileSnapshot) snapshot, slot);
+      }
+    }
+
+    for (Entry<Integer, Snapshot> integerSnapshotEntry : snapshotMap.entrySet()) {
+      Integer slot = integerSnapshotEntry.getKey();
+      Snapshot snapshot = integerSnapshotEntry.getValue();
+      if (snapshot instanceof FileSnapshot) {
+        try {
+          applyFileSnapshotFiles((FileSnapshot) snapshot, slot);
+        } catch (PullFileException e) {
+          throw new SnapshotApplicationException(e);
+        }
+      }
+    }
+  }
+
+  /**
    * Apply a snapshot to the state machine, i.e., load the data and meta data contained in the
    * snapshot into the IoTDB instance.
    * Currently the type of the snapshot should be ony FileSnapshot, but more types may be
@@ -390,59 +426,62 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-  /**
-   * Apply a FileSnapshot, which consists of MeasurementSchemas and RemoteTsFileResources. The
-   * timeseries in the MeasurementSchemas will be registered and the files in the
-   * "RemoteTsFileResources" will be loaded into the IoTDB instance if they do not totally
-   * overlap with existing files.
-   * @param snapshot
-   * @param slot
-   */
+  private void applyFileSnapshotSchema(FileSnapshot snapshot) {
+    // load metadata in the snapshot
+    for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
+      // notice: the measurement in the schema is the full path here
+      SchemaUtils.registerTimeseries(schema);
+    }
+  }
+
+  private void applyFileSnapshotVersions(FileSnapshot snapshot, int slot)
+      throws SnapshotApplicationException {
+    // load data in the snapshot
+    List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
+    // set partition versions
+    for (RemoteTsFileResource remoteTsFileResource : remoteTsFileResources) {
+      String[] pathSegments = FilePathUtils.splitTsFilePath(remoteTsFileResource);
+      int segSize = pathSegments.length;
+      String storageGroupName = pathSegments[segSize - 3];
+      try {
+        try {
+          // the storage group may not exists because the meta member is not synchronized
+          MManager.getInstance().setStorageGroup(storageGroupName);
+        } catch (MetadataException e) {
+          // ignore
+        }
+        StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
+            remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
+      } catch (StorageEngineException e) {
+        throw new SnapshotApplicationException(e);
+      }
+    }
+    SlotStatus status = slotManager.getStatus(slot);
+    if (status == SlotStatus.PULLING) {
+      // as the partition versions are set, writes can proceed without generating incorrect
+      // versions
+      slotManager.setToPullingWritable(slot);
+    }
+  }
+
+  private void applyFileSnapshotFiles(FileSnapshot snapshot, int slot)
+      throws PullFileException {
+    List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
+    // pull file
+    for (RemoteTsFileResource resource : remoteTsFileResources) {
+      if (!isFileAlreadyPulled(resource)) {
+        loadRemoteFile(resource);
+      }
+    }
+    // all files are loaded, the slot can be queried without accessing the previous holder
+    slotManager.setToNull(slot);
+  }
+
   private void applyFileSnapshot(FileSnapshot snapshot, int slot)
       throws PullFileException, SnapshotApplicationException {
-    synchronized (logManager) {
-      // load metadata in the snapshot
-      for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
-        // notice: the measurement in the schema is the full path here
-        SchemaUtils.registerTimeseries(schema);
-      }
-
-      // load data in the snapshot
-      // TODO-Cluster: deal with the failure of pulling a file
-      List<RemoteTsFileResource> remoteTsFileResources = snapshot.getDataFiles();
-      // set partition versions
-      for (RemoteTsFileResource remoteTsFileResource : remoteTsFileResources) {
-        String[] pathSegments = FilePathUtils.splitTsFilePath(remoteTsFileResource);
-        int segSize = pathSegments.length;
-        String storageGroupName = pathSegments[segSize - 3];
-        try {
-          try {
-            // the storage group may not exists because the meta member is not synchronized
-            MManager.getInstance().setStorageGroup(storageGroupName);
-          } catch (MetadataException e) {
-            // ignore
-          }
-          StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
-              remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
-        } catch (StorageEngineException e) {
-          throw new SnapshotApplicationException(e);
-        }
-      }
-      SlotStatus status = slotManager.getStatus(slot);
-      if (status == SlotStatus.PULLING) {
-        // as the partition versions are set, writes can proceed without generating incorrect
-        // versions
-        slotManager.setToPullingWritable(slot);
-      }
-      // pull file
-      for (RemoteTsFileResource resource : remoteTsFileResources) {
-        if (!isFileAlreadyPulled(resource)) {
-          loadRemoteFile(resource);
-        }
-      }
-      // all files are loaded, the slot can be queried without accessing the previous holder
-      slotManager.setToNull(slot);
-    }
+    applyFileSnapshotSchema(snapshot);
+    applyFileSnapshotVersions(snapshot, slot);
+    applyFileSnapshotFiles(snapshot, slot);
   }
 
   /**
@@ -1403,6 +1442,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throws IOException, StorageEngineException, QueryProcessException, LeaderUnknownException {
     if (!syncLeader()) {
       throw new LeaderUnknownException(getAllNodes());
+
+    }
+    if (!MManager.getInstance().isPathExist(path)) {
+      try {
+        List<MeasurementSchema> schemas = metaGroupMember
+            .pullTimeSeriesSchemas(Collections.singletonList(path));
+        for (MeasurementSchema schema : schemas) {
+          SchemaUtils.registerTimeseries(schema);
+        }
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
     }
     List<AggregateResult> results = new ArrayList<>();
     for (String aggregation : aggregations) {

@@ -141,7 +141,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     DataGroupMember member;
     synchronized (partitionTable) {
       PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
-      if (partitionGroup.contains(thisNode)) {
+      if (partitionGroup != null && partitionGroup.contains(thisNode)) {
         // the two nodes are in the same group, create a new data member
         member = dataMemberFactory.create(partitionGroup, thisNode);
         DataGroupMember prevMember = headerGroupMap.put(header, member);
@@ -151,7 +151,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         logger.info("Created a member for header {}", header);
         member.start();
       } else {
-        logger.info("This node {} does not belong to the group {}", thisNode, partitionGroup);
+        logger.info("This node {} does not belong to the group {}, header {}", thisNode,
+            partitionGroup, header);
         throw new NotInSameGroupException(partitionTable.getHeaderGroup(header),
             thisNode);
       }
