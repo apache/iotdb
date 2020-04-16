@@ -27,7 +27,7 @@ IoTDB invites developers to participate in the construction of open source proje
 
 You can check [issues](https://issues.apache.org/jira/projects/IOTDB/issues) and participate in the resolution, or make other improvements.
 
-Submit pr, at least one more agree and there is no conflict, you can merge
+After submitting the pr, after passing the Travis-CI test and Sonar code quality inspection, at least one Committer agrees and the code does not conflict, you can merge
 
 ## PR guide
 
@@ -44,7 +44,7 @@ Visit the apache/incubator-iotdb project’s [github page](https://github.com/ap
 - Clone the source code to local machine:
 
 ```
-https://github.com/<your_github_name>/incubator-iotdb.git
+git clone https://github.com/<your_github_name>/incubator-iotdb.git
 ```
 
 **Note: substitute <your_github_name> with your github username.**

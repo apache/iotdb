@@ -27,7 +27,7 @@ IoTDB诚邀广大开发者参与开源项目构建
 
 您可以查看[issues](https://issues.apache.org/jira/projects/IOTDB/issues)并参与解决，或者做其他改善。
 
-提交pr，至少有一位以上同意并且无冲突，就可以合并了
+提交pr，通过Travis-CI测试和Sonar代码质量检测后，至少有一位以上Committer同意且代码无冲突，就可以合并了
 
 ## PR指南
 
@@ -44,7 +44,7 @@ IoTDB诚邀广大开发者参与开源项目构建
 - 将代码克隆到本地：
 
 ```
-https://github.com/<your_github_name>/incubator-iotdb.git
+git clone https://github.com/<your_github_name>/incubator-iotdb.git
 ```
 
 **请将 <your_github_name> 替换为您的github名字**
