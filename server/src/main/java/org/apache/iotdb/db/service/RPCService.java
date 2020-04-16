@@ -35,6 +35,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.CustomizedTThreadPoolServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.CustomizedTThreadPoolServer.Args;
+import org.apache.thrift.transport.CustomizedTServerSocket;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -175,7 +176,7 @@ public class RPCService implements RPCServiceMBean, IService {
 
   private class RPCServiceThread extends Thread {
 
-    private TServerSocket serverTransport;
+    private CustomizedTServerSocket serverTransport;
     private TServer poolServer;
     private CountDownLatch threadStartLatch;
     private CountDownLatch threadStopLatch;
@@ -201,7 +202,7 @@ public class RPCService implements RPCServiceMBean, IService {
       logger.info("The RPC service thread begin to run...");
       try {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
+        serverTransport = new CustomizedTServerSocket(new InetSocketAddress(config.getRpcAddress(),
             config.getRpcPort()));
         //this is for testing.
         if (!serverTransport.getServerSocket().isBound()) {
