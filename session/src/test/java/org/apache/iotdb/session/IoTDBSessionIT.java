@@ -175,7 +175,7 @@ public class IoTDBSessionIT {
 
     RowBatch rowBatch = schema.createRowBatch("root.sg1.d1", 100);
 
-    session.testInsertBatch(rowBatch);
+    session.testInsertRowBatch(rowBatch);
 
     // test insert row
     List<String> measurements = new ArrayList<>();
@@ -275,7 +275,7 @@ public class IoTDBSessionIT {
 
     query2();
 
-    insertInBatch();
+    insertRows();
 
     query4();
 
@@ -383,7 +383,7 @@ public class IoTDBSessionIT {
     }
   }
 
-  private void insertInBatch() throws IoTDBConnectionException, BatchExecutionException {
+  private void insertRows() throws IoTDBConnectionException, BatchExecutionException {
     String deviceId = "root.sg1.d2";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -462,13 +462,13 @@ public class IoTDBSessionIT {
         sensor[row] = i;
       }
       if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
+        session.insertRowBatch(rowBatch);
         rowBatch.reset();
       }
     }
 
     if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
+      session.insertRowBatch(rowBatch);
       rowBatch.reset();
     }
   }
@@ -737,13 +737,13 @@ public class IoTDBSessionIT {
         sensor[row] = i;
       }
       if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
+        session.insertRowBatch(rowBatch);
         rowBatch.reset();
       }
     }
 
     if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
+      session.insertRowBatch(rowBatch);
       rowBatch.reset();
     }
   }
@@ -771,13 +771,13 @@ public class IoTDBSessionIT {
         sensor[row] = i;
       }
       if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
+        session.insertRowBatch(rowBatch);
         rowBatch.reset();
       }
     }
 
     if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
+      session.insertRowBatch(rowBatch);
       rowBatch.reset();
     }
   }
@@ -814,13 +814,13 @@ public class IoTDBSessionIT {
         sensor[row] = i;
       }
       if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
+        session.insertRowBatch(rowBatch);
         rowBatch.reset();
       }
     }
 
     if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
+      session.insertRowBatch(rowBatch);
       rowBatch.reset();
     }
 

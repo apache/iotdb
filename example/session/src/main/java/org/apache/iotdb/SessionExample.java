@@ -137,8 +137,7 @@ public class SessionExample {
   }
 
   /**
-   * insert a batch data of one device, each batch contains multiple timestamps with values of
-   * sensors
+   * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
    * a RowBatch example:
    *
@@ -173,19 +172,18 @@ public class SessionExample {
         sensor[row] = i;
       }
       if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
+        session.insertRowBatch(rowBatch, true);
         rowBatch.reset();
       }
     }
 
     if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
+      session.insertRowBatch(rowBatch);
       rowBatch.reset();
     }
   }
 
-  private static void insertMultipleDeviceRowBatch()
-      throws IoTDBConnectionException, BatchExecutionException {
+  private static void insertMultipleRowBatches() throws IoTDBConnectionException, BatchExecutionException {
     // The schema of sensors of one device
     Schema schema1 = new Schema();
     schema1.registerTimeseries(new Path("root.sg1.d1.s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
@@ -211,10 +209,10 @@ public class SessionExample {
     
     RowBatch rowBatch3 = schema3.createRowBatch("root.sg1.d3", 100);
     
-    Map<String, RowBatch> rowBatchMap = new HashMap<>();
-    rowBatchMap.put("root.sg1.d1", rowBatch1);
-    rowBatchMap.put("root.sg1.d2", rowBatch2);
-    rowBatchMap.put("root.sg1.d3", rowBatch3);
+    List<RowBatch> rowBatchMap = new ArrayList<>();
+    rowBatchMap.add(rowBatch1);
+    rowBatchMap.add(rowBatch2);
+    rowBatchMap.add(rowBatch3);
 
     long[] timestamps1 = rowBatch1.timestamps;
     Object[] values1 = rowBatch1.values;
@@ -239,7 +237,7 @@ public class SessionExample {
         sensor3[row3] = i;
       }
       if (rowBatch1.batchSize == rowBatch1.getMaxBatchSize()) {
-        session.insertBatches(rowBatchMap);
+        session.insertMultipleRowBatches(rowBatchMap, true);
 
         rowBatch1.reset();
         rowBatch2.reset();
@@ -248,7 +246,7 @@ public class SessionExample {
     }
 
     if (rowBatch1.batchSize != 0) {
-      session.insertBatches(rowBatchMap);
+      session.insertMultipleRowBatches(rowBatchMap, true);
       rowBatch1.reset();
       rowBatch2.reset();
       rowBatch3.reset();

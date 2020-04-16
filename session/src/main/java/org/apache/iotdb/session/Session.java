@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -205,7 +204,7 @@ public class Session {
    *
    * @param rowBatch data batch
    */
-  private void insertSortedBatchIntern(RowBatch rowBatch)
+  private void insertSortedRowBatchIntern(RowBatch rowBatch)
       throws IoTDBConnectionException, BatchExecutionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
@@ -226,56 +225,69 @@ public class Session {
   }
 
   /**
-   * insert multiple sorted RowBatches, make sure times in each RowBatch are in ascending order
+   * insert the data of several deivces.
+   * Given a deivce, for each timestamp, the number of measurements is the same.
    *
-   * @param rowBatchMap data batch in multiple device
+   * Times in each RowBatch may not be in ascending order
+   *
+   * @param rowBatches data batch in multiple device
    */
-  public void insertSortedBatches(Map<String, RowBatch> rowBatchMap)
+  public void insertMultipleRowBatches(List<RowBatch> rowBatches)
       throws IoTDBConnectionException, BatchExecutionException {
-    for (Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()) {
-      checkSorted(dataInOneDevice.getValue());
-      insertSortedBatchIntern(dataInOneDevice.getValue());
+    insertMultipleRowBatches(rowBatches, false);
+  }
+
+  /**
+   * insert the data of several devices.
+   * Given a device, for each timestamp, the number of measurements is the same.
+   *
+   * @param rowBatches data batch in multiple device
+   * @param sorted whether times in each RowBatch are in ascending order
+   */
+  public void insertMultipleRowBatches(List<RowBatch> rowBatches, boolean sorted)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (RowBatch rowBatch : rowBatches) {
+      insertRowBatch(rowBatch, sorted);
     }
   }
 
   /**
-   * insert multiple RowBatches
+   * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
-   * @param rowBatchMap data batch in multiple device
-   */
-  public void insertBatches(Map<String, RowBatch> rowBatchMap)
-      throws IoTDBConnectionException, BatchExecutionException {
-    for (Map.Entry<String, RowBatch> dataInOneDevice : rowBatchMap.entrySet()) {
-      sortRowBatch(dataInOneDevice.getValue());
-      insertBatch(dataInOneDevice.getValue());
-    }
-  }
-
-  /**
-   * insert one RowBatch, make sure times in RowBatch are in ascending order
+   *  a RowBatch example:
+   *
+   *        device1
+   *     time s1, s2, s3
+   *     1,   1,  1,  1
+   *     2,   2,  2,  2
+   *     3,   3,  3,  3
+   *
+   * times in RowBatch may be not in ascending order
    *
    * @param rowBatch data batch
    */
-  public void insertSortedBatch(RowBatch rowBatch)
+  public void insertRowBatch(RowBatch rowBatch)
       throws BatchExecutionException, IoTDBConnectionException {
-    if (!checkSorted(rowBatch)) {
-      throw new BatchExecutionException(
-          "Row batch has't been sorted when calling insertSortedBatch");
-    }
-    insertSortedBatchIntern(rowBatch);
+    insertRowBatch(rowBatch, false);
   }
 
   /**
    * insert a RowBatch
    *
    * @param rowBatch data batch
+   * @param sorted whether times in RowBatch are in ascending order
    */
-  public void insertBatch(RowBatch rowBatch)
+  public void insertRowBatch(RowBatch rowBatch, boolean sorted)
       throws IoTDBConnectionException, BatchExecutionException {
-
-    sortRowBatch(rowBatch);
-
-    insertSortedBatchIntern(rowBatch);
+    if (sorted) {
+      if (!checkSorted(rowBatch)) {
+        throw new BatchExecutionException(
+            "Row batch has't been sorted when calling insertSortedBatch");
+      }
+    } else {
+      sortRowBatch(rowBatch);
+    }
+    insertSortedRowBatchIntern(rowBatch);
   }
 
   private void sortRowBatch(RowBatch rowBatch) {
@@ -356,11 +368,11 @@ public class Session {
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like
    * jdbc executeBatch, we pack some insert request in batch and send them to server.
-   * If you want improve your performance, please see insertBatch method
+   * If you want improve your performance, please see insertRowBatch method
    *
    * Each row is independent, which could have different deviceId, time, number of measurements
    *
-   * @see Session#insertBatch(RowBatch)
+   * @see Session#insertRowBatch(RowBatch)
    */
   public void insertRows(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
@@ -388,10 +400,10 @@ public class Session {
 
   /**
    * insert data in one row, if you want to improve your performance, please use insertRows method
-   * or insertBatch method
+   * or insertRowBatch method
    *
    * @see Session#insertRows(List, List, List, List)
-   * @see Session#insertBatch(RowBatch)
+   * @see Session#insertRowBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements,
       Object... values) throws IoTDBConnectionException, StatementExecutionException {
@@ -405,10 +417,10 @@ public class Session {
 
   /**
    * insert data in one row, if you want to improve your performance, please use insertRows method
-   * or insertBatch method
+   * or insertRowBatch method
    *
    * @see Session#insertRows(List, List, List, List)
-   * @see Session#insertBatch(RowBatch)
+   * @see Session#insertRowBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
@@ -434,7 +446,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertBatch(RowBatch rowBatch)
+  public void testInsertRowBatch(RowBatch rowBatch)
       throws IoTDBConnectionException, BatchExecutionException {
     TSBatchInsertionReq request = new TSBatchInsertionReq();
     request.setSessionId(sessionId);
