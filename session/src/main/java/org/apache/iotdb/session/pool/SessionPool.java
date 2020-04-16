@@ -19,6 +19,7 @@
 package org.apache.iotdb.session.pool;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
@@ -258,6 +259,59 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.insertBatch(rowBatch);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+
+  /**
+   * use batch interface to insert data
+   *
+   * @param rowBatchMap multiple batch
+   */
+  public void insertMultipleSortedBatch(Map<String, RowBatch> rowBatchMap)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertMultipleDeviceSortedBatch(rowBatchMap);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  /**
+   * use batch interface to insert data
+   *
+   * @param rowBatchMap multiple batch
+   */
+  public void insertMultipleBatch(Map<String, RowBatch> rowBatchMap)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertMultipleDeviceBatch(rowBatchMap);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
