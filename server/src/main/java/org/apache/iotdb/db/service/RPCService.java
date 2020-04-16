@@ -240,6 +240,7 @@ public class RPCService implements RPCServiceMBean, IService {
 
     private synchronized void close() {
       if (poolServer != null) {
+        poolServer.setShouldStop(true);
         poolServer.stop();
         poolServer = null;
       }
