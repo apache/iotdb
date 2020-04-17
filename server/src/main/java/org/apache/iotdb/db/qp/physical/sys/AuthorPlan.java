@@ -302,7 +302,6 @@ public class AuthorPlan extends PhysicalPlan {
     } else {
       putString(stream, nodeName.getFullPath());
     }
-
   }
 
 
