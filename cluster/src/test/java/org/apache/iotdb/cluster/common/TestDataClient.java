@@ -111,7 +111,7 @@ public class TestDataClient extends DataClient {
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length, Node header,
+  public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     new Thread(() -> {
       if (offset == 0) {

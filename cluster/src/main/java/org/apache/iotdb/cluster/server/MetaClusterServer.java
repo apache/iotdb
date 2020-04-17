@@ -182,9 +182,9 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length, Node header,
+  public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    member.readFile(filePath, offset, length, header, resultHandler);
+    member.readFile(filePath, offset, length, resultHandler);
   }
 
   @Override

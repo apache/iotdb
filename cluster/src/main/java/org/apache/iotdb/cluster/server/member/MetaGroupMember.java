@@ -1310,12 +1310,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     List<MeasurementSchema> schemas = new ArrayList<>();
     // pull timeseries schema from every group involved
+    logger.debug("{}: pulling schemas of {} from {} groups", name, prefixPaths,
+        partitionGroupPathMap.size());
     for (Entry<PartitionGroup, List<String>> partitionGroupListEntry : partitionGroupPathMap
         .entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<String> paths = partitionGroupListEntry.getValue();
       pullTimeSeriesSchemas(partitionGroup, paths, schemas);
     }
+    logger.debug("{}: pulled {} schemas for {}", name, schemas, prefixPaths);
     return schemas;
   }
 
@@ -2372,7 +2375,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private MetaMemberReport genMemberReport() {
     return new MetaMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly,
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), logManager.getCommitLogIndex()
+        , readOnly,
         lastHeartbeatReceivedTime);
   }
 
