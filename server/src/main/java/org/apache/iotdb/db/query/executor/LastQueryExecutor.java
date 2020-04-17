@@ -133,12 +133,25 @@ public class LastQueryExecutor {
       for (int i = seqFileResources.size() - 1; i >= 0; i--) {
         TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
                 seqFileResources.get(i), seriesPath, context, null, sensors);
-        if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()) {
-          Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
-          resultPair = constructLastPair(
-              timeseriesMetadataStats.getEndTime(),
-              timeseriesMetadataStats.getLastValue(), tsDataType);
-          break;
+        if (timeseriesMetadata != null) {
+          if (timeseriesMetadata.getStatistics().canUseStatistics()) {
+            Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
+            resultPair = constructLastPair(
+                    timeseriesMetadataStats.getEndTime(),
+                    timeseriesMetadataStats.getLastValue(),
+                    tsDataType);
+            break;
+          } else {
+            List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
+            if (!chunkMetadataList.isEmpty()) {
+              ChunkMetadata lastChunkMetaData = chunkMetadataList.get(chunkMetadataList.size() - 1);
+              Statistics chunkStatistics = lastChunkMetaData.getStatistics();
+              resultPair =
+                  constructLastPair(
+                      chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+              break;
+            }
+          }
         }
       }
     }
