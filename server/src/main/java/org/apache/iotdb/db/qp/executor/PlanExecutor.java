@@ -118,6 +118,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -144,7 +145,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
-      QueryProcessException, MetadataException {
+      QueryProcessException, MetadataException, TException, InterruptedException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -252,7 +253,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected QueryDataSet processShowQuery(ShowPlan showPlan)
-      throws QueryProcessException, MetadataException {
+      throws QueryProcessException, MetadataException, InterruptedException, TException, IOException {
     switch (showPlan.getShowContentType()) {
       case TTL:
         return processShowTTLQuery((ShowTTLPlan) showPlan);
@@ -281,7 +282,8 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
+  private QueryDataSet processCountNodes(CountPlan countPlan)
+      throws MetadataException, InterruptedException, TException, IOException {
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
     int num = nodes.size();
     SingleDataSet singleDataSet = new SingleDataSet(
@@ -295,7 +297,8 @@ public class PlanExecutor implements IPlanExecutor {
     return singleDataSet;
   }
 
-  private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
+  private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan)
+      throws MetadataException, InterruptedException, TException, IOException {
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
     ListDataSet listDataSet = new ListDataSet(
         Arrays.asList(new Path(COLUMN_COLUMN), new Path(COLUMN_COUNT)),
@@ -317,7 +320,7 @@ public class PlanExecutor implements IPlanExecutor {
     return MManager.getInstance().getAllTimeseriesName(path);
   }
 
-  protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
+  protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException, IOException, TException, InterruptedException {
     return MManager.getInstance().getNodesList(schemaPattern, level);
   }
 
@@ -354,7 +357,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
-      throws MetadataException {
+      throws MetadataException, InterruptedException {
     Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath().toString());
     ListDataSet listDataSet = new ListDataSet(
         Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
@@ -369,7 +372,8 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getPathNextChildren(String path) throws MetadataException {
+  protected Set<String> getPathNextChildren(String path)
+      throws MetadataException, InterruptedException {
      return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
@@ -393,7 +397,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan)
-      throws MetadataException {
+      throws MetadataException, InterruptedException {
     ListDataSet listDataSet = new ListDataSet(Arrays.asList(
         new Path(COLUMN_TIMESERIES),
         new Path(COLUMN_STORAGE_GROUP),
@@ -402,8 +406,7 @@ public class PlanExecutor implements IPlanExecutor {
         new Path(COLUMN_TIMESERIES_COMPRESSION)),
         Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT,
             TSDataType.TEXT));
-    List<String[]> timeseriesList = MManager.getInstance()
-        .getAllMeasurementSchema(timeSeriesPlan.getPath().toString());
+    List<String[]> timeseriesList =getTimeseriesSchemas(timeSeriesPlan.getPath().toString());
     for (String[] list : timeseriesList) {
       RowRecord record = new RowRecord(0);
       for (String s : list) {
@@ -416,7 +419,7 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected List<String[]> getTimeseriesSchemas(String path) throws MetadataException {
+  protected List<String[]> getTimeseriesSchemas(String path) throws MetadataException, InterruptedException {
     return MManager.getInstance().getAllMeasurementSchema(path);
   }
 

@@ -24,6 +24,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -60,7 +61,8 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
     @Override
     public int getPartitionKey(String storageGroupName, long timestamp) {
-      return PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
+      return PartitionUtils
+          .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
     }
 
     @Override
@@ -137,6 +139,11 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     public MManager getMManager() {
       return MManager.getInstance();
     }
+
+    @Override
+    public List<PartitionGroup> getGlobalGroups() {
+      return null;
+    }
   };
 
   @Override
@@ -188,7 +195,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
             } else if (node.getNodeIdentifier() < 6) {
               assertTrue(requestCopy.isRequireIdentifier());
             } else if (node.getNodeIdentifier() < 9) {
-              assertEquals(partitionTableBuffer, requestCopy .partitionTableBytes);
+              assertEquals(partitionTableBuffer, requestCopy.partitionTableBytes);
             }
             synchronized (receivedNodes) {
               receivedNodes.add(getSerialNum());

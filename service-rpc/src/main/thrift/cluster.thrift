@@ -312,6 +312,11 @@ service TSDataService extends RaftService {
 
   list<string> getNodeList(1:Node header, 2:string path, 3:int nodeLevel)
 
+  set<string> getChildNodePathInNextLevel(1: Node header, 2: string path)
+
+  list<list<string>> getAllMeasurementSchema(1: Node header, 2: string path)
+
+
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)

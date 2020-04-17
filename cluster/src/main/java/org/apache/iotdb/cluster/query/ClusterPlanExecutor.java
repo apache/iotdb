@@ -19,10 +19,24 @@
 
 package org.apache.iotdb.cluster.query;
 
+import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -35,12 +49,12 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,6 +62,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPlanExecutor.class);
   private MetaGroupMember metaGroupMember;
+
+  private static final int THREAD_POOL_SIZE = 6;
+  private static final int WAIT_GET_NODES_LIST_TIME = 5;
+  private static final TimeUnit WAIT_GET_NODES_LIST_TIME_UNIT = TimeUnit.MINUTES;
 
   public ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
@@ -58,7 +76,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-          MetadataException {
+      MetadataException, TException, InterruptedException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -81,22 +99,176 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<String> getNodesList(String schemaPattern, int level) {
-    // TODO-Cluster: enable meta queries
-    throw new UnsupportedOperationException("Not implemented");
-    //return metaGroupMember.getNodeList(schemaPattern, level);
+  protected List<String> getNodesList(String schemaPattern, int level)
+      throws IOException, TException, InterruptedException, MetadataException {
+    ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>(
+        MManager.getInstance().getNodesList(schemaPattern, level));
+
+    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+
+
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
+      Node header = group.getHeader();
+      if (header.equals(metaGroupMember.getThisNode())) {
+        continue;
+      }
+      pool.submit(() -> {
+        GetNodesListHandler handler = new GetNodesListHandler();
+        AtomicReference<List<String>> response = new AtomicReference<>(null);
+        handler.setResponse(response);
+
+        for (Node node : group) {
+          try {
+            DataClient client = metaGroupMember.getDataClient(node);
+            handler.setContact(node);
+            synchronized (response) {
+              if (client != null) {
+                client.getNodeList(header, schemaPattern, level, handler);
+                response.wait(connectionTimeoutInMS);
+              }
+            }
+            List<String> paths = response.get();
+            if (paths != null) {
+              nodeSet.addAll(paths);
+              break;
+            }
+          } catch (IOException e) {
+            logger.error("Failed to connect to node: {}", node, e);
+          } catch (TException e) {
+            logger.error("Error occurs when getting node lists in node {}.", node, e);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when getting node lists in node {}.", node, e);
+            Thread.currentThread().interrupt();
+          }
+        }
+      });
+    }
+    pool.shutdown();
+    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    return new ArrayList<>(nodeSet);
   }
 
   @Override
-  protected Set<String> getPathNextChildren(String path) {
-    // TODO-Cluster: enable meta queries
-    throw new UnsupportedOperationException("Not implemented");
+  protected Set<String> getPathNextChildren(String path)
+      throws MetadataException, InterruptedException {
+    ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>(
+        MManager.getInstance().getChildNodePathInNextLevel(path));
+
+    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
+      Node header = group.getHeader();
+      if (header.equals(metaGroupMember.getThisNode())) {
+        continue;
+      }
+      pool.submit(() -> {
+        GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
+        AtomicReference<List<String>> response = new AtomicReference<>(null);
+        handler.setResponse(response);
+
+        for (Node node : group) {
+          try {
+            DataClient client = metaGroupMember.getDataClient(node);
+            handler.setContact(node);
+            synchronized (response) {
+              if (client != null) {
+                client.getChildNodePathInNextLevel(header, path, handler);
+                response.wait(connectionTimeoutInMS);
+              }
+            }
+            List<String> nextChildren = response.get();
+            if (nextChildren != null) {
+              resultSet.addAll(nextChildren);
+              break;
+            }
+          } catch (IOException e) {
+            logger.error("Failed to connect to node: {}", node, e);
+          } catch (TException e) {
+            logger.error("Error occurs when getting node lists in node {}.", node, e);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when getting node lists in node {}.", node, e);
+            Thread.currentThread().interrupt();
+          }
+        }
+      });
+    }
+    pool.shutdown();
+    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    return resultSet;
   }
 
   @Override
-  protected List<String[]> getTimeseriesSchemas(String path) {
-    // TODO-Cluster: enable meta queries
-    throw new UnsupportedOperationException("Not implemented");
+  protected List<String[]> getTimeseriesSchemas(String path)
+      throws MetadataException, InterruptedException {
+    ConcurrentSkipListSet<String[]> resultSet = new ConcurrentSkipListSet<>((o1, o2) -> {
+      Arrays.sort(o1);
+      Arrays.sort(o2);
+      for (int i = 0; i < o1.length; i++) {
+        String e1, e2;
+        try {
+          e1 = o1[i];
+        } catch (ArrayIndexOutOfBoundsException e) {
+          return -1;
+        }
+        try {
+          e2 = o2[i];
+        } catch (ArrayIndexOutOfBoundsException e) {
+          return 1;
+        }
+        int res = e1.compareTo(e2);
+        if (res != 0) {
+          return res;
+        }
+      }
+      return 0;
+    });
+    resultSet.addAll(MManager.getInstance().getAllMeasurementSchema(path));
+
+    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
+      Node header = group.getHeader();
+      if (header.equals(metaGroupMember.getThisNode())) {
+        continue;
+      }
+      pool.submit(() -> {
+        GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
+        AtomicReference<List<List<String>>> response = new AtomicReference<>(null);
+        handler.setResponse(response);
+
+        for (Node node : group) {
+          try {
+            DataClient client = metaGroupMember.getDataClient(node);
+            handler.setContact(node);
+            synchronized (response) {
+              if (client != null) {
+                client.getAllMeasurementSchema(node, path, handler);
+                response.wait(connectionTimeoutInMS);
+              }
+            }
+            if (response.get() != null) {
+              for (List<String> element : response.get()) {
+                resultSet.add(element.toArray(new String[0]));
+              }
+              break;
+            }
+          } catch (IOException e) {
+            logger.error("Failed to connect to node: {}", node, e);
+          } catch (TException e) {
+            logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
+            Thread.currentThread().interrupted();
+          }
+        }
+        if(response.get() == null){
+          logger.info("Failed to get any result from group: {}.", group);
+        }
+      });
+    }
+    pool.shutdown();
+    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    return new ArrayList<>(resultSet);
   }
 
   @Override

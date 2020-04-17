@@ -32,6 +32,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.thrift.TException;
 
 public interface IPlanExecutor {
 
@@ -43,7 +44,7 @@ public interface IPlanExecutor {
    */
   QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException,
-      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException;
+      QueryFilterOptimizationException, QueryProcessException, MetadataException, SQLException, TException, InterruptedException;
 
   /**
    * Process Non-Query Physical plan, including insert/update/delete operation of
