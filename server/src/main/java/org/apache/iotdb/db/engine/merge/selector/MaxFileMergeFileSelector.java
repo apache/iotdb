@@ -160,8 +160,9 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
 
       // skip if the unseqFile and tmpSelectedSeqFiles has TsFileResources that need to be upgraded
       boolean isNeedUpgrade = checkForUpgrade(unseqFile);
+      boolean isOpen = checkForOpen(unseqFile);
 
-      if (isNeedUpgrade) {
+      if (isNeedUpgrade || isOpen) {
         tmpSelectedSeqFiles.clear();
         unseqIndex++;
         timeConsumption = System.currentTimeMillis() - startTime;
@@ -214,6 +215,10 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       }
     }
     return isNeedUpgrade;
+  }
+
+  private boolean checkForOpen(TsFileResource unseqFile){
+    return !unseqFile.isClosed();
   }
 
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
