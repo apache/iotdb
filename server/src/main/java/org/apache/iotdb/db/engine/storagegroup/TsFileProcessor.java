@@ -322,14 +322,17 @@ public class TsFileProcessor {
     }
     try {
 
-      if (workMemTable != null) {
-        logger.info(
-            "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile size: {}",
-            storageGroupName, tsFileResource.getFile().getAbsolutePath(), workMemTable.memSize(),
-            tsFileResource.getFileSize());
-      } else {
-        logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
-            storageGroupName, tsFileResource.getFile().getAbsolutePath(), tsFileResource.getFileSize());
+      if (logger.isInfoEnabled()) {
+        if (workMemTable != null) {
+          logger.info(
+              "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile size: {}",
+              storageGroupName, tsFileResource.getFile().getAbsolutePath(), workMemTable.memSize(),
+              tsFileResource.getFileSize());
+        } else {
+          logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
+              storageGroupName, tsFileResource.getFile().getAbsolutePath(),
+              tsFileResource.getFileSize());
+        }
       }
 
       if (shouldClose) {
