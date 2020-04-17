@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.db.qp.logical.sys;
 
-import java.util.Map;
-
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.util.Map;
 
 public class CreateTimeSeriesOperator extends RootOperator {
 
@@ -33,6 +33,7 @@ public class CreateTimeSeriesOperator extends RootOperator {
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
+  private Map<String, String> props;
   private Map<String, String> attributes;
   private Map<String, String> tags;
   
@@ -71,6 +72,14 @@ public class CreateTimeSeriesOperator extends RootOperator {
 
   public CompressionType getCompressor() {
     return compressor;
+  }
+
+  public Map<String, String> getProps() {
+    return props;
+  }
+
+  public void setProps(Map<String, String> props) {
+    this.props = props;
   }
 
   public Map<String, String> getAttributes() {

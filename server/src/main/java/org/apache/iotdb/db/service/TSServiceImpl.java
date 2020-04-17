@@ -76,6 +76,9 @@ import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
+
+import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
 
 /**
@@ -555,6 +558,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
         resp.setNonAlignQueryDataSet(result);
       } else {
+        if (plan instanceof ShowPlan && ((ShowPlan) plan).getShowContentType() == TIMESERIES) {
+          resp.setColumns(newDataSet.getPaths().stream().map(Path::getFullPath).collect(Collectors.toList()));
+          resp.setDataTypeList(newDataSet.getDataTypes().stream().map(Enum::toString).collect(Collectors.toList()));
+        }
         TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
         resp.setQueryDataSet(result);
       }
@@ -1215,7 +1222,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             TSDataType.values()[req.getDataType()],
             TSEncoding.values()[req.getEncoding()],
             CompressionType.values()[req.compressor],
-            new HashMap<>(), req.tags, req.attributes, req.aliasPath);
+            req.props, req.tags, req.attributes, req.aliasPath);
     TSStatus status = checkAuthority(plan, req.getSessionId());
     if (status != null) {
       return new TSStatus(status);

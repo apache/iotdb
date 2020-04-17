@@ -193,6 +193,7 @@ public class MManager {
     try {
       this.mtree = new MTree();
       this.mNodeCache.clear();
+      this.tagIndex.clear();
       if (seriesNumberInStorageGroups != null) {
         this.seriesNumberInStorageGroups.clear();
       }
@@ -673,19 +674,120 @@ public class MManager {
     }
   }
 
+  public List<ShowTimeSeriesResult> getAllMeasurementSchema(String path, boolean isContains, String key, String value) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      if (!tagIndex.containsKey(key)) {
+        throw new MetadataException("The key " + key + " is not a tag.");
+      }
+      Map<String, Set<LeafMNode>> value2Node = tagIndex.get(key);
+      Set<LeafMNode> allMatchedNodes = new HashSet<>();
+      if (isContains) {
+        for (Entry<String, Set<LeafMNode>> entry : value2Node.entrySet()) {
+          String tagValue = entry.getKey();
+          if (tagValue.contains(value)) {
+            allMatchedNodes.addAll(entry.getValue());
+          }
+        }
+      } else {
+        for (Entry<String, Set<LeafMNode>> entry : value2Node.entrySet()) {
+          String tagValue = entry.getKey();
+          if (value.equals(tagValue)) {
+            allMatchedNodes.addAll(entry.getValue());
+          }
+        }
+      }
+      List<ShowTimeSeriesResult> res = new LinkedList<>();
+      String[] nodes = MetaUtils.getNodeNames(path);
+      for (LeafMNode node : allMatchedNodes) {
+        if (match(node.getFullPath(), nodes)) {
+          try {
+            Pair<Map<String, String>, Map<String, String>> pair =
+                    tagLogFile.read(config.getTagAttributeTotalSize(), node.getOffset());
+            pair.left.putAll(pair.right);
+            MeasurementSchema measurementSchema = node.getSchema();
+            res.add(new ShowTimeSeriesResult(node.getFullPath(), node.getAlias(),
+                    getStorageGroupName(node.getFullPath()), measurementSchema.getType().toString(),
+                    measurementSchema.getEncodingType().toString(),
+                    measurementSchema.getCompressor().toString(), pair.left));
+          } catch (IOException e) {
+            logger.error(String.format("Something went wrong while deserialize tag info of %s", node.getFullPath()), e);
+            throw new MetadataException(e);
+          }
+        }
+      }
+      return res;
+    }  finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  private boolean match(String fullPath, String[] target) {
+    String[] nodes = MetaUtils.getNodeNames(fullPath);
+    if (nodes.length < target.length) {
+      return false;
+    }
+    for (int i = 0; i < target.length; i++) {
+      if (!"*".equals(target[i]) && !target[i].equals(nodes[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * Get all timeseries paths under the given path.
    *
    * @param path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
-   * @return for each storage group, return a List [name, sg name, data type, encoding, compressor]
    */
-  public List<String[]> getAllMeasurementSchema(String path) throws MetadataException {
+  public List<ShowTimeSeriesResult> getAllMeasurementSchema(String path) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getAllMeasurementSchema(path);
-    } finally {
+      List<String[]> ans = mtree.getAllMeasurementSchema(path);
+      List<ShowTimeSeriesResult> res = new LinkedList<>();
+      for (String[] ansString : ans) {
+        long offset = Long.parseLong(ansString[6]);
+        try {
+          if (offset < 0) {
+            res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
+                    ansString[3], ansString[4], ansString[5], Collections.EMPTY_MAP));
+            continue;
+          }
+          Pair<Map<String, String>, Map<String, String>> pair =
+                  tagLogFile.read(config.getTagAttributeTotalSize(), offset);
+          pair.left.putAll(pair.right);
+          res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
+                  ansString[3], ansString[4], ansString[5], pair.left));
+        } catch (IOException e) {
+          logger.error(String.format("Something went wrong while deserialize tag info of %s", ansString[0]), e);
+          throw new MetadataException(e);
+        }
+      }
+      return res;
+    }  finally {
       lock.readLock().unlock();
+    }
+  }
+
+  public static class ShowTimeSeriesResult {
+    public String name;
+    public String alias;
+    public String sgName;
+    public String dataType;
+    public String encoding;
+    public String compressor;
+    public Map<String, String> tagAndAttribute;
+
+    public ShowTimeSeriesResult(String name, String alias, String sgName, String dataType,
+                                String encoding, String compressor, Map<String, String> tagAndAttribute) {
+      this.name = name;
+      this.alias = alias;
+      this.sgName = sgName;
+      this.dataType = dataType;
+      this.encoding = encoding;
+      this.compressor = compressor;
+      this.tagAndAttribute = tagAndAttribute;
     }
   }
 

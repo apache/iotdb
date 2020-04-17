@@ -65,7 +65,7 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | SHOW TIMESERIES prefixPath? #showTimeseries
+    | SHOW TIMESERIES prefixPath? showWhereClause? #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
@@ -123,6 +123,7 @@ alias
 attributeClauses
     : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
     (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*
     tagClause
     attributeClause
     ;
@@ -141,6 +142,13 @@ setClause
 
 whereClause
     : WHERE orExpression
+    ;
+
+showWhereClause
+    : WHERE (property | containsExpression)
+    ;
+containsExpression
+    : name=ID OPERATOR_CONTAINS value=propertyValue
     ;
 
 orExpression
@@ -823,6 +831,10 @@ OPERATOR_OR
 
 OPERATOR_NOT
     : N O T | '!'
+    ;
+
+OPERATOR_CONTAINS
+    : C O N T A I N S
     ;
 
 MINUS : '-';

@@ -36,7 +36,7 @@ public class LeafMNode extends MNode {
    */
   private MeasurementSchema schema;
   private String alias;
-  private long offset;
+  private long offset = -1;
 
   private TimeValuePair cachedLastValuePair = null;
 

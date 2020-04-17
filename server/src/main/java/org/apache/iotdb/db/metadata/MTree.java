@@ -95,6 +95,9 @@ public class MTree implements Serializable {
     if (cur.hasChild(leafName)) {
       throw new PathAlreadyExistException(path);
     }
+    if (alias != null && cur.hasChild(alias)) {
+      throw new AliasAlreadyExistException(path, alias);
+    }
     LeafMNode leaf = new LeafMNode(cur, leafName, alias, dataType, encoding, compressor, props);
     cur.addChild(leafName, leaf);
     // link alias to LeafMNode
@@ -474,7 +477,7 @@ public class MTree implements Serializable {
   /**
    * Get all time series schema under the given path
    *
-   * MeasurementSchema: [name, storage group, dataType, encoding, compression]
+   * MeasurementSchema: [name, alias, storage group, dataType, encoding, compression, offset]
    */
   List<String[]> getAllMeasurementSchema(String prefixPath) throws MetadataException {
     List<String[]> res = new ArrayList<>();
@@ -502,13 +505,15 @@ public class MTree implements Serializable {
           nodeName = node.getName();
         }
         String nodePath = parent + nodeName;
-        String[] tsRow = new String[5];
+        String[] tsRow = new String[7];
         tsRow[0] = nodePath;
+        tsRow[1] = ((LeafMNode) node).getAlias();
         MeasurementSchema measurementSchema = ((LeafMNode) node).getSchema();
-        tsRow[1] = getStorageGroupName(nodePath);
-        tsRow[2] = measurementSchema.getType().toString();
-        tsRow[3] = measurementSchema.getEncodingType().toString();
-        tsRow[4] = measurementSchema.getCompressor().toString();
+        tsRow[2] = getStorageGroupName(nodePath);
+        tsRow[3] = measurementSchema.getType().toString();
+        tsRow[4] = measurementSchema.getEncodingType().toString();
+        tsRow[5] = measurementSchema.getCompressor().toString();
+        tsRow[6] = String.valueOf(((LeafMNode) node).getOffset());
         timeseriesSchemaList.add(tsRow);
       }
       return;

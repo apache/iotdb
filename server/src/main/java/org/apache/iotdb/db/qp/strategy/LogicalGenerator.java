@@ -845,13 +845,22 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator.setDataType(TSDataType.valueOf(dataType));
     createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encoding));
     CompressionType compressor;
+    List<PropertyContext> properties = ctx.property();
+    Map<String, String> props = new HashMap<>(properties.size());
     if (ctx.propertyValue() != null) {
       compressor = CompressionType.valueOf(ctx.propertyValue().getText().toUpperCase());
     } else {
       compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
     checkMetadataArgs(dataType, encoding, compressor.toString().toUpperCase());
+    if (ctx.property(0) != null) {
+      for (PropertyContext property : properties) {
+        props.put(property.ID().getText().toLowerCase(),
+                property.propertyValue().getText().toLowerCase());
+      }
+    }
     createTimeSeriesOperator.setCompressor(compressor);
+    createTimeSeriesOperator.setProps(props);
     initializedOperator = createTimeSeriesOperator;
   }
 
@@ -1057,6 +1066,29 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
   }
 
+  @Override
+  public void enterShowWhereClause(SqlBaseParser.ShowWhereClauseContext ctx) {
+    super.enterShowWhereClause(ctx);
+
+    ShowTimeSeriesOperator operator = (ShowTimeSeriesOperator) initializedOperator;
+    PropertyValueContext propertyValueContext;
+    if (ctx.containsExpression() != null) {
+      operator.setContains(true);
+      propertyValueContext = ctx.containsExpression().propertyValue();
+      operator.setKey(ctx.containsExpression().ID().getText());
+    } else {
+      operator.setContains(false);
+      propertyValueContext = ctx.property().propertyValue();
+      operator.setKey(ctx.property().ID().getText());
+    }
+    String value;
+    if(propertyValueContext.STRING_LITERAL() != null) {
+      value = removeStringQuote(propertyValueContext.getText());
+    } else {
+      value = propertyValueContext.getText();
+    }
+    operator.setValue(value);
+  }
 
   private FilterOperator parseOrExpression(OrExpressionContext ctx) {
     if (ctx.andExpression().size() == 1) {

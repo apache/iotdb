@@ -22,13 +22,31 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ShowTimeSeriesPlan extends ShowPlan{
   private Path path;
+  private boolean isContains;
+  private String key;
+  private String value;
 
-  public ShowTimeSeriesPlan(ShowContentType showContentType, Path path) {
+  public ShowTimeSeriesPlan(ShowContentType showContentType, Path path, boolean isContains, String key, String value) {
     super(showContentType);
     this.path = path;
+    this.isContains = isContains;
+    this.key = key;
+    this.value = value;
   }
 
   public Path getPath() {
     return this.path;
+  }
+
+  public boolean isContains() {
+    return isContains;
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public String getValue() {
+    return value;
   }
 }

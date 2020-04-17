@@ -64,7 +64,7 @@ public class MLogWriter {
     writer.write(",");
     if (plan.getProps() != null) {
       boolean first = true;
-      for (Map.Entry entry : plan.getProps().entrySet()) {
+      for (Map.Entry<String, String> entry : plan.getProps().entrySet()) {
         if (first) {
           writer.write(String.format("%s=%s", entry.getKey(), entry.getValue()));
           first = false;
