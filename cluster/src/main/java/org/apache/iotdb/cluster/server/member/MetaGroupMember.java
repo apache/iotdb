@@ -1007,6 +1007,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
+
+
   public PartitionTable getPartitionTable() {
     return partitionTable;
   }

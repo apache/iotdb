@@ -106,7 +106,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
-    for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
+
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       Node header = group.getHeader();
       if (header.equals(metaGroupMember.getThisNode())) {
         continue;
@@ -155,7 +156,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
-    for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       Node header = group.getHeader();
       if (header.equals(metaGroupMember.getThisNode())) {
         continue;
@@ -225,7 +226,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
-    for (PartitionGroup group : metaGroupMember.getPartitionTable().getLocalGroups()) {
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       Node header = group.getHeader();
       if (header.equals(metaGroupMember.getThisNode())) {
         continue;

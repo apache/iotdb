@@ -44,8 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * SlotPartitionTable manages the slots (data partition) of each node using a look-up table.
- * Slot: 1,2,3...
+ * SlotPartitionTable manages the slots (data partition) of each node using a look-up table. Slot:
+ * 1,2,3...
  */
 public class SlotPartitionTable implements PartitionTable {
 
@@ -76,6 +76,7 @@ public class SlotPartitionTable implements PartitionTable {
 
   /**
    * only used for deserialize.
+   *
    * @param thisNode
    */
   public SlotPartitionTable(Node thisNode) {
@@ -104,17 +105,17 @@ public class SlotPartitionTable implements PartitionTable {
     // evenly assign the slots to each node
     int nodeNum = nodeRing.size();
     int slotsPerNode = totalSlotNumbers / nodeNum;
-      for (Node node : nodeRing) {
-        nodeSlotMap.put(node, new ArrayList<>());
-      }
+    for (Node node : nodeRing) {
+      nodeSlotMap.put(node, new ArrayList<>());
+    }
 
-      for (int i = 0; i < totalSlotNumbers; i++) {
-        int nodeIdx = i / slotsPerNode;
-        if (nodeIdx >= nodeNum) {
-          // the last node may receive a little more if total slots cannot de divided by node number
-          nodeIdx--;
-        }
-        nodeSlotMap.get(nodeRing.get(nodeIdx)).add(i);
+    for (int i = 0; i < totalSlotNumbers; i++) {
+      int nodeIdx = i / slotsPerNode;
+      if (nodeIdx >= nodeNum) {
+        // the last node may receive a little more if total slots cannot de divided by node number
+        nodeIdx--;
+      }
+      nodeSlotMap.get(nodeRing.get(nodeIdx)).add(i);
     }
 
     // build the index to find a node by slot
@@ -174,9 +175,11 @@ public class SlotPartitionTable implements PartitionTable {
       return getHeaderGroup(node);
     }
   }
+
   @Override
-  public int getPartitionKey(String storageGroupName, long timestamp){
-    return PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
+  public int getPartitionKey(String storageGroupName, long timestamp) {
+    return PartitionUtils
+        .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
   }
 
   @Override
@@ -193,7 +196,8 @@ public class SlotPartitionTable implements PartitionTable {
   @Override
   public Node routeToHeaderByTime(String storageGroupName, long timestamp) {
     synchronized (nodeRing) {
-      int slot = PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
+      int slot = PartitionUtils
+          .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
       Node node = slotNodeMap.get(slot);
       logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
           slot, node);
@@ -224,7 +228,7 @@ public class SlotPartitionTable implements PartitionTable {
       nodeRing.sort(Comparator.comparingInt(Node::getNodeIdentifier));
 
       List<PartitionGroup> retiredGroups = new ArrayList<>();
-      for(int i = 0; i < localGroups.size(); i++) {
+      for (int i = 0; i < localGroups.size(); i++) {
         PartitionGroup oldGroup = localGroups.get(i);
         Node header = oldGroup.getHeader();
         PartitionGroup newGrp = getHeaderGroup(header);
@@ -431,7 +435,7 @@ public class SlotPartitionTable implements PartitionTable {
       // if the node belongs to a group that headed by target, this group should be removed
       // and other groups containing target should be updated
       int removedGroupIdx = -1;
-      for(int i = 0; i < localGroups.size(); i++) {
+      for (int i = 0; i < localGroups.size(); i++) {
         PartitionGroup oldGroup = localGroups.get(i);
         Node header = oldGroup.getHeader();
         if (header.equals(target)) {
@@ -474,5 +478,14 @@ public class SlotPartitionTable implements PartitionTable {
       newHolderSlotMap.computeIfAbsent(newHolder, n -> new ArrayList<>()).add(slot);
     }
     return newHolderSlotMap;
+  }
+
+  @Override
+  public List<PartitionGroup> getGlobalGroups() {
+    List<PartitionGroup> allGroups = new ArrayList<>();
+    for (Node n : getAllNodes()) {
+      allGroups.add(getHeaderGroup(n));
+    }
+    return allGroups;
   }
 }
