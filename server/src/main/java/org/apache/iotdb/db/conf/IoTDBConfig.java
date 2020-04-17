@@ -44,10 +44,10 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
   /**
-   * Port which the RESTful service listens to.
+   * Port which the HTTP service listens to.
    */
 
-  private int restPort = 8181;
+  private int HTTPPort = 8181;
 
   private boolean enableHTTPService = false;
 
@@ -656,12 +656,12 @@ public class IoTDBConfig {
     return dataDirs;
   }
 
-  public int getRestPort() {
-    return restPort;
+  public int getHTTPPort() {
+    return HTTPPort;
   }
 
-  public void setRestPort(int restPort) {
-    this.restPort = restPort;
+  public void setHTTPPort(int HTTPPort) {
+    this.HTTPPort = HTTPPort;
   }
 
   public boolean isEnableHTTPService() {

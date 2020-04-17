@@ -58,7 +58,7 @@ public class HTTPService implements HTTPServiceMBean, IService {
   @Override
   public int getHTTPPort() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.getRestPort();
+    return config.getHTTPPort();
   }
 
   @Override
@@ -99,14 +99,14 @@ public class HTTPService implements HTTPServiceMBean, IService {
       logger.info("{}: start {} successfully, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getRestPort());
+          IoTDBDescriptor.getInstance().getConfig().getHTTPPort());
       startLatch.await();
     } catch (NullPointerException | InterruptedException e) {
       //issue IOTDB-415, we need to stop the service.
       logger.error("{}: start {} failed, listening on ip {} port {}",
           IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(),
           IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-          IoTDBDescriptor.getInstance().getConfig().getRestPort());
+          IoTDBDescriptor.getInstance().getConfig().getHTTPPort());
       Thread.currentThread().interrupt();
       stopService();
     }

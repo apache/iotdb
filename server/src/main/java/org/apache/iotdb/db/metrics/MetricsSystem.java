@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.metrics;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.codahale.metrics.Gauge;
@@ -59,7 +58,7 @@ public class MetricsSystem {
   private List<SqlArgument> sqlArgumentsList = TSServiceImpl.getSqlArgumentsList();
 
   private SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss:SSS");
-  private ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getRestPort());
+  private ServerArgument serverArgument = new ServerArgument(IoTDBDescriptor.getInstance().getConfig().getHTTPPort());
 
   public JSONObject metricsJson() throws JsonProcessingException {
     String sourceName = "iot-metrics";

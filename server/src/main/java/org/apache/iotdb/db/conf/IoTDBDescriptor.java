@@ -151,11 +151,11 @@ public class IoTDBDescriptor {
             + " use default value");
       }
 
-      conf.setRestPort(Integer.parseInt(properties.getProperty("metrics_port",
-          Integer.toString(conf.getRestPort()))));
+      conf.setHTTPPort(Integer.parseInt(properties.getProperty("http_port",
+          Integer.toString(conf.getHTTPPort()))));
 
       conf.setEnableHTTPService(Boolean.parseBoolean(properties
-          .getProperty("enable_metric_service", Boolean.toString(conf.isEnableHTTPService()))));
+          .getProperty("enable_http_service", Boolean.toString(conf.isEnableHTTPService()))));
 
 
       conf.setQueryCacheSizeInMetric(Integer
