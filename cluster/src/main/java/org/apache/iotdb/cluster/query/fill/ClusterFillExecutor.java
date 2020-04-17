@@ -28,6 +28,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.FillQueryExecutor;
 import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.fill.LinearFill;
+import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 
@@ -49,6 +51,15 @@ public class ClusterFillExecutor extends FillQueryExecutor {
       Set<String> deviceMeasurements, QueryContext context)
       throws QueryProcessException, StorageEngineException {
     // TODO-Cluster complete
+    if (fill instanceof LinearFill) {
+      IFill clusterFill = new ClusterLinearFill((LinearFill) fill, metaGroupMember);
+      clusterFill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
+      return clusterFill;
+    } else if (fill instanceof PreviousFill) {
+      IFill clusterFill = new ClusterPreviousFill((PreviousFill) fill, metaGroupMember);
+      clusterFill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
+      return clusterFill;
+    }
     return null;
   }
 }

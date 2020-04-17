@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
@@ -140,7 +141,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     DataGroupMember member;
     synchronized (partitionTable) {
       PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
-      if (partitionGroup.contains(thisNode)) {
+      if (partitionGroup != null && partitionGroup.contains(thisNode)) {
         // the two nodes are in the same group, create a new data member
         member = dataMemberFactory.create(partitionGroup, thisNode);
         DataGroupMember prevMember = headerGroupMap.put(header, member);
@@ -150,7 +151,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         logger.info("Created a member for header {}", header);
         member.start();
       } else {
-        logger.info("This node {} does not belong to the group {}", thisNode, partitionGroup);
+        logger.info("This node {} does not belong to the group {}, header {}", thisNode,
+            partitionGroup, header);
         throw new NotInSameGroupException(partitionTable.getHeaderGroup(header),
             thisNode);
       }
@@ -234,11 +236,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void readFile(String filePath, long offset, int length, Node header,
+  public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler, "Read file:" + filePath);
+    DataGroupMember member = getDataMember(thisNode, resultHandler, "Read file:" + filePath);
     if (member != null) {
-      member.readFile(filePath, offset, length, header, resultHandler);
+      member.readFile(filePath, offset, length, resultHandler);
     }
   }
 
@@ -515,5 +517,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   public Map<Node, DataGroupMember> getHeaderGroupMap() {
     return headerGroupMap;
+  }
+
+  @Override
+  public void previousFill(PreviousFillRequest request,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
+    dataMember.previousFill(request, resultHandler);
   }
 }

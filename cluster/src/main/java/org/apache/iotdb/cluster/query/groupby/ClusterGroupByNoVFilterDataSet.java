@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -47,10 +48,10 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
     this.slidingStep = groupByPlan.getSlidingStep();
     this.startTime = groupByPlan.getStartTime();
     this.endTime = groupByPlan.getEndTime();
-
+    this.leftCRightO = groupByPlan.isLeftCRightO();
     // init group by time partition
-    this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
+    this.curStartTime = this.startTime - slidingStep;
     this.curEndTime = -1;
     this.metaGroupMember = metaGroupMember;
 

@@ -45,7 +45,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     PartitionTable partitionTable = TestUtils.getPartitionTable(3);
     LogApplier applier = new TestLogApplier();
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
-        partitionTable, TestUtils.getNode(0));
+        partitionTable, TestUtils.getNode(0), TestUtils.getNode(0));
 
     List<Log> logs = TestUtils.prepareTestLogs(10);
     for (Log log : logs) {

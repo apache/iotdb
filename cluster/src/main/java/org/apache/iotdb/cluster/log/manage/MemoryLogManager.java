@@ -44,6 +44,7 @@ public abstract class MemoryLogManager implements LogManager {
   protected long lastLogTerm = -1;
   protected LogApplier logApplier;
   long commitLogIndex = -1;
+  long commitLogTerm = -1;
   List<Log> logBuffer = new ArrayList<>();
   protected MemoryLogManager(LogApplier logApplier) {
     this.logApplier = logApplier;
@@ -80,6 +81,23 @@ public abstract class MemoryLogManager implements LogManager {
   @Override
   public long getCommitLogIndex() {
     return commitLogIndex;
+  }
+
+  @Override
+  public long getCommitLogTerm() {
+    return commitLogTerm;
+  }
+
+  @Override
+  public long getLogTerm(long logIndex) {
+    if (logBuffer.isEmpty()) {
+      return -1;
+    }
+    int logPos = (int) (logIndex - logBuffer.get(0).getCurrLogIndex());
+    if (0 <= logPos && logPos < logBuffer.size()) {
+      return logBuffer.get(logPos).getCurrLogTerm();
+    }
+    return -1;
   }
 
   public void setCommitLogIndex(long commitLogIndex) {
@@ -154,6 +172,7 @@ public abstract class MemoryLogManager implements LogManager {
           }
         }
         commitLogIndex = i;
+        commitLogTerm = log.getCurrLogTerm();
       }
     }
   }
@@ -192,6 +211,7 @@ public abstract class MemoryLogManager implements LogManager {
   @TestOnly
   public LogManagerMeta getMeta() {
     LogManagerMeta managerMeta = new LogManagerMeta();
+    managerMeta.setCommitLogTerm(commitLogTerm);
     managerMeta.setCommitLogIndex(commitLogIndex);
     managerMeta.setLastLogId(lastLogId);
     managerMeta.setLastLogTerm(lastLogTerm);
@@ -200,6 +220,7 @@ public abstract class MemoryLogManager implements LogManager {
 
   @TestOnly
   public void setMeta(LogManagerMeta meta) {
+    commitLogTerm = meta.getCommitLogTerm();
     commitLogIndex = meta.getCommitLogIndex();
     lastLogId = meta.getLastLogId();
     lastLogTerm = meta.getLastLogTerm();
@@ -208,5 +229,9 @@ public abstract class MemoryLogManager implements LogManager {
   @Override
   public void setCommitIndex(long commitIndex) {
     this.commitLogIndex = commitIndex;
+  }
+
+  public void setCommitLogTerm(long commitLogTerm) {
+    this.commitLogTerm = commitLogTerm;
   }
 }

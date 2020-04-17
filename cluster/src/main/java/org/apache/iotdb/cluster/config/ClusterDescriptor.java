@@ -175,6 +175,10 @@ public class ClusterDescriptor {
             String.valueOf(config.getConnectionTimeoutInMS()))));
 
     config
+        .setQueryTimeoutInSec(Integer.parseInt(properties.getProperty("QUERY_TIME_OUT_SEC",
+            String.valueOf(config.getQueryTimeoutInSec()))));
+
+    config
         .setMaxRemovedLogSize(Long.parseLong(properties.getProperty("MAX_REMOVED_LOG_SIZE",
             String.valueOf(config.getMaxRemovedLogSize()))));
 

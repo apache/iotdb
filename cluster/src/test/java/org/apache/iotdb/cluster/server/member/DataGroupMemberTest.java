@@ -320,13 +320,23 @@ public class DataGroupMemberTest extends MemberTest {
     }
     snapshot.setTimeseriesSchemas(schemaList);
 
-    // resource0, resource1 exists locally, resource0 is closed but resource1 is not
-    // resource2 does not exist locally and without modification,
-    // resource3 does not exist locally and with modification
-    snapshot.addFile(prepareResource(0, false), TestUtils.getNode(0));
+    // resource1, resource1 exists locally, resource2 is closed but resource1 is not
+    // resource3 does not exist locally and without modification,
+    // resource4 does not exist locally and with modification
     snapshot.addFile(prepareResource(1, false), TestUtils.getNode(0));
     snapshot.addFile(prepareResource(2, false), TestUtils.getNode(0));
-    snapshot.addFile(prepareResource(3, true), TestUtils.getNode(0));
+    snapshot.addFile(prepareResource(3, false), TestUtils.getNode(0));
+    snapshot.addFile(prepareResource(4, true), TestUtils.getNode(0));
+    // resource4 is the merge result of 3,4,5
+    TsFileResource tsFileResource = prepareResource(5, true);
+    tsFileResource.updateStartTime(TestUtils.getTestSg(0), 300);
+    tsFileResource.updateEndTime(TestUtils.getTestSg(0), 599);
+    Set<Long> versionSet = new HashSet<>();
+    versionSet.add(3L);
+    versionSet.add(4L);
+    versionSet.add(5L);
+    tsFileResource.setHistoricalVersions(versionSet);
+    snapshot.addFile(tsFileResource, TestUtils.getNode(0));
 
     // create a local resource1
     StorageGroupProcessor processor = StorageEngine.getInstance()
@@ -341,14 +351,14 @@ public class DataGroupMemberTest extends MemberTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     // create a local resource2
-    insertPlan.setTime(1);
+    insertPlan.setTime(101);
     processor.insert(insertPlan);
 
     dataGroupMember.applySnapshot(snapshot, 0);
-    assertEquals(3, processor.getSequenceFileTreeSet().size());
+    assertEquals(2, processor.getSequenceFileTreeSet().size());
     assertEquals(1, processor.getUnSequenceFileList().size());
     Deletion deletion = new Deletion(new Path(TestUtils.getTestSg(0)), 0, 0);
-    assertTrue(processor.getSequenceFileTreeSet().get(2).getModFile().getModifications()
+    assertTrue(processor.getUnSequenceFileList().get(0).getModFile().getModifications()
         .contains(deletion));
   }
 
@@ -766,16 +776,16 @@ public class DataGroupMemberTest extends MemberTest {
     assertEquals("The requested reader 0 is not found", exception.getMessage());
   }
 
-  private TsFileResource prepareResource(int serialNum, boolean withModification)
+  private TsFileResource prepareResource(long serialNum, boolean withModification)
       throws IOException {
     TsFileResource resource = new RemoteTsFileResource();
     File file = new File("target" + File.separator + TestUtils.getTestSg(0) + File.separator + "0",
-        "0-" + (serialNum + 1L) + "-0.tsfile");
+        "0-" + serialNum + "-0.tsfile");
     file.getParentFile().mkdirs();
     file.createNewFile();
 
     resource.setFile(file);
-    resource.setHistoricalVersions(Collections.singleton(serialNum + 1L));
+    resource.setHistoricalVersions(Collections.singleton(serialNum));
     resource.updateStartTime(TestUtils.getTestSg(0), serialNum * 100);
     resource.updateEndTime(TestUtils.getTestSg(0), (serialNum + 1) * 100 - 1);
     if (withModification) {

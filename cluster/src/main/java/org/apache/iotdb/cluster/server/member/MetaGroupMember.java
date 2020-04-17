@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.member;
 
 import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+import static org.apache.iotdb.cluster.server.RaftServer.queryTimeOutInSec;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
@@ -36,6 +37,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -46,6 +48,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -61,6 +66,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.exception.QueryTimeOutException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
@@ -91,6 +97,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
@@ -109,6 +116,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PreviousFillHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
@@ -116,6 +124,9 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
@@ -140,6 +151,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -1050,6 +1062,29 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           logger.error("{}: Cannot add storage group {} in snapshot", name, storageGroup);
         }
       }
+
+      for (Map.Entry<String, Long> entry: snapshot.getStorageGroupTTL().entrySet()){
+        try {
+          MManager.getInstance().setTTL(entry.getKey(), entry.getValue());
+          StorageEngine.getInstance().setTTL(entry.getKey(), entry.getValue());
+        } catch (MetadataException | StorageEngineException | IOException e) {
+          logger.error("{}: Cannot set ttl in storage group {} , error is: {}", name, entry.getKey(), e);
+        }
+      }
+
+      try {
+        LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+        for (Map.Entry<String, Boolean> entry: snapshot.getUserWaterMarkStatus().entrySet()) {
+          try {
+            authorizer.setUserUseWaterMark(entry.getKey(), entry.getValue());
+          } catch (AuthException e){
+            logger.error("{}: Cannot set user {}, error is: {}", name, entry.getKey(), e);
+          }
+        }
+      } catch (AuthException e) {
+        logger.error("{}: Cannot get authorizer instance, error is: {}", name, e);
+      }
+
       // apply other logs like node removal and addition
       for (Log log : snapshot.getSnapshot()) {
         try {
@@ -1278,12 +1313,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     List<MeasurementSchema> schemas = new ArrayList<>();
     // pull timeseries schema from every group involved
+    logger.debug("{}: pulling schemas of {} from {} groups", name, prefixPaths,
+        partitionGroupPathMap.size());
     for (Entry<PartitionGroup, List<String>> partitionGroupListEntry : partitionGroupPathMap
         .entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<String> paths = partitionGroupListEntry.getValue();
       pullTimeSeriesSchemas(partitionGroup, paths, schemas);
     }
+    logger.debug("{}: pulled {} schemas for {}", name, schemas, prefixPaths);
     return schemas;
   }
 
@@ -2338,7 +2376,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private MetaMemberReport genMemberReport() {
     return new MetaMemberReport(character, leader, term.get(),
-        logManager.getLastLogTerm(), logManager.getLastLogIndex(), readOnly,
+        logManager.getLastLogTerm(), logManager.getLastLogIndex(), logManager.getCommitLogIndex()
+        , readOnly,
         lastHeartbeatReceivedTime);
   }
 
@@ -2543,4 +2582,94 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
 
+  public TimeValuePair performPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
+      Set<String> deviceMeasurements, QueryContext context, Filter timeFilter)
+      throws StorageEngineException {
+    // make sure the partition table is new
+    syncLeader();
+    // find the groups that should be queried using the timeFilter
+    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Sending data query of {} to {} groups", name, path,
+          partitionGroups.size());
+    }
+    CountDownLatch latch = new CountDownLatch(partitionGroups.size());
+    PreviousFillHandler handler = new PreviousFillHandler(latch);
+
+    ExecutorService fillService = Executors.newFixedThreadPool(partitionGroups.size());
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      fillService.submit(() -> {
+        performPreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
+            partitionGroup, handler);
+      });
+    }
+    fillService.shutdown();
+    try {
+      fillService.awaitTermination(queryTimeOutInSec, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      logger.error("Unexpected interruption when waiting for fill pool to stop", e);
+    }
+    return handler.getResult();
+  }
+
+  public void performPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
+      Set<String> deviceMeasurements, QueryContext context, PartitionGroup group,
+      PreviousFillHandler fillHandler) {
+      if (group.contains(thisNode)) {
+        localPreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
+            group, fillHandler);
+      } else {
+        remotePreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
+            group, fillHandler);
+      }
+  }
+
+  public void localPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
+      Set<String> deviceMeasurements, QueryContext context, PartitionGroup group,
+      PreviousFillHandler fillHandler) {
+    DataGroupMember localDataMember = getLocalDataMember(group.getHeader());
+    try {
+      fillHandler.onComplete(localDataMember.localPreviousFill(path, dataType, queryTime, beforeRange,
+          deviceMeasurements, context));
+    } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
+      fillHandler.onError(e);
+    }
+  }
+
+  public void remotePreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
+      Set<String> deviceMeasurements, QueryContext context, PartitionGroup group,
+      PreviousFillHandler fillHandler) {
+    PreviousFillRequest request = new PreviousFillRequest(path.getFullPath(), queryTime,
+        beforeRange, context.getQueryId(), thisNode, group.getHeader(), dataType.ordinal(), deviceMeasurements);
+    AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
+
+    for (Node node : group) {
+      GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(node, resultRef);
+      DataClient dataClient;
+      try {
+        dataClient = getDataClient(node);
+      } catch (IOException e) {
+        logger.warn("{}: Cannot connect to {} during previous fill", name, node);
+        continue;
+      }
+
+      synchronized (resultRef) {
+        try {
+          dataClient.previousFill(request, nodeHandler);
+          resultRef.wait(queryTimeOutInSec * 1000L);
+        } catch (Exception e) {
+          logger.error("{}: Cannot perform previous fill of {} to {}", name, path, node, e);
+        }
+      }
+
+      ByteBuffer byteBuffer = resultRef.get();
+      if (byteBuffer != null) {
+        fillHandler.onComplete(byteBuffer);
+        return;
+      }
+    }
+
+    fillHandler.onError(new QueryTimeOutException(String.format("PreviousFill %s@%d range: %d",
+        path.getFullPath(), queryTime, beforeRange)));
+  }
 }

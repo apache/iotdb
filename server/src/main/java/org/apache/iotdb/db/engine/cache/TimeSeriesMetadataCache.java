@@ -66,7 +66,7 @@ public class TimeSeriesMetadataCache {
           long currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
           averageSize = ((averageSize * count) + currentSize) / (++count);
           return currentSize;
-        } else if (count < 10000) {
+        } else if (count < 100000) {
           count++;
           return averageSize;
         } else {

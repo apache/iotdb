@@ -55,14 +55,16 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   long snapshotLastLogTerm;
   PartitionTable partitionTable;
   Node header;
+  Node thisNode;
 
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
-      Node header, SnapshotFactory<T> factory) {
+      Node header, Node thisNode, SnapshotFactory<T> factory) {
     super(logApplier);
     this.partitionTable = partitionTable;
     this.header = header;
     this.factory = factory;
+    this.thisNode = thisNode;
   }
 
   @Override

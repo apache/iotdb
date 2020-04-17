@@ -2088,9 +2088,12 @@ public class StorageGroupProcessor {
         return false;
       }
     }
-
-    return partitionDirectFileVersions.getOrDefault(partitionNum, Collections.emptySet())
-        .containsAll(tsFileResource.getHistoricalVersions());
+    Set<Long> partitionFileVersions = partitionDirectFileVersions
+        .getOrDefault(partitionNum, Collections.emptySet());
+    // TODO-Cluter: change to debug
+    logger.info("FileVersions/PartitionVersions: {}/{}", tsFileResource.getHistoricalVersions(),
+        partitionFileVersions);
+    return partitionFileVersions.containsAll(tsFileResource.getHistoricalVersions());
   }
 
   @FunctionalInterface

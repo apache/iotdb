@@ -28,16 +28,18 @@ typedef i64 long
 struct HeartBeatRequest {
   1: required long term // leader's meta log
   2: required long commitLogIndex  // leader's meta log
-  3: required Node leader
+  3: required long commitLogTerm
+  4: required Node leader
   // if the leader does not know the follower's id, and require it reports to the leader, then true
-  4: required bool requireIdentifier
-  5: required bool regenerateIdentifier //if the leader finds the follower's id is conflicted, then true
+  5: required bool requireIdentifier
+  6: required bool regenerateIdentifier //if the leader finds the follower's id is conflicted,
+  // then true
   // serialized partitionTable
-  6: optional binary partitionTableBytes
+  7: optional binary partitionTableBytes
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  7: optional Node header
+  8: optional Node header
 }
 
 // follower -> leader
@@ -163,6 +165,17 @@ struct SingleSeriesQueryRequest {
   8: required set<string> deviceMeasurements
 }
 
+struct PreviousFillRequest {
+  1: required string path
+  2: required long queryTime
+  3: required long beforeRange
+  4: required long queryId
+  5: required Node requester
+  6: required Node header
+  7: required int dataTypeOrdinal
+  8: required set<string> deviceMeasurements
+}
+
 // the spec and load of a node, for query coordinating
 struct TNodeStatus {
 
@@ -247,7 +260,7 @@ service RaftService {
   **/
   long requestCommitIndex(1:Node header)
 
-  binary readFile(1:string filePath, 2:i64 offset, 3:i32 length, 4:Node header)
+  binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
 }
 
 
@@ -326,6 +339,11 @@ service TSDataService extends RaftService {
   * Pull all timeseries schemas prefixed by a given path.
   **/
   PullSchemaResp pullTimeSeriesSchema(1: PullSchemaRequest request)
+
+  /**
+  * Perform a previous fill and return the timevalue pair in binary.
+  **/
+  binary previousFill(1: PreviousFillRequest request)
 }
 
 service TSMetaService extends RaftService {

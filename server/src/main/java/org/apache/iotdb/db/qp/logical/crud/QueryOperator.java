@@ -36,6 +36,8 @@ public class QueryOperator extends SFWOperator {
   // sliding step
   private long slidingStep;
   private boolean isGroupByTime = false;
+  // if it is left close and right open interval
+  private boolean leftCRightO;
 
   private Map<TSDataType, IFill> fillTypes;
   private boolean isFill = false;
@@ -75,6 +77,14 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupBy(boolean isGroupBy) {
     this.isGroupByTime = isGroupBy;
+  }
+
+  public boolean isLeftCRightO() {
+    return leftCRightO;
+  }
+
+  public void setLeftCRightO(boolean leftCRightO) {
+    this.leftCRightO = leftCRightO;
   }
 
   public int getRowLimit() {

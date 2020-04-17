@@ -25,12 +25,14 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LogManagerMeta {
 
+  private long commitLogTerm = -1;
   private long commitLogIndex = -1;
   private long lastLogId = -1;
   private long lastLogTerm = -1;
 
   public static LogManagerMeta deserialize(ByteBuffer buffer) {
     LogManagerMeta res = new LogManagerMeta();
+    res.commitLogTerm = ReadWriteIOUtils.readLong(buffer);
     res.commitLogIndex = ReadWriteIOUtils.readLong(buffer);
     res.lastLogId = ReadWriteIOUtils.readLong(buffer);
     res.lastLogTerm = ReadWriteIOUtils.readLong(buffer);
@@ -47,7 +49,8 @@ public class LogManagerMeta {
   }
 
   public ByteBuffer serialize() {
-    ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 3);
+    ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 4);
+    byteBuffer.putLong(commitLogTerm);
     byteBuffer.putLong(commitLogIndex);
     byteBuffer.putLong(lastLogId);
     byteBuffer.putLong(lastLogTerm);
@@ -59,6 +62,7 @@ public class LogManagerMeta {
   @Override
   public String toString() {
     return "LogManagerMeta{" +
+        "commitLogTerm=" + commitLogTerm +
         "commitLogIndex=" + commitLogIndex +
         ", lastLogId=" + lastLogId +
         ", lastLogTerm=" + lastLogTerm +
@@ -81,6 +85,14 @@ public class LogManagerMeta {
     this.lastLogTerm = lastLogTerm;
   }
 
+  public long getCommitLogTerm() {
+    return commitLogTerm;
+  }
+
+  public void setCommitLogTerm(long commitLogTerm) {
+    this.commitLogTerm = commitLogTerm;
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) {
@@ -97,6 +109,7 @@ public class LogManagerMeta {
         .append(commitLogIndex, that.commitLogIndex)
         .append(lastLogId, that.lastLogId)
         .append(lastLogTerm, that.lastLogTerm)
+        .append(commitLogTerm, that.commitLogTerm)
         .isEquals();
   }
 
@@ -106,6 +119,7 @@ public class LogManagerMeta {
         .append(commitLogIndex)
         .append(lastLogId)
         .append(lastLogTerm)
+        .append(commitLogTerm)
         .toHashCode();
   }
 }
