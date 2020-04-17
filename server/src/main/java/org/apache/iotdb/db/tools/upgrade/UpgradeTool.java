@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
@@ -102,9 +103,10 @@ public class UpgradeTool {
    * @param tsfileList new version tsFiles' absolute paths
    * @throws WriteProcessException 
    */
-  public static void upgradeOneTsfile(String tsFileName, List<String> tsFileList) throws IOException, WriteProcessException {
+  public static void upgradeOneTsfile(String tsFileName, List<String> tsFileList, 
+      List<TsFileResource> upgradedResources) throws IOException, WriteProcessException {
     TsfileUpgradeToolV0_9_0 updater = new TsfileUpgradeToolV0_9_0(tsFileName);
-    updater.upgradeFile(tsFileList);
+    updater.upgradeFile(tsFileList, upgradedResources);
   }
 
 }

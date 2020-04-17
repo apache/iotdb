@@ -22,7 +22,6 @@ import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.tools.upgrade.UpgradeTool;
-import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,10 +48,11 @@ public class UpgradeTask extends WrappedRunnable {
       upgradeResource.getWriteQueryLock().readLock().lock();
       String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
       List<String> upgradedFiles = new ArrayList<>();
+      List<TsFileResource> upgradedResources = new ArrayList<>();
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
       try {
-        UpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedFiles);
+        UpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedFiles, upgradedResources);
         UpgradeLog.writeUpgradeLogFile(
             oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
       } catch (IOException e) {
@@ -67,16 +67,19 @@ public class UpgradeTask extends WrappedRunnable {
         // delete old TsFile
         FSFactoryProducer.getFSFactory().getFile(oldTsfilePath).delete();
         // move upgraded TsFiles to their own partition directories
-        for (String upgradedFilePath : upgradedFiles) {
-          File upgradedFile = FSFactoryProducer.getFSFactory().getFile(upgradedFilePath);
-          String partition = upgradedFile.getParentFile().getName();
+        for (TsFileResource upgradedResource : upgradedResources) {
+          File upgradedFile = upgradedResource.getFile();
+          long partition = upgradedResource.getTimePartitionWithCheck();
           String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
-          File patitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition);
+          File patitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition + "");
           if (!patitionDir.exists()) {
             patitionDir.mkdir();
           }
           FSFactoryProducer.getFSFactory().moveFile(upgradedFile,
               FSFactoryProducer.getFSFactory().getFile(patitionDir, upgradedFile.getName()));
+          upgradedResource.setFile(
+              FSFactoryProducer.getFSFactory().getFile(patitionDir, upgradedFile.getName()));
+          upgradedResource.serialize();
         }
         
         UpgradeLog.writeUpgradeLogFile(
