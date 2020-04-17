@@ -17,12 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log;
+package org.apache.iotdb.cluster.log.manage;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -134,8 +136,8 @@ public class UnCommittedEntryManager {
         if (len < 0) {
             // the logs are being truncated to before our current offset portion, which is committed entries
             // unconditional obedience to the leader's request. Maybe throw a exception here is better
-//            offset = after;
-//            entries = appendingEntries;
+            offset = after;
+            entries = appendingEntries;
             logger.error("The logs which first index is {} are going to truncate committed logs",
                 after);
         } else if (len == entries.size()) {

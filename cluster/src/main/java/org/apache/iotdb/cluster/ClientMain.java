@@ -21,12 +21,10 @@ package org.apache.iotdb.cluster;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -44,9 +42,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -153,7 +149,7 @@ public class ClientMain {
     System.out.println("Test metadata queries");
     testQuery(client, sessionId, META_QUERY);
 
-    client.closeSession(new TSCloseSessionReq(openResp.getSessionId()));
+    client.closeSession(new TSCloseSessionReq(sessionId));
 
     logger.info("Failed queries: {}", failedQueries);
   }
@@ -175,6 +171,7 @@ public class ClientMain {
     for (String dataQuery : queries) {
       executeQuery(client, sessionId, dataQuery, statementId);
     }
+
     TSCloseOperationReq tsCloseOperationReq = new TSCloseOperationReq(sessionId);
     tsCloseOperationReq.setStatementId(statementId);
     client.closeOperation(tsCloseOperationReq);

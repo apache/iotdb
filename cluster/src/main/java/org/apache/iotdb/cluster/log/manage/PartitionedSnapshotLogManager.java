@@ -25,11 +25,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.iotdb.cluster.log.CommittedEntryManager;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.RaftLogManager;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -54,7 +51,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
   Map<Integer, T> slotSnapshots = new HashMap<>();
   private SnapshotFactory factory;
   Map<Integer, Collection<MeasurementSchema>> slotTimeseries = new HashMap<>();
-  long snapshotLastLogId;
+  long snapshotLastLogIndex;
   long snapshotLastLogTerm;
   PartitionTable partitionTable;
   Node header;
@@ -63,7 +60,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode, SnapshotFactory<T> factory) {
-    super(new CommittedEntryManager(), new SyncLogDequeSerializer(header.nodeIdentifier),
+    super(new CommittedEntryManager(), new StableEntryManager(),
         logApplier);
     this.partitionTable = partitionTable;
     this.header = header;
@@ -79,7 +76,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       for (Entry<Integer, T> entry : slotSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }
-      partitionedSnapshot.setLastLogIndex(snapshotLastLogId);
+      partitionedSnapshot.setLastLogIndex(snapshotLastLogIndex);
       partitionedSnapshot.setLastLogTerm(snapshotLastLogTerm);
       return partitionedSnapshot;
     }

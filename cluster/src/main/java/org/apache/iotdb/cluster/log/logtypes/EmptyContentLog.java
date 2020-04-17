@@ -66,5 +66,4 @@ public class EmptyContentLog extends Log {
 		return "term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex() +
 				",prevTerm:" + getPreviousLogTerm() + ",prevIndex:" + getPreviousLogIndex();
 	}
-
 }

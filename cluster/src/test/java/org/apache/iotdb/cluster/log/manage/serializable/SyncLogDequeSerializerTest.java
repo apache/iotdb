@@ -15,15 +15,13 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *//*
-
+ */
 package org.apache.iotdb.cluster.log.manage.serializable;
 
 import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.List;
@@ -662,4 +660,3 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     return new Node("localhost", 30000 + i, i, 40000 + i);
   }
 }
-*/

@@ -27,7 +27,7 @@ import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.RaftLogManager;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
@@ -38,7 +38,6 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.junit.After;
 import org.junit.Before;
 
 public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
@@ -116,17 +115,10 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
   @Before
   public void setUp() {
     super.setUp();
-    dataLogManager = new TestLogManager(2);
+    dataLogManager = new TestLogManager();
     List<Log> logs = TestUtils.prepareTestLogs(14);
     dataLogManager.append(logs);
     dataLogManager.commitTo(13);
-  }
-
-  @Override
-  @After
-  public void tearDown() {
-    super.tearDown();
-    dataLogManager.tearDown();
   }
 
   @Override

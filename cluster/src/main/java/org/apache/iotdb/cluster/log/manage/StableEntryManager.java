@@ -17,10 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log;
+package org.apache.iotdb.cluster.log.manage;
 
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.cluster.log.HardState;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.Snapshot;
 
 public class StableEntryManager {
 

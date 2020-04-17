@@ -60,12 +60,8 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     //TODO remove useless logs which have been compacted
     synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
-      snapshotLastLogId = getCommitLogIndex();
-      try {
-        snapshotLastLogTerm = getTerm(snapshotLastLogId);
-      } catch (Exception e) {
-        logger.error("Unexpected error : {}", e.getMessage());
-      }
+      snapshotLastLogIndex = getCommitLogIndex();
+      snapshotLastLogTerm = getCommitLogTerm();
       collectTsFiles();
       logger.info("Snapshot is taken");
     }

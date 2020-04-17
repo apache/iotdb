@@ -23,12 +23,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
-import org.apache.iotdb.cluster.log.CommittedEntryManager;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.RaftLogManager;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.db.auth.AuthException;
@@ -49,7 +46,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   private Map<String, Boolean> userWaterMarkStatus;
 
   public MetaSingleSnapshotLogManager(LogApplier logApplier) {
-    super(new CommittedEntryManager(), new SyncLogDequeSerializer(0), logApplier);
+    super(new CommittedEntryManager(), new StableEntryManager(), logApplier);
   }
 
   public void takeSnapshot() {

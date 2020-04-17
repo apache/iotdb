@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.RaftLogManager;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -43,7 +43,6 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -122,7 +121,7 @@ public class HeartbeatThreadTest {
 
   @Before
   public void setUp() {
-    logManager = new TestLogManager(0);
+    logManager = new TestLogManager();
     member = getMember();
 
     HeartbeatThread heartBeatThread = getHeartbeatThread(member);
@@ -141,11 +140,6 @@ public class HeartbeatThreadTest {
     member.setAllNodes(partitionGroup);
     member.setThisNode(TestUtils.getNode(0));
     receivedNodes.clear();
-  }
-
-  @After
-  public void tearDown() {
-    logManager.tearDown();
   }
 
   @Test

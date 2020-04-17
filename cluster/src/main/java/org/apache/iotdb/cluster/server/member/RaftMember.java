@@ -46,7 +46,7 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.RaftLogManager;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.catchup.LogCatchUpTask;
 import org.apache.iotdb.cluster.log.catchup.SnapshotCatchUpTask;
@@ -214,7 +214,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // The term of the last log needs to be the same with leader's term in order to preserve
         // safety, otherwise it may come from an invalid leader and is not committed
         if (logManager.getCommitLogIndex() < request.getCommitLogIndex() &&
-            logManager.getLogTerm(request.getCommitLogIndex()) == request.getCommitLogTerm()) {
+            logManager.matchTerm(request.getCommitLogTerm(),request.getCommitLogIndex())){
           synchronized (syncLock) {
             logManager.commitTo(request.getCommitLogIndex());
             syncLock.notifyAll();

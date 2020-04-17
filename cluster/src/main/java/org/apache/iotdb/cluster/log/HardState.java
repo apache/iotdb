@@ -28,8 +28,8 @@ import java.nio.ByteBuffer;
 
 public class HardState {
 
-    public long currentTerm;
-    public long voteFor;
+    private long currentTerm;
+    private long voteFor;
 
     public HardState() {
     }

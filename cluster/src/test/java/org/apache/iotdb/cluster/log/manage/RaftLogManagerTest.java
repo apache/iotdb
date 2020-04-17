@@ -17,13 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log;
+package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -33,10 +32,10 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
-import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -53,15 +52,6 @@ public class RaftLogManagerTest {
 	@Before
 	public void setUp() {
 		appliedLogs = new HashSet<>();
-	}
-
-	@After
-	public void tearDown() {
-		File dir = new File(new SyncLogDequeSerializer(1).getLogDir());
-		for (File file : dir.listFiles()) {
-			file.delete();
-		}
-		dir.delete();
 	}
 
 	@Test
@@ -85,7 +75,7 @@ public class RaftLogManagerTest {
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		for (long i = 1; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
@@ -121,7 +111,7 @@ public class RaftLogManagerTest {
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		assertEquals(offset + 1, instance.getFirstIndex());
 		long newOffset = offset + 20;
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(newOffset, newOffset));
@@ -135,7 +125,7 @@ public class RaftLogManagerTest {
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		for (long i = 1; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
@@ -152,7 +142,7 @@ public class RaftLogManagerTest {
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(offset, offset));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		for (long i = 1; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
@@ -196,7 +186,7 @@ public class RaftLogManagerTest {
 			}});
 		}
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
@@ -256,7 +246,7 @@ public class RaftLogManagerTest {
 			}});
 		}
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
@@ -315,7 +305,7 @@ public class RaftLogManagerTest {
 			}});
 		}
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
@@ -418,7 +408,7 @@ public class RaftLogManagerTest {
 			CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
 			RaftLogManager instance = new RaftLogManager(committedEntryManager,
-					new SyncLogDequeSerializer(1), logApplier);
+					new StableEntryManager(), logApplier);
 			instance.append(previousEntries);
 			instance.setCommitLogIndex(commit);
 			assertEquals(test.testLastIndex,
@@ -433,7 +423,6 @@ public class RaftLogManagerTest {
 					fail("An unexpected exception was thrown.");
 				}
 			}
-			tearDown();
 		}
 	}
 
@@ -490,7 +479,7 @@ public class RaftLogManagerTest {
 			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
 			committedEntryManager.append(previousEntries);
 			RaftLogManager instance = new RaftLogManager(committedEntryManager,
-					new SyncLogDequeSerializer(1), logApplier);
+					new StableEntryManager(), logApplier);
 			instance.append(test.appendingEntries);
 			try {
 				List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);
@@ -529,7 +518,7 @@ public class RaftLogManagerTest {
 			}});
 		}
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{
@@ -568,7 +557,7 @@ public class RaftLogManagerTest {
 		CommittedEntryManager committedEntryManager = new CommittedEntryManager();
 		committedEntryManager.applyingSnapshot(new SimpleSnapshot(index, term));
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		instance.applyingSnapshot(new SimpleSnapshot(index, term));
 		assertEquals(instance.getLastLogIndex(), term);
 		List<Log> entries = new ArrayList<>();
@@ -625,7 +614,7 @@ public class RaftLogManagerTest {
 			}});
 		}
 		RaftLogManager instance = new RaftLogManager(committedEntryManager,
-				new SyncLogDequeSerializer(1), logApplier);
+				new StableEntryManager(), logApplier);
 		for (long i = num / 2; i < num; i++) {
 			long index = i;
 			instance.append(new ArrayList<Log>() {{

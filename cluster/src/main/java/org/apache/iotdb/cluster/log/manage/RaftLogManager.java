@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log;
+package org.apache.iotdb.cluster.log.manage;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +25,9 @@ import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -42,7 +45,7 @@ public class RaftLogManager {
     // manage committed entries in disk for safety
     public StableEntryManager stableEntryManager;
 
-    private long committed;
+    private long commitIndex;
     private LogApplier logApplier;
 
     public RaftLogManager(CommittedEntryManager committedEntryManager,
@@ -54,7 +57,7 @@ public class RaftLogManager {
         long last = committedEntryManager.getLastIndex();
         this.unCommittedEntryManager = new UnCommittedEntryManager(last + 1);
         // must have applied entry [compactIndex,last] to state machine
-        this.committed = last;
+        this.commitIndex = last;
     }
 
     // placeholder method
@@ -77,7 +80,7 @@ public class RaftLogManager {
      * @return commitIndex
      */
     public long getCommitLogIndex() {
-        return committed;
+        return commitIndex;
     }
 
     /**
@@ -86,7 +89,7 @@ public class RaftLogManager {
      * @param commitIndex request commitIndex
      */
     public void setCommitLogIndex(long commitIndex) {
-        this.committed = commitIndex;
+        this.commitIndex = commitIndex;
     }
 
     /**
@@ -154,6 +157,21 @@ public class RaftLogManager {
     }
 
     /**
+     * Return the commitIndex's term. If it goes wrong, there must be an unexpected exception.
+     *
+     * @return commitIndex's term
+     */
+    public long getCommitLogTerm() {
+        long term = -1;
+        try {
+            term = getTerm(getCommitLogIndex());
+        } catch (Exception e) {
+            logger.error("unexpected error when getting the last term : {}", e.getMessage());
+        }
+        return term;
+    }
+
+    /**
      * Used by follower node to support leader's complicated log replication rpc parameters and try to
      * commit entries.
      *
@@ -168,9 +186,9 @@ public class RaftLogManager {
         if (matchTerm(lastTerm, lastIndex)) {
             long newLastIndex = lastIndex + entries.size();
             long ci = findConflict(entries);
-            if (ci == 0 || ci <= committed) {
+            if (ci == 0 || ci <= commitIndex) {
                 logger
-                    .error("entry {} conflict with committed entry [committed({})]", ci, committed);
+                    .error("entry {} conflict with committed entry [commitIndex({})]", ci, commitIndex);
             } else {
                 long offset = lastIndex + 1;
                 append(entries.subList((int) (ci - offset), entries.size()));
@@ -193,8 +211,8 @@ public class RaftLogManager {
             return getLastLogIndex();
         }
         long after = entries.get(0).getCurrLogIndex();
-        if (after <= committed) {
-            logger.error("after({}) is out of range [committed({})]", after, committed);
+        if (after <= commitIndex) {
+            logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
         }
         unCommittedEntryManager.truncateAndAppend(entries);
         return getLastLogIndex();
@@ -208,7 +226,7 @@ public class RaftLogManager {
      * @return true or false
      */
     public boolean maybeCommit(long leaderCommit, long term) {
-        if (leaderCommit > committed && matchTerm(leaderCommit, term)) {
+        if (leaderCommit > commitIndex && matchTerm(leaderCommit, term)) {
             commitTo(leaderCommit);
             return true;
         }
@@ -241,8 +259,8 @@ public class RaftLogManager {
             unCommittedEntryManager.applyingSnapshot(snapshot);
             stableEntryManager.applyingSnapshot(snapshot);
         }
-        if (this.committed < snapshot.getLastLogIndex()) {
-            this.committed = snapshot.getLastLogIndex();
+        if (this.commitIndex < snapshot.getLastLogIndex()) {
+            this.commitIndex = snapshot.getLastLogIndex();
         }
     }
 
@@ -288,13 +306,13 @@ public class RaftLogManager {
     /**
      * Used by MaybeCommit or MaybeAppend or follower to commit newly committed entries.
      *
-     * @param commitIndex request commitIndex
+     * @param newCommitIndex request commitIndex
      * @return the newly commitIndex
      */
-    public long commitTo(long commitIndex) {
-        if (committed < commitIndex) {
+    public long commitTo(long newCommitIndex) {
+        if (commitIndex < newCommitIndex) {
             List<Log> entries = unCommittedEntryManager
-                .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), commitIndex + 1);
+                .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), newCommitIndex + 1);
             if (entries.size() != 0) {
                 stableEntryManager.append(entries);
                 applyEntries(entries);
@@ -302,10 +320,27 @@ public class RaftLogManager {
                 Log lastLog = entries.get(entries.size() - 1);
                 unCommittedEntryManager
                     .stableTo(lastLog.getCurrLogIndex(), lastLog.getCurrLogTerm());
-                committed = lastLog.getCurrLogIndex();
+                commitIndex = lastLog.getCurrLogIndex();
             }
         }
-        return committed;
+        return commitIndex;
+    }
+
+    /**
+     * Returns whether the index and term passed in match.
+     *
+     * @param term  request entry term
+     * @param index request entry index
+     * @return true or false
+     */
+    public boolean matchTerm(long term, long index) {
+        long t;
+        try {
+            t = getTerm(index);
+        } catch (Exception e) {
+            return false;
+        }
+        return t == term;
     }
 
     /**
@@ -348,23 +383,6 @@ public class RaftLogManager {
     }
 
     /**
-     * Returns whether the index and term passed in match.
-     *
-     * @param term  request entry term
-     * @param index request entry index
-     * @return true or false
-     */
-    protected boolean matchTerm(long term, long index) {
-        long t;
-        try {
-            t = getTerm(index);
-        } catch (Exception e) {
-            return false;
-        }
-        return t == term;
-    }
-
-    /**
      * findConflict finds the index of the conflict. It returns the first pair of conflicting entries
      * between the existing entries and the given entries, if there are any. If there is no
      * conflicting entries, and the existing entries contains all the given entries, zero will be
@@ -396,6 +414,6 @@ public class RaftLogManager {
         this.logApplier = applier;
         long last = committedEntryManager.getLastIndex();
         this.unCommittedEntryManager = new UnCommittedEntryManager(last + 1);
-        this.committed = -1;
+        this.commitIndex = -1;
     }
 }
