@@ -54,7 +54,7 @@ public class IoTDBConfig {
   /**
    * whether to enable the mqtt service.
    */
-  private boolean enableMQTTService = true;
+  private boolean enableMQTTService = false;
 
   /**
    * the mqtt service binding host.
