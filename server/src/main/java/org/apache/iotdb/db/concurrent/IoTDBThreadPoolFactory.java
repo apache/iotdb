@@ -23,7 +23,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
-import org.apache.thrift.server.CustomizedTThreadPoolServer;
 import org.apache.thrift.server.TThreadPoolServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,25 +116,6 @@ public class IoTDBThreadPoolFactory {
   public static ScheduledExecutorService newScheduledThreadPool(int corePoolSize, String poolName,
       Thread.UncaughtExceptionHandler handler) {
     return Executors.newScheduledThreadPool(corePoolSize, new IoTThreadFactory(poolName, handler));
-  }
-
-  /**
-   * function for creating thrift rpc client thread pool.
-   */
-  public static ExecutorService createThriftRpcClientThreadPool(CustomizedTThreadPoolServer.Args args, String poolName) {
-    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
-    return new ThreadPoolExecutor(args.minWorkerThreads, args.maxWorkerThreads, args.stopTimeoutVal,
-        args.stopTimeoutUnit, executorQueue, new IoTThreadFactory(poolName));
-  }
-
-  /**
-   * function for creating thrift rpc client thread pool.
-   */
-  public static ExecutorService createThriftRpcClientThreadPool(CustomizedTThreadPoolServer.Args args, String poolName,
-      Thread.UncaughtExceptionHandler handler) {
-    SynchronousQueue<Runnable> executorQueue = new SynchronousQueue<>();
-    return new ThreadPoolExecutor(args.minWorkerThreads, args.maxWorkerThreads, args.stopTimeoutVal,
-        args.stopTimeoutUnit, executorQueue, new IoTThreadFactory(poolName, handler));
   }
 
   /**
