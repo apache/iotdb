@@ -261,6 +261,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
             Thread.currentThread().interrupted();
           }
         }
+        if(response.get() == null){
+          logger.info("Failed to get any result from group: {}.", group);
+        }
       });
     }
     pool.shutdown();
