@@ -24,17 +24,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -55,6 +45,7 @@ import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -84,6 +75,7 @@ public class MManager {
   private String schemaDir;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
+  private LRUCache<String, MeasurementSchema> mRemoteSchemaCache;
 
   private Map<String, Integer> seriesNumberInStorageGroups;
   private long maxSeriesNumberAmongStorageGroup;
@@ -117,6 +109,19 @@ public class MManager {
         } finally {
           lock.readLock().unlock();
         }
+      }
+    };
+
+    int remoteCacheSize = config.getmRemoteSchemaCacheSize();
+    mRemoteSchemaCache = new LRUCache<String, MeasurementSchema>(remoteCacheSize) {
+      @Override
+      protected MeasurementSchema loadObjectByKey(String key) throws IOException {
+        throw new IOException();
+      }
+
+      @Override
+      public synchronized void removeItem(String key) {
+        cache.keySet().removeIf(s -> s.startsWith(key));
       }
     };
   }
@@ -366,6 +371,10 @@ public class MManager {
    */
   public Set<String> deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
+
+    // clear cached schema
+    mRemoteSchemaCache.removeItem(prefixPath);
+
     if (isStorageGroup(prefixPath)) {
 
       if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
@@ -478,6 +487,9 @@ public class MManager {
     try {
       BufferedWriter writer = getLogWriter();
       for (String storageGroup : storageGroups) {
+        // clear cached schema
+        mRemoteSchemaCache.removeItem(storageGroup);
+
         // try to delete storage group
         mtree.deleteStorageGroup(storageGroup);
 
@@ -540,6 +552,14 @@ public class MManager {
       if (path.equals(SQLConstant.RESERVED_TIME)) {
         return TSDataType.INT64;
       }
+
+      try {
+        MeasurementSchema schema = mRemoteSchemaCache.get(path);
+        return schema.getType();
+      } catch (IOException e) {
+        // ignore
+      }
+
       return mtree.getSchema(path).getType();
     } finally {
       lock.readLock().unlock();
@@ -934,6 +954,18 @@ public class MManager {
       return mtree.determineStorageGroup(path);
     } finally {
       lock.readLock().unlock();
+    }
+  }
+
+  public void cacheSchema(String path, MeasurementSchema schema) {
+    // check schema is in local
+    try {
+      List<String[]> schemas = mtree.getAllMeasurementSchema(path);
+      if (schemas.isEmpty()) {
+        mRemoteSchemaCache.put(path, schema);
+      }
+    } catch (MetadataException e) {
+      mRemoteSchemaCache.put(path, schema);
     }
   }
 }
