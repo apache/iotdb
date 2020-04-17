@@ -196,7 +196,3 @@ xxx
 find . -type f -exec grep -i "copyright" {} \; -print | sort -u
 find **/src -type f -exec grep -i "copyright" {} \; -print | sort -u
 ```
-
-
-
-<FooterFixed/>

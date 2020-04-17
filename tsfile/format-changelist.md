@@ -29,6 +29,7 @@ Last Updated on 2019-11-28 by Jialin Qiao.
 | 587  | [IOTDB-325] Refactor Statistics                              | qiaojialin      | Move start time, end time, count in PageHeader and ChunkMetadata into Statistics; Remove maxTombstoneTime in ChunkHeader |
 | 855  | [IOTDB-587] New TsFile version 2                             | HTHou           | Remove ChunkGroupMetadata, store ChunkMetadata list by series, Add TimeseriesMetadata for each series |
 | 1024 | [IOTDB-585] Fix recover version bug                          | qiaojialin      | Add MetaMarker.VERSION and version behind each flushing memtable (flushAllChunkGroups) |
+| 1047 | [IOTDB-593] Add metaOffset in TsFileMetadata                 | qiaojialin      | Add metaOffset in TsFileMetadata |
 
 # 0.8.0 (version-0) -> version-1
 
