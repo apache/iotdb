@@ -73,6 +73,8 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
   private int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   protected String file;
+  
+  // PartitionId -> TsFileIOWriter 
   private Map<Long, TsFileIOWriter> partitionWriterMap;
 
   /**
@@ -324,86 +326,29 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
 
   /**
    * upgrade file and return the boolean value whether upgrade task completes
-   * @throws WriteProcessException 
+   * @throws IOException, WriteProcessException 
    */
   public boolean upgradeFile(List<String> upgradedFileList) throws IOException, WriteProcessException {
     File oldTsFile = FSFactoryProducer.getFSFactory().getFile(this.file);
-    long fileSize;
-    if (!oldTsFile.exists()) {
-      logger.error("the file to be updated does not exist, file path: {}", oldTsFile.getPath());
-      return false;
-    } else {
-      fileSize = oldTsFile.length();
-    }
 
-    List<ChunkHeader> chunkHeaders = new ArrayList<>();
-
-    String magic = readHeadMagic(true);
-    if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
-      logger.error("the file's MAGIC STRING is incorrect, file path: {}", oldTsFile.getPath());
+    // check if the old TsFile has correct header 
+    if (!fileCheck(oldTsFile)) {
       return false;
-    }
-    
-    String versionNumber = readVersionNumber();
-    if (!versionNumber.equals(TSFileConfig.OLD_VERSION)) {
-      logger.error("the file's Version Number is incorrect, file path: {}", oldTsFile.getPath());
-      return false;
-    }
-
-    if (fileSize == TSFileConfig.MAGIC_STRING.length()) {
-      logger.error("the file only contains magic string, file path: {}", oldTsFile.getPath());
-      return false;
-    } else if (!readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
-      logger.error("the file cannot upgrade, file path: {}", oldTsFile.getPath());
-      return false;
-    }
-    OldTsFileMetadata fileMetadata = readFileMetadata();
-    List<OldTsDeviceMetadata> oldDeviceMetadataList = new ArrayList<>();
-    for (OldTsDeviceMetadataIndex index : fileMetadata.getDeviceMap().values()) {
-      OldTsDeviceMetadata oldDeviceMetadata = readTsDeviceMetaData(index);
-      oldDeviceMetadataList.add(oldDeviceMetadata);
     }
 
     // ChunkGroupOffset -> version
     Map<Long, Long> oldVersionInfo = new HashMap<>();
 
-    // ChunkGroupOffset -> time partition, ChunkGroupData those offsets in this map are in same partition
+    // ChunkGroupOffset -> time partition, chunk group those offsets in this map are in same partition
     Map<Long, Long> chunkGroupTimePartitionInfo = new HashMap<>();
 
-    // ChunkGroupOffset -> ChunkGroupMetaData, ChunkGroupData those offsets in this map are in same partition
+    // ChunkGroupOffset -> ChunkGroupMetaData, chunk group those offsets in this map are in same partition
     Map<Long, OldChunkGroupMetaData> groupMetadatas = new HashMap<>();
 
-    for (OldTsDeviceMetadata oldTsDeviceMetadata : oldDeviceMetadataList) {
-      for (OldChunkGroupMetaData oldChunkGroupMetadata : oldTsDeviceMetadata
-          .getChunkGroupMetaDataList()) {
-        long version = oldChunkGroupMetadata.getVersion();
-        long offsetOfChunkGroupMetaData = oldChunkGroupMetadata.getStartOffsetOfChunkGroup();
-        oldVersionInfo.put(offsetOfChunkGroupMetaData, version);
-
-        // check if data of a chunk group is in a same time partition 
-        long chunkGroupPartition = -1;
-        boolean chunkGroupInSamePartition = true;
-        for (OldChunkMetadata oldChunkMetadata : oldChunkGroupMetadata.getChunkMetaDataList()) {
-          if (chunkGroupPartition == -1) {
-            chunkGroupPartition = StorageEngine.getTimePartition(oldChunkMetadata.getStartTime());
-          }
-          long startPartition = StorageEngine.getTimePartition(oldChunkMetadata.getStartTime());
-          long endPartition = StorageEngine.getTimePartition(oldChunkMetadata.getEndTime());
-          if (chunkGroupPartition != startPartition || chunkGroupPartition != endPartition) {
-            chunkGroupInSamePartition = false;
-            break;
-          }
-        }
-        if (chunkGroupInSamePartition) {
-          chunkGroupTimePartitionInfo.put(offsetOfChunkGroupMetaData, chunkGroupPartition);
-          groupMetadatas.put(offsetOfChunkGroupMetaData, oldChunkGroupMetadata);
-        }
-      }
-    }
+    // scan metadata to get version Info and chunkGroupTimePartitionInfo
+    scanMetadata(oldVersionInfo, chunkGroupTimePartitionInfo, groupMetadatas);
     
-    
-    
-
+    // start to scan chunks and chunkGroups
     long startOffsetOfChunkGroup = 0;
     boolean newChunkGroup = true;
     long versionOfChunkGroup = 0;
@@ -424,18 +369,18 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
               chunkGroupInSamePartition = chunkGroupTimePartitionInfo
                   .containsKey(startOffsetOfChunkGroup);
             }
+            // if data of this chunk group are in same time partition,
+            // do a quick rewrite without splitting data to data points,
+            // and then jump to the next chunk group. 
             if (chunkGroupInSamePartition) {
-              System.out.println(this.position());
               OldChunkGroupMetaData oldChunkGroupMetadata = groupMetadatas.get(startOffsetOfChunkGroup);
               quickRewrite(oldTsFile, oldChunkGroupMetadata, 
                   versionOfChunkGroup, chunkGroupTimePartitionInfo.get(startOffsetOfChunkGroup));
               tsFileInput.position(oldChunkGroupMetadata.getEndOffsetOfChunkGroup());
-              System.out.println(this.position());
               newChunkGroup = true;
               break;
             }
             ChunkHeader header = this.readChunkHeader();
-            chunkHeaders.add(header);
             MeasurementSchema measurementSchema = new MeasurementSchema(header.getMeasurementID(),
                 header.getDataType(),
                 header.getEncodingType(), 
@@ -450,13 +395,13 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
             dataInChunkGroup.add(dataInChunk);
             break;
           case MetaMarker.CHUNK_GROUP_FOOTER:
+            // this is the footer of a ChunkGroup.
             ChunkGroupFooter chunkGroupFooter = this.readChunkGroupFooter();
             String deviceID = chunkGroupFooter.getDeviceID();
             rewrite(oldTsFile, deviceID, measurementSchemaList, 
               dataInChunkGroup, versionOfChunkGroup);
 
             dataInChunkGroup.clear();
-            chunkHeaders.clear();
             measurementSchemaList.clear();
             newChunkGroup = true;
             break;
@@ -484,8 +429,10 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     }
   }
 
-  /*
-   * 
+  /**
+   *  Rewrite the chunk group to new TsFile.
+   *  If data of this chunk group are in different time partitions,
+   *  create multiple new TsFiles and rewrite data in each partition.
    */
   private void rewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas, 
       List<List<ByteBuffer>> dataInChunkGroup, long versionOfChunkGroup) 
@@ -597,6 +544,80 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
     }
     tsFileIOWriter.endChunkGroup();
     tsFileIOWriter.writeVersion(versionOfChunkGroup);
+  }
+
+  /**
+   *  check if the file to be upgraded has correct magic strings and version number
+   *  @param oldTsFile
+   *  @throws IOException 
+   */
+  private boolean fileCheck(File oldTsFile) throws IOException {
+    long fileSize;
+    if (!oldTsFile.exists()) {
+      logger.error("the file to be updated does not exist, file path: {}", oldTsFile.getPath());
+      return false;
+    } else {
+      fileSize = oldTsFile.length();
+    }
+
+    String magic = readHeadMagic(true);
+    if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
+      logger.error("the file's MAGIC STRING is incorrect, file path: {}", oldTsFile.getPath());
+      return false;
+    }
+    
+    String versionNumber = readVersionNumber();
+    if (!versionNumber.equals(TSFileConfig.OLD_VERSION)) {
+      logger.error("the file's Version Number is incorrect, file path: {}", oldTsFile.getPath());
+      return false;
+    }
+
+    if (fileSize == TSFileConfig.MAGIC_STRING.length()) {
+      logger.error("the file only contains magic string, file path: {}", oldTsFile.getPath());
+      return false;
+    } else if (!readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
+      logger.error("the file cannot upgrade, file path: {}", oldTsFile.getPath());
+      return false;
+    }
+    return true;
+  }
+  
+  private void scanMetadata(Map<Long, Long> oldVersionInfo, Map<Long, Long> chunkGroupTimePartitionInfo, 
+      Map<Long, OldChunkGroupMetaData> groupMetadatas) throws IOException {
+    OldTsFileMetadata fileMetadata = readFileMetadata();
+    List<OldTsDeviceMetadata> oldDeviceMetadataList = new ArrayList<>();
+    for (OldTsDeviceMetadataIndex index : fileMetadata.getDeviceMap().values()) {
+      OldTsDeviceMetadata oldDeviceMetadata = readTsDeviceMetaData(index);
+      oldDeviceMetadataList.add(oldDeviceMetadata);
+    }
+
+    for (OldTsDeviceMetadata oldTsDeviceMetadata : oldDeviceMetadataList) {
+      for (OldChunkGroupMetaData oldChunkGroupMetadata : oldTsDeviceMetadata
+          .getChunkGroupMetaDataList()) {
+        long version = oldChunkGroupMetadata.getVersion();
+        long offsetOfChunkGroupMetaData = oldChunkGroupMetadata.getStartOffsetOfChunkGroup();
+        oldVersionInfo.put(offsetOfChunkGroupMetaData, version);
+
+        // check if data of a chunk group is in a same time partition 
+        long chunkGroupPartition = -1;
+        boolean chunkGroupInSamePartition = true;
+        for (OldChunkMetadata oldChunkMetadata : oldChunkGroupMetadata.getChunkMetaDataList()) {
+          if (chunkGroupPartition == -1) {
+            chunkGroupPartition = StorageEngine.getTimePartition(oldChunkMetadata.getStartTime());
+          }
+          long startPartition = StorageEngine.getTimePartition(oldChunkMetadata.getStartTime());
+          long endPartition = StorageEngine.getTimePartition(oldChunkMetadata.getEndTime());
+          if (chunkGroupPartition != startPartition || chunkGroupPartition != endPartition) {
+            chunkGroupInSamePartition = false;
+            break;
+          }
+        }
+        if (chunkGroupInSamePartition) {
+          chunkGroupTimePartitionInfo.put(offsetOfChunkGroupMetaData, chunkGroupPartition);
+          groupMetadatas.put(offsetOfChunkGroupMetaData, oldChunkGroupMetadata);
+        }
+      }
+    }
   }
 
 }

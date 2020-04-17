@@ -90,7 +90,7 @@ public class TsFileSketchTool {
       // device begins
       for (
           Entry<String, Map<String, List<ChunkMetadata>>> entry : tsDeviceSeriesMetadataMap.entrySet()) {
-        printlnBoth(pw, str1.toString() + "\t[Chunks] of "+ entry.getKey() + 
+        printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "+ entry.getKey() + 
             ", num of Chunks:" + entry.getValue().size());
         // chunk begins
         long chunkEndPos = 0;
@@ -107,9 +107,9 @@ public class TsFileSketchTool {
             Chunk chunk = reader.readMemChunk(chunkMetaData);
             printlnBoth(pw,
                 String.format("%20s", "") + "|\t\t" + chunk.getHeader().getNumOfPages() + " pages");
-            chunkEndPos =
+            chunkEndPos = Math.max(
                 chunkMetaData.getOffsetOfChunkHeader() + chunk.getHeader().getSerializedSize() + chunk
-                    .getHeader().getDataSize();
+                    .getHeader().getDataSize(), chunkEndPos);
           }
         }
         // chunkGroupFooter begins
@@ -122,7 +122,7 @@ public class TsFileSketchTool {
             String.format("%20s", "") + "|\t\t[dataSize] " + chunkGroupFooter.getDataSize());
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[num of chunks] " + chunkGroupFooter
             .getNumberOfChunks());
-        printlnBoth(pw, str1.toString() + "\t[Chunks] of "
+        printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
             + entry.getKey() + " ends");
       }
 
@@ -185,6 +185,7 @@ public class TsFileSketchTool {
 
       printlnBoth(pw,
           "---------------------------------- TsFile Sketch End ----------------------------------");
+      reader.close();
     }
   }
 

@@ -501,7 +501,7 @@ public abstract class Statistics<T> {
             ReadWriteIOUtils.readInt(buffers[1]), 
             ReadWriteIOUtils.readInt(buffers[2]),
             ReadWriteIOUtils.readInt(buffers[3]),
-            ReadWriteIOUtils.readInt(buffers[4]));
+            ReadWriteIOUtils.readDouble(buffers[4]));
         break;
       case INT64:
         ((LongStatistics) statistics)
@@ -509,7 +509,7 @@ public abstract class Statistics<T> {
             ReadWriteIOUtils.readLong(buffers[1]), 
             ReadWriteIOUtils.readLong(buffers[2]),
             ReadWriteIOUtils.readLong(buffers[3]),
-            ReadWriteIOUtils.readLong(buffers[4]));
+            ReadWriteIOUtils.readDouble(buffers[4]));
         break;
       case TEXT:
         ((BinaryStatistics) statistics)
@@ -535,7 +535,7 @@ public abstract class Statistics<T> {
             ReadWriteIOUtils.readFloat(buffers[1]), 
             ReadWriteIOUtils.readFloat(buffers[2]),
             ReadWriteIOUtils.readFloat(buffers[3]),
-            ReadWriteIOUtils.readFloat(buffers[4]));
+            ReadWriteIOUtils.readDouble(buffers[4]));
         break;
       default:
         throw new UnknownColumnTypeException(statistics.getType()
