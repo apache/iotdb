@@ -48,7 +48,6 @@
     <logger name="org.apache.iotdb.db.service.IoTDB" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.RPCService" level="INFO"/>
     <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
-    <logger name="org.apache.iotdb.db.service.MQTTService" level="INFO"/>
     <logger name="org.apache.iotdb.db.sync.receiver.SyncServerManager" level="INFO"/>
 
     <root level="WARN">
