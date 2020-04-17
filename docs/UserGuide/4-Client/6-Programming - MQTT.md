@@ -64,7 +64,7 @@ Configurations are as following:
 
 | NAME        | DESCRIPTION           | DEFAULT  |
 | ------------- |:-------------:|:------:|
-| enable_mqtt_service      | whether to enable the mqtt service | true |
+| enable_mqtt_service      | whether to enable the mqtt service | false |
 | mqtt_host      | the mqtt service binding host | 0.0.0.0 |
 | mqtt_port      | the mqtt service binding port    |   1883 |
 | mqtt_handler_pool_size | the handler pool size for handing the mqtt messages      |    1 |
@@ -74,7 +74,7 @@ Configurations are as following:
 ## Examples
 The following is an example which a mqtt client send messages to IoTDB server.
 
- ```java
+```java
         MQTT mqtt = new MQTT();
         mqtt.setHost("127.0.0.1", 1883);
         mqtt.setUserName("root");
@@ -97,4 +97,4 @@ The following is an example which a mqtt client send messages to IoTDB server.
 
         connection.disconnect();
     }
- ```
+```
