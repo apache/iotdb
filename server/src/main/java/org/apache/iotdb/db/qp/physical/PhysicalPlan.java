@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -192,6 +193,50 @@ public abstract class PhysicalPlan {
           plan = new DataAuthPlan(OperatorType.REVOKE_WATERMARK_EMBEDDING);
           plan.deserialize(buffer);
           break;
+        case CREATE_ROLE:
+          plan = new AuthorPlan(OperatorType.CREATE_ROLE);
+          plan.deserialize(buffer);
+          break;
+        case DELETE_ROLE:
+          plan = new AuthorPlan(OperatorType.DELETE_ROLE);
+          plan.deserialize(buffer);
+          break;
+        case CREATE_USER:
+          plan = new AuthorPlan(OperatorType.CREATE_USER);
+          plan.deserialize(buffer);
+          break;
+        case REVOKE_USER_ROLE:
+          plan = new AuthorPlan(OperatorType.REVOKE_USER_ROLE);
+          plan.deserialize(buffer);
+          break;
+        case REVOKE_ROLE_PRIVILEGE:
+          plan = new AuthorPlan(OperatorType.REVOKE_ROLE_PRIVILEGE);
+          plan.deserialize(buffer);
+          break;
+        case REVOKE_USER_PRIVILEGE:
+          plan = new AuthorPlan(OperatorType.REVOKE_USER_PRIVILEGE);
+          plan.deserialize(buffer);
+          break;
+        case GRANT_ROLE_PRIVILEGE:
+          plan = new AuthorPlan(OperatorType.GRANT_ROLE_PRIVILEGE);
+          plan.deserialize(buffer);
+          break;
+        case GRANT_USER_PRIVILEGE:
+          plan = new AuthorPlan(OperatorType.GRANT_USER_PRIVILEGE);
+          plan.deserialize(buffer);
+          break;
+        case GRANT_USER_ROLE:
+          plan = new AuthorPlan(OperatorType.GRANT_USER_ROLE);
+          plan.deserialize(buffer);
+          break;
+        case MODIFY_PASSWORD:
+          plan = new AuthorPlan(OperatorType.MODIFY_PASSWORD);
+          plan.deserialize(buffer);
+          break;
+        case DELETE_USER:
+          plan = new AuthorPlan(OperatorType.DELETE_USER);
+          plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -200,7 +245,8 @@ public abstract class PhysicalPlan {
   }
 
   public enum PhysicalPlanType {
-    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING
+    INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING,
+    CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE, REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER
   }
 
 

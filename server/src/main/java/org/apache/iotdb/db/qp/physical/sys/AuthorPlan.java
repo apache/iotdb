@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -26,13 +29,15 @@ import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
+import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class AuthorPlan extends PhysicalPlan {
 
-  private final AuthorOperator.AuthorType authorType;
+  private AuthorOperator.AuthorType authorType;
   private String userName;
   private String roleName;
   private String password;
@@ -43,13 +48,13 @@ public class AuthorPlan extends PhysicalPlan {
   /**
    * AuthorPlan Constructor.
    *
-   * @param authorType author type
-   * @param userName user name
-   * @param roleName role name
-   * @param password password
-   * @param newPassword new password
+   * @param authorType        author type
+   * @param userName          user name
+   * @param roleName          role name
+   * @param password          password
+   * @param newPassword       new password
    * @param authorizationList authorization list in String[] structure
-   * @param nodeName node name in Path structure
+   * @param nodeName          node name in Path structure
    * @throws AuthException Authentication Exception
    */
   public AuthorPlan(AuthorOperator.AuthorType authorType, String userName, String roleName,
@@ -123,6 +128,58 @@ public class AuthorPlan extends PhysicalPlan {
         break;
       default:
     }
+  }
+
+  public AuthorPlan(OperatorType operatorType) throws IOException {
+    super(false, operatorType);
+    setAuthorType(AuthorType.values()[transformOperatorTypeToAuthorType(operatorType)]);
+  }
+
+  private int transformOperatorTypeToAuthorType(OperatorType operatorType)
+      throws IOException {
+    int type;
+    switch (operatorType) {
+      case CREATE_ROLE:
+        type = AuthorType.CREATE_ROLE.ordinal();
+        break;
+      case DELETE_ROLE:
+        type = AuthorType.DROP_ROLE.ordinal();
+        break;
+      case CREATE_USER:
+        type = AuthorType.CREATE_USER.ordinal();
+        break;
+      case REVOKE_USER_ROLE:
+        type = AuthorType.REVOKE_ROLE_FROM_USER.ordinal();
+        break;
+      case REVOKE_ROLE_PRIVILEGE:
+        type = AuthorType.REVOKE_ROLE.ordinal();
+        break;
+      case REVOKE_USER_PRIVILEGE:
+        type = AuthorType.REVOKE_USER.ordinal();
+        break;
+      case GRANT_ROLE_PRIVILEGE:
+        type = AuthorType.GRANT_ROLE_TO_USER.ordinal();
+        break;
+      case GRANT_USER_PRIVILEGE:
+        type = AuthorType.GRANT_USER.ordinal();
+        break;
+      case GRANT_USER_ROLE:
+        type = AuthorType.GRANT_ROLE.ordinal();
+        break;
+      case MODIFY_PASSWORD:
+        type = AuthorType.UPDATE_USER.ordinal();
+        break;
+      case DELETE_USER:
+        type = AuthorType.DROP_USER.ordinal();
+        break;
+      default:
+        throw new IOException("unrecognized author type " + operatorType.name());
+    }
+    return type;
+  }
+
+  public void setAuthorType(AuthorOperator.AuthorType type) {
+    this.authorType = type;
   }
 
   public AuthorOperator.AuthorType getAuthorType() {
@@ -220,5 +277,122 @@ public class AuthorPlan extends PhysicalPlan {
     return Objects
         .hash(getAuthorType(), getUserName(), getRoleName(), getPassword(), getNewPassword(),
             getPermissions(), getNodeName());
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    int type = this.getPlanType(super.getOperatorType());
+    stream.writeByte((byte) type);
+    stream.writeInt(authorType.ordinal());
+    putString(stream, userName);
+    putString(stream, roleName);
+    putString(stream, password);
+    putString(stream, newPassword);
+    if (permissions == null) {
+      stream.writeBoolean(false);
+    } else {
+      stream.writeBoolean(true);
+      stream.writeInt(permissions.size());
+      for (int permission : permissions) {
+        stream.writeInt(permission);
+      }
+    }
+    if (nodeName == null) {
+      putString(stream, null);
+    } else {
+      putString(stream, nodeName.getFullPath());
+    }
+
+  }
+
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    int type = this.getPlanType(super.getOperatorType());
+    buffer.put((byte) type);
+    buffer.putInt(authorType.ordinal());
+    putString(buffer, userName);
+    putString(buffer, roleName);
+    putString(buffer, password);
+    putString(buffer, newPassword);
+    if (permissions == null) {
+      buffer.put((byte) 0);
+    } else {
+      buffer.putInt((byte) 1);
+      buffer.putInt(permissions.size());
+      for (int permission : permissions) {
+        buffer.putInt(permission);
+      }
+    }
+    if (nodeName == null) {
+      putString(buffer, null);
+    } else {
+      putString(buffer, nodeName.getFullPath());
+    }
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    this.authorType = AuthorType.values()[buffer.getInt()];
+    this.userName = readString(buffer);
+    this.roleName = readString(buffer);
+    this.password = readString(buffer);
+    this.newPassword = readString(buffer);
+    byte hasPermissions = buffer.get();
+    if (hasPermissions == (byte) 0) {
+      this.permissions = null;
+    } else {
+      int permissionsSize = buffer.getInt();
+      this.permissions = new HashSet<>();
+      for (int i = 0; i < permissionsSize; i++) {
+        permissions.add(buffer.getInt());
+      }
+    }
+    String nodeNameStr = readString(buffer);
+    if (nodeNameStr == null) {
+      this.nodeName = null;
+    } else {
+      this.nodeName = new Path(nodeNameStr);
+    }
+  }
+
+  private int getPlanType(OperatorType operatorType) {
+    int type = OperatorType.LAST.ordinal();
+    switch (operatorType) {
+      case CREATE_ROLE:
+        type = PhysicalPlanType.CREATE_ROLE.ordinal();
+        break;
+      case DELETE_ROLE:
+        type = PhysicalPlanType.DELETE_ROLE.ordinal();
+        break;
+      case CREATE_USER:
+        type = PhysicalPlanType.CREATE_USER.ordinal();
+        break;
+      case REVOKE_USER_ROLE:
+        type = PhysicalPlanType.REVOKE_USER_ROLE.ordinal();
+        break;
+      case REVOKE_ROLE_PRIVILEGE:
+        type = PhysicalPlanType.REVOKE_ROLE_PRIVILEGE.ordinal();
+        break;
+      case REVOKE_USER_PRIVILEGE:
+        type = PhysicalPlanType.REVOKE_USER_PRIVILEGE.ordinal();
+        break;
+      case GRANT_ROLE_PRIVILEGE:
+        type = PhysicalPlanType.GRANT_ROLE_PRIVILEGE.ordinal();
+        break;
+      case GRANT_USER_PRIVILEGE:
+        type = PhysicalPlanType.GRANT_USER_PRIVILEGE.ordinal();
+        break;
+      case GRANT_USER_ROLE:
+        type = PhysicalPlanType.GRANT_USER_ROLE.ordinal();
+        break;
+      case MODIFY_PASSWORD:
+        type = PhysicalPlanType.MODIFY_PASSWORD.ordinal();
+        break;
+      case DELETE_USER:
+        type = PhysicalPlanType.DELETE_USER.ordinal();
+        break;
+    }
+    return type;
   }
 }
