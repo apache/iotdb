@@ -66,10 +66,6 @@ public class MManagerImproveTest {
 
   }
 
-  @After
-  public void after() throws IOException, StorageEngineException {
-    EnvironmentUtils.cleanEnv();
-  }
 
   @Test
   public void checkSetUp() {

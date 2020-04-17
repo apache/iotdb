@@ -141,15 +141,13 @@ public class PreviousFill extends IFill {
           FileLoaderUtils.loadTimeSeriesMetadata(
               resource, seriesPath, context, timeFilter, allSensors);
       if (timeseriesMetadata != null) {
-        if (timeseriesMetadata.getStatistics().canUseStatistics()
-            && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+        if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
           return constructLastPair(
               timeseriesMetadata.getStatistics().getEndTime(),
               timeseriesMetadata.getStatistics().getLastValue(),
               dataType);
         } else {
-          List<ChunkMetadata> seqChunkMetadataList =
-              FileLoaderUtils.loadChunkMetadataList(timeseriesMetadata);
+          List<ChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
 
           for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
             lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
@@ -172,36 +170,23 @@ public class PreviousFill extends IFill {
     PriorityQueue<TsFileResource> unseqFileResource =
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
 
-    while (!unseqFileResource.isEmpty()) {
-      // The very end time of unseq files is smaller than lBoundTime,
-      // then skip all the rest unseq files
-      if (unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()) < lBoundTime) {
-        return;
-      }
-      TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
-      if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()
-          && lBoundTime <= timeseriesMetadata.getStatistics().getEndTime()) {
-        // The last timeseriesMetadata will be used as a pivot to filter the rest unseq files.
-        // Update lBoundTime with the last timeseriesMetadata's start time
-        lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getStartTime());
-        unseqTimeseriesMetadataList.add(timeseriesMetadata);
-        break;
-      }
-    }
-
-    // unpack all overlapped unseq files and fill unseqTimeseriesMetadata list
     while (!unseqFileResource.isEmpty()
         && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
+
+      if (timeseriesMetadata == null || (timeseriesMetadata.getStatistics().canUseStatistics()
+          && timeseriesMetadata.getStatistics().getEndTime() < lBoundTime)) {
+        continue;
+      }
       unseqTimeseriesMetadataList.add(timeseriesMetadata);
-      // update lBoundTime if current unseq timeseriesMetadata's last point is a valid result
-      if (timeseriesMetadata.getStatistics().canUseStatistics()
-          && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
-        lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getEndTime());
+      if (timeseriesMetadata.getStatistics().canUseStatistics()) {
+        if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
+          lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getEndTime());
+        } else {
+          lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getStartTime());
+        }
       }
     }
   }
