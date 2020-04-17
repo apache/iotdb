@@ -46,8 +46,8 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
   private static final Logger logger = LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
-      Node header) {
-    super(logApplier, partitionTable, header, FileSnapshot::new);
+      Node header, Node thisNode) {
+    super(logApplier, partitionTable, header, thisNode, FileSnapshot::new);
   }
 
   @Override
@@ -114,7 +114,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
               continue startCollect;
             }
             createdHardlinks.add(hardlink);
-            snapshot.addFile(hardlink, header);
+            snapshot.addFile(hardlink, thisNode);
           }
         }
       }

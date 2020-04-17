@@ -47,6 +47,16 @@ public class TestLogManager implements LogManager {
   }
 
   @Override
+  public long getCommitLogTerm() {
+    return 0;
+  }
+
+  @Override
+  public long getLogTerm(long logIndex) {
+    return 0;
+  }
+
+  @Override
   public boolean appendLog(Log log) {
     return true;
   }

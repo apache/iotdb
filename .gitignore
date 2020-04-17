@@ -3,6 +3,7 @@
 **/logs/*
 **/lib/**
 **/data/**
+**/raft/**
 
 # Eclipse IDE files
 **/.classpath
@@ -84,3 +85,4 @@ partitions.tmp
 partitions
 node_identifier
 
+remote/

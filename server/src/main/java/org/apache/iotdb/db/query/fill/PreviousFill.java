@@ -18,11 +18,6 @@
  */
 package org.apache.iotdb.db.query.fill;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.PriorityQueue;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -40,40 +35,58 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-
-import java.io.IOException;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import java.io.IOException;
+import java.util.*;
 
 public class PreviousFill extends IFill {
 
   private Path seriesPath;
   private QueryContext context;
   private long beforeRange;
-  private Set<String> allSensors;
+  // measurements of the same device as "seriesPath"
+  private Set<String> deviceMeasurements;
   private Filter timeFilter;
 
   private QueryDataSource dataSource;
 
   private List<TimeseriesMetadata> unseqTimeseriesMetadataList;
 
+  private boolean untilLast;
+
   public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
-    super(dataType, queryTime);
-    this.beforeRange = beforeRange;
-    this.unseqTimeseriesMetadataList = new ArrayList<>();
+    this(dataType, queryTime, beforeRange, false);
   }
 
   public PreviousFill(long beforeRange) {
-    this.beforeRange = beforeRange;
+    this(beforeRange, false);
   }
+
+
+  public PreviousFill(long beforeRange, boolean untilLast) {
+    this.beforeRange = beforeRange;
+    this.untilLast = untilLast;
+  }
+
+
+  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange, boolean untilLast) {
+    super(dataType, queryTime);
+    this.beforeRange = beforeRange;
+    this.unseqTimeseriesMetadataList = new ArrayList<>();
+    this.untilLast = untilLast;
+  }
+
+
 
   @Override
   public IFill copy() {
-    return new PreviousFill(dataType,  queryTime, beforeRange);
+    return new PreviousFill(dataType,  queryTime, beforeRange, untilLast);
   }
 
   @Override
-  Filter constructFilter() {
+  protected Filter constructFilter() {
     Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
         : TimeFilter.gtEq(queryTime - beforeRange);
     // time in [queryTime - beforeRange, queryTime]
@@ -86,17 +99,18 @@ public class PreviousFill extends IFill {
 
   @Override
   public void configureFill(Path path, TSDataType dataType, long queryTime,
-      Set<String> sensors, QueryContext context)
+      Set<String> deviceMeasurements, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     this.seriesPath = path;
     this.dataType = dataType;
     this.context = context;
     this.queryTime = queryTime;
-    this.allSensors = sensors;
+    this.deviceMeasurements = deviceMeasurements;
     this.timeFilter = constructFilter();
     this.dataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
+    this.unseqTimeseriesMetadataList = new ArrayList<>();
   }
 
   @Override
@@ -127,7 +141,7 @@ public class PreviousFill extends IFill {
       TsFileResource resource = seqFileResource.get(index);
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              resource, seriesPath, context, timeFilter, allSensors);
+              resource, seriesPath, context, timeFilter, deviceMeasurements);
       if (timeseriesMetadata != null) {
         if (timeseriesMetadata.getStatistics().canUseStatistics()
             && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
@@ -168,7 +182,7 @@ public class PreviousFill extends IFill {
       }
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
+              unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
       if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()
           && lBoundTime <= timeseriesMetadata.getStatistics().getEndTime()) {
         // The last timeseriesMetadata will be used as a pivot to filter the rest unseq files.
@@ -184,10 +198,12 @@ public class PreviousFill extends IFill {
         && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
-      unseqTimeseriesMetadataList.add(timeseriesMetadata);
+              unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
+      if (timeseriesMetadata != null) {
+        unseqTimeseriesMetadataList.add(timeseriesMetadata);
+      }
       // update lBoundTime if current unseq timeseriesMetadata's last point is a valid result
-      if (timeseriesMetadata.getStatistics().canUseStatistics()
+      if (timeseriesMetadata != null && timeseriesMetadata.getStatistics().canUseStatistics()
           && endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
         lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getEndTime());
       }
@@ -257,7 +273,9 @@ public class PreviousFill extends IFill {
               return Long.compare(o2.getVersion(), o1.getVersion());
             });
     for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
-      chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+      if (timeseriesMetadata != null) {
+        chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+      }
     }
     return chunkMetadataList;
   }
@@ -268,5 +286,13 @@ public class PreviousFill extends IFill {
 
   private TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
     return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
+  }
+
+  public boolean isUntilLast() {
+    return untilLast;
+  }
+
+  public void setUntilLast(boolean untilLast) {
+    this.untilLast = untilLast;
   }
 }

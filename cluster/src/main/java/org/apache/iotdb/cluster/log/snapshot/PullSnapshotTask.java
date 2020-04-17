@@ -98,17 +98,22 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
       }
       Map<Integer, T> result = snapshotRef.get();
       if (result != null) {
+        // unlock slots that have no snapshots
+        for (Integer slot : descriptor.getSlots()) {
+          if (!result.containsKey(slot)) {
+            newMember.getSlotManager().setToNull(slot);
+          }
+        }
+
         if (logger.isInfoEnabled()) {
           logger.info("Received a snapshot {} from {}", result, descriptor.getPreviousHolders().get(nodeIndex));
         }
-        for (Entry<Integer, T> entry : result.entrySet()) {
-          try {
-            newMember.applySnapshot(entry.getValue(), entry.getKey());
-          } catch (SnapshotApplicationException e) {
-            logger.error("Apply snapshot failed, retry...", e);
-            Thread.sleep(ClusterConstant.PULL_SNAPSHOT_RETRY_INTERVAL);
-            return false;
-          }
+        try {
+          newMember.applySnapshot((Map<Integer, Snapshot>) result);
+        } catch (SnapshotApplicationException e) {
+          logger.error("Apply snapshot failed, retry...", e);
+          Thread.sleep(ClusterConstant.PULL_SNAPSHOT_RETRY_INTERVAL);
+          return false;
         }
         return true;
       } else {

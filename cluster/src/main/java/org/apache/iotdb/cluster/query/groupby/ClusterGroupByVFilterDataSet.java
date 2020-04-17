@@ -50,10 +50,10 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
     this.slidingStep = groupByPlan.getSlidingStep();
     this.startTime = groupByPlan.getStartTime();
     this.endTime = groupByPlan.getEndTime();
-
+    this.leftCRightO = groupByPlan.isLeftCRightO();
     // init group by time partition
-    this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
+    this.curStartTime = this.startTime - slidingStep;
     this.curEndTime = -1;
 
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();

@@ -49,6 +49,8 @@ public class ClusterConfig {
    */
   private long maxRemovedLogSize = 1024 * 1024 * 128;
 
+  private int queryTimeoutInSec = 30;
+
   public long getMaxRemovedLogSize() {
     return maxRemovedLogSize;
   }
@@ -127,5 +129,13 @@ public class ClusterConfig {
 
   public void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
     this.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public int getQueryTimeoutInSec() {
+    return queryTimeoutInSec;
+  }
+
+  public void setQueryTimeoutInSec(int queryTimeoutInSec) {
+    this.queryTimeoutInSec = queryTimeoutInSec;
   }
 }

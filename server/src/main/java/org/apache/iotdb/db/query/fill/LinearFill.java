@@ -42,7 +42,7 @@ public class LinearFill extends IFill {
 
   private long beforeRange;
   private long afterRange;
-  private IBatchReader dataReader;
+  protected IBatchReader dataReader;
   private BatchData batchData;
 
   public LinearFill(long beforeRange, long afterRange) {
@@ -83,7 +83,7 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  Filter constructFilter() {
+  protected Filter constructFilter() {
     Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
         : TimeFilter.gtEq(queryTime - beforeRange);
     Filter upperBound = afterRange == -1 ? TimeFilter.ltEq(Long.MAX_VALUE)

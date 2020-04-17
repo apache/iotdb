@@ -33,8 +33,8 @@ import java.util.Set;
 
 public abstract class IFill {
 
-  long queryTime;
-  TSDataType dataType;
+  protected long queryTime;
+  protected TSDataType dataType;
 
   public IFill(TSDataType dataType, long queryTime) {
     this.dataType = dataType;
@@ -69,4 +69,8 @@ public abstract class IFill {
   }
 
   abstract Filter constructFilter();
+
+  public long getQueryTime() {
+    return queryTime;
+  }
 }

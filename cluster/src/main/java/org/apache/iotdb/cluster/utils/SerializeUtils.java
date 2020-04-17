@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -226,21 +227,25 @@ public class SerializeUtils {
             dataOutputStream.writeLong(timeValuePair.getTimestamp());
             dataOutputStream.writeBoolean(timeValuePair.getValue().getBoolean());
           }
+          break;
         case INT64:
           for (TimeValuePair timeValuePair : timeValuePairs) {
             dataOutputStream.writeLong(timeValuePair.getTimestamp());
             dataOutputStream.writeLong(timeValuePair.getValue().getLong());
           }
+          break;
         case INT32:
           for (TimeValuePair timeValuePair : timeValuePairs) {
             dataOutputStream.writeLong(timeValuePair.getTimestamp());
             dataOutputStream.writeInt(timeValuePair.getValue().getInt());
           }
+          break;
         case FLOAT:
           for (TimeValuePair timeValuePair : timeValuePairs) {
             dataOutputStream.writeLong(timeValuePair.getTimestamp());
             dataOutputStream.writeFloat(timeValuePair.getValue().getFloat());
           }
+          break;
         case DOUBLE:
           for (TimeValuePair timeValuePair : timeValuePairs) {
             dataOutputStream.writeLong(timeValuePair.getTimestamp());
@@ -248,6 +253,44 @@ public class SerializeUtils {
           }
       }
     } catch (IOException ignored) {
+      // unreachable
+    }
+  }
+
+  public static void serializeTVPair(TimeValuePair timeValuePair, DataOutputStream dataOutputStream) {
+    if (timeValuePair.getValue() == null) {
+      return;
+    }
+    TSDataType dataType = timeValuePair.getValue().getDataType();
+    try {
+      dataOutputStream.write(dataType.ordinal());
+      switch (dataType) {
+        case TEXT:
+          dataOutputStream.writeLong(timeValuePair.getTimestamp());
+          dataOutputStream.writeInt(timeValuePair.getValue().getBinary().getLength());
+          dataOutputStream.write(timeValuePair.getValue().getBinary().getValues());
+          break;
+        case BOOLEAN:
+          dataOutputStream.writeLong(timeValuePair.getTimestamp());
+          dataOutputStream.writeBoolean(timeValuePair.getValue().getBoolean());
+          break;
+        case INT64:
+          dataOutputStream.writeLong(timeValuePair.getTimestamp());
+          dataOutputStream.writeLong(timeValuePair.getValue().getLong());
+          break;
+        case INT32:
+          dataOutputStream.writeLong(timeValuePair.getTimestamp());
+          dataOutputStream.writeInt(timeValuePair.getValue().getInt());
+          break;
+        case FLOAT:
+          dataOutputStream.writeLong(timeValuePair.getTimestamp());
+          dataOutputStream.writeFloat(timeValuePair.getValue().getFloat());
+          break;
+        case DOUBLE:
+          dataOutputStream.writeLong(timeValuePair.getTimestamp());
+          dataOutputStream.writeDouble(timeValuePair.getValue().getDouble());
+      }
+    } catch (IOException e) {
       // unreachable
     }
   }
@@ -270,7 +313,7 @@ public class SerializeUtils {
       case FLOAT:
         for (int i = 0; i < size; i++) {
           TimeValuePair pair = new TimeValuePair(buffer.getLong(),
-              TsPrimitiveType.getByType(dataType, buffer.getDouble()));
+              TsPrimitiveType.getByType(dataType, buffer.getFloat()));
           ret.add(pair);
         }
         break;
@@ -308,6 +351,39 @@ public class SerializeUtils {
         break;
     }
     return ret;
+  }
+
+  public static TimeValuePair deserializeTVPair(ByteBuffer buffer)
+      throws UnsupportedDataTypeException {
+    if (buffer == null || (buffer.limit() - buffer.position() == 0)) {
+      return null;
+    }
+    TSDataType dataType = TSDataType.values()[buffer.get()];
+    switch (dataType) {
+      case DOUBLE:
+        return new TimeValuePair(buffer.getLong(),
+            TsPrimitiveType.getByType(dataType, buffer.getDouble()));
+      case FLOAT:
+        return new TimeValuePair(buffer.getLong(),
+            TsPrimitiveType.getByType(dataType, buffer.getFloat()));
+      case INT32:
+        return new TimeValuePair(buffer.getLong(),
+            TsPrimitiveType.getByType(dataType, buffer.getInt()));
+      case INT64:
+        return new TimeValuePair(buffer.getLong(),
+            TsPrimitiveType.getByType(dataType, buffer.getLong()));
+      case BOOLEAN:
+        return new TimeValuePair(buffer.getLong(),
+            TsPrimitiveType.getByType(dataType, buffer.get() == 1));
+      case TEXT:
+        long time = buffer.getLong();
+        int bytesLen = buffer.getInt();
+        byte[] bytes = new byte[bytesLen];
+        buffer.get(bytes);
+        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, bytes);
+        return new TimeValuePair(time, primitiveType);
+    }
+    throw new UnsupportedDataTypeException(dataType.toString());
   }
 
   public static ByteBuffer serializeFilter(Filter filter) {

@@ -20,9 +20,9 @@ package org.apache.iotdb.cluster.config;
 
 public class ClusterConstant {
 
-  // a failed election will restart in 2s~10s
-  public static final long ELECTION_LEAST_TIME_OUT_MS = 2 * 1000L;
-  public static final long ELECTION_RANDOM_TIME_OUT_MS = 8 * 1000L;
+  // a failed election will restart in 0.2s~1s
+  public static final long ELECTION_LEAST_TIME_OUT_MS = 2 * 100L;
+  public static final long ELECTION_RANDOM_TIME_OUT_MS = 8 * 100L;
   public static final int SLOT_NUM = 10000;
   public static final int HASH_SALT = 2333;
   public static final int CHECK_ALIVE_TIME_OUT_MS = 1000;
