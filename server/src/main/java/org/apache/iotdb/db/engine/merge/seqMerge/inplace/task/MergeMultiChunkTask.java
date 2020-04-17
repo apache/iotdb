@@ -33,7 +33,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.NaivePathSelector;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -78,19 +77,16 @@ class MergeMultiChunkTask {
   private int mergedSeriesCnt;
   private double progress;
 
-  private int concurrentMergeSeriesNum;
   private List<Path> currMergingPaths = new ArrayList<>();
 
   MergeMultiChunkTask(MergeContext context, String taskName, InplaceMergeLogger mergeLogger,
-      MergeResource mergeResource, boolean fullMerge, List<Path> unmergedSeries,
-      int concurrentMergeSeriesNum) {
+      MergeResource mergeResource, boolean fullMerge, List<Path> unmergedSeries) {
     this.mergeContext = context;
     this.taskName = taskName;
     this.mergeLogger = mergeLogger;
     this.resource = mergeResource;
     this.fullMerge = fullMerge;
     this.unmergedSeries = unmergedSeries;
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
   }
 
   void mergeSeries() throws IOException {
@@ -105,13 +101,10 @@ class MergeMultiChunkTask {
     List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
     for (List<Path> pathList : devicePaths) {
       // TODO: use statistics of queries to better rearrange series
-      Iterator<List<Path>> pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
-      while (pathSelector.hasNext()) {
-        currMergingPaths = pathSelector.next();
-        mergePaths();
-        mergedSeriesCnt += currMergingPaths.size();
-        logMergeProgress();
-      }
+      currMergingPaths = pathList;
+      mergePaths();
+      mergedSeriesCnt += currMergingPaths.size();
+      logMergeProgress();
     }
     if (logger.isInfoEnabled()) {
       logger.info("{} all series are merged after {}ms", taskName,

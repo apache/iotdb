@@ -400,9 +400,9 @@ public class IoTDBConfig {
    */
   private int chunkMergePointThreshold = 20480;
 
-  private SeqMergeFileStrategy seqMergeFileStrategy = SeqMergeFileStrategy.INPLACE_MAX_SERIES_NUM;
+  private SeqMergeFileStrategy seqMergeFileStrategy = SeqMergeFileStrategy.SQUEEZE;
 
-  private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.REGULARIZATION_MAX_FILE_NUM;
+  private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.REGULARIZATION;
 
   /**
    * Default system file storage is in local file system (unsupported)

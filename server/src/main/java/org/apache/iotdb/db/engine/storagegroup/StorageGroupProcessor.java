@@ -1363,9 +1363,8 @@ public class StorageGroupProcessor {
           tsFileResource.setMerging(true);
         }
         Callable<Void> mergeTask = strategy.getMergeTask(mergeResource,
-            storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, selectorContext.getConcurrentMergeNum(),
-            storageGroupName, fullMerge);
+            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName,
+            fullMerge);
         mergingModification = new ModificationFile(
             storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);
@@ -1427,9 +1426,7 @@ public class StorageGroupProcessor {
           tsFileResource.setMerging(true);
         }
         Callable<Void> mergeTask = strategy.getMergeTask(mergeResource,
-            storageGroupSysDir.getPath(),
-            this::mergeEndAction, taskName, selectorContext.getConcurrentMergeNum(),
-            storageGroupName);
+            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName);
         mergingModification = new ModificationFile(
             storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
         MergeManager.getINSTANCE().submitMainTask(mergeTask);

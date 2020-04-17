@@ -104,11 +104,9 @@ public class InplaceMaxFileSelector extends BaseFileSelector {
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost = useTightBound ? this.memCalculator
           .calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles, this.seqFiles,
-              this.selectorContext.getStartTime(),
-              timeLimit, this.selectorContext.getConcurrentMergeNum()) : this.memCalculator
+              this.selectorContext.getStartTime(), timeLimit) : this.memCalculator
           .calculateLooseMemoryCost(unseqFile, tmpSelectedSeqFiles, this.seqFiles,
-              this.selectorContext.getStartTime(),
-              timeLimit);
+              this.selectorContext.getStartTime(), timeLimit);
       if (selectorContext.getTotalCost() + newCost < memoryBudget) {
         selectedUnseqFiles.add(unseqFile);
         maxSeqFileCost = tempMaxSeqFileCost;

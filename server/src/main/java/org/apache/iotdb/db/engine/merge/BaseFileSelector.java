@@ -67,10 +67,9 @@ public abstract class BaseFileSelector implements IMergeFileSelector {
     }
     if (logger.isInfoEnabled()) {
       logger.info("Selected merge candidates, {} seqFiles, {} unseqFiles, total memory cost {}, "
-              + "concurrent merge num {}" + "time consumption {}ms",
+              + "time consumption {}ms",
           resource.getSeqFiles().size(), resource.getUnseqFiles().size(),
           selectorContext.getTotalCost(),
-          selectorContext.getConcurrentMergeNum(),
           System.currentTimeMillis() - selectorContext.getStartTime());
     }
     return new Pair<>(resource, selectorContext);

@@ -65,7 +65,7 @@ public class MergeLogTest extends MergeTest {
     InplaceMergeTask mergeTask =
         new InplaceMergeTask(
             new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
-            tempSGDir.getPath(), this::testCallBack, "test", false, 1, MERGE_TEST_SG);
+            tempSGDir.getPath(), this::testCallBack, "test", false, MERGE_TEST_SG);
     mergeTask.call();
   }
 

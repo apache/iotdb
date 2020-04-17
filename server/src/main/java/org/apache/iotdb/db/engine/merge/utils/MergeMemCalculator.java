@@ -34,10 +34,10 @@ public class MergeMemCalculator {
   }
 
   public Pair<Long, Long> calculateSeqFileCost(TsFileResource seqFile, boolean useTightBound,
-      int concurrentMergeNum, long tempMaxSeqFileCost)
+      long tempMaxSeqFileCost)
       throws IOException {
     long fileCost = 0;
-    long fileReadCost = useTightBound ? calculateTightSeqMemoryCost(seqFile, concurrentMergeNum)
+    long fileReadCost = useTightBound ? calculateTightSeqMemoryCost(seqFile)
         : calculateMetadataSize(seqFile);
     logger.debug("File read cost of {} is {}", seqFile, fileReadCost);
     if (fileReadCost > tempMaxSeqFileCost) {
@@ -109,17 +109,16 @@ public class MergeMemCalculator {
 
   public long calculateTightMemoryCost(TsFileResource tmpSelectedUnseqFile,
       Collection<Integer> tmpSelectedSeqFileIdxs, List<TsFileResource> seqFiles, long startTime,
-      long timeLimit,
-      int concurrentMergeNum)
+      long timeLimit)
       throws IOException {
     long cost = 0;
-    Long fileCost = calculateTightUnseqMemoryCost(tmpSelectedUnseqFile, concurrentMergeNum);
+    Long fileCost = calculateTightUnseqMemoryCost(tmpSelectedUnseqFile);
     cost += fileCost;
 
     long tempMaxSeqFileCost = 0;
     for (Integer seqFileIdx : tmpSelectedSeqFileIdxs) {
       TsFileResource seqFile = seqFiles.get(seqFileIdx);
-      fileCost = calculateTightSeqMemoryCost(seqFile, concurrentMergeNum);
+      fileCost = calculateTightSeqMemoryCost(seqFile);
       if (fileCost > tempMaxSeqFileCost) {
         // only one file will be read at the same time, so only the largest one is recorded here\
         tempMaxSeqFileCost = fileCost;
@@ -137,16 +136,15 @@ public class MergeMemCalculator {
 
   public long calculateTightMemoryCost(TsFileResource tmpSelectedUnseqFile,
       Collection<TsFileResource> tmpSelectedSeqFiles, long startTime,
-      long timeLimit,
-      int concurrentMergeNum)
+      long timeLimit)
       throws IOException {
     long cost = 0;
-    Long fileCost = calculateTightUnseqMemoryCost(tmpSelectedUnseqFile, concurrentMergeNum);
+    Long fileCost = calculateTightUnseqMemoryCost(tmpSelectedUnseqFile);
     cost += fileCost;
 
     long tempMaxSeqFileCost = 0;
     for (TsFileResource seqFile : tmpSelectedSeqFiles) {
-      fileCost = calculateTightSeqMemoryCost(seqFile, concurrentMergeNum);
+      fileCost = calculateTightSeqMemoryCost(seqFile);
       if (fileCost > tempMaxSeqFileCost) {
         // only one file will be read at the same time, so only the largest one is recorded here\
         tempMaxSeqFileCost = fileCost;
@@ -191,20 +189,18 @@ public class MergeMemCalculator {
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
   // its proportion to all series to get a maximum estimation
-  public long calculateTightSeqMemoryCost(TsFileResource seqFile, int concurrentMergeNum)
+  public long calculateTightSeqMemoryCost(TsFileResource seqFile)
       throws IOException {
-    long singleSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
-    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
+    long multiSeriesCost = calculateTightFileMemoryCost(seqFile, this::calculateMetadataSize);
     long maxCost = calculateMetadataSize(seqFile);
     return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
   }
 
   // this method traverses all ChunkMetadata to find out which series has the most chunks and uses
   // its proportion among all series to get a maximum estimation
-  private long calculateTightUnseqMemoryCost(TsFileResource unseqFile, int concurrentMergeNum)
+  private long calculateTightUnseqMemoryCost(TsFileResource unseqFile)
       throws IOException {
-    long singleSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getFileSize);
-    long multiSeriesCost = concurrentMergeNum * singleSeriesCost;
+    long multiSeriesCost = calculateTightFileMemoryCost(unseqFile, TsFileResource::getFileSize);
     long maxCost = unseqFile.getFileSize();
     return multiSeriesCost > maxCost ? maxCost : multiSeriesCost;
   }

@@ -27,51 +27,40 @@ import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.selector.InplaceMaxFileSelector;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.selector.InplaceMaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.RecoverInplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.selector.SqueezeMaxFileSelector;
-import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.selector.SqueezeMaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.task.RecoverSqueezeMergeTask;
 import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.task.SqueezeMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 public enum SeqMergeFileStrategy {
-  INPLACE_MAX_SERIES_NUM,
-  INPLACE_MAX_FILE_NUM,
-  SQUEEZE_MAX_SERIES_NUM,
-  SQUEEZE_MAX_FILE_NUM;
+  INPLACE,
+  SQUEEZE;
   // TODO new strategies?
 
   public IMergeFileSelector getFileSelector(Collection<TsFileResource> seqFiles,
       Collection<TsFileResource> unseqFiles, long budget, long timeLowerBound) {
     switch (this) {
-      case SQUEEZE_MAX_FILE_NUM:
-        return new SqueezeMaxFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
-      case SQUEEZE_MAX_SERIES_NUM:
-        return new SqueezeMaxSeriesMergeFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
-      case INPLACE_MAX_FILE_NUM:
+      case INPLACE:
         return new InplaceMaxFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
-      case INPLACE_MAX_SERIES_NUM:
+      case SQUEEZE:
       default:
-        return new InplaceMaxSeriesMergeFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
+        return new SqueezeMaxFileSelector(seqFiles, unseqFiles, budget, timeLowerBound);
     }
   }
 
   public Callable<Void> getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
-      MergeCallback callback,
-      String taskName, int concurrentMergeSeriesNum, String storageGroupName,
+      MergeCallback callback, String taskName, String storageGroupName,
       boolean isFullMerge) {
     switch (this) {
-      case INPLACE_MAX_SERIES_NUM:
-      case INPLACE_MAX_FILE_NUM:
+      case INPLACE:
         return new InplaceMergeTask(mergeResource, storageGroupSysDir, callback, taskName,
-            isFullMerge, concurrentMergeSeriesNum, storageGroupName);
-      case SQUEEZE_MAX_FILE_NUM:
-      case SQUEEZE_MAX_SERIES_NUM:
+            isFullMerge, storageGroupName);
+      case SQUEEZE:
         return new SqueezeMergeTask(mergeResource, storageGroupSysDir, callback, taskName,
-            concurrentMergeSeriesNum, storageGroupName);
+            storageGroupName);
     }
     return null;
   }
@@ -80,12 +69,10 @@ public enum SeqMergeFileStrategy {
       List<TsFileResource> unseqTsFiles, String storageGroupSysDir, MergeCallback callback,
       String taskName, String storageGroupName) {
     switch (this) {
-      case SQUEEZE_MAX_FILE_NUM:
-      case SQUEEZE_MAX_SERIES_NUM:
+      case SQUEEZE:
         return new RecoverSqueezeMergeTask(seqTsFiles,
             unseqTsFiles, storageGroupSysDir, callback, taskName, storageGroupName);
-      case INPLACE_MAX_SERIES_NUM:
-      case INPLACE_MAX_FILE_NUM:
+      case INPLACE:
       default:
         return new RecoverInplaceMergeTask(seqTsFiles,
             unseqTsFiles, storageGroupSysDir, callback, taskName,

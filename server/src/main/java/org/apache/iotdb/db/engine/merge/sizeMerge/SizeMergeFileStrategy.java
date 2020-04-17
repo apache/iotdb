@@ -35,32 +35,31 @@ import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.Regulariza
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 public enum SizeMergeFileStrategy {
-  REGULARIZATION_MAX_FILE_NUM,
-  INDEPENDENCE_MAX_FILE_NUM;
+  REGULARIZATION,
+  INDEPENDENCE;
   // TODO new strategies?
 
   public IMergeFileSelector getFileSelector(Collection<TsFileResource> seqFiles, long budget,
       long timeLowerBound) {
     switch (this) {
-      case INDEPENDENCE_MAX_FILE_NUM:
+      case INDEPENDENCE:
         return new IndependenceMaxFileSelector(seqFiles, budget, timeLowerBound);
-      case REGULARIZATION_MAX_FILE_NUM:
+      case REGULARIZATION:
       default:
         return new RegularizationMaxFileSelector(seqFiles, budget, timeLowerBound);
     }
   }
 
   public Callable<Void> getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
-      MergeCallback callback, String taskName, int concurrentMergeSeriesNum,
-      String storageGroupName) {
+      MergeCallback callback, String taskName, String storageGroupName) {
     switch (this) {
-      case INDEPENDENCE_MAX_FILE_NUM:
+      case INDEPENDENCE:
         return new IndependenceMergeTask(mergeResource, storageGroupSysDir, callback, taskName,
-            concurrentMergeSeriesNum, storageGroupName);
-      case REGULARIZATION_MAX_FILE_NUM:
+            storageGroupName);
+      case REGULARIZATION:
       default:
         return new RegularizationMergeTask(mergeResource, storageGroupSysDir, callback, taskName,
-            concurrentMergeSeriesNum, storageGroupName);
+            storageGroupName);
     }
   }
 
@@ -68,10 +67,10 @@ public enum SizeMergeFileStrategy {
       List<TsFileResource> unseqTsFiles, String storageGroupSysDir, MergeCallback callback,
       String taskName, String storageGroupName) {
     switch (this) {
-      case INDEPENDENCE_MAX_FILE_NUM:
+      case INDEPENDENCE:
         return new RecoverIndependenceMergeTask(seqTsFiles,
             unseqTsFiles, storageGroupSysDir, callback, taskName, storageGroupName);
-      case REGULARIZATION_MAX_FILE_NUM:
+      case REGULARIZATION:
       default:
         return new RecoverRegularizationMergeTask(seqTsFiles,
             unseqTsFiles, storageGroupSysDir, callback, taskName, storageGroupName);

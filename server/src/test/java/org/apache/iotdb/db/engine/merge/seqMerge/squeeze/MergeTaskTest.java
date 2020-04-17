@@ -67,7 +67,7 @@ public class MergeTaskTest extends MergeTest {
     SqueezeMergeTask mergeTask =
         new SqueezeMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
             (k, v
-                , l, n) -> newResource[0] = n.get(0), "test", 1, MERGE_TEST_SG);
+                , l, n) -> newResource[0] = n.get(0), "test", MERGE_TEST_SG);
     mergeTask.call();
     newResource[0].close();
 
@@ -97,7 +97,7 @@ public class MergeTaskTest extends MergeTest {
     TsFileResource[] newResource = new TsFileResource[1];
     SqueezeMergeTask mergeTask =
         new SqueezeMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath()
-            , (k, v, l, n) -> newResource[0] = n.get(0), "test", 1, MERGE_TEST_SG);
+            , (k, v, l, n) -> newResource[0] = n.get(0), "test", MERGE_TEST_SG);
     mergeTask.call();
     newResource[0].close();
 
@@ -127,7 +127,7 @@ public class MergeTaskTest extends MergeTest {
     SqueezeMergeTask mergeTask =
         new SqueezeMergeTask(new MergeResource(seqResources, unseqResources.subList(0, 1)),
             tempSGDir.getPath(),
-            (k, v, l, n) -> newResource[0] = n.get(0), "test", 1, MERGE_TEST_SG);
+            (k, v, l, n) -> newResource[0] = n.get(0), "test", MERGE_TEST_SG);
     mergeTask.call();
     newResource[0].close();
 
@@ -161,7 +161,7 @@ public class MergeTaskTest extends MergeTest {
     SqueezeMergeTask mergeTask =
         new SqueezeMergeTask(new MergeResource(seqResources, unseqResources.subList(5, 6)),
             tempSGDir.getPath(),
-            (k, v, l, n) -> newResource[0] = n.get(0), "test", 1, MERGE_TEST_SG);
+            (k, v, l, n) -> newResource[0] = n.get(0), "test", MERGE_TEST_SG);
     mergeTask.call();
     newResource[0].close();
 
@@ -191,7 +191,7 @@ public class MergeTaskTest extends MergeTest {
     SqueezeMergeTask mergeTask =
         new SqueezeMergeTask(new MergeResource(seqResources, unseqResources.subList(0, 5)),
             tempSGDir.getPath(),
-            (k, v, l, n) -> newResource[0] = n.get(0), "test", 1, MERGE_TEST_SG);
+            (k, v, l, n) -> newResource[0] = n.get(0), "test", MERGE_TEST_SG);
     mergeTask.call();
     newResource[0].close();
 
@@ -238,7 +238,7 @@ public class MergeTaskTest extends MergeTest {
                 e.printStackTrace();
               }
               newResource[0] = n.get(0);
-            }, "test", 1, MERGE_TEST_SG);
+            }, "test", MERGE_TEST_SG);
     mergeTask.call();
     newResource[0].close();
 

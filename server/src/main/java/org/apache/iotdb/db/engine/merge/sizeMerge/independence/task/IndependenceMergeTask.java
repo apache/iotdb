@@ -74,12 +74,11 @@ public class IndependenceMergeTask implements Callable<Void> {
 
   public IndependenceMergeTask(
       MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
-      String taskName, int concurrentMergeSeriesNum, String storageGroupName) {
+      String taskName, String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
 
@@ -123,10 +122,17 @@ public class IndependenceMergeTask implements Callable<Void> {
     }
     resource.setChunkWriterCache(chunkWriterCacheMap);
 
+    List<String> storageGroupPaths = MManager.getInstance()
+        .getAllTimeseriesName(storageGroupName + ".*");
+    List<Path> unmergedSeries = new ArrayList<>();
+    for (String path : storageGroupPaths) {
+      unmergedSeries.add(new Path(path));
+    }
+
     mergeLogger.logMergeStart();
 
     MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger,
-        resource, concurrentMergeSeriesNum);
+        resource, unmergedSeries);
     newResources = mergeChunkTask.mergeSeries();
 
     cleanUp(true);

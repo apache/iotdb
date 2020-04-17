@@ -68,7 +68,7 @@ public class MergeTaskTest extends MergeTest {
     InplaceMergeTask mergeTask =
         new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
             (k, v, l, n) -> {
-            }, "test", false, 1, MERGE_TEST_SG);
+            }, "test", false, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -93,7 +93,7 @@ public class MergeTaskTest extends MergeTest {
         new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
             (k, v, l, n) -> {
             }, "test",
-            true, 1, MERGE_TEST_SG);
+            true, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -119,7 +119,7 @@ public class MergeTaskTest extends MergeTest {
         new InplaceMergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
             (k, v, l, n) -> {
             }, "test",
-            false, 1, MERGE_TEST_SG);
+            false, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -144,7 +144,7 @@ public class MergeTaskTest extends MergeTest {
         new InplaceMergeTask(new MergeResource(seqResources, unseqResources.subList(0, 1)),
             tempSGDir.getPath(),
             (k, v, l, n) -> {
-            }, "test", false, 1, MERGE_TEST_SG);
+            }, "test", false, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -173,7 +173,7 @@ public class MergeTaskTest extends MergeTest {
         new InplaceMergeTask(new MergeResource(seqResources, unseqResources.subList(5, 6)),
             tempSGDir.getPath(),
             (k, v, l, n) -> {
-            }, "test", false, 1, MERGE_TEST_SG);
+            }, "test", false, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -198,7 +198,7 @@ public class MergeTaskTest extends MergeTest {
         new InplaceMergeTask(new MergeResource(seqResources, unseqResources.subList(0, 5)),
             tempSGDir.getPath(),
             (k, v, l, n) -> {
-            }, "test", false, 1, MERGE_TEST_SG);
+            }, "test", false, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -239,7 +239,7 @@ public class MergeTaskTest extends MergeTest {
               } catch (IOException e) {
                 e.printStackTrace();
               }
-            }, "test", false, 1, MERGE_TEST_SG);
+            }, "test", false, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();

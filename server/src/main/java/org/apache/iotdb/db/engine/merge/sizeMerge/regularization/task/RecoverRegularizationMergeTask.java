@@ -40,15 +40,17 @@ import org.slf4j.LoggerFactory;
  * RecoverMergeTask is an extension of MergeTask, which resumes the last merge progress by scanning
  * merge.log using LogAnalyzer and continue the unfinished merge.
  */
-public class RecoverRegularizationMergeTask extends RegularizationMergeTask implements IRecoverMergeTask {
+public class RecoverRegularizationMergeTask extends RegularizationMergeTask implements
+    IRecoverMergeTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(RecoverRegularizationMergeTask.class);
+  private static final Logger logger = LoggerFactory
+      .getLogger(RecoverRegularizationMergeTask.class);
 
   public RecoverRegularizationMergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir,
       MergeCallback callback, String taskName, String storageGroupName) {
     super(new MergeResource(seqFiles, unseqFiles), storageGroupSysDir, callback, taskName,
-        1, storageGroupName);
+        storageGroupName);
   }
 
   // continueMerge does not work for squeeze strategy

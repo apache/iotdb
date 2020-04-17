@@ -66,31 +66,17 @@ public class InplaceMergeTask implements Callable<Void> {
   MergeContext mergeContext = new MergeContext();
 
   private MergeCallback callback;
-  int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
 
-  InplaceMergeTask(List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
-      String taskName, boolean fullMerge, String storageGroupName) {
-    this.resource = new MergeResource(seqFiles, unseqFiles);
-    this.storageGroupSysDir = storageGroupSysDir;
-    this.callback = callback;
-    this.taskName = taskName;
-    this.fullMerge = fullMerge;
-    this.concurrentMergeSeriesNum = 1;
-    this.storageGroupName = storageGroupName;
-  }
-
   public InplaceMergeTask(MergeResource mergeResource, String storageGroupSysDir,
       MergeCallback callback,
-      String taskName, boolean fullMerge, int concurrentMergeSeriesNum, String storageGroupName) {
+      String taskName, boolean fullMerge, String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
     this.fullMerge = fullMerge;
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
 
@@ -144,8 +130,7 @@ public class InplaceMergeTask implements Callable<Void> {
     mergeLogger.logMergeStart();
 
     MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
-        mergeLogger, resource,
-        fullMerge, unmergedSeries, concurrentMergeSeriesNum);
+        mergeLogger, resource, fullMerge, unmergedSeries);
     mergeChunkTask.mergeSeries();
 
     MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,

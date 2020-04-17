@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.merge.seqMerge.inplace.task;
 
-import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.selector.InplaceMaxSeriesMergeFileSelector.MAX_SERIES_NUM;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -29,15 +27,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map.Entry;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.LogAnalyzer;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.LogAnalyzer.Status;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -58,7 +55,8 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
       List<TsFileResource> unseqFiles, String storageGroupSysDir,
       MergeCallback callback, String taskName,
       boolean fullMerge, String storageGroupName) {
-    super(seqFiles, unseqFiles, storageGroupSysDir, callback, taskName, fullMerge,
+    super(new MergeResource(seqFiles, unseqFiles), storageGroupSysDir, callback, taskName,
+        fullMerge,
         storageGroupName);
   }
 
@@ -101,15 +99,9 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
   private void resumeAfterFilesLogged(boolean continueMerge) throws IOException {
     if (continueMerge) {
       resumeMergeProgress();
-      calculateConcurrentSeriesNum();
-      if (concurrentMergeSeriesNum == 0) {
-        throw new IOException("Merge cannot be resumed under current memory budget, please "
-            + "increase the budget or disable continueMergeAfterReboot");
-      }
-
       MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
           mergeLogger, resource,
-          fullMerge, analyzer.getUnmergedPaths(), concurrentMergeSeriesNum);
+          fullMerge, analyzer.getUnmergedPaths());
       analyzer.setUnmergedPaths(null);
       mergeChunkTask.mergeSeries();
 
@@ -139,54 +131,6 @@ public class RecoverInplaceMergeTask extends InplaceMergeTask implements IRecove
     mergeLogger = new InplaceMergeLogger(storageGroupSysDir);
     truncateFiles();
     recoverChunkCounts();
-  }
-
-  private void calculateConcurrentSeriesNum() throws IOException {
-    long singleSeriesUnseqCost = 0;
-    long maxUnseqCost = 0;
-    for (TsFileResource unseqFile : resource.getUnseqFiles()) {
-      long[] chunkNums = MergeUtils.findTotalAndLargestSeriesChunkNum(unseqFile,
-          resource.getFileReader(unseqFile));
-      long totalChunkNum = chunkNums[0];
-      long maxChunkNum = chunkNums[1];
-      singleSeriesUnseqCost += unseqFile.getFileSize() * maxChunkNum / totalChunkNum;
-      maxUnseqCost += unseqFile.getFileSize();
-    }
-
-    long singleSeriesSeqReadCost = 0;
-    long maxSeqReadCost = 0;
-    long seqWriteCost = 0;
-    for (TsFileResource seqFile : resource.getSeqFiles()) {
-      long[] chunkNums = MergeUtils.findTotalAndLargestSeriesChunkNum(seqFile,
-          resource.getFileReader(seqFile));
-      long totalChunkNum = chunkNums[0];
-      long maxChunkNum = chunkNums[1];
-      long fileMetaSize = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
-      long newSingleSeriesSeqReadCost = fileMetaSize * maxChunkNum / totalChunkNum;
-      singleSeriesSeqReadCost = newSingleSeriesSeqReadCost > singleSeriesSeqReadCost ?
-          newSingleSeriesSeqReadCost : singleSeriesSeqReadCost;
-      maxSeqReadCost = fileMetaSize > maxSeqReadCost ? fileMetaSize : maxSeqReadCost;
-      seqWriteCost += fileMetaSize;
-    }
-
-    long memBudget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
-    int lb = 0;
-    int ub = MAX_SERIES_NUM;
-    int mid = (lb + ub) / 2;
-    while (mid != lb) {
-      long unseqCost = singleSeriesUnseqCost * mid < maxUnseqCost ? singleSeriesUnseqCost * mid :
-          maxUnseqCost;
-      long seqReadCos = singleSeriesSeqReadCost * mid < maxSeqReadCost ?
-          singleSeriesSeqReadCost * mid : maxSeqReadCost;
-      long totalCost = unseqCost + seqReadCos + seqWriteCost;
-      if (totalCost <= memBudget) {
-        lb = mid;
-      } else {
-        ub = mid;
-      }
-      mid = (lb + ub) / 2;
-    }
-    concurrentMergeSeriesNum = lb;
   }
 
   // scan the metadata to compute how many chunks are merged/unmerged so at last we can decide to

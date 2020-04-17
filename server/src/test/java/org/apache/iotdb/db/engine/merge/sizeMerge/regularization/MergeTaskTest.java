@@ -68,7 +68,7 @@ public class MergeTaskTest extends MergeTest {
     RegularizationMergeTask mergeTask =
         new RegularizationMergeTask(new MergeResource(seqResources, unseqResources),
             tempSGDir.getPath(),
-            (k, v, l, n) -> newResource[0] = n.get(0), "test", 1, MERGE_TEST_SG);
+            (k, v, l, n) -> newResource[0] = n.get(0), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -107,7 +107,7 @@ public class MergeTaskTest extends MergeTest {
                 e.printStackTrace();
               }
               newResource[0] = n.get(0);
-            }, "test", 1, MERGE_TEST_SG);
+            }, "test", MERGE_TEST_SG);
     mergeTask.call();
     newResource[0].close();
 

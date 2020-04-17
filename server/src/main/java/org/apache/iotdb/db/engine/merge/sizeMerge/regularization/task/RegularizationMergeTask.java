@@ -66,19 +66,17 @@ public class RegularizationMergeTask implements Callable<Void> {
   private MergeContext mergeContext = new MergeContext();
 
   MergeCallback callback;
-  int concurrentMergeSeriesNum;
   String taskName;
 
   List<TsFileResource> newResources;
 
   public RegularizationMergeTask(
       MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
-      String taskName, int concurrentMergeSeriesNum, String storageGroupName) {
+      String taskName, String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
 
@@ -132,7 +130,7 @@ public class RegularizationMergeTask implements Callable<Void> {
     mergeLogger.logMergeStart();
 
     MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger,
-        resource, unmergedSeries, concurrentMergeSeriesNum);
+        resource, unmergedSeries);
     newResources = mergeChunkTask.mergeSeries();
 
     cleanUp(true);

@@ -171,12 +171,10 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
       long newCost = useTightBound ? this.memCalculator
           .calculateTightMemoryCost(unseqFile,
               seqFiles.subList(tmpFirstOverlapIdx, tmpLastOverlapIdx),
-              this.selectorContext.getStartTime(),
-              timeLimit, this.selectorContext.getConcurrentMergeNum()) : this.memCalculator
+              this.selectorContext.getStartTime(), timeLimit) : this.memCalculator
           .calculateLooseMemoryCost(unseqFile,
               seqFiles.subList(tmpFirstOverlapIdx, tmpLastOverlapIdx),
-              this.selectorContext.getStartTime(),
-              timeLimit);
+              this.selectorContext.getStartTime(), timeLimit);
       if (this.selectorContext.getTotalCost() + newCost < memoryBudget) {
         selectedUnseqFiles.add(unseqFile);
         maxSeqFileCost = tempMaxSeqFileCost;
@@ -206,8 +204,8 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
       TsFileResource seqFile = seqFiles.get(i);
       logger
           .debug("Try selecting seq file {}/{}, {}", i, seqFiles.size() - 1, seqFile);
-      Pair<Long, Long> fileCostRes = this.memCalculator.calculateSeqFileCost(seqFile, useTightBound,
-          this.selectorContext.getConcurrentMergeNum(), tempMaxSeqFileCost);
+      Pair<Long, Long> fileCostRes = this.memCalculator
+          .calculateSeqFileCost(seqFile, useTightBound, tempMaxSeqFileCost);
       long fileCost = fileCostRes.left;
       tempMaxSeqFileCost = fileCostRes.right;
       if (fileCost < memoryBudget) {
@@ -242,8 +240,8 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
         i++) {
       TsFileResource seqFile = seqFiles.get(i);
       logger.debug("Try extending seq file {}", seqFile);
-      Pair<Long, Long> fileCostRes = this.memCalculator.calculateSeqFileCost(seqFile, useTightBound,
-          this.selectorContext.getConcurrentMergeNum(), tempMaxSeqFileCost);
+      Pair<Long, Long> fileCostRes = this.memCalculator
+          .calculateSeqFileCost(seqFile, useTightBound, tempMaxSeqFileCost);
       long fileCost = fileCostRes.left;
       tempMaxSeqFileCost = fileCostRes.right;
       if (fileCost + this.selectorContext.getTotalCost() < memoryBudget) {

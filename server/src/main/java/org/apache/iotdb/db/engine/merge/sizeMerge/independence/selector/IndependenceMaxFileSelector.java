@@ -83,10 +83,80 @@ public class IndependenceMaxFileSelector implements IMergeFileSelector {
 
   @Override
   public Pair<MergeResource, SelectorContext> selectMergedFiles() throws MergeException {
-    return null;
+    this.selectorContext.setStartTime(System.currentTimeMillis());
+    this.selectorContext.clearTimeConsumption();
+    try {
+      logger.info("Selecting merge candidates from {} seqFile", seqFiles.size());
+      List<TsFileResource> selectedSeqFiles = select(false);
+      if (selectedSeqFiles.isEmpty()) {
+        selectedSeqFiles = select(true);
+      }
+      resource.setSeqFiles(selectedSeqFiles);
+      resource.removeOutdatedSeqReaders();
+      if (resource.getSeqFiles().isEmpty()) {
+        logger.info("No merge candidates are found");
+        return new Pair<>(resource, selectorContext);
+      }
+    } catch (IOException e) {
+      throw new MergeException(e);
+    }
+    if (logger.isInfoEnabled()) {
+      logger.info("Selected merge candidates, {} seqFiles, total memory cost {}, "
+              + "time consumption {}ms", resource.getSeqFiles().size(), selectorContext.getTotalCost(),
+          System.currentTimeMillis() - selectorContext.getStartTime());
+    }
+    return new Pair<>(resource, selectorContext);
   }
 
-  List<TsFileResource> getSeqFiles() {
-    return seqFiles;
+  public List<TsFileResource> select(boolean useTightBound) throws IOException {
+    this.selectorContext.setStartTime(System.currentTimeMillis());
+    this.selectorContext.clearTimeConsumption();
+    this.selectorContext.clearTotalCost();
+    int tmpStartIdx = -1;
+    int tmpEndIdx = -1;
+    int startIdx = -1;
+    int endIdx = -1;
+    int seqIndex = 0;
+    while (seqIndex < seqFiles.size() && this.selectorContext.getTimeConsumption() < timeLimit) {
+      TsFileResource seqFile = seqFiles.get(seqIndex);
+      if (!UpgradeUtils.isNeedUpgrade(seqFile)) {
+        if (isSmallFile(seqFile)) {
+          if (tmpStartIdx != -1) {
+            tmpEndIdx = seqIndex;
+          } else {
+            tmpStartIdx = seqIndex;
+          }
+        }
+      }
+      long newCost = useTightBound ? this.memCalculator.calculateTightSeqMemoryCost(seqFile)
+          : seqFile.getFileSize();
+      if (this.selectorContext.getTotalCost() + newCost < memoryBudget) {
+        startIdx = tmpStartIdx;
+        endIdx = tmpEndIdx;
+        this.selectorContext.incTotalCost(newCost);
+        logger.debug("Adding a new {} seqFile as candidates, new cost {}, total"
+            + " cost {}", seqFile, newCost, this.selectorContext.getTotalCost());
+      }
+      seqIndex++;
+      this.selectorContext.updateTimeConsumption();
+    }
+    if (startIdx == -1 || endIdx == -1) {
+      return new ArrayList<>();
+    }
+    return seqFiles.subList(startIdx, endIdx + 1);
+  }
+
+  private boolean isSmallFile(TsFileResource seqFile) {
+    Map<String, Long> endTimeMap = seqFile.getEndTimeMap();
+    if (endTimeMap.size() > 1) {
+      return true;
+    }
+    if (endTimeMap.size() == 1) {
+      Long seqStartTime = seqFile.getStartTimeMap().values().iterator().next();
+      Long seqEndTime = endTimeMap.values().iterator().next();
+      long intervalTime = seqEndTime - seqStartTime;
+      return intervalTime < timeBlock;
+    }
+    return false;
   }
 }

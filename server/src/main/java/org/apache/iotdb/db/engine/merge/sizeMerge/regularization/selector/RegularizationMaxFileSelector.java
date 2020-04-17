@@ -136,8 +136,7 @@ public class RegularizationMaxFileSelector implements IMergeFileSelector {
           }
         }
       }
-      long newCost = useTightBound ? this.memCalculator
-          .calculateTightSeqMemoryCost(seqFile, this.selectorContext.getConcurrentMergeNum())
+      long newCost = useTightBound ? this.memCalculator.calculateTightSeqMemoryCost(seqFile)
           : seqFile.getFileSize();
       if (this.selectorContext.getTotalCost() + newCost < memoryBudget) {
         startIdx = tmpStartIdx;
@@ -153,9 +152,5 @@ public class RegularizationMaxFileSelector implements IMergeFileSelector {
       return new ArrayList<>();
     }
     return seqFiles.subList(startIdx, endIdx + 1);
-  }
-
-  List<TsFileResource> getSeqFiles() {
-    return seqFiles;
   }
 }

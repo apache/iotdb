@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.NaivePathSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.sizeMerge.independence.recover.IndependenceMergeLogger;
@@ -57,24 +56,120 @@ class MergeSeriesTask {
   private MergeResource resource;
   private MergeContext mergeContext;
   private long timeBlock;
-  private int concurrentMergeSeriesNum;
-
-  private List<Pair<RestorableTsFileIOWriter, TsFileResource>> newTsFilePairs;
+  private List<Path> unmergedSeries;
 
   MergeSeriesTask(MergeContext context, String taskName, IndependenceMergeLogger mergeLogger,
-      MergeResource mergeResource, int concurrentMergeSeriesNum) {
+      MergeResource mergeResource, List<Path> unmergedSeries) {
     this.mergeContext = context;
     this.taskName = taskName;
     this.mergeLogger = mergeLogger;
     this.resource = mergeResource;
     this.timeBlock = IoTDBDescriptor.getInstance().getConfig().getMergeFileTimeBlock();
-    this.newTsFilePairs = new ArrayList<>();
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
+    this.unmergedSeries = unmergedSeries;
   }
 
   List<TsFileResource> mergeSeries() throws IOException {
+    if (logger.isInfoEnabled()) {
+      logger.info("{} starts to merge series", taskName);
+    }
+    long startTime = System.currentTimeMillis();
 
-    //TODO
-    return null;
+    List<TsFileResource> newResources = new ArrayList<>();
+    Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = createNewFileWriter();
+    RestorableTsFileIOWriter nowFileWriter = newTsFilePair.left;
+    TsFileResource nowResource = newTsFilePair.right;
+    newResources.add(nowResource);
+
+    List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
+    for (List<Path> pathList : devicePaths) {
+      // TODO: use statistics of queries to better rearrange series
+      List<Path> paths = pathList;
+      String deviceId = paths.get(0).getDevice();
+      nowFileWriter.startChunkGroup(paths.get(0).getDevice());
+      Long nowResourceStartTime = null;
+      Long nowResourceEndTime = null;
+      for (TsFileResource currTsFile : resource.getSeqFiles()) {
+        Long currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
+        Long currDeviceMaxTime = currTsFile.getEndTimeMap().get(deviceId);
+        if (currDeviceMinTime == null || currDeviceMaxTime == null) {
+          break;
+        }
+        if (nowResourceStartTime == null || currDeviceMinTime < nowResourceStartTime) {
+          nowResourceStartTime = currDeviceMinTime;
+        }
+        if (nowResourceEndTime == null || currDeviceMaxTime > nowResourceEndTime) {
+          nowResourceEndTime = currDeviceMaxTime;
+        }
+        mergePaths(currTsFile, paths, nowFileWriter);
+        if (nowResourceEndTime - nowResourceStartTime > timeBlock) {
+          nowResource.getStartTimeMap().put(deviceId, nowResourceStartTime);
+          nowResource.getEndTimeMap().put(deviceId, nowResourceEndTime);
+          resource.flushChunks(nowFileWriter);
+          nowFileWriter.endChunkGroup();
+
+          nowFileWriter.endFile();
+          newTsFilePair = createNewFileWriter();
+          nowFileWriter = newTsFilePair.left;
+          nowResource = newTsFilePair.right;
+          newResources.add(nowResource);
+        }
+      }
+      resource.flushChunks(nowFileWriter);
+      nowFileWriter.endChunkGroup();
+    }
+    mergeLogger.logAllTsEnd();
+
+    if (logger.isInfoEnabled()) {
+      logger.info("{} all series are merged after {}ms", taskName,
+          System.currentTimeMillis() - startTime);
+    }
+
+    return newResources;
+  }
+
+  private void mergePaths(TsFileResource currTsFile, List<Path> paths,
+      RestorableTsFileIOWriter nowFileWriter) throws IOException {
+    TsFileSequenceReader seqReader = resource.getFileReader(currTsFile);
+    for (Path path : paths) {
+      MeasurementSchema measurementSchema = resource.getChunkWriter(path).getMeasurementSchema();
+      nowFileWriter.addSchema(path, measurementSchema);
+      List<ChunkMetadata> chunkMetadataList = seqReader.getChunkMetadataList(path);
+      writeMergedChunkGroup(chunkMetadataList, seqReader, nowFileWriter);
+    }
+  }
+
+  private void writeMergedChunkGroup(List<ChunkMetadata> chunkMetadataList,
+      TsFileSequenceReader reader, RestorableTsFileIOWriter nowFileWriter)
+      throws IOException {
+    // start merging a device
+    long maxVersion = 0;
+    for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+      Chunk chunk = reader.readMemChunk(chunkMetaData);
+      nowFileWriter.writeChunk(chunk, chunkMetaData);
+      maxVersion =
+          chunkMetaData.getVersion() > maxVersion ? chunkMetaData.getVersion() : maxVersion;
+      mergeContext.incTotalPointWritten(chunkMetaData.getNumOfPoints());
+    }
+    nowFileWriter.addVersionPair(new Pair<>(nowFileWriter.getPos(), maxVersion + 1));
+  }
+
+  private Pair<RestorableTsFileIOWriter, TsFileResource> createNewFileWriter() throws IOException {
+    // use the minimum version as the version of the new file
+    long currFileVersion =
+        Long.parseLong(
+            resource.getSeqFiles().get(0).getFile().getName().replace(TSFILE_SUFFIX, "")
+                .split(TSFILE_SEPARATOR)[1]);
+    long prevMergeNum =
+        Long.parseLong(
+            resource.getSeqFiles().get(0).getFile().getName().replace(TSFILE_SUFFIX, "")
+                .split(TSFILE_SEPARATOR)[2]);
+    File parent = resource.getSeqFiles().get(0).getFile().getParentFile();
+    File newFile = FSFactoryProducer.getFSFactory().getFile(parent,
+        System.currentTimeMillis() + TSFILE_SEPARATOR + currFileVersion + TSFILE_SEPARATOR + (
+            prevMergeNum + 1) + TSFILE_SUFFIX + MERGE_SUFFIX);
+    Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = new Pair<>(
+        new RestorableTsFileIOWriter(newFile), new TsFileResource(newFile));
+    mergeLogger.logNewFile(newTsFilePair.right);
+    return newTsFilePair;
   }
 }

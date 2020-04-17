@@ -2,27 +2,16 @@ package org.apache.iotdb.db.engine.merge.utils;
 
 public class SelectorContext {
 
-  private int concurrentMergeNum;
-  // the number of timeseries being queried at the same time
   private long totalCost;
   private long startTime;
   private long timeConsumption;
 
   public SelectorContext() {
-    this(1, 0);
+    this(0);
   }
 
-  public SelectorContext(int concurrentMergeNum, long totalCost) {
-    this.concurrentMergeNum = concurrentMergeNum;
+  public SelectorContext(long totalCost) {
     this.totalCost = totalCost;
-  }
-
-  public int getConcurrentMergeNum() {
-    return concurrentMergeNum;
-  }
-
-  public void setConcurrentMergeNum(int concurrentMergeNum) {
-    this.concurrentMergeNum = concurrentMergeNum;
   }
 
   public long getStartTime() {

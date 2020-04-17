@@ -60,19 +60,17 @@ public class SqueezeMergeTask implements Callable<Void> {
   private MergeContext mergeContext = new MergeContext();
 
   MergeCallback callback;
-  int concurrentMergeSeriesNum;
   String taskName;
 
   TsFileResource newResource;
 
   public SqueezeMergeTask(
       MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
-      String taskName, int concurrentMergeSeriesNum, String storageGroupName) {
+      String taskName, String storageGroupName) {
     this.resource = mergeResource;
     this.storageGroupSysDir = storageGroupSysDir;
     this.callback = callback;
     this.taskName = taskName;
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
 
@@ -126,8 +124,7 @@ public class SqueezeMergeTask implements Callable<Void> {
     }
 
     MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger,
-        resource
-        , unmergedSeries, concurrentMergeSeriesNum);
+        resource, unmergedSeries);
     newResource = mergeChunkTask.mergeSeries();
 
     cleanUp(true);

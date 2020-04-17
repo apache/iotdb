@@ -47,7 +47,7 @@ public class RecoverSqueezeMergeTask extends SqueezeMergeTask implements IRecove
       List<TsFileResource> unseqFiles, String storageGroupSysDir,
       MergeCallback callback, String taskName, String storageGroupName) {
     super(new MergeResource(seqFiles, unseqFiles), storageGroupSysDir, callback, taskName,
-        1, storageGroupName);
+        storageGroupName);
   }
 
   // continueMerge does not work for squeeze strategy

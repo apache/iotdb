@@ -61,7 +61,7 @@ public class MergeLogTest extends MergeTest {
     RegularizationMergeTask mergeTask =
         new RegularizationMergeTask(
             new MergeResource(seqResources),
-            tempSGDir.getPath(), this::testCallBack, "test", 1, MERGE_TEST_SG);
+            tempSGDir.getPath(), this::testCallBack, "test", MERGE_TEST_SG);
     mergeTask.call();
   }
 

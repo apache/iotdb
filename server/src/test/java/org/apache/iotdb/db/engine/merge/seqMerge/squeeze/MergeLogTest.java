@@ -61,7 +61,7 @@ public class MergeLogTest extends MergeTest {
     SqueezeMergeTask mergeTask =
         new SqueezeMergeTask(
             new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
-            tempSGDir.getPath(), this::testCallBack, "test", 1, MERGE_TEST_SG);
+            tempSGDir.getPath(), this::testCallBack, "test", MERGE_TEST_SG);
     mergeTask.call();
   }
 

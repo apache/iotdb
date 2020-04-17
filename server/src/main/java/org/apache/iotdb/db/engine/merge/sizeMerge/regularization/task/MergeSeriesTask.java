@@ -29,7 +29,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.NaivePathSelector;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.recover.RegularizationMergeLogger;
@@ -58,12 +57,11 @@ class MergeSeriesTask {
   private MergeContext mergeContext;
   private long timeBlock;
   private List<Path> unmergedSeries;
-  private int concurrentMergeSeriesNum;
 
   private List<Pair<RestorableTsFileIOWriter, TsFileResource>> newTsFilePairs;
 
   MergeSeriesTask(MergeContext context, String taskName, RegularizationMergeLogger mergeLogger,
-      MergeResource mergeResource, List<Path> unmergedSeries, int concurrentMergeSeriesNum) {
+      MergeResource mergeResource, List<Path> unmergedSeries) {
     this.mergeContext = context;
     this.taskName = taskName;
     this.mergeLogger = mergeLogger;
@@ -71,7 +69,6 @@ class MergeSeriesTask {
     this.timeBlock = IoTDBDescriptor.getInstance().getConfig().getMergeFileTimeBlock();
     this.newTsFilePairs = new ArrayList<>();
     this.unmergedSeries = unmergedSeries;
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
   }
 
   List<TsFileResource> mergeSeries() throws IOException {
@@ -88,41 +85,38 @@ class MergeSeriesTask {
     List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
     for (List<Path> pathList : devicePaths) {
       // TODO: use statistics of queries to better rearrange series
-      Iterator<List<Path>> pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
-      while (pathSelector.hasNext()) {
-        List<Path> paths = pathSelector.next();
-        String deviceId = paths.get(0).getDevice();
-        nowFileWriter.startChunkGroup(paths.get(0).getDevice());
-        Long nowResourceStartTime = null;
-        Long nowResourceEndTime = null;
-        for (TsFileResource currTsFile : resource.getSeqFiles()) {
-          Long currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
-          Long currDeviceMaxTime = currTsFile.getEndTimeMap().get(deviceId);
-          if (currDeviceMinTime == null || currDeviceMaxTime == null) {
-            break;
-          }
-          if (nowResourceStartTime == null || currDeviceMinTime < nowResourceStartTime) {
-            nowResourceStartTime = currDeviceMinTime;
-          }
-          if (nowResourceEndTime == null || currDeviceMaxTime > nowResourceEndTime) {
-            nowResourceEndTime = currDeviceMaxTime;
-          }
-          mergePaths(currTsFile, paths, nowFileWriter);
-          if (nowResourceEndTime - nowResourceStartTime > timeBlock) {
-            nowResource.getStartTimeMap().put(deviceId, nowResourceStartTime);
-            nowResource.getEndTimeMap().put(deviceId, nowResourceEndTime);
-            resource.flushChunks(nowFileWriter);
-            nowFileWriter.endChunkGroup();
-
-            writerIdx++;
-            newTsFilePair = getFileWriter(writerIdx);
-            nowFileWriter = newTsFilePair.left;
-            nowResource = newTsFilePair.right;
-          }
+      List<Path> paths = pathList;
+      String deviceId = paths.get(0).getDevice();
+      nowFileWriter.startChunkGroup(paths.get(0).getDevice());
+      Long nowResourceStartTime = null;
+      Long nowResourceEndTime = null;
+      for (TsFileResource currTsFile : resource.getSeqFiles()) {
+        Long currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
+        Long currDeviceMaxTime = currTsFile.getEndTimeMap().get(deviceId);
+        if (currDeviceMinTime == null || currDeviceMaxTime == null) {
+          break;
         }
-        resource.flushChunks(nowFileWriter);
-        nowFileWriter.endChunkGroup();
+        if (nowResourceStartTime == null || currDeviceMinTime < nowResourceStartTime) {
+          nowResourceStartTime = currDeviceMinTime;
+        }
+        if (nowResourceEndTime == null || currDeviceMaxTime > nowResourceEndTime) {
+          nowResourceEndTime = currDeviceMaxTime;
+        }
+        mergePaths(currTsFile, paths, nowFileWriter);
+        if (nowResourceEndTime - nowResourceStartTime > timeBlock) {
+          nowResource.getStartTimeMap().put(deviceId, nowResourceStartTime);
+          nowResource.getEndTimeMap().put(deviceId, nowResourceEndTime);
+          resource.flushChunks(nowFileWriter);
+          nowFileWriter.endChunkGroup();
+
+          writerIdx++;
+          newTsFilePair = getFileWriter(writerIdx);
+          nowFileWriter = newTsFilePair.left;
+          nowResource = newTsFilePair.right;
+        }
       }
+      resource.flushChunks(nowFileWriter);
+      nowFileWriter.endChunkGroup();
     }
     List<TsFileResource> newResources = new ArrayList<>();
     for (Pair<RestorableTsFileIOWriter, TsFileResource> tsFilePair : newTsFilePairs) {
