@@ -266,7 +266,8 @@ public class StringContainer {
   public String getSubString(int index) {
     int realIndex = index >= 0 ? index : count + index;
     if (realIndex < 0 || realIndex >= count) {
-      throw new IndexOutOfBoundsException("Index: " + index + ", Real Index: " + realIndex + ", Size: " + count);
+      throw new IndexOutOfBoundsException(String.format(
+          "Index: %d, Real Index: %d, Size: %d", index, realIndex, count));
     }
     if (realIndex < reverseList.size()) {
       return reverseList.get(reverseList.size() - 1 - realIndex);
@@ -291,12 +292,12 @@ public class StringContainer {
     int realStartIndex = start >= 0 ? start : count + start;
     int realEndIndex = end >= 0 ? end : count + end;
     if (realStartIndex < 0 || realStartIndex >= count) {
-      throw new IndexOutOfBoundsException(
-          "start Index: " + start + ", Real start Index: " + realStartIndex + ", Size: " + count);
+      throw new IndexOutOfBoundsException(String.format(
+          "start Index: %d, Real start Index: %d, Size: %d", start, realStartIndex, count));
     }
     if (realEndIndex < 0 || realEndIndex >= count) {
-      throw new IndexOutOfBoundsException(
-          "end Index: " + end + ", Real end Index: " + realEndIndex + ", Size: " + count);
+      throw new IndexOutOfBoundsException(String.format(
+          "end Index: %d, Real end Index: %d, Size: %d", end, realEndIndex, count));
     }
     StringContainer ret = new StringContainer(joinSeparator);
     if (realStartIndex < reverseList.size()) {

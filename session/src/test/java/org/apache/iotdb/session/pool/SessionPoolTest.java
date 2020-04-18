@@ -171,7 +171,7 @@ public class SessionPoolTest {
 
   @Test
   public void tryIfTheServerIsRestart() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1,6000);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false);
     for (int i = 0; i < 10; i++) {
       try {
         pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
@@ -206,7 +206,7 @@ public class SessionPoolTest {
 
   @Test
   public void tryIfTheServerIsRestartButDataIsGotten() {
-    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1,60000);
+    SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false);
     for (int i = 0; i < 10; i++) {
       try {
         pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));

@@ -18,13 +18,19 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -32,8 +38,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class is used to cache <code>List<ChunkMetaData></code> of tsfile in IoTDB. The caching
@@ -52,22 +56,36 @@ public class ChunkMetadataCache {
    */
   private final LRULinkedHashMap<String, List<ChunkMetadata>> lruCache;
 
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
-  /**
-   * approximate estimation of chunkMetaData size
-   */
-  private long chunkMetaDataSize = 0;
 
   private ChunkMetadataCache(long memoryThreshold) {
     lruCache = new LRULinkedHashMap<String, List<ChunkMetadata>>(memoryThreshold, true) {
+      int count = 0;
+      long averageChunkMetadataSize = 0;
+
       @Override
       protected long calEntrySize(String key, List<ChunkMetadata> value) {
-        if (chunkMetaDataSize == 0 && !value.isEmpty()) {
-          chunkMetaDataSize = RamUsageEstimator.sizeOf(value.get(0));
+        if (value.isEmpty()) {
+          return key.getBytes().length + averageChunkMetadataSize * value.size();
         }
-        return value.size() * chunkMetaDataSize + key.length() * 2;
+
+        if (count < 10) {
+          long currentSize = RamUsageEstimator.sizeOf(value.get(0));
+          averageChunkMetadataSize = ((averageChunkMetadataSize * count) + currentSize) / (++count);
+          IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageChunkMetadataSize);
+          return key.getBytes().length + currentSize * value.size();
+        } else if (count < 100000) {
+          count++;
+          return key.getBytes().length + averageChunkMetadataSize * value.size();
+        } else {
+          averageChunkMetadataSize = RamUsageEstimator.sizeOf(value.get(0));
+          count = 1;
+          return key.getBytes().length + averageChunkMetadataSize * value.size();
+        }
       }
     };
   }
@@ -79,56 +97,60 @@ public class ChunkMetadataCache {
   /**
    * get {@link ChunkMetadata}. THREAD SAFE.
    */
-  public List<ChunkMetadata> get(TsFileResource resource, Path seriesPath)
+  public List<ChunkMetadata> get(String filePath, Path seriesPath)
       throws IOException {
     if (!cacheEnable) {
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       // bloom filter part
+      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         if (logger.isDebugEnabled()) {
-          logger.debug("path not found by bloom filter, file is: " + resource.getFile() + " path is: " + seriesPath);
+          logger.debug(String
+              .format("path not found by bloom filter, file is: %s, path is: %s", filePath, seriesPath));
         }
         return new ArrayList<>();
       }
       // If timeseries isn't included in the tsfile, empty list is returned.
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(resource.getPath(), true);
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
       return tsFileReader.getChunkMetadataList(seriesPath);
     }
 
-    String key = (resource.getPath() + IoTDBConstant.PATH_SEPARATOR
+    String key = (filePath + IoTDBConstant.PATH_SEPARATOR
         + seriesPath.getDevice() + seriesPath.getMeasurement()).intern();
 
-    synchronized (lruCache) {
-      cacheRequestNum.incrementAndGet();
+    cacheRequestNum.incrementAndGet();
+
+    lock.readLock().lock();
+    try {
       if (lruCache.containsKey(key)) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
         return new ArrayList<>(lruCache.get(key));
       }
+    } finally {
+      lock.readLock().unlock();
     }
-    synchronized (key) {
-      synchronized (lruCache) {
-        if (lruCache.containsKey(key)) {
-          printCacheLog(true);
-          cacheHitNum.incrementAndGet();
-          return new ArrayList<>(lruCache.get(key));
-        }
+
+    lock.writeLock().lock();
+    try {
+      if (lruCache.containsKey(key)) {
+        printCacheLog(true);
+        cacheHitNum.incrementAndGet();
+        return new ArrayList<>(lruCache.get(key));
       }
       printCacheLog(false);
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       // bloom filter part
+      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         return new ArrayList<>();
       }
-      List<ChunkMetadata> chunkMetaDataList = TsFileMetadataUtils.getChunkMetadataList(seriesPath, resource);
-      synchronized (lruCache) {
-        if (!lruCache.containsKey(key)) {
-          lruCache.put(key, chunkMetaDataList);
-        }
-        return chunkMetaDataList;
-      }
+      List<ChunkMetadata> chunkMetaDataList = FileLoaderUtils
+          .getChunkMetadataList(seriesPath, filePath);
+      lruCache.put(key, chunkMetaDataList);
+      return chunkMetaDataList;
+    } finally {
+      lock.writeLock().unlock();
     }
   }
 

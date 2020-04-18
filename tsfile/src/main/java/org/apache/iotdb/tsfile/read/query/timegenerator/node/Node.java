@@ -19,13 +19,12 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator.node;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.read.common.TimeColumn;
 
 public interface Node {
 
-  boolean hasNextTimeColumn() throws IOException;
+  boolean hasNext() throws IOException;
 
-  TimeColumn nextTimeColumn() throws IOException;
+  long next() throws IOException;
 
   NodeType getType();
 }

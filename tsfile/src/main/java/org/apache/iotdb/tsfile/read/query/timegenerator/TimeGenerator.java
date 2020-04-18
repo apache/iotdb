@@ -18,13 +18,8 @@
  */
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.TimeColumn;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -34,6 +29,8 @@ import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * All SingleSeriesExpression involved in a IExpression will be transferred to a TimeGenerator tree
@@ -43,45 +40,26 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
  */
 public abstract class TimeGenerator {
 
-
-  private boolean hasCache;
-  private TimeColumn cacheTimes;
-
   private HashMap<Path, List<LeafNode>> leafCache = new HashMap<>();
   private Node operatorNode;
+  private boolean hasOrNode;
 
   public boolean hasNext() throws IOException {
-    if (hasCache) {
-      return true;
-    }
-
-    while (operatorNode.hasNextTimeColumn()) {
-      cacheTimes = operatorNode.nextTimeColumn();
-      if (cacheTimes.hasCurrent()) {
-        hasCache = true;
-        break;
-      }
-    }
-    return hasCache;
+    return operatorNode.hasNext();
   }
 
   public long next() throws IOException {
-    if (hasCache || hasNext()) {
-      long currentTime = cacheTimes.currentTime();
-      cacheTimes.next();
-      hasCache = cacheTimes.hasCurrent();
-      return currentTime;
-    }
-    throw new IOException("no more data");
+    return operatorNode.next();
   }
 
   public Object getValue(Path path, long time) {
     for (LeafNode leafNode : leafCache.get(path)) {
-      Object value = leafNode.currentValue(time);
-      if (value != null) {
-        return value;
+      if (!leafNode.currentTimeIs(time)) {
+        continue;
       }
+      return leafNode.currentValue();
     }
+
     return null;
   }
 
@@ -113,6 +91,7 @@ public abstract class TimeGenerator {
       Node rightChild = construct(((IBinaryExpression) expression).getRight());
 
       if (expression.getType() == ExpressionType.OR) {
+        hasOrNode = true;
         return new OrNode(leftChild, rightChild);
       } else if (expression.getType() == ExpressionType.AND) {
         return new AndNode(leftChild, rightChild);
@@ -125,4 +104,7 @@ public abstract class TimeGenerator {
   protected abstract IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException;
 
+  public boolean hasOrNode() {
+    return hasOrNode;
+  }
 }

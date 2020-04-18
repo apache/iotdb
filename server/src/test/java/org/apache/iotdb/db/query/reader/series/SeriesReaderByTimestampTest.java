@@ -33,9 +33,13 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class SeriesReaderByTimestampTest {
@@ -63,8 +67,11 @@ public class SeriesReaderByTimestampTest {
       new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
       seqResources, unseqResources);
 
+    Set<String> allSensors = new HashSet<>();
+    allSensors.add("sensor0");
+
     SeriesReaderByTimestamp seriesReader = new SeriesReaderByTimestamp(
-      new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"),
+      new Path(SERIES_READER_TEST_SG + PATH_SEPARATOR + "device0", "sensor0"), allSensors,
       TSDataType.INT32, new QueryContext(), dataSource, null);
 
     for (int time = 0; time < 500; time++) {

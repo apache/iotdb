@@ -21,7 +21,6 @@ package org.apache.iotdb.db.monitor.collector;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -30,17 +29,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.monitor.IStatistic;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileSizeConstants;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +47,6 @@ public class FileSize implements IStatistic {
   private static final Logger logger = LoggerFactory.getLogger(FileSize.class);
   private static final long ABNORMAL_VALUE = -1L;
   private static final long INIT_VALUE_IF_FILE_NOT_EXIST = 0L;
-  private StorageEngine storageEngine;
 
   @Override
   public Map<String, TSRecord> getAllStatisticsValue() {
@@ -106,7 +98,6 @@ public class FileSize implements IStatistic {
   }
 
   private FileSize() {
-    storageEngine = StorageEngine.getInstance();
     if (config.isEnableStatMonitor()) {
       StatMonitor statMonitor = StatMonitor.getInstance();
       registerStatMetadata();

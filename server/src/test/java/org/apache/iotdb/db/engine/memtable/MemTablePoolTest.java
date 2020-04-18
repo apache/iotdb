@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.TreeMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import org.apache.iotdb.db.rescon.MemTablePool;
 import org.junit.After;
@@ -53,18 +52,6 @@ public class MemTablePoolTest {
     time -= System.currentTimeMillis();
     System.out.println("memtable pool use deque and synchronized consume:" + time);
   }
-
-  @Test
-  public void testSort() {
-    long start = System.currentTimeMillis();
-    TreeMap<Long, Long> treeMap = new TreeMap<>();
-    for (int i = 0; i < 1000000; i++) {
-      treeMap.put((long) i, (long) i);
-    }
-    start = System.currentTimeMillis() - start;
-    System.out.println("time cost of sort: " + start);
-  }
-
 
   class ReturnThread extends Thread {
 

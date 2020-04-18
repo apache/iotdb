@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
 import java.util.List;
@@ -47,6 +46,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -66,11 +66,7 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -253,13 +249,7 @@ public class StorageEngine implements IService {
    */
   public void insert(InsertPlan insertPlan) throws StorageEngineException {
 
-    StorageGroupProcessor storageGroupProcessor;
-    try {
-      storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
-    } catch (Exception e) {
-      throw new StorageEngineException(
-          "get StorageGroupProcessor of device failed: " + insertPlan.getDeviceId(), e);
-    }
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
@@ -450,13 +440,13 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
-      throws TsFileProcessorException, StorageEngineException {
+      throws StorageEngineException, TsFileProcessorException {
     getProcessor(newTsFileResource.getFile().getParentFile().getName())
         .loadNewTsFileForSync(newTsFileResource);
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws TsFileProcessorException, StorageEngineException, MetadataException {
+      throws StorageEngineException, MetadataException, TsFileProcessorException {
     Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
     if (startTimeMap == null || startTimeMap.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
@@ -503,8 +493,7 @@ public class StorageEngine implements IService {
         if (!sequenceFile.isClosed()) {
           continue;
         }
-        String[] fileSplits = FilePathUtils.splitTsFilePath(sequenceFile);
-        long partitionNum = Long.parseLong(fileSplits[fileSplits.length - 2]);
+        long partitionNum = sequenceFile.getTimePartition();
         Map<Long, List<TsFileResource>> storageGroupFiles = ret.computeIfAbsent(entry.getKey()
             , n -> new HashMap<>());
         storageGroupFiles.computeIfAbsent(partitionNum, n -> new ArrayList<>()).add(sequenceFile);
@@ -518,12 +507,11 @@ public class StorageEngine implements IService {
   }
 
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup) {
-    // TODO-Cluster#350: integrate with time partitioning
     StorageGroupProcessor processor = processorMap.get(storageGroup);
     return processor != null && processor.isFileAlreadyExist(tsFileResource);
   }
 
-  public long getTimePartitionInterval() {
+  public static long getTimePartitionInterval() {
     return timePartitionInterval;
   }
 

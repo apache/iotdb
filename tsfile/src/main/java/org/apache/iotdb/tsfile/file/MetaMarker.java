@@ -22,14 +22,14 @@ package org.apache.iotdb.tsfile.file;
 import java.io.IOException;
 
 /**
- * MetaMarker denotes the type of headers and footers. Enum is not used for
- * space saving.
+ * MetaMarker denotes the type of headers and footers. Enum is not used for space saving.
  */
 public class MetaMarker {
 
   public static final byte CHUNK_GROUP_FOOTER = 0;
   public static final byte CHUNK_HEADER = 1;
   public static final byte SEPARATOR = 2;
+  public static final byte VERSION = 3;
 
   private MetaMarker() {
   }

@@ -203,7 +203,8 @@ public class LongRleDecoderTest {
     }
   }
 
-  public void testLength(List<Long> list, int bitWidth, boolean isDebug, int repeatCount) throws IOException {
+  public void testLength(List<Long> list, int bitWidth, boolean isDebug, int repeatCount)
+      throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     RleEncoder<Long> encoder = new LongRleEncoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {

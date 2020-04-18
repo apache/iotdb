@@ -204,19 +204,6 @@
 ================================================================
 APACHE IOTDB SUBCOMPONENTS:
 
-The following classes are modified from Apache Hive, which is under Apache License 2.0:
-
-./server/src/main/java/org/apache/iotdb/db/sql/parse/AstErrorNode.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/AstNode.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/AstNodeOrigin.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/Node.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseDriver.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseError.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseException.java
-./server/src/main/java/org/apache/iotdb/db/sql/parse/ParseUtils.java
-
-------------
-
 The following class is copied from maven-wrapper (https://github.com/takari/maven-wrapper),
 which is under Apache License 2.0:
 

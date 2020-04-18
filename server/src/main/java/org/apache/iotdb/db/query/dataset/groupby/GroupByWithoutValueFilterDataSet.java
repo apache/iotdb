@@ -36,10 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
@@ -90,7 +87,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       if (!pathExecutors.containsKey(path)) {
         //init GroupByExecutor
         pathExecutors.put(path,
-                getGroupByExecutor(path, dataTypes.get(i), context, timeFilter, null));
+                getGroupByExecutor(path, groupByPlan.getAllMeasurementsInDevice(path.getDevice()), dataTypes.get(i), context, timeFilter, null));
         resultIndexes.put(path, new ArrayList<>());
       }
       resultIndexes.get(path).add(i);
@@ -107,7 +104,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
               + "in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    RowRecord record = new RowRecord(curStartTime);
+    RowRecord record;
+    if (leftCRightO) {
+      record = new RowRecord(curStartTime);
+    } else {
+      record = new RowRecord(curEndTime-1);
+    }
 
     AggregateResult[] fields = new AggregateResult[paths.size()];
 
@@ -135,9 +137,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return record;
   }
 
-  protected GroupByExecutor getGroupByExecutor(Path path, TSDataType dataType,
+  protected GroupByExecutor getGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
                                                QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
           throws StorageEngineException, QueryProcessException {
-    return new LocalGroupByExecutor(path, dataType, context, timeFilter, fileFilter);
+    return new LocalGroupByExecutor(path, allSensors, dataType, context, timeFilter, fileFilter);
   }
 }

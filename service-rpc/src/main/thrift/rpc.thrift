@@ -36,6 +36,7 @@ struct TSExecuteStatementResp {
   7: optional TSQueryDataSet queryDataSet
   // for disable align statements, queryDataSet is null and nonAlignQueryDataSet is not null
   8: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
+  9: optional map<string, i32> columnNameIndexMap
 }
 
 enum TSProtocolVersion {

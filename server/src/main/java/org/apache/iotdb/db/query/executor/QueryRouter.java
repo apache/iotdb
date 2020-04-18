@@ -19,17 +19,12 @@
 
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -43,6 +38,10 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Query entrance class of IoTDB query process. All query clause will be transformed to physical
@@ -68,15 +67,15 @@ public class QueryRouter implements IQueryRouter {
     RawDataQueryExecutor rawDataQueryExecutor = getRawDataQueryExecutor(queryPlan);
 
     if (!queryPlan.isAlignByTime()) {
-      return rawDataQueryExecutor.executeNonAlign(context);
+      return rawDataQueryExecutor.executeNonAlign(context, queryPlan);
     }
 
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
-      return rawDataQueryExecutor.executeWithValueFilter(context);
+      return rawDataQueryExecutor.executeWithValueFilter(context, queryPlan);
 
     }
-    return rawDataQueryExecutor.executeWithoutValueFilter(context);
+    return rawDataQueryExecutor.executeWithoutValueFilter(context, queryPlan);
   }
 
   protected RawDataQueryExecutor getRawDataQueryExecutor(RawDataQueryPlan queryPlan) {
@@ -102,10 +101,10 @@ public class QueryRouter implements IQueryRouter {
 
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
-      return engineExecutor.executeWithValueFilter(context);
+      return engineExecutor.executeWithValueFilter(context, aggregationPlan);
     }
 
-    return engineExecutor.executeWithoutValueFilter(context);
+    return engineExecutor.executeWithoutValueFilter(context, aggregationPlan);
   }
 
   protected AggregationExecutor getAggregationExecutor(AggregationPlan aggregationPlan) {
@@ -164,7 +163,7 @@ public class QueryRouter implements IQueryRouter {
 
     FillQueryExecutor fillQueryExecutor = getFillExecutor(fillPaths, dataTypes, queryTime,
         fillType);
-    return fillQueryExecutor.execute(context);
+    return fillQueryExecutor.execute(context, fillQueryPlan);
   }
 
   protected FillQueryExecutor getFillExecutor(
@@ -175,10 +174,18 @@ public class QueryRouter implements IQueryRouter {
   }
 
   @Override
+  public QueryDataSet groupByFill(GroupByFillPlan groupByFillPlan, QueryContext context)
+          throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
+    GroupByEngineDataSet groupByEngineDataSet = (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
+    return new GroupByFillDataSet(groupByFillPlan.getDeduplicatedPaths(), groupByFillPlan.getDeduplicatedDataTypes(),
+            groupByEngineDataSet, groupByFillPlan.getFillType(), context, groupByFillPlan);
+  }
+
+  @Override
   public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
           throws StorageEngineException, QueryProcessException, IOException {
     LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
-    return lastQueryExecutor.execute(context);
+    return lastQueryExecutor.execute(context, lastQueryPlan);
   }
 
 }

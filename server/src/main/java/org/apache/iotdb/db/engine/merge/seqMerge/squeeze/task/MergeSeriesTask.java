@@ -132,7 +132,6 @@ class MergeSeriesTask {
     long maxTime = mergeChunks();
     newResource.updateEndTime(deviceId, maxTime);
     resource.flushChunks(newFileWriter);
-    newFileWriter.addVersionPair(new Pair<>(newFileWriter.getPos(), 0L));
     newFileWriter.endChunkGroup();
   }
 
@@ -200,7 +199,7 @@ class MergeSeriesTask {
       while (tsFilesReader.hasNextBatch()) {
         BatchData batchData = tsFilesReader.nextBatch();
         for (int i = 0; i < batchData.length(); i++) {
-          System.out.println(batchData.getTimeByIndex(i));
+          System.out.println(batchData.currentTime());
           writeBatchPoint(batchData, i, chunkWriter);
         }
         if (!tsFilesReader.hasNextBatch()) {

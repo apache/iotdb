@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -84,24 +85,24 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
    */
   protected void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
       throws StorageEngineException, QueryProcessException {
-    this.timestampGenerator = getTimeGenerator(groupByPlan.getExpression(), context);
+    this.timestampGenerator = getTimeGenerator(groupByPlan.getExpression(), context, groupByPlan);
     this.allDataReaderList = new ArrayList<>();
     this.groupByPlan = groupByPlan;
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
-      allDataReaderList.add(getReaderByTime(path, dataTypes.get(i), context, null));
+      allDataReaderList.add(getReaderByTime(path, groupByPlan, dataTypes.get(i), context, null));
     }
   }
 
-  protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context)
+  protected TimeGenerator getTimeGenerator(IExpression expression, QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
-    return new ServerTimeGenerator(expression, context);
+    return new ServerTimeGenerator(expression, context, queryPlan);
   }
 
-  protected IReaderByTimestamp getReaderByTime(Path path,
+  protected IReaderByTimestamp getReaderByTime(Path path, RawDataQueryPlan queryPlan,
       TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-    return new SeriesReaderByTimestamp(path, dataType, context,
+    return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }
 
@@ -181,7 +182,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {
-    RowRecord record = new RowRecord(curStartTime);
+    RowRecord record;
+    if (leftCRightO) {
+      record = new RowRecord(curStartTime);
+    } else {
+      record = new RowRecord(curEndTime-1);
+    }
     for (int i = 0; i < paths.size(); i++) {
       AggregateResult aggregateResult = aggregateResultList.get(i);
       record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());

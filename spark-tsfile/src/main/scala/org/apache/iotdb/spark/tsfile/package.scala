@@ -51,10 +51,10 @@ package object tsfile {
                isNarrowForm: Boolean = false): Unit = {
       if (isNarrowForm) {
         writer.option(DefaultSource.path, path).option(DefaultSource.isNarrowForm, "narrow_form").
-          format("org.apache.iotdb.spark.tsfile").save
+          format(myPackage).save
       }
       else {
-        writer.option(DefaultSource.path, path).format("org.apache.iotdb.spark.tsfile").save
+        writer.option(DefaultSource.path, path).format(myPackage).save
       }
     }
   }

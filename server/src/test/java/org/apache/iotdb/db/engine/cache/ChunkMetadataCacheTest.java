@@ -67,16 +67,6 @@ public class ChunkMetadataCacheTest {
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     storageGroupProcessor = new StorageGroupProcessor(systemDir, storageGroup, new DirectFlushPolicy());
-//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
-//        new MeasurementSchema(measurementId0, TSDataType.INT32, TSEncoding.PLAIN));
-//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
-//        new MeasurementSchema(measurementId0, TSDataType.INT64, TSEncoding.PLAIN));
-//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
-//        new MeasurementSchema(measurementId0, TSDataType.FLOAT, TSEncoding.PLAIN));
-//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
-//        new MeasurementSchema(measurementId0, TSDataType.DOUBLE, TSEncoding.PLAIN));
-//    MManager.getInstance().createTimeseries(storageGroup + "." + measurementId0,
-//        new MeasurementSchema(measurementId0, TSDataType.BOOLEAN, TSEncoding.PLAIN));
     insertData();
   }
 
@@ -145,7 +135,7 @@ public class ChunkMetadataCacheTest {
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 
@@ -167,7 +157,7 @@ public class ChunkMetadataCacheTest {
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 

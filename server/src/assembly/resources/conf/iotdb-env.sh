@@ -164,16 +164,32 @@ calculate_heap_sizes
 # Minimum heap size
 #HEAP_NEWSIZE="2G"
 
-JMX_LOCAL=no
+#true or false
+#DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
+JMX_LOCAL="true"
 
 JMX_PORT="31999"
+#only take effect when the jmx_local=false
+#You need to change this IP as a public IP if you want to remotely connect IoTDB by JMX.
+# 0.0.0.0 is not allowed
+JMX_IP="127.0.0.1"
 
-if [ "JMX_LOCAL" = "yes" ]; then
-	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Diotdb.jmx.local.port=$JMX_PORT"
-	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+if [ ${JMX_LOCAL} = "false" ]; then
+  echo "setting remote JMX..."
+  #you may have no permission to run chmod. If so, contact your system administrator.
+  chmod 600 ${IOTDB_CONF}/jmx.password
+  chmod 600 ${IOTDB_CONF}/jmx.access
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djava.rmi.server.randomIDs=true"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.password.file=${IOTDB_CONF}/jmx.password"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.access.file=${IOTDB_CONF}/jmx.access"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djava.rmi.server.hostname=$JMX_IP"
 else
-	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false  -Dcom.sun.management.jmxremote.ssl=false"
-	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
+  echo "setting local JMX..."
 fi
 
 

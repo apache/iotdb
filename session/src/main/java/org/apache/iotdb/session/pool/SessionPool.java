@@ -19,6 +19,7 @@
 package org.apache.iotdb.session.pool;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
@@ -76,13 +77,20 @@ public class SessionPool {
 
   private long timeout; //ms
   private static int RETRY = 3;
+  private boolean enableCompression = false;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
-    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000);
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false);
   }
 
+  public SessionPool(String ip, int port, String user, String password, int maxSize,
+      boolean enableCompression) {
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression);
+  }
+
+  @SuppressWarnings("squid:S107")
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
-      long timeout) {
+      long timeout, boolean enableCompression) {
     this.maxSize = maxSize;
     this.ip = ip;
     this.port = port;
@@ -90,6 +98,7 @@ public class SessionPool {
     this.password = password;
     this.fetchSize = fetchSize;
     this.timeout = timeout;
+    this.enableCompression = enableCompression;
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
@@ -135,7 +144,7 @@ public class SessionPool {
         logger.error("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
       session = new Session(ip, port, user, password, fetchSize);
-      session.open();
+      session.open(enableCompression);
       return session;
     }
   }
@@ -250,6 +259,59 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.insertBatch(rowBatch);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+
+  /**
+   * use batch interface to insert data
+   *
+   * @param rowBatchMap data batch
+   */
+  public void insertMultipleDeviceSortedBatch(Map<String, RowBatch> rowBatchMap)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertMultipleDeviceSortedBatch(rowBatchMap);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  /**
+   * use batch interface to insert data
+   *
+   * @param rowBatchMap data batch
+   */
+  public void insertMultipleDeviceBatch(Map<String, RowBatch> rowBatchMap)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertMultipleDeviceBatch(rowBatchMap);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {

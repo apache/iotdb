@@ -178,7 +178,8 @@ public class IntRleDecoderTest {
     }
   }
 
-  public void testBooleanLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount) throws IOException {
+  public void testBooleanLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount)
+      throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {
@@ -211,7 +212,8 @@ public class IntRleDecoderTest {
     }
   }
 
-  public void testLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount) throws IOException {
+  public void testLength(List<Integer> list, int bitWidth, boolean isDebug, int repeatCount)
+      throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     RleEncoder<Integer> encoder = new IntRleEncoder(EndianType.BIG_ENDIAN);
     for (int i = 0; i < repeatCount; i++) {

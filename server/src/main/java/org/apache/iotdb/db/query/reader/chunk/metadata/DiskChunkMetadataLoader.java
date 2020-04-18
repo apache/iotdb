@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
 import java.io.IOException;
 import java.util.List;
 
@@ -39,26 +38,27 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   private TsFileResource resource;
   private Path seriesPath;
   private QueryContext context;
-  private Filter timeFilter;
+  // time filter or value filter, only used to check time range
+  private Filter filter;
 
-  public DiskChunkMetadataLoader(TsFileResource resource, Path seriesPath, QueryContext context, Filter timeFilter) {
+  public DiskChunkMetadataLoader(TsFileResource resource, Path seriesPath, QueryContext context, Filter filter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
-    this.timeFilter = timeFilter;
+    this.filter = filter;
   }
 
   @Override
-  public List<ChunkMetadata> getChunkMetadataList() throws IOException {
+  public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
     List<ChunkMetadata> chunkMetadataList = ChunkMetadataCache
-        .getInstance().get(resource, seriesPath);
+        .getInstance().get(resource.getPath(), seriesPath);
 
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
 
     /*
      * remove not satisfied ChunkMetaData
      */
-    chunkMetadataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
+    chunkMetadataList.removeIf(chunkMetaData -> (filter != null && !filter
             .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
             || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
     return chunkMetadataList;

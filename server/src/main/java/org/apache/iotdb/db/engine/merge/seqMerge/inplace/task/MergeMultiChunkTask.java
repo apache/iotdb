@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -187,7 +186,7 @@ class MergeMultiChunkTask {
     boolean dataWritten = mergeChunks(seqChunkMeta, isLastFile, fileSequenceReader, unseqReaders,
         mergeFileWriter, currTsFile);
     if (dataWritten) {
-      mergeFileWriter.addVersionPair(new Pair<>(mergeFileWriter.getPos(), 0L));
+      mergeFileWriter.writeVersion(0L);
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
       currTsFile.getStartTimeMap().put(deviceId, currDeviceMinTime);

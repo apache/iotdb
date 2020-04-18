@@ -105,7 +105,8 @@ public class LocalFSFactory implements FSFactory {
     try {
       FileUtils.moveFile(srcFile, destFile);
     } catch (IOException e) {
-      logger.error("Failed to move file from {} to {}. ", srcFile.getAbsolutePath(), destFile.getAbsolutePath(), e);
+      logger.error("Failed to move file from {} to {}. ", srcFile.getAbsolutePath(),
+          destFile.getAbsolutePath(), e);
     }
   }
 

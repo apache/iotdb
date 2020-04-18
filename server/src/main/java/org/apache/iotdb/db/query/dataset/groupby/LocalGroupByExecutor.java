@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
@@ -48,14 +49,14 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private List<AggregateResult> results = new ArrayList<>();
   private TimeRange timeRange;
 
-  public LocalGroupByExecutor(Path path, TSDataType dataType, QueryContext context, Filter timeFilter,
-      TsFileFilter fileFilter)
+  public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType, QueryContext context, Filter timeFilter,
+                              TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
     QueryDataSource queryDataSource = QueryResourceManager.getInstance()
         .getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-    this.reader = new SeriesAggregateReader(path, dataType, context, queryDataSource, timeFilter,
+    this.reader = new SeriesAggregateReader(path, allSensors, dataType, context, queryDataSource, timeFilter,
         null, fileFilter);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);

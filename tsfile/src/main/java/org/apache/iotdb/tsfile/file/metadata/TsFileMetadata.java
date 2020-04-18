@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -55,6 +54,8 @@ public class TsFileMetadata {
   // offset -> version
   private List<Pair<Long, Long>> versionInfo;
 
+  // offset of MetaMarker.SEPARATOR
+  private long metaOffset;
 
   /**
    * deserialize data from the buffer.
@@ -67,16 +68,16 @@ public class TsFileMetadata {
 
     // deviceMetadataIndex
     int deviceNum = ReadWriteIOUtils.readInt(buffer);
+    Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
     if (deviceNum > 0) {
-      Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
       for (int i = 0; i < deviceNum; i++) {
         String deviceId = ReadWriteIOUtils.readString(buffer);
         long offset = ReadWriteIOUtils.readLong(buffer);
         int length = ReadWriteIOUtils.readInt(buffer);
         deviceMetaDataMap.put(deviceId, new Pair<>(offset, length));
       }
-      fileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
     }
+    fileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
 
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
@@ -91,6 +92,9 @@ public class TsFileMetadata {
     }
     fileMetaData.setVersionInfo(versionInfo);
 
+    // metaOffset
+    long metaOffset = ReadWriteIOUtils.readLong(buffer);
+    fileMetaData.setMetaOffset(metaOffset);
 
     // read bloom filter
     if (buffer.hasRemaining()) {
@@ -135,9 +139,12 @@ public class TsFileMetadata {
     // versionInfo
     byteLen += ReadWriteIOUtils.write(versionInfo.size(), outputStream);
     for (Pair<Long, Long> versionPair : versionInfo) {
-      byteLen +=ReadWriteIOUtils.write(versionPair.left, outputStream);
-      byteLen +=ReadWriteIOUtils.write(versionPair.right, outputStream);
+      byteLen += ReadWriteIOUtils.write(versionPair.left, outputStream);
+      byteLen += ReadWriteIOUtils.write(versionPair.right, outputStream);
     }
+
+    // metaOffset
+    byteLen += ReadWriteIOUtils.write(metaOffset, outputStream);
 
     return byteLen;
   }
@@ -168,13 +175,13 @@ public class TsFileMetadata {
    * @return bloom filter
    */
   private BloomFilter buildBloomFilter(Set<Path> paths) {
-    BloomFilter bloomFilter = BloomFilter
+    BloomFilter filter = BloomFilter
         .getEmptyBloomFilter(TSFileDescriptor.getInstance().getConfig().getBloomFilterErrorRate(),
             paths.size());
     for (Path path : paths) {
-      bloomFilter.add(path.toString());
+      filter.add(path.toString());
     }
-    return bloomFilter;
+    return filter;
   }
 
   public int getTotalChunkNum() {
@@ -191,6 +198,14 @@ public class TsFileMetadata {
 
   public void setInvalidChunkNum(int invalidChunkNum) {
     this.invalidChunkNum = invalidChunkNum;
+  }
+
+  public long getMetaOffset() {
+    return metaOffset;
+  }
+
+  public void setMetaOffset(long metaOffset) {
+    this.metaOffset = metaOffset;
   }
 
   public Map<String, Pair<Long, Integer>> getDeviceMetadataIndex() {

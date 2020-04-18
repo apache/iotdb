@@ -42,7 +42,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -174,7 +173,14 @@ class MergeFileTask {
               new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
-      logger.error(e.getMessage(), e);
+      RestorableTsFileIOWriter oldFileRecoverWriter = new RestorableTsFileIOWriter(
+          seqFile.getFile());
+      if (oldFileRecoverWriter.hasCrashed() && oldFileRecoverWriter.canWrite()) {
+        oldFileRecoverWriter.endFile();
+      } else {
+        oldFileRecoverWriter.close();
+      }
+      throw e;
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
     }
@@ -206,7 +212,7 @@ class MergeFileTask {
           chunkMetaData.getVersion() > maxVersion ? chunkMetaData.getVersion() : maxVersion;
       context.incTotalPointWritten(chunkMetaData.getNumOfPoints());
     }
-    fileWriter.addVersionPair(new Pair<>(fileWriter.getPos(), maxVersion));
+    fileWriter.writeVersion(maxVersion);
     fileWriter.endChunkGroup();
   }
 
@@ -237,8 +243,7 @@ class MergeFileTask {
         fileWriter.startChunkGroup(path.getDevice());
         long maxVersion = writeUnmergedChunks(chunkStartTimes, chunkMetadataList,
             resource.getFileReader(seqFile), fileWriter);
-        Pair<Long, Long> versionPair = new Pair<>(fileWriter.getPos(), maxVersion + 1);
-        fileWriter.addVersionPair(versionPair);
+        fileWriter.writeVersion(maxVersion + 1);
         fileWriter.endChunkGroup();
       }
     }

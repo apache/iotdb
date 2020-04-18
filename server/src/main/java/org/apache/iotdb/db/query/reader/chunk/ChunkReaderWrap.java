@@ -71,7 +71,7 @@ public class ChunkReaderWrap {
 
   public IPointReader getIPointReader() throws IOException {
     if (type.equals(ChunkReaderType.DISK_CHUNK)) {
-      Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+      Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
       ChunkReader chunkReader = new ChunkReader(chunk, filter);
       return new ChunkDataIterator(chunkReader);
     } else {
@@ -81,7 +81,7 @@ public class ChunkReaderWrap {
 
   public IReaderByTimestamp getIReaderByTimestamp() throws IOException {
     if (type.equals(ChunkReaderType.DISK_CHUNK)) {
-      Chunk chunk = chunkLoader.getChunk(chunkMetaData);
+      Chunk chunk = chunkLoader.loadChunk(chunkMetaData);
       ChunkReaderByTimestamp chunkReader = new ChunkReaderByTimestamp(chunk);
       return new DiskChunkReaderByTimestamp(chunkReader);
     } else {

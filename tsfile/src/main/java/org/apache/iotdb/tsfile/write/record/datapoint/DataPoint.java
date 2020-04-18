@@ -21,20 +21,16 @@ package org.apache.iotdb.tsfile.write.record.datapoint;
 
 import java.io.IOException;
 import java.math.BigDecimal;
-
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 
 /**
- * This is a abstract class representing a data point. DataPoint consists of a
- * measurement id and a data type. subclass of DataPoint need override method
- * {@code write(long time, IChunkWriter
- * writer)} .Every subclass has its data type and overrides a setting method for
- * its data type.
+ * This is a abstract class representing a data point. DataPoint consists of a measurement id and a
+ * data type. subclass of DataPoint need override method {@code write(long time, IChunkWriter
+ * writer)} .Every subclass has its data type and overrides a setting method for its data type.
  */
 public abstract class DataPoint {
 
@@ -50,7 +46,7 @@ public abstract class DataPoint {
   /**
    * constructor of DataPoint.
    *
-   * @param type          value type of this DataPoint
+   * @param type value type of this DataPoint
    * @param measurementId measurementId of this DataPoint
    */
   public DataPoint(TSDataType type, String measurementId) {
@@ -61,39 +57,41 @@ public abstract class DataPoint {
   /**
    * Construct one data point with data type and value.
    *
-   * @param dataType      data type
+   * @param dataType data type
    * @param measurementId measurement id
-   * @param value         value in string format
+   * @param value value in string format
    * @return data point class according to data type
    */
   public static DataPoint getDataPoint(TSDataType dataType, String measurementId, String value) {
     DataPoint dataPoint = null;
     try {
       switch (dataType) {
-      case INT32:
-        dataPoint = new IntDataPoint(measurementId, Integer.valueOf(value));
-        break;
-      case INT64:
-        dataPoint = new LongDataPoint(measurementId, Long.valueOf(value));
-        break;
-      case FLOAT:
-        dataPoint = new FloatDataPoint(measurementId, Float.valueOf(value));
-        break;
-      case DOUBLE:
-        dataPoint = new DoubleDataPoint(measurementId, Double.valueOf(value));
-        break;
-      case BOOLEAN:
-        dataPoint = new BooleanDataPoint(measurementId, Boolean.valueOf(value));
-        break;
-      case TEXT:
-        dataPoint = new StringDataPoint(measurementId, new Binary(value));
-        break;
-      default:
-        throw new UnSupportedDataTypeException(String.format("Data type %s is not supported.", dataType));
+        case INT32:
+          dataPoint = new IntDataPoint(measurementId, Integer.valueOf(value));
+          break;
+        case INT64:
+          dataPoint = new LongDataPoint(measurementId, Long.valueOf(value));
+          break;
+        case FLOAT:
+          dataPoint = new FloatDataPoint(measurementId, Float.valueOf(value));
+          break;
+        case DOUBLE:
+          dataPoint = new DoubleDataPoint(measurementId, Double.valueOf(value));
+          break;
+        case BOOLEAN:
+          dataPoint = new BooleanDataPoint(measurementId, Boolean.valueOf(value));
+          break;
+        case TEXT:
+          dataPoint = new StringDataPoint(measurementId, new Binary(value));
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String.format("Data type %s is not supported.", dataType));
       }
     } catch (Exception e) {
       throw new UnSupportedDataTypeException(
-          String.format("Data type of %s is %s, but input value is %s", measurementId, dataType, value));
+          String.format("Data type of %s is %s, but input value is %s", measurementId, dataType,
+              value));
     }
 
     return dataPoint;
@@ -102,13 +100,11 @@ public abstract class DataPoint {
   /**
    * write this DataPoint by a SeriesWriter.
    *
-   * @param time   timestamp
+   * @param time timestamp
    * @param writer writer
    * @throws IOException exception in IO
    */
   public abstract void writeTo(long time, IChunkWriter writer) throws IOException;
-
-  public abstract void writeTo(long time, ChunkWriterImpl writer) throws IOException;
 
   public String getMeasurementId() {
     return measurementId;

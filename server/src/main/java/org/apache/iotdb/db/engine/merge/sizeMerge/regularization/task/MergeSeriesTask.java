@@ -156,7 +156,6 @@ class MergeSeriesTask {
           chunkMetaData.getVersion() > maxVersion ? chunkMetaData.getVersion() : maxVersion;
       mergeContext.incTotalPointWritten(chunkMetaData.getNumOfPoints());
     }
-    nowFileWriter.addVersionPair(new Pair<>(nowFileWriter.getPos(), maxVersion + 1));
   }
 
   private Pair<RestorableTsFileIOWriter, TsFileResource> getFileWriter(int idx) throws IOException {

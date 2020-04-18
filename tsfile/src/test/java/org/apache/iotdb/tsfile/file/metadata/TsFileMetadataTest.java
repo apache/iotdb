@@ -28,13 +28,12 @@ import org.apache.iotdb.tsfile.constant.TestConstant;
 import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.file.metadata.utils.Utils;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 public class TsFileMetadataTest {
 
-  public static final int VERSION = 123;
-  public static final String CREATED_BY = "tsf";
   final String PATH = TestConstant.BASE_OUTPUT_PATH.concat("output1.tsfile");
 
   @Before
@@ -54,8 +53,7 @@ public class TsFileMetadataTest {
     TsFileMetadata tsfMetaData = TestHelper.createSimpleFileMetaData();
     serialized(tsfMetaData);
     TsFileMetadata readMetaData = deSerialized();
-    Utils.isFileMetaDataEqual(tsfMetaData, readMetaData);
-    serialized(readMetaData);
+    Assert.assertTrue(Utils.isFileMetaDataEqual(tsfMetaData, readMetaData));
   }
 
   private TsFileMetadata deSerialized() {
