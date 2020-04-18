@@ -217,11 +217,19 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     return isNeedUpgrade;
   }
 
-  private boolean checkForOpen(TsFileResource unseqFile){
-    return !unseqFile.isClosed();
+  private boolean checkForOpen(TsFileResource unseqFile) {
+    boolean isClosed = unseqFile.isClosed();
+    for (Integer seqIdx : tmpSelectedSeqFiles) {
+      if (!resource.getSeqFiles().get(seqIdx).isClosed()) {
+        isClosed = false;
+        break;
+      }
+    }
+    return !isClosed;
   }
 
-  private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
+
+    private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
 
     int tmpSelectedNum = 0;
     for (Entry<String, Long> deviceStartTimeEntry : unseqFile.getStartTimeMap().entrySet()) {
