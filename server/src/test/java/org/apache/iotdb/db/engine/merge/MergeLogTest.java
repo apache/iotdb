@@ -54,7 +54,8 @@ public class MergeLogTest extends MergeTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
-    FileUtils.deleteDirectory(tempSGDir);FileUtils.deleteDirectory(tempSGDir);
+    FileUtils.deleteDirectory(tempSGDir);
+    FileUtils.deleteDirectory(tempSGDir);
   }
 
   @Test
@@ -67,18 +68,19 @@ public class MergeLogTest extends MergeTest {
   }
 
   private void testCallBack(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
-      File mergeLog) {
+      File mergeLog, TsFileResource remainUnseqFile) {
     int lineCnt = 0;
     try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mergeLog))) {
       String line;
       while ((line = bufferedReader.readLine()) != null) {
-        lineCnt ++;
+        lineCnt++;
       }
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     assertEquals(309, lineCnt);
+    remainUnseqFile.remove();
   }
 
 }

@@ -30,7 +30,7 @@ import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-public class MergePerfTest extends MergeTest{
+public class MergePerfTest extends MergeTest {
 
   private long timeConsumption;
   private boolean fullMerge;
@@ -46,7 +46,7 @@ public class MergePerfTest extends MergeTest{
     resource.setCacheDeviceMeta(true);
     MergeTask mergeTask =
         new MergeTask(resource, tempSGDir.getPath(), (k, v
-            , l) -> {}, "test", fullMerge, 100, MERGE_TEST_SG);
+            , l, n) -> n.remove(), "test", fullMerge, 100, MERGE_TEST_SG);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();
