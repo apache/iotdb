@@ -199,8 +199,9 @@ class MergeSeriesTask {
       while (tsFilesReader.hasNextBatch()) {
         BatchData batchData = tsFilesReader.nextBatch();
         for (int i = 0; i < batchData.length(); i++) {
-          System.out.println(batchData.currentTime());
           writeBatchPoint(batchData, i, chunkWriter);
+          batchData.next();
+          System.out.println(batchData.currentTime());
         }
         if (!tsFilesReader.hasNextBatch()) {
           maxTime = Math.max(batchData.currentTime(), maxTime);
