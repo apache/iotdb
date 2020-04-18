@@ -42,15 +42,17 @@
 * 2019.11.09, Apache Event: Embrace Apache Software Foundation. Beijing China.
   * (Chinese) Open Source in Campus - Apache IoTDB as an Example. 从 Apache IoTDB 看高校学生的 Apache 开源实践.  Reporter: Xiangdong Huang
 
-* 2019.12.28, Dalian, China. Apache RocketMQ x Apache IoTDB Meetup. 
+* 2019.12.28, Apache RocketMQ x Apache IoTDB Meetup.  Dalian, China. 
   * (Chinese) [Apache IoTDB: Why We Need a Time Series Database](#meetup2019-dalian). Apache IoTDB：为什么我们需要一个时序数据库. Reporter: Xiangdong Huang
 
-* 2020.01.04 Beijing, China. Apache IoTDB x Apache Pulsar Meetup.
+* 2020.01.04, Apache IoTDB x Apache Pulsar Meetup. Beijing, China. 
   * (Chinese) [Managing Time series data with IoTDB](#meetup2019-pulsar1).  基于IoTDB的时序数据开源解决方案. Reporter: Jialin Qiao
   * (Chinese) [Apache IoTDB: History and Technical Details](#meetup2019-pulsar2). Apache IoTDB的前世今生与技术细节. Reporter: Xiangdong Huang
 
-* 2020.01.12 Beijing, China. Apache IoTDB x Apache ShardingSphere Meetup.
+* 2020.01.12, Apache IoTDB x Apache ShardingSphere Meetup. Beijing, China. 
 
+* 2020.03.02, Building IoT 2020. Essen, Germany.
+  * (German) Industrial IoT mit Open Source.  Reporter: Julian Feinauer, Chirstofer Dutz.
 
 ## Slides, Audios and Videos
 
