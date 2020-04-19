@@ -58,12 +58,6 @@ public class OldDoubleStatistics extends OldStatistics<Double> {
   public double getSum() {
     return sum;
   }
-  
-  @Override
-  public String toString() {
-    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
-        + "]";
-  }
 
   @Override
   void deserialize(ByteBuffer byteBuffer) throws IOException {

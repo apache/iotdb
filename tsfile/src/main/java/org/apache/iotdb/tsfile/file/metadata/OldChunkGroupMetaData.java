@@ -20,8 +20,6 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +28,6 @@ import java.util.List;
  * Metadata of ChunkGroup.
  */
 public class OldChunkGroupMetaData {
-  private static final Logger logger = LoggerFactory.getLogger(OldChunkGroupMetaData.class);
 
   /**
    * Name of device, this field is not serialized.
@@ -119,13 +116,6 @@ public class OldChunkGroupMetaData {
 
   public List<OldChunkMetadata> getChunkMetaDataList() {
     return chunkMetaDataList;
-  }
-
-  @Override
-  public String toString() {
-    return String.format("ChunkGroupMetaData: Device: %s, Start offset: %d  End offset : %d "
-        + "{ time series chunk list: %s }", deviceID, startOffsetOfChunkGroup,
-        endOffsetOfChunkGroup, chunkMetaDataList);
   }
 
   public String getDeviceID() {

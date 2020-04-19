@@ -63,6 +63,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
 
@@ -104,7 +105,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       if (loadMetadataSize) {
         loadMetadataSize();
       }
-    } catch (Throwable e) {
+    } catch (Exception e) {
       tsFileInput.close();
       throw e;
     }
@@ -239,8 +240,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
   }
   
   public ByteBuffer readCompressedPage(PageHeader header) throws IOException {
-    ByteBuffer buffer = readData(-1, header.getCompressedSize());
-    return buffer;
+    return readData(-1, header.getCompressedSize());
   }
 
   public long position() throws IOException {
@@ -411,7 +411,7 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
    */
   private void rewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas, 
       List<List<ByteBuffer>> dataInChunkGroup, long versionOfChunkGroup) 
-          throws IOException, WriteProcessException {
+          throws IOException {
 
     Map<Long, Map<MeasurementSchema, IChunkWriter>> chunkWritersInChunkGroup = new HashMap<>();
     for (int i = 0; i < schemas.size(); i++) {
@@ -466,10 +466,11 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
       }
     }
     // set version info to each upgraded tsFile 
-    for (long partition : chunkWritersInChunkGroup.keySet()) {
+    for (Entry<Long, Map<MeasurementSchema, IChunkWriter>> entry : chunkWritersInChunkGroup.entrySet()) {
+      long partition = entry.getKey();
       TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partition);
       tsFileIOWriter.startChunkGroup(deviceId);
-      for (IChunkWriter chunkWriter : chunkWritersInChunkGroup.get(partition).values()) {
+      for (IChunkWriter chunkWriter : entry.getValue().values()) {
         chunkWriter.writeToFileWriter(tsFileIOWriter);
       }
       tsFileIOWriter.endChunkGroup();
@@ -519,12 +520,11 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
             + File.separator + partition + File.separator+ oldTsFile.getName());
         try {
           newFile.createNewFile();
-          TsFileIOWriter writer = new TsFileIOWriter(newFile);
-          return writer;
+          return new TsFileIOWriter(newFile);
         } catch (IOException e) {
+          logger.error("Create new TsFile {} failed ", newFile);
+          return null;
         }
-        logger.error("Create new TsFile {} failed ", newFile);
-        return null;
       }
     );
   }

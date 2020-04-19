@@ -365,11 +365,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (index == null) {
       return null;
     }
-    OldTsDeviceMetadata deviceMetadata = null;
-    if (deviceMetadata == null) {
-      deviceMetadata = OldTsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
-    }
-    return deviceMetadata;
+    return OldTsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
   }
 
 

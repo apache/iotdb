@@ -72,20 +72,6 @@ public class OldTsDeviceMetadata {
     return deviceMetadata;
   }
 
-  /**
-   * add chunk group metadata to chunkGroups. THREAD NOT SAFE
-   *
-   * @param chunkGroup - chunk group metadata to add
-   */
-  public void addChunkGroupMetaData(OldChunkGroupMetaData chunkGroup) {
-    chunkGroupMetadataList.add(chunkGroup);
-    for (OldChunkMetadata chunkMetaData : chunkGroup.getChunkMetaDataList()) {
-      // update startTime and endTime
-      startTime = Long.min(startTime, chunkMetaData.getStartTime());
-      endTime = Long.max(endTime, chunkMetaData.getEndTime());
-    }
-  }
-
   public List<OldChunkGroupMetaData> getChunkGroupMetaDataList() {
     return Collections.unmodifiableList(chunkGroupMetadataList);
   }
@@ -96,13 +82,6 @@ public class OldTsDeviceMetadata {
 
   public long getEndTime() {
     return endTime;
-  }
-
-  @Override
-  public String toString() {
-    return "TsDeviceMetadata{" + " startTime=" + startTime
-        + ", endTime="
-        + endTime + ", chunkGroupMetadataList=" + chunkGroupMetadataList + '}';
   }
 
 }

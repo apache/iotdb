@@ -23,11 +23,6 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class is used for recording statistic information of each measurement in a delta file. While
@@ -39,7 +34,6 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class OldStatistics<T> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(OldStatistics.class);
   /**
    * isEmpty being false means this statistic has been initialized and the max and min is not null;
    */
@@ -51,7 +45,7 @@ public abstract class OldStatistics<T> {
    * @param type - data type
    * @return Statistics
    */
-  public static OldStatistics<?> getStatsByType(TSDataType type) {
+  public static OldStatistics getStatsByType(TSDataType type) {
     switch (type) {
       case INT32:
         return new OldIntegerStatistics();

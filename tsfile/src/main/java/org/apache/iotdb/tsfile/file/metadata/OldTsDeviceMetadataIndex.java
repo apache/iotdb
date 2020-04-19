@@ -89,11 +89,4 @@ public class OldTsDeviceMetadataIndex {
   public long getEndTime() {
     return endTime;
   }
-
-  @Override
-  public String toString() {
-    return "TsDeviceMetadataIndex{" + "offset=" + offset + ", len=" + len + ", startTime="
-        + startTime
-        + ", endTime=" + endTime + '}';
-  }
 }

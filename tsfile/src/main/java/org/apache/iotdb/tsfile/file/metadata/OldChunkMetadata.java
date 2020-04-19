@@ -21,16 +21,12 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 /**
  * MetaData of one chunk.
  */
 public class OldChunkMetadata {
-
-  private static final Logger LOG = LoggerFactory.getLogger(OldChunkMetadata.class);
 
 
   private String measurementUid;
@@ -103,17 +99,8 @@ public class OldChunkMetadata {
     return chunkMetaData;
   }
 
-  @Override
-  public String toString() {
-    return String.format("numPoints %d", numOfPoints);
-  }
-
   public long getNumOfPoints() {
     return numOfPoints;
-  }
-
-  public void setNumOfPoints(long numRows) {
-    this.numOfPoints = numRows;
   }
 
   /**
@@ -133,33 +120,16 @@ public class OldChunkMetadata {
     return valuesStatistics;
   }
 
-  public void setDigest(TsDigest digest) {
-    this.valuesStatistics = digest;
-
-  }
-
   public long getStartTime() {
     return startTime;
-  }
-
-  public void setStartTime(long startTime) {
-    this.startTime = startTime;
   }
 
   public long getEndTime() {
     return endTime;
   }
 
-  public void setEndTime(long endTime) {
-    this.endTime = endTime;
-  }
-
   public TSDataType getTsDataType() {
     return tsDataType;
-  }
-
-  public void setTsDataType(TSDataType tsDataType) {
-    this.tsDataType = tsDataType;
   }
 
   public long getVersion() {
@@ -172,9 +142,5 @@ public class OldChunkMetadata {
 
   public long getDeletedAt() {
     return deletedAt;
-  }
-
-  public void setDeletedAt(long deletedAt) {
-    this.deletedAt = deletedAt;
   }
 }

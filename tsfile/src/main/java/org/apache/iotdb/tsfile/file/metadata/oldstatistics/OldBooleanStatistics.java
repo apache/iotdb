@@ -60,12 +60,6 @@ public class OldBooleanStatistics extends OldStatistics<Boolean> {
   }
 
   @Override
-  public String toString() {
-    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
-        + "]";
-  }
-  
-  @Override
   void deserialize(ByteBuffer byteBuffer) throws IOException {
     this.min = ReadWriteIOUtils.readBool(byteBuffer);
     this.max = ReadWriteIOUtils.readBool(byteBuffer);

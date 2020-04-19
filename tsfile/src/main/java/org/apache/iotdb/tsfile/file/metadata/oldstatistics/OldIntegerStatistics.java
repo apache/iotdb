@@ -60,12 +60,6 @@ public class OldIntegerStatistics extends OldStatistics<Integer> {
   }
 
   @Override
-  public String toString() {
-    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
-        + "]";
-  }
-
-  @Override
   void deserialize(ByteBuffer byteBuffer) throws IOException {
     this.min = ReadWriteIOUtils.readInt(byteBuffer);
     this.max = ReadWriteIOUtils.readInt(byteBuffer);

@@ -40,7 +40,7 @@ public class ChunkHeader {
   private TSEncoding encodingType;
   private int numOfPages;
 
-  private boolean isOldVersion = false; 
+  private boolean isOldVersion; 
 
   // this field does not need to be serialized.
   private int serializedSize;

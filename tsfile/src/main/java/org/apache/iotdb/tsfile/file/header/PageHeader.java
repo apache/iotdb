@@ -22,7 +22,6 @@ package org.apache.iotdb.tsfile.file.header;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

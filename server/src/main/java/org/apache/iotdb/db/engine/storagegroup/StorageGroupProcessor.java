@@ -1449,9 +1449,9 @@ public class StorageGroupProcessor {
     List<TsFileResource> upgradedResources = tsFileResource.getUpgradedResources();
     for (TsFileResource resource : upgradedResources) {
       long partitionId = resource.getTimePartition();
-      resource.getEndTimeMap().forEach((device, time) -> {
-        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, time);
-      });
+      resource.getEndTimeMap().forEach((device, time) -> 
+        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, time)
+      );
       if (tsFileResource.isSeq()) {
         sequenceFileTreeSet.add(resource);
       } else {

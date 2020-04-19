@@ -60,12 +60,6 @@ public class OldFloatStatistics extends OldStatistics<Float> {
   }
 
   @Override
-  public String toString() {
-    return "[min:" + min + ",max:" + max + ",first:" + first + ",last:" + last + ",sum:" + sum
-        + "]";
-  }
-
-  @Override
   void deserialize(ByteBuffer byteBuffer) throws IOException {
     this.min = ReadWriteIOUtils.readFloat(byteBuffer);
     this.max = ReadWriteIOUtils.readFloat(byteBuffer);

@@ -18,83 +18,12 @@
  */
 package org.apache.iotdb.db.tools.upgrade;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 public class UpgradeTool {
-
-  /**
-   * upgrade all tsfiles in the specific dir
-   *
-   * @param dir tsfile dir which needs to be upgraded
-   * @param upgradeDir tsfile dir after upgraded
-   * @param threadNum num of threads that perform offline upgrade tasks
-   */
-  public static void upgradeTsfiles(String dir, String upgradeDir, int threadNum)
-      throws IOException {
-    //Traverse to find all tsfiles
-    File file = FSFactoryProducer.getFSFactory().getFile(dir);
-    Queue<File> tmp = new LinkedList<>();
-    tmp.add(file);
-    List<String> tsfiles = new ArrayList<>();
-    if (file.exists()) {
-      while (!tmp.isEmpty()) {
-        File tmp_file = tmp.poll();
-        File[] files = tmp_file.listFiles();
-        for (File file2 : files) {
-          if (file2.isDirectory()) {
-            tmp.add(file2);
-          } else {
-            if (file2.getName().endsWith(".tsfile")) {
-              tsfiles.add(file2.getAbsolutePath());
-            }
-            // copy all the resource files to the upgradeDir
-            if (file2.getName().endsWith(".resource")) {
-              File newFileName = FSFactoryProducer.getFSFactory()
-                  .getFile(file2.getAbsoluteFile().toString().replace(dir, upgradeDir));
-              if (!newFileName.getParentFile().exists()) {
-                newFileName.getParentFile().mkdirs();
-              }
-              newFileName.createNewFile();
-              FileUtils.copyFile(file2, newFileName);
-            }
-          }
-        }
-      }
-    }
-    // begin upgrade tsfiles
-    System.out.println(String.format(
-        "begin upgrade the data dir:%s, the total num of the tsfiles that need to be upgraded:%s",
-        dir, tsfiles.size()));
-    AtomicInteger dirUpgradeFileNum = new AtomicInteger(tsfiles.size());
-    ExecutorService offlineUpgradeThreadPool = Executors.newFixedThreadPool(threadNum);
-    //for every tsfile，do upgrade operation
-    for (String tsfile : tsfiles) {
-      offlineUpgradeThreadPool.submit(() -> {
-        try {
-          //upgradeOneTsfile(tsfile, tsfile.replace(dir, upgradeDir));
-          System.out.println(
-              String.format("upgrade file success, file name:%s, remaining file num:%s", tsfile,
-                  dirUpgradeFileNum.decrementAndGet()));
-        } catch (Exception e) {
-          System.out.println(String.format("meet error when upgrade file:%s", tsfile));
-          e.printStackTrace();
-        }
-      });
-    }
-    offlineUpgradeThreadPool.shutdown();
-  }
 
   /**
    * upgrade a single tsfile

@@ -39,8 +39,6 @@ public class TsDigest {
    */
   private int validSizeOfArray = 0;
 
-  private int serializedSize = Integer.BYTES; // initialize for number of statistics
-
   public TsDigest() {
     // allowed to declare an empty TsDigest whose fields will be assigned later.
   }
@@ -59,7 +57,6 @@ public class TsDigest {
     TsDigest digest = new TsDigest();
     int size = ReadWriteIOUtils.readInt(buffer);
     digest.validSizeOfArray = size;
-    digest.serializedSize = Integer.BYTES;
     if (size > 0) {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
@@ -67,7 +64,6 @@ public class TsDigest {
         short n = ReadWriteIOUtils.readShort(buffer);
         value = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
         digest.statistics[n] = value;
-        digest.serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
       }
     } // else left digest.statistics as null
 
@@ -76,12 +72,9 @@ public class TsDigest {
 
   private void reCalculate() {
     validSizeOfArray = 0;
-    serializedSize = Integer.BYTES;
     if (statistics != null) {
       for (ByteBuffer value : statistics) {
         if (value != null) {
-          // StatisticType serialized value, byteBuffer.capacity and byteBuffer.array
-          serializedSize += Short.BYTES + Integer.BYTES + value.remaining();
           validSizeOfArray++;
         }
       }
@@ -92,7 +85,7 @@ public class TsDigest {
    * get statistics of the current object.
    */
   public ByteBuffer[] getStatistics() {
-    return statistics; //TODO unmodifiable
+    return statistics;
   }
 
   public void setStatistics(ByteBuffer[] statistics) throws IOException {

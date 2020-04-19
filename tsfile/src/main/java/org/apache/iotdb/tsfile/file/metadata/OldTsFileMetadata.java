@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -80,8 +76,7 @@ public class OldTsFileMetadata {
    * @param buffer -buffer use to deserialize
    * @return -a instance of TsFileMetaData
    */
-  public static OldTsFileMetadata deserializeFrom(ByteBuffer buffer)
-      throws IOException {
+  public static OldTsFileMetadata deserializeFrom(ByteBuffer buffer) {
     OldTsFileMetadata fileMetaData = new OldTsFileMetadata();
 
     int size = ReadWriteIOUtils.readInt(buffer);
@@ -129,15 +124,6 @@ public class OldTsFileMetadata {
     return bloomFilter;
   }
 
-  /**
-   * add time series metadata to list. THREAD NOT SAFE
-   *
-   * @param measurementSchema series metadata to add
-   */
-  public void addMeasurementSchema(MeasurementSchema measurementSchema) {
-    this.measurementSchema.put(measurementSchema.getMeasurementId(), measurementSchema);
-  }
-
   @Override
   public String toString() {
     return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
@@ -148,16 +134,8 @@ public class OldTsFileMetadata {
     return createdBy;
   }
 
-  public void setCreatedBy(String createdBy) {
-    this.createdBy = createdBy;
-  }
-
   public Map<String, OldTsDeviceMetadataIndex> getDeviceMap() {
     return deviceIndexMap;
-  }
-
-  public void setDeviceMap(Map<String, OldTsDeviceMetadataIndex> deviceMap) {
-    this.deviceIndexMap = deviceMap;
   }
 
   public boolean containsDevice(String deltaObjUid) {
@@ -194,35 +172,8 @@ public class OldTsFileMetadata {
     return totalChunkNum;
   }
 
-  public void setTotalChunkNum(int totalChunkNum) {
-    this.totalChunkNum = totalChunkNum;
-  }
-
   public int getInvalidChunkNum() {
     return invalidChunkNum;
   }
 
-  public void setInvalidChunkNum(int invalidChunkNum) {
-    this.invalidChunkNum = invalidChunkNum;
-  }
-
-  public List<MeasurementSchema> getMeasurementSchemaList() {
-    return new ArrayList<MeasurementSchema>(measurementSchema.values());
-  }
-
-  /**
-   * This function is just for upgrade.
-   */
-  public void setDeviceIndexMap(
-      Map<String, OldTsDeviceMetadataIndex> deviceIndexMap) {
-    this.deviceIndexMap = deviceIndexMap;
-  }
-
-  /**
-   * This function is just for upgrade.
-   */
-  public void setMeasurementSchema(
-      Map<String, MeasurementSchema> measurementSchema) {
-    this.measurementSchema = measurementSchema;
-  }
 }
