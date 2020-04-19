@@ -389,7 +389,7 @@ public class PlanExecutor implements IPlanExecutor {
 
     Set<String> tagAndAttributeName = new TreeSet<>();
     for (ShowTimeSeriesResult result : timeseriesList) {
-      tagAndAttributeName.addAll(result.tagAndAttribute.keySet());
+      tagAndAttributeName.addAll(result.getTagAndAttribute().keySet());
     }
     for (String key : tagAndAttributeName) {
       paths.add(new Path(key));
