@@ -24,7 +24,7 @@
 * 2018.12.09, 清华开源之道大讲堂 2018. 北京, 中国.
   * (Chinese) IoTDB: from Tsinghua IoTDB to Apache IoTDB (incubating). IoTDB:从清华IoTDB到Apache孵化器项目。Reporter: Xiangdong Huang
 
-* 2019.02.21, Industrial Internet Summit 2019. Beijing, China.
+* 2019.02.21, 工业互联网大会 2019. 北京, 中国.
   * (Chinese) Apache IoTDB (incubating): Time Series Database for IIoT. IoTDB：工业互联网时序数据库. Reporter: Jianmin Wang
 
 * 2019.05.07, The 2nd Digital China Summit. Fuzhou, China.
@@ -92,7 +92,6 @@
 <iframe src="//www.slideshare.net/slideshow/embed_code/key/MZBHJIVnVxff8" width="640" height="480" frameborder="0"  allowfullscreen> </iframe>
 
 * [IoTDB v0.8.0 Query Process Implementation](https://h5.dingtalk.com/group-live-share/index.htm?encCid=b9f2eba34c2a3e9b8f06fbdaf65337e2&liveUuid=48161db6-d588-4251-a28a-1f929afee3ff#/), Reporter: Lei Rui
-
 
 
 
