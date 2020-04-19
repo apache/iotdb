@@ -73,7 +73,7 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 ### 标签点管理
 
-我们可以在创建时间序列的时候，为它添加别名和额外的便签和属性信息。
+我们可以在创建时间序列的时候，为它添加别名和额外的标签和属性信息。
 所用到的扩展的创建时间序列的SQL语句如下所示：
 ```
 create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
@@ -84,7 +84,7 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 
 > 注意：额外的标签和属性信息总的大小不能超过`tag_attribute_total_size`.
 
-标签和属性的唯一差别在于，我们为便签信息在内存中维护了一个倒排索引，所以可以在`show timeseries`的条件语句中使用标签作为查询条件，你将会在下一节看到具体查询内容。
+标签和属性的唯一差别在于，我们为标签信息在内存中维护了一个倒排索引，所以可以在`show timeseries`的条件语句中使用标签作为查询条件，你将会在下一节看到具体查询内容。
 
 ## 查看时间序列
 

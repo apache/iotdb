@@ -50,6 +50,7 @@ import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
@@ -77,11 +78,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -359,7 +358,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processShowTimeseriesWithIndex(ShowTimeSeriesPlan timeSeriesPlan) throws MetadataException {
-    List<MManager.ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
+    List<ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
             .getAllMeasurementSchema(timeSeriesPlan.getPath().toString(),
                     timeSeriesPlan.isContains(), timeSeriesPlan.getKey(), timeSeriesPlan.getValue());
     return getQueryDataSet(timeseriesList);
@@ -367,12 +366,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan)
       throws MetadataException {
-    List<MManager.ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
+    List<ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
         .getAllMeasurementSchema(timeSeriesPlan.getPath().toString());
     return getQueryDataSet(timeseriesList);
   }
 
-  private QueryDataSet getQueryDataSet(List<MManager.ShowTimeSeriesResult> timeseriesList) {
+  private QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList) {
     List<Path> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     paths.add(new Path(COLUMN_TIMESERIES));
@@ -389,7 +388,7 @@ public class PlanExecutor implements IPlanExecutor {
     dataTypes.add(TSDataType.TEXT);
 
     Set<String> tagAndAttributeName = new TreeSet<>();
-    for (MManager.ShowTimeSeriesResult result : timeseriesList) {
+    for (ShowTimeSeriesResult result : timeseriesList) {
       tagAndAttributeName.addAll(result.tagAndAttribute.keySet());
     }
     for (String key : tagAndAttributeName) {
@@ -398,15 +397,15 @@ public class PlanExecutor implements IPlanExecutor {
     }
 
     ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
-    for (MManager.ShowTimeSeriesResult result : timeseriesList) {
+    for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
-      updateRecord(record, result.name);
-      updateRecord(record, result.alias);
-      updateRecord(record, result.sgName);
-      updateRecord(record, result.dataType);
-      updateRecord(record, result.encoding);
-      updateRecord(record, result.compressor);
-      updateRecord(record, result.tagAndAttribute, paths);
+      updateRecord(record, result.getName());
+      updateRecord(record, result.getAlias());
+      updateRecord(record, result.getSgName());
+      updateRecord(record, result.getDataType());
+      updateRecord(record, result.getEncoding());
+      updateRecord(record, result.getCompressor());
+      updateRecord(record, result.getTagAndAttribute(), paths);
       listDataSet.putRecord(record);
     }
     return listDataSet;

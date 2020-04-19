@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
@@ -48,7 +49,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -81,7 +81,7 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<LeafMNode>>> tagIndex = new HashMap<>();
 
-  private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
+  private Map<String, Integer> seriesNumberInStorageGroups;
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
@@ -304,27 +304,22 @@ public class MManager {
         // check memory
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
       } catch (ConfigAdjusterException e) {
-        try {
-          removeFromTagInvertedIndex(mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path).right);
-        } catch (IOException ex) {
-          throw new MetadataException(ex);
-        }
-        throw new MetadataException(e);
+        removeFromTagInvertedIndex(mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path).right);
+        throw e;
       }
-      try {
-        // write to log
-        if (writeToLog) {
-          // either tags or attributes is not empty
-          if ((plan.getTags() != null && !plan.getTags().isEmpty()) || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
-            offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
-          }
-          logWriter.createTimeseries(plan, offset);
+
+      // write log
+      if (writeToLog) {
+        // either tags or attributes is not empty
+        if ((plan.getTags() != null && !plan.getTags().isEmpty()) || (plan.getAttributes() != null
+            && !plan.getAttributes().isEmpty())) {
+          offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
         }
-      } catch (IOException e) {
-        throw new MetadataException(e.getMessage());
+        logWriter.createTimeseries(plan, offset);
       }
       leafMNode.setOffset(offset);
 
+      // update tag index
       if (plan.getTags() != null) {
         // tag key, tag value
         for (Entry<String, String> entry : plan.getTags().entrySet()) {
@@ -342,7 +337,8 @@ public class MManager {
           maxSeriesNumberAmongStorageGroup = size + 1;
         }
       }
-
+    } catch (IOException | ConfigAdjusterException e) {
+      throw new MetadataException(e.getMessage());
     } finally {
       lock.writeLock().unlock();
     }
@@ -681,7 +677,8 @@ public class MManager {
     }
   }
 
-  public List<ShowTimeSeriesResult> getAllMeasurementSchema(String path, boolean isContains, String key, String value) throws MetadataException {
+  public List<ShowTimeSeriesResult> getAllMeasurementSchema(String prefixPath, boolean isContains,
+      String key, String value) throws MetadataException {
     lock.readLock().lock();
     try {
       if (!tagIndex.containsKey(key)) {
@@ -705,21 +702,21 @@ public class MManager {
         }
       }
       List<ShowTimeSeriesResult> res = new LinkedList<>();
-      String[] nodes = MetaUtils.getNodeNames(path);
-      for (LeafMNode node : allMatchedNodes) {
-        if (match(node.getFullPath(), nodes)) {
+      String[] prefixNodes = MetaUtils.getNodeNames(prefixPath);
+      for (LeafMNode leaf : allMatchedNodes) {
+        if (match(leaf.getFullPath(), prefixNodes)) {
           try {
             Pair<Map<String, String>, Map<String, String>> pair =
-                    tagLogFile.read(config.getTagAttributeTotalSize(), node.getOffset());
+                    tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
             pair.left.putAll(pair.right);
-            MeasurementSchema measurementSchema = node.getSchema();
-            res.add(new ShowTimeSeriesResult(node.getFullPath(), node.getAlias(),
-                    getStorageGroupName(node.getFullPath()), measurementSchema.getType().toString(),
+            MeasurementSchema measurementSchema = leaf.getSchema();
+            res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
+                    getStorageGroupName(leaf.getFullPath()), measurementSchema.getType().toString(),
                     measurementSchema.getEncodingType().toString(),
                     measurementSchema.getCompressor().toString(), pair.left));
           } catch (IOException e) {
-            logger.error(String.format("Something went wrong while deserialize tag info of %s", node.getFullPath()), e);
-            throw new MetadataException(e);
+            throw new MetadataException(
+                "Something went wrong while deserialize tag info of " + leaf.getFullPath(), e);
           }
         }
       }
@@ -729,13 +726,16 @@ public class MManager {
     }
   }
 
-  private boolean match(String fullPath, String[] target) {
+  /**
+   * whether the full path has the prefixNodes
+   */
+  private boolean match(String fullPath, String[] prefixNodes) {
     String[] nodes = MetaUtils.getNodeNames(fullPath);
-    if (nodes.length < target.length) {
+    if (nodes.length < prefixNodes.length) {
       return false;
     }
-    for (int i = 0; i < target.length; i++) {
-      if (!"*".equals(target[i]) && !target[i].equals(nodes[i])) {
+    for (int i = 0; i < prefixNodes.length; i++) {
+      if (!"*".equals(prefixNodes[i]) && !prefixNodes[i].equals(nodes[i])) {
         return false;
       }
     }
@@ -758,7 +758,7 @@ public class MManager {
         try {
           if (offset < 0) {
             res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
-                    ansString[3], ansString[4], ansString[5], Collections.EMPTY_MAP));
+                    ansString[3], ansString[4], ansString[5], Collections.emptyMap()));
             continue;
           }
           Pair<Map<String, String>, Map<String, String>> pair =
@@ -767,8 +767,8 @@ public class MManager {
           res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
                   ansString[3], ansString[4], ansString[5], pair.left));
         } catch (IOException e) {
-          logger.error(String.format("Something went wrong while deserialize tag info of %s", ansString[0]), e);
-          throw new MetadataException(e);
+          throw new MetadataException(
+              "Something went wrong while deserialize tag info of " + ansString[0], e);
         }
       }
       return res;
@@ -777,26 +777,7 @@ public class MManager {
     }
   }
 
-  public static class ShowTimeSeriesResult {
-    public String name;
-    public String alias;
-    public String sgName;
-    public String dataType;
-    public String encoding;
-    public String compressor;
-    public Map<String, String> tagAndAttribute;
 
-    public ShowTimeSeriesResult(String name, String alias, String sgName, String dataType,
-                                String encoding, String compressor, Map<String, String> tagAndAttribute) {
-      this.name = name;
-      this.alias = alias;
-      this.sgName = sgName;
-      this.dataType = dataType;
-      this.encoding = encoding;
-      this.compressor = compressor;
-      this.tagAndAttribute = tagAndAttribute;
-    }
-  }
 
   public MeasurementSchema getSeriesSchema(String device, String measuremnet) throws MetadataException {
     lock.readLock().lock();

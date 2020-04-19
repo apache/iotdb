@@ -36,6 +36,7 @@ public class LeafMNode extends MNode {
    */
   private MeasurementSchema schema;
   private String alias;
+  // tag/attribute's start offset in tag file
   private long offset = -1;
 
   private TimeValuePair cachedLastValuePair = null;

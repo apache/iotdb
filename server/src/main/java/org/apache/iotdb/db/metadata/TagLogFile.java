@@ -37,6 +37,7 @@ public class TagLogFile implements AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(TagLogFile.class);
   private FileChannel fileChannel;
+  private static final String LENGTH_EXCEED_MSG = "Tag/Attribute exceeds the max length limit.";
 
   private static final int MAX_LENGTH = IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize();
 
@@ -60,6 +61,9 @@ public class TagLogFile implements AutoCloseable {
     this.fileChannel.position(fileChannel.size());
   }
 
+  /**
+   * @return tags map, attributes map
+   */
   public Pair<Map<String, String>, Map<String, String>> read(int size, long position) throws IOException {
     ByteBuffer byteBuffer = ByteBuffer.allocate(size);
     fileChannel.read(byteBuffer, position);
@@ -96,14 +100,14 @@ public class TagLogFile implements AutoCloseable {
     if (map == null) {
       length += Integer.BYTES;
       if (length > MAX_LENGTH) {
-        throw new MetadataException("Tag/Attribute exceeds the max length limit.");
+        throw new MetadataException(LENGTH_EXCEED_MSG);
       }
       ReadWriteIOUtils.write(0, byteBuffer);
       return length;
     }
     length += Integer.BYTES;
     if (length > MAX_LENGTH) {
-      throw new MetadataException("Tag/Attribute exceeds the max length limit.");
+      throw new MetadataException(LENGTH_EXCEED_MSG);
     }
     ReadWriteIOUtils.write(map.size(), byteBuffer);
     byte[] bytes;
@@ -112,7 +116,7 @@ public class TagLogFile implements AutoCloseable {
       bytes = entry.getKey().getBytes();
       length += (4 + bytes.length);
       if (length > MAX_LENGTH) {
-        throw new MetadataException("Tag/Attribute exceeds the max length limit.");
+        throw new MetadataException(LENGTH_EXCEED_MSG);
       }
       ReadWriteIOUtils.write(bytes.length, byteBuffer);
       byteBuffer.put(bytes);
@@ -121,7 +125,7 @@ public class TagLogFile implements AutoCloseable {
       bytes = entry.getValue().getBytes();
       length += (4 + bytes.length);
       if (length > MAX_LENGTH) {
-        throw new MetadataException("Tag/Attribute exceeds the max length limit.");
+        throw new MetadataException(LENGTH_EXCEED_MSG);
       }
       ReadWriteIOUtils.write(bytes.length, byteBuffer);
       byteBuffer.put(bytes);
