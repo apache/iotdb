@@ -19,7 +19,7 @@
 
 -->
 
-## Meetups and Talks
+## 聚会和谈话
 
 * 2018.12.09, Tsinghua Open Source Software Summit 2018. Beijing, China.
   * (Chinese) IoTDB: from Tsinghua IoTDB to Apache IoTDB (incubating). IoTDB:从清华IoTDB到Apache孵化器项目。Reporter: Xiangdong Huang
@@ -54,9 +54,9 @@
 * 2020.03.02, Building IoT 2020. Essen, Germany.
   * (German) Industrial IoT mit Open Source.  Reporter: Julian Feinauer, Chirstofer Dutz.
 
-## Slides, Audios and Videos
+## 幻灯片，音频和视频
 
-### English
+### 英语
 
 * Coding example (from Dalian Meetup 2019)
 
@@ -70,10 +70,10 @@
 * <span id = "apeu2019"> ApacheCon Europe 2019: Apache IoTDB: Time Series Database for Industrial IoT</span>
 
 <iframe src="//www.slideshare.net/slideshow/embed_code/key/lms4cEH1eqnRZC" width="640" height="480" frameborder="0" scrolling="no" allowfullscreen> </iframe>
- 
+
 <iframe width="640" height="480" src="https://www.youtube.com/embed/LLFc3yPyTFY" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-### Chinese
+### 中文
 
 * <span id = "meetup2019-pulsar1"> 北京Meetup 2019. 基于Apache IoTDB的时序数据开源解决方案. </span>
 
