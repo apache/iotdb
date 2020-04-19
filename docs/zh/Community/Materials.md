@@ -19,7 +19,7 @@
 
 -->
 
-## 聚会和谈话
+## 活动与报告
 
 * 2018.12.09, Tsinghua Open Source Software Summit 2018. Beijing, China.
   * (Chinese) IoTDB: from Tsinghua IoTDB to Apache IoTDB (incubating). IoTDB:从清华IoTDB到Apache孵化器项目。Reporter: Xiangdong Huang
