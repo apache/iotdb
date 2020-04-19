@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -106,6 +107,24 @@ public class TsFileResource {
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
+  /**
+   *  generated upgraded TsFile ResourceList
+   *  used for upgrading 0.9 -> 0.10
+   */
+  private volatile List<TsFileResource> upgradedResources;
+
+  /**
+   *  load upgraded TsFile Resources to storage group processor
+   *  used for upgrading 0.9 -> 0.10
+   */
+  private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
+
+  /**
+   *  indicate if this tsfile resource belongs to a sequence tsfile or not 
+   *  used for upgrading 0.9 -> 0.10
+   */
+  private boolean isSeq;
+
   public TsFileResource() {
   }
 
@@ -124,6 +143,25 @@ public class TsFileResource {
     this.writeQueryLock = other.writeQueryLock;
     this.fsFactory = other.fsFactory;
     this.historicalVersions = other.historicalVersions;
+  }
+  
+  public TsFileResource(TsFileResource other, 
+      UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack, boolean isSeq) {
+    this.file = other.file;
+    this.startTimeMap = other.startTimeMap;
+    this.endTimeMap = other.endTimeMap;
+    this.processor = other.processor;
+    this.modFile = other.modFile;
+    this.closed = other.closed;
+    this.deleted = other.deleted;
+    this.isMerging = other.isMerging;
+    this.chunkMetadataList = other.chunkMetadataList;
+    this.readOnlyMemChunk = other.readOnlyMemChunk;
+    this.writeQueryLock = other.writeQueryLock;
+    this.fsFactory = other.fsFactory;
+    this.historicalVersions = other.historicalVersions;
+    this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
+    this.isSeq = isSeq;
   }
 
   /**
@@ -347,7 +385,7 @@ public class TsFileResource {
   void doUpgrade() {
     if (UpgradeUtils.isNeedUpgrade(this)) {
       UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
-      fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
+      fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();;
     }
   }
 
@@ -474,6 +512,30 @@ public class TsFileResource {
 
   public TimeseriesMetadata getTimeSeriesMetadata() {
     return timeSeriesMetadata;
+  }
+
+  public void setUpgradedResources(List<TsFileResource> upgradedResources) {
+    this.upgradedResources = upgradedResources;
+  }
+
+  public List<TsFileResource> getUpgradedResources() {
+    return upgradedResources;
+  }
+
+  public void setSeq(boolean isSeq) {
+    this.isSeq = isSeq;
+  }
+
+  public boolean isSeq() {
+    return isSeq;
+  }
+
+  public void setUpgradeTsFileResourceCallBack(UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
+    this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
+  }
+
+  public UpgradeTsFileResourceCallBack getUpgradeTsFileResourceCallBack() {
+    return upgradeTsFileResourceCallBack;
   }
 
   /**

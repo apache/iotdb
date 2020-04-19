@@ -1414,10 +1414,31 @@ public class StorageGroupProcessor {
 
   public void upgrade() {
     for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
+      seqTsFileResource.setSeq(true);
+      seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       seqTsFileResource.doUpgrade();
+      upgradeSeqFileList.remove(seqTsFileResource);
     }
     for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
+      unseqTsFileResource.setSeq(false);
+      unseqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       unseqTsFileResource.doUpgrade();
+      upgradeSeqFileList.remove(unseqTsFileResource);
+    }
+  }
+
+  private void upgradeTsFileResourceCallBack(TsFileResource tsFileResource) {
+    List<TsFileResource> upgradedResources = tsFileResource.getUpgradedResources();
+    for (TsFileResource resource : upgradedResources) {
+      long partitionId = resource.getTimePartition();
+      resource.getEndTimeMap().forEach((device, time) -> {
+        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, time);
+      });
+      if (tsFileResource.isSeq()) {
+        sequenceFileTreeSet.add(resource);
+      } else {
+        unSequenceFileList.add(resource);
+      }
     }
   }
 
@@ -2129,5 +2150,11 @@ public class StorageGroupProcessor {
   public interface UpdateEndTimeCallBack {
 
     boolean call(TsFileProcessor caller);
+  }
+
+  @FunctionalInterface
+  public interface UpgradeTsFileResourceCallBack {
+
+    void call(TsFileResource caller);
   }
 }

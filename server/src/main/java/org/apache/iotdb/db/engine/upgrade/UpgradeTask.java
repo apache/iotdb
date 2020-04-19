@@ -33,7 +33,7 @@ import java.util.List;
 
 public class UpgradeTask extends WrappedRunnable {
 
-  private final TsFileResource upgradeResource;
+  private TsFileResource upgradeResource;
   private static final Logger logger = LoggerFactory.getLogger(UpgradeTask.class);
   private static final String COMMA_SEPERATOR = ",";
 
@@ -81,9 +81,10 @@ public class UpgradeTask extends WrappedRunnable {
               FSFactoryProducer.getFSFactory().getFile(patitionDir, upgradedFile.getName()));
           upgradedResource.serialize();
         }
-        
+        upgradeResource.setUpgradedResources(upgradedResources);
         UpgradeLog.writeUpgradeLogFile(
             oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.UPGRADE_SUCCESS);
+        upgradeResource.getUpgradeTsFileResourceCallBack().call(upgradeResource);
       } finally {
         upgradeResource.getWriteQueryLock().writeLock().unlock();
       }
