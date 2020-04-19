@@ -23,7 +23,6 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -57,17 +56,6 @@ public class OldTsFileMetadata {
 
   public OldTsFileMetadata() {
     //do nothing
-  }
-
-  /**
-   * construct function for TsFileMetaData.
-   *
-   * @param measurementSchema - time series info list
-   */
-  public OldTsFileMetadata(Map<String, OldTsDeviceMetadataIndex> deviceMap,
-      Map<String, MeasurementSchema> measurementSchema) {
-    this.deviceIndexMap = deviceMap;
-    this.measurementSchema = measurementSchema;
   }
 
   /**
@@ -124,16 +112,6 @@ public class OldTsFileMetadata {
     return bloomFilter;
   }
 
-  @Override
-  public String toString() {
-    return "TsFileMetaData{" + "deviceIndexMap=" + deviceIndexMap + ", measurementSchema="
-        + measurementSchema + ", createdBy='" + createdBy + '\'' + '}';
-  }
-
-  public String getCreatedBy() {
-    return createdBy;
-  }
-
   public Map<String, OldTsDeviceMetadataIndex> getDeviceMap() {
     return deviceIndexMap;
   }
@@ -144,36 +122,6 @@ public class OldTsFileMetadata {
 
   public OldTsDeviceMetadataIndex getDeviceMetadataIndex(String deviceUid) {
     return this.deviceIndexMap.get(deviceUid);
-  }
-
-  public boolean containsMeasurement(String measurement) {
-    return measurementSchema.containsKey(measurement);
-  }
-
-  /**
-   * return the type of the measurement.
-   *
-   * @param measurement -measurement
-   * @return -type of the measurement
-   */
-  public TSDataType getType(String measurement) {
-    if (containsMeasurement(measurement)) {
-      return measurementSchema.get(measurement).getType();
-    } else {
-      return null;
-    }
-  }
-
-  public Map<String, MeasurementSchema> getMeasurementSchema() {
-    return measurementSchema;
-  }
-
-  public int getTotalChunkNum() {
-    return totalChunkNum;
-  }
-
-  public int getInvalidChunkNum() {
-    return invalidChunkNum;
   }
 
 }

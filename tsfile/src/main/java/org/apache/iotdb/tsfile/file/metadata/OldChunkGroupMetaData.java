@@ -58,25 +58,6 @@ public class OldChunkGroupMetaData {
   }
 
   /**
-   * constructor of ChunkGroupMetaData.
-   *
-   * @param deviceID name of device
-   * @param chunkMetaDataList all time series chunks in this chunk group. Can not be Null. notice:
-   * after constructing a ChunkGroupMetadata instance. Don't use list.add() to modify
-   * `chunkMetaDataList`. Instead, use addTimeSeriesChunkMetaData() to make sure getSerializedSize()
-   * is correct.
-   * @param startOffsetOfChunkGroup the start Byte position in file of this chunk group.
-   */
-  public OldChunkGroupMetaData(String deviceID, List<OldChunkMetadata> chunkMetaDataList, long startOffsetOfChunkGroup) {
-    if (chunkMetaDataList == null) {
-      throw new IllegalArgumentException("Given chunkMetaDataList is null");
-    }
-    this.deviceID = deviceID;
-    this.chunkMetaDataList = chunkMetaDataList;
-    this.startOffsetOfChunkGroup = startOffsetOfChunkGroup;
-  }
-
-  /**
    * deserialize from ByteBuffer.
    *
    * @param buffer ByteBuffer

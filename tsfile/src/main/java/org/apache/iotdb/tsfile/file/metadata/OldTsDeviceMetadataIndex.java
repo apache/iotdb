@@ -46,20 +46,6 @@ public class OldTsDeviceMetadataIndex {
   }
 
   /**
-   * construct function for TsDeviceMetadataIndex.
-   *
-   * @param offset -use to initial offset
-   * @param len -use to initial len
-   * @param deviceMetadata -use to initial startTime and endTime
-   */
-  public OldTsDeviceMetadataIndex(long offset, int len, OldTsDeviceMetadata deviceMetadata) {
-    this.offset = offset;
-    this.len = len;
-    this.startTime = deviceMetadata.getStartTime();
-    this.endTime = deviceMetadata.getEndTime();
-  }
-
-  /**
    * use buffer to get a TsDeviceMetadataIndex.
    *
    * @param buffer -determine the index's source

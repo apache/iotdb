@@ -83,7 +83,7 @@ public class ChunkCache {
   public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader) throws IOException {
     if (!cacheEnable) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
     }
 
     cacheRequestNum.incrementAndGet();
@@ -94,7 +94,7 @@ public class ChunkCache {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
         Chunk chunk = lruCache.get(chunkMetaData);
-        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
       }
     } finally {
       lock.readLock().unlock();
@@ -113,12 +113,12 @@ public class ChunkCache {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
         Chunk chunk = lruCache.get(chunkMetaData);
-        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
       }
       printCacheLog(false);
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       lruCache.put(chunkMetaData, chunk);
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", reader.getFileName());
       throw e;

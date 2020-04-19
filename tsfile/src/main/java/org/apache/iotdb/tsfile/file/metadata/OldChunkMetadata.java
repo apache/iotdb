@@ -61,24 +61,6 @@ public class OldChunkMetadata {
   }
 
   /**
-   * constructor of ChunkMetaData.
-   *
-   * @param measurementUid measurement id
-   * @param tsDataType time series data type
-   * @param fileOffset file offset
-   * @param startTime chunk start time
-   * @param endTime chunk end time
-   */
-  public OldChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
-      long startTime, long endTime) {
-    this.measurementUid = measurementUid;
-    this.tsDataType = tsDataType;
-    this.offsetOfChunkHeader = fileOffset;
-    this.startTime = startTime;
-    this.endTime = endTime;
-  }
-
-  /**
    * deserialize from ByteBuffer.
    *
    * @param buffer ByteBuffer

@@ -21,7 +21,6 @@ package org.apache.iotdb.tsfile.read;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -73,7 +72,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   private int totalChunkNum;
   private TsFileMetadata tsFileMetaData;
   private OldTsFileMetadata oldTsFileMetaData;
-  private EndianType endianType = EndianType.BIG_ENDIAN;
   // device -> measurement -> TimeseriesMetadata
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
   private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
@@ -247,10 +245,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     return new String(versionNumberBytes.array());
   }
 
-  public EndianType getEndianType() {
-    return this.endianType;
-  }
-
   /**
    * this function does not modify the position of the file reader.
    * @throws IOException io error
@@ -263,7 +257,10 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
   
   public OldTsFileMetadata readOldFileMetadata() throws IOException {
-    return OldTsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+    if (oldTsFileMetaData == null) {
+      oldTsFileMetaData = OldTsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+    }
+    return oldTsFileMetaData;
   }
 
   /**
@@ -293,10 +290,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         return cachedDeviceMetadata.get(device);
       }
       if (isOldVersion) {
-        if (oldTsFileMetaData == null) {
-          oldTsFileMetaData = readOldFileMetadata();
-        }
-        if (oldTsFileMetaData.getDeviceMetadataIndex(device) == null) {
+        readOldFileMetadata();
+        if (!oldTsFileMetaData.containsDevice(device)) {
           return new HashMap<>();
         }
       }
@@ -335,9 +330,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private Map<String, TimeseriesMetadata> constructDeviceMetadataFromOldFile(String device)
       throws IOException {
     Map<String, TimeseriesMetadata> newDeviceMetadata = new HashMap<>();
-    if (oldTsFileMetaData == null) {
-      oldTsFileMetaData = readOldFileMetadata();
-    }
+    readOldFileMetadata();
     OldTsDeviceMetadataIndex index = oldTsFileMetaData.getDeviceMetadataIndex(device);
     // read TsDeviceMetadata from file
     OldTsDeviceMetadata tsDeviceMetadata = readOldTsDeviceMetaData(index);
@@ -521,7 +514,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
-    return new Chunk(header, buffer, metaData.getDeletedAt(), endianType);
+    return new Chunk(header, buffer, metaData.getDeletedAt());
   }
 
   /**
@@ -779,13 +772,13 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   private List<ChunkMetadata> getChunkMetadataListFromOldFile(Path path) throws IOException {
-    OldTsFileMetadata tsFileMetadata = readOldFileMetadata();
-    if (!tsFileMetadata.containsDevice(path.getDevice())) {
+    readOldFileMetadata();
+    if (!oldTsFileMetaData.containsDevice(path.getDevice())) {
       return new ArrayList<>();
     }
 
     // get the index information of TsDeviceMetadata
-    OldTsDeviceMetadataIndex index = tsFileMetadata.getDeviceMetadataIndex(path.getDevice());
+    OldTsDeviceMetadataIndex index = oldTsFileMetaData.getDeviceMetadataIndex(path.getDevice());
 
     // read TsDeviceMetadata from file
     OldTsDeviceMetadata tsDeviceMetadata = readOldTsDeviceMetaData(index);
