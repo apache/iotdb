@@ -96,7 +96,10 @@ public class ChunkHeader {
       // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
       ReadWriteIOUtils.readLong(inputStream);
     }
-    return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
+    ChunkHeader chunkHeader = new ChunkHeader(measurementID, dataSize, dataType, type, encoding,
+        numOfPages);
+    chunkHeader.setAsOldVersion(isOldVersion);
+    return chunkHeader;
   }
 
   /**
