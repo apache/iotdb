@@ -24,10 +24,10 @@
 * 2018.12.09, 清华开源之道大讲堂 2018. 北京, 中国.
   * (Chinese) IoTDB: from Tsinghua IoTDB to Apache IoTDB (incubating). IoTDB:从清华IoTDB到Apache孵化器项目。Reporter: Xiangdong Huang
 
-* 2019.02.21, 工业互联网大会 2019. 北京, 中国.
+* 2019.02.21, 工业互联网峰会 2019. 北京, 中国.
   * (Chinese) Apache IoTDB (incubating): Time Series Database for IIoT. IoTDB：工业互联网时序数据库. Reporter: Jianmin Wang
 
-* 2019.05.07, 第二届数字中国大会. 福州, 中国.
+* 2019.05.07, 第二届数字中国建设峰会. 福州, 中国.
   * (Chinese) Apache IoTDB (incubating): Time Series Database for IIoT. IoTDB：工业互联网时序数据库. Reporter: Xiangdong Huang
   
 * 2019.07.13, 北京黑客马拉松 2019. 北京, 中国.
