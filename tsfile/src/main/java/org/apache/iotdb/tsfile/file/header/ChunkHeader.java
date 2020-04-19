@@ -40,18 +40,18 @@ public class ChunkHeader {
   private TSEncoding encodingType;
   private int numOfPages;
 
-  private boolean isOldVersion; 
-
   // this field does not need to be serialized.
   private int serializedSize;
 
+  private boolean isOldVersion = false;
+
   public ChunkHeader(String measurementID, int dataSize, TSDataType dataType, CompressionType compressionType,
       TSEncoding encoding, int numOfPages) {
-    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType, encoding, numOfPages, false);
+    this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType, encoding, numOfPages);
   }
 
   private ChunkHeader(String measurementID, int dataSize, int headerSize, TSDataType dataType,
-      CompressionType compressionType, TSEncoding encoding, int numOfPages, boolean isOldVersion) {
+      CompressionType compressionType, TSEncoding encoding, int numOfPages) {
     this.measurementID = measurementID;
     this.dataSize = dataSize;
     this.dataType = dataType;
@@ -59,7 +59,6 @@ public class ChunkHeader {
     this.numOfPages = numOfPages;
     this.encodingType = encoding;
     this.serializedSize = headerSize;
-    this.isOldVersion = isOldVersion;
   }
 
   public static int getSerializedSize(String measurementID) {
@@ -135,9 +134,11 @@ public class ChunkHeader {
       // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
       ReadWriteIOUtils.readLong(buffer);
     }
-    return new ChunkHeader(measurementID, dataSize, 
+    ChunkHeader chunkHeader = new ChunkHeader(measurementID, dataSize, 
         chunkHeaderSize, dataType, type, encoding,
-        numOfPages, isOldVersion);
+        numOfPages);
+    chunkHeader.setAsOldVersion(isOldVersion);
+    return chunkHeader;
   }
 
   public int getSerializedSize() {
@@ -204,7 +205,11 @@ public class ChunkHeader {
   public TSEncoding getEncodingType() {
     return encodingType;
   }
-  
+
+  public void setAsOldVersion(boolean isOldVersion) {
+    this.isOldVersion = isOldVersion;
+  }
+
   public boolean isOldVersion() {
     return isOldVersion;
   }

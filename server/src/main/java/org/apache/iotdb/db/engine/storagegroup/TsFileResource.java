@@ -366,7 +366,6 @@ public class TsFileResource {
   void doUpgrade() {
     if (UpgradeUtils.isNeedUpgrade(this)) {
       UpgradeSevice.getINSTANCE().submitUpgradeTask(new UpgradeTask(this));
-      fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
     }
   }
 

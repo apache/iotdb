@@ -58,14 +58,13 @@ public class UpgradeTask extends WrappedRunnable {
       } catch (IOException e) {
         logger
             .error("generate upgrade file failed, the file to be upgraded:{}", oldTsfilePath, e);
-        return;
       } finally {
         upgradeResource.getWriteQueryLock().readLock().unlock();
       }
       upgradeResource.getWriteQueryLock().writeLock().lock();
       try {
         // delete old TsFile
-        FSFactoryProducer.getFSFactory().getFile(oldTsfilePath).delete();
+        upgradeResource.remove();
         // move upgraded TsFiles to their own partition directories
         for (TsFileResource upgradedResource : upgradedResources) {
           File upgradedFile = upgradedResource.getFile();

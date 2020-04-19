@@ -24,6 +24,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 public class UpgradeTool {
+  
+  private UpgradeTool() {
+  };
 
   /**
    * upgrade a single tsfile
@@ -34,7 +37,7 @@ public class UpgradeTool {
    */
   public static void upgradeOneTsfile(String tsFileName, List<String> tsFileList, 
       List<TsFileResource> upgradedResources) throws IOException, WriteProcessException {
-    TsfileUpgradeToolV0_9_0 updater = new TsfileUpgradeToolV0_9_0(tsFileName);
+    TsfileOnlineUpgradeTool updater = new TsfileOnlineUpgradeTool(tsFileName);
     try {
       updater.upgradeFile(tsFileList, upgradedResources);
     } finally {

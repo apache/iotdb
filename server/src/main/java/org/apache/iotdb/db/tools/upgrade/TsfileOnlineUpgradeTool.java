@@ -65,9 +65,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
+public class TsfileOnlineUpgradeTool implements AutoCloseable {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsfileUpgradeToolV0_9_0.class);
+  private static final Logger logger = LoggerFactory.getLogger(TsfileOnlineUpgradeTool.class);
 
   private TsFileInput tsFileInput;
   private long fileMetadataPos;
@@ -86,17 +86,17 @@ public class TsfileUpgradeToolV0_9_0 implements AutoCloseable {
    * @param file the data file
    * @throws IOException If some I/O error occurs
    */
-  public TsfileUpgradeToolV0_9_0(String file) throws IOException {
+  public TsfileOnlineUpgradeTool(String file) throws IOException {
     this(file, true);
   }
 
   /**
-   * construct function for TsfileUpgradeToolV0_9_0.
+   * construct function for TsfileOnlineUpgradeTool.
    *
    * @param file -given file name
    * @param loadMetadataSize -load meta data size
    */
-  public TsfileUpgradeToolV0_9_0(String file, boolean loadMetadataSize) throws IOException {
+  public TsfileOnlineUpgradeTool(String file, boolean loadMetadataSize) throws IOException {
     this.file = file;
     final java.nio.file.Path path = Paths.get(file);
     tsFileInput = new LocalTsFileInput(path);
