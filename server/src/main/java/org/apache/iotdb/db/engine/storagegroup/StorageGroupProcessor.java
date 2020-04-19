@@ -347,7 +347,9 @@ public class StorageGroupProcessor {
               directory.mkdirs();
             }
             File versionFile = SystemFileFactory.INSTANCE.getFile(directory, SimpleFileVersionController.FILE_PREFIX + currentVersion);
-            versionFile.createNewFile();
+            if (!versionFile.createNewFile()) {
+              logger.warn("Version file {} has already been created ", versionFile);
+            }
             timePartitionIdVersionControllerMap.put(partitionId, new SimpleFileVersionController(storageGroupSysDir.getPath(), partitionId));
           }
           partitionId++;

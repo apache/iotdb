@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 public class UpgradeTool {
   
   private UpgradeTool() {
-  };
+  }
 
   /**
    * upgrade a single tsfile

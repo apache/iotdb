@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.nio.ByteBuffer;
 
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 
 /**

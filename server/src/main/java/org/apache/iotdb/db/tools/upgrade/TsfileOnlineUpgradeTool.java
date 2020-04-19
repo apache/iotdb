@@ -519,7 +519,10 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
         File newFile = FSFactoryProducer.getFSFactory().getFile(oldTsFile.getParent()
             + File.separator + partition + File.separator+ oldTsFile.getName());
         try {
-          newFile.createNewFile();
+          if (!newFile.createNewFile()) {
+            logger.error("The TsFile {} has been created ", newFile);
+            return null;
+          }
           return new TsFileIOWriter(newFile);
         } catch (IOException e) {
           logger.error("Create new TsFile {} failed ", newFile);
