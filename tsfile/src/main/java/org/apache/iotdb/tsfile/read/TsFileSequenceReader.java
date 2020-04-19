@@ -341,6 +341,9 @@ public class TsFileSequenceReader implements AutoCloseable {
     OldTsDeviceMetadataIndex index = oldTsFileMetaData.getDeviceMetadataIndex(device);
     // read TsDeviceMetadata from file
     OldTsDeviceMetadata tsDeviceMetadata = readOldTsDeviceMetaData(index);
+    if (tsDeviceMetadata == null) {
+      return newDeviceMetadata;
+    }
 
     // get all ChunkMetaData of this path included in all ChunkGroups of this device
     for (OldChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
