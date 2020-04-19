@@ -64,7 +64,7 @@ public class TsFileMetadata {
    * @return -a instance of TsFileMetaData
    */
   public static TsFileMetadata deserializeFrom(ByteBuffer buffer) {
-    TsFileMetadata fileMetadata = new TsFileMetadata();
+    TsFileMetadata fileMetaData = new TsFileMetadata();
 
     // deviceMetadataIndex
     int deviceNum = ReadWriteIOUtils.readInt(buffer);
@@ -77,10 +77,10 @@ public class TsFileMetadata {
         deviceMetaDataMap.put(deviceId, new Pair<>(offset, length));
       }
     }
-    fileMetadata.setDeviceMetadataIndex(deviceMetaDataMap);
+    fileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
 
-    fileMetadata.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
-    fileMetadata.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
+    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
     // versionInfo
     List<Pair<Long, Long>> versionInfo = new ArrayList<>();
@@ -90,7 +90,7 @@ public class TsFileMetadata {
       long version = ReadWriteIOUtils.readLong(buffer);
       versionInfo.add(new Pair<>(versionPos, version));
     }
-    fileMetadata.setVersionInfo(versionInfo);
+    fileMetaData.setVersionInfo(versionInfo);
 
     // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);
@@ -101,10 +101,10 @@ public class TsFileMetadata {
       byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();
       int filterSize = ReadWriteIOUtils.readInt(buffer);
       int hashFunctionSize = ReadWriteIOUtils.readInt(buffer);
-      fileMetadata.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
     }
 
-    return fileMetadata;
+    return fileMetaData;
   }
 
   public BloomFilter getBloomFilter() {
