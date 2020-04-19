@@ -111,7 +111,7 @@ public class TsFileResource {
    *  generated upgraded TsFile ResourceList
    *  used for upgrading 0.9 -> 0.10
    */
-  private volatile List<TsFileResource> upgradedResources;
+  private List<TsFileResource> upgradedResources;
 
   /**
    *  load upgraded TsFile Resources to storage group processor

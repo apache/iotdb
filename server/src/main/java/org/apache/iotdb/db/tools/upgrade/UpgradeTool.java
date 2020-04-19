@@ -106,7 +106,11 @@ public class UpgradeTool {
   public static void upgradeOneTsfile(String tsFileName, List<String> tsFileList, 
       List<TsFileResource> upgradedResources) throws IOException, WriteProcessException {
     TsfileUpgradeToolV0_9_0 updater = new TsfileUpgradeToolV0_9_0(tsFileName);
-    updater.upgradeFile(tsFileList, upgradedResources);
+    try {
+      updater.upgradeFile(tsFileList, upgradedResources);
+    } finally {
+      updater.close();
+    }
   }
 
 }
