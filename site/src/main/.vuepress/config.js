@@ -91,6 +91,7 @@ var config = {
 					  { text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
+						{ text: 'Materials', link: '/Community/Materials'},
 					]
 				  },
 				  {
@@ -504,6 +505,7 @@ var config = {
 						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
+						  { text: '活动与报告', link: '/Community/Materials'},
 					]
 				  },
 				  {
