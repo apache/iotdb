@@ -65,7 +65,7 @@ MQTT主题与IoTDB时间序列相对应。
 
 | 名称      | 描述         | 默认 |
 | ------------- |:-------------:|:------:|
-| enable_mqtt_service      | 是否启用mqtt服务 | true |
+| enable_mqtt_service      | 是否启用mqtt服务 | false |
 | mqtt_host      | mqtt服务绑定主机 | 0.0.0.0 |
 | mqtt_port      | mqtt服务绑定端口 |   1883 |
 | mqtt_handler_pool_size | 处理mqtt消息的处理程序池大小 |    1 |
