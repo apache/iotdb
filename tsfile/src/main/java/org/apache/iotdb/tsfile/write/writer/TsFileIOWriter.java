@@ -221,6 +221,8 @@ public class TsFileIOWriter {
    */
   public void endFile() throws IOException {
 
+    long metaOffset = out.getPosition();
+
     // serialize the SEPARATOR of MetaData
     ReadWriteIOUtils.write(MetaMarker.SEPARATOR, out.wrapAsStream());
 
@@ -240,6 +242,7 @@ public class TsFileIOWriter {
     tsFileMetaData.setVersionInfo(versionInfo);
     tsFileMetaData.setTotalChunkNum(totalChunkNum);
     tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
+    tsFileMetaData.setMetaOffset(metaOffset);
 
     long footerIndex = out.getPosition();
     if (logger.isDebugEnabled()) {

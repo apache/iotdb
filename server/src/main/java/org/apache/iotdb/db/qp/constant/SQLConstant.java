@@ -65,6 +65,8 @@ public class SQLConstant {
   public static final String AVG = "avg";
   public static final String SUM = "sum";
 
+  public static final String ALL = "all";
+
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;
   public static final int KW_NOT = 3;

@@ -42,6 +42,7 @@ public abstract class TimeGenerator {
 
   private HashMap<Path, List<LeafNode>> leafCache = new HashMap<>();
   private Node operatorNode;
+  private boolean hasOrNode;
 
   public boolean hasNext() throws IOException {
     return operatorNode.hasNext();
@@ -90,6 +91,7 @@ public abstract class TimeGenerator {
       Node rightChild = construct(((IBinaryExpression) expression).getRight());
 
       if (expression.getType() == ExpressionType.OR) {
+        hasOrNode = true;
         return new OrNode(leftChild, rightChild);
       } else if (expression.getType() == ExpressionType.AND) {
         return new AndNode(leftChild, rightChild);
@@ -102,4 +104,7 @@ public abstract class TimeGenerator {
   protected abstract IBatchReader generateNewBatchReader(SingleSeriesExpression expression)
       throws IOException;
 
+  public boolean hasOrNode() {
+    return hasOrNode;
+  }
 }

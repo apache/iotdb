@@ -38,13 +38,14 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   private TsFileResource resource;
   private Path seriesPath;
   private QueryContext context;
-  private Filter timeFilter;
+  // time filter or value filter, only used to check time range
+  private Filter filter;
 
-  public DiskChunkMetadataLoader(TsFileResource resource, Path seriesPath, QueryContext context, Filter timeFilter) {
+  public DiskChunkMetadataLoader(TsFileResource resource, Path seriesPath, QueryContext context, Filter filter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;
-    this.timeFilter = timeFilter;
+    this.filter = filter;
   }
 
   @Override
@@ -57,7 +58,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     /*
      * remove not satisfied ChunkMetaData
      */
-    chunkMetadataList.removeIf(chunkMetaData -> (timeFilter != null && !timeFilter
+    chunkMetadataList.removeIf(chunkMetaData -> (filter != null && !filter
             .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
             || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
     return chunkMetadataList;

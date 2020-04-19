@@ -57,12 +57,14 @@ Wiki 文档管理：https://cwiki.apache.org/confluence/display/IOTDB/Home
 
 IoTDB 所有官网上的内容都在项目根目录的 docs 中：
 
-* docs/Documentation/SystemDesign: 系统设计文档-英文版
-* docs/Documentation-CHN/SystemDesign: 系统设计文档-中文版
-* docs/Documentation/UserGuide: 用户手册-英文版
-* docs/Documentation-CHN/UserGuide: 用户手册-中文版
-* docs/Community: 社区
-* docs/Development: 开发指南
+* docs/SystemDesign: 系统设计文档-英文版
+* docs/zh/SystemDesign: 系统设计文档-中文版
+* docs/UserGuide: 用户手册-英文版
+* docs/zh/UserGuide: 用户手册-中文版
+* docs/Community: 社区-英文版
+* docs/zh/Community: 社区-中文版
+* docs/Development: 开发指南-英文版
+* docs/zh/Development: 开发指南-中文版
 
 官网上的版本和分支的对应关系：
 
