@@ -144,25 +144,6 @@ public class TsFileResource {
     this.fsFactory = other.fsFactory;
     this.historicalVersions = other.historicalVersions;
   }
-  
-  public TsFileResource(TsFileResource other, 
-      UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack, boolean isSeq) {
-    this.file = other.file;
-    this.startTimeMap = other.startTimeMap;
-    this.endTimeMap = other.endTimeMap;
-    this.processor = other.processor;
-    this.modFile = other.modFile;
-    this.closed = other.closed;
-    this.deleted = other.deleted;
-    this.isMerging = other.isMerging;
-    this.chunkMetadataList = other.chunkMetadataList;
-    this.readOnlyMemChunk = other.readOnlyMemChunk;
-    this.writeQueryLock = other.writeQueryLock;
-    this.fsFactory = other.fsFactory;
-    this.historicalVersions = other.historicalVersions;
-    this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
-    this.isSeq = isSeq;
-  }
 
   /**
    * for sealed TsFile, call setClosed to close TsFileResource
