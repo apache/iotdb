@@ -20,9 +20,7 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -33,18 +31,8 @@ public class TsDigest {
 
   private ByteBuffer[] statistics;
 
-  /**
-   * size of valid values in statistics. Note that some values in statistics can be null and thus
-   * invalid.
-   */
-  private int validSizeOfArray = 0;
-
   public TsDigest() {
     // allowed to declare an empty TsDigest whose fields will be assigned later.
-  }
-
-  public static int getNullDigestSize() {
-    return Integer.BYTES;
   }
 
   /**
@@ -56,7 +44,6 @@ public class TsDigest {
   public static TsDigest deserializeFrom(ByteBuffer buffer) {
     TsDigest digest = new TsDigest();
     int size = ReadWriteIOUtils.readInt(buffer);
-    digest.validSizeOfArray = size;
     if (size > 0) {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];
       ByteBuffer value;
@@ -70,17 +57,6 @@ public class TsDigest {
     return digest;
   }
 
-  private void reCalculate() {
-    validSizeOfArray = 0;
-    if (statistics != null) {
-      for (ByteBuffer value : statistics) {
-        if (value != null) {
-          validSizeOfArray++;
-        }
-      }
-    }
-  }
-
   /**
    * get statistics of the current object.
    */
@@ -88,39 +64,12 @@ public class TsDigest {
     return statistics;
   }
 
-  public void setStatistics(ByteBuffer[] statistics) throws IOException {
-    if (statistics != null && statistics.length != StatisticType.getTotalTypeNum()) {
-      throw new IOException(String.format(
-          "The length of array of statistics doesn't equal StatisticType.getTotalTypeNum() %d",
-          StatisticType.getTotalTypeNum()));
-    }
-    this.statistics = statistics;
-    reCalculate(); // DO NOT REMOVE THIS
-  }
-
-  @Override
-  public String toString() {
-    return statistics != null ? Arrays.toString(statistics) : "";
-  }
-
-
   public enum StatisticType {
-    min_value, max_value, first_value, last_value, sum_value;
+    MIN_VALUE, MAX_VALUE, FIRST_VALUE, LAST_VALUE, SUM_VALUE;
 
     public static int getTotalTypeNum() {
       return StatisticType.values().length;
     }
 
-    public static StatisticType deserialize(short i) {
-      return StatisticType.values()[i];
-    }
-
-    public static int getSerializedSize() {
-      return Short.BYTES;
-    }
-
-    public short serialize() {
-      return (short) this.ordinal();
-    }
   }
 }
