@@ -423,6 +423,8 @@ public class StorageGroupProcessor {
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
           if (partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+            Collections.addAll(upgradeFiles,
+                    fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
             continue;
           }
           // some TsFileResource may be being persisted when the system crashed, try recovering such
@@ -452,6 +454,7 @@ public class StorageGroupProcessor {
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
       TsFileResource fileResource = new TsFileResource(f);
+      fileResource.setClosed(true);
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserialize();
       upgradeRet.add(fileResource);
@@ -1129,9 +1132,9 @@ public class StorageGroupProcessor {
     mergeLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
-          deviceId, measurementId, context, timeFilter);
+          upgradeSeqFileList, deviceId, measurementId, context, timeFilter);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
-          deviceId, measurementId, context, timeFilter);
+          upgradeUnseqFileList, deviceId, measurementId, context, timeFilter);
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
@@ -1164,7 +1167,7 @@ public class StorageGroupProcessor {
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
   private List<TsFileResource> getFileResourceListForQuery(
-      Collection<TsFileResource> tsFileResources,
+      Collection<TsFileResource> tsFileResources, List<TsFileResource> upgradeTsFileResources,
       String deviceId, String measurementId, QueryContext context, Filter timeFilter)
       throws MetadataException {
 
@@ -1197,6 +1200,18 @@ public class StorageGroupProcessor {
         }
       } catch (IOException e) {
         throw new MetadataException(e);
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    // for upgrade files and old files must be closed
+    for (TsFileResource tsFileResource : upgradeTsFileResources) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter)) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        tsfileResourcesForQuery.add(tsFileResource);
       } finally {
         closeQueryLock.readLock().unlock();
       }
