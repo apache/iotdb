@@ -21,7 +21,7 @@
 
 # 成为Committer
 
-Apache IoTDB [Committer](https://www.apache.org/foundation/how-it-works.html#committers)可以对存储库进行写访问，以合并PR，但是您不必成为代码贡献者才能成为Committer。成为一个Committer意味着你获得了项目的信任。阅读[ASF文档](https://www.apache.org/dev/committers.html#committer-responsibilities) 以获取有关成为Apache Software Foundation中的提交者的更多信息。
+Apache IoTDB [Committer](https://www.apache.org/foundation/how-it-works.html#committers) 拥有代码库的写权限，可以合并PR，但是您不必成为代码贡献者才能成为Committer。成为一个Committer意味着你获得了项目的信任。阅读[ASF文档](https://www.apache.org/dev/committers.html#committer-responsibilities) 以获取有关成为Apache Software Foundation中的提交者的更多信息。
 
 项目管理委员会 [PMC](https://www.apache.org/foundation/how-it-works.html#pmc-members) 通过提名、讨论、并投票（且多数人投赞成票）来将某人增选为Committer。我们会使用尽可能多的数据来源来解释为什么增选某人。例如：
 
