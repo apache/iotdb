@@ -218,8 +218,6 @@ public interface PartitionTable {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof InsertPlan) {
       return splitAndRoutePlan((InsertPlan) plan);
-    }else if (plan instanceof DeleteStorageGroupPlan) {
-      return splitAndRoutePlan((DeleteStorageGroupPlan) plan);
     }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
@@ -326,23 +324,6 @@ public interface PartitionTable {
       }
       BatchInsertPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
       result.put(newBatch, entry.getKey());
-    }
-    return result;
-  }
-
-  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(DeleteStorageGroupPlan plan)
-      throws MetadataException {
-    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
-    Map<PartitionGroup, List<Path>> partitionGroupToPaths = new HashMap<>();
-    for (Path path : plan.getPaths()) {
-      PartitionGroup currentGroup = partitionByPathTime(path.getFullPath(), 0);
-      List<Path> currentPaths = partitionGroupToPaths
-          .getOrDefault(currentGroup, new ArrayList<>());
-      currentPaths.add(path);
-      partitionGroupToPaths.put(currentGroup, currentPaths);
-    }
-    for (Entry<PartitionGroup, List<Path>> entry : partitionGroupToPaths.entrySet()) {
-      result.put(new DeleteStorageGroupPlan(entry.getValue()), entry.getKey());
     }
     return result;
   }
