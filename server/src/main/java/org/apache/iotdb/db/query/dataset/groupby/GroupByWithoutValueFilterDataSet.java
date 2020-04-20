@@ -104,7 +104,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
               + "in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    RowRecord record = new RowRecord(curStartTime);
+    RowRecord record;
+    if (leftCRightO) {
+      record = new RowRecord(curStartTime);
+    } else {
+      record = new RowRecord(curEndTime-1);
+    }
 
     AggregateResult[] fields = new AggregateResult[paths.size()];
 

@@ -29,6 +29,7 @@ There are several types of data queries
 * Single point supplementary null query
 * Latest data query
 * Align by device query
+* Group by fill query
 
 In order to achieve the above kinds of queries, a basic query component for a single time series is designed in the IoTDB query engine, and on this basis, various query functions are implemented.
 
@@ -42,3 +43,4 @@ In order to achieve the above kinds of queries, a basic query component for a si
 * [Recent timestamp query](/SystemDesign/5-DataQuery/7-LastQuery.html)
 * [Align by device query](/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html)
 * [Fill function](/SystemDesign/5-DataQuery/9-FillFunction.html)
+* [Group by fill query](/SystemDesign/5-DataQuery/10-GroupByFillQuery.html)

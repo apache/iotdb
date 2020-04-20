@@ -92,7 +92,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   /**
    * Metadata size of per chunk, the default value is 1.5 KB.
    */
-  private static final long CHUNK_METADATA_SIZE_IN_BYTE = 1536L;
+  private static long CHUNK_METADATA_SIZE_IN_BYTE = 1536L;
 
   /**
    * Average queue length in memtable pool
@@ -127,6 +127,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   @Override
   public synchronized boolean tryToAdaptParameters() {
+    if(!CONFIG.isEnableParameterAdapter()){
+      return true;
+    }
     boolean canAdjust = true;
     double ratio = CompressionRatio.getInstance().getRatio();
     long memtableSizeInByte = calcMemTableSize(ratio);
@@ -225,6 +228,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return;
     }
+
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
       maxMemTableNum -=
@@ -261,6 +265,11 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   public int getTotalStorageGroup() {
     return totalStorageGroup;
+  }
+
+
+  public static void setChunkMetadataSizeInByte(long chunkMetadataSizeInByte) {
+    CHUNK_METADATA_SIZE_IN_BYTE = chunkMetadataSizeInByte;
   }
 
   /**

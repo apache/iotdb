@@ -4,9 +4,9 @@
   "description": "Apache IoTDB (incubating) Website",
   "main": "index.js",
   "scripts": {
-    "dev": "node --max_old_space_size=1500 ./node_modules/vuepress/cli.js dev src",
-    "build": "node --max_old_space_size=1500 ./node_modules/vuepress/cli.js build src",
-    "deploy": "node --max_old_space_size=1500 deploy.js"
+    "dev": "node --max_old_space_size=8000 ./node_modules/vuepress/cli.js dev src",
+    "build": "node --max_old_space_size=8000 ./node_modules/vuepress/cli.js build src",
+    "deploy": "node --max_old_space_size=8000 deploy.js"
   },
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
     "Time Series Database"
   ],
   "author": "Apache IoTDB (incubating)",
-  "license": "Apache License 2.0",
+  "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/apache/incubator-iotdb"
   },

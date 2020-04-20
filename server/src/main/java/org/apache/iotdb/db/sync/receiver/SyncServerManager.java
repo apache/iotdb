@@ -32,7 +32,6 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
-import org.apache.iotdb.db.sync.thrift.SyncServiceEventHandler;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncService.Processor;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -54,10 +53,8 @@ public class SyncServerManager implements IService {
 
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
-  private Thread syncServerThread;
+  private SyncServiceThread syncServerThread;
 
-  //we add this latch for avoiding in some ITs, the syncService is not startup but the IT has finished.
-  private CountDownLatch startLatch;
   //stopLatch is also for letting the IT know whether the socket is closed.
   private CountDownLatch stopLatch;
 
@@ -87,14 +84,16 @@ public class SyncServerManager implements IService {
           "Sync server failed to start because IP white list is null, please set IP white list.");
       return;
     }
-    startLatch = new CountDownLatch(1);
     stopLatch = new CountDownLatch(1);
     conf.setIpWhiteList(conf.getIpWhiteList().replaceAll(" ", ""));
-    syncServerThread = new SyncServiceThread(startLatch, stopLatch);
+    syncServerThread = new SyncServiceThread(stopLatch);
     syncServerThread.setName(ThreadName.SYNC_SERVER.getName());
     syncServerThread.start();
     try {
-      startLatch.await();
+      while (!syncServerThread.isServing()) {
+        //sleep 100ms for waiting the sync server start.
+        Thread.sleep(100);
+      }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -109,7 +108,7 @@ public class SyncServerManager implements IService {
   public void stop() {
     if (conf.isSyncEnable()) {
       FileLoaderManager.getInstance().stop();
-      ((SyncServiceThread) syncServerThread).close();
+      syncServerThread.close();
       try {
         stopLatch.await();
       } catch (InterruptedException e) {
@@ -136,13 +135,10 @@ public class SyncServerManager implements IService {
     private TProtocolFactory protocolFactory;
     private Processor<SyncService.Iface> processor;
     private TThreadPoolServer.Args poolArgs;
-    //we add this latch for avoiding in some ITs, the syncService is not startup but the IT has finished.
-    private CountDownLatch threadStartLatch;
     private CountDownLatch threadStopLatch;
 
-    public SyncServiceThread(CountDownLatch startLatch, CountDownLatch stopLatch) {
+    public SyncServiceThread(CountDownLatch stopLatch) {
       processor = new SyncService.Processor<>(new SyncServiceImpl());
-      this.threadStartLatch = startLatch;
       this.threadStopLatch = stopLatch;
     }
 
@@ -164,7 +160,6 @@ public class SyncServerManager implements IService {
         poolArgs.protocolFactory(protocolFactory);
         poolArgs.processor(processor);
         poolServer = new TThreadPoolServer(poolArgs);
-        poolServer.setServerEventHandler(new SyncServiceEventHandler(threadStartLatch));
         poolServer.serve();
       } catch (TTransportException e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
@@ -191,6 +186,13 @@ public class SyncServerManager implements IService {
         serverTransport.close();
         serverTransport = null;
       }
+    }
+
+    boolean isServing() {
+      if (poolServer != null) {
+        return  poolServer.isServing();
+      }
+      return false;
     }
   }
 }
