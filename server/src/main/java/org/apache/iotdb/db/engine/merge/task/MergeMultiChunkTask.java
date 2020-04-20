@@ -91,6 +91,7 @@ class MergeMultiChunkTask {
 
   private RestorableTsFileIOWriter newUnseqFileWriter;
   private TsFileResource newUnseqResource;
+  private boolean hasRemainUnseq;
 
   MergeMultiChunkTask(MergeContext context, String taskName, MergeLogger mergeLogger,
       MergeResource mergeResource, boolean fullMerge, List<Path> unmergedSeries,
@@ -102,6 +103,7 @@ class MergeMultiChunkTask {
     this.fullMerge = fullMerge;
     this.unmergedSeries = unmergedSeries;
     this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
+    this.hasRemainUnseq = false;
   }
 
   TsFileResource mergeSeries() throws IOException {
@@ -131,6 +133,10 @@ class MergeMultiChunkTask {
     }
     mergeLogger.logAllTsEnd();
     newUnseqFileWriter.endFile();
+    if (!this.hasRemainUnseq) {
+      newUnseqResource.remove();
+      return null;
+    }
     newUnseqResource.setClosed(true);
     return newUnseqResource;
   }
@@ -407,6 +413,7 @@ class MergeMultiChunkTask {
     long maxTime = Long.MIN_VALUE;
     long minTime = Long.MAX_VALUE;
     while (unseqReader.hasNextTimeValuePair()) {
+      this.hasRemainUnseq = true;
       TimeValuePair timeValuePair = unseqReader.nextTimeValuePair();
       writeTVPair(timeValuePair, chunkWriter);
       maxTime = Math.max(maxTime, timeValuePair.getTimestamp());

@@ -151,7 +151,11 @@ public class MergeOverLapTest extends MergeTest {
   public void testFullMerge() throws Exception {
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
-            (k, v, l, n) -> n.remove(), "test",
+            (k, v, l, n) -> {
+              if (n != null) {
+                n.remove();
+              }
+            }, "test",
             true, 1, MERGE_TEST_SG);
     mergeTask.call();
 

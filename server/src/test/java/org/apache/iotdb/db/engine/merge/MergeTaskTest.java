@@ -67,7 +67,11 @@ public class MergeTaskTest extends MergeTest {
   public void testMerge() throws Exception {
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(), (k, v
-            , l, n) -> n.remove(), "test", false, 1, MERGE_TEST_SG);
+            , l, n) -> {
+          if (n != null) {
+            n.remove();
+          }
+        }, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -123,7 +127,11 @@ public class MergeTaskTest extends MergeTest {
   public void testFullMerge() throws Exception {
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
-            (k, v, l, n) -> n.remove(), "test",
+            (k, v, l, n) -> {
+              if (n != null) {
+                n.remove();
+              }
+            }, "test",
             true, 1, MERGE_TEST_SG);
     mergeTask.call();
 
@@ -148,7 +156,11 @@ public class MergeTaskTest extends MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources), tempSGDir.getPath(),
-            (k, v, l, n) -> n.remove(), "test",
+            (k, v, l, n) -> {
+              if (n != null) {
+                n.remove();
+              }
+            }, "test",
             false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
@@ -173,7 +185,11 @@ public class MergeTaskTest extends MergeTest {
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources.subList(0, 1)),
             tempSGDir.getPath(),
-            (k, v, l, n) -> n.remove(), "test", false, 1, MERGE_TEST_SG);
+            (k, v, l, n) -> {
+              if (n != null) {
+                n.remove();
+              }
+            }, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -201,7 +217,11 @@ public class MergeTaskTest extends MergeTest {
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources.subList(5, 6)),
             tempSGDir.getPath(),
-            (k, v, l, n) -> n.remove(), "test", false, 1, MERGE_TEST_SG);
+            (k, v, l, n) -> {
+              if (n != null) {
+                n.remove();
+              }
+            }, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -225,7 +245,11 @@ public class MergeTaskTest extends MergeTest {
     MergeTask mergeTask =
         new MergeTask(new MergeResource(seqResources, unseqResources.subList(0, 5)),
             tempSGDir.getPath(),
-            (k, v, l, n) -> n.remove(), "test", false, 1, MERGE_TEST_SG);
+            (k, v, l, n) -> {
+              if (n != null) {
+                n.remove();
+              }
+            }, "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     QueryContext context = new QueryContext();
@@ -262,7 +286,9 @@ public class MergeTaskTest extends MergeTest {
             tempSGDir.getPath(),
             (k, v, l, n) -> {
               try {
-                n.remove();
+                if (n != null) {
+                  n.remove();
+                }
                 seqResources.get(0).removeModFile();
               } catch (IOException e) {
                 e.printStackTrace();

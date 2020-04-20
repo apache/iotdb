@@ -80,7 +80,9 @@ public class MergeLogTest extends MergeTest {
       fail(e.getMessage());
     }
     assertEquals(309, lineCnt);
-    remainUnseqFile.remove();
+    if (remainUnseqFile != null) {
+      remainUnseqFile.remove();
+    }
   }
 
 }
