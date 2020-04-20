@@ -18,31 +18,28 @@
  */
 package org.apache.iotdb.db.utils;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class UpgradeUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(UpgradeUtils.class);
-
-  private static final String TMP_STRING = "tmp";
-  private static final String UPGRADE_FILE_PREFIX = "upgrade_";
   private static final String COMMA_SEPERATOR = ",";
   private static final ReadWriteLock cntUpgradeFileLock = new ReentrantReadWriteLock();
   private static final ReadWriteLock upgradeLogLock = new ReentrantReadWriteLock();
@@ -116,7 +113,9 @@ public class UpgradeUtils {
                 for (File generatedFile : generatedFiles) {
                   if (generatedFile.getName().equals(FSFactoryProducer.getFSFactory()
                       .getFile(key).getName())) {
-                    generatedFile.delete();
+                    if (!generatedFile.delete()) {
+                      logger.error("Failed to delete {} ", generatedFile);
+                    }
                   }
                 }
               }
@@ -128,8 +127,12 @@ public class UpgradeUtils {
             if (FSFactoryProducer.getFSFactory().getFile(key).exists() && FSFactoryProducer
                 .getFSFactory().getFile(upgradedFileName).exists()) {
               // if both old tsfile and upgrade file exists, delete the old tsfile and resource
-              FSFactoryProducer.getFSFactory().getFile(key).delete();
-              FSFactoryProducer.getFSFactory().getFile(key + TsFileResource.RESOURCE_SUFFIX).delete();
+              if (!FSFactoryProducer.getFSFactory().getFile(key).delete()) {
+                logger.error("Failed to delete {} ", key);
+              }
+              if (!FSFactoryProducer.getFSFactory().getFile(key + TsFileResource.RESOURCE_SUFFIX).delete()) {
+                logger.error("Failed to delete resource {} ", key + TsFileResource.RESOURCE_SUFFIX);
+              }
             } 
             // move the upgrade files and resources to their own partition directories
             File upgradeDir = FSFactoryProducer.getFSFactory().getFile(key)
