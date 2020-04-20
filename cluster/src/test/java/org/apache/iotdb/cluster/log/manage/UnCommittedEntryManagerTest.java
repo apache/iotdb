@@ -28,7 +28,6 @@ import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
-import org.apache.iotdb.cluster.log.manage.UnCommittedEntryManager;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.junit.Test;
 
@@ -166,48 +165,31 @@ public class UnCommittedEntryManagerTest {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
 
       public long index;
-      public long term;
       public long testOffset;
       public long testLen;
 
-      public UnCommittedEntryManagerTester(List<Log> entries, long offset, long index, long term,
+      public UnCommittedEntryManagerTester(List<Log> entries, long offset, long index,
           long testOffset, long testLen) {
         super(entries, offset);
         this.index = index;
-        this.term = term;
         this.testOffset = testOffset;
         this.testLen = testLen;
       }
     }
     List<UnCommittedEntryManagerTester> tests = new ArrayList<UnCommittedEntryManagerTester>() {{
-      // empty entries
-      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-      }}, 0, 5, 1, 0, 0));
       // stable to the first entry
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
         add(new EmptyContentLog(5, 1));
-      }}, 5, 5, 1, 6, 0));
+      }}, 5, 5, 6, 0));
       // stable to the first entry
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
         add(new EmptyContentLog(5, 1));
         add(new EmptyContentLog(6, 1));
-      }}, 5, 5, 1, 6, 1));
-      // stable to the first entry and term mismatch
-      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new EmptyContentLog(6, 2));
-      }}, 6, 6, 1, 6, 1));
-      // stable to old entry
-      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new EmptyContentLog(5, 1));
-      }}, 5, 4, 1, 5, 1));
-      // stable to old entry
-      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-        add(new EmptyContentLog(5, 1));
-      }}, 5, 2, 2, 5, 1));
+      }}, 5, 5, 6, 1));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
       UnCommittedEntryManager instance = new UnCommittedEntryManager(test.offset, test.entries);
-      instance.stableTo(test.index, test.term);
+      instance.stableTo(test.index);
       assertEquals(test.testOffset, instance.getFirstUnCommittedIndex());
       assertEquals(test.testLen, instance.getAllEntries().size());
     }
@@ -240,6 +222,80 @@ public class UnCommittedEntryManagerTest {
       instance.applyingSnapshot(test.snapshot);
       assertEquals(test.testOffset, instance.getFirstUnCommittedIndex());
       assertEquals(0, instance.getAllEntries().size());
+    }
+  }
+
+  @Test
+  public void truncateAndAppendSingle() {
+    class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
+
+      public Log toAppend;
+      public long testOffset;
+      public List<Log> testEntries;
+
+      public UnCommittedEntryManagerTester(List<Log> entries, long offset, Log toAppend,
+          long testOffset, List<Log> testEntries) {
+        super(entries, offset);
+        this.toAppend = toAppend;
+        this.testOffset = testOffset;
+        this.testEntries = testEntries;
+      }
+    }
+    List<UnCommittedEntryManagerTester> tests = new ArrayList<UnCommittedEntryManagerTester>() {{
+      // append to the end
+      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
+        add(new EmptyContentLog(5, 1));
+      }}, 5,
+          new EmptyContentLog(6, 1)
+          , 5,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 1));
+            add(new EmptyContentLog(6, 1));
+          }}));
+      // replace the uncommitted entries
+      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
+        add(new EmptyContentLog(5, 1));
+      }}, 5,
+          new EmptyContentLog(5, 2), 5,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 2));
+          }}));
+      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
+        add(new EmptyContentLog(5, 1));
+      }}, 5,new EmptyContentLog(4, 2)
+          , 4,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(4, 2));
+          }}));
+      // truncate the existing entries and append
+      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 1));
+        add(new EmptyContentLog(7, 1));
+      }}, 5, new EmptyContentLog(6, 2)
+          , 5,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 1));
+            add(new EmptyContentLog(6, 2));
+          }}));
+      add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
+        add(new EmptyContentLog(5, 1));
+        add(new EmptyContentLog(6, 1));
+        add(new EmptyContentLog(7, 1));
+      }}, 5,
+          new EmptyContentLog(7, 2)
+          , 5,
+          new ArrayList<Log>() {{
+            add(new EmptyContentLog(5, 1));
+            add(new EmptyContentLog(6, 1));
+            add(new EmptyContentLog(7, 2));
+          }}));
+    }};
+    for (UnCommittedEntryManagerTester test : tests) {
+      UnCommittedEntryManager instance = new UnCommittedEntryManager(test.offset, test.entries);
+      instance.truncateAndAppend(test.toAppend);
+      assertEquals(test.testOffset, instance.getFirstUnCommittedIndex());
+      assertEquals(test.testEntries, instance.getAllEntries());
     }
   }
 

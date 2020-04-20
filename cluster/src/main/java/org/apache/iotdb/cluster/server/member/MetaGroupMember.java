@@ -758,9 +758,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
         addNodeLog.setNewNode(node);
 
-        logManager.append(new ArrayList<Log>() {{
-          add(addNodeLog);
-        }});
+        logManager.append(addNodeLog);
 
         int retryTime = 1;
         while (true) {
@@ -2272,9 +2270,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
         removeNodeLog.setRemovedNode(target);
 
-        logManager.append(new ArrayList<Log>() {{
-          add(removeNodeLog);
-        }});
+        logManager.append(removeNodeLog);
 
         int retryTime = 1;
         while (true) {

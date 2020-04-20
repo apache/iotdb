@@ -26,7 +26,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -46,11 +45,11 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.catchup.LogCatchUpTask;
 import org.apache.iotdb.cluster.log.catchup.SnapshotCatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
@@ -308,7 +307,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   private long appendEntry(Log log) {
     long resp;
     synchronized (logManager) {
-      long success = logManager.append(new ArrayList<Log>(){{add(log);}});
+      long success = logManager.append(log);
       if (success != -1) {
         if (logger.isDebugEnabled()) {
           logger.debug("{} append a new log {}", name, log);
@@ -672,7 +671,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     AsyncClient client = connectNode(follower);
     if (client != null) {
-      List<Log> logs = new ArrayList<>();
+      List<Log> logs = null;
       boolean allLogsValid;
       Snapshot snapshot = null;
       synchronized (logManager) {
@@ -682,11 +681,16 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           // if the first log has been snapshot, the snapshot should also be sent to the
           // follower, otherwise some data will be missing
           snapshot = logManager.getSnapshot();
+          try{
+            logs = logManager.getEntries(logManager.getFirstIndex(), Long.MAX_VALUE);
+          }catch(Exception e){
+            logger.error("Unexpected error: ",e);
+          }
         }else{
           try {
             logs = logManager.getEntries(followerLastLogIndex, Long.MAX_VALUE);
-          }catch (Exception e){
-              logger.error("Unexpected error: {}" ,e.getMessage());
+          }catch(Exception e){
+            logger.error("Unexpected error: ",e);
           }
         }
       }
@@ -800,7 +804,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       log.setPlan(plan);
-      logManager.append(new ArrayList<Log>(){{add(log);}});
+      logManager.append(log);
     }
 
     if (appendLogInGroup(log)) {

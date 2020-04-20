@@ -220,6 +220,22 @@ public class RaftLogManager {
     }
 
     /**
+     * Used by leader node to directly append to unCommittedEntryManager. Note that the caller should
+     * ensure entry.index > committed.
+     *
+     * @param entry appendingEntry
+     * @return the newly generated lastIndex
+     */
+    public long append(Log entry) {
+        long after = entry.getCurrLogIndex();
+        if (after <= commitIndex) {
+            logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
+        }
+        unCommittedEntryManager.truncateAndAppend(entry);
+        return getLastLogIndex();
+    }
+
+    /**
      * Used by leader node to try to commit entries.
      *
      * @param leaderCommit leader's commitIndex
@@ -319,8 +335,7 @@ public class RaftLogManager {
                 applyEntries(entries);
                 committedEntryManager.append(entries);
                 Log lastLog = entries.get(entries.size() - 1);
-                unCommittedEntryManager
-                    .stableTo(lastLog.getCurrLogIndex(), lastLog.getCurrLogTerm());
+                unCommittedEntryManager.stableTo(lastLog.getCurrLogIndex());
                 commitIndex = lastLog.getCurrLogIndex();
             }
         }

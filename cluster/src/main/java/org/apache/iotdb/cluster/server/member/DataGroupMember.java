@@ -50,7 +50,6 @@ import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
@@ -916,9 +915,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       log.setPreviousLogTerm(logManager.getLastLogTerm());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-      logManager.append(new ArrayList<Log>() {{
-        add(log);
-      }});
+      logManager.append(log);
 
       logger.info("Send the close file request of {} to other nodes", log);
     }

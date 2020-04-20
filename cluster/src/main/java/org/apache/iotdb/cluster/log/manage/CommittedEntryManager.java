@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.manage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
@@ -129,6 +130,7 @@ public class CommittedEntryManager {
     public List<Log> getEntries(long low, long high) throws EntryCompactedException {
         if (low > high) {
             logger.debug("invalid getEntries: parameter: {} > {}", low, high);
+            return Collections.emptyList();
         }
         long dummyIndex = getDummyIndex();
         if (low <= dummyIndex || entries.size() == 1) {

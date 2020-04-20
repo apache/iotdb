@@ -427,7 +427,7 @@ public class RaftLogManagerTest {
 	}
 
 	@Test
-	public void append() {
+	public void appendBatch() {
 		class RaftLogManagerTester {
 
 			public List<Log> appendingEntries;
@@ -481,6 +481,59 @@ public class RaftLogManagerTest {
 			RaftLogManager instance = new RaftLogManager(committedEntryManager,
 					new StableEntryManager(), logApplier);
 			instance.append(test.appendingEntries);
+			try {
+				List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);
+				assertEquals(test.testEntries, entries);
+				assertEquals(test.testOffset, instance.unCommittedEntryManager.getFirstUnCommittedIndex());
+			} catch (Exception e) {
+				fail("An unexpected exception was thrown.");
+			}
+		}
+	}
+
+	@Test
+	public void appendSingle() {
+		class RaftLogManagerTester {
+
+			public Log appendingEntry;
+			public long testLastIndexAfterAppend;
+			public List<Log> testEntries;
+			public long testOffset;
+
+			public RaftLogManagerTester(Log appendingEntry, List<Log> testEntries,
+					long testLastIndexAfterAppend, long testOffset) {
+				this.appendingEntry = appendingEntry;
+				this.testEntries = testEntries;
+				this.testLastIndexAfterAppend = testLastIndexAfterAppend;
+				this.testOffset = testOffset;
+			}
+		}
+		List<Log> previousEntries = new ArrayList<Log>() {{
+			add(new EmptyContentLog(1, 1));
+			add(new EmptyContentLog(2, 2));
+		}};
+		List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
+			add(new RaftLogManagerTester(new EmptyContentLog(3, 2), new ArrayList<Log>() {{
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 2));
+				add(new EmptyContentLog(3, 2));
+			}}, 3, 3));
+			// conflicts with index 1
+			add(new RaftLogManagerTester(new EmptyContentLog(1, 2), new ArrayList<Log>() {{
+				add(new EmptyContentLog(1, 2));
+			}}, 1, 1));
+			add(new RaftLogManagerTester(new EmptyContentLog(2, 3), new ArrayList<Log>() {{
+				add(new EmptyContentLog(1, 1));
+				add(new EmptyContentLog(2, 3));
+			}}, 2, 2));
+		}};
+		for (RaftLogManagerTester test : tests) {
+			CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
+			committedEntryManager.append(previousEntries);
+			RaftLogManager instance = new RaftLogManager(committedEntryManager,
+					new StableEntryManager(), logApplier);
+			instance.append(test.appendingEntry);
 			try {
 				List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);
 				assertEquals(test.testEntries, entries);

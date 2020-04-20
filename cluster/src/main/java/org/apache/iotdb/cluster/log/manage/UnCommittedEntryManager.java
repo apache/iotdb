@@ -96,19 +96,10 @@ public class UnCommittedEntryManager {
      * method is only called after persisting newly committed entries.
      *
      * @param index request entry's index
-     * @param term  request entry's term
      */
-    public void stableTo(long index, long term) {
-        try {
-            long entryTerm = maybeTerm(index);
-            // only update the uncommitted entries if term is matched with an uncommitted entry.
-            if (entryTerm == term) {
-                entries.subList(0, (int) (index + 1 - offset)).clear();
-                offset = index + 1;
-            }
-        } catch (EntryUnavailableException e) {
-            logger.info(e.getMessage());
-        }
+    public void stableTo(long index) {
+        entries.subList(0, (int) (index + 1 - offset)).clear();
+        offset = index + 1;
     }
 
     /**
@@ -157,6 +148,40 @@ public class UnCommittedEntryManager {
     }
 
     /**
+     * TruncateAndAppend uncommitted entry. This method will truncate conflict entries if it finds
+     * inconsistencies. Note that the caller should ensure not to truncate entries which have been
+     * committed.
+     *
+     * @param appendingEntry request entry
+     */
+    public void truncateAndAppend(Log appendingEntry) {
+        long after = appendingEntry.getCurrLogIndex();
+        long len = after - offset;
+        if (len < 0) {
+            // the logs are being truncated to before our current offset portion, which is committed entries
+            // unconditional obedience to the leader's request. Maybe throw a exception here is better
+            offset = after;
+            entries.clear();
+            entries.add(appendingEntry);
+            logger.error("The logs which first index is {} are going to truncate committed logs",
+                after);
+        } else if (len == entries.size()) {
+            // after is the next index in the entries
+            // directly append
+            entries.add(appendingEntry);
+        } else {
+            // clear conflict entries
+            // then append
+            logger.info("truncate the entries after index {}", after);
+            int truncateIndex = (int) (after - offset);
+            if (truncateIndex < entries.size()) {
+                entries.subList(truncateIndex, entries.size()).clear();
+            }
+            entries.add(appendingEntry);
+        }
+    }
+
+    /**
      * Pack entries from low through high - 1, just like slice (entries[low:high]). offset <= low <=
      * high. Note that caller must ensure low <= high.
      *
@@ -168,6 +193,7 @@ public class UnCommittedEntryManager {
             logger
                 .debug("invalid unCommittedEntryManager getEntries: parameter: low({}) > high({})",
                     low, high);
+            return Collections.emptyList();
         }
         long upper = offset + entries.size();
         if (low > upper) {
