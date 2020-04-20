@@ -94,6 +94,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    */
   private static long CHUNK_METADATA_SIZE_IN_BYTE = 1536L;
 
+  private static final double WAL_MEMORY_RATIO = 0.1;
+
   /**
    * Average queue length in memtable pool
    */
@@ -154,7 +156,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     if (canAdjust) {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       CONFIG.setWalBufferSize(
-          (int) Math.min(Integer.MAX_VALUE, allocateMemoryForWrite / 10 / maxMemTableNum));
+          (int) Math.min(Integer.MAX_VALUE, allocateMemoryForWrite * WAL_MEMORY_RATIO / maxMemTableNum));
       CONFIG.setTsFileSizeThreshold(tsFileSizeThreshold);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
       if (LOGGER.isDebugEnabled() && initialized) {
@@ -183,7 +185,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     // when unit is byte, it's likely to cause Long type overflow.
     // so when b is larger than Integer.MAC_VALUE use the unit KB.
     double a = maxMemTableNum;
-    double b = allocateMemoryForWrite - staticMemory;
+    double b = allocateMemoryForWrite * (1 - WAL_MEMORY_RATIO) - staticMemory;
     int magnification = b > Integer.MAX_VALUE ? 1024 : 1;
     b /= magnification;
     double c =
@@ -203,10 +205,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * @return Tsfile byte threshold
    */
   private long calcTsFileSizeThreshold(long memTableSize, double ratio) {
-    return (long) (
-        (allocateMemoryForWrite - maxMemTableNum * memTableSize - staticMemory) * memTableSize / (
-            ratio * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
-                .getMaximalSeriesNumberAmongStorageGroups()));
+    return (long) ((allocateMemoryForWrite * (1 - WAL_MEMORY_RATIO) - maxMemTableNum * memTableSize
+        - staticMemory) * memTableSize / (ratio * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
+        * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()));
   }
 
   /**
