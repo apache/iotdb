@@ -206,7 +206,7 @@ struct TSCreateTimeseriesReq {
   6: optional map<string, string> props
   7: optional map<string, string> tags
   8: optional map<string, string> attributes
-  9: optional string aliasPath
+  9: optional string measurementAlias
 }
 
 struct ServerProperties {

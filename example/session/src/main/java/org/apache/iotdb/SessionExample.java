@@ -65,6 +65,14 @@ public class SessionExample {
       session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
+    if (!session.checkTimeseriesExists("root.sg1.d1.s4")) {
+      Map<String, String> tags = new HashMap<>();
+      tags.put("tag1", "v1");
+      Map<String, String> attributes = new HashMap<>();
+      tags.put("description", "v1");
+      session.createTimeseries("root.sg1.d1.s4", TSDataType.INT64, TSEncoding.RLE,
+          CompressionType.SNAPPY, null, tags, attributes, "temperature");
+    }
 
     insert();
     insertInBatch();
