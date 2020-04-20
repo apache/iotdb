@@ -18,12 +18,15 @@
  */
 package org.apache.iotdb.web.grafana.dao.impl;
 
+import java.time.Duration;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.dao.BasicDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -46,6 +49,7 @@ import java.util.Properties;
  * Created by dell on 2017/7/17.
  */
 @Repository
+@PropertySource("classpath:application.properties")
 public class BasicDaoImpl implements BasicDao {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicDaoImpl.class);
@@ -55,6 +59,15 @@ public class BasicDaoImpl implements BasicDao {
   private final JdbcTemplate jdbcTemplate;
 
   private static long TIMESTAMP_RADIX = 1L;
+
+  @Value("${function}")
+  private String function;
+
+  @Value("${interval}")
+  private String interval;
+
+  @Value("${isDownSampling}")
+  private boolean isDownSampling;
 
   @Autowired
   public BasicDaoImpl(JdbcTemplate jdbcTemplate) {
@@ -103,14 +116,28 @@ public class BasicDaoImpl implements BasicDao {
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
-    // How many rows will the result have?
+    final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
+    List<TimeValues> rows = null;
     String sql = String.format("SELECT %s FROM root.%s WHERE time > %d and time < %d",
         s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
         from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX);
+    String columnName = "root." + s;
+    if (isDownSampling && (hours > 1)) {
+      if (hours < 30 * 24 && hours > 24) {
+        interval = "1h";
+      } else if (hours > 30 * 24) {
+        interval = "1d";
+      }
+      sql = String.format(
+          "SELECT " + function
+              + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
+          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')), from, to, from,
+          to, interval);
+      columnName = function + "(root." + s + ")";
+    }
     logger.info(sql);
-    List<TimeValues> rows = null;
     try {
-      rows = jdbcTemplate.query(sql, new TimeValuesRowMapper("root." + s));
+      rows = jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
