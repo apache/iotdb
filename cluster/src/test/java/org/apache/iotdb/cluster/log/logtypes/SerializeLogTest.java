@@ -102,4 +102,16 @@ public class SerializeLogTest {
     assertEquals(log, logPrime);
   }
 
+  @Test
+  public void testEmptyContentLog() throws UnknownLogTypeException {
+    EmptyContentLog log = new EmptyContentLog();
+    log.setPreviousLogIndex(1);
+    log.setPreviousLogTerm(1);
+    log.setCurrLogIndex(2);
+    log.setCurrLogTerm(2);
+    ByteBuffer byteBuffer = log.serialize();
+    EmptyContentLog logPrime = (EmptyContentLog) LogParser.getINSTANCE().parse(byteBuffer);
+    assertEquals(log, logPrime);
+  }
+
 }

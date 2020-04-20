@@ -211,7 +211,7 @@ public abstract class MemoryLogManager implements LogManager {
     LogManagerMeta managerMeta = new LogManagerMeta();
     managerMeta.setCommitLogTerm(commitLogTerm);
     managerMeta.setCommitLogIndex(commitLogIndex);
-    managerMeta.setLastLogId(lastLogId);
+    managerMeta.setLastLogIndex(lastLogId);
     managerMeta.setLastLogTerm(lastLogTerm);
     return managerMeta;
   }
@@ -220,7 +220,7 @@ public abstract class MemoryLogManager implements LogManager {
   public void setMeta(LogManagerMeta meta) {
     commitLogTerm = meta.getCommitLogTerm();
     commitLogIndex = meta.getCommitLogIndex();
-    lastLogId = meta.getLastLogId();
+    lastLogId = meta.getLastLogIndex();
     lastLogTerm = meta.getLastLogTerm();
   }
 

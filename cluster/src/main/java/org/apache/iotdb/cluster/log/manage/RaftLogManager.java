@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -48,10 +49,9 @@ public class RaftLogManager {
     private long commitIndex;
     private LogApplier logApplier;
 
-    public RaftLogManager(CommittedEntryManager committedEntryManager,
-        StableEntryManager stableEntryManager, LogApplier applier) {
+    public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier) {
         this.logApplier = applier;
-        this.committedEntryManager = committedEntryManager;
+        this.committedEntryManager = new CommittedEntryManager();
         this.stableEntryManager = stableEntryManager;
         this.committedEntryManager.append(stableEntryManager.getAllEntries());
         long last = committedEntryManager.getLastIndex();
@@ -424,12 +424,13 @@ public class RaftLogManager {
     }
 
     @TestOnly
-    public RaftLogManager(LogApplier applier) {
-        this.committedEntryManager = new CommittedEntryManager();
-        this.stableEntryManager = new StableEntryManager();
+    public RaftLogManager(CommittedEntryManager committedEntryManager, StableEntryManager stableEntryManager,
+        LogApplier applier) {
+        this.committedEntryManager = committedEntryManager;
+        this.stableEntryManager = stableEntryManager;
         this.logApplier = applier;
         long last = committedEntryManager.getLastIndex();
         this.unCommittedEntryManager = new UnCommittedEntryManager(last + 1);
-        this.commitIndex = -1;
+        this.commitIndex = last;
     }
 }
