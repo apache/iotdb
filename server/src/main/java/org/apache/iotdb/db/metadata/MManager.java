@@ -37,6 +37,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -342,11 +343,6 @@ public class MManager {
     } finally {
       lock.writeLock().unlock();
     }
-  }
-
-  public Set<LeafMNode> queryTimeseriesByTag(String tagKey, String tagValue) {
-    return tagIndex.getOrDefault(tagKey, Collections.emptyMap())
-        .getOrDefault(tagValue, Collections.emptySet());
   }
 
   /**
@@ -677,32 +673,32 @@ public class MManager {
     }
   }
 
-  public List<ShowTimeSeriesResult> getAllMeasurementSchema(String prefixPath, boolean isContains,
-      String key, String value) throws MetadataException {
+  public List<ShowTimeSeriesResult> getAllTimeseriesSchema(ShowTimeSeriesPlan plan)
+      throws MetadataException {
     lock.readLock().lock();
     try {
-      if (!tagIndex.containsKey(key)) {
-        throw new MetadataException("The key " + key + " is not a tag.");
+      if (!tagIndex.containsKey(plan.getKey())) {
+        throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
       }
-      Map<String, Set<LeafMNode>> value2Node = tagIndex.get(key);
+      Map<String, Set<LeafMNode>> value2Node = tagIndex.get(plan.getKey());
       Set<LeafMNode> allMatchedNodes = new HashSet<>();
-      if (isContains) {
+      if (plan.isContains()) {
         for (Entry<String, Set<LeafMNode>> entry : value2Node.entrySet()) {
           String tagValue = entry.getKey();
-          if (tagValue.contains(value)) {
+          if (tagValue.contains(plan.getValue())) {
             allMatchedNodes.addAll(entry.getValue());
           }
         }
       } else {
         for (Entry<String, Set<LeafMNode>> entry : value2Node.entrySet()) {
           String tagValue = entry.getKey();
-          if (value.equals(tagValue)) {
+          if (plan.getValue().equals(tagValue)) {
             allMatchedNodes.addAll(entry.getValue());
           }
         }
       }
       List<ShowTimeSeriesResult> res = new LinkedList<>();
-      String[] prefixNodes = MetaUtils.getNodeNames(prefixPath);
+      String[] prefixNodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
       for (LeafMNode leaf : allMatchedNodes) {
         if (match(leaf.getFullPath(), prefixNodes)) {
           try {
@@ -748,7 +744,7 @@ public class MManager {
    * @param path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
    * wildcard can only match one level, otherwise it can match to the tail.
    */
-  public List<ShowTimeSeriesResult> getAllMeasurementSchema(String path) throws MetadataException {
+  public List<ShowTimeSeriesResult> getAllTimeseriesSchema(String path) throws MetadataException {
     lock.readLock().lock();
     try {
       List<String[]> ans = mtree.getAllMeasurementSchema(path);

@@ -88,7 +88,7 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 
 ## 查看时间序列
 
-目前，IoTDB支持两种查看时间序列的方式：
+目前，IoTDB支持三种查看时间序列的方式：
 
 * SHOW TIMESERIES语句以JSON形式展示系统中所有的时间序列信息
 
