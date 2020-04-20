@@ -114,9 +114,11 @@ public class UpgradeUtils {
               if (partitionDir.isDirectory()) {
                 File[] generatedFiles = partitionDir.listFiles();
                 for (File generatedFile : generatedFiles) {
-                  generatedFile.delete();
+                  if (generatedFile.getName().equals(FSFactoryProducer.getFSFactory()
+                      .getFile(key).getName())) {
+                    generatedFile.delete();
+                  }
                 }
-                partitionDir.delete();
               }
             }
           } else if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.AFTER_UPGRADE_FILE
