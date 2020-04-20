@@ -19,16 +19,10 @@
 
 package org.apache.iotdb.db.engine.modification;
 
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
@@ -49,9 +43,16 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
 
 public class DeletionFileNodeTest {
 
