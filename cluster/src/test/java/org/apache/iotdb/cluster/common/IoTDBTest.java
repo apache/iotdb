@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -132,7 +133,7 @@ public class IoTDBTest {
   }
 
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException {
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, TException, InterruptedException {
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setExpression(expression);

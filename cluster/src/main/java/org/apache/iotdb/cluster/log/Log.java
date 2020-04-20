@@ -96,5 +96,4 @@ public abstract class Log {
   public int hashCode() {
     return Objects.hash(currLogIndex, currLogTerm, previousLogIndex, previousLogTerm);
   }
-
 }

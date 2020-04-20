@@ -36,8 +36,20 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MTreeTest {
+
+  @Before
+  public void setUp() throws Exception {
+    EnvironmentUtils.envSetUp();
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    EnvironmentUtils.cleanEnv();
+  }
 
   @Test
   public void testAddLeftNodePath() throws MetadataException {

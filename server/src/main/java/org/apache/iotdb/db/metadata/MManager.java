@@ -24,19 +24,10 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
@@ -46,6 +37,7 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
@@ -55,6 +47,7 @@ import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -84,6 +77,7 @@ public class MManager {
   private String schemaDir;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
+  private LRUCache<String, MeasurementSchema> mRemoteSchemaCache;
 
   private Map<String, Integer> seriesNumberInStorageGroups;
   private long maxSeriesNumberAmongStorageGroup;
@@ -119,6 +113,19 @@ public class MManager {
         }
       }
     };
+
+    int remoteCacheSize = config.getmRemoteSchemaCacheSize();
+    mRemoteSchemaCache = new LRUCache<String, MeasurementSchema>(remoteCacheSize) {
+      @Override
+      protected MeasurementSchema loadObjectByKey(String key) throws IOException {
+        throw new IOException();
+      }
+
+      @Override
+      public synchronized void removeItem(String key) {
+        cache.keySet().removeIf(s -> s.startsWith(key));
+      }
+    };
   }
 
   public static MManager getInstance() {
@@ -134,11 +141,15 @@ public class MManager {
     File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
-      initFromLog(logFile);
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      if (config.isEnableParameterAdapter()) {
         // storage group name -> the series number
         seriesNumberInStorageGroups = new HashMap<>();
+      }
+
+      initFromLog(logFile);
+
+      if (config.isEnableParameterAdapter()) {
         List<String> storageGroups = mtree.getAllStorageGroupNames();
         for (String sg : storageGroups) {
           MNode node = mtree.getNodeByPath(sg);
@@ -298,7 +309,7 @@ public class MManager {
       createTimeseriesWithMemoryCheckAndLog(path, dataType, encoding, compressor, props);
 
       // update statistics
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      if (config.isEnableParameterAdapter()) {
         int size = seriesNumberInStorageGroups.get(storageGroupName);
         seriesNumberInStorageGroups.put(storageGroupName, size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
@@ -366,9 +377,13 @@ public class MManager {
    */
   public Set<String> deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
+
+    // clear cached schema
+    mRemoteSchemaCache.removeItem(prefixPath);
+
     if (isStorageGroup(prefixPath)) {
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      if (config.isEnableParameterAdapter()) {
         int size = seriesNumberInStorageGroups.get(prefixPath);
         seriesNumberInStorageGroups.put(prefixPath, 0);
         if (size == maxSeriesNumberAmongStorageGroup) {
@@ -423,7 +438,7 @@ public class MManager {
         throw new MetadataException(e);
       }
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      if (config.isEnableParameterAdapter()) {
         String storageGroup = getStorageGroupName(path);
         int size = seriesNumberInStorageGroups.get(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, size - 1);
@@ -454,7 +469,8 @@ public class MManager {
         writer.flush();
       }
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+
+      if (config.isEnableParameterAdapter()) {
         ActiveTimeSeriesCounter.getInstance().init(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, 0);
       }
@@ -478,6 +494,9 @@ public class MManager {
     try {
       BufferedWriter writer = getLogWriter();
       for (String storageGroup : storageGroups) {
+        // clear cached schema
+        mRemoteSchemaCache.removeItem(storageGroup);
+
         // try to delete storage group
         mtree.deleteStorageGroup(storageGroup);
 
@@ -489,7 +508,7 @@ public class MManager {
         }
         mNodeCache.clear();
 
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+        if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
           int size = seriesNumberInStorageGroups.get(storageGroup);
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
@@ -540,6 +559,14 @@ public class MManager {
       if (path.equals(SQLConstant.RESERVED_TIME)) {
         return TSDataType.INT64;
       }
+
+      try {
+        MeasurementSchema schema = mRemoteSchemaCache.get(path);
+        return schema.getType();
+      } catch (IOException e) {
+        // ignore
+      }
+
       return mtree.getSchema(path).getType();
     } finally {
       lock.readLock().unlock();
@@ -672,11 +699,33 @@ public class MManager {
     }
   }
 
-  public MeasurementSchema getSeriesSchema(String device, String measuremnet) throws MetadataException {
+  public MeasurementSchema getSeriesSchema(String device, String measurement) throws MetadataException {
     lock.readLock().lock();
     try {
       InternalMNode node = (InternalMNode) mtree.getNodeByPath(device);
-      return ((LeafMNode) node.getChild(measuremnet)).getSchema();
+      MNode leaf = node.getChild(measurement);
+      if (leaf != null) {
+        return ((LeafMNode) leaf).getSchema();
+      } else {
+        try {
+         return mRemoteSchemaCache
+              .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+        } catch (IOException e) {
+          throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+        }
+      }
+    } catch (PathNotExistException e) {
+      try {
+        MeasurementSchema measurementSchema = mRemoteSchemaCache
+            .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+        if (measurementSchema != null) {
+          return measurementSchema;
+        } else {
+          throw e;
+        }
+      } catch (IOException ex) {
+        throw e;
+      }
     } finally {
       lock.readLock().unlock();
     }
@@ -758,12 +807,20 @@ public class MManager {
       }
     } finally {
       lock.readLock().unlock();
-      if (autoCreateSchema) {
-        if (shouldSetStorageGroup) {
-          String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
-          setStorageGroup(storageGroupName);
+      lock.writeLock().lock();
+      try {
+        if (autoCreateSchema) {
+          if (shouldSetStorageGroup) {
+            String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
+            setStorageGroup(storageGroupName);
+          }
+          node = mtree.getDeviceNodeWithAutoCreating(path);
         }
+      } catch (StorageGroupAlreadySetException e) {
+        // ignore set storage group concurrently
         node = mtree.getDeviceNodeWithAutoCreating(path);
+      } finally {
+        lock.writeLock().unlock();
       }
     }
     return node;
@@ -934,6 +991,18 @@ public class MManager {
       return mtree.determineStorageGroup(path);
     } finally {
       lock.readLock().unlock();
+    }
+  }
+
+  public void cacheSchema(String path, MeasurementSchema schema) {
+    // check schema is in local
+    try {
+      List<String[]> schemas = mtree.getAllMeasurementSchema(path);
+      if (schemas.isEmpty()) {
+        mRemoteSchemaCache.put(path, schema);
+      }
+    } catch (MetadataException e) {
+      mRemoteSchemaCache.put(path, schema);
     }
   }
 }

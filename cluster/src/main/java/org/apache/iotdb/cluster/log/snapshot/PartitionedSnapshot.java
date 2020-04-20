@@ -78,7 +78,7 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-   int size = buffer.getInt();
+    int size = buffer.getInt();
     for (int i = 0; i < size; i++) {
       int slot = buffer.getInt();
       T snapshot = factory.create();

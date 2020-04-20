@@ -188,7 +188,8 @@ public class RaftLogManager {
             long ci = findConflict(entries);
             if (ci == 0 || ci <= commitIndex) {
                 logger
-                    .error("entry {} conflict with committed entry [commitIndex({})]", ci, commitIndex);
+                    .error("entry {} conflict with committed entry [commitIndex({})]", ci,
+                        commitIndex);
             } else {
                 long offset = lastIndex + 1;
                 append(entries.subList((int) (ci - offset), entries.size()));

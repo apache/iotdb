@@ -53,7 +53,7 @@ public class IoTDBConfig {
   /**
    * whether to enable the mqtt service.
    */
-  private boolean enableMQTTService = true;
+  private boolean enableMQTTService = false;
 
   /**
    * the mqtt service binding host.
@@ -269,6 +269,11 @@ public class IoTDBConfig {
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
   private int mManagerCacheSize = 400000;
+
+  /**
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   */
+  private int mRemoteSchemaCacheSize = 100000;
 
   /**
    * Is external sort enable.
@@ -873,6 +878,14 @@ public class IoTDBConfig {
 
   void setmManagerCacheSize(int mManagerCacheSize) {
     this.mManagerCacheSize = mManagerCacheSize;
+  }
+
+  public int getmRemoteSchemaCacheSize() {
+    return mRemoteSchemaCacheSize;
+  }
+
+  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
+    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
   }
 
   public boolean isSyncEnable() {

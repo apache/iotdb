@@ -37,17 +37,17 @@ if NOT DEFINED JAVA_HOME goto :err
 @REM -----------------------------------------------------------------------------
 @REM JVM Opts we'll use in legacy run or installation
 set JAVA_OPTS=-ea^
- -DIOTDB_CLI_HOME=%IOTDB_CLI_HOME%
+ -DIOTDB_CLI_HOME="%IOTDB_CLI_HOME%"
 
 REM For each jar in the IOTDB_CLI_HOME lib directory call append to build the CLASSPATH variable.
-set CLASSPATH=%IOTDB_CLI_HOME%\lib\*
+set CLASSPATH="%IOTDB_CLI_HOME%\lib\*"
 
 REM -----------------------------------------------------------------------------
 set PARAMETERS=%*
 
 if "%PARAMETERS%" == "" set PARAMETERS=-h 127.0.0.1 -p 6667 -u root -pw root
 
-"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp "%CLASSPATH%" %MAIN_CLASS% %PARAMETERS%
+"%JAVA_HOME%\bin\java" %JAVA_OPTS% -cp %CLASSPATH% %MAIN_CLASS% %PARAMETERS%
 
 goto finally
 

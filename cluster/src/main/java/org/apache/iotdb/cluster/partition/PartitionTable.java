@@ -149,6 +149,8 @@ public interface PartitionTable {
 
   MManager getMManager();
 
+  List<PartitionGroup> getGlobalGroups();
+
 
   //==============================================================================================//
   //All the following are default methods.
@@ -427,4 +429,7 @@ public interface PartitionTable {
     }
     return timeRangeMapRaftGroup;
   }
+
+
+
 }

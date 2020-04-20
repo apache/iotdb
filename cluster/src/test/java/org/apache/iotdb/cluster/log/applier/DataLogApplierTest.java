@@ -49,6 +49,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 import org.junit.Test;
 
 public class DataLogApplierTest extends IoTDBTest {
@@ -77,7 +78,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyInsert()
-      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException {
+      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException, TException, InterruptedException {
     InsertPlan insertPlan = new InsertPlan();
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPlan(insertPlan);
@@ -129,7 +130,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyDeletion()
-      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException {
+      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, TException, InterruptedException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new Path(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteTime(50);

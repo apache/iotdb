@@ -138,6 +138,11 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     public MManager getMManager() {
       return MManager.getInstance();
     }
+
+    @Override
+    public List<PartitionGroup> getGlobalGroups() {
+      return null;
+    }
   };
 
   @Override
