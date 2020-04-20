@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
@@ -692,11 +693,33 @@ public class MManager {
     }
   }
 
-  public MeasurementSchema getSeriesSchema(String device, String measuremnet) throws MetadataException {
+  public MeasurementSchema getSeriesSchema(String device, String measurement) throws MetadataException {
     lock.readLock().lock();
     try {
       InternalMNode node = (InternalMNode) mtree.getNodeByPath(device);
-      return ((LeafMNode) node.getChild(measuremnet)).getSchema();
+      MNode leaf = node.getChild(measurement);
+      if (leaf != null) {
+        return ((LeafMNode) leaf).getSchema();
+      } else {
+        try {
+         return mRemoteSchemaCache
+              .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+        } catch (IOException e) {
+          throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+        }
+      }
+    } catch (PathNotExistException e) {
+      try {
+        MeasurementSchema measurementSchema = mRemoteSchemaCache
+            .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+        if (measurementSchema != null) {
+          return measurementSchema;
+        } else {
+          throw e;
+        }
+      } catch (IOException ex) {
+        throw e;
+      }
     } finally {
       lock.readLock().unlock();
     }

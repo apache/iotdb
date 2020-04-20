@@ -680,8 +680,10 @@ public class StorageGroupProcessor {
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
         MNode measurementNode = node.getChild(measurementList[i]);
-        ((LeafMNode) measurementNode)
-            .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
+        if (measurementNode != null) {
+          ((LeafMNode) measurementNode)
+              .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
+        }
       }
     } catch (MetadataException | QueryProcessException e) {
       throw new WriteProcessException(e);

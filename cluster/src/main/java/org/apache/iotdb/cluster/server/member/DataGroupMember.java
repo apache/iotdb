@@ -1533,7 +1533,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         List<MeasurementSchema> schemas = metaGroupMember
             .pullTimeSeriesSchemas(Collections.singletonList(path));
         for (MeasurementSchema schema : schemas) {
-          SchemaUtils.registerTimeseries(schema);
+          MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
         }
       } catch (MetadataException e) {
         throw new QueryProcessException(e);

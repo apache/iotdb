@@ -724,9 +724,17 @@ public class PlanExecutor implements IPlanExecutor {
     MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
     for (int i = 0; i < measurementList.length; i++) {
       String measurement = measurementList[i];
+
       if (!node.hasChild(measurement)) {
         if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-          throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+          MeasurementSchema schema = MManager.getInstance()
+              .getSeriesSchema(deviceId, measurement);
+          if (schema != null) {
+            schemas[i] = schema;
+            continue;
+          } else {
+            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+          }
         }
         TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
         Path path = new Path(deviceId, measurement);

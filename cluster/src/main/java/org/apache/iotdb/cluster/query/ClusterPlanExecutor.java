@@ -50,7 +50,6 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -100,7 +99,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected List<String> getNodesList(String schemaPattern, int level)
-      throws IOException, TException, InterruptedException, MetadataException {
+      throws InterruptedException, MetadataException {
     ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>(
         MManager.getInstance().getNodesList(schemaPattern, level));
 
@@ -258,7 +257,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
             logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
           } catch (InterruptedException e) {
             logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
-            Thread.currentThread().interrupted();
+            Thread.currentThread().interrupt();
           }
         }
         if(response.get() == null){
@@ -295,7 +294,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     List<MeasurementSchema> schemas = metaGroupMember.pullTimeSeriesSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
-      SchemaUtils.registerTimeseries(schema);
+      MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
     }
 
     if (schemas.size() == measurementList.length) {

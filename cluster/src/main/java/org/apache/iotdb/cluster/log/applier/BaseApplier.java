@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -96,7 +97,7 @@ abstract class BaseApplier implements LogApplier {
   }
 
   protected void registerMeasurement(MeasurementSchema schema) {
-    SchemaUtils.registerTimeseries(schema);
+    MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
   }
 
   protected PlanExecutor getQueryExecutor() throws QueryProcessException {

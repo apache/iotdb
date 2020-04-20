@@ -79,7 +79,6 @@ public class ElectionHandlerTest {
       member.getTerm().wait(10 * 1000);
     }
     assertFalse(electionValid.get());
-    assertTrue(terminated.get());
   }
 
   @Test
