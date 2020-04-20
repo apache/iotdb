@@ -53,12 +53,14 @@ You can choose issue types: bug, improvement, new feature, etc.  New issues will
 
 The content of all IoTDB official websites is in the docs of the project root directory:
 
-* docs/Documentation/SystemDesign: System Design Document-English Version
-* docs/Documentation-CHN/SystemDesign: System Design Document-Chinese Version
-* docs/Documentation/UserGuide: User Guide English Version
-* docs/Documentation-CHN/UserGuide: User Guide Chinese Version
-* docs/Community: community
-* docs/Development: Development Guide
+* docs/SystemDesign: System Design Document-English Version
+* docs/zh/SystemDesign: System Design Document-Chinese Version
+* docs/UserGuide: User Guide English Version
+* docs/zh/UserGuide: User Guide Chinese Version
+* docs/Community: community English Version
+* docs/zh/Community: community Chinese Version
+* docs/Development: Development Guide English Version
+* docs/zh/Development: Development Guide Chinese Version
 
 Correspondence between versions and branches on the official website:
 
@@ -95,7 +97,3 @@ Recommended Use Intellij idea。```mvn clean package -DskipTests``` After puttin
 
 * Storage engine org.apache.iotdb.db.engine.StorageEngine
 * Query engine org.apache.iotdb.db.qp.QueryProcessor
-
-
-
-<FooterFixed/>

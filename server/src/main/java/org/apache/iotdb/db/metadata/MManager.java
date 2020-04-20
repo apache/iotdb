@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.ConfigAdjusterException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
@@ -140,11 +141,15 @@ public class MManager {
     File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
-      initFromLog(logFile);
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      if (config.isEnableParameterAdapter()) {
         // storage group name -> the series number
         seriesNumberInStorageGroups = new HashMap<>();
+      }
+
+      initFromLog(logFile);
+
+      if (config.isEnableParameterAdapter()) {
         List<String> storageGroups = mtree.getAllStorageGroupNames();
         for (String sg : storageGroups) {
           MNode node = mtree.getNodeByPath(sg);
@@ -304,7 +309,7 @@ public class MManager {
       createTimeseriesWithMemoryCheckAndLog(path, dataType, encoding, compressor, props);
 
       // update statistics
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      if (config.isEnableParameterAdapter()) {
         int size = seriesNumberInStorageGroups.get(storageGroupName);
         seriesNumberInStorageGroups.put(storageGroupName, size + 1);
         if (size + 1 > maxSeriesNumberAmongStorageGroup) {
@@ -378,7 +383,7 @@ public class MManager {
 
     if (isStorageGroup(prefixPath)) {
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      if (config.isEnableParameterAdapter()) {
         int size = seriesNumberInStorageGroups.get(prefixPath);
         seriesNumberInStorageGroups.put(prefixPath, 0);
         if (size == maxSeriesNumberAmongStorageGroup) {
@@ -433,7 +438,7 @@ public class MManager {
         throw new MetadataException(e);
       }
 
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+      if (config.isEnableParameterAdapter()) {
         String storageGroup = getStorageGroupName(path);
         int size = seriesNumberInStorageGroups.get(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, size - 1);
@@ -464,7 +469,8 @@ public class MManager {
         writer.flush();
       }
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+
+      if (config.isEnableParameterAdapter()) {
         ActiveTimeSeriesCounter.getInstance().init(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, 0);
       }
@@ -502,7 +508,7 @@ public class MManager {
         }
         mNodeCache.clear();
 
-        if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
+        if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
           int size = seriesNumberInStorageGroups.get(storageGroup);
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(size * -1);
@@ -801,12 +807,20 @@ public class MManager {
       }
     } finally {
       lock.readLock().unlock();
-      if (autoCreateSchema) {
-        if (shouldSetStorageGroup) {
-          String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
-          setStorageGroup(storageGroupName);
+      lock.writeLock().lock();
+      try {
+        if (autoCreateSchema) {
+          if (shouldSetStorageGroup) {
+            String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
+            setStorageGroup(storageGroupName);
+          }
+          node = mtree.getDeviceNodeWithAutoCreating(path);
         }
+      } catch (StorageGroupAlreadySetException e) {
+        // ignore set storage group concurrently
         node = mtree.getDeviceNodeWithAutoCreating(path);
+      } finally {
+        lock.writeLock().unlock();
       }
     }
     return node;

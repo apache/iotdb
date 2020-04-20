@@ -54,7 +54,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
     initPreviousParis(context, groupByFillPlan);
-    initLastTimeArray(context);
+    initLastTimeArray(context, groupByFillPlan);
   }
 
   private void initPreviousParis(QueryContext context, GroupByFillPlan groupByFillPlan)
@@ -75,13 +75,14 @@ public class GroupByFillDataSet extends QueryDataSet {
     }
   }
 
-  private void initLastTimeArray(QueryContext context)
+  private void initLastTimeArray(QueryContext context, GroupByFillPlan groupByFillPlan)
       throws IOException, StorageEngineException, QueryProcessException {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
     for (int i = 0; i < paths.size(); i++) {
-      TimeValuePair lastTimeValuePair =
-          LastQueryExecutor.calculateLastPairForOneSeries(paths.get(i), dataTypes.get(i), context);
+      TimeValuePair lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeries(
+              paths.get(i), dataTypes.get(i), context,
+              groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
       if (lastTimeValuePair.getValue() != null) {
         lastTimeArray[i] = lastTimeValuePair.getTimestamp();
       }
