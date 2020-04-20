@@ -48,6 +48,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -81,7 +82,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof ShowPlan) {
       return processShowQuery((ShowPlan) queryPlan);
-    } else {
+    } else if(queryPlan instanceof AuthorPlan){
+      return processAuthorQuery((AuthorPlan) queryPlan);
+    }else {
       //TODO-Cluster: support more queries
       throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
     }
