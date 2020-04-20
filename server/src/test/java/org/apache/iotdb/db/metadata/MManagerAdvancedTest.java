@@ -22,15 +22,20 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -42,7 +47,6 @@ public class MManagerAdvancedTest {
 
   @Before
   public void setUp() throws Exception {
-
     EnvironmentUtils.envSetUp();
     mmanager = MManager.getInstance();
 
@@ -136,4 +140,46 @@ public class MManagerAdvancedTest {
     Assert.assertEquals(tv2.getTimestamp(), ((LeafMNode)node).getCachedLast().getTimestamp());
   }
 
+  @Test
+  public void testRemoteCache() throws MetadataException {
+    mmanager.createTimeseries("root.vehicle.d2.s0", "DOUBLE", "RLE");
+    MeasurementSchema schema1 = new MeasurementSchema("root.test1.a.b", TSDataType.INT32);
+    MeasurementSchema schema2= new MeasurementSchema("root.test2.a.c", TSDataType.BOOLEAN);
+    MeasurementSchema schema3 = new MeasurementSchema("root.test1.a.d", TSDataType.TEXT);
+
+    mmanager.cacheSchema("root.test1.a.b", schema1);
+    mmanager.cacheSchema("root.test2.a.c", schema2);
+    mmanager.cacheSchema("root.test1.a.d", schema3);
+    mmanager.cacheSchema("root.vehicle.d2.s0", schema2);
+
+    Assert.assertEquals(mmanager.getSeriesType("root.test1.a.b"), TSDataType.INT32);
+    Assert.assertEquals(mmanager.getSeriesType("root.test2.a.c"), TSDataType.BOOLEAN);
+    Assert.assertEquals(mmanager.getSeriesType("root.test1.a.d"), TSDataType.TEXT);
+    Assert.assertEquals(mmanager.getSeriesType("root.vehicle.d2.s0"), TSDataType.DOUBLE);
+
+    List<String> groups = new ArrayList<>();
+    groups.add("root.test2");
+    try {
+      mmanager.deleteStorageGroups(groups);
+    } catch (MetadataException e) {
+      // ignore
+    }
+    try {
+      mmanager.getSeriesType("root.test2.a.c");
+      fail();
+    } catch (MetadataException e) {
+      // ignore
+    }
+    try {
+      mmanager.deleteTimeseries("root.test1.a.b");
+    } catch (MetadataException e) {
+      // ignore
+    }
+    try {
+      mmanager.getSeriesType("root.test1.a.b");
+      fail();
+    } catch (MetadataException e) {
+      //ignore
+    }
+  }
 }

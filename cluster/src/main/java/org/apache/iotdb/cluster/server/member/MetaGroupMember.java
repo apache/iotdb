@@ -1401,7 +1401,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
       // pull schemas remotely
       List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
-      // TODO-Cluster: should we register the schemas locally?
       if (schemas.isEmpty()) {
         // if one timeseries cannot be found remotely, too, it does not exist
         throw e;
@@ -1420,7 +1419,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         if (dataType == null) {
           MeasurementSchema schema = schemas.get(i);
           result.add(schema.getType());
-          SchemaUtils.registerTimeseries(schema);
+          MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
         } else {
           result.add(dataType);
         }
@@ -1447,7 +1446,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     } catch (PathNotExistException e) {
       // pull schemas remotely
       List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStrs);
-      // TODO-Cluster: should we register the schemas locally?
       if (schemas.isEmpty()) {
         // if one timeseries cannot be found remotely, too, it does not exist
         throw e;
@@ -1463,7 +1461,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         } else {
           result.add(aggregationType);
         }
-        SchemaUtils.registerTimeseries(schema);
+        MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
       }
       return result;
     }
