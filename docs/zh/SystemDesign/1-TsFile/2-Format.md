@@ -392,7 +392,7 @@ Linux or MacOs:
 
 在Windows系统中的示例:
 
-```$xslt
+```bat
 D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
