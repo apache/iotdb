@@ -150,6 +150,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
     if (canAdjust) {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
+      CONFIG.setWalBufferSize(
+          (int) Math.min(Integer.MAX_VALUE, allocateMemoryForWrite / 10 / maxMemTableNum));
       CONFIG.setTsFileSizeThreshold(tsFileSizeThreshold);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
       if (LOGGER.isDebugEnabled() && initialized) {
@@ -217,14 +219,16 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
     totalStorageGroup += diff;
-    maxMemTableNum += IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
-    if(!CONFIG.isEnableParameterAdapter()){
+    maxMemTableNum +=
+        IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
+    if (!CONFIG.isEnableParameterAdapter()) {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return;
     }
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
-      maxMemTableNum -= IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
+      maxMemTableNum -=
+          IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
       throw new ConfigAdjusterException(CREATE_STORAGE_GROUP);
     }
   }
@@ -286,4 +290,5 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     }
 
   }
+
 }

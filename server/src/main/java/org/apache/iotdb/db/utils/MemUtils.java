@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.cache.RamUsageEstimator;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.BooleanDataPoint;
@@ -43,29 +45,25 @@ public class MemUtils {
   }
 
   /**
-   * function for getting the record size.
+   * function for getting the value size.
    */
-  public static long getRecordSize(InsertPlan insertPlan) {
-    long memSize = 0;
-    for (int i = 0; i < insertPlan.getValues().length; i++) {
-      switch (insertPlan.getSchemas()[i].getType()) {
-        case INT32:
-          memSize += 8L + 4L; break;
-        case INT64:
-          memSize += 8L + 8L; break;
-        case FLOAT:
-          memSize += 8L + 4L; break;
-        case DOUBLE:
-          memSize += 8L + 8L; break;
-        case BOOLEAN:
-          memSize += 8L + 1L; break;
-        case TEXT:
-          memSize += 8L + insertPlan.getValues()[i].length(); break;
-        default:
-          memSize += 8L + 8L;
-      }
+  public static long getRecordSize(TSDataType dataType, Object value) {
+    switch (dataType) {
+      case INT32:
+        return 8L + 4L;
+      case INT64:
+        return 8L + 8L;
+      case FLOAT:
+        return 8L + 4L;
+      case DOUBLE:
+        return 8L + 8L;
+      case BOOLEAN:
+        return 8L + 1L;
+      case TEXT:
+        return 8L + RamUsageEstimator.sizeOf(value);
+      default:
+        return 8L + 8L;
     }
-    return memSize;
   }
 
   public static long getRecordSize(BatchInsertPlan batchInsertPlan, int start, int end) {
@@ -88,7 +86,7 @@ public class MemUtils {
         case TEXT:
           memSize += (end - start) * 8L;
           for (int j = start; j < end; j++) {
-            memSize += ((Binary[]) batchInsertPlan.getColumns()[i])[j].getLength();
+            memSize += RamUsageEstimator.sizeOf(((Binary[]) batchInsertPlan.getColumns()[i])[j]);
           }
           break;
         default:
