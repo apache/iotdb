@@ -122,25 +122,33 @@ public class MLogWriter {
     String line;
     fileReader = new FileReader(logFile);
     BufferedReader reader = new BufferedReader(fileReader);
-    StringBuffer bufAll = new StringBuffer();
-    while ((line = reader.readLine()) != null) {
-      StringBuffer buf = new StringBuffer();
-      if (line.startsWith(MetadataOperationType.CREATE_TIMESERIES)) {
-        line = line + ",,,,";
+    StringBuilder bufAll = new StringBuilder();
+    try {
+      while ((line = reader.readLine()) != null) {
+        StringBuilder buf = new StringBuilder();
+        buf.append(line);
+        if (line.startsWith(MetadataOperationType.CREATE_TIMESERIES)) {
+          buf.append(",,,,");
+        }
+        buf.append(System.getProperty("line.separator"));
+        bufAll.append(buf);
       }
-      buf.append(line);
-      buf.append(System.getProperty("line.separator"));
-      bufAll.append(buf);
+    } finally {
+      reader.close();
     }
-    reader.close();
-    logFile.delete();
+    if (!logFile.delete()) {
+      logger.error("MLog file does not exist.");
+    }
     File newFile = new File(logFile.getAbsolutePath());
     FileWriter fileWriter;
     fileWriter = new FileWriter(newFile, true);
     BufferedWriter writer = new BufferedWriter(fileWriter);
-    writer.write(bufAll.toString());
-    writer.flush();
-    writer.close();
+    try {
+      writer.write(bufAll.toString());
+      writer.flush();
+    } finally {
+      writer.close();
+    }
     return newFile;
   }
   
