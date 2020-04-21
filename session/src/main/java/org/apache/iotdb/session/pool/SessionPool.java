@@ -651,6 +651,30 @@ public class SessionPool {
         String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
+  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props, Map<String, String> tags,
+      Map<String, String> attributes, String measurementAlias)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createTimeseries(path, dataType, encoding, compressor, props, tags, attributes,
+            measurementAlias);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
   public boolean checkTimeseriesExists(String path)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {

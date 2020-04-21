@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.concurrent;
 
 import com.google.common.base.Throwables;
-import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

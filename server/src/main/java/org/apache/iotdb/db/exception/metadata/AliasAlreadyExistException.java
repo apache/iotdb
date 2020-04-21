@@ -15,38 +15,19 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.tsfile.read.common.Path;
+package org.apache.iotdb.db.exception.metadata;
 
-public class ShowTimeSeriesPlan extends ShowPlan{
-  private Path path;
-  private boolean isContains;
-  private String key;
-  private String value;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  public ShowTimeSeriesPlan(ShowContentType showContentType, Path path, boolean isContains, String key, String value) {
-    super(showContentType);
-    this.path = path;
-    this.isContains = isContains;
-    this.key = key;
-    this.value = value;
-  }
+public class AliasAlreadyExistException extends MetadataException {
 
-  public Path getPath() {
-    return this.path;
-  }
+  private static final long serialVersionUID = 7299770003548114589L;
 
-  public boolean isContains() {
-    return isContains;
-  }
-
-  public String getKey() {
-    return key;
-  }
-
-  public String getValue() {
-    return value;
+  public AliasAlreadyExistException(String path, String alias) {
+    super(String.format("Alias [%s] for Path [%s] already exist", alias, path),
+            TSStatusCode.ALIAS_ALREADY_EXIST_ERROR.getStatusCode());
   }
 }

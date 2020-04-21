@@ -24,6 +24,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class ShowTimeSeriesOperator extends ShowOperator {
 
   private Path path;
+  private boolean isContains;
+  private String key;
+  private String value;
 
   public ShowTimeSeriesOperator(int tokeIntType, Path path) {
     super(tokeIntType);
@@ -32,5 +35,29 @@ public class ShowTimeSeriesOperator extends ShowOperator {
 
   public Path getPath() {
     return path;
+  }
+
+  public boolean isContains() {
+    return isContains;
+  }
+
+  public void setContains(boolean contains) {
+    isContains = contains;
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public void setKey(String key) {
+    this.key = key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public void setValue(String value) {
+    this.value = value;
   }
 }
