@@ -23,8 +23,10 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Map;
@@ -113,4 +115,33 @@ public class MLogWriter {
     writer.newLine();
     writer.flush();
   }
+
+  public static File upgradeMLog(String schemaDir, String logFileName) throws IOException {
+    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
+    FileReader fileReader;
+    String line;
+    fileReader = new FileReader(logFile);
+    BufferedReader reader = new BufferedReader(fileReader);
+    StringBuffer bufAll = new StringBuffer();
+    while ((line = reader.readLine()) != null) {
+      StringBuffer buf = new StringBuffer();
+      if (line.startsWith(MetadataOperationType.CREATE_TIMESERIES)) {
+        line = line + ",,,,";
+      }
+      buf.append(line);
+      buf.append(System.getProperty("line.separator"));
+      bufAll.append(buf);
+    }
+    reader.close();
+    logFile.delete();
+    File newFile = new File(logFile.getAbsolutePath());
+    FileWriter fileWriter;
+    fileWriter = new FileWriter(newFile, true);
+    BufferedWriter writer = new BufferedWriter(fileWriter);
+    writer.write(bufAll.toString());
+    writer.flush();
+    writer.close();
+    return newFile;
+  }
+  
 }
