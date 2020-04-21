@@ -655,16 +655,6 @@ public class Session {
     this.zoneId = ZoneId.of(zoneId);
   }
 
-  /**
-   * check whether this sql is for query
-   *
-   * @param sql sql
-   * @return whether this sql is for query
-   */
-  private boolean checkIsQuery(String sql) {
-    sql = sql.trim().toLowerCase();
-    return sql.startsWith("select") || sql.startsWith("show") || sql.startsWith("list");
-  }
 
   /**
    * execure query sql
@@ -674,10 +664,6 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    if (!checkIsQuery(sql)) {
-      throw new IllegalArgumentException("your sql \"" + sql
-          + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
-    }
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     execReq.setFetchSize(fetchSize);
@@ -700,11 +686,6 @@ public class Session {
    */
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (checkIsQuery(sql)) {
-      throw new IllegalArgumentException("your sql \"" + sql
-          + "\" is a query statement, you should use executeQueryStatement method instead.");
-    }
-
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     try {
       TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
