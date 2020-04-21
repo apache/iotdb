@@ -41,7 +41,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
@@ -176,7 +176,7 @@ public interface PartitionTable {
     } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
     }
-    if (plan.canbeSplit()) {
+    if (plan.canBeSplit()) {
       logger.error("{} can be split. Please call splitPlanAndMapToGroups", plan);
     }
     throw new UnsupportedPlanException(plan);
@@ -218,6 +218,8 @@ public interface PartitionTable {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof InsertPlan) {
       return splitAndRoutePlan((InsertPlan) plan);
+    } else if (plan instanceof DeleteTimeSeriesPlan) {
+      return splitAndRoutePlan((DeleteTimeSeriesPlan) plan);
     }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalPlan(plan)) {
@@ -225,7 +227,7 @@ public interface PartitionTable {
     } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
     }
-    if (!plan.canbeSplit()) {
+    if (!plan.canBeSplit()) {
       logger.error("{} cannot be split. Please call routePlan", plan);
     }
     throw new UnsupportedPlanException(plan);
@@ -333,6 +335,24 @@ public interface PartitionTable {
     logger.error("UpdatePlan is not implemented");
     throw new UnsupportedPlanException(plan);
   }
+
+  default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(DeleteTimeSeriesPlan plan)
+      throws MetadataException {
+    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
+    Map<PartitionGroup, List<Path>> partitionGroupToPaths = new HashMap<>();
+    for (Path path : plan.getPaths()) {
+      PartitionGroup currentGroup = partitionByPathTime(path.getFullPath(), 0);
+      List<Path> currentPaths = partitionGroupToPaths
+          .getOrDefault(currentGroup, new ArrayList<>());
+      currentPaths.add(path);
+      partitionGroupToPaths.put(currentGroup, currentPaths);
+    }
+    for (Entry<PartitionGroup, List<Path>> entry : partitionGroupToPaths.entrySet()) {
+      result.put(new DeleteTimeSeriesPlan(entry.getValue()), entry.getKey());
+    }
+    return result;
+  }
+
 
   //TODO this case can be optimized, see the related UT for better understanding.
   default Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CountPlan plan)

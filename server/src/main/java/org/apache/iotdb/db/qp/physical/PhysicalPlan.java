@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -49,13 +50,13 @@ public abstract class PhysicalPlan {
   private static final int NULL_VALUE_LEN = -1;
 
   //for cluster mode, whether the plan may be splitted into several sub plans
-  protected boolean canbeSplit = true;
+  protected boolean canBeSplit = true;
 
   /**
    * whether the plan can be split into more than one Plans. Only used in the cluster mode.
    */
-  public boolean canbeSplit() {
-    return canbeSplit;
+  public boolean canBeSplit() {
+    return canBeSplit;
   }
 
   protected PhysicalPlan(boolean isQuery) {
@@ -182,6 +183,10 @@ public abstract class PhysicalPlan {
           plan = new CreateTimeSeriesPlan();
           plan.deserialize(buffer);
           break;
+        case DELETE_TIMESERIES:
+          plan = new DeleteTimeSeriesPlan();
+          plan.deserialize(buffer);
+          break;
         case TTL:
           plan = new SetTTLPlan();
           plan.deserialize(buffer);
@@ -252,7 +257,7 @@ public abstract class PhysicalPlan {
   public enum PhysicalPlanType {
     INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING,
     CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE, REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
-    DELETE_STORAGE_GROUP
+    DELETE_STORAGE_GROUP, DELETE_TIMESERIES
   }
 
 
