@@ -149,6 +149,9 @@ public class ClientMain {
     System.out.println("Test metadata queries");
     testQuery(client, sessionId, META_QUERY);
 
+    System.out.println("Test delete storage group");
+    testDeleteStorageGroup(client, sessionId);
+
     client.closeSession(new TSCloseSessionReq(sessionId));
 
     logger.info("Failed queries: {}", failedQueries);
@@ -203,6 +206,9 @@ public class ClientMain {
     client.closeOperation(tsCloseOperationReq);
   }
 
+  private static void testDeleteStorageGroup(Client client, long sessionId) throws TException {
+    logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
+  }
 
   private static void testInsertion(Client client, long sessionId) throws TException {
     for (String storageGroup : STORAGE_GROUPS) {

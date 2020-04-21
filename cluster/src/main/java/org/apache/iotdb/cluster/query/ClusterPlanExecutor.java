@@ -22,8 +22,8 @@ package org.apache.iotdb.cluster.query;
 import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -51,6 +51,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -200,31 +201,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<String[]> getTimeseriesSchemas(String path)
-      throws MetadataException, InterruptedException {
-    ConcurrentSkipListSet<String[]> resultSet = new ConcurrentSkipListSet<>((o1, o2) -> {
-      Arrays.sort(o1);
-      Arrays.sort(o2);
-      for (int i = 0; i < o1.length; i++) {
-        String e1, e2;
-        try {
-          e1 = o1[i];
-        } catch (ArrayIndexOutOfBoundsException e) {
-          return -1;
-        }
-        try {
-          e2 = o2[i];
-        } catch (ArrayIndexOutOfBoundsException e) {
-          return 1;
-        }
-        int res = e1.compareTo(e2);
-        if (res != 0) {
-          return res;
-        }
-      }
-      return 0;
-    });
-    resultSet.addAll(MManager.getInstance().getAllMeasurementSchema(path));
+  protected List<ShowTimeSeriesResult> getTimeseriesSchemas(String path)
+      throws MetadataException {
+    ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>(
+        MManager.getInstance().getAllTimeseriesSchema(path));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
@@ -235,7 +215,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }
       pool.submit(() -> {
         GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
-        AtomicReference<List<List<String>>> response = new AtomicReference<>(null);
+        AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
         handler.setResponse(response);
 
         for (Node node : group) {
@@ -248,9 +228,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 response.wait(connectionTimeoutInMS);
               }
             }
-            if (response.get() != null) {
-              for (List<String> element : response.get()) {
-                resultSet.add(element.toArray(new String[0]));
+            ByteBuffer resultBinary = response.get();
+            if (resultBinary != null) {
+              int size = resultBinary.getInt();
+              for (int i = 0; i < size; i++) {
+                resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
               }
               break;
             }
@@ -269,7 +251,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
       });
     }
     pool.shutdown();
-    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    try {
+      pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    } catch (InterruptedException e) {
+      logger.warn("Unexpected interruption when waiting for getTimeseriesSchemas to finish", e);
+    }
     return new ArrayList<>(resultSet);
   }
 

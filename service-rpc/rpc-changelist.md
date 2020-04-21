@@ -89,6 +89,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
 | Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
 | Add optional i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
+| Add optional map<string, string> props, optional map<string, string> tags, optional map<string, string> attributes and optional string aliasPath in TSCreateTimeseriesReq | Yuan Tian | 
 
 
 # 0.10.0 (version-1) -> version-2

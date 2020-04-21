@@ -379,6 +379,11 @@ public class IoTDBDescriptor {
           Integer.parseInt(properties.getProperty("default_fill_interval",
               String.valueOf(conf.getDefaultFillInterval()))));
 
+      conf.setTagAttributeTotalSize(
+           Integer.parseInt(properties.getProperty("tag_attribute_total_size",
+              String.valueOf(conf.getTagAttributeTotalSize())))
+      );
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));

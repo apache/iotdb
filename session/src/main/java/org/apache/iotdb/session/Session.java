@@ -592,6 +592,13 @@ public class Session {
   public void createTimeseries(String path, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException {
+    createTimeseries(path, dataType, encoding, compressor, null, null, null, null);
+  }
+
+  public void createTimeseries(String path, TSDataType dataType,
+      TSEncoding encoding, CompressionType compressor, Map<String, String> props,
+      Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
+      throws IoTDBConnectionException, StatementExecutionException {
     checkPathValidity(path);
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setSessionId(sessionId);
@@ -599,6 +606,10 @@ public class Session {
     request.setDataType(dataType.ordinal());
     request.setEncoding(encoding.ordinal());
     request.setCompressor(compressor.ordinal());
+    request.setProps(props);
+    request.setTags(tags);
+    request.setAttributes(attributes);
+    request.setMeasurementAlias(measurementAlias);
 
     try {
       RpcUtils.verifySuccess(client.createTimeseries(request));

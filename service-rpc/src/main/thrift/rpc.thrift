@@ -203,6 +203,10 @@ struct TSCreateTimeseriesReq {
   3: required i32 dataType
   4: required i32 encoding
   5: required i32 compressor
+  6: optional map<string, string> props
+  7: optional map<string, string> tags
+  8: optional map<string, string> attributes
+  9: optional string measurementAlias
 }
 
 struct ServerProperties {
