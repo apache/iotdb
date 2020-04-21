@@ -174,7 +174,11 @@ public class MManager {
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
         while ((cmd = br.readLine()) != null) {
-          operation(cmd);
+          try {
+            operation(cmd);
+          } catch (Exception e) {
+            logger.error("Skip error cmd log: " + cmd, e);
+          }
         }
       }
     }

@@ -81,9 +81,12 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
 
+  private static final Logger logger = LoggerFactory.getLogger(QueryProcessExecutor.class);
   private StorageEngine storageEngine;
   private MManager mManager = MManager.getInstance();
 
@@ -244,6 +247,10 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
           }
         }
         MNode measurementNode = node.getChild(measurementList[i]);
+        if (measurementNode == null) {
+          logger.error(measurementList[i] + " is not created under " + node.getFullPath());
+          throw new PathException(measurementList[i] + " is not created under " + node.getFullPath());
+        }
         if (!measurementNode.isLeaf()) {
           throw new QueryProcessException(
               String.format("Current Path is not leaf node. %s.%s", deviceId,
