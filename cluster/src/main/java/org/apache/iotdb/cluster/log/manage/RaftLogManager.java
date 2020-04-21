@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
+import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -54,7 +55,11 @@ public class RaftLogManager {
         this.logApplier = applier;
         this.committedEntryManager = new CommittedEntryManager();
         this.stableEntryManager = stableEntryManager;
-        this.committedEntryManager.append(stableEntryManager.getAllEntries());
+        try {
+            this.committedEntryManager.append(stableEntryManager.getAllEntries());
+        } catch (TruncateCommittedEntryException e) {
+            logger.error("Unexpected error:", e);
+        }
         long last = committedEntryManager.getLastIndex();
         this.unCommittedEntryManager = new UnCommittedEntryManager(last + 1);
         // must have applied entry [compactIndex,last] to state machine
@@ -75,11 +80,11 @@ public class RaftLogManager {
         return logApplier;
     }
 
-    public void updateHardState(HardState state){
+    public void updateHardState(HardState state) {
         stableEntryManager.setHardStateAndFlush(state);
     }
 
-    public HardState getHardState(){
+    public HardState getHardState() {
         return stableEntryManager.getHardState();
     }
 
@@ -223,6 +228,7 @@ public class RaftLogManager {
         long after = entries.get(0).getCurrLogIndex();
         if (after <= commitIndex) {
             logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
+            return getLastLogIndex();
         }
         unCommittedEntryManager.truncateAndAppend(entries);
         return getLastLogIndex();
@@ -239,6 +245,7 @@ public class RaftLogManager {
         long after = entry.getCurrLogIndex();
         if (after <= commitIndex) {
             logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
+            return getLastLogIndex();
         }
         unCommittedEntryManager.truncateAndAppend(entry);
         return getLastLogIndex();
@@ -340,12 +347,16 @@ public class RaftLogManager {
             List<Log> entries = unCommittedEntryManager
                 .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), newCommitIndex + 1);
             if (entries.size() != 0) {
-                stableEntryManager.append(entries);
-                applyEntries(entries);
-                committedEntryManager.append(entries);
-                Log lastLog = entries.get(entries.size() - 1);
-                unCommittedEntryManager.stableTo(lastLog.getCurrLogIndex());
-                commitIndex = lastLog.getCurrLogIndex();
+                try {
+                    committedEntryManager.append(entries);
+                    stableEntryManager.append(entries);
+                    applyEntries(entries);
+                    Log lastLog = entries.get(entries.size() - 1);
+                    unCommittedEntryManager.stableTo(lastLog.getCurrLogIndex());
+                    commitIndex = lastLog.getCurrLogIndex();
+                } catch (TruncateCommittedEntryException e) {
+                    logger.error("Unexpected error:", e);
+                }
             }
         }
         return commitIndex;
@@ -433,7 +444,8 @@ public class RaftLogManager {
     }
 
     @TestOnly
-    public RaftLogManager(CommittedEntryManager committedEntryManager, StableEntryManager stableEntryManager,
+    public RaftLogManager(CommittedEntryManager committedEntryManager,
+        StableEntryManager stableEntryManager,
         LogApplier applier) {
         this.committedEntryManager = committedEntryManager;
         this.stableEntryManager = stableEntryManager;

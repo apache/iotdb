@@ -236,6 +236,9 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
+      public void updateHardState(long currentTerm){}
+
+      @Override
       public AsyncClient connectNode(Node node) {
         if (node.equals(thisNode)) {
           return null;

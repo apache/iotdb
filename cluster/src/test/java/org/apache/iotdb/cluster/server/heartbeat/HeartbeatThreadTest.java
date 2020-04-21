@@ -68,6 +68,9 @@ public class HeartbeatThreadTest {
       }
 
       @Override
+      public void updateHardState(long currentTerm){}
+
+      @Override
       public AsyncClient connectNode(Node node) {
         return getClient(node);
       }

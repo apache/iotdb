@@ -127,10 +127,12 @@ public class UnCommittedEntryManager {
         if (len < 0) {
             // the logs are being truncated to before our current offset portion, which is committed entries
             // unconditional obedience to the leader's request. Maybe throw a exception here is better
-            offset = after;
-            entries = appendingEntries;
             logger.error("The logs which first index is {} are going to truncate committed logs",
                 after);
+//            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),
+//                offset);
+//            offset = after;
+//            entries = appendingEntries;
         } else if (len == entries.size()) {
             // after is the next index in the entries
             // directly append
@@ -159,12 +161,13 @@ public class UnCommittedEntryManager {
         long len = after - offset;
         if (len < 0) {
             // the logs are being truncated to before our current offset portion, which is committed entries
-            // unconditional obedience to the leader's request. Maybe throw a exception here is better
-            offset = after;
-            entries.clear();
-            entries.add(appendingEntry);
             logger.error("The logs which first index is {} are going to truncate committed logs",
                 after);
+//            throw new TruncateCommittedEntryException(appendingEntry.getCurrLogIndex(),
+//                offset);
+//            offset = after;
+//            entries.clear();
+//            entries.add(appendingEntry);
         } else if (len == entries.size()) {
             // after is the next index in the entries
             // directly append

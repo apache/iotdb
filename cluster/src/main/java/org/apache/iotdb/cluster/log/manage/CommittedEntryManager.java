@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
+import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
@@ -180,7 +181,7 @@ public class CommittedEntryManager {
      *
      * @param appendingEntries request entries
      */
-    public void append(List<Log> appendingEntries) {
+    public void append(List<Log> appendingEntries) throws TruncateCommittedEntryException{
         if (appendingEntries.size() == 0) {
             return;
         }
@@ -200,10 +201,10 @@ public class CommittedEntryManager {
             entries.addAll(appendingEntries);
         } else if (entries.size() - offset > 0) {
             // maybe not throw a exception is better.It depends on the caller's implementation.
-//            logger.error("The logs which first index is {} are going to truncate committed logs", appendingEntries.get(0).getCurrLogIndex());
-//            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),getLastIndex());
-            entries.subList((int) offset, entries.size()).clear();
-            entries.addAll(appendingEntries);
+            logger.error("The logs which first index is {} are going to truncate committed logs", appendingEntries.get(0).getCurrLogIndex());
+            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),getLastIndex());
+//            entries.subList((int) offset, entries.size()).clear();
+//            entries.addAll(appendingEntries);
         } else {
             logger.error("missing log entry [last: {}, append at: {}]", getLastIndex(),
                 appendingEntries.get(0).getCurrLogIndex());

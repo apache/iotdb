@@ -263,9 +263,9 @@ public class UnCommittedEntryManagerTest {
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
         add(new EmptyContentLog(5, 1));
       }}, 5,new EmptyContentLog(4, 2)
-          , 4,
+          , 5,
           new ArrayList<Log>() {{
-            add(new EmptyContentLog(4, 2));
+            add(new EmptyContentLog(5, 1));
           }}));
       // truncate the existing entries and append
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
@@ -351,11 +351,9 @@ public class UnCommittedEntryManagerTest {
             add(new EmptyContentLog(5, 2));
             add(new EmptyContentLog(6, 2));
           }}
-          , 4,
+          , 5,
           new ArrayList<Log>() {{
-            add(new EmptyContentLog(4, 2));
-            add(new EmptyContentLog(5, 2));
-            add(new EmptyContentLog(6, 2));
+            add(new EmptyContentLog(5, 1));
           }}));
       // truncate the existing entries and append
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
