@@ -343,6 +343,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       List<OldChunkMetadata> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
           .getChunkMetaDataList();
       for (OldChunkMetadata oldChunkMetadata : chunkMetaDataListInOneChunkGroup) {
+        oldChunkMetadata.setVersion(chunkGroupMetaData.getVersion());
         newDeviceMetadata.computeIfAbsent(oldChunkMetadata.getMeasurementUid(), key -> new TimeseriesMetadata())
         .addChunkMetadata(new ChunkMetadata(oldChunkMetadata));
       }
