@@ -32,10 +32,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -54,11 +50,12 @@ public class BasicDaoImpl implements BasicDao {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicDaoImpl.class);
 
-  private static final String CONFIG_PROPERTY_FILE = "application.properties";
-
   private final JdbcTemplate jdbcTemplate;
 
   private static long TIMESTAMP_RADIX = 1L;
+
+  @Value("${isDownSampling}")
+  private boolean isDownSampling;
 
   @Value("${function}")
   private String function;
@@ -66,31 +63,23 @@ public class BasicDaoImpl implements BasicDao {
   @Value("${interval}")
   private String interval;
 
-  @Value("${isDownSampling}")
-  private boolean isDownSampling;
 
   @Autowired
   public BasicDaoImpl(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
-    try (InputStream inputStream = new FileInputStream(new File(CONFIG_PROPERTY_FILE))) {
-      Properties properties = new Properties();
-      properties.load(inputStream);
-      String tsPrecision = properties.getProperty("timestamp_precision", "ms");
-      switch (tsPrecision) {
-        case "us":
-          TIMESTAMP_RADIX = 1000;
-          break;
-        case "ns":
-          TIMESTAMP_RADIX = 1000_000;
-          break;
-        default:
-          TIMESTAMP_RADIX = 1;
-      }
-      logger.info("Use timestamp precision {}", tsPrecision);
-    } catch (IOException e) {
-      logger.error("Can not find properties [timestamp_precision], use default value [ms]");
-      TIMESTAMP_RADIX = 1;
+    Properties properties = new Properties();
+    String tsPrecision = properties.getProperty("timestamp_precision", "ms");
+    switch (tsPrecision) {
+      case "us":
+        TIMESTAMP_RADIX = 1000;
+        break;
+      case "ns":
+        TIMESTAMP_RADIX = 1000_000;
+        break;
+      default:
+        TIMESTAMP_RADIX = 1;
     }
+    logger.info("Use timestamp precision {}", tsPrecision);
   }
 
   @Override
