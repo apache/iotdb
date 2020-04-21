@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -96,8 +98,10 @@ public class SeqTsFileRecoverTest {
     MManager.getInstance().setStorageGroup("root.sg");
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
-        MManager.getInstance().createTimeseries("root.sg.device" + i + ".sensor" + j,
-            new MeasurementSchema("sensor" + i, TSDataType.INT64, TSEncoding.PLAIN));
+        MManager.getInstance()
+            .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
+                TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                Collections.emptyMap());
       }
     }
 

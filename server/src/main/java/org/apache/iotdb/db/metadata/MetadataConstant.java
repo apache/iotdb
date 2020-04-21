@@ -24,4 +24,5 @@ public class MetadataConstant {
   }
   public static final String ROOT = "root";
   public static final String METADATA_LOG = "mlog.txt";
+  public static final String TAG_LOG = "tlog.txt";
 }

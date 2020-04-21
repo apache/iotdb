@@ -45,6 +45,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -92,8 +93,10 @@ public class LogReplayerTest {
     try {
       for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
-          MManager.getInstance().createTimeseries("root.sg.device" + i + ".sensor" + j,
-              new MeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN));
+          MManager.getInstance()
+              .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
+                  TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                  Collections.emptyMap());
         }
       }
 

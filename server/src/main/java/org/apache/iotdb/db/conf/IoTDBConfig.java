@@ -534,7 +534,10 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric =50;
+  private int queryCacheSizeInMetric = 50;
+
+  // max size for tag and attribute of one time series
+  private int tagAttributeTotalSize = 700;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1493,5 +1496,13 @@ public class IoTDBConfig {
 
   public void setMqttPayloadFormatter(String mqttPayloadFormatter) {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
+  }
+
+  public int getTagAttributeTotalSize() {
+    return tagAttributeTotalSize;
+  }
+
+  public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    this.tagAttributeTotalSize = tagAttributeTotalSize;
   }
 }

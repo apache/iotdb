@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 class MetaUtils {
 
@@ -34,9 +34,9 @@ class MetaUtils {
 
   public static String[] getNodeNames(String path) {
     String[] nodeNames;
-    if (path.contains("\"") || path.contains("\'")) {
+    if (path.contains("\"") || path.contains("'")) {
       // e.g., root.sg.d1."s1.int"  ->  root.sg.d1, s1.int
-      String[] measurementDeviceNode = path.trim().replace("\'", "\"").split("\"");
+      String[] measurementDeviceNode = path.trim().replace("'", "\"").split("\"");
       // s1.int
       String measurement = measurementDeviceNode[1];
       // root.sg.d1 -> root, sg, d1

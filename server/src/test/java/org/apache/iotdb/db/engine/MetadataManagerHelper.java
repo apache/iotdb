@@ -18,19 +18,19 @@
  */
 package org.apache.iotdb.db.engine;
 
-import java.util.Collections;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import java.util.Collections;
+
 public class MetadataManagerHelper {
 
   public static void initMetadata() {
     MManager mmanager = MManager.getInstance();
     mmanager.init();
-    mmanager.clear();
     try {
       mmanager.setStorageGroup("root.vehicle.d0");
       mmanager.setStorageGroup("root.vehicle.d1");  

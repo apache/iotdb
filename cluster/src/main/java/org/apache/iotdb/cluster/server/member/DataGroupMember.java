@@ -101,6 +101,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
@@ -124,6 +125,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -1424,7 +1426,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void getChildNodePathInNextLevel(Node header, String path,
-      AsyncMethodCallback<Set<String>> resultHandler) throws TException {
+      AsyncMethodCallback<Set<String>> resultHandler) {
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
@@ -1438,18 +1440,22 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void getAllMeasurementSchema(Node header, String path,
-      AsyncMethodCallback<List<List<String>>> resultHandler) throws TException {
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
     try {
-      List<List<String>> res = new ArrayList<>();
-      for (String[] element : MManager.getInstance().getAllMeasurementSchema(path)) {
-        res.add(Arrays.asList(element));
+      List<ShowTimeSeriesResult> allTimeseriesSchema = MManager.getInstance()
+          .getAllTimeseriesSchema(path);
+      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+      dataOutputStream.writeInt(allTimeseriesSchema.size());
+      for (ShowTimeSeriesResult result : allTimeseriesSchema) {
+        result.serialize(outputStream);
       }
-      resultHandler.onComplete(res);
-    } catch (MetadataException e) {
+      resultHandler.onComplete(ByteBuffer.wrap(outputStream.toByteArray()));
+    } catch (MetadataException | IOException e) {
       resultHandler.onError(e);
     }
   }
