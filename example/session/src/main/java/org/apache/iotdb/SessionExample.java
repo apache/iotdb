@@ -53,6 +53,21 @@ public class SessionExample {
 //       ignore duplicated set
     }
 
+    createTimeseries();
+    createMultiTimeseries();
+    insert();
+    insertInBatch();
+    insertRowBatch();
+    nonQuery();
+    query();
+    deleteData();
+    deleteTimeseries();
+    session.close();
+  }
+
+  private static void createTimeseries()
+      throws IoTDBConnectionException, StatementExecutionException {
+
     if (!session.checkTimeseriesExists("root.sg1.d1.s1")) {
       session.createTimeseries("root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
@@ -65,6 +80,7 @@ public class SessionExample {
       session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY);
     }
+
     if (!session.checkTimeseriesExists("root.sg1.d1.s4")) {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag1", "v1");
@@ -73,15 +89,43 @@ public class SessionExample {
       session.createTimeseries("root.sg1.d1.s4", TSDataType.INT64, TSEncoding.RLE,
           CompressionType.SNAPPY, null, tags, attributes, "temperature");
     }
+  }
 
-    insert();
-    insertInBatch();
-    insertRowBatch();
-    nonQuery();
-    query();
-    deleteData();
-    deleteTimeseries();
-    session.close();
+  private static void createMultiTimeseries()
+      throws IoTDBConnectionException, BatchExecutionException {
+
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d2.s1");
+    paths.add("root.sg1.d2.s2");
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    tsDataTypes.add(TSDataType.DOUBLE);
+    tsDataTypes.add(TSDataType.DOUBLE);
+    List<TSEncoding> tsEncodings = new ArrayList<>();
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.RLE);
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
+
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("unit", "kg");
+    tagsList.add(tags);
+    tagsList.add(tags);
+
+    List<Map<String, String>> attributesList = new ArrayList<>();
+    Map<String, String> attributes = new HashMap<>();
+    attributes.put("minValue", "1");
+    attributes.put("maxValue", "100");
+    attributesList.add(attributes);
+    attributesList.add(attributes);
+
+    List<String> alias = new ArrayList<>();
+    alias.add("weight1");
+    alias.add("weight2");
+
+    session.createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
+        attributesList, alias);
   }
 
   private static void insert() throws IoTDBConnectionException, StatementExecutionException {
