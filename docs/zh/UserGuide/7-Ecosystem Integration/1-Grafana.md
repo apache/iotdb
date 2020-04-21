@@ -89,7 +89,7 @@ git clone https://github.com/apache/incubator-iotdb.git
 
 #### 方案一（适合开发者）
 
-导入整个项目，maven依赖安装完后，直接运行`incubatoriotdb\grafana\src\main\java\org\apache\iotdb\web\grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
+导入整个项目，maven依赖安装完后，直接运行`incubatoriotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
 
 #### 方案二（适合使用者）
 
@@ -130,7 +130,7 @@ Grafana以网页的dashboard形式为您展示数据，在使用时请您打开�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
 
-### 配置grafana
+## 配置grafana
 
 在运行jar包前，如果您需要配置属性值，您可以去`/target/classes/`目录下配置`application.properties`文件（默认属性如下），配置完后再运行jar包
 
@@ -154,4 +154,12 @@ interval=1m
 function=avg
 ```
 
-### 
+其中interval具体配置信息如下
+
+<1h: no sampling
+
+1h~1d : intervals = 1m
+
+1d~30d:intervals = 1h
+
+\>30d：intervals = 1d

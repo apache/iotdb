@@ -80,39 +80,22 @@ See https://github.com/apache/incubator-iotdb
 
 ```shell
 git clone https://github.com/apache/incubator-iotdb.git
-cd incubator-iotdb
-mvn clean package -pl grafana -am -Dmaven.test.skip=true
-cd grafana
-```
-
-Before running the jar package, if you need to configure property values, you can go to the `/target/classes/` directory and configure the` application.properties` file (the default properties are as follows)
-
-```
-# ip and port of IoTDB 
-spring.datasource.url=jdbc:iotdb://127.0.0.1:6667/
-spring.datasource.username=root
-spring.datasource.password=root
-spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
-server.port=8888
-# Use this value to set timestamp precision as "ms", "us" or "ns", which must to be same with the timestamp
-# precision of Apache IoTDB engine.
-timestamp_precision=ms
-
-# Use this value to set down sampling true/false
-isDownSampling=true
-# defaut sampling intervals
-interval=1m
-# aggregation function to use to downsampling the data
-# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
-function=avg
 ```
 
 ### Start IoTDB-Grafana
 
+#### Option one
+
+Import the entire project, after the maven dependency is installed, directly run`incubatoriotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`directory` TsfileWebDemoApplication.java`, this grafana connector is developed by springboot
+
+#### Option two
+
 In `/grafana/target/`directory 
 
 ```shell
-cd target
+cd incubator-iotdb
+mvn clean package -pl grafana -am -Dmaven.test.skip=true
+cd grafana/target
 java -jar iotdb-grafana-{version}.war
 ```
 
@@ -149,3 +132,37 @@ Select `Data Sources` and  then `Add data source`, select `SimpleJson` in `Type`
 Add diagrams in dashboard and customize your query. See http://docs.grafana.org/guides/getting_started/
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
+
+## config grafana
+
+Before running the jar package, if you need to configure property values, you can go to the `/target/classes/` directory and configure the` application.properties` file (the default properties are as follows)
+
+```
+# ip and port of IoTDB 
+spring.datasource.url=jdbc:iotdb://127.0.0.1:6667/
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
+server.port=8888
+# Use this value to set timestamp precision as "ms", "us" or "ns", which must to be same with the timestamp
+# precision of Apache IoTDB engine.
+timestamp_precision=ms
+
+# Use this value to set down sampling true/false
+isDownSampling=true
+# defaut sampling intervals
+interval=1m
+# aggregation function to use to downsampling the data
+# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
+function=avg
+```
+
+The specific configuration information of interval is as follows
+
+<1h: no sampling
+
+1h~1d : intervals = 1m
+
+1d~30d:intervals = 1h
+
+\>30d：intervals = 1d
