@@ -21,7 +21,6 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.RamUsageEstimator;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -60,10 +59,15 @@ public class MemUtils {
       case BOOLEAN:
         return 8L + 1L;
       case TEXT:
-        return 8L + RamUsageEstimator.sizeOf(value);
+        return 8L + getBinarySize((Binary) value);
       default:
         return 8L + 8L;
     }
+  }
+
+  public static long getBinarySize(Binary value) {
+    return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + RamUsageEstimator
+        .sizeOf(value.getValues());
   }
 
   public static long getRecordSize(BatchInsertPlan batchInsertPlan, int start, int end) {
@@ -86,7 +90,7 @@ public class MemUtils {
         case TEXT:
           memSize += (end - start) * 8L;
           for (int j = start; j < end; j++) {
-            memSize += RamUsageEstimator.sizeOf(((Binary[]) batchInsertPlan.getColumns()[i])[j]);
+            memSize += getBinarySize(((Binary[]) batchInsertPlan.getColumns()[i])[j]);
           }
           break;
         default:
