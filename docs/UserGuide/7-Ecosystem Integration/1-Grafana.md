@@ -18,7 +18,7 @@
     under the License.
 
 -->
-# Grafana
+# IoTDB-Grafana
 <!-- TOC -->
 ## Outline
 
@@ -59,7 +59,7 @@ grafana-cli plugins install grafana-simple-json-datasource
 
 Alternatively, you can manually download the .zip file and unpack it into your grafana plugins directory.
 
-* `{grafana-install-directory}\data\plugin\` (Windows)
+* `{grafana-install-directory}\data\plugins\` (Windows)
 * `/var/lib/grafana/plugins` (Linux)
 * `/usr/local/var/lib/grafana/plugins`(Mac)
 
@@ -80,27 +80,39 @@ See https://github.com/apache/incubator-iotdb
 
 ```shell
 git clone https://github.com/apache/incubator-iotdb.git
+cd incubator-iotdb
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
 
-Copy `application.properties` from `conf/` directory to `target` directory. (Or just make sure that `application.properties` and `iotdb-grafana-{version}.war` are in the same directory.)
-
-Edit `application.properties`
+Before running the jar package, if you need to configure property values, you can go to the `/target/classes/` directory and configure the` application.properties` file (the default properties are as follows)
 
 ```
 # ip and port of IoTDB 
-spring.datasource.url = jdbc:iotdb://127.0.0.1:6667/
-spring.datasource.username = root
-spring.datasource.password = root
+spring.datasource.url=jdbc:iotdb://127.0.0.1:6667/
+spring.datasource.username=root
+spring.datasource.password=root
 spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
-server.port = 8888
+server.port=8888
+# Use this value to set timestamp precision as "ms", "us" or "ns", which must to be same with the timestamp
+# precision of Apache IoTDB engine.
+timestamp_precision=ms
+
+# Use this value to set down sampling true/false
+isDownSampling=true
+# defaut sampling intervals
+interval=1m
+# aggregation function to use to downsampling the data
+# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
+function=avg
 ```
 
 ### Start IoTDB-Grafana
 
+In `/grafana/target/`directory 
+
 ```shell
-cd grafana/target/
+cd target
 java -jar iotdb-grafana-{version}.war
 ```
 

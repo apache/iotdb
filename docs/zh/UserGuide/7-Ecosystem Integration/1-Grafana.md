@@ -51,7 +51,7 @@ Grafana是开源的指标量监测和可视化工具，可用于展示时序数�
 * 插件名称: simple-json-datasource
 * 下载地址: https://github.com/grafana/simple-json-datasource
 
-具体下载方法是：到Grafana的插件目录中：`{Grafana文件目录}\data\plugin\`（Windows系统，启动Grafana后会自动创建`data\plugin`目录）或`/var/lib/grafana/plugins` （Linux系统，plugins目录需要手动创建）或`/usr/local/var/lib/grafana/plugins`（MacOS系统，具体位置参看使用`brew install`安装Grafana后命令行给出的位置提示。
+具体下载方法是：到Grafana的插件目录中：`{Grafana文件目录}\data\plugins\`（Windows系统，启动Grafana后会自动创建`data\plugins`目录）或`/var/lib/grafana/plugins` （Linux系统，plugins目录需要手动创建）或`/usr/local/var/lib/grafana/plugins`（MacOS系统，具体位置参看使用`brew install`安装Grafana后命令行给出的位置提示。
 
 执行下面的命令：
 
@@ -83,25 +83,39 @@ Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /u
 
 ```shell
 git clone https://github.com/apache/incubator-iotdb.git
+cd incubator-iotdb
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
 
-编译成功后，您需将`application.properties`文件从`conf/`目录复制到`target/`目录下，并在该文件中插入以下（编辑属性值）：
+在运行jar包前，如果您需要配置属性值，您可以去`target/classes`目录下配置`application.properties`文件（默认属性如下）
 
 ```
 # ip and port of IoTDB 
-spring.datasource.url = jdbc:iotdb://127.0.0.1:6667/
-spring.datasource.username = root
-spring.datasource.password = root
+spring.datasource.url=jdbc:iotdb://127.0.0.1:6667/
+spring.datasource.username=root
+spring.datasource.password=root
 spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
-server.port = 8888
+server.port=8888
+# Use this value to set timestamp precision as "ms", "us" or "ns", which must to be same with the timestamp
+# precision of Apache IoTDB engine.
+timestamp_precision=ms
+
+# Use this value to set down sampling true/false
+isDownSampling=true
+# defaut sampling intervals
+interval=1m
+# aggregation function to use to downsampling the data
+# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
+function=avg
 ```
 
 ### 启动IoTDB-Grafana
 
+在`grafana/target/`目录下
+
 ```shell
-cd grafana/target/
+cd target
 java -jar iotdb-grafana-{version}.war
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -116,6 +130,8 @@ java -jar iotdb-grafana-{version}.war
 ## 使用Grafana
 
 Grafana以网页的dashboard形式为您展示数据，在使用时请您打开浏览器，访问http://\<ip\>:\<port\>
+
+默认地址为http://localhost:3000/
 
 注：IP为您的Grafana所在的服务器IP，Port为Grafana的运行端口（默认3000）。默认登录的用户名和密码都是“admin”。
 
