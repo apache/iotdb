@@ -411,7 +411,8 @@ public class DataGroupMemberTest extends MemberTest {
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(new Path(measurementSchema.getMeasurementId()),
             measurementSchema.getType(), measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(), measurementSchema.getProps());
+            measurementSchema.getCompressor(), measurementSchema.getProps(),
+            Collections.emptyMap(), Collections.emptyMap(), null);
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
     assertTrue(MManager.getInstance().isPathExist(measurementSchema.getMeasurementId()));
   }
@@ -424,7 +425,8 @@ public class DataGroupMemberTest extends MemberTest {
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(new Path(measurementSchema.getMeasurementId()),
             measurementSchema.getType(), measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(), measurementSchema.getProps());
+            measurementSchema.getCompressor(), measurementSchema.getProps(),
+            Collections.emptyMap(), Collections.emptyMap(), null);
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
     assertTrue(MManager.getInstance().isPathExist(measurementSchema.getMeasurementId()));
   }

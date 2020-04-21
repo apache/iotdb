@@ -53,7 +53,6 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -329,7 +328,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void getChildNodePathInNextLevel(Node header, String path,
-      AsyncMethodCallback<Set<String>> resultHandler) throws TException {
+      AsyncMethodCallback<Set<String>> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler,
         "Get child node path in next level");
     dataMember.getChildNodePathInNextLevel(header, path, resultHandler);
@@ -337,7 +336,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void getAllMeasurementSchema(Node header, String path,
-      AsyncMethodCallback<List<List<String>>> resultHandler) throws TException {
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler,
         "Get all measurement schema");
     dataMember.getAllMeasurementSchema(header, path, resultHandler);

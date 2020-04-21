@@ -402,7 +402,7 @@ public interface PartitionTable {
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
     for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
       ShowTimeSeriesPlan newShow = new ShowTimeSeriesPlan(ShowContentType.TIMESERIES,
-          new Path(entry.getValue()));
+          new Path(entry.getValue()), plan.isContains(), plan.getKey(), plan.getValue());
       result.put(newShow, route(entry.getKey(), 0));
     }
     return result;

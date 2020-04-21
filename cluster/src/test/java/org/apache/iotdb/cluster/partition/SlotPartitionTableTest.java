@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.stream.IntStream;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -138,7 +140,8 @@ public class SlotPartitionTableTest {
       //register 4 series;
       for (int i = 0; i < 4; i ++) {
         try {
-          mmanager.createTimeseries(String.format(sg + ".ld.l1.d%d.s%d", i/2, i%2), "INT32", "RLE");
+          mmanager.createTimeseries(String.format(sg + ".ld.l1.d%d.s%d", i/2, i%2),
+              TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY, Collections.EMPTY_MAP);
         } catch (Exception e) {
           e.printStackTrace();
         }
@@ -147,14 +150,14 @@ public class SlotPartitionTableTest {
   }
 
   @After
-  public void tearDown() {
+  public void tearDown() throws IOException, StorageEngineException {
     ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(3);
-    MManager.getInstance().clear();
     if (mManager != null) {
       for (MManager manager : mManager) {
         manager.clear();
       }
     }
+    EnvironmentUtils.cleanEnv();
     File[] files = new File("target/schemas").listFiles();
     if (files != null) {
       for (File file : files) {
@@ -358,11 +361,11 @@ public class SlotPartitionTableTest {
   @Test
   public void testCreateTimeSeriesPlan() {
     PhysicalPlan createTimeSeriesPlan1 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.28.ld.l1.d1"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
-        .emptyMap());
+        .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     PhysicalPlan createTimeSeriesPlan2 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.28.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
-        .emptyMap());
+        .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     PhysicalPlan createTimeSeriesPlan3 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.29.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
-        .emptyMap());
+        .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     assertFalse(createTimeSeriesPlan1.canbeSplit());
     try {
       PartitionGroup group1 = localTable.routePlan(createTimeSeriesPlan1);
@@ -484,7 +487,8 @@ public class SlotPartitionTableTest {
   @Test
   public void testShowTimeSeriesPlan() {
     //TODO this case can be optimized
-    PhysicalPlan showDevicesPlan1 = new ShowTimeSeriesPlan(ShowContentType.TIMESERIES, new Path("root.*.l2"));
+    PhysicalPlan showDevicesPlan1 = new ShowTimeSeriesPlan(ShowContentType.TIMESERIES, new Path(
+        "root.*.l2"), false, null, null);
     PhysicalPlan showDevicesPlan2 = new ShowDevicesPlan(ShowContentType.TIMESERIES, new Path("root.sg.l2.l3.l4"));
     assertTrue(showDevicesPlan1.canbeSplit());
 
