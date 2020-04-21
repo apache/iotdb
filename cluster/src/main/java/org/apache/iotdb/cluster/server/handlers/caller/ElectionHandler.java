@@ -22,9 +22,9 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_LEADER_STILL_ONLINE;
 
+import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.net.ConnectException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -90,6 +90,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
           raftMember.getTerm().set(voterResp);
+          raftMember.updateHardState(voterResp);
           logger.info("{}: Election {} rejected: The term of this node is no bigger than {}",
               memberName, currTerm, voterResp);
           // the election is rejected

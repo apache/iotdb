@@ -68,6 +68,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private long maxAvailableTime = Long.MAX_VALUE;
   // log dir
   private String logDir;
+
   /**
    * for log tools
    *
@@ -106,34 +107,34 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     this.maxRemovedLogSize = maxRemovedLogSize;
   }
 
-  public List<Log> getAllEntries(){
+  public List<Log> getAllEntries() {
     return recoverLog();
   }
 
-  public void append(List<Log> entries){
+  public void append(List<Log> entries) {
     Log entry = entries.get(entries.size() - 1);
     meta.setCommitLogIndex(entry.getCurrLogIndex());
     meta.setCommitLogTerm(entry.getCurrLogTerm());
     meta.setLastLogIndex(entry.getCurrLogIndex());
     meta.setLastLogTerm(entry.getCurrLogTerm());
-    append(entries,meta);
+    append(entries, meta);
   }
 
-  public void setHardStateAndFlush(HardState state){
+  public void setHardStateAndFlush(HardState state) {
     this.state = state;
     serializeMeta(meta);
   }
 
-  public HardState getHardState(){
+  public HardState getHardState() {
     return state;
   }
 
 
-  public void applyingSnapshot(Snapshot snapshot){
+  public void applyingSnapshot(Snapshot snapshot) {
 
   }
 
-  public void removeCompactedEntries(long index){
+  public void removeCompactedEntries(long index) {
 
   }
 
@@ -381,7 +382,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   public LogManagerMeta recoverMeta() {
     if (meta == null) {
-      if(metaFile.exists() && metaFile.length() > 0) {
+      if (metaFile.exists() && metaFile.length() > 0) {
         try (FileInputStream metaReader = new FileInputStream(metaFile)) {
           firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
           removedLogSize = ReadWriteIOUtils.readLong(metaReader);
@@ -394,7 +395,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         } catch (IOException e) {
           logger.error("Error in log serialization: " + e.getMessage());
         }
-      }else{
+      } else {
         meta = new LogManagerMeta();
         state = new HardState();
       }

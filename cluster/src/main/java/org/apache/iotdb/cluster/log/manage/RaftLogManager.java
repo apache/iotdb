@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
+import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -72,6 +73,14 @@ public class RaftLogManager {
 
     public LogApplier getApplier() {
         return logApplier;
+    }
+
+    public void updateHardState(HardState state){
+        stableEntryManager.setHardStateAndFlush(state);
+    }
+
+    public HardState getHardState(){
+        return stableEntryManager.getHardState();
     }
 
     /**

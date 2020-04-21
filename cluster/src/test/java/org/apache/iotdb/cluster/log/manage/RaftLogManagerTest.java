@@ -545,7 +545,7 @@ public class RaftLogManagerTest {
 			committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
 			committedEntryManager.append(previousEntries);
 			RaftLogManager instance = new RaftLogManager(committedEntryManager,
-					new StableEntryManager(), logApplier);
+					new SyncLogDequeSerializer(testIdentifier), logApplier);
 			instance.append(test.appendingEntry);
 			try {
 				List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);

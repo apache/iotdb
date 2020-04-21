@@ -43,6 +43,7 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -224,6 +225,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
         term.set(leaderTerm);
         setLeader(request.getLeader());
+        updateHardState(leaderTerm);
         if (character != NodeCharacter.FOLLOWER) {
           setCharacter(NodeCharacter.FOLLOWER);
           // interrupt election
@@ -286,6 +288,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return false;
       } else if (leaderTerm > localTerm) {
         term.set(leaderTerm);
+        updateHardState(leaderTerm);
         localTerm = leaderTerm;
         if (character != NodeCharacter.FOLLOWER) {
           setCharacter(NodeCharacter.FOLLOWER);
@@ -562,6 +565,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
         term.set(newTerm);
+        updateHardState(newTerm);
         setCharacter(NodeCharacter.FOLLOWER);
         setLeader(null);
       }
@@ -595,6 +599,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           thatLastLogTerm);
       if (resp == Response.RESPONSE_AGREE) {
         term.set(thatTerm);
+        updateHardState(thatTerm);
         setCharacter(NodeCharacter.FOLLOWER);
         lastHeartbeatReceivedTime = System.currentTimeMillis();
         leader = electionRequest.getElector();
@@ -1005,6 +1010,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     if (fileExhausted) {
       file.delete();
     }
+  }
+
+  //TODO maintain voteFor
+  public void updateHardState(long currentTerm){
+    HardState state = logManager.getHardState();
+    state.setCurrentTerm(currentTerm);
+    logManager.updateHardState(state);
   }
 
   public void setReadOnly() {

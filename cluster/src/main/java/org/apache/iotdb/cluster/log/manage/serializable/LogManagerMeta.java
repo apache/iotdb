@@ -63,7 +63,7 @@ public class LogManagerMeta {
   public String toString() {
     return "LogManagerMeta{" +
         "commitLogTerm=" + commitLogTerm +
-        "commitLogIndex=" + commitLogIndex +
+        ", commitLogIndex=" + commitLogIndex +
         ", lastLogIndex=" + lastLogIndex +
         ", lastLogTerm=" + lastLogTerm +
         '}';
