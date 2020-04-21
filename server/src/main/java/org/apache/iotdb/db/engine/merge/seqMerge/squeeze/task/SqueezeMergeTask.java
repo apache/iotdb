@@ -62,7 +62,7 @@ public class SqueezeMergeTask implements Callable<Void> {
   MergeCallback callback;
   String taskName;
 
-  TsFileResource newResource;
+  List<TsFileResource> newResources;
 
   public SqueezeMergeTask(
       MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
@@ -125,7 +125,7 @@ public class SqueezeMergeTask implements Callable<Void> {
 
     MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger,
         resource, unmergedSeries);
-    newResource = mergeChunkTask.mergeSeries();
+    newResources = mergeChunkTask.mergeSeries();
 
     cleanUp(true);
     if (logger.isInfoEnabled()) {
@@ -156,8 +156,6 @@ public class SqueezeMergeTask implements Callable<Void> {
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again
-      List<TsFileResource> newResources = new ArrayList<>();
-      newResources.add(newResource);
       callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile, newResources);
     } else {
       logFile.delete();

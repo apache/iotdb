@@ -67,7 +67,6 @@ public class IndependenceMergeTask implements Callable<Void> {
   private MergeContext mergeContext = new MergeContext();
 
   MergeCallback callback;
-  int concurrentMergeSeriesNum;
   String taskName;
 
   List<TsFileResource> newResources;

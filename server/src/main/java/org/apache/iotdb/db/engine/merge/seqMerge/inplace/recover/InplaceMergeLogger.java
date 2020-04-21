@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
+import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -31,7 +32,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 /**
  * InplaceMergeLogger records the progress of a merge in file "merge.log" as text lines.
  */
-public class InplaceMergeLogger {
+public class InplaceMergeLogger implements MergeLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log.inplace";
 
@@ -75,10 +76,16 @@ public class InplaceMergeLogger {
     logStream.flush();
   }
 
+  @Override
   public void logAllTsEnd() throws IOException {
     logStream.write(STR_ALL_TS_END);
     logStream.newLine();
     logStream.flush();
+  }
+
+  @Override
+  public void logNewFile(TsFileResource resource) throws IOException {
+
   }
 
   public void logFileMergeStart(File file, long position) throws IOException {

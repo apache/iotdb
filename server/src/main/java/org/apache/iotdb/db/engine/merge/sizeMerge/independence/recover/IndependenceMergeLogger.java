@@ -23,12 +23,13 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 /**
  * IndependenceMergeLogger records the progress of a merge in file "merge.log" as text lines.
  */
-public class IndependenceMergeLogger {
+public class IndependenceMergeLogger implements MergeLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log.independence";
 
@@ -45,6 +46,7 @@ public class IndependenceMergeLogger {
     logStream.close();
   }
 
+  @Override
   public void logAllTsEnd() throws IOException {
     logStream.write(STR_ALL_TS_END);
     logStream.newLine();
@@ -57,6 +59,7 @@ public class IndependenceMergeLogger {
     logStream.flush();
   }
 
+  @Override
   public void logNewFile(TsFileResource resource) throws IOException {
     logStream.write(resource.getFile().getAbsolutePath());
     logStream.newLine();

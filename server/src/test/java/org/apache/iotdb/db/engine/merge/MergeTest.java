@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
@@ -190,6 +191,7 @@ public abstract class MergeTest {
         fileWriter.flushAllChunkGroups();
       }
     }
+    fileWriter.writeVersion(tsFileResource.getHistoricalVersions().iterator().next());
     fileWriter.close();
   }
 }

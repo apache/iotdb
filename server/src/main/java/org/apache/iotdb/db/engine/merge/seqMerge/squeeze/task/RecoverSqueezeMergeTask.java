@@ -78,7 +78,7 @@ public class RecoverSqueezeMergeTask extends SqueezeMergeTask implements IRecove
         cleanUp(true);
         break;
       case ALL_TS_MERGED:
-        newResource = analyzer.getNewResource().get(0);
+        newResources = analyzer.getNewResource();
         cleanUp(true);
         break;
       default:
