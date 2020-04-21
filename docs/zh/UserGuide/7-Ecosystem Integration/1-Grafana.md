@@ -88,7 +88,7 @@ mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana
 ```
 
-在运行jar包前，如果您需要配置属性值，您可以去`target/classes`目录下配置`application.properties`文件（默认属性如下）
+在运行jar包前，如果您需要配置属性值，您可以去`/target/classes/`目录下配置`application.properties`文件（默认属性如下）
 
 ```
 # ip and port of IoTDB 
@@ -112,7 +112,7 @@ function=avg
 
 ### 启动IoTDB-Grafana
 
-在`grafana/target/`目录下
+在`/grafana/target/`目录下
 
 ```shell
 cd target
