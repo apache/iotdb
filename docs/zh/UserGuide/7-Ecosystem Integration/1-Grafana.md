@@ -83,39 +83,20 @@ Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /u
 
 ```shell
 git clone https://github.com/apache/incubator-iotdb.git
-cd incubator-iotdb
-mvn clean package -pl grafana -am -Dmaven.test.skip=true
-cd grafana
-```
-
-在运行jar包前，如果您需要配置属性值，您可以去`/target/classes/`目录下配置`application.properties`文件（默认属性如下）
-
-```
-# ip and port of IoTDB 
-spring.datasource.url=jdbc:iotdb://127.0.0.1:6667/
-spring.datasource.username=root
-spring.datasource.password=root
-spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
-server.port=8888
-# Use this value to set timestamp precision as "ms", "us" or "ns", which must to be same with the timestamp
-# precision of Apache IoTDB engine.
-timestamp_precision=ms
-
-# Use this value to set down sampling true/false
-isDownSampling=true
-# defaut sampling intervals
-interval=1m
-# aggregation function to use to downsampling the data
-# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
-function=avg
 ```
 
 ### 启动IoTDB-Grafana
 
-在`/grafana/target/`目录下
+#### 方案一（适合开发者）
+
+导入整个项目，maven依赖安装完后，直接运行`incubatoriotdb\grafana\src\main\java\org\apache\iotdb\web\grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
+
+#### 方案二（适合使用者）
 
 ```shell
-cd target
+cd incubator-iotdb
+mvn clean package -pl grafana -am -Dmaven.test.skip=true
+cd grafana/target
 java -jar iotdb-grafana-{version}.war
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -149,3 +130,28 @@ Grafana以网页的dashboard形式为您展示数据，在使用时请您打开�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
 
+### 配置grafana
+
+在运行jar包前，如果您需要配置属性值，您可以去`/target/classes/`目录下配置`application.properties`文件（默认属性如下），配置完后再运行jar包
+
+```
+# IoTDB的IP和端口
+spring.datasource.url=jdbc:iotdb://127.0.0.1:6667/
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
+server.port=8888
+# Use this value to set timestamp precision as "ms", "us" or "ns", which must to be same with the timestamp
+# precision of Apache IoTDB engine.
+timestamp_precision=ms
+
+# 是否开启降采样
+isDownSampling=true
+# 默认采样interval
+interval=1m
+# 用于对数据进行降采样的聚合函数
+# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
+function=avg
+```
+
+### 
