@@ -57,36 +57,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClientMain {
-  
+
   private static final Logger logger = LoggerFactory.getLogger(ClientMain.class);
 
   private static Map<String, TSStatus> failedQueries;
 
-  private static final String[] STORAGE_GROUPS = new String[] {
+  private static final String[] STORAGE_GROUPS = new String[]{
       "root.beijing",
       "root.shanghai",
       "root.guangzhou",
       "root.shenzhen",
   };
 
-  private static final String[] DEVICES = new String[] {
+  private static final String[] DEVICES = new String[]{
       "root.beijing.d1",
       "root.shanghai.d1",
       "root.guangzhou.d1",
       "root.shenzhen.d1",
   };
 
-  private static final String[] MEASUREMENTS = new String[] {
+  private static final String[] MEASUREMENTS = new String[]{
       "s1"
   };
 
-  private static final TSDataType[] DATA_TYPES = new TSDataType[] {
+  private static final TSDataType[] DATA_TYPES = new TSDataType[]{
       TSDataType.DOUBLE
   };
 
   private static List<MeasurementSchema> schemas;
 
-  private static final String[] DATA_QUERIES = new String[] {
+  private static final String[] DATA_QUERIES = new String[]{
       // raw data multi series
       "SELECT * FROM root",
       "SELECT * FROM root WHERE time <= 691200000",
@@ -116,7 +116,7 @@ public class ClientMain {
       "SELECT AVG(*) FROM root.*.* WHERE s1 <= 0.7 GROUP BY ([0, 864000000), 3d, 3d)"
   };
 
-  private static String[] META_QUERY = new String[] {
+  private static String[] META_QUERY = new String[]{
       "SHOW STORAGE GROUP",
       "SHOW TIMESERIES root",
       "COUNT TIMESERIES root",
@@ -152,6 +152,9 @@ public class ClientMain {
 
     System.out.println("Test metadata queries");
     testQuery(client, sessionId, META_QUERY);
+
+    System.out.println("Test delete storage group");
+    testDeleteStorageGroup(client, sessionId);
 
     client.closeSession(new TSCloseSessionReq(openResp.getSessionId()));
 
@@ -207,11 +210,14 @@ public class ClientMain {
     client.closeOperation(tsCloseOperationReq);
   }
 
+  private static void testDeleteStorageGroup(Client client, long sessionId) throws TException {
+    logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
+  }
 
 
   private static void testInsertion(Client client, long sessionId) throws TException {
     for (String storageGroup : STORAGE_GROUPS) {
-      logger.info(client.setStorageGroup(sessionId,storageGroup ).toString());
+      logger.info(client.setStorageGroup(sessionId, storageGroup).toString());
     }
 
     TSCreateTimeseriesReq req = new TSCreateTimeseriesReq();
@@ -228,7 +234,7 @@ public class ClientMain {
     insertReq.setMeasurements(Arrays.asList(MEASUREMENTS));
     insertReq.setSessionId(sessionId);
     String[] values = new String[MEASUREMENTS.length];
-    for (int i = 0; i < 10; i ++) {
+    for (int i = 0; i < 10; i++) {
       insertReq.setTimestamp(i * 24 * 3600 * 1000L);
       for (int i1 = 0; i1 < values.length; i1++) {
         switch (DATA_TYPES[i1]) {
