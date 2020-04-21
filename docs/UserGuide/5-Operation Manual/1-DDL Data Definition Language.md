@@ -72,9 +72,23 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 Please refer to [Encoding](../2-Concept/3-Encoding.html) for correspondence between data type and encoding.
 
+### Tag and attribute management
+
+We can also add an alias, extra tag and attribute information while creating one timeseries.
+The SQL statements for creating timeseries with extra tag and attribute information are extended as follows:
+```
+create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
+```
+
+The `temprature` in the brackets is an alias for the sensor `s1`. So we can use `temprature` to replace `s1` anywhere.
+
+> Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
+
+The only difference between tag and attribute is that we will maintain an inverted index on the tag, so we can use tag property in the show timeseries where clause which you can see in the following `Show Timeseries` section.
+
 ## Show Timeseries
 
-Currently, IoTDB supports two ways of viewing timeseries:
+Currently, IoTDB supports three ways of viewing timeseries:
 
 * SHOW TIMESERIES statement presents all timeseries information in JSON form 
 * SHOW TIMESERIES <`Path`> statement returns all timeseries information and the total number of timeseries under the given <`Path`>  in tabular form. timeseries information includes: timeseries path, storage group it belongs to, data type, encoding type.  <`Path`> needs to be a prefix path or a path with star or a timeseries path. SQL statements are as follows:
@@ -88,6 +102,19 @@ The results are shown below respectly:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
+
+
+* SHOW TIMESERIES (<`PrefixPath`>)? WhereClause statement returns all the timeseries information that satisfy the where condition and start with the prefixPath
+SQL statements are as follows:
+```
+show timeseries root.ln where unit=c
+show timeseries root.ln where description contains 'test1'
+```
+
+The results are shown below respectly:
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/79682385-61544d80-8254-11ea-8c23-9e93e7152fda.png"></center>
+
+> Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.
 
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
