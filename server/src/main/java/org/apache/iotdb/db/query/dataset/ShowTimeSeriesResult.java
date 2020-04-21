@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -87,34 +86,44 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
 
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
-    ReadWriteIOUtils.write(alias, outputStream);
+    ReadWriteIOUtils.write(alias != null, outputStream);
+    if (alias != null) {
+      ReadWriteIOUtils.write(alias, outputStream);
+    }
     ReadWriteIOUtils.write(sgName, outputStream);
     ReadWriteIOUtils.write(dataType, outputStream);
     ReadWriteIOUtils.write(encoding, outputStream);
     ReadWriteIOUtils.write(compressor, outputStream);
 
-    ReadWriteIOUtils.write(tagAndAttribute.size(), outputStream);
-    for (Entry<String, String> stringStringEntry : tagAndAttribute.entrySet()) {
-      ReadWriteIOUtils.write(stringStringEntry.getKey(), outputStream);
-      ReadWriteIOUtils.write(stringStringEntry.getValue(), outputStream);
+    ReadWriteIOUtils.write(tagAndAttribute != null, outputStream);
+    if (tagAndAttribute != null) {
+      ReadWriteIOUtils.write(tagAndAttribute.size(), outputStream);
+      for (Entry<String, String> stringStringEntry : tagAndAttribute.entrySet()) {
+        ReadWriteIOUtils.write(stringStringEntry.getKey(), outputStream);
+        ReadWriteIOUtils.write(stringStringEntry.getValue(), outputStream);
+      }
     }
   }
 
   public static ShowTimeSeriesResult deserialize(ByteBuffer buffer) {
     ShowTimeSeriesResult result = new ShowTimeSeriesResult();
     result.name = ReadWriteIOUtils.readString(buffer);
-    result.alias = ReadWriteIOUtils.readString(buffer);
+    if (buffer.get() == 1) {
+      result.alias = ReadWriteIOUtils.readString(buffer);
+    }
     result.sgName = ReadWriteIOUtils.readString(buffer);
     result.dataType = ReadWriteIOUtils.readString(buffer);
     result.encoding = ReadWriteIOUtils.readString(buffer);
     result.compressor = ReadWriteIOUtils.readString(buffer);
 
-    int tagSize = buffer.getInt();
-    result.tagAndAttribute = new HashMap<>(tagSize);
-    for (int i = 0; i < tagSize; i++) {
-      String key = ReadWriteIOUtils.readString(buffer);
-      String value = ReadWriteIOUtils.readString(buffer);
-      result.tagAndAttribute.put(key, value);
+    if (buffer.get() == 1) {
+      int tagSize = buffer.getInt();
+      result.tagAndAttribute = new HashMap<>(tagSize);
+      for (int i = 0; i < tagSize; i++) {
+        String key = ReadWriteIOUtils.readString(buffer);
+        String value = ReadWriteIOUtils.readString(buffer);
+        result.tagAndAttribute.put(key, value);
+      }
     }
     return result;
   }

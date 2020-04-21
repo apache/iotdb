@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.common;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -126,7 +127,8 @@ public class IoTDBTest {
     try {
       MeasurementSchema schema = TestUtils.getTestSchema(sgNum, seriesNum);
       planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()),
-          schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps()));
+          schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
+          Collections.emptyMap(), Collections.emptyMap(), null));
     } catch (QueryProcessException e) {
       // ignore
     }

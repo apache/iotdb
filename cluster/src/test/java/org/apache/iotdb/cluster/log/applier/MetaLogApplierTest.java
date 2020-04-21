@@ -78,7 +78,7 @@ public class MetaLogApplierTest extends IoTDBTest {
 
     CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path("root.applyMeta"
         + ".s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
-        Collections.emptyMap());
+        Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     physicalPlanLog.setPlan(createTimeSeriesPlan);
     applier.apply(physicalPlanLog);
     assertTrue(MManager.getInstance().isPathExist("root.applyMeta.s1"));

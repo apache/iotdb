@@ -553,7 +553,8 @@ public class MetaGroupMemberTest extends MemberTest {
       MeasurementSchema schema = TestUtils.getTestSchema(i, 0);
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
           new Path(schema.getMeasurementId()), schema.getType(),
-          schema.getEncodingType(), schema.getCompressor(), schema.getProps());
+          schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
+          Collections.emptyMap(), Collections.emptyMap(), null);
       status = metaGroupMember.executeNonQuery(createTimeSeriesPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(i, 0)));
