@@ -67,6 +67,7 @@ public class ChunkMetadata {
     this.measurementUid = oldChunkMetadata.getMeasurementUid();
     this.tsDataType = oldChunkMetadata.getTsDataType();
     this.offsetOfChunkHeader = oldChunkMetadata.getOffsetOfChunkHeader();
+    this.version = oldChunkMetadata.getVersion();
     this.statistics = Statistics.constructStatisticsFromOldChunkMetadata(oldChunkMetadata);
   }
 
