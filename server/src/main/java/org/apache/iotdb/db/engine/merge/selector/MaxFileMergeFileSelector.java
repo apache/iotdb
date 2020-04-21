@@ -158,16 +158,6 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
         selectOverlappedSeqFiles(unseqFile);
       }
 
-      // skip if the unseqFile and tmpSelectedSeqFiles has TsFileResources that need to be upgraded
-      boolean isNeedUpgrade = checkForUpgrade(unseqFile);
-
-      if (isNeedUpgrade) {
-        tmpSelectedSeqFiles.clear();
-        unseqIndex++;
-        timeConsumption = System.currentTimeMillis() - startTime;
-        continue;
-      }
-
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost = useTightBound ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles,
           startTime, timeLimit) :
@@ -199,21 +189,6 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
               + " cost {}",
           unseqFile, tmpSelectedSeqFiles, newCost, totalCost);
     }
-  }
-
-  private boolean checkForUpgrade(TsFileResource unseqFile) {
-    // reject the selection if it contains files that should be upgraded
-    boolean isNeedUpgrade = false;
-    if (UpgradeUtils.isNeedUpgrade(unseqFile)) {
-      isNeedUpgrade = true;
-    }
-    for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (UpgradeUtils.isNeedUpgrade(resource.getSeqFiles().get(seqIdx))) {
-        isNeedUpgrade = true;
-        break;
-      }
-    }
-    return isNeedUpgrade;
   }
 
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
