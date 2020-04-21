@@ -184,6 +184,10 @@ class SeriesReader {
     return firstTimeSeriesMetadata.getStatistics();
   }
 
+  boolean currentFileModified() {
+    return firstTimeSeriesMetadata.hasModification();
+  }
+
   void skipCurrentFile() {
     firstTimeSeriesMetadata = null;
   }
@@ -264,6 +268,10 @@ class SeriesReader {
 
   Statistics currentChunkStatistics() {
     return firstChunkMetadata.getStatistics();
+  }
+
+  boolean currentChunkModified() {
+    return firstChunkMetadata.hasModification();
   }
 
   void skipCurrentChunk() {
@@ -400,6 +408,13 @@ class SeriesReader {
       return null;
     }
     return firstPageReader.getStatistics();
+  }
+
+  boolean currentPageModified() {
+    if (firstPageReader == null) {
+      return false;
+    }
+    return firstPageReader.hasModification();
   }
 
   void skipCurrentPage() {
@@ -584,7 +599,7 @@ class SeriesReader {
           .loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(),
               allSensors);
       if (timeseriesMetadata != null) {
-        timeseriesMetadata.getStatistics().setCanUseStatistics(false);
+        timeseriesMetadata.setModified(true);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
@@ -640,7 +655,7 @@ class SeriesReader {
     while (!unseqFileResource.isEmpty() && endTime >= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
       if (timeseriesMetadata != null) {
-        timeseriesMetadata.getStatistics().setCanUseStatistics(false);
+        timeseriesMetadata.setModified(true);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
@@ -692,6 +707,10 @@ class SeriesReader {
 
     void setFilter(Filter filter) {
       data.setFilter(filter);
+    }
+
+    boolean hasModification() {
+      return data.hasModification();
     }
   }
 }

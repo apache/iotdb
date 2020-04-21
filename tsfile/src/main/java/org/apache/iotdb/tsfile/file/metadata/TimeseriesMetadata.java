@@ -39,6 +39,7 @@ public class TimeseriesMetadata {
   
   private Statistics<?> statistics;
 
+  private boolean modified;
 
   private IChunkMetadataLoader chunkMetadataLoader;
 
@@ -115,5 +116,13 @@ public class TimeseriesMetadata {
 
   public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
     return chunkMetadataLoader.loadChunkMetadataList();
+  }
+
+  public boolean hasModification() {
+    return modified;
+  }
+
+  public void setModified(boolean modified) {
+    this.modified = modified;
   }
 }

@@ -416,14 +416,6 @@ public abstract class Statistics<T> {
     this.count = count;
   }
 
-  public boolean canUseStatistics() {
-    return canUseStatistics;
-  }
-
-  public void setCanUseStatistics(boolean canUseStatistics) {
-    this.canUseStatistics = canUseStatistics;
-  }
-
   @Override
   public String toString() {
     return "startTime: " + startTime + " endTime: " + endTime + " count: " + count;
