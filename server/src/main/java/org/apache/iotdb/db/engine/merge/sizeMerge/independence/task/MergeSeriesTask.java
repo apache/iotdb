@@ -42,10 +42,12 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
 
   private static final Logger logger = LoggerFactory.getLogger(
       MergeSeriesTask.class);
+  private List<Pair<RestorableTsFileIOWriter, TsFileResource>> newTsFilePairs;
 
   MergeSeriesTask(MergeContext context, String taskName, IndependenceMergeLogger mergeLogger,
       MergeResource mergeResource, List<Path> unmergedSeries) {
     super(context, taskName, mergeLogger, mergeResource, unmergedSeries);
+    this.newTsFilePairs = new ArrayList<>();
   }
 
   List<TsFileResource> mergeSeries() throws IOException {
@@ -54,18 +56,15 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
     }
     long startTime = System.currentTimeMillis();
 
-    List<TsFileResource> newResources = new ArrayList<>();
     Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = createNewFileWriter();
-    RestorableTsFileIOWriter nowFileWriter = newTsFilePair.left;
-    TsFileResource nowResource = newTsFilePair.right;
-    newResources.add(nowResource);
+    newTsFilePairs.add(newTsFilePair);
 
     List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
     for (List<Path> pathList : devicePaths) {
       // TODO: use statistics of queries to better rearrange series
       List<Path> paths = pathList;
       String deviceId = paths.get(0).getDevice();
-      nowFileWriter.startChunkGroup(paths.get(0).getDevice());
+      newTsFilePair.left.startChunkGroup(paths.get(0).getDevice());
       Long nowResourceStartTime = null;
       Long nowResourceEndTime = null;
       for (TsFileResource currTsFile : resource.getSeqFiles()) {
@@ -80,22 +79,26 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
         if (nowResourceEndTime == null || currDeviceMaxTime > nowResourceEndTime) {
           nowResourceEndTime = currDeviceMaxTime;
         }
-        mergePaths(currTsFile, paths, nowFileWriter);
+        mergePaths(currTsFile, paths, newTsFilePair.left);
         if (nowResourceEndTime - nowResourceStartTime > timeBlock) {
-          nowResource.getStartTimeMap().put(deviceId, nowResourceStartTime);
-          nowResource.getEndTimeMap().put(deviceId, nowResourceEndTime);
-          resource.flushChunks(nowFileWriter);
-          nowFileWriter.endChunkGroup();
+          newTsFilePair.right.getStartTimeMap().put(deviceId, nowResourceStartTime);
+          newTsFilePair.right.getEndTimeMap().put(deviceId, nowResourceEndTime);
+          resource.flushChunks(newTsFilePair.left);
+          newTsFilePair.left.endChunkGroup();
 
-          nowFileWriter.endFile();
           newTsFilePair = createNewFileWriter();
-          nowFileWriter = newTsFilePair.left;
-          nowResource = newTsFilePair.right;
-          newResources.add(nowResource);
+          newTsFilePairs.add(newTsFilePair);
         }
       }
-      resource.flushChunks(nowFileWriter);
-      nowFileWriter.endChunkGroup();
+      newTsFilePair.right.getStartTimeMap().put(deviceId, nowResourceStartTime);
+      newTsFilePair.right.getEndTimeMap().put(deviceId, nowResourceEndTime);
+      resource.flushChunks(newTsFilePair.left);
+      newTsFilePair.left.endChunkGroup();
+    }
+    List<TsFileResource> newResources = new ArrayList<>();
+    for (Pair<RestorableTsFileIOWriter, TsFileResource> tsFilePair : newTsFilePairs) {
+      newResources.add(tsFilePair.right);
+      tsFilePair.left.endFile();
     }
     mergeLogger.logAllTsEnd();
 

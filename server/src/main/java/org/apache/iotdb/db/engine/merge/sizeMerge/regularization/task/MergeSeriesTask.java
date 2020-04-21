@@ -95,6 +95,8 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
           nowResource = newTsFilePair.right;
         }
       }
+      nowResource.getStartTimeMap().put(deviceId, nowResourceStartTime);
+      nowResource.getEndTimeMap().put(deviceId, nowResourceEndTime);
       resource.flushChunks(nowFileWriter);
       nowFileWriter.endChunkGroup();
     }

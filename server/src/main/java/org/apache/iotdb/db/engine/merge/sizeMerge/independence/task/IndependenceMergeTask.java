@@ -56,7 +56,7 @@ import org.slf4j.LoggerFactory;
  */
 public class IndependenceMergeTask implements Callable<Void> {
 
-  public static final String MERGE_SUFFIX = ".merge.regularization";
+  public static final String MERGE_SUFFIX = ".merge.independence";
   private static final Logger logger = LoggerFactory.getLogger(
       IndependenceMergeTask.class);
 
