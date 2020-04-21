@@ -70,14 +70,14 @@ public class UpgradeTask extends WrappedRunnable {
           File upgradedFile = upgradedResource.getFile();
           long partition = upgradedResource.getTimePartitionWithCheck();
           String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
-          File patitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition + "");
-          if (!patitionDir.exists()) {
-            patitionDir.mkdir();
+          File partitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition + "");
+          if (!partitionDir.exists()) {
+            partitionDir.mkdir();
           }
           FSFactoryProducer.getFSFactory().moveFile(upgradedFile,
-              FSFactoryProducer.getFSFactory().getFile(patitionDir, upgradedFile.getName()));
+              FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()));
           upgradedResource.setFile(
-              FSFactoryProducer.getFSFactory().getFile(patitionDir, upgradedFile.getName()));
+              FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()));
           upgradedResource.serialize();
         }
         upgradeResource.setUpgradedResources(upgradedResources);

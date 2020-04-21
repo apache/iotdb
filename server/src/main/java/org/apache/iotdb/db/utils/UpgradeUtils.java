@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
+import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -26,21 +36,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
-import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class UpgradeUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(UpgradeUtils.class);
-
-  private static final String TMP_STRING = "tmp";
-  private static final String UPGRADE_FILE_PREFIX = "upgrade_";
   private static final String COMMA_SEPERATOR = ",";
   private static final ReadWriteLock cntUpgradeFileLock = new ReentrantReadWriteLock();
   private static final ReadWriteLock upgradeLogLock = new ReentrantReadWriteLock();
@@ -76,12 +75,16 @@ public class UpgradeUtils {
     return false;
   }
 
-  public static String getUpgradeFileName(File upgradeResource) {
-    return upgradeResource.getParentFile().getParent() + File.separator + TMP_STRING
-        + File.separator + UPGRADE_FILE_PREFIX + upgradeResource.getName();
+  public static String getOneUpgradedFileName(TsFileResource upgradeResource)
+      throws IOException {
+    upgradeResource.deserialize();
+    long firstPartitionId = upgradeResource.getTimePartition();
+    File oldTsFile = upgradeResource.getFile();
+    String upgradedFileName = oldTsFile.getParent()
+        + File.separator + firstPartitionId + File.separator+ oldTsFile.getName();
+    return upgradedFileName;
   }
 
-  // FIXME
   public static void recoverUpgrade() {
     if (FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
       try (BufferedReader upgradeLogReader = new BufferedReader(
@@ -90,38 +93,66 @@ public class UpgradeUtils {
         Map<String, Integer> upgradeRecoverMap = new HashMap<>();
         String line = null;
         while ((line = upgradeLogReader.readLine()) != null) {
-          String upgradeFileName = line.split(COMMA_SEPERATOR)[0];
-          if (upgradeRecoverMap.containsKey(upgradeFileName)) {
-            upgradeRecoverMap.put(upgradeFileName, upgradeRecoverMap.get(upgradeFileName) + 1);
+          String oldFileName = line.split(COMMA_SEPERATOR)[0];
+          if (upgradeRecoverMap.containsKey(oldFileName)) {
+            upgradeRecoverMap.put(oldFileName, upgradeRecoverMap.get(oldFileName) + 1);
           } else {
-            upgradeRecoverMap.put(upgradeFileName, 1);
+            upgradeRecoverMap.put(oldFileName, 1);
           }
         }
         for (String key : upgradeRecoverMap.keySet()) {
-          String upgradeFileName = getUpgradeFileName(
-              FSFactoryProducer.getFSFactory().getFile(key));
           if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.BEGIN_UPGRADE_FILE
               .getCheckStatusCode()) {
-            if (FSFactoryProducer.getFSFactory().getFile(upgradeFileName).exists()) {
-              FSFactoryProducer.getFSFactory().getFile(upgradeFileName).delete();
+            // delete generated TsFiles and partition directories
+            File upgradeDir = FSFactoryProducer.getFSFactory().getFile(key)
+                .getParentFile();
+            File[] partitionDirs = upgradeDir.listFiles();
+            for (File partitionDir : partitionDirs) {
+              if (partitionDir.isDirectory()) {
+                File[] generatedFiles = partitionDir.listFiles();
+                for (File generatedFile : generatedFiles) {
+                  if (generatedFile.getName().equals(FSFactoryProducer.getFSFactory()
+                      .getFile(key).getName())) {
+                    if (!generatedFile.delete()) {
+                      logger.error("Failed to delete {} ", generatedFile);
+                    }
+                  }
+                }
+              }
             }
           } else if (upgradeRecoverMap.get(key) == UpgradeCheckStatus.AFTER_UPGRADE_FILE
               .getCheckStatusCode()) {
+            String upgradedFileName = getOneUpgradedFileName(new TsFileResource(
+                FSFactoryProducer.getFSFactory().getFile(key)));
             if (FSFactoryProducer.getFSFactory().getFile(key).exists() && FSFactoryProducer
-                .getFSFactory().getFile(upgradeFileName).exists()) {
-              //if both old tsfile and upgrade file exists, replace the old tsfile with the upgrade one
-              FSFactoryProducer.getFSFactory().getFile(key).delete();
-              FSFactoryProducer.getFSFactory()
-                  .moveFile(FSFactoryProducer.getFSFactory().getFile(upgradeFileName),
-                      FSFactoryProducer.getFSFactory().getFile(key));
-            } else if (!FSFactoryProducer.getFSFactory().getFile(key).exists()) {
-              //if the old tsfile does not exist, rename the upgrade file to the old tsfile path
-              FSFactoryProducer.getFSFactory()
-                  .moveFile(FSFactoryProducer.getFSFactory().getFile(upgradeFileName),
-                      FSFactoryProducer.getFSFactory().getFile(key));
+                .getFSFactory().getFile(upgradedFileName).exists()) {
+              // if both old tsfile and upgrade file exists, delete the old tsfile and resource
+              if (!FSFactoryProducer.getFSFactory().getFile(key).delete()) {
+                logger.error("Failed to delete {} ", key);
+              }
+              if (!FSFactoryProducer.getFSFactory().getFile(key + TsFileResource.RESOURCE_SUFFIX).delete()) {
+                logger.error("Failed to delete resource {} ", key + TsFileResource.RESOURCE_SUFFIX);
+              }
+            } 
+            // move the upgrade files and resources to their own partition directories
+            File upgradeDir = FSFactoryProducer.getFSFactory().getFile(key)
+                .getParentFile();
+            String storageGroupPath = upgradeDir.getParent();
+            File[] partitionDirs = upgradeDir.listFiles();
+            for (File partitionDir : partitionDirs) {
+              if (partitionDir.isDirectory()) {
+                String partitionId = partitionDir.getName();
+                File destPartitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partitionId);
+                if (!destPartitionDir.exists()) {
+                  destPartitionDir.mkdir();
+                }
+                File[] generatedFiles = partitionDir.listFiles();
+                for (File generatedFile : generatedFiles) {
+                  FSFactoryProducer.getFSFactory().moveFile(generatedFile, 
+                      FSFactoryProducer.getFSFactory().getFile(destPartitionDir, generatedFile.getName()));
+                }
+              }
             }
-            FSFactoryProducer.getFSFactory().getFile(upgradeFileName).getParentFile()
-                .delete();
           }
         }
       } catch (IOException e) {
