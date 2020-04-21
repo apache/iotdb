@@ -114,7 +114,7 @@ $ java -jar iotdb-grafana-{version}.war
 ...
 ```
 
-If you need to configure properties, move the `grafana/config` directory or` grafana/config/application.properties` to the same directory as the war package (`grafana/target`)
+If you need to configure properties, move the ` grafana/src/main/resources/application.properties` to the same directory as the war package (`grafana/target`)
 
 ## Explore in Grafana
 

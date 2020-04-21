@@ -108,7 +108,7 @@ java -jar iotdb-grafana-{version}.war
 ...
 ```
 
-如果您需要配置属性，将`grafana/config`目录或者`grafana/config/application.properties`移动到war包同级目录下（`grafana/target`）
+如果您需要配置属性，将`grafana/src/main/resources/application.properties`移动到war包同级目录下（`grafana/target`）
 
 ## 使用Grafana
 
