@@ -108,6 +108,8 @@ java -jar iotdb-grafana-{version}.war
 ...
 ```
 
+如果您需要配置属性，将`grafana/config`目录或者`grafana/config/application.properties`移动到war包同级目录下（`grafana/target`）
+
 ## 使用Grafana
 
 Grafana以网页的dashboard形式为您展示数据，在使用时请您打开浏览器，访问http://\<ip\>:\<port\>
@@ -131,8 +133,6 @@ Grafana以网页的dashboard形式为您展示数据，在使用时请您打开�
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
 
 ## 配置grafana
-
-在运行jar包前，如果您需要配置属性值，您可以去`/target/classes/`目录下配置`application.properties`文件（默认属性如下），配置完后再运行jar包
 
 ```
 # IoTDB的IP和端口
@@ -163,3 +163,10 @@ function=avg
 1d~30d:intervals = 1h
 
 \>30d：intervals = 1d
+
+配置完后，请重新运行war包
+
+```
+java -jar iotdb-grafana-{version}.war
+```
+

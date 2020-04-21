@@ -114,6 +114,8 @@ $ java -jar iotdb-grafana-{version}.war
 ...
 ```
 
+If you need to configure properties, move the `grafana/config` directory or` grafana/config/application.properties` to the same directory as the war package (`grafana/target`)
+
 ## Explore in Grafana
 
 The default port of Grafana is 3000, see http://localhost:3000
@@ -134,8 +136,6 @@ Add diagrams in dashboard and customize your query. See http://docs.grafana.org/
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
 
 ## config grafana
-
-Before running the jar package, if you need to configure property values, you can go to the `/target/classes/` directory and configure the` application.properties` file (the default properties are as follows)
 
 ```
 # ip and port of IoTDB 
@@ -166,3 +166,10 @@ The specific configuration information of interval is as follows
 1d~30d:intervals = 1h
 
 \>30d：intervals = 1d
+
+After configuration, please re-run war package
+
+```
+java -jar iotdb-grafana-{version}.war
+```
+
