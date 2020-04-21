@@ -63,6 +63,8 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method testInsertRowInBatch(1:TSInsertInBatchReq req);   | Kaifeng Xue |
 | Add method testInsertRow(1:TSInsertReq req);                 | Kaifeng Xue |
 | Add method testInsertBatch(1:TSBatchInsertionReq req);       | Kaifeng Xue |
+| Add struct TSCreateMultiTimeseriesReq                        | qiaojialin |
+| Add method createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);       | qiaojialin |
 
 
 ## 3. Update

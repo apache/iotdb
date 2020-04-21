@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.session.Config.PATH_PATTERN;
-
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +30,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -562,7 +561,6 @@ public class Session {
 
   public void setStorageGroup(String storageGroupId)
       throws IoTDBConnectionException, StatementExecutionException {
-    checkPathValidity(storageGroupId);
     try {
       RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroupId));
     } catch (TException e) {
@@ -597,7 +595,6 @@ public class Session {
       TSEncoding encoding, CompressionType compressor, Map<String, String> props,
       Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
       throws IoTDBConnectionException, StatementExecutionException {
-    checkPathValidity(path);
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setSessionId(sessionId);
     request.setPath(path);
@@ -616,9 +613,47 @@ public class Session {
     }
   }
 
-  public boolean checkTimeseriesExists(String path)
-      throws StatementExecutionException, IoTDBConnectionException {
-    checkPathValidity(path);
+  public void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
+      List<TSEncoding> encodings, List<CompressionType> compressors,
+      List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList, List<String> measurementAliasList)
+      throws IoTDBConnectionException, BatchExecutionException {
+
+    TSCreateMultiTimeseriesReq request = new TSCreateMultiTimeseriesReq();
+    request.setSessionId(sessionId);
+    request.setPaths(paths);
+
+    List<Integer> dataTypeOrdinals = new ArrayList<>(paths.size());
+    for (TSDataType dataType: dataTypes) {
+      dataTypeOrdinals.add(dataType.ordinal());
+    }
+    request.setDataTypes(dataTypeOrdinals);
+
+    List<Integer> encodingOrdinals = new ArrayList<>(paths.size());
+    for (TSEncoding encoding: encodings) {
+      encodingOrdinals.add(encoding.ordinal());
+    }
+    request.setEncodings(encodingOrdinals);
+
+    List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
+    for (CompressionType compression: compressors) {
+      compressionOrdinals.add(compression.ordinal());
+    }
+    request.setCompressors(compressionOrdinals);
+
+    request.setPropsList(propsList);
+    request.setTagsList(tagsList);
+    request.setAttributesList(attributesList);
+    request.setMeasurementAliasList(measurementAliasList);
+
+    try {
+      RpcUtils.verifySuccess(client.createMultiTimeseries(request).statusList);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+  }
+
+  public boolean checkTimeseriesExists(String path) throws IoTDBConnectionException {
     try {
       return executeQueryStatement(String.format("SHOW TIMESERIES %s", path)).hasNext();
     } catch (Exception e) {
@@ -714,9 +749,4 @@ public class Session {
     }
   }
 
-  private void checkPathValidity(String path) throws StatementExecutionException {
-    if (!PATH_PATTERN.matcher(path).matches()) {
-      throw new StatementExecutionException(String.format("Path [%s] is invalid", path));
-    }
-  }
 }

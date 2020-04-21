@@ -55,6 +55,7 @@ import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -78,6 +79,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
+import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
 
@@ -1183,8 +1185,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
+    TSStatus status = checkPathValidity(storageGroup);
+    if (status != null) {
+      return status;
+    }
+
     SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
-    TSStatus status = checkAuthority(plan, sessionId);
+    status = checkAuthority(plan, sessionId);
     if (status != null) {
       return new TSStatus(status);
     }
@@ -1211,23 +1218,78 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus createTimeseries(TSCreateTimeseriesReq req) {
-    //TODO : init tags
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
-    CreateTimeSeriesPlan plan =
-        new CreateTimeSeriesPlan(
-            new Path(req.getPath()),
-            TSDataType.values()[req.getDataType()],
-            TSEncoding.values()[req.getEncoding()],
-            CompressionType.values()[req.compressor],
-            req.props, req.tags, req.attributes, req.measurementAlias);
-    TSStatus status = checkAuthority(plan, req.getSessionId());
+
+    TSStatus status = checkPathValidity(req.path);
     if (status != null) {
-      return new TSStatus(status);
+      return status;
     }
-    return new TSStatus(executePlan(plan));
+
+    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.path),
+        TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
+        CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
+        req.measurementAlias);
+    status = checkAuthority(plan, req.getSessionId());
+    if (status != null) {
+      return status;
+    }
+    return executePlan(plan);
+  }
+
+  @Override
+  public TSExecuteBatchStatementResp createMultiTimeseries(TSCreateMultiTimeseriesReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+
+    List<TSStatus> statusList = new ArrayList<>(req.paths.size());
+    for (int i = 0; i < req.paths.size(); i++) {
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPaths().get(i)),
+          TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
+          CompressionType.values()[req.compressors.get(i)],
+          req.propsList == null ? null : req.propsList.get(i),
+          req.tagsList == null ? null : req.tagsList.get(i),
+          req.attributesList == null ? null : req.attributesList.get(i),
+          req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
+
+      TSStatus status = checkPathValidity(req.paths.get(i));
+      if (status != null) {
+        // path naming is not valid
+        statusList.add(status);
+        continue;
+      }
+
+      status = checkAuthority(plan, req.getSessionId());
+      if (status != null) {
+        // not authorized
+        statusList.add(status);
+        continue;
+      }
+
+      statusList.add(executePlan(plan));
+    }
+
+    boolean isAllSuccessful = true;
+    for (TSStatus tsStatus : statusList) {
+      if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        isAllSuccessful = false;
+        break;
+      }
+    }
+
+    if (isAllSuccessful) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Create multiple timeseries successfully");
+      }
+      return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      logger.debug("Create multiple timeseries failed!");
+      return RpcUtils.getTSBatchExecuteStatementResp(statusList);
+    }
   }
 
   @Override
@@ -1243,9 +1305,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     DeleteTimeSeriesPlan plan = new DeleteTimeSeriesPlan(pathList);
     TSStatus status = checkAuthority(plan, sessionId);
     if (status != null) {
-      return new TSStatus(status);
+      return status;
     }
-    return new TSStatus(executePlan(plan));
+    return executePlan(plan);
   }
 
   @Override
@@ -1282,6 +1344,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return execRet
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+  }
+
+  private TSStatus checkPathValidity(String path) {
+    if (!PATH_PATTERN.matcher(path).matches()) {
+      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL);
+    } else {
+      return null;
+    }
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
