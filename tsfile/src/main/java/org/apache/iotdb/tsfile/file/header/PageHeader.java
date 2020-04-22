@@ -33,7 +33,7 @@ public class PageHeader {
   private int uncompressedSize;
   private int compressedSize;
   private Statistics statistics;
-  private boolean pageModified;
+  private boolean modified;
 
   public PageHeader(int uncompressedSize, int compressedSize, Statistics statistics) {
     this.uncompressedSize = uncompressedSize;
@@ -104,11 +104,11 @@ public class PageHeader {
         + compressedSize + ", statistics=" + statistics + "}";
   }
 
-  public boolean hasModification() {
-    return pageModified;
+  public boolean isModified() {
+    return modified;
   }
 
   public void setModified(boolean modified) {
-    this.pageModified = modified;
+    this.modified = modified;
   }
 }

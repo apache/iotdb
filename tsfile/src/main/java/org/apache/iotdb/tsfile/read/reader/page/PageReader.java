@@ -164,7 +164,7 @@ public class PageReader implements IPageReader {
   }
 
   @Override
-  public boolean hasModification() {
-    return pageHeader.hasModification();
+  public boolean isModified() {
+    return pageHeader.isModified();
   }
 }

@@ -55,11 +55,6 @@ public abstract class Statistics<T> {
   private long endTime = Long.MIN_VALUE;
 
   /**
-   * If the statistics has been modified, it can't be used.
-   */
-  private boolean canUseStatistics = true;
-
-  /**
    * static method providing statistic instance for respective data type.
    *
    * @param type - data type

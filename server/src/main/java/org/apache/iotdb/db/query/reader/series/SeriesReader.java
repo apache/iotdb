@@ -184,8 +184,11 @@ class SeriesReader {
     return firstTimeSeriesMetadata.getStatistics();
   }
 
-  boolean currentFileModified() {
-    return firstTimeSeriesMetadata.hasModification();
+  boolean currentFileModified() throws IOException {
+    if (firstTimeSeriesMetadata == null) {
+      throw new IOException("no first file");
+    }
+    return firstTimeSeriesMetadata.isModified();
   }
 
   void skipCurrentFile() {
@@ -270,8 +273,11 @@ class SeriesReader {
     return firstChunkMetadata.getStatistics();
   }
 
-  boolean currentChunkModified() {
-    return firstChunkMetadata.hasModification();
+  boolean currentChunkModified() throws IOException {
+    if (firstChunkMetadata == null) {
+      throw new IOException("no first chunk");
+    }
+    return firstChunkMetadata.isModified();
   }
 
   void skipCurrentChunk() {
@@ -410,11 +416,11 @@ class SeriesReader {
     return firstPageReader.getStatistics();
   }
 
-  boolean currentPageModified() {
+  boolean currentPageModified() throws IOException {
     if (firstPageReader == null) {
-      return false;
+      throw new IOException("no first page");
     }
-    return firstPageReader.hasModification();
+    return firstPageReader.isModified();
   }
 
   void skipCurrentPage() {
@@ -709,8 +715,8 @@ class SeriesReader {
       data.setFilter(filter);
     }
 
-    boolean hasModification() {
-      return data.hasModification();
+    boolean isModified() {
+      return data.isModified();
     }
   }
 }

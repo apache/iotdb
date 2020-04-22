@@ -118,7 +118,7 @@ public class TimeseriesMetadata {
     return chunkMetadataLoader.loadChunkMetadataList();
   }
 
-  public boolean hasModification() {
+  public boolean isModified() {
     return modified;
   }
 

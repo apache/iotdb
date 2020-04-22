@@ -32,5 +32,5 @@ public interface IPageReader {
 
   void setFilter(Filter filter);
 
-  boolean hasModification();
+  boolean isModified();
 }

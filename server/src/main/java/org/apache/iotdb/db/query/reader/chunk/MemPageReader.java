@@ -60,7 +60,7 @@ public class MemPageReader implements IPageReader {
   }
 
   @Override
-  public boolean hasModification() {
+  public boolean isModified() {
     return false;
   }
 }
