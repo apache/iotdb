@@ -160,8 +160,8 @@ andExpression
     ;
 
 predicate
-    : (TIME | TIMESTAMP | suffixPath | prefixPath) comparisonOperator constant
-    | (TIME | TIMESTAMP | suffixPath | prefixPath) inClause
+    : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
+    | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
