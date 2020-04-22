@@ -166,7 +166,7 @@ public class MLogWriter {
       writer.close();
     }
     if (!logFile.delete()) {
-      logger.error("Deleting old MLog file {} failed");
+      logger.error("Deleting old MLog file {} failed", logFile);
       return false;
     }
     FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
