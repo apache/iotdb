@@ -160,8 +160,8 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
 
       // skip if the unseqFile and tmpSelectedSeqFiles has TsFileResources that need to be upgraded
       boolean isNeedUpgrade = checkForUpgrade(unseqFile);
-
-      if (isNeedUpgrade) {
+      boolean isClosed = checkClosed(unseqFile);
+      if (isNeedUpgrade || !isClosed) {
         tmpSelectedSeqFiles.clear();
         unseqIndex++;
         timeConsumption = System.currentTimeMillis() - startTime;
@@ -199,6 +199,17 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
               + " cost {}",
           unseqFile, tmpSelectedSeqFiles, newCost, totalCost);
     }
+  }
+
+  private boolean checkClosed(TsFileResource unseqFile) {
+    boolean isClosed = unseqFile.isClosed();
+    for (Integer seqIdx : tmpSelectedSeqFiles) {
+      if (!resource.getSeqFiles().get(seqIdx).isClosed()) {
+        isClosed = false;
+        break;
+      }
+    }
+    return isClosed;
   }
 
   private boolean checkForUpgrade(TsFileResource unseqFile) {
