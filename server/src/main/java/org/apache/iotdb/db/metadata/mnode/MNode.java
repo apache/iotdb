@@ -19,9 +19,12 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -42,6 +45,8 @@ public abstract class MNode implements Serializable {
    * from root to this node, only be set when used once
    */
   protected String fullPath;
+
+  protected ReadWriteLock lock = new ReentrantReadWriteLock();
 
   /**
    * Constructor of MNode.
@@ -64,12 +69,12 @@ public abstract class MNode implements Serializable {
   /**
    * delete a child
    */
-  public abstract void deleteChild(String name);
+  public abstract void deleteChild(String name) throws DeleteFailedException;
 
   /**
    * delete the alias of a child
    */
-  public abstract void deleteAliasChild(String alias);
+  public abstract void deleteAliasChild(String alias) throws DeleteFailedException;
 
   /**
    * get the child with the name
@@ -120,5 +125,21 @@ public abstract class MNode implements Serializable {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public void readLock() {
+    MNode node = this;
+    while (node != null) {
+      node.lock.readLock().lock();
+      node = node.parent;
+    }
+  }
+
+  public void readUnlock() {
+    MNode node = this;
+    while (node != null) {
+      node.lock.readLock().unlock();
+      node = node.parent;
+    }
   }
 }

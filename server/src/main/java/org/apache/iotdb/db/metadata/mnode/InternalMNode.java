@@ -18,8 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
 public class InternalMNode extends MNode {
 
@@ -46,13 +51,34 @@ public class InternalMNode extends MNode {
 
 
   @Override
-  public void deleteChild(String name) {
-    children.remove(name);
-  }
+  public void deleteChild(String name) throws DeleteFailedException {
+    if (children.containsKey(name)) {
+      Lock writeLock;
+      // if its child node is leaf node, we need to acquire the write lock of the current device node
+      if (children.get(name) instanceof LeafMNode) {
+        writeLock = lock.writeLock();
+      } else {
+        // otherwise, we only need to acquire the write lock of its child node.
+        writeLock = children.get(name).lock.writeLock();
+      }
+      if (writeLock.tryLock()) {
+        children.remove(name);
+        writeLock.unlock();
+      } else {
+        throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + name);
+      }
+    }
+}
 
   @Override
-  public void deleteAliasChild(String alias) {
-    aliasChildren.remove(alias);
+  public void deleteAliasChild(String alias) throws DeleteFailedException {
+
+    if (lock.writeLock().tryLock()) {
+      aliasChildren.remove(alias);
+      lock.writeLock().unlock();
+    } else {
+      throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + alias);
+    }
   }
 
   @Override
