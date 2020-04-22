@@ -118,16 +118,40 @@ public class MLogWriter {
   }
 
   public static boolean upgradeMLog(String schemaDir, String logFileName) throws IOException {
-    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-    if (!logFile.exists()) {
-      // no mlog file to be upgraded
-      return false;
+    File logFile = FSFactoryProducer.getFSFactory()
+        .getFile(schemaDir + File.separator + logFileName);
+    File tmpLogFile = new File(logFile.getAbsolutePath() + ".tmp");
+
+    // if both old mlog and mlog.tmp do not exist, nothing to do
+    if (!logFile.exists() && !tmpLogFile.exists()) {
+      return true;
+    } else if (!logFile.exists() && tmpLogFile.exists()) {
+      // if old mlog doesn't exsit but mlog.tmp exists, rename tmp file to mlog  
+      FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
+      // if rename failed, return false
+      if (tmpLogFile.exists()) {
+        return false;
+      }
+      return true;
     }
+
+    // if both old mlog and mlog.tmp exist, delete mlog tmp, then do upgrading
+    if (tmpLogFile.exists()) {
+      if (!tmpLogFile.delete()) {
+        logger.error("Deleting tmp mlog file {} failed", tmpLogFile);
+        return false;
+      }
+    }
+    // upgrading
     FileReader fileReader;
     String line;
     fileReader = new FileReader(logFile);
     BufferedReader reader = new BufferedReader(fileReader);
-    StringBuilder bufAll = new StringBuilder();
+
+    FileWriter fileWriter;
+    fileWriter = new FileWriter(tmpLogFile, true);
+    BufferedWriter writer = new BufferedWriter(fileWriter);
+
     try {
       while ((line = reader.readLine()) != null) {
         StringBuilder buf = new StringBuilder();
@@ -135,42 +159,25 @@ public class MLogWriter {
         if (line.startsWith(MetadataOperationType.CREATE_TIMESERIES)) {
           buf.append(",,,,");
         }
-        buf.append(System.getProperty("line.separator"));
-        bufAll.append(buf);
+        writer.write(buf.toString());
+        writer.newLine();
+        writer.flush();
       }
     } catch (IOException e) {
-      logger.error("Reading MLog {} failed", logFile);
+      logger.error("Upgrading MLog file {} failed", logFile);
       return false;
     } finally {
       reader.close();
-    }
-    File tmpLogFile = new File(logFile.getAbsolutePath() + ".tmp");
-
-    if (!tmpLogFile.exists()) {
-      if (!tmpLogFile.delete()) {
-        logger.error("Deleting {} failed", tmpLogFile);
-        return false;
-      }
-    }
-
-    FileWriter fileWriter;
-    fileWriter = new FileWriter(tmpLogFile, true);
-    BufferedWriter writer = new BufferedWriter(fileWriter);
-    try {
-      writer.write(bufAll.toString());
-      writer.flush();
-    } catch (IOException e) {
-      logger.error("Writing upgraded MLog {} failed", tmpLogFile);
-      return false;
-    } finally {
       writer.close();
     }
-    if (!logFile.delete()) {
-      logger.error("Deleting old MLog file {} failed", logFile);
-      return false;
-    }
+
     FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
     if (tmpLogFile.exists()) {
+      return false;
+    }
+    // upgrade finished, delete old mlog file
+    if (!logFile.delete()) {
+      logger.error("Deleting tmp mlog file {} failed", logFile);
       return false;
     }
     return true;
