@@ -209,6 +209,18 @@ struct TSCreateTimeseriesReq {
   9: optional string measurementAlias
 }
 
+struct TSCreateMultiTimeseriesReq {
+  1: required i64 sessionId
+  2: required list<string> paths
+  3: required list<i32> dataTypes
+  4: required list<i32> encodings
+  5: required list<i32> compressors
+  6: optional list<map<string, string>> propsList
+  7: optional list<map<string, string>> tagsList
+  8: optional list<map<string, string>> attributesList
+  9: optional list<string> measurementAliasList
+}
+
 struct ServerProperties {
 	1: required string version;
 	2: required list<string> supportedTimeAggregationOperations;
@@ -262,6 +274,8 @@ service TSIService {
 	TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
+
+	TSExecuteBatchStatementResp createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
 
   TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 

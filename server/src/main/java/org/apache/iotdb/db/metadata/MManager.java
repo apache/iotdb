@@ -96,7 +96,7 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<LeafMNode>>> tagIndex = new HashMap<>();
 
-  private Map<String, Integer> seriesNumberInStorageGroups;
+  private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
@@ -169,7 +169,6 @@ public class MManager {
 
     try {
       tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
-      initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
         // storage group name -> the series number
@@ -250,7 +249,7 @@ public class MManager {
 
   public void operation(String cmd) throws IOException, MetadataException {
     //see createTimeseries() to get the detailed format of the cmd
-    String[] args = cmd.trim().split(",");
+    String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
         Map<String, String> props = new HashMap<>();

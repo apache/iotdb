@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,24 +18,24 @@
     under the License.
 
 -->
-<!-- TOC -->
+
+# IoTDB-Grafana
+
 ## 概览
 
 - IoTDB-Grafana
-    - Grafana的安装与部署
-        - 安装
-        - simple-json-datasource数据源插件安装
-        - 启动Grafana
-    - IoTDB安装
-    - IoTDB-Grafana连接器安装
-        - 启动IoTDB-Grafana
-    - 使用Grafana
-        - 添加IoTDB数据源
-        - 操作Grafana
+  - Grafana的安装与部署
+    - 安装
+    - simple-json-datasource数据源插件安装
+    - 启动Grafana
+  - IoTDB安装
+  - IoTDB-Grafana连接器安装
+    - 启动IoTDB-Grafana
+  - 使用Grafana
+    - 添加IoTDB数据源
+    - 操作Grafana
 
 <!-- /TOC -->
-
-# IoTDB-Grafana
 
 Grafana是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。Grafana支持Graphite，InfluxDB等国际主流时序时序数据库作为数据源。在IoTDB项目中，我们开发了Grafana展现IoTDB中时序数据的连接器IoTDB-Grafana，为您提供使用Grafana展示IoTDB数据库中的时序数据的可视化方法。
 
@@ -51,7 +51,7 @@ Grafana是开源的指标量监测和可视化工具，可用于展示时序数�
 * 插件名称: simple-json-datasource
 * 下载地址: https://github.com/grafana/simple-json-datasource
 
-具体下载方法是：到Grafana的插件目录中：`{Grafana文件目录}\data\plugin\`（Windows系统，启动Grafana后会自动创建`data\plugin`目录）或`/var/lib/grafana/plugins` （Linux系统，plugins目录需要手动创建）或`/usr/local/var/lib/grafana/plugins`（MacOS系统，具体位置参看使用`brew install`安装Grafana后命令行给出的位置提示。
+具体下载方法是：到Grafana的插件目录中：`{Grafana文件目录}\data\plugins\`（Windows系统，启动Grafana后会自动创建`data\plugins`目录）或`/var/lib/grafana/plugins` （Linux系统，plugins目录需要手动创建）或`/usr/local/var/lib/grafana/plugins`（MacOS系统，具体位置参看使用`brew install`安装Grafana后命令行给出的位置提示。
 
 执行下面的命令：
 
@@ -83,25 +83,20 @@ Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /u
 
 ```shell
 git clone https://github.com/apache/incubator-iotdb.git
-mvn clean package -pl grafana -am -Dmaven.test.skip=true
-cd grafana
-```
-
-编译成功后，您需将`application.properties`文件从`conf/`目录复制到`target/`目录下，并在该文件中插入以下（编辑属性值）：
-
-```
-# ip and port of IoTDB 
-spring.datasource.url = jdbc:iotdb://127.0.0.1:6667/
-spring.datasource.username = root
-spring.datasource.password = root
-spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
-server.port = 8888
 ```
 
 ### 启动IoTDB-Grafana
 
+#### 方案一（适合开发者）
+
+导入整个项目，maven依赖安装完后，直接运行`incubatoriotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个grafana连接器采用springboot开发
+
+#### 方案二（适合使用者）
+
 ```shell
-cd grafana/target/
+cd incubator-iotdb
+mvn clean package -pl grafana -am -Dmaven.test.skip=true
+cd grafana/target
 java -jar iotdb-grafana-{version}.war
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -113,9 +108,13 @@ java -jar iotdb-grafana-{version}.war
 ...
 ```
 
+如果您需要配置属性，将`grafana/src/main/resources/application.properties`移动到war包同级目录下（`grafana/target`）
+
 ## 使用Grafana
 
 Grafana以网页的dashboard形式为您展示数据，在使用时请您打开浏览器，访问http://\<ip\>:\<port\>
+
+默认地址为http://localhost:3000/
 
 注：IP为您的Grafana所在的服务器IP，Port为Grafana的运行端口（默认3000）。默认登录的用户名和密码都是“admin”。
 
@@ -132,4 +131,42 @@ Grafana以网页的dashboard形式为您展示数据，在使用时请您打开�
 进入Grafana可视化页面后，可以选择添加时间序列，如图 6.9。您也可以按照Grafana官方文档进行相应的操作，详情可参看Grafana官方文档：http://docs.grafana.org/guides/getting_started/。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664878-6e54a380-1ff5-11e9-9718-4d0e24627fa8.png">
+
+## 配置grafana
+
+```
+# IoTDB的IP和端口
+spring.datasource.url=jdbc:iotdb://127.0.0.1:6667/
+spring.datasource.username=root
+spring.datasource.password=root
+spring.datasource.driver-class-name=org.apache.iotdb.jdbc.IoTDBDriver
+server.port=8888
+# Use this value to set timestamp precision as "ms", "us" or "ns", which must to be same with the timestamp
+# precision of Apache IoTDB engine.
+timestamp_precision=ms
+
+# 是否开启降采样
+isDownSampling=true
+# 默认采样interval
+interval=1m
+# 用于对数据进行降采样的聚合函数
+# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
+function=avg
+```
+
+其中interval具体配置信息如下
+
+<1h: no sampling
+
+1h~1d : intervals = 1m
+
+1d~30d:intervals = 1h
+
+\>30d：intervals = 1d
+
+配置完后，请重新运行war包
+
+```
+java -jar iotdb-grafana-{version}.war
+```
 
