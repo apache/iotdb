@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query.manage;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -34,20 +35,18 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.Before;
 import org.junit.Test;
 
 public class QueryCoordinatorTest {
 
-  private TestMetaClient metaClient;
   private Map<Node, NodeStatus> nodeStatusMap;
   private Map<Node, Long> nodeLatencyMap;
   private QueryCoordinator coordinator = QueryCoordinator.getINSTANCE();
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() {
     nodeStatusMap = new HashMap<>();
     nodeLatencyMap = new HashMap<>();
     for (int i = 0; i < 10; i++) {
@@ -60,26 +59,28 @@ public class QueryCoordinatorTest {
       // nodes with smaller num has lower latency
       nodeLatencyMap.put(node, i * 100L);
     }
-    metaClient = new TestMetaClient(new Factory(),  new TAsyncClientManager(), TestUtils.getNode(0),
-        null) {
-      @Override
-      public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
-        new Thread(() -> {
-          try {
-            Thread.sleep(nodeLatencyMap.get(getNode()));
-          } catch (InterruptedException e) {
-            // ignored
-          }
-          resultHandler.onComplete(nodeStatusMap.get(getNode()).getStatus());
-        }).start();
-      }
-    };
 
     MetaGroupMember metaGroupMember = new MetaGroupMember() {
       @Override
       public AsyncClient connectNode(Node node) {
-        metaClient.setNode(node);
-        return metaClient;
+        try {
+          return new TestMetaClient(new Factory(),  null, node, null) {
+            @Override
+            public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
+              new Thread(() -> {
+                try {
+                  Thread.sleep(nodeLatencyMap.get(getNode()));
+                } catch (InterruptedException e) {
+                  // ignored
+                }
+                resultHandler.onComplete(nodeStatusMap.get(getNode()).getStatus());
+              }).start();
+            }
+          };
+        } catch (IOException e) {
+          fail(e.getMessage());
+          return null;
+        }
       }
     };
     coordinator.setMetaGroupMember(metaGroupMember);
