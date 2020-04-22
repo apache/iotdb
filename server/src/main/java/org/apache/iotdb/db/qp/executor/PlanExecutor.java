@@ -357,17 +357,17 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private QueryDataSet processShowTimeseriesWithIndex(ShowTimeSeriesPlan timeSeriesPlan)
+  private QueryDataSet processShowTimeseriesWithIndex(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
-        .getAllTimeseriesSchema(timeSeriesPlan);
+        .getAllTimeseriesSchema(showTimeSeriesPlan);
     return getQueryDataSet(timeseriesList);
   }
 
-  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan)
+  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
-        .showTimeseries(timeSeriesPlan);
+        .showTimeseries(showTimeSeriesPlan);
     return getQueryDataSet(timeseriesList);
   }
 

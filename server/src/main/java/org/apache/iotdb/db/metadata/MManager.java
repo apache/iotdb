@@ -680,7 +680,7 @@ public class MManager {
         throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
       }
       Map<String, Set<LeafMNode>> value2Node = tagIndex.get(plan.getKey());
-      Set<LeafMNode> allMatchedNodes = new HashSet<>();
+      Set<LeafMNode> allMatchedNodes = new TreeSet<>(Comparator.comparing(MNode::getFullPath));
       if (plan.isContains()) {
         for (Entry<String, Set<LeafMNode>> entry : value2Node.entrySet()) {
           String tagValue = entry.getKey();
@@ -698,8 +698,16 @@ public class MManager {
       }
       List<ShowTimeSeriesResult> res = new LinkedList<>();
       String[] prefixNodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
+      int curOffset = -1;
+      int count = 0;
+      int limit = plan.getLimit();
+      int offset = plan.getOffset();
       for (LeafMNode leaf : allMatchedNodes) {
         if (match(leaf.getFullPath(), prefixNodes)) {
+          curOffset ++;
+          if (curOffset < offset) {
+            continue;
+          }
           try {
             Pair<Map<String, String>, Map<String, String>> pair =
                     tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
@@ -709,6 +717,10 @@ public class MManager {
                     getStorageGroupName(leaf.getFullPath()), measurementSchema.getType().toString(),
                     measurementSchema.getEncodingType().toString(),
                     measurementSchema.getCompressor().toString(), pair.left));
+            count ++;
+            if (count == limit) {
+              return res;
+            }
           } catch (IOException e) {
             throw new MetadataException(
                 "Something went wrong while deserialize tag info of " + leaf.getFullPath(), e);
@@ -772,7 +784,7 @@ public class MManager {
           }
 
           count ++;
-          if (count >= plan.getLimit()) {
+          if (count == plan.getLimit()) {
             return res;
           }
 
