@@ -586,7 +586,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         throw new SQLParserException("group by fill doesn't support linear fill");
       }
       // all type use the same fill way
-      if (SQLConstant.ALL.equals(typeClause.dataType().getText().toLowerCase())) {
+      if (SQLConstant.ALL.equalsIgnoreCase(typeClause.dataType().getText())) {
         IFill fill;
         if (typeClause.previousUntilLastClause() != null) {
           fill = new PreviousFill(-1, true);
@@ -1147,8 +1147,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new Path(SQLConstant.RESERVED_TIME);
       }
-      if (ctx.prefixPath() != null) {
-        path = parsePrefixPath(ctx.prefixPath());
+      if (ctx.fullPath() != null) {
+        path = parseFullPath(ctx.fullPath());
       }
       if (ctx.suffixPath() != null) {
         path = parseSuffixPath(ctx.suffixPath());
