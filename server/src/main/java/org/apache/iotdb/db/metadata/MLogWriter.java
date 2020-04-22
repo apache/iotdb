@@ -117,29 +117,24 @@ public class MLogWriter {
     writer.flush();
   }
 
-  public static boolean upgradeMLog(String schemaDir, String logFileName) throws IOException {
+  public static void upgradeMLog(String schemaDir, String logFileName) throws IOException {
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(schemaDir + File.separator + logFileName);
     File tmpLogFile = new File(logFile.getAbsolutePath() + ".tmp");
 
     // if both old mlog and mlog.tmp do not exist, nothing to do
     if (!logFile.exists() && !tmpLogFile.exists()) {
-      return true;
+      return;
     } else if (!logFile.exists() && tmpLogFile.exists()) {
       // if old mlog doesn't exsit but mlog.tmp exists, rename tmp file to mlog  
       FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
-      // if rename failed, return false
-      if (tmpLogFile.exists()) {
-        return false;
-      }
-      return true;
+      return;
     }
 
     // if both old mlog and mlog.tmp exist, delete mlog tmp, then do upgrading
     if (tmpLogFile.exists()) {
       if (!tmpLogFile.delete()) {
-        logger.error("Deleting tmp mlog file {} failed", tmpLogFile);
-        return false;
+        throw new IOException("Deleting " + tmpLogFile + "failed.");
       }
     }
     // upgrading
@@ -163,24 +158,18 @@ public class MLogWriter {
         writer.newLine();
         writer.flush();
       }
-    } catch (IOException e) {
-      logger.error("Upgrading MLog file {} failed", logFile);
-      return false;
     } finally {
       reader.close();
       writer.close();
     }
 
-    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
-    if (tmpLogFile.exists()) {
-      return false;
-    }
     // upgrade finished, delete old mlog file
     if (!logFile.delete()) {
-      logger.error("Deleting tmp mlog file {} failed", logFile);
-      return false;
+      throw new IOException("Deleting " + logFile + "failed.");
     }
-    return true;
+    
+    // rename tmpLogFile to mlog
+    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
   }
   
 }

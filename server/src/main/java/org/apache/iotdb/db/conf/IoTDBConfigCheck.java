@@ -125,18 +125,16 @@ public class IoTDBConfigCheck {
         System.exit(-1);
       }
       if (properties.getProperty("iotdb_version") == null) {
-        logger.warn("Lower iotdb version detected, upgrading old mlog file... ");
-        boolean upgradeSuccessful = MLogWriter.upgradeMLog(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(), 
+        logger.info("Lower iotdb version detected, upgrading old mlog file... ");
+        MLogWriter.upgradeMLog(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(), 
             MetadataConstant.METADATA_LOG);
-        if (upgradeSuccessful) {
-          logger.info("Old mlog file is upgraded.");
-          try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
-            properties.setProperty("timestamp_precision", timestampPrecision);
-            properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
-            properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
-            properties.setProperty("iotdb_version", iotdbVersion);
-            properties.store(outputStream, "System properties:");
-          }
+        logger.info("Old mlog file is upgraded.");
+        try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
+          properties.setProperty("timestamp_precision", timestampPrecision);
+          properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
+          properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
+          properties.setProperty("iotdb_version", iotdbVersion);
+          properties.store(outputStream, "System properties:");
         }
       }
     } catch (IOException e) {
