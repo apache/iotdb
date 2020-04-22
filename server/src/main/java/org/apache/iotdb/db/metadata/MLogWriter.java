@@ -87,8 +87,6 @@ public class MLogWriter {
       writer.write(String.valueOf(offset));
     }
 
-    writer.write(",");
-
     writer.newLine();
     writer.flush();
   }
@@ -152,7 +150,7 @@ public class MLogWriter {
         StringBuilder buf = new StringBuilder();
         buf.append(line);
         if (line.startsWith(MetadataOperationType.CREATE_TIMESERIES)) {
-          buf.append(",,,,");
+          buf.append(",,,");
         }
         writer.write(buf.toString());
         writer.newLine();
