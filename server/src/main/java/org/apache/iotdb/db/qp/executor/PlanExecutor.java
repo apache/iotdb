@@ -81,6 +81,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -724,6 +726,11 @@ public class PlanExecutor implements IPlanExecutor {
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
+      }
+      try {
+        TimeUnit.SECONDS.sleep(4);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
       }
       insertPlan.setSchemas(schemas);
       StorageEngine.getInstance().insert(insertPlan);

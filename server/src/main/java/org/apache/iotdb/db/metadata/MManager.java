@@ -142,7 +142,6 @@ public class MManager {
 
     try {
       tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
-      initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
         // storage group name -> the series number
