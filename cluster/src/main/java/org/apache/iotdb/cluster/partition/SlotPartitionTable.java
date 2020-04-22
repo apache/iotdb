@@ -185,6 +185,11 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public PartitionGroup route(int slot) {
+    if (slot >= slotNodes.length || slot < 0) {
+      logger.warn("Invalid slot to route: {}, stack trace: {}", slot,
+          Thread.currentThread().getStackTrace());
+      return null;
+    }
     Node node = slotNodes[slot];
     logger.debug("The slot of {} is held by {}", slot, node);
     if (node == null) {

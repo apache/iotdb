@@ -59,7 +59,7 @@ public class ClusterPlanRouter {
   }
 
   private MManager getMManager() {
-    return MManager.getInstance();
+    return partitionTable.getMManager();
   }
 
   public PartitionGroup routePlan(PhysicalPlan plan)
