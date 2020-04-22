@@ -738,29 +738,42 @@ public class MManager {
   }
 
   /**
-   * Get all timeseries paths under the given path.
+   * Get the result of ShowTimeseriesPlan
    *
-   * @param path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
-   * wildcard can only match one level, otherwise it can match to the tail.
+   * @param plan show time series query plan
    */
-  public List<ShowTimeSeriesResult> getAllTimeseriesSchema(String path) throws MetadataException {
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan) throws MetadataException {
     lock.readLock().lock();
     try {
-      List<String[]> ans = mtree.getAllMeasurementSchema(path);
+      List<String[]> ans = mtree.getAllMeasurementSchema(plan.getPath().getFullPath());
+      int count = 0;
+      int offset = plan.getOffset();
       List<ShowTimeSeriesResult> res = new LinkedList<>();
-      for (String[] ansString : ans) {
-        long offset = Long.parseLong(ansString[6]);
+      for (int i = 0; i < ans.size(); i++) {
+        if (i < offset) {
+          continue;
+        }
+
+        String[] ansString = ans.get(i);
+        if (count >= plan.getLimit()) {
+          return res;
+        }
+
+        long tagFileOffset = Long.parseLong(ansString[6]);
         try {
-          if (offset < 0) {
+          if (tagFileOffset < 0) {
+            // no tags/attributes
             res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
-                    ansString[3], ansString[4], ansString[5], Collections.emptyMap()));
-            continue;
+                ansString[3], ansString[4], ansString[5], Collections.emptyMap()));
+          } else {
+            // has tags/attributes
+            Pair<Map<String, String>, Map<String, String>> pair =
+                tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
+            pair.left.putAll(pair.right);
+            res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
+                ansString[3], ansString[4], ansString[5], pair.left));
           }
-          Pair<Map<String, String>, Map<String, String>> pair =
-                  tagLogFile.read(config.getTagAttributeTotalSize(), offset);
-          pair.left.putAll(pair.right);
-          res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
-                  ansString[3], ansString[4], ansString[5], pair.left));
+          count ++;
         } catch (IOException e) {
           throw new MetadataException(
               "Something went wrong while deserialize tag info of " + ansString[0], e);

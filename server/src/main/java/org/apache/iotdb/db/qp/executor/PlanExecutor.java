@@ -367,7 +367,7 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan)
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
-        .getAllTimeseriesSchema(timeSeriesPlan.getPath().toString());
+        .showTimeseries(timeSeriesPlan);
     return getQueryDataSet(timeseriesList);
   }
 

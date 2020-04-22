@@ -132,10 +132,10 @@ public class LogicalPlanSmallTest {
 
   @Test(expected = SQLParserException.class)
   public void testOffsetNotPositive() {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1 offset 0";
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1 offset -1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    // expected to throw SQLParserException: OFFSET <OFFSETValue>: OFFSETValue should be greater than 0.
+    // expected to throw SQLParserException: OFFSET <OFFSETValue>: OFFSETValue should >= 0.
   }
 
   @Test(expected = SQLParserException.class)
@@ -165,10 +165,10 @@ public class LogicalPlanSmallTest {
 
   @Test(expected = SQLParserException.class)
   public void testSoffsetNotPositive() {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1 soffset 0";
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1 soffset -1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    // expected to throw SQLParserException: SOFFSET <SOFFSETValue>: SOFFSETValue should be greater than 0.
+    // expected to throw SQLParserException: SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.
   }
 
   @Test(expected = LogicalOptimizeException.class)
