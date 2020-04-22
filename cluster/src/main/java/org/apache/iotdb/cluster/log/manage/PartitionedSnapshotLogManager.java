@@ -47,7 +47,6 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
-  //TODO
   Map<Integer, T> slotSnapshots = new HashMap<>();
   private SnapshotFactory factory;
   Map<Integer, Collection<MeasurementSchema>> slotTimeseries = new HashMap<>();
@@ -83,9 +82,6 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   void collectTimeseriesSchemas() {
     slotTimeseries.clear();
-    // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when some of
-    //  them are removed during two snapshots. Incremental addition or removal may be used to
-    //  optimize
     List<StorageGroupMNode> allSgNodes = MManager.getInstance().getAllStorageGroupNodes();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
@@ -96,13 +92,6 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
           s -> new HashSet<>());
       MManager.getInstance().collectSeries(sgNode, schemas);
       logger.debug("{} timeseries are snapshot in slot {}", schemas.size(), slot);
-    }
-  }
-
-  public void setSnapshot(T snapshot, int slot) {
-    synchronized (slotSnapshots) {
-      // TODO-Cluster#451: persist the remote snapshot so the pulling can be recovered in restart
-      slotSnapshots.put(slot, snapshot);
     }
   }
 }

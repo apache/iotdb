@@ -25,6 +25,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -62,7 +63,7 @@ public class SlotPartitionTable implements PartitionTable {
   // the slots held by each node
   private Map<Node, List<Integer>> nodeSlotMap = new ConcurrentHashMap<>();
   // each slot is managed by whom
-  private Map<Integer, Node> slotNodeMap = new ConcurrentHashMap<>();//TODO a List is enough
+  private Node[] slotNodes = new Node[ClusterConstant.SLOT_NUM];
   // the nodes that each slot belongs to before a new node is added, used for the new node to
   // find the data source
   private Map<Node, Map<Integer, Node>> previousNodeMap = new ConcurrentHashMap<>();
@@ -121,7 +122,7 @@ public class SlotPartitionTable implements PartitionTable {
     // build the index to find a node by slot
     for (Entry<Node, List<Integer>> entry : nodeSlotMap.entrySet()) {
       for (Integer slot : entry.getValue()) {
-        slotNodeMap.put(slot, entry.getKey());
+        slotNodes[slot] = entry.getKey();
       }
     }
   }
@@ -184,7 +185,7 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public PartitionGroup route(int slot) {
-    Node node = slotNodeMap.get(slot);
+    Node node = slotNodes[slot];
     logger.debug("The slot of {} is held by {}", slot, node);
     if (node == null) {
       logger.warn("The slot {} is incorrect", slot);
@@ -198,7 +199,7 @@ public class SlotPartitionTable implements PartitionTable {
     synchronized (nodeRing) {
       int slot = PartitionUtils
           .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
-      Node node = slotNodeMap.get(slot);
+      Node node = slotNodes[slot];
       logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
           slot, node);
       return node;
@@ -210,7 +211,7 @@ public class SlotPartitionTable implements PartitionTable {
     synchronized (nodeRing) {
       int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, partitionId,
           getTotalSlotNumbers());
-      Node node = slotNodeMap.get(slot);
+      Node node = slotNodes[slot];
       logger.debug("The slot of {}#{} is {}, held by {}", storageGroupName, partitionId,
           slot, node);
       return node;
@@ -280,7 +281,7 @@ public class SlotPartitionTable implements PartitionTable {
         for (Integer slot : slotsToMove) {
           // record what node previously hold the integer
           previousHolders.put(slot, entry.getKey());
-          slotNodeMap.put(slot, newNode);
+          slotNodes[slot] = newNode;
         }
         slotsToMove.clear();
       }
@@ -342,7 +343,7 @@ public class SlotPartitionTable implements PartitionTable {
       nodeSlotMap.put(node, slots);
       idNodeMap.put(node.getNodeIdentifier(), node);
       for (Integer slot : slots) {
-        slotNodeMap.put(slot, node);
+        slotNodes[slot] = node;
       }
     }
 
@@ -412,7 +413,7 @@ public class SlotPartitionTable implements PartitionTable {
     return totalSlotNumbers == that.totalSlotNumbers &&
         Objects.equals(nodeRing, that.nodeRing) &&
         Objects.equals(nodeSlotMap, that.nodeSlotMap) &&
-        Objects.equals(slotNodeMap, that.slotNodeMap) &&
+        Arrays.equals(slotNodes, that.slotNodes) &&
         Objects.equals(previousNodeMap, that.previousNodeMap);
   }
 
@@ -473,7 +474,7 @@ public class SlotPartitionTable implements PartitionTable {
     for (int i = 0; i < slots.size(); i++) {
       int slot = slots.get(i);
       Node newHolder = nodeRing.get(i % nodeRing.size());
-      slotNodeMap.put(slot, newHolder);
+      slotNodes[slot] = newHolder;
       nodeSlotMap.get(newHolder).add(slot);
       newHolderSlotMap.computeIfAbsent(newHolder, n -> new ArrayList<>()).add(slot);
     }

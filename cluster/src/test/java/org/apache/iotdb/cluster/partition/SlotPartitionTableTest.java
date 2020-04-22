@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
+import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.auth.AuthException;
@@ -304,8 +305,10 @@ public class SlotPartitionTableTest {
     PhysicalPlan queryPlan = new RawDataQueryPlan();
     assertTrue(PartitionUtils.isLocalPlan(queryPlan));
     PhysicalPlan updatePlan = new UpdatePlan();
+
+    ClusterPlanRouter router = new ClusterPlanRouter(localTable);
     try {
-     localTable.routePlan(updatePlan);
+      router.routePlan(updatePlan);
     } catch (UnsupportedPlanException e) {
       //success
     } catch (StorageGroupNotSetException e) {
@@ -348,9 +351,10 @@ public class SlotPartitionTableTest {
     PhysicalPlan insertPlan2 = new InsertPlan("root.sg.l2.l3.l4.28.ld.l1.d0", 1 + StorageEngine.getTimePartitionInterval(), new String[]{"s0", "s1"}, new String[]{"0", "1"});
     PartitionGroup group1, group2;
     assertFalse(insertPlan1.canbeSplit());
+    ClusterPlanRouter router = new ClusterPlanRouter(localTable);
     try {
-      group1 = localTable.routePlan(insertPlan1);
-      group2 = localTable.routePlan(insertPlan2);
+      group1 = router.routePlan(insertPlan1);
+      group2 = router.routePlan(insertPlan2);
       assertNotEquals(group1, group2);
     } catch (Exception e) {
       e.printStackTrace();
@@ -367,10 +371,11 @@ public class SlotPartitionTableTest {
     PhysicalPlan createTimeSeriesPlan3 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.29.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     assertFalse(createTimeSeriesPlan1.canbeSplit());
+    ClusterPlanRouter router = new ClusterPlanRouter(localTable);
     try {
-      PartitionGroup group1 = localTable.routePlan(createTimeSeriesPlan1);
-      PartitionGroup group2 = localTable.routePlan(createTimeSeriesPlan2);
-      PartitionGroup group3 = localTable.routePlan(createTimeSeriesPlan3);
+      PartitionGroup group1 = router.routePlan(createTimeSeriesPlan1);
+      PartitionGroup group2 = router.routePlan(createTimeSeriesPlan2);
+      PartitionGroup group3 = router.routePlan(createTimeSeriesPlan3);
       assertEquals(group1, group2);
       assertNotEquals(group2, group3);
     } catch (Exception e) {
@@ -410,7 +415,8 @@ public class SlotPartitionTableTest {
     ((BatchInsertPlan)batchInertPlan).setColumns(values);
     ((BatchInsertPlan)batchInertPlan).setRowCount(9);
     try {
-      Map<PhysicalPlan, PartitionGroup> result = localTable.splitAndRoutePlan(batchInertPlan);
+      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
+      Map<PhysicalPlan, PartitionGroup> result = router.splitAndRoutePlan(batchInertPlan);
       assertEquals(3, result.size());
       result.forEach( (key, value) -> {
         assertEquals(3, ((BatchInsertPlan) key).getRowCount());
@@ -433,17 +439,18 @@ public class SlotPartitionTableTest {
     PhysicalPlan countPlan4 = new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,new Path("root.sg.l2.l3"), 6);
     PhysicalPlan countPlan5 = new CountPlan(ShowContentType.COUNT_NODES,new Path("root.sg.l2.l3"), 5);
     try {
+      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
       assertTrue(countPlan1.canbeSplit());
-      Map<PhysicalPlan, PartitionGroup> result1 = localTable.splitAndRoutePlan(countPlan1);
+      Map<PhysicalPlan, PartitionGroup> result1 = router.splitAndRoutePlan(countPlan1);
       assertEquals(1, result1.size());
-      Map<PhysicalPlan, PartitionGroup> result2 = localTable.splitAndRoutePlan(countPlan2);
+      Map<PhysicalPlan, PartitionGroup> result2 = router.splitAndRoutePlan(countPlan2);
       assertEquals(40, result2.size());
-      Map<PhysicalPlan, PartitionGroup> result3 = localTable.splitAndRoutePlan(countPlan3);
+      Map<PhysicalPlan, PartitionGroup> result3 = router.splitAndRoutePlan(countPlan3);
       assertEquals(1, result3.size());
-      Map<PhysicalPlan, PartitionGroup> result4 = localTable.splitAndRoutePlan(countPlan4);
+      Map<PhysicalPlan, PartitionGroup> result4 = router.splitAndRoutePlan(countPlan4);
       //TODO this case can be optimized
       assertEquals(40, result4.size());
-      Map<PhysicalPlan, PartitionGroup> result5 = localTable.splitAndRoutePlan(countPlan5);
+      Map<PhysicalPlan, PartitionGroup> result5 = router.splitAndRoutePlan(countPlan5);
       //TODO this case can be optimized
       assertEquals(40, result5.size());
     } catch (Exception e) {
@@ -458,8 +465,9 @@ public class SlotPartitionTableTest {
     PhysicalPlan showChildPathsPlan2 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new Path("root.sg.l2.l3.l4"));
     try {
       assertFalse(showChildPathsPlan1.canbeSplit());
-      PartitionGroup group1= localTable.routePlan(showChildPathsPlan1);
-      PartitionGroup group2= localTable.routePlan(showChildPathsPlan2);
+      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
+      PartitionGroup group1= router.routePlan(showChildPathsPlan1);
+      PartitionGroup group2= router.routePlan(showChildPathsPlan2);
       assertNotEquals(group1, group2);
     } catch (Exception e) {
       e.printStackTrace();
@@ -475,8 +483,9 @@ public class SlotPartitionTableTest {
     assertTrue(showDevicesPlan1.canbeSplit());
 
     try {
-      Map<PhysicalPlan, PartitionGroup> group1 = localTable.splitAndRoutePlan(showDevicesPlan1);
-      Map<PhysicalPlan, PartitionGroup> group2 = localTable.splitAndRoutePlan(showDevicesPlan2);
+      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
+      Map<PhysicalPlan, PartitionGroup> group1 = router.splitAndRoutePlan(showDevicesPlan1);
+      Map<PhysicalPlan, PartitionGroup> group2 = router.splitAndRoutePlan(showDevicesPlan2);
       assertEquals(40, group1.size());
       assertEquals(20, group2.size());
     } catch (Exception e) {
@@ -493,8 +502,9 @@ public class SlotPartitionTableTest {
     assertTrue(showDevicesPlan1.canbeSplit());
 
     try {
-      Map<PhysicalPlan, PartitionGroup> group1 = localTable.splitAndRoutePlan(showDevicesPlan1);
-      Map<PhysicalPlan, PartitionGroup> group2 = localTable.splitAndRoutePlan(showDevicesPlan2);
+      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
+      Map<PhysicalPlan, PartitionGroup> group1 = router.splitAndRoutePlan(showDevicesPlan1);
+      Map<PhysicalPlan, PartitionGroup> group2 = router.splitAndRoutePlan(showDevicesPlan2);
       assertEquals(40, group1.size());
       assertEquals(20, group2.size());
     } catch (Exception e) {

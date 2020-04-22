@@ -32,8 +32,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO-Cluster#351: implement a serializable LogManager.
-
 /**
  * MemoryLogManager stores all logs in a memory deque without providing snapshots.
  */

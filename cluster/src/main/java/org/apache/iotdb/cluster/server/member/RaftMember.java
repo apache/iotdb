@@ -1003,6 +1003,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
+  public boolean isReadOnly() {
+    return readOnly;
+  }
+
   public void setAllNodes(List<Node> allNodes) {
     this.allNodes = allNodes;
   }

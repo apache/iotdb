@@ -81,6 +81,7 @@ import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
@@ -196,6 +197,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   // nodes in the cluster and data partitioning
   private PartitionTable partitionTable;
+  // router calculates the partition groups that a partitioned plan should be sent to
+  private ClusterPlanRouter router;
   // each node contains multiple DataGroupMembers and they are managed by a DataClusterServer
   // acting as a broker
   private DataClusterServer dataClusterServer;
@@ -523,6 +526,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     partitionTable = new SlotPartitionTable(thisNode);
     partitionTable.deserialize(partitionTableBuffer);
     savePartitionTable();
+    router = new ClusterPlanRouter(partitionTable);
 
     allNodes = new ArrayList<>(partitionTable.getAllNodes());
     logger.info("Received cluster nodes from the leader: {}", allNodes);
@@ -556,6 +560,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           partitionTable = new SlotPartitionTable(allNodes, thisNode);
           logger.info("Partition table is set up");
         }
+        router = new ClusterPlanRouter(partitionTable);
         startSubServers();
       }
     }
@@ -938,6 +943,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       for (Node node : allNodes) {
         idNodeMap.put(node.getNodeIdentifier(), node);
       }
+      router = new ClusterPlanRouter(partitionTable);
 
       logger.info("Load {} nodes: {}", allNodes.size(), allNodes);
     } catch (IOException e) {
@@ -1205,7 +1211,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // split the plan into sub-plans that each only involve one data group
     Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
     try {
-      planGroupMap = partitionTable.splitAndRoutePlan(plan);
+      planGroupMap = router.splitAndRoutePlan(plan);
     } catch (MetadataException e) {
       logger.debug("Cannot route plan {}", plan, e);
     }
@@ -2173,6 +2179,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   @TestOnly
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
+    router = new ClusterPlanRouter(partitionTable);
     DataClusterServer dataClusterServer = getDataClusterServer();
     if (dataClusterServer != null) {
       dataClusterServer.setPartitionTable(partitionTable);

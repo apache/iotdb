@@ -432,6 +432,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public void bulidDataGroupMembers(PartitionTable partitionTable)
       throws TTransportException {
     setPartitionTable(partitionTable);
+    // clear previous members if the partition table is reloaded
+    for (DataGroupMember value : headerGroupMap.values()) {
+      value.stop();
+    }
+    headerGroupMap.clear();
+
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
     for (PartitionGroup partitionGroup : partitionGroups) {
       logger.debug("Building member of data group: {}", partitionGroup);
