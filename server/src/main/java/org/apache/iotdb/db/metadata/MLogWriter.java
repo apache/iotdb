@@ -136,12 +136,8 @@ public class MLogWriter {
       }
     }
     // upgrading
-    FileReader fileReader;
-    fileReader = new FileReader(logFile);
-    FileWriter fileWriter;
-    fileWriter = new FileWriter(tmpLogFile, true);
-    try (BufferedReader reader = new BufferedReader(fileReader);
-        BufferedWriter writer = new BufferedWriter(fileWriter);) {
+    try (BufferedReader reader = new BufferedReader(new FileReader(logFile));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tmpLogFile, true));) {
       String line;
       while ((line = reader.readLine()) != null) {
         StringBuilder buf = new StringBuilder();
