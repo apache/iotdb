@@ -175,7 +175,7 @@ public class IoTDBStatement implements Statement {
     } catch (TException e) {
       if (reConnect()) {
         throw new SQLException(
-                String.format("Fail to execute %s after reconnecting. please check server status",
+                String.format("Fail to execute %s",
                         sql), e);
       } else {
         throw new SQLException(String
