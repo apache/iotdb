@@ -755,9 +755,6 @@ public class MManager {
         }
 
         String[] ansString = ans.get(i);
-        if (count >= plan.getLimit()) {
-          return res;
-        }
 
         long tagFileOffset = Long.parseLong(ansString[6]);
         try {
@@ -773,7 +770,12 @@ public class MManager {
             res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
                 ansString[3], ansString[4], ansString[5], pair.left));
           }
+
           count ++;
+          if (count >= plan.getLimit()) {
+            return res;
+          }
+
         } catch (IOException e) {
           throw new MetadataException(
               "Something went wrong while deserialize tag info of " + ansString[0], e);
