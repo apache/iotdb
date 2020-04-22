@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -116,8 +117,12 @@ public class MLogWriter {
     writer.flush();
   }
 
-  public static File upgradeMLog(String schemaDir, String logFileName) throws IOException {
+  public static boolean upgradeMLog(String schemaDir, String logFileName) throws IOException {
     File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
+    if (!logFile.exists()) {
+      // no mlog file to be upgraded
+      return false;
+    }
     FileReader fileReader;
     String line;
     fileReader = new FileReader(logFile);
@@ -133,23 +138,42 @@ public class MLogWriter {
         buf.append(System.getProperty("line.separator"));
         bufAll.append(buf);
       }
+    } catch (IOException e) {
+      logger.error("Reading MLog {} failed", logFile);
+      return false;
     } finally {
       reader.close();
     }
-    if (!logFile.delete()) {
-      logger.error("MLog file does not exist.");
+    File tmpLogFile = new File(logFile.getAbsolutePath() + ".tmp");
+
+    if (!tmpLogFile.exists()) {
+      if (!tmpLogFile.delete()) {
+        logger.error("Deleting {} failed", tmpLogFile);
+        return false;
+      }
     }
-    File newFile = new File(logFile.getAbsolutePath());
+
     FileWriter fileWriter;
-    fileWriter = new FileWriter(newFile, true);
+    fileWriter = new FileWriter(tmpLogFile, true);
     BufferedWriter writer = new BufferedWriter(fileWriter);
     try {
       writer.write(bufAll.toString());
       writer.flush();
+    } catch (IOException e) {
+      logger.error("Writing upgraded MLog {} failed", tmpLogFile);
+      return false;
     } finally {
       writer.close();
     }
-    return newFile;
+    if (!logFile.delete()) {
+      logger.error("Deleting old MLog file {} failed");
+      return false;
+    }
+    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
+    if (tmpLogFile.exists()) {
+      return false;
+    }
+    return true;
   }
   
 }
