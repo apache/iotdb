@@ -53,6 +53,7 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,34 +132,47 @@ public class ClientMain {
 
     String ip = "127.0.0.1";
     int port = 55560;
-    TSIService.Client.Factory factory = new Factory();
-    TTransport transport = new TFramedTransport(new TSocket(ip, port));
-    transport.open();
+    Client client = getClient(ip, port);
+    long sessionId = connectClient(client);
 
-    Client client = factory.getClient(new TCompactProtocol(transport));
+    System.out.println("Test insertion");
+    testInsertion(client, sessionId);
 
+    client.closeSession(new TSCloseSessionReq(sessionId));
+
+    for (int queryPort : new int[] {55560, 55561, 55562}) {
+      System.out.println("Test port: " + queryPort);
+
+      client = getClient(ip, queryPort);
+      sessionId = connectClient(client);
+      System.out.println("Test data queries");
+      testQuery(client, sessionId, DATA_QUERIES);
+
+      System.out.println("Test metadata queries");
+      testQuery(client, sessionId, META_QUERY);
+
+      logger.info("Failed queries: {}", failedQueries);
+    }
+
+    System.out.println("Test delete storage group");
+    testDeleteStorageGroup(client, sessionId);
+  }
+
+  protected static long connectClient(Client client) throws TException {
     TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
 
     openReq.setUsername("root");
     openReq.setPassword("root");
     TSOpenSessionResp openResp = client.openSession(openReq);
-    long sessionId = openResp.getSessionId();
+    return openResp.getSessionId();
+  }
 
-    System.out.println("Test insertion");
-    testInsertion(client, sessionId);
+  private static Client getClient(String ip, int port) throws TTransportException {
+    TSIService.Client.Factory factory = new Factory();
+    TTransport transport = new TFramedTransport(new TSocket(ip, port));
+    transport.open();
 
-    System.out.println("Test data queries");
-    testQuery(client, sessionId, DATA_QUERIES);
-
-    System.out.println("Test metadata queries");
-    testQuery(client, sessionId, META_QUERY);
-
-    System.out.println("Test delete storage group");
-    testDeleteStorageGroup(client, sessionId);
-
-    client.closeSession(new TSCloseSessionReq(openResp.getSessionId()));
-
-    logger.info("Failed queries: {}", failedQueries);
+    return factory.getClient(new TCompactProtocol(transport));
   }
 
   private static void prepareSchema() {
