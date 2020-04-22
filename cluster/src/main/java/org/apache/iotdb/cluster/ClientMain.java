@@ -206,8 +206,10 @@ public class ClientMain {
     client.closeOperation(tsCloseOperationReq);
   }
 
-  private static void testDeleteStorageGroup(Client client, long sessionId) throws TException {
+  private static void testDeleteStorageGroup(Client client, long sessionId)
+      throws TException, StatementExecutionException, IoTDBConnectionException {
     logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
+    testQuery(client, sessionId, new String[] {"SELECT * FROM root"});
   }
 
   private static void testInsertion(Client client, long sessionId) throws TException {

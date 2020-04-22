@@ -65,7 +65,6 @@ abstract class BaseApplier implements LogApplier {
         }
       }
     } else {
-      // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported physical plan: {}", plan);
     }
   }

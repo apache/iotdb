@@ -58,7 +58,6 @@ public class MetaLogApplier extends BaseApplier {
       RemoveNodeLog removeNodeLog = ((RemoveNodeLog) log);
       member.applyRemoveNode(removeNodeLog.getRemovedNode());
     } else {
-      // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported log: {}", log);
     }
   }

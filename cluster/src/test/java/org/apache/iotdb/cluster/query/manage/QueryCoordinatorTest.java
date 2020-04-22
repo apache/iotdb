@@ -58,7 +58,7 @@ public class QueryCoordinatorTest {
       Node node = TestUtils.getNode(i);
       nodeStatusMap.put(node, status);
       // nodes with smaller num has lower latency
-      nodeLatencyMap.put(node, i * 10L);
+      nodeLatencyMap.put(node, i * 100L);
     }
     metaClient = new TestMetaClient(new Factory(),  new TAsyncClientManager(), TestUtils.getNode(0),
         null) {
