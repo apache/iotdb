@@ -1212,20 +1212,20 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
     try {
       planGroupMap = router.splitAndRoutePlan(plan);
+    } catch (StorageGroupNotSetException e) {
+      syncLeader();
+      try {
+        planGroupMap = router.splitAndRoutePlan(plan);
+      } catch (MetadataException ex) {
+        // ignore
+      }
     } catch (MetadataException e) {
-      logger.debug("Cannot route plan {}", plan, e);
+      logger.error("Cannot route plan {}", plan, e);
     }
     // the storage group is not found locally, forward it to the leader
     if (planGroupMap == null || planGroupMap.isEmpty()) {
-      if (character != NodeCharacter.LEADER) {
-        logger
-            .debug("{}: Cannot found partition groups for {}, forwarding to {}", name, plan,
-                leader);
-        return forwardPlan(plan, leader, null);
-      } else {
-        logger.debug("{}: Cannot found storage groups for {}", name, plan);
-        return StatusUtils.NO_STORAGE_GROUP;
-      }
+      logger.debug("{}: Cannot found storage groups for {}", name, plan);
+      return StatusUtils.NO_STORAGE_GROUP;
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
 
@@ -2382,7 +2382,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private MetaMemberReport genMemberReport() {
     return new MetaMemberReport(character, leader, term.get(),
         logManager.getLastLogTerm(), logManager.getLastLogIndex(), logManager.getCommitLogIndex()
-        , readOnly,
+        , logManager.getCommitLogTerm(), readOnly,
         lastHeartbeatReceivedTime);
   }
 

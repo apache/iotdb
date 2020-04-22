@@ -187,9 +187,8 @@ public class PlanExecutor implements IPlanExecutor {
       IOException {
     QueryDataSet queryDataSet;
     if (queryPlan instanceof AlignByDevicePlan) {
-      queryDataSet = new AlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
+      queryDataSet = getAlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
     } else {
-
       if (queryPlan.getPaths() == null || queryPlan.getPaths().isEmpty()) {
         // no time series are selected, return EmptyDataSet
         return new EmptyDataSet();
@@ -214,6 +213,11 @@ public class PlanExecutor implements IPlanExecutor {
     queryDataSet.setRowLimit(queryPlan.getRowLimit());
     queryDataSet.setRowOffset(queryPlan.getRowOffset());
     return queryDataSet;
+  }
+
+  protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
+      QueryContext context, IQueryRouter router) {
+    return new AlignByDeviceDataSet(plan, context, queryRouter);
   }
 
   protected QueryDataSet processShowQuery(ShowPlan showPlan)
@@ -737,11 +741,16 @@ public class PlanExecutor implements IPlanExecutor {
       String[] strValues) throws MetadataException {
     MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
-    MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+    MNode node = null;
+    try {
+      node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+    } catch (PathNotExistException e) {
+      // ignore
+    }
     for (int i = 0; i < measurementList.length; i++) {
       String measurement = measurementList[i];
 
-      if (!node.hasChild(measurement)) {
+      if (node != null && !node.hasChild(measurement)) {
         if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
           MeasurementSchema schema = MManager.getInstance()
               .getSeriesSchema(deviceId, measurement);
@@ -756,9 +765,12 @@ public class PlanExecutor implements IPlanExecutor {
         Path path = new Path(deviceId, measurement);
 
         internalCreateTimeseries(path.toString(), dataType);
+      } else if (node != null) {
+        LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
+        schemas[i] = measurementNode.getSchema();
+      } else {
+        schemas[i] = MManager.getInstance().getSeriesSchema(deviceId, measurement);
       }
-      LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
-      schemas[i] = measurementNode.getSchema();
     }
     return schemas;
   }
