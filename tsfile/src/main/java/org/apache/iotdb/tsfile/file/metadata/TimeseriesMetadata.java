@@ -38,7 +38,7 @@ public class TimeseriesMetadata {
   private TSDataType tsDataType;
   
   private Statistics<?> statistics;
-
+// modified is true when there are modifications of the series, or from unseq file
   private boolean modified;
 
   private IChunkMetadataLoader chunkMetadataLoader;
