@@ -137,15 +137,12 @@ public class MLogWriter {
     }
     // upgrading
     FileReader fileReader;
-    String line;
     fileReader = new FileReader(logFile);
-    BufferedReader reader = new BufferedReader(fileReader);
-
     FileWriter fileWriter;
     fileWriter = new FileWriter(tmpLogFile, true);
-    BufferedWriter writer = new BufferedWriter(fileWriter);
-
-    try {
+    try (BufferedReader reader = new BufferedReader(fileReader);
+        BufferedWriter writer = new BufferedWriter(fileWriter);) {
+      String line;
       while ((line = reader.readLine()) != null) {
         StringBuilder buf = new StringBuilder();
         buf.append(line);
@@ -155,10 +152,8 @@ public class MLogWriter {
         writer.write(buf.toString());
         writer.newLine();
         writer.flush();
+        
       }
-    } finally {
-      reader.close();
-      writer.close();
     }
 
     // upgrade finished, delete old mlog file
