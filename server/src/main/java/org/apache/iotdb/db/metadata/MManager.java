@@ -878,11 +878,6 @@ public class MManager {
         return node;
       } catch (CacheException e) {
         shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
-      } finally {
-        if (node != null) {
-          node.readLock();
-        }
-        lock.writeLock().unlock();
       }
 
       if (shouldSetStorageGroup) {
