@@ -132,7 +132,7 @@ public class LogicalPlanSmallTest {
     // expected to throw SQLParserException: Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.
   }
 
-  @Test(expected = SQLParserException.class)
+  @Test(expected = ParseCancellationException.class)
   public void testOffsetNotPositive() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1 offset -1";
     RootOperator operator = (RootOperator) parseDriver
