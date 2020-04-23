@@ -116,8 +116,9 @@ public class PartitionUtils {
    * @return is globalDataPlan or not
    */
   public static boolean isGlobalDataPlan(PhysicalPlan plan) {
-    return plan instanceof DeletePlan || // because deletePlan has an infinite time range.
-        plan instanceof DeleteStorageGroupPlan;
+    return plan instanceof DeletePlan  // because deletePlan has an infinite time range.
+        || plan instanceof DeleteStorageGroupPlan
+        || plan instanceof DeleteTimeSeriesPlan;
   }
 
   public static int calculateStorageGroupSlotByTime(String storageGroupName, long timestamp,
