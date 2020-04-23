@@ -488,7 +488,7 @@ public class MTree implements Serializable {
    * result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
   List<String[]> getAllMeasurementSchema(ShowTimeSeriesPlan plan) throws MetadataException {
-    List<String[]> res = new ArrayList<>();
+    List<String[]> res;
     String[] nodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
@@ -496,17 +496,15 @@ public class MTree implements Serializable {
     this.limit = plan.getLimit();
     this.offset = plan.getOffset();
     if (offset != 0 || limit != 0) {
+      res = new ArrayList<>(limit);
       findPath(root, nodes, 1, "", res, true);
-      resetCountCurOffset();
+      curOffset = -1;
+      count = 0;
     } else {
+      res = new ArrayList<>();
       findPath(root, nodes, 1, "", res, false);
     }
     return res;
-  }
-
-  private void resetCountCurOffset() {
-    curOffset = -1;
-    count = 0;
   }
 
   /**
