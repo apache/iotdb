@@ -764,6 +764,8 @@ public class PlanExecutor implements IPlanExecutor {
         Path path = new Path(deviceId, measurement);
 
         internalCreateTimeseries(path.toString(), dataType);
+        LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
+        schemas[i] = measurementNode.getSchema();
       } else if (node != null) {
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
