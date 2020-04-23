@@ -88,8 +88,7 @@ public class IoTDBConfigCheck {
     // use output stream to write timestamp precision to file.
     File file = SystemFileFactory.INSTANCE
             .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
-    File tmpPropertiesFile = new File(file.getAbsoluteFile() 
-        + File.separator + "tmp");
+    File tmpPropertiesFile = new File(file.getAbsoluteFile() + ".tmp");
     try {
       if (!file.exists() && !tmpPropertiesFile.exists()) {
         file.createNewFile();
@@ -101,11 +100,15 @@ public class IoTDBConfigCheck {
           properties.setProperty("iotdb_version", iotdbVersion);
           properties.store(outputStream, "System properties:");
         }
+        checkProperties();
+        return;
       }
       else if (!file.exists() && tmpPropertiesFile.exists()) {
         // rename upgraded system.properties.tmp to system.properties
         FSFactoryProducer.getFSFactory().moveFile(tmpPropertiesFile, file);
         logger.info(" {} has been upgraded.", file.getAbsolutePath());
+        checkProperties();
+        return;
       }
     } catch (IOException e) {
       logger.error("Can not create {}.", file.getAbsolutePath(), e);
@@ -118,9 +121,6 @@ public class IoTDBConfigCheck {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
       // need to upgrade
       if (!properties.containsKey("iotdb_version")) {
-        properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
-        properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
-        properties.setProperty("iotdb_version", iotdbVersion);
         // upgrade mlog
         try {
           MLogWriter.upgradeMLog(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(), 
@@ -136,13 +136,22 @@ public class IoTDBConfigCheck {
       logger.error("Load system.properties from {} failed.", file.getAbsolutePath(), e);
     }
 
-    // it's an old version system.properties
+    // if tmpPropertiesFile exists, remove it
+    if (tmpPropertiesFile.delete()) {
+      logger.info("Remove broken file {}", tmpPropertiesFile);
+    }
+    // create an empty tmpPropertiesFile
+    try {
+      tmpPropertiesFile.createNewFile();
+    } catch (IOException e) {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile, e);
+    }
     // try to add the storage_group_time_range, tsfile_storage_fs 
     // and iotdb_version property in system.properties.tmp
     try (FileOutputStream outputStream = new FileOutputStream(tmpPropertiesFile.toString())) {
-      if (tmpPropertiesFile.delete()) {
-        logger.info("Remove broken file {}", tmpPropertiesFile);
-      }
+      properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
+      properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
+      properties.setProperty("iotdb_version", iotdbVersion);
       properties.store(outputStream, "System properties:");
       checkProperties();
       // upgrade finished, delete old system.properties file
