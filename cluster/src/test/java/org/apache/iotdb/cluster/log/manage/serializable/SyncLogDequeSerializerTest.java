@@ -289,7 +289,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   @Test
   public void testRecoveryByAppendList() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-    MemoryLogManager memoryLogManager;
     int logNum;
     List<Log> testLogs1;
     try {
@@ -381,7 +380,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   @Test
   public void testRecoveryWithTempLog() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-    MemoryLogManager memoryLogManager;
     int logNum;
     List<Log> testLogs1;
     try {
@@ -414,7 +412,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   @Test
   public void testRecoveryWithEmptyTempLog() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-    MemoryLogManager memoryLogManager;
     int logNum;
     List<Log> testLogs1;
     try {
@@ -451,7 +448,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   @Test
   public void testRecoveryWithTempLogWithoutOriginalLog() {
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
-    MemoryLogManager memoryLogManager;
     int logNum;
     List<Log> testLogs1;
     try {
