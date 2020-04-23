@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class LongStatistics extends Statistics<Long> {
 
@@ -52,8 +53,7 @@ public class LongStatistics extends Statistics<Long> {
     this.sumValue += sum;
   }
 
-  private void updateStats(long minValue, long maxValue, long firstValue, long lastValue,
-      double sumValue) {
+  private void updateStats(long minValue, long maxValue, long lastValue, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -62,6 +62,25 @@ public class LongStatistics extends Statistics<Long> {
     }
     this.sumValue += sumValue;
     this.lastValue = lastValue;
+  }
+
+  private void updateStats(long minValue, long maxValue, long firstValue, long lastValue, double sumValue, long startTime, long endTime) {
+    if (minValue < this.minValue) {
+      this.minValue = minValue;
+    }
+    if (maxValue > this.maxValue) {
+      this.maxValue = maxValue;
+    }
+    this.sumValue += sumValue;
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = firstValue;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = lastValue;
+    }
   }
 
   @Override
@@ -101,7 +120,7 @@ public class LongStatistics extends Statistics<Long> {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value, value);
     }
   }
 
@@ -131,7 +150,7 @@ public class LongStatistics extends Statistics<Long> {
       isEmpty = false;
     } else {
       updateStats(longStats.getMinValue(), longStats.getMaxValue(), longStats.getFirstValue(), longStats.getLastValue(),
-          longStats.getSumValue());
+          longStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
     }
 
   }

@@ -37,7 +37,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -60,7 +60,7 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<String, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
+  private Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>(); //is this too waste?
   private Map<MeasurementSchema, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long timeLowerBound = Long.MIN_VALUE;
@@ -75,7 +75,7 @@ public class MergeResource {
   }
 
   private boolean filterResource(TsFileResource res) {
-    return res.isClosed() && !res.isDeleted() && res.stillLives(timeLowerBound);
+    return !res.isDeleted() && res.stillLives(timeLowerBound);
   }
 
   public MergeResource(Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,
@@ -102,22 +102,20 @@ public class MergeResource {
     chunkWriterCache.clear();
   }
 
-  public MeasurementSchema getSchema(String measurementId) {
-    return measurementSchemaMap.get(measurementId);
+  public MeasurementSchema getSchema(Path path) {
+    return measurementSchemaMap.get(path);
   }
 
   /**
    * Construct a new or get an existing RestorableTsFileIOWriter of a merge temp file for a
    * SeqFile. The path of the merge temp file will be the seqFile's + ".merge".
-   * @param resource
    * @return A RestorableTsFileIOWriter of a merge temp file for a SeqFile.
-   * @throws IOException
    */
   public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
     RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
     if (writer == null) {
       writer = new RestorableTsFileIOWriter(FSFactoryProducer.getFSFactory()
-          .getFile(resource.getFile().getPath() + MERGE_SUFFIX));
+          .getFile(resource.getPath() + MERGE_SUFFIX));
       fileWriterCache.put(resource, writer);
     }
     return writer;
@@ -127,11 +125,8 @@ public class MergeResource {
    * Query ChunkMetadata of a timeseries from the given TsFile (seq or unseq). The ChunkMetadata
    * is not cached since it is usually huge.
    * @param path name of the time series
-   * @param seqFile
-   * @return
-   * @throws IOException
    */
-  public List<ChunkMetaData> queryChunkMetadata(Path path, TsFileResource seqFile)
+  public List<ChunkMetadata> queryChunkMetadata(Path path, TsFileResource seqFile)
       throws IOException {
     TsFileSequenceReader sequenceReader = getFileReader(seqFile);
     return sequenceReader.getChunkMetadataList(path);
@@ -139,13 +134,12 @@ public class MergeResource {
 
   /**
    * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
-   * @param tsFileResource
    * @return a TsFileSequenceReader
    */
   public TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
     TsFileSequenceReader reader = fileReaderCache.get(tsFileResource);
     if (reader == null) {
-      reader = new TsFileSequenceReader(tsFileResource.getFile().getPath(), true, cacheDeviceMeta);
+      reader = new TsFileSequenceReader(tsFileResource.getPath(), true, cacheDeviceMeta);
       fileReaderCache.put(tsFileResource, reader);
     }
     return reader;
@@ -156,13 +150,12 @@ public class MergeResource {
    * not cached since the method is only called once for each timeseries.
    * @param paths names of the timeseries
    * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
-   * @throws IOException
    */
   public IPointReader[] getUnseqReaders(List<Path> paths) throws IOException {
     List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = getSchema(paths.get(i).getMeasurement()).getType();
+      TSDataType dataType = getSchema(paths.get(i)).getType();
       ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
     }
     return ret;
@@ -170,7 +163,7 @@ public class MergeResource {
 
   /**
    * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
-   * the same measurement shares the same instance.
+   * the same measurement and data type shares the same instance.
    */
   public IChunkWriter getChunkWriter(MeasurementSchema measurementSchema) {
     return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
@@ -203,7 +196,6 @@ public class MergeResource {
    * Remove and close the writer of the merge temp file of a SeqFile. The merge temp file is also
    * deleted.
    * @param tsFileResource the SeqFile
-   * @throws IOException
    */
   public void removeFileAndWriter(TsFileResource tsFileResource) throws IOException {
     RestorableTsFileIOWriter newFileWriter = fileWriterCache.remove(tsFileResource);
@@ -216,7 +208,6 @@ public class MergeResource {
   /**
    * Remove and close the reader of the TsFile. The TsFile is NOT deleted.
    * @param resource the SeqFile
-   * @throws IOException
    */
   public void removeFileReader(TsFileResource resource) throws IOException {
     TsFileSequenceReader sequenceReader = fileReaderCache.remove(resource);
@@ -260,9 +251,8 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void addMeasurements(List<MeasurementSchema> measurementSchemas) {
-    for (MeasurementSchema measurementSchema : measurementSchemas) {
-      measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
-    }
+  public void setMeasurementSchemaMap(Map<Path, MeasurementSchema> measurementSchemaMap) {
+    this.measurementSchemaMap = measurementSchemaMap;
   }
+
 }

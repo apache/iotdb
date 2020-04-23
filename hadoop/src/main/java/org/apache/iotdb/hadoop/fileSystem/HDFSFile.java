@@ -130,7 +130,7 @@ public class HDFSFile extends File {
 
   @Override
   public File getParentFile() {
-    return new HDFSFile(hdfsPath.getParent().toUri());
+    return new HDFSFile(hdfsPath.getParent().getName());
   }
 
   @Override

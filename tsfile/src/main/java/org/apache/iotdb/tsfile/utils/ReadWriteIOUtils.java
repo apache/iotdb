@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.tsfile.utils;
 
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.DOUBLE;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.FLOAT;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.INTEGER;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.LONG;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.NULL;
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.STRING;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -34,16 +31,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSFreqType;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import java.util.*;
+import java.util.Map.Entry;
+
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.*;
 
 /**
  * ConverterUtils is a utility class. It provide conversion between normal datatype and byte array.
@@ -121,6 +112,28 @@ public class ReadWriteIOUtils {
   public static boolean readIsNull(ByteBuffer buffer) {
     return readBool(buffer);
   }
+
+  public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
+    int length = 0;
+    byte[] bytes;
+    stream.write(map.size());
+    length += 4;
+    for (Entry<String, String> entry : map.entrySet()) {
+      bytes = entry.getKey().getBytes();
+      stream.write(bytes.length);
+      length += 4;
+      stream.write(bytes);
+      length += bytes.length;
+      bytes = entry.getValue().getBytes();
+      stream.write(bytes.length);
+      length += 4;
+      stream.write(bytes);
+      length += bytes.length;
+    }
+    return length;
+  }
+
+
 
   /**
    * write a int value to outputStream according to flag. If flag is true, write 1, else write 0.
@@ -362,19 +375,6 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * TSFreqType.
-   */
-  public static int write(TSFreqType freqType, OutputStream outputStream) throws IOException {
-    short n = freqType.serialize();
-    return write(n, outputStream);
-  }
-
-  public static int write(TSFreqType freqType, ByteBuffer buffer) {
-    short n = freqType.serialize();
-    return write(n, buffer);
-  }
-
-  /**
    * read a short var from inputStream.
    */
   public static short readShort(InputStream inputStream) throws IOException {
@@ -568,6 +568,21 @@ public class ReadWriteIOUtils {
     return bytes;
   }
 
+
+  public static Map<String, String> readMap(ByteBuffer buffer) {
+    int length = readInt(buffer);
+    Map<String, String> map = new HashMap<>(length);
+    for (int i = 0; i < length; i++) {
+      // key
+      String key = readString(buffer);
+      // value
+      String value = readString(buffer);
+      map.put(key, value);
+    }
+    return map;
+  }
+
+
   /**
    * unlike InputStream.read(bytes), this method makes sure that you can read length bytes or reach
    * to the end of the stream.
@@ -746,15 +761,6 @@ public class ReadWriteIOUtils {
     return TSEncoding.deserialize(n);
   }
 
-  public static TSFreqType readFreqType(InputStream inputStream) throws IOException {
-    short n = readShort(inputStream);
-    return TSFreqType.deserialize(n);
-  }
-
-  public static TSFreqType readFreqType(ByteBuffer buffer) {
-    short n = readShort(buffer);
-    return TSFreqType.deserialize(n);
-  }
 
   /**
    * to check whether the byte buffer is reach the magic string

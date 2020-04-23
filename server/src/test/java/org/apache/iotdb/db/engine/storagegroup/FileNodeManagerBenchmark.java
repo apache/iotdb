@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.RandomNum;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -67,8 +69,9 @@ public class FileNodeManagerBenchmark {
     manager.setStorageGroup(prefix);
     for (String device : devices) {
       for (String measurement : measurements) {
-        manager.createTimeseries(device + "." + measurement, TSDataType.INT64.toString(),
-            TSEncoding.PLAIN.toString());
+        manager.createTimeseries(device + "." + measurement, TSDataType.INT64,
+            TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections
+                .emptyMap());
       }
     }
   }

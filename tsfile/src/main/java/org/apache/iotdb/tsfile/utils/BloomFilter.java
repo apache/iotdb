@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.utils;
 
 import java.util.BitSet;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 public class BloomFilter {
@@ -50,7 +51,7 @@ public class BloomFilter {
     for (int i = 0; i < hashFunctionSize; i++) {
       func[i] = new HashFunction(size, SEEDS[i]);
     }
-    
+
     bits = new BitSet(size);
   }
 

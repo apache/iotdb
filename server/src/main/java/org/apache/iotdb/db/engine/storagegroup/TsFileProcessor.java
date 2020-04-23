@@ -33,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.cache.RamUsageEstimator;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
@@ -46,7 +47,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -56,12 +56,11 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,7 +74,6 @@ public class TsFileProcessor {
    */
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
   private RestorableTsFileIOWriter writer;
-  private Schema schema;
   private TsFileResource tsFileResource;
   // time range index to indicate this processor belongs to which time range
   private long timeRangeId;
@@ -90,6 +88,7 @@ public class TsFileProcessor {
    */
   private volatile boolean shouldClose;
   private IMemTable workMemTable;
+
   private VersionController versionController;
   /**
    * this callback is called after the corresponding TsFile is called endFile().
@@ -106,13 +105,12 @@ public class TsFileProcessor {
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE = "{}: {} get flushQueryLock write lock released";
 
-  TsFileProcessor(String storageGroupName, File tsfile, Schema schema,
+  TsFileProcessor(String storageGroupName, File tsfile,
       VersionController versionController,
       CloseTsFileCallBack closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.schema = schema;
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
@@ -133,13 +131,12 @@ public class TsFileProcessor {
     this.versionController = versionController;
   }
 
-  public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource, Schema schema,
+  public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    this.schema = schema;
     this.versionController = versionController;
     this.writer = writer;
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
@@ -265,6 +262,9 @@ public class TsFileProcessor {
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if(!config.isEnableParameterAdapter()){
+      return config.getMemtableSizeThreshold();
+    }
     long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
         / IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup()
         * ActiveTimeSeriesCounter.getInstance()
@@ -272,12 +272,15 @@ public class TsFileProcessor {
     return Math.max(memTableSize, config.getMemtableSizeThreshold());
   }
 
-
   public boolean shouldClose() {
     long fileSize = tsFileResource.getFileSize();
     long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getTsFileSizeThreshold();
-    return fileSize > fileSizeThreshold;
+    if (fileSize >= fileSizeThreshold) {
+      logger.info("{} fileSize {} >= fileSizeThreshold {}", tsFileResource.getPath(),
+          fileSize, fileSizeThreshold);
+    }
+    return fileSize >= fileSizeThreshold;
   }
 
   void syncClose() {
@@ -319,7 +322,20 @@ public class TsFileProcessor {
       logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getFile().getName());
     }
     try {
-      logger.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
+
+      if (logger.isInfoEnabled()) {
+        if (workMemTable != null) {
+          logger.info(
+              "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile size: {}",
+              storageGroupName, tsFileResource.getFile().getAbsolutePath(), workMemTable.memSize(),
+              tsFileResource.getFileSize());
+        } else {
+          logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
+              storageGroupName, tsFileResource.getFile().getAbsolutePath(),
+              tsFileResource.getFileSize());
+        }
+      }
+
       if (shouldClose) {
         return;
       }
@@ -334,11 +350,7 @@ public class TsFileProcessor {
       //we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
-      if (logger.isDebugEnabled()) {
-        logger
-            .debug("{}: {} async flush a memtable (signal = {}) when async close",
-                storageGroupName, tsFileResource.getFile().getName(), tmpMemTable.isSignalMemTable());
-      }
+
       try {
         addAMemtableIntoFlushingList(tmpMemTable);
         shouldClose = true;
@@ -510,7 +522,7 @@ public class TsFileProcessor {
     }
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
-      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, schema, writer,
+      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer,
           storageGroupName);
       try {
         writer.mark();
@@ -577,7 +589,7 @@ public class TsFileProcessor {
         endFile();
       } catch (Exception e) {
         logger.error("{} meet error when flush FileMetadata to {}, change system mode to read-only",
-            storageGroupName, tsFileResource.getFile().getAbsolutePath());
+            storageGroupName, tsFileResource.getFile().getAbsolutePath(), e);
         IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           writer.reset();
@@ -602,24 +614,23 @@ public class TsFileProcessor {
   private void endFile() throws IOException, TsFileProcessorException {
     long closeStartTime = System.currentTimeMillis();
     tsFileResource.serialize();
-    writer.endFile(schema);
+    writer.endFile();
     tsFileResource.cleanCloseFlag();
 
     // remove this processor from Closing list in StorageGroupProcessor,
     // mark the TsFileResource closed, no need writer anymore
     closeTsFileCallback.call(this);
 
-    writer = null;
-
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
-      logger.info("Storage group {} close the file {}, start time is {}, end time is {}, "
+      logger.info("Storage group {} close the file {}, TsFile size is {}, "
               + "time consumption of flushing metadata is {}ms",
           storageGroupName, tsFileResource.getFile().getAbsoluteFile(),
-          DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
-          DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
+          writer.getFile().length(),
           closeEndTime - closeStartTime);
     }
+
+    writer = null;
   }
 
 
@@ -672,12 +683,12 @@ public class TsFileProcessor {
    * ChunkMetadata of data on disk.
    *
    * @param deviceId device id
-   * @param measurementId sensor id
+   * @param measurementId measurements id
    * @param dataType data type
    * @param encoding encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
-  public Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> query(String deviceId,
+  public Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> query(String deviceId,
       String measurementId, TSDataType dataType, TSEncoding encoding, Map<String, String> props,
       QueryContext context) {
     if (logger.isDebugEnabled()) {
@@ -709,14 +720,14 @@ public class TsFileProcessor {
       List<Modification> modifications = context.getPathModifications(modificationFile,
           deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
 
-      List<ChunkMetaData> chunkMetaDataList = writer
+      List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);
-      QueryUtils.modifyChunkMetaData(chunkMetaDataList,
+      QueryUtils.modifyChunkMetaData(chunkMetadataList,
           modifications);
 
-      chunkMetaDataList.removeIf(context::chunkNotSatisfy);
+      chunkMetadataList.removeIf(context::chunkNotSatisfy);
 
-      return new Pair<>(readOnlyMemChunks, chunkMetaDataList);
+      return new Pair<>(readOnlyMemChunks, chunkMetadataList);
     } catch (Exception e) {
       logger.error("{}: {} get ReadOnlyMemChunk has error", storageGroupName,
           tsFileResource.getFile().getName(), e);

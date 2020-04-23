@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.metadata.MLogWriter;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,7 @@ public class IoTDBConfigCheck {
   private static String timestampPrecision = "ms";
   private static long partitionInterval = 86400;
   private static String tsfileFileSystem = "LOCAL";
+  private static String iotdbVersion = "0.10.0";
   private Properties properties = new Properties();
 
   public static final IoTDBConfigCheck getInstance() {
@@ -93,6 +96,7 @@ public class IoTDBConfigCheck {
           properties.setProperty("timestamp_precision", timestampPrecision);
           properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
           properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
+          properties.setProperty("iotdb_version", iotdbVersion);
           properties.store(outputStream, "System properties:");
         }
       }
@@ -119,6 +123,19 @@ public class IoTDBConfigCheck {
         logger.error("Wrong tsfile file system, please set as: " + properties
             .getProperty("tsfile_storage_fs") + " !");
         System.exit(-1);
+      }
+      if (properties.getProperty("iotdb_version") == null) {
+        logger.info("Lower iotdb version detected, upgrading old mlog file... ");
+        MLogWriter.upgradeMLog(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(), 
+            MetadataConstant.METADATA_LOG);
+        logger.info("Old mlog file is upgraded.");
+        try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
+          properties.setProperty("timestamp_precision", timestampPrecision);
+          properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
+          properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
+          properties.setProperty("iotdb_version", iotdbVersion);
+          properties.store(outputStream, "System properties:");
+        }
       }
     } catch (IOException e) {
       logger.error("Load system.properties from {} failed.", file.getAbsolutePath(), e);

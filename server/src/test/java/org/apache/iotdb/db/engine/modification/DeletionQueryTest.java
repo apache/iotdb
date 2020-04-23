@@ -52,8 +52,8 @@ public class DeletionQueryTest {
   private String processorName = "root.test";
 
   private static String[] measurements = new String[10];
-  private String dataType = TSDataType.DOUBLE.toString();
-  private String encoding = TSEncoding.PLAIN.toString();
+  private TSDataType dataType = TSDataType.DOUBLE;
+  private TSEncoding encoding = TSEncoding.PLAIN;
   private QueryRouter router = new QueryRouter();
 
   static {
@@ -63,19 +63,13 @@ public class DeletionQueryTest {
   }
 
   @Before
-  public void setup() throws
-      MetadataException, StorageEngineException, StartupException {
+  public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
 
     MManager.getInstance().setStorageGroup(processorName);
     for (int i = 0; i < 10; i++) {
       MManager.getInstance().createTimeseries(processorName + "." + measurements[i], dataType,
-          encoding);
-      StorageEngine.getInstance()
-          .addTimeSeries(new Path(processorName, measurements[i]), TSDataType.valueOf(dataType),
-              TSEncoding.valueOf(encoding),
-              TSFileDescriptor.getInstance().getConfig().getCompressor(),
-              Collections.emptyMap());
+          encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     }
   }
 
@@ -106,9 +100,9 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[4]));
     pathList.add(new Path(processorName, measurements[5]));
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
@@ -145,9 +139,9 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[5]));
 
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
@@ -194,9 +188,9 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[4]));
     pathList.add(new Path(processorName, measurements[5]));
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
@@ -244,9 +238,9 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[5]));
 
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
@@ -314,9 +308,9 @@ public class DeletionQueryTest {
     pathList.add(new Path(processorName, measurements[4]));
     pathList.add(new Path(processorName, measurements[5]));
     List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
-    dataTypes.add(TSDataType.valueOf(dataType));
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
+    dataTypes.add(dataType);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);

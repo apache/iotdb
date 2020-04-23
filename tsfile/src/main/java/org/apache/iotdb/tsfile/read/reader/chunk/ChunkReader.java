@@ -120,6 +120,8 @@ public class ChunkReader implements IChunkReader {
   public boolean pageSatisfied(PageHeader pageHeader) {
     if (pageHeader.getEndTime() <= deletedAt) {
       return false;
+    } else if (pageHeader.getStartTime() <= deletedAt) {
+      pageHeader.setModified(true);
     }
     return filter == null || filter.satisfy(pageHeader.getStatistics());
   }
@@ -155,7 +157,7 @@ public class ChunkReader implements IChunkReader {
   }
 
   @Override
-  public List<IPageReader> getPageReaderList() {
+  public List<IPageReader> loadPageReaderList() {
     return pageReaderList;
   }
 }

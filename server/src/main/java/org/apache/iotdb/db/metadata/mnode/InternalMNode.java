@@ -21,28 +21,29 @@ package org.apache.iotdb.db.metadata.mnode;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 public class InternalMNode extends MNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
   private Map<String, MNode> children;
+  private Map<String, MNode> aliasChildren;
 
   public InternalMNode(MNode parent, String name) {
     super(parent, name);
     this.children = new LinkedHashMap<>();
+    this.aliasChildren = new LinkedHashMap<>();
   }
 
   @Override
   public boolean hasChild(String name) {
-    return this.children.containsKey(name);
+    return this.children.containsKey(name) || this.aliasChildren.containsKey(name);
   }
 
   @Override
-  public void addChild(MNode child) {
-    this.children.put(child.getName(), child);
+  public void addChild(String name, MNode child) {
+    children.put(name, child);
   }
+
 
   @Override
   public void deleteChild(String name) {
@@ -50,8 +51,13 @@ public class InternalMNode extends MNode {
   }
 
   @Override
+  public void deleteAliasChild(String alias) {
+    aliasChildren.remove(alias);
+  }
+
+  @Override
   public MNode getChild(String name) {
-    return children.get(name);
+    return children.containsKey(name) ? children.get(name) : aliasChildren.get(name);
   }
 
   @Override
@@ -64,8 +70,8 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public MeasurementSchema getSchema() {
-    return null;
+  public void addAlias(String alias, MNode child) {
+    aliasChildren.put(alias, child);
   }
 
   @Override

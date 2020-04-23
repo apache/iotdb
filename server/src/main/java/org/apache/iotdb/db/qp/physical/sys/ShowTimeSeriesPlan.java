@@ -20,15 +20,49 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class ShowTimeSeriesPlan extends ShowPlan{
-  private Path path;
+public class ShowTimeSeriesPlan extends ShowPlan {
 
-  public ShowTimeSeriesPlan(ShowContentType showContentType, Path path) {
+  // path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
+  // * wildcard can only match one level, otherwise it can match to the tail.
+  private Path path;
+  private boolean isContains;
+  private String key;
+  private String value;
+  private int limit;
+  private int offset;
+
+  public ShowTimeSeriesPlan(ShowContentType showContentType, Path path, boolean isContains,
+      String key, String value, int limit, int offset) {
     super(showContentType);
     this.path = path;
+    this.isContains = isContains;
+    this.key = key;
+    this.value = value;
+    this.limit = limit;
+    this.offset = offset;
   }
 
   public Path getPath() {
     return this.path;
+  }
+
+  public boolean isContains() {
+    return isContains;
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public int getOffset() {
+    return offset;
   }
 }

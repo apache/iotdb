@@ -18,33 +18,17 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -64,12 +48,19 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.junit.Assert.*;
+
 public class PhysicalPlanTest {
 
   private Planner processor = new Planner();
 
   @Before
-  public void before() throws QueryProcessException, MetadataException {
+  public void before() throws MetadataException {
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup("root.vehicle");
     MManager.getInstance().createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
@@ -99,6 +90,15 @@ public class PhysicalPlanTest {
   @Test
   public void testMetadata2() throws QueryProcessException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
+    Planner processor = new Planner();
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+  }
+
+  @Test
+  public void testMetadata3() throws QueryProcessException {
+    String metadata = "create timeseries root.vehicle.d1.s2(温度) with datatype=int32,encoding=rle, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    System.out.println(metadata.length());
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
@@ -212,6 +212,7 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time = 5000 Fill(int32[linear, 5m], boolean[previous])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
     } catch (Exception e) {
       assertTrue(true);
     }
@@ -222,8 +223,153 @@ public class PhysicalPlanTest {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000 Fill(int32[linear], boolean[previous])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
     } catch (Exception e) {
       assertEquals("Only \"=\" can be used in fill function", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testGroupByFill1() {
+    String sqlStr =
+            "select last_value(s1) " + " from root.vehicle.d1 "
+                    + "group by([8,737), 3ms) fill(int32[previous])";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!plan.isQuery()) {
+        fail();
+      }
+      if (!(plan instanceof GroupByFillPlan)) {
+        fail();
+      }
+      GroupByFillPlan groupByFillPlan = (GroupByFillPlan) plan;
+      assertEquals(3L, groupByFillPlan.getInterval());
+      assertEquals(3L, groupByFillPlan.getSlidingStep());
+      assertEquals(8L, groupByFillPlan.getStartTime());
+      assertEquals(737L, groupByFillPlan.getEndTime());
+      assertEquals(1, groupByFillPlan.getFillType().size());
+      assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT32));
+      assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT32) instanceof PreviousFill);
+      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
+      assertFalse(previousFill.isUntilLast());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill2() {
+    String sqlStr =
+            "select last_value(s1) " + " from root.vehicle.d1 "
+                    + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!plan.isQuery()) {
+        fail();
+      }
+      if (!(plan instanceof GroupByFillPlan)) {
+        fail();
+      }
+      GroupByFillPlan groupByFillPlan = (GroupByFillPlan) plan;
+      assertEquals(3L, groupByFillPlan.getInterval());
+      assertEquals(3L, groupByFillPlan.getSlidingStep());
+      assertEquals(8L, groupByFillPlan.getStartTime());
+      assertEquals(737L, groupByFillPlan.getEndTime());
+      assertEquals(TSDataType.values().length, groupByFillPlan.getFillType().size());
+      for (TSDataType tsDataType : TSDataType.values()) {
+        assertTrue(groupByFillPlan.getFillType().containsKey(tsDataType));
+        assertTrue(groupByFillPlan.getFillType().get(tsDataType) instanceof PreviousFill);
+        PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(tsDataType);
+        assertTrue(previousFill.isUntilLast());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill3() {
+    String sqlStr =
+            "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+                    + "group by([8,737), 3ms) fill(int32[previousuntillast], int64[previous])";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!plan.isQuery()) {
+        fail();
+      }
+      if (!(plan instanceof GroupByFillPlan)) {
+        fail();
+      }
+      GroupByFillPlan groupByFillPlan = (GroupByFillPlan) plan;
+      assertEquals(3L, groupByFillPlan.getInterval());
+      assertEquals(3L, groupByFillPlan.getSlidingStep());
+      assertEquals(8L, groupByFillPlan.getStartTime());
+      assertEquals(737L, groupByFillPlan.getEndTime());
+      assertEquals(2, groupByFillPlan.getDeduplicatedPaths().size());
+      assertEquals(2, groupByFillPlan.getFillType().size());
+
+      assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT32));
+      assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT32) instanceof PreviousFill);
+      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
+      assertTrue(previousFill.isUntilLast());
+
+      assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT64));
+      assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT64) instanceof PreviousFill);
+      previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT64);
+      assertFalse(previousFill.isUntilLast());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill4() {
+    String sqlStr =
+            "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+                    + "group by([8,737), 3ms) fill(int32[linear])";
+    try {
+      processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
+    } catch (SQLParserException e) {
+      assertEquals("group by fill doesn't support linear fill", e.getMessage());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill5() {
+    String sqlStr =
+            "select last_value(d1.s1), count(d2.s1)" + " from root.vehicle "
+                    + "group by([8,737), 3ms) fill(int32[previous])";
+    try {
+      processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
+    } catch (QueryProcessException e) {
+      assertEquals("Group By Fill only support last_value function", e.getMessage());
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testGroupByFill6() {
+    String sqlStr =
+            "select count(s1)" + "from root.vehicle.d1 "
+                    + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
+    try {
+      processor.parseSQLToPhysicalPlan(sqlStr);
+      fail();
+    } catch (ParseCancellationException e) {
+      assertTrue(e.getMessage().contains("mismatched input 'fill'"));
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
     }
   }
 
@@ -311,6 +457,17 @@ public class PhysicalPlanTest {
   public void testLimitOffset() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
         + "limit 100 offset 10 slimit 1 soffset 1";
+    QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(100, plan.getRowLimit());
+    assertEquals(10, plan.getRowOffset());
+    // NOTE that the parameters of the SLIMIT clause is not stored in the physicalPlan,
+    // because the SLIMIT clause takes effect before the physicalPlan is finally generated.
+  }
+
+  @Test
+  public void testOffsetLimit() throws QueryProcessException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
+        + "offset 10 limit 100 soffset 1 slimit 1";
     QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals(100, plan.getRowLimit());
     assertEquals(10, plan.getRowOffset());
@@ -610,7 +767,7 @@ public class PhysicalPlanTest {
   @Test
   public void testLastPlanPaths() throws QueryProcessException {
     String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
-    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2 disable align";
+    String sqlStr2 = "SELECT last s1 FROM root.vehicle.d1, root.vehicle.d2";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     PhysicalPlan plan2 = processor.parseSQLToPhysicalPlan(sqlStr2);
     Path path1 = new Path("root.vehicle.d1.s1");

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -71,31 +72,33 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   private IWritableMemChunk createIfNotExistAndGet(String deviceId, String measurement,
-      TSDataType dataType) {
+      MeasurementSchema schema) {
     if (!memTableMap.containsKey(deviceId)) {
       memTableMap.put(deviceId, new HashMap<>());
     }
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     if (!memSeries.containsKey(measurement)) {
-      memSeries.put(measurement, genMemSeries(dataType));
+      memSeries.put(measurement, genMemSeries(schema));
     }
     return memSeries.get(measurement);
   }
 
-  protected abstract IWritableMemChunk genMemSeries(TSDataType dataType);
+  protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
 
   @Override
   public void insert(InsertPlan insertPlan) throws WriteProcessException {
     try {
       for (int i = 0; i < insertPlan.getValues().length; i++) {
 
-        Object value = CommonUtils.parseValue(insertPlan.getDataTypes()[i], insertPlan.getValues()[i]);
+        Object value = CommonUtils.parseValue(insertPlan.getSchemas()[i].getType(),
+            insertPlan.getValues()[i]);
+
+        memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
+
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-            insertPlan.getDataTypes()[i], insertPlan.getTime(), value);
+            insertPlan.getSchemas()[i], insertPlan.getTime(), value);
       }
-      long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
-      memSize += recordSizeInByte;
-    } catch (Exception e) {
+    } catch (QueryProcessException e) {
       throw new WriteProcessException(e.getMessage());
     }
   }
@@ -114,9 +117,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
 
   @Override
-  public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
+  public void write(String deviceId, String measurement, MeasurementSchema schema, long insertTime,
       Object objectValue) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
     memSeries.write(insertTime, objectValue);
   }
 
@@ -124,7 +127,7 @@ public abstract class AbstractMemTable implements IMemTable {
   public void write(BatchInsertPlan batchInsertPlan, int start, int end) {
     for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
       IWritableMemChunk memSeries = createIfNotExistAndGet(batchInsertPlan.getDeviceId(),
-          batchInsertPlan.getMeasurements()[i], batchInsertPlan.getDataTypes()[i]);
+          batchInsertPlan.getMeasurements()[i], batchInsertPlan.getSchemas()[i]);
       memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i],
           batchInsertPlan.getDataTypes()[i], start, end);
     }

@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import org.junit.Assert;
+import org.junit.Test;
+
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.junit.Assert;
-import org.junit.Test;
 
 public class OperatorTest {
 
@@ -38,7 +40,6 @@ public class OperatorTest {
     Filter filter2 = FilterFactory.and(TimeFilter.eq(100L), ValueFilter.eq(50));
     Assert.assertTrue(filter2.satisfy(100, 50));
     Assert.assertFalse(filter2.satisfy(100, 51));
-
 
     Filter filter3 = ValueFilter.eq(true);
     Assert.assertTrue(filter3.satisfy(100, true));
@@ -164,8 +165,7 @@ public class OperatorTest {
       orFilter.satisfy(i, i + 0.1);
     }
     long endTime = System.currentTimeMillis();
-    System.out
-        .println("EfficiencyTest for Filter: \n\tFilter Expression = " + orFilter + "\n\tCOUNT = "
-            + EFFICIENCY_TEST_COUNT + "\n\tTotal Time = " + (endTime - startTime) + "ms.");
+    System.out.println("EfficiencyTest for Filter: \n\tFilter Expression = " + orFilter + "\n\tCOUNT = "
+        + EFFICIENCY_TEST_COUNT + "\n\tTotal Time = " + (endTime - startTime) + "ms.");
   }
 }
