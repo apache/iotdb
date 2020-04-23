@@ -335,11 +335,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getAllMeasurementSchema(Node header, String path,
+  public void getAllMeasurementSchema(Node header, ByteBuffer planBytes,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler,
         "Get all measurement schema");
-    dataMember.getAllMeasurementSchema(header, path, resultHandler);
+    dataMember.getAllMeasurementSchema(header, planBytes, resultHandler);
   }
 
 

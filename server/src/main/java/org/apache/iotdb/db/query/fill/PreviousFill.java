@@ -178,12 +178,12 @@ public class PreviousFill extends IFill {
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
 
-      if (timeseriesMetadata == null || (timeseriesMetadata.getStatistics().canUseStatistics()
+      if (timeseriesMetadata == null || (!timeseriesMetadata.isModified()
           && timeseriesMetadata.getStatistics().getEndTime() < lBoundTime)) {
         continue;
       }
       unseqTimeseriesMetadataList.add(timeseriesMetadata);
-      if (timeseriesMetadata.getStatistics().canUseStatistics()) {
+      if (!timeseriesMetadata.isModified()) {
         if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
           lBoundTime = Math.max(lBoundTime, timeseriesMetadata.getStatistics().getEndTime());
         } else {
@@ -200,7 +200,7 @@ public class PreviousFill extends IFill {
     }
     Statistics chunkStatistics = chunkMetaData.getStatistics();
 
-    if (chunkStatistics.canUseStatistics() && endtimeContainedByTimeFilter(chunkStatistics)) {
+    if (!chunkMetaData.isModified() && endtimeContainedByTimeFilter(chunkStatistics)) {
       return constructLastPair(
           chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), dataType);
     }
@@ -208,7 +208,7 @@ public class PreviousFill extends IFill {
     for (int i = pageReaders.size() - 1; i >= 0; i--) {
       IPageReader pageReader = pageReaders.get(i);
       Statistics pageStatistics = pageReader.getStatistics();
-      if (pageStatistics.canUseStatistics() && endtimeContainedByTimeFilter(pageStatistics)) {
+      if (!pageReader.isModified() && endtimeContainedByTimeFilter(pageStatistics)) {
         lastPoint = constructLastPair(
             pageStatistics.getEndTime(), pageStatistics.getLastValue(), dataType);
       } else {

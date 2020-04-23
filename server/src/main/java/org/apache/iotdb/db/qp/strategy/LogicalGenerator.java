@@ -586,7 +586,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         throw new SQLParserException("group by fill doesn't support linear fill");
       }
       // all type use the same fill way
-      if (SQLConstant.ALL.equals(typeClause.dataType().getText().toLowerCase())) {
+      if (SQLConstant.ALL.equalsIgnoreCase(typeClause.dataType().getText())) {
         IFill fill;
         if (typeClause.previousUntilLastClause() != null) {
           fill = new PreviousFill(-1, true);
@@ -738,7 +738,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (limit <= 0) {
       throw new SQLParserException("LIMIT <N>: N should be greater than 0.");
     }
-    queryOp.setRowLimit(limit);
+    if (initializedOperator instanceof ShowTimeSeriesOperator) {
+      ((ShowTimeSeriesOperator) initializedOperator).setLimit(limit);
+    } else {
+      queryOp.setRowLimit(limit);
+    }
   }
 
   @Override
@@ -751,10 +755,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       throw new SQLParserException(
           "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.");
     }
-    if (offset <= 0) {
-      throw new SQLParserException("OFFSET <OFFSETValue>: OFFSETValue should be greater than 0.");
+    if (offset < 0) {
+      throw new SQLParserException("OFFSET <OFFSETValue>: OFFSETValue should >= 0.");
     }
-    queryOp.setRowOffset(offset);
+    if (initializedOperator instanceof ShowTimeSeriesOperator) {
+      ((ShowTimeSeriesOperator) initializedOperator).setOffset(offset);
+    } else {
+      queryOp.setRowOffset(offset);
+    }
   }
 
   @Override
@@ -783,9 +791,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       throw new SQLParserException(
           "Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
     }
-    if (soffset <= 0) {
+    if (soffset < 0) {
       throw new SQLParserException(
-          "SOFFSET <SOFFSETValue>: SOFFSETValue should be greater than 0.");
+          "SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.");
     }
     queryOp.setSeriesOffset(soffset);
   }
@@ -1067,7 +1075,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
-  public void enterShowWhereClause(SqlBaseParser.ShowWhereClauseContext ctx) {
+  public void enterShowWhereClause(ShowWhereClauseContext ctx) {
     super.enterShowWhereClause(ctx);
 
     ShowTimeSeriesOperator operator = (ShowTimeSeriesOperator) initializedOperator;
@@ -1147,8 +1155,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new Path(SQLConstant.RESERVED_TIME);
       }
-      if (ctx.prefixPath() != null) {
-        path = parsePrefixPath(ctx.prefixPath());
+      if (ctx.fullPath() != null) {
+        path = parseFullPath(ctx.fullPath());
       }
       if (ctx.suffixPath() != null) {
         path = parseSuffixPath(ctx.suffixPath());

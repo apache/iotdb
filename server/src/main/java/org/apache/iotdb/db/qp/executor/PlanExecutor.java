@@ -369,17 +369,16 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  private QueryDataSet processShowTimeseriesWithIndex(ShowTimeSeriesPlan timeSeriesPlan)
+  private QueryDataSet processShowTimeseriesWithIndex(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
-        .getAllTimeseriesSchema(timeSeriesPlan);
+        .getAllTimeseriesSchema(showTimeSeriesPlan);
     return getQueryDataSet(timeseriesList);
   }
 
-  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan timeSeriesPlan)
+  private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
-    List<ShowTimeSeriesResult> timeseriesList =
-        getTimeseriesSchemas(timeSeriesPlan.getPath().toString());
+    List<ShowTimeSeriesResult> timeseriesList =  getTimeseriesSchemas(showTimeSeriesPlan);
     return getQueryDataSet(timeseriesList);
   }
 
@@ -423,8 +422,8 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected List<ShowTimeSeriesResult> getTimeseriesSchemas(String path) throws MetadataException {
-    return MManager.getInstance().getAllTimeseriesSchema(path);
+  protected List<ShowTimeSeriesResult> getTimeseriesSchemas(ShowTimeSeriesPlan plan) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesSchema(plan);
   }
 
   private void updateRecord(RowRecord record, Map<String, String> tagAndAttribute, List<Path> paths) {

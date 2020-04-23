@@ -96,6 +96,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -1437,15 +1438,16 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void getAllMeasurementSchema(Node header, String path,
+  public void getAllMeasurementSchema(Node header, ByteBuffer planBuffer,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
     try {
+      ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
       List<ShowTimeSeriesResult> allTimeseriesSchema = MManager.getInstance()
-          .getAllTimeseriesSchema(path);
+          .getAllTimeseriesSchema(plan);
       ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
       dataOutputStream.writeInt(allTimeseriesSchema.size());
@@ -1453,7 +1455,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         result.serialize(outputStream);
       }
       resultHandler.onComplete(ByteBuffer.wrap(outputStream.toByteArray()));
-    } catch (MetadataException | IOException e) {
+    } catch (Exception e) {
       resultHandler.onError(e);
     }
   }

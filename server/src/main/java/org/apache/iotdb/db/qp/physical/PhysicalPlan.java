@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -247,6 +248,10 @@ public abstract class PhysicalPlan {
           plan = new DeleteStorageGroupPlan();
           plan.deserialize(buffer);
           break;
+        case SHOW_TIMESERIES:
+          plan = new ShowTimeSeriesPlan();
+          plan.deserialize(buffer);
+          break;
         default:
           throw new IOException("unrecognized log type " + type);
       }
@@ -257,7 +262,7 @@ public abstract class PhysicalPlan {
   public enum PhysicalPlanType {
     INSERT, DELETE, BATCHINSERT, SET_STORAGE_GROUP, CREATE_TIMESERIES, TTL, GRANT_WATERMARK_EMBEDDING, REVOKE_WATERMARK_EMBEDDING,
     CREATE_ROLE, DELETE_ROLE, CREATE_USER, REVOKE_USER_ROLE, REVOKE_ROLE_PRIVILEGE, REVOKE_USER_PRIVILEGE, GRANT_ROLE_PRIVILEGE, GRANT_USER_PRIVILEGE, GRANT_USER_ROLE, MODIFY_PASSWORD, DELETE_USER,
-    DELETE_STORAGE_GROUP, DELETE_TIMESERIES
+    DELETE_STORAGE_GROUP, SHOW_TIMESERIES, DELETE_TIMESERIES
   }
 
 

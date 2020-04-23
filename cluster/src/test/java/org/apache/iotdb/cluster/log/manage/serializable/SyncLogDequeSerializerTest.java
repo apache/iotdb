@@ -31,7 +31,6 @@ import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.manage.MemoryLogManager;
 import org.junit.Test;
 
 public class SyncLogDequeSerializerTest extends IoTDBTest {

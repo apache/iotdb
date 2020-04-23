@@ -108,14 +108,10 @@ public class ClusterPlanRouter {
       throws UnsupportedPlanException, MetadataException {
     if (plan instanceof BatchInsertPlan) {
       return splitAndRoutePlan((BatchInsertPlan) plan);
-    } else if (plan instanceof ShowTimeSeriesPlan) {
-      return splitAndRoutePlan((ShowTimeSeriesPlan) plan);
     } else if (plan instanceof UpdatePlan) {
       return splitAndRoutePlan((UpdatePlan) plan);
     } else if (plan instanceof CountPlan) {
       return splitAndRoutePlan((CountPlan) plan);
-    } else if (plan instanceof ShowDevicesPlan) {
-      return splitAndRoutePlan((ShowDevicesPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof InsertPlan) {
@@ -274,38 +270,6 @@ public class ClusterPlanRouter {
           result.put(plan1, partitionTable.route(entry.getKey(), 0));
         }
       }
-    }
-    return result;
-  }
-
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(ShowDevicesPlan plan)
-      throws IllegalPathException {
-    //show devices is quite special because it has the behavior of wildcard at the tail of the path
-    // even though there is no wildcard
-    Map<String, String> sgPathMap = getMManager()
-        .determineStorageGroup(plan.getPath().getFullPath() + ".*");
-    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
-    for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
-      result.put(new ShowDevicesPlan(plan.getShowContentType(), new Path(entry.getValue())),
-          partitionTable.route(entry.getKey(), 0));
-    }
-    return result;
-  }
-
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(ShowTimeSeriesPlan plan)
-      throws StorageGroupNotSetException, IllegalPathException {
-    //show timeseries is quite special because it has the behavior of wildcard at the tail of the path
-    // even though there is no wildcard
-    Map<String, String> sgPathMap = getMManager()
-        .determineStorageGroup(plan.getPath().getFullPath() + ".*");
-    if (sgPathMap.isEmpty()) {
-      throw new StorageGroupNotSetException(plan.getPath().getFullPath());
-    }
-    Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
-    for (Map.Entry<String, String> entry : sgPathMap.entrySet()) {
-      ShowTimeSeriesPlan newShow = new ShowTimeSeriesPlan(ShowContentType.TIMESERIES,
-          new Path(entry.getValue()), plan.isContains(), plan.getKey(), plan.getValue());
-      result.put(newShow, partitionTable.route(entry.getKey(), 0));
     }
     return result;
   }

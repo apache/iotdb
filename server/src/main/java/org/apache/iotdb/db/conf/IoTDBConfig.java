@@ -972,7 +972,7 @@ public class IoTDBConfig {
     return walBufferSize;
   }
 
-  void setWalBufferSize(int walBufferSize) {
+  public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
   }
 
