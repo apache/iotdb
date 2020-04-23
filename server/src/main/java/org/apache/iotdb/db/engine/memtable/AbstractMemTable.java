@@ -93,11 +93,11 @@ public abstract class AbstractMemTable implements IMemTable {
         Object value = CommonUtils.parseValue(insertPlan.getSchemas()[i].getType(),
             insertPlan.getValues()[i]);
 
+        memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
+
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
             insertPlan.getSchemas()[i], insertPlan.getTime(), value);
       }
-      long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
-      memSize += recordSizeInByte;
     } catch (QueryProcessException e) {
       throw new WriteProcessException(e.getMessage());
     }

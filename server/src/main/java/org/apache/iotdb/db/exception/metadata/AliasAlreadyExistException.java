@@ -15,22 +15,19 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.tsfile.read.reader;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+package org.apache.iotdb.db.exception.metadata;
 
-import java.io.IOException;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public interface IPageReader {
+public class AliasAlreadyExistException extends MetadataException {
 
-  BatchData getAllSatisfiedPageData() throws IOException;
+  private static final long serialVersionUID = 7299770003548114589L;
 
-  Statistics getStatistics();
-
-  void setFilter(Filter filter);
-
-  boolean isModified();
+  public AliasAlreadyExistException(String path, String alias) {
+    super(String.format("Alias [%s] for Path [%s] already exist", alias, path),
+            TSStatusCode.ALIAS_ALREADY_EXIST_ERROR.getStatusCode());
+  }
 }

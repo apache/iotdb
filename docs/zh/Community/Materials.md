@@ -19,11 +19,11 @@
 
 -->
 
-## Meetups and Talks
+## 活动与报告
 
 * 2020.03.02, Building IoT 2020. Essen, Germany.
-  * (German) [Industrial IoT mit Open Source](https://www.buildingiot.de/lecture.php?id=10856&source=).  Reporter: Julian Feinauer, Chirstofer Dutz.
-  
+  * (German) [Industrial IoT mit Open Source]((https://www.buildingiot.de/lecture.php?id=10856&source=)).  Reporter: Julian Feinauer, Chirstofer Dutz.
+
 * 2020.01.12, Apache IoTDB x Apache ShardingSphere Meetup. Beijing, China. 
 
 * 2020.01.04, Apache IoTDB x Apache Pulsar Meetup. Beijing, China. 
@@ -42,22 +42,21 @@
 * 2019.09.10, ApacheCon North America 2019. Las Vegas, USA.
   * (English) [Hello World! Introducing Apache IoTDB - a Database for the Internet of Things](#apna2019). Reporter: Xiangdong Huang, Julian Feinauer
 
-* 2019.07.13, Beijing Hackatthon 2019. Beijing, China.
+* 2019.07.13, 北京黑客马拉松 2019. 北京, 中国.
   * (Chinese) Apache IoTDB (incubating): Time Series Database for IIoT. IoTDB：工业互联网时序数据库. Reporter: Xiangdong Huang
 
-* 2019.05.07, The 2nd Digital China Summit. Fuzhou, China.
+* 2019.05.07, 第二届数字中国建设峰会. 福州, 中国.
   * (Chinese) Apache IoTDB (incubating): Time Series Database for IIoT. IoTDB：工业互联网时序数据库. Reporter: Xiangdong Huang
 
-* 2019.02.21, Industrial Internet Summit 2019. Beijing, China.
+* 2019.02.21, 工业互联网峰会 2019. 北京, 中国.
   * (Chinese) Apache IoTDB (incubating): Time Series Database for IIoT. IoTDB：工业互联网时序数据库. Reporter: Jianmin Wang
-                  
-* 2018.12.09, Tsinghua Open Source Software Summit 2018. Beijing, China.
+                
+* 2018.12.09, 清华开源之道大讲堂 2018. 北京, 中国.
   * (Chinese) IoTDB: from Tsinghua IoTDB to Apache IoTDB (incubating). IoTDB:从清华IoTDB到Apache孵化器项目。Reporter: Xiangdong Huang
 
+## 幻灯片，音频和视频
 
-## Slides, Audios and Videos
-
-### English
+### 英语
 
 * Coding example (from Dalian Meetup 2019)
 
@@ -71,10 +70,10 @@
 * <span id = "apeu2019"> ApacheCon Europe 2019: Apache IoTDB: Time Series Database for Industrial IoT</span>
 
 <iframe src="//www.slideshare.net/slideshow/embed_code/key/lms4cEH1eqnRZC" width="640" height="480" frameborder="0" scrolling="no" allowfullscreen> </iframe>
- 
+
 <iframe width="640" height="480" src="https://www.youtube.com/embed/LLFc3yPyTFY" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-### Chinese
+### 中文
 
 * <span id = "meetup2019-pulsar1"> 北京Meetup 2019. 基于Apache IoTDB的时序数据开源解决方案. </span>
 
@@ -93,8 +92,4 @@
 <iframe src="//www.slideshare.net/slideshow/embed_code/key/MZBHJIVnVxff8" width="640" height="480" frameborder="0"  allowfullscreen> </iframe>
 
 * [IoTDB v0.8.0 Query Process Implementation](https://h5.dingtalk.com/group-live-share/index.htm?encCid=b9f2eba34c2a3e9b8f06fbdaf65337e2&liveUuid=48161db6-d588-4251-a28a-1f929afee3ff#/), Reporter: Lei Rui
-
-
-
-
 

@@ -134,7 +134,7 @@ public class LastQueryExecutor {
         TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
                 seqFileResources.get(i), seriesPath, context, null, sensors);
         if (timeseriesMetadata != null) {
-          if (timeseriesMetadata.getStatistics().canUseStatistics()) {
+          if (!timeseriesMetadata.isModified()) {
             Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
             resultPair = constructLastPair(
                     timeseriesMetadataStats.getEndTime(),

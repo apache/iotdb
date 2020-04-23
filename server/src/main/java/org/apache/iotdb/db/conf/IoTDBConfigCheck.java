@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.metadata.MLogWriter;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,7 @@ public class IoTDBConfigCheck {
   private static String timestampPrecision = "ms";
   private static long partitionInterval = 86400;
   private static String tsfileFileSystem = "LOCAL";
+  private static String iotdbVersion = "0.10.0";
   private Properties properties = new Properties();
 
   public static IoTDBConfigCheck getInstance() {
@@ -92,6 +95,7 @@ public class IoTDBConfigCheck {
           properties.setProperty("timestamp_precision", timestampPrecision);
           properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
           properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
+          properties.setProperty("iotdb_version", iotdbVersion);
           properties.store(outputStream, "System properties:");
         }
       }
@@ -104,11 +108,17 @@ public class IoTDBConfigCheck {
     try (FileInputStream inputStream = new FileInputStream(inputFile.toString())) {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
       // need to upgrade
-      if (!properties.containsKey("storage_group_time_range")) {
+      if (!properties.containsKey("iotdb_version")) {
         properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
-      }
-      if (!properties.containsKey("tsfile_storage_fs")) {
         properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
+        properties.setProperty("iotdb_version", iotdbVersion);
+        // upgrade mlog
+        try {
+          MLogWriter.upgradeMLog(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(), 
+              MetadataConstant.METADATA_LOG);
+        } catch (IOException e) {
+          logger.error("Upgrade mlog.txt from {} failed.", file.getAbsolutePath(), e);
+        }
       } else {
         checkProperties();
         return;
@@ -118,7 +128,8 @@ public class IoTDBConfigCheck {
     }
 
     // it's an old version system.properties
-    // try to add the storage_group_time_range property in system.properties
+    // try to add the storage_group_time_range, tsfile_storage_fs 
+    // and iotdb_version property in system.properties
     try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
       properties.store(outputStream, "System properties:");
       checkProperties();

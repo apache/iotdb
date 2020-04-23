@@ -288,6 +288,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 536870912 |
 |Effective|After restart system|
 
+* tag\_attribute\_total\_size
+
+|Name| tag\_attribute\_total\_size |
+|:---:|:---|
+|Description| The maximum persistence size of tags and attributes of each time series.|
+|Type| Int32 |
+|Default| 700 |
+|Effective|After restart system|
+
 * flush\_wal\_threshold
 
 |Name| flush\_wal\_threshold |

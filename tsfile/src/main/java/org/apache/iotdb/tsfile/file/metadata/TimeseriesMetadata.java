@@ -43,6 +43,8 @@ public class TimeseriesMetadata {
   // for old TsFile
   private List<ChunkMetadata> chunkMetadataList;
 
+  // modified is true when there are modifications of the series, or from unseq file
+  private boolean modified;
 
   private IChunkMetadataLoader chunkMetadataLoader;
 
@@ -126,7 +128,7 @@ public class TimeseriesMetadata {
     return chunkMetadataLoader.loadChunkMetadataList();
   }
 
-  // this function is only for old TsFile
+  // this function is for old TsFile only
   public void addChunkMetadata(ChunkMetadata chunkMetadata) {
     if (chunkMetadataList == null) {
       chunkMetadataList = new ArrayList<>();
@@ -136,5 +138,12 @@ public class TimeseriesMetadata {
     }
     chunkMetadataList.add(chunkMetadata);
     statistics.mergeStatistics(chunkMetadata.getStatistics());
+  }
+  public boolean isModified() {
+    return modified;
+  }
+
+  public void setModified(boolean modified) {
+    this.modified = modified;
   }
 }

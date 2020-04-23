@@ -58,4 +58,9 @@ public class MemPageReader implements IPageReader {
   public void setFilter(Filter filter) {
     this.valueFilter = filter;
   }
+
+  @Override
+  public boolean isModified() {
+    return false;
+  }
 }

@@ -34,6 +34,7 @@ public class PageHeader {
   private int uncompressedSize;
   private int compressedSize;
   private Statistics statistics;
+  private boolean modified;
 
   public PageHeader(int uncompressedSize, int compressedSize, Statistics statistics) {
     this.uncompressedSize = uncompressedSize;
@@ -122,5 +123,13 @@ public class PageHeader {
   public String toString() {
     return "PageHeader{" + "uncompressedSize=" + uncompressedSize + ", compressedSize="
         + compressedSize + ", statistics=" + statistics + "}";
+  }
+
+  public boolean isModified() {
+    return modified;
+  }
+
+  public void setModified(boolean modified) {
+    this.modified = modified;
   }
 }

@@ -63,6 +63,8 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add method testInsertRowInBatch(1:TSInsertInBatchReq req);   | Kaifeng Xue |
 | Add method testInsertRow(1:TSInsertReq req);                 | Kaifeng Xue |
 | Add method testInsertBatch(1:TSBatchInsertionReq req);       | Kaifeng Xue |
+| Add struct TSCreateMultiTimeseriesReq                        | qiaojialin |
+| Add method createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);       | qiaojialin |
 
 
 ## 3. Update
@@ -89,6 +91,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
 | Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
 | Add optional i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
+| Add optional map<string, string> props, optional map<string, string> tags, optional map<string, string> attributes and optional string aliasPath in TSCreateTimeseriesReq | Yuan Tian | 
 
 
 # 0.10.0 (version-1) -> version-2
