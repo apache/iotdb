@@ -125,11 +125,11 @@ public class ClientServer extends TSServiceImpl {
 
     serverService = Executors.newSingleThreadExecutor(r -> new Thread(r,
         "ClusterClientServer"));
-    ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
 
     // this defines how thrift parse the requests bytes to a request
     TProtocolFactory protocolFactory;
-    if(ClusterDescriptor.getINSTANCE().getConfig().isRpcThriftCompressionEnabled()) {
+    if(ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()) {
       protocolFactory = new TCompactProtocol.Factory();
     } else {
       protocolFactory = new TBinaryProtocol.Factory();

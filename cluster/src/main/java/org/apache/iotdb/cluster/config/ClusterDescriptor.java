@@ -52,11 +52,11 @@ public class ClusterDescriptor {
     return config;
   }
 
-  public static ClusterDescriptor getINSTANCE() {
+  public static ClusterDescriptor getInstance() {
     return INSTANCE;
   }
 
-  private String getPropsUrl() {
+  public String getPropsUrl() {
     String url = System.getProperty(ClusterConstant.CLUSTER_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -203,5 +203,14 @@ public class ClusterDescriptor {
       urlList.add(nodeUrl);
     }
     return urlList;
+  }
+
+  public void loadHotModifiedProps() {
+    // TODO implement some hot modified properties to load
+
+  }
+
+  public void loadHotModifiedProps(Properties properties, boolean checkProperties){
+    // TODO implement some hot modified properties to load
   }
 }

@@ -165,7 +165,7 @@ public class PlanExecutor implements IPlanExecutor {
         operateTTL((SetTTLPlan) plan);
         return true;
       case LOAD_CONFIGURATION:
-        IoTDBDescriptor.getInstance().loadHotModifiedProps();
+        loadConfiguration((LoadConfigurationPlan)plan);
         return true;
       case LOAD_FILES:
         operateLoadFiles((OperateFilePlan) plan);
@@ -1189,5 +1189,9 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     return dataSet;
+  }
+
+  protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
+    IoTDBDescriptor.getInstance().loadHotModifiedProps();
   }
 }
