@@ -15,24 +15,31 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.tsfile.read.common.Path;
+package org.apache.iotdb.cluster.log.manage;
 
-public class ShowChildPathsPlan extends ShowPlan {
+import java.util.Collections;
+import java.util.List;
+import org.apache.iotdb.cluster.log.HardState;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.Snapshot;
 
-  // the path could be a prefix path with wildcard
-  private Path prefixPath;
+public class StableEntryManager {
 
-  public ShowChildPathsPlan(ShowContentType showContentType, Path prefixPath) {
-    super(showContentType);
-    this.prefixPath = prefixPath;
-    canBeSplit = false;
-  }
+    public List<Log> getAllEntries(){
+        return Collections.emptyList();
+    }
 
-  public Path getPath() {
-    return this.prefixPath;
-  }
+    public void append(List<Log> entries){}
+
+    public void applyingSnapshot(Snapshot snapshot){}
+
+    public void removeCompactedEntries(long index){}
+
+    public void setHardStateAndFlush(HardState state){}
+
+    public HardState getHardState(){
+        return null;
+    }
 }

@@ -215,10 +215,16 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // safety, otherwise it may come from an invalid leader and is not committed
         if (logManager.getCommitLogIndex() < request.getCommitLogIndex() &&
             logManager.matchTerm(request.getCommitLogTerm(),request.getCommitLogIndex())){
-          synchronized (syncLock) {
-            logManager.commitTo(request.getCommitLogIndex());
-            syncLock.notifyAll();
-          }
+            logger.info("{}: Committing to {}-{}", name, request.getCommitLogIndex(),
+                request.getCommitLogTerm());
+            synchronized (syncLock) {
+              logManager.commitTo(request.getCommitLogIndex());
+              syncLock.notifyAll();
+            }
+        } else if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
+          logger.info("{}: Inconsistent log found, local: {}-{}, leader: {}-{}", name,
+              logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
+              request.getCommitLogIndex(), request.getCommitLogTerm());
         }
         // if the log is not consistent, the commitment will be blocked until the leader makes the
         // node catch up

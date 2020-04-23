@@ -77,7 +77,7 @@ public class ClusterPlanRouter {
     } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
     }
-    if (plan.canbeSplit()) {
+    if (plan.canBeSplit()) {
       logger.error("{} can be split. Please call splitPlanAndMapToGroups", plan);
     }
     throw new UnsupportedPlanException(plan);
@@ -127,7 +127,7 @@ public class ClusterPlanRouter {
     } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
     }
-    if (!plan.canbeSplit()) {
+    if (!plan.canBeSplit()) {
       logger.error("{} cannot be split. Please call routePlan", plan);
     }
     throw new UnsupportedPlanException(plan);

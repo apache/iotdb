@@ -149,11 +149,13 @@ public class ClientMain {
 
       logger.info("Failed queries: {}", failedQueries);
     }
-    
+
+    System.out.println("Test delete timeseries");
+    testDeleteTimeseries(client, sessionId);
+
     System.out.println("Test delete storage group");
     testDeleteStorageGroup(client, sessionId);
   }
-
 
   protected static long connectClient(Client client) throws TException {
     TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
@@ -275,5 +277,14 @@ public class ClientMain {
         logger.info(client.insert(insertReq).toString());
       }
     }
+  }
+  private static void testDeleteTimeseries(Client client, long sessionId) throws TException {
+    List<String> paths = new ArrayList<>();
+    for (String measurement : MEASUREMENTS) {
+      for (String device : DEVICES) {
+        paths.add(measurement + "." + device);
+      }
+    }
+    client.deleteTimeseries(sessionId, paths);
   }
 }

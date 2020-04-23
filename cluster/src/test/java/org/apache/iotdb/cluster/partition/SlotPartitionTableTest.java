@@ -350,7 +350,7 @@ public class SlotPartitionTableTest {
     PhysicalPlan insertPlan1 = new InsertPlan("root.sg.l2.l3.l4.28.ld.l1.d0", 1, new String[]{"s0", "s1"}, new String[]{"0", "1"});
     PhysicalPlan insertPlan2 = new InsertPlan("root.sg.l2.l3.l4.28.ld.l1.d0", 1 + StorageEngine.getTimePartitionInterval(), new String[]{"s0", "s1"}, new String[]{"0", "1"});
     PartitionGroup group1, group2;
-    assertFalse(insertPlan1.canbeSplit());
+    assertFalse(insertPlan1.canBeSplit());
     ClusterPlanRouter router = new ClusterPlanRouter(localTable);
     try {
       group1 = router.routePlan(insertPlan1);
@@ -370,8 +370,9 @@ public class SlotPartitionTableTest {
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
     PhysicalPlan createTimeSeriesPlan3 = new CreateTimeSeriesPlan(new Path("root.sg.l2.l3.l4.29.ld.l1.d2"), TSDataType.BOOLEAN, TSEncoding.RLE, CompressionType.SNAPPY, Collections
         .emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null);
-    assertFalse(createTimeSeriesPlan1.canbeSplit());
+    assertFalse(createTimeSeriesPlan1.canBeSplit());
     ClusterPlanRouter router = new ClusterPlanRouter(localTable);
+
     try {
       PartitionGroup group1 = router.routePlan(createTimeSeriesPlan1);
       PartitionGroup group2 = router.routePlan(createTimeSeriesPlan2);
@@ -387,7 +388,7 @@ public class SlotPartitionTableTest {
   @Test
   public void testBatchInsertPlan() {
     PhysicalPlan batchInertPlan = new BatchInsertPlan("root.sg.l2.l3.l4.28.ld.l1.d0", new String[]{"s0", "s1"}, Arrays.asList(0, 1));
-    assertTrue(batchInertPlan.canbeSplit());
+    assertTrue(batchInertPlan.canBeSplit());
     //(String deviceId, String[] measurements, List<Integer> dataTypes)
     long[] times = new long[9];
     Object[] values = new Object[2];
@@ -440,7 +441,7 @@ public class SlotPartitionTableTest {
     PhysicalPlan countPlan5 = new CountPlan(ShowContentType.COUNT_NODES,new Path("root.sg.l2.l3"), 5);
     try {
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
-      assertTrue(countPlan1.canbeSplit());
+      assertTrue(countPlan1.canBeSplit());
       Map<PhysicalPlan, PartitionGroup> result1 = router.splitAndRoutePlan(countPlan1);
       assertEquals(1, result1.size());
       Map<PhysicalPlan, PartitionGroup> result2 = router.splitAndRoutePlan(countPlan2);
@@ -464,7 +465,7 @@ public class SlotPartitionTableTest {
     PhysicalPlan showChildPathsPlan1 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new Path("root.sg.l2.l3.l4.28"));
     PhysicalPlan showChildPathsPlan2 = new ShowChildPathsPlan(ShowContentType.CHILD_PATH, new Path("root.sg.l2.l3.l4"));
     try {
-      assertFalse(showChildPathsPlan1.canbeSplit());
+      assertFalse(showChildPathsPlan1.canBeSplit());
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
       PartitionGroup group1= router.routePlan(showChildPathsPlan1);
       PartitionGroup group2= router.routePlan(showChildPathsPlan2);
@@ -480,7 +481,7 @@ public class SlotPartitionTableTest {
     //TODO this case can be optimized
     PhysicalPlan showDevicesPlan1 = new ShowDevicesPlan(ShowContentType.DEVICES, new Path("root.*.l2"));
     PhysicalPlan showDevicesPlan2 = new ShowDevicesPlan(ShowContentType.DEVICES, new Path("root.sg.l2.l3.l4"));
-    assertTrue(showDevicesPlan1.canbeSplit());
+    assertTrue(showDevicesPlan1.canBeSplit());
 
     try {
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
@@ -499,7 +500,7 @@ public class SlotPartitionTableTest {
     PhysicalPlan showDevicesPlan1 = new ShowTimeSeriesPlan(ShowContentType.TIMESERIES, new Path(
         "root.*.l2"), false, null, null);
     PhysicalPlan showDevicesPlan2 = new ShowDevicesPlan(ShowContentType.TIMESERIES, new Path("root.sg.l2.l3.l4"));
-    assertTrue(showDevicesPlan1.canbeSplit());
+    assertTrue(showDevicesPlan1.canBeSplit());
 
     try {
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
