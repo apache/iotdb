@@ -849,7 +849,7 @@ public class MManager {
    * get device node, if the storage group is not set, create it when autoCreateSchema is true
    *
    * !!!!!!Attention!!!!!
-   * must can the return node's readUnlock() if you call this method.
+   * must call the return node's readUnlock() if you call this method.
    * @param path path
    */
   public MNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
