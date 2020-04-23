@@ -126,7 +126,7 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
             ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
-            return new ShowTimeSeriesPlan(ShowContentType.TIMESERIES,
+            return new ShowTimeSeriesPlan(
                 showTimeSeriesOperator.getPath(), showTimeSeriesOperator.isContains(),
                 showTimeSeriesOperator.getKey(), showTimeSeriesOperator.getValue(),
                 showTimeSeriesOperator.getLimit(), showTimeSeriesOperator.getOffset());
