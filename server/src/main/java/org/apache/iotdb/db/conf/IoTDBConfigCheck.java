@@ -142,7 +142,9 @@ public class IoTDBConfigCheck {
     }
     // create an empty tmpPropertiesFile
     try {
-      tmpPropertiesFile.createNewFile();
+      if (!tmpPropertiesFile.createNewFile()) {
+        logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      }
     } catch (IOException e) {
       logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile, e);
     }
