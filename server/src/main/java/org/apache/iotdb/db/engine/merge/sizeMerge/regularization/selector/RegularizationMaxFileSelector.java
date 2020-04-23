@@ -87,6 +87,10 @@ public class RegularizationMaxFileSelector implements IMergeFileSelector {
     this.selectorContext.clearTimeConsumption();
     try {
       logger.info("Selecting merge candidates from {} seqFile", seqFiles.size());
+      if (seqFiles.size() <= 1) {
+        logger.info("skip select merge from {} files", seqFiles.size());
+        return new Pair<>(resource, selectorContext);
+      }
       List<TsFileResource> selectedSeqFiles = select(false);
       if (selectedSeqFiles.isEmpty()) {
         selectedSeqFiles = select(true);

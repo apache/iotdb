@@ -1313,7 +1313,7 @@ public class StorageGroupProcessor {
 
   public void merge(boolean fullMerge) {
     seqMerge(fullMerge);
-    sizeMerge();
+//    sizeMerge();
   }
 
   private void seqMerge(boolean fullMerge) {

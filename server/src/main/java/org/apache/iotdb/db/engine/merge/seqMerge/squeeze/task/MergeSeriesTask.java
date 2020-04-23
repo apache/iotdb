@@ -62,7 +62,9 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
   private List<Pair<RestorableTsFileIOWriter, TsFileResource>> newTsFilePairs;
   private RestorableTsFileIOWriter currFileWriter;
   private TsFileResource currTsFile;
+  private List<TsFileResource> currUnseqFiles;
   private long currMinTime = Long.MAX_VALUE;
+  private int writerIdx = 0;
 
   MergeSeriesTask(MergeContext context, String taskName, SqueezeMergeLogger mergeLogger,
       MergeResource mergeResource, List<Path> unmergedSeries) {
@@ -78,10 +80,6 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
     }
     long startTime = System.currentTimeMillis();
 
-    Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = getNewFileWriter(
-        this.sizeMergeFileStrategy, newTsFilePairs, 0);
-    currFileWriter = newTsFilePair.left;
-    currTsFile = newTsFilePair.right;
     // merge each series and write data into each seqFile's corresponding temp merge file
     List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
     for (List<Path> pathList : devicePaths) {
@@ -120,10 +118,24 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
   }
 
   private void mergePaths() throws IOException {
+    Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = getNewFileWriter(
+        sizeMergeFileStrategy, newTsFilePairs,
+        writerIdx);
+    currFileWriter = newTsFilePair.left;
+    currTsFile = newTsFilePair.right;
+    currMinTime = Long.MAX_VALUE;
     String deviceId = currMergingPaths.get(0).getDevice();
+    currUnseqFiles = new ArrayList<>();
+    for (TsFileResource unseqFile : resource.getUnseqFiles()) {
+      if (unseqFile.getStartTimeMap().containsKey(deviceId)) {
+        currUnseqFiles.add(unseqFile);
+      }
+    }
     currFileWriter.startChunkGroup(deviceId);
-    int writerIdx = 0;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
+      if (!seqFile.getStartTimeMap().containsKey(deviceId)) {
+        continue;
+      }
       // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
       long maxTime = mergeChunks(seqFile);
       if (maxTime - currMinTime > timeBlock) {
@@ -133,7 +145,7 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
         currFileWriter.endChunkGroup();
 
         writerIdx++;
-        Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = getNewFileWriter(
+        newTsFilePair = getNewFileWriter(
             sizeMergeFileStrategy, newTsFilePairs,
             writerIdx);
         currFileWriter = newTsFilePair.left;
@@ -189,7 +201,7 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
       List<TsFileResource> seqFileList = new ArrayList<>();
       seqFileList.add(seqFile);
       IBatchReader tsFilesReader = new SeriesRawDataBatchReader(series, schema.getType(),
-          context, seqFileList, resource.getUnseqFiles(), null, null);
+          context, seqFileList, currUnseqFiles, null, null);
       while (tsFilesReader.hasNextBatch()) {
         BatchData batchData = tsFilesReader.nextBatch();
         currMinTime = Math.min(currMinTime, batchData.getTimeByIndex(0));
@@ -202,7 +214,6 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
       }
       synchronized (currFileWriter) {
         mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
-        chunkWriter.writeToFileWriter(currFileWriter);
       }
     }
     return maxTime;

@@ -445,7 +445,7 @@ public class IoTDBConfig {
 
   private SeqMergeFileStrategy seqMergeFileStrategy = SeqMergeFileStrategy.SQUEEZE;
 
-  private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.REGULARIZATION;
+  private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.INDEPENDENCE;
 
   /**
    * Default system file storage is in local file system (unsupported)
