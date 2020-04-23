@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MLogWriter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,8 +88,10 @@ public class IoTDBConfigCheck {
     // use output stream to write timestamp precision to file.
     File file = SystemFileFactory.INSTANCE
             .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
+    File tmpPropertiesFile = new File(file.getAbsoluteFile() 
+        + File.separator + "tmp");
     try {
-      if (!file.exists()) {
+      if (!file.exists() && !tmpPropertiesFile.exists()) {
         file.createNewFile();
         logger.info(" {} has been created.", file.getAbsolutePath());
         try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
@@ -99,9 +102,15 @@ public class IoTDBConfigCheck {
           properties.store(outputStream, "System properties:");
         }
       }
+      else if (!file.exists() && tmpPropertiesFile.exists()) {
+        // rename upgraded system.properties.tmp to system.properties
+        FSFactoryProducer.getFSFactory().moveFile(tmpPropertiesFile, file);
+        logger.info(" {} has been upgraded.", file.getAbsolutePath());
+      }
     } catch (IOException e) {
       logger.error("Can not create {}.", file.getAbsolutePath(), e);
     }
+    
     // get existed properties from system_properties.txt
     File inputFile = SystemFileFactory.INSTANCE
             .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
@@ -129,10 +138,19 @@ public class IoTDBConfigCheck {
 
     // it's an old version system.properties
     // try to add the storage_group_time_range, tsfile_storage_fs 
-    // and iotdb_version property in system.properties
-    try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
+    // and iotdb_version property in system.properties.tmp
+    try (FileOutputStream outputStream = new FileOutputStream(tmpPropertiesFile.toString())) {
+      if (tmpPropertiesFile.delete()) {
+        logger.info("Remove broken file {}", tmpPropertiesFile);
+      }
       properties.store(outputStream, "System properties:");
       checkProperties();
+      // upgrade finished, delete old system.properties file
+      if (!file.delete()) {
+        throw new IOException();
+      }
+      // rename system.properties.tmp to system.properties
+      FSFactoryProducer.getFSFactory().moveFile(tmpPropertiesFile, file);
     }  catch (IOException e) {
       logger.error("Something went wrong while upgrading teh system.properties. The file is {}.", file.getAbsolutePath(), e);
     }
