@@ -37,7 +37,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,7 +47,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -71,7 +69,6 @@ import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
-import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
@@ -127,7 +124,6 @@ import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
-import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
@@ -767,7 +763,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
         addNodeLog.setNewNode(node);
 
-        logManager.appendLog(addNodeLog);
+        logManager.append(addNodeLog);
 
         int retryTime = 1;
         while (true) {
@@ -777,7 +773,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           switch (result) {
             case OK:
               logger.info("Join request of {} is accepted", node);
-              logManager.commitLog(addNodeLog.getCurrLogIndex());
+              logManager.commitTo(addNodeLog.getCurrLogIndex());
               synchronized (partitionTable) {
                 response.setPartitionTableBytes(partitionTable.serialize());
               }
@@ -1026,7 +1022,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
 
-
   public PartitionTable getPartitionTable() {
     return partitionTable;
   }
@@ -1069,21 +1064,23 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
       }
 
-      for (Map.Entry<String, Long> entry: snapshot.getStorageGroupTTL().entrySet()){
+      for (Map.Entry<String, Long> entry : snapshot.getStorageGroupTTL().entrySet()) {
         try {
           MManager.getInstance().setTTL(entry.getKey(), entry.getValue());
           StorageEngine.getInstance().setTTL(entry.getKey(), entry.getValue());
         } catch (MetadataException | StorageEngineException | IOException e) {
-          logger.error("{}: Cannot set ttl in storage group {} , error is: {}", name, entry.getKey(), e);
+          logger
+              .error("{}: Cannot set ttl in storage group {} , error is: {}", name, entry.getKey(),
+                  e);
         }
       }
 
       try {
         LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
-        for (Map.Entry<String, Boolean> entry: snapshot.getUserWaterMarkStatus().entrySet()) {
+        for (Map.Entry<String, Boolean> entry : snapshot.getUserWaterMarkStatus().entrySet()) {
           try {
             authorizer.setUserUseWaterMark(entry.getKey(), entry.getValue());
-          } catch (AuthException e){
+          } catch (AuthException e) {
             logger.error("{}: Cannot set user {}, error is: {}", name, entry.getKey(), e);
           }
         }
@@ -1101,8 +1098,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
       logManager.setSnapshot(snapshot);
     }
-    logManager.setLastLogTerm(snapshot.getLastLogTerm());
-    logManager.setLastLogId(snapshot.getLastLogId());
+    logManager.applyingSnapshot(snapshot);
   }
 
   /**
@@ -2281,7 +2277,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
         removeNodeLog.setRemovedNode(target);
 
-        logManager.appendLog(removeNodeLog);
+        logManager.append(removeNodeLog);
 
         int retryTime = 1;
         while (true) {
@@ -2292,7 +2288,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           switch (result) {
             case OK:
               logger.info("Removal request of {} is accepted", target);
-              logManager.commitLog(removeNodeLog.getCurrLogIndex());
+              logManager.commitTo(removeNodeLog.getCurrLogIndex());
               resultHandler.onComplete(Response.RESPONSE_AGREE);
               return true;
             case TIME_OUT:
@@ -2587,7 +2583,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
 
-  public TimeValuePair performPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
+  public TimeValuePair performPreviousFill(Path path, TSDataType dataType, long queryTime,
+      long beforeRange,
       Set<String> deviceMeasurements, QueryContext context, Filter timeFilter)
       throws StorageEngineException {
     // make sure the partition table is new
@@ -2620,13 +2617,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   public void performPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
       Set<String> deviceMeasurements, QueryContext context, PartitionGroup group,
       PreviousFillHandler fillHandler) {
-      if (group.contains(thisNode)) {
-        localPreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
-            group, fillHandler);
-      } else {
-        remotePreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
-            group, fillHandler);
-      }
+    if (group.contains(thisNode)) {
+      localPreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
+          group, fillHandler);
+    } else {
+      remotePreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
+          group, fillHandler);
+    }
   }
 
   public void localPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
@@ -2634,8 +2631,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       PreviousFillHandler fillHandler) {
     DataGroupMember localDataMember = getLocalDataMember(group.getHeader());
     try {
-      fillHandler.onComplete(localDataMember.localPreviousFill(path, dataType, queryTime, beforeRange,
-          deviceMeasurements, context));
+      fillHandler
+          .onComplete(localDataMember.localPreviousFill(path, dataType, queryTime, beforeRange,
+              deviceMeasurements, context));
     } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
       fillHandler.onError(e);
     }
@@ -2645,7 +2643,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       Set<String> deviceMeasurements, QueryContext context, PartitionGroup group,
       PreviousFillHandler fillHandler) {
     PreviousFillRequest request = new PreviousFillRequest(path.getFullPath(), queryTime,
-        beforeRange, context.getQueryId(), thisNode, group.getHeader(), dataType.ordinal(), deviceMeasurements);
+        beforeRange, context.getQueryId(), thisNode, group.getHeader(), dataType.ordinal(),
+        deviceMeasurements);
     AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
 
     for (Node node : group) {

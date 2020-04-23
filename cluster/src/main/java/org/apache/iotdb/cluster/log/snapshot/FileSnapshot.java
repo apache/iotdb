@@ -113,7 +113,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
     return "FileSnapshot{" +
         "timeseriesSchemas=" + timeseriesSchemas.size() +
         ", dataFiles=" + dataFiles.size() +
-        ", lastLogId=" + lastLogId +
+        ", lastLogIndex=" + lastLogIndex +
         ", lastLogTerm=" + lastLogTerm +
         '}';
   }

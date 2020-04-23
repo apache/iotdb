@@ -42,7 +42,8 @@ import org.slf4j.LoggerFactory;
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 
-  private static final Logger logger = LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
+  private static final Logger logger = LoggerFactory
+      .getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode) {
@@ -55,22 +56,12 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
+    //TODO remove useless logs which have been compacted
     synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
-
-
-      int i = 0;
-      for (; i < logBuffer.size(); i++) {
-        if (logBuffer.get(i).getCurrLogIndex() > commitLogIndex) {
-          break;
-        }
-        snapshotLastLogId = logBuffer.get(i).getCurrLogIndex();
-        snapshotLastLogTerm = logBuffer.get(i).getCurrLogTerm();
-      }
-      removeFromHead(i);
-
+      snapshotLastLogIndex = getCommitLogIndex();
+      snapshotLastLogTerm = getCommitLogTerm();
       collectTsFiles();
-
       logger.info("Snapshot is taken");
     }
   }

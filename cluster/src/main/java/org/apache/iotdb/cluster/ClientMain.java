@@ -21,12 +21,10 @@ package org.apache.iotdb.cluster;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -44,9 +42,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -160,7 +156,6 @@ public class ClientMain {
 
   protected static long connectClient(Client client) throws TException {
     TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
-
     openReq.setUsername("root");
     openReq.setPassword("root");
     TSOpenSessionResp openResp = client.openSession(openReq);
@@ -171,7 +166,6 @@ public class ClientMain {
     TSIService.Client.Factory factory = new Factory();
     TTransport transport = new TFramedTransport(new TSocket(ip, port));
     transport.open();
-
     return factory.getClient(new TCompactProtocol(transport));
   }
 
@@ -230,7 +224,6 @@ public class ClientMain {
     testQuery(client, sessionId, new String[] {"SELECT * FROM root"});
   }
 
-
   private static void testInsertion(Client client, long sessionId) throws TException {
     for (String storageGroup : STORAGE_GROUPS) {
       logger.info(client.setStorageGroup(sessionId, storageGroup).toString());
@@ -282,5 +275,4 @@ public class ClientMain {
       }
     }
   }
-
 }

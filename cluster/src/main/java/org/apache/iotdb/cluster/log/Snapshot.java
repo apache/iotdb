@@ -32,23 +32,23 @@ import java.nio.ByteBuffer;
  */
 public abstract class Snapshot {
 
-  protected long lastLogId;
+  protected long lastLogIndex;
   protected long lastLogTerm;
 
   public abstract ByteBuffer serialize();
 
   public abstract void deserialize(ByteBuffer buffer);
 
-  public void setLastLogId(long lastLogId) {
-    this.lastLogId = lastLogId;
+  public void setLastLogIndex(long lastLogIndex) {
+    this.lastLogIndex = lastLogIndex;
   }
 
   public void setLastLogTerm(long lastLogTerm) {
     this.lastLogTerm = lastLogTerm;
   }
 
-  public long getLastLogId() {
-    return lastLogId;
+  public long getLastLogIndex() {
+    return lastLogIndex;
   }
 
   public long getLastLogTerm() {

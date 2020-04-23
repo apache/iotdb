@@ -17,16 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.common;
+package org.apache.iotdb.cluster.exception;
 
-import org.apache.iotdb.cluster.log.manage.CommittedEntryManager;
-import org.apache.iotdb.cluster.log.manage.RaftLogManager;
-import org.apache.iotdb.cluster.log.manage.StableEntryManager;
+public class TruncateCommittedEntryException extends Exception {
 
-public class TestLogManager extends RaftLogManager {
-
-  public TestLogManager() {
-    super(new CommittedEntryManager(), new StableEntryManager(),
-        new TestLogApplier());
+  public TruncateCommittedEntryException(long index, long committed) {
+    super(String
+        .format("The committed entries cannot be truncated: parameter: %d, commitIndex : %d", index,
+            committed));
   }
 }

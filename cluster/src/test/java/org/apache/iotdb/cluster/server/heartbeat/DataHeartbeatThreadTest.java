@@ -21,11 +21,13 @@ package org.apache.iotdb.cluster.server.heartbeat;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.List;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
@@ -46,7 +48,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
   RaftMember getMember() {
     return new TestDataGroupMember() {
       @Override
-      public LogManager getLogManager() {
+      public RaftLogManager getLogManager() {
         return dataLogManager;
       }
 
@@ -97,10 +99,10 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
         new Thread(() -> {
           assertEquals(TestUtils.getNode(0), request.getElector());
           assertEquals(11, request.getTerm());
-          assertEquals(9, request.getLastLogIndex());
-          assertEquals(8, request.getLastLogTerm());
-          assertEquals(11, request.getDataLogLastTerm());
-          assertEquals(12, request.getDataLogLastIndex());
+          assertEquals(6, request.getLastLogIndex());
+          assertEquals(6, request.getLastLogTerm());
+          assertEquals(13, request.getDataLogLastTerm());
+          assertEquals(13, request.getDataLogLastIndex());
           if (respondToElection) {
             resultHandler.onComplete(Response.RESPONSE_AGREE);
           }
@@ -114,9 +116,9 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
   public void setUp() {
     super.setUp();
     dataLogManager = new TestLogManager();
-    dataLogManager.setLastLogTerm(11);
-    dataLogManager.setLastLogId(12);
-    dataLogManager.setCommitIndex(13);
+    List<Log> logs = TestUtils.prepareTestLogs(14);
+    dataLogManager.append(logs);
+    dataLogManager.commitTo(13);
   }
 
   @Override

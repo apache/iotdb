@@ -17,16 +17,29 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.common;
+package org.apache.iotdb.cluster.log.manage;
 
-import org.apache.iotdb.cluster.log.manage.CommittedEntryManager;
-import org.apache.iotdb.cluster.log.manage.RaftLogManager;
-import org.apache.iotdb.cluster.log.manage.StableEntryManager;
+import java.util.Collections;
+import java.util.List;
+import org.apache.iotdb.cluster.log.HardState;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.Snapshot;
 
-public class TestLogManager extends RaftLogManager {
+public class StableEntryManager {
 
-  public TestLogManager() {
-    super(new CommittedEntryManager(), new StableEntryManager(),
-        new TestLogApplier());
-  }
+    public List<Log> getAllEntries(){
+        return Collections.emptyList();
+    }
+
+    public void append(List<Log> entries){}
+
+    public void applyingSnapshot(Snapshot snapshot){}
+
+    public void removeCompactedEntries(long index){}
+
+    public void setHardStateAndFlush(HardState state){}
+
+    public HardState getHardState(){
+        return null;
+    }
 }

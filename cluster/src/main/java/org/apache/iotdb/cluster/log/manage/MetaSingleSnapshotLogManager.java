@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.manage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -29,7 +30,6 @@ import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
 /**
  * MetaSingleSnapshotLogManager provides a MetaSimpleSnapshot as snapshot.
  */
-public class MetaSingleSnapshotLogManager extends MemoryLogManager {
+public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaSingleSnapshotLogManager.class);
   private List<Log> snapshot = new ArrayList<>();
@@ -46,20 +46,18 @@ public class MetaSingleSnapshotLogManager extends MemoryLogManager {
   private Map<String, Boolean> userWaterMarkStatus;
 
   public MetaSingleSnapshotLogManager(LogApplier logApplier) {
-    super(logApplier);
+    super(new CommittedEntryManager(), new StableEntryManager(), logApplier);
   }
 
-  @Override
   public void takeSnapshot() {
-    int i = 0;
-    for (; i < logBuffer.size(); i++) {
-      if (logBuffer.get(i).getCurrLogIndex() > commitLogIndex) {
-        break;
-      }
+    //TODO remove useless logs which have been compacted
+    try {
+      List<Log> entries = committedEntryManager
+          .getEntries(committedEntryManager.getFirstIndex(), Long.MAX_VALUE);
+      snapshot.addAll(entries);
+    } catch (EntryCompactedException e) {
+      logger.error("Unexpected error: {}", e.getMessage());
     }
-    snapshot.addAll(logBuffer.subList(0, i));
-    removeFromHead(i);
-
     storageGroups = MManager.getInstance().getAllStorageGroupNames();
     storageGroupTTL = MManager.getInstance().getStorageGroupsTTL();
     try {

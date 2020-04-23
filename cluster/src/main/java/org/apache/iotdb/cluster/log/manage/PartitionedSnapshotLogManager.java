@@ -43,14 +43,14 @@ import org.slf4j.LoggerFactory;
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to
  * a sub-snapshot according to its slot and stores timeseries schemas of each slot.
  */
-public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends MemoryLogManager {
+public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(PartitionedSnapshotLogManager.class);
 
   Map<Integer, T> slotSnapshots = new HashMap<>();
   private SnapshotFactory factory;
   Map<Integer, Collection<MeasurementSchema>> slotTimeseries = new HashMap<>();
-  long snapshotLastLogId;
+  long snapshotLastLogIndex;
   long snapshotLastLogTerm;
   PartitionTable partitionTable;
   Node header;
@@ -59,7 +59,8 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode, SnapshotFactory<T> factory) {
-    super(logApplier);
+    super(new CommittedEntryManager(), new StableEntryManager(),
+        logApplier);
     this.partitionTable = partitionTable;
     this.header = header;
     this.factory = factory;
@@ -74,7 +75,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       for (Entry<Integer, T> entry : slotSnapshots.entrySet()) {
         partitionedSnapshot.putSnapshot(entry.getKey(), entry.getValue());
       }
-      partitionedSnapshot.setLastLogId(snapshotLastLogId);
+      partitionedSnapshot.setLastLogIndex(snapshotLastLogIndex);
       partitionedSnapshot.setLastLogTerm(snapshotLastLogTerm);
       return partitionedSnapshot;
     }

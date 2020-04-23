@@ -189,7 +189,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
-    this.logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
+    logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
         this), metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode);
     super.logManager = logManager;
   }
@@ -532,9 +532,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           applySnapshot(subSnapshot, slot);
         }
       }
-      logManager.setLastLogId(snapshot.getLastLogId());
-      logManager.setLastLogTerm(snapshot.getLastLogTerm());
-      logManager.setCommitIndex(snapshot.getLastLogId());
+      logManager.applyingSnapshot(snapshot);
     }
   }
 
@@ -817,8 +815,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         Node node = entry.getKey();
         List<Integer> nodeSlots = entry.getValue();
         PullSnapshotTaskDescriptor taskDescriptor =
-            new PullSnapshotTaskDescriptor(
-                metaGroupMember.getPartitionTable().getHeaderGroup(node),
+            new PullSnapshotTaskDescriptor(metaGroupMember.getPartitionTable().getHeaderGroup(node),
                 nodeSlots, false);
         pullFileSnapshot(taskDescriptor, null);
       }
@@ -920,7 +917,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       log.setPreviousLogTerm(logManager.getLastLogTerm());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-      logManager.appendLog(log);
+      logManager.append(log);
 
       logger.info("Send the close file request of {} to other nodes", log);
     }
@@ -1489,8 +1486,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     try {
       results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter,
           queryContext);
-      logger.trace("{}: aggregation results {}, queryId: {}", name, results,
-          request.getQueryId());
+      logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
     } catch (StorageEngineException | IOException | QueryProcessException | LeaderUnknownException e) {
       resultHandler.onError(e);
       return;
@@ -1727,4 +1723,3 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return previousFill.getFillResult();
   }
 }
-

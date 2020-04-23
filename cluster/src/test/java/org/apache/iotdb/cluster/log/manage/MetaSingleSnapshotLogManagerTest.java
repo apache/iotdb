@@ -35,8 +35,7 @@ import org.junit.Test;
 
 public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
 
-  private MetaSingleSnapshotLogManager logManager =
-      new MetaSingleSnapshotLogManager(new TestLogApplier());
+  private MetaSingleSnapshotLogManager logManager;
 
   @Override
   @Before
@@ -49,10 +48,8 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
   @Test
   public void testTakeSnapshot() {
     List<Log> testLogs = TestUtils.prepareTestLogs(10);
-    for (Log testLog : testLogs) {
-      logManager.appendLog(testLog);
-    }
-    logManager.commitLog(4);
+    logManager.append(testLogs);
+    logManager.commitTo(4);
 
     logManager.takeSnapshot();
     MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
@@ -62,7 +59,7 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
       assertEquals(TestUtils.getTestSg(i), storageGroups.get(i));
     }
     assertEquals(testLogs.subList(0, 5), snapshot.getSnapshot());
-    assertEquals(4, snapshot.getLastLogId());
+    assertEquals(4, snapshot.getLastLogIndex());
     assertEquals(4, snapshot.getLastLogTerm());
   }
 
@@ -75,5 +72,4 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
     MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
     assertEquals(testLogs, snapshot.getSnapshot());
   }
-
 }
