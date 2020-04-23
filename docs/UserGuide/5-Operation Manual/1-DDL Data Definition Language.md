@@ -91,7 +91,7 @@ The only difference between tag and attribute is that we will maintain an invert
 
 * SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
 
-  There are three optional clause could be added behind SHOW TIMESERIES, return information of time series 
+  There are three optional clauses could be added behind SHOW TIMESERIES, return information of time series 
   
 Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
  
