@@ -195,6 +195,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
           unseqFile, tmpSelectedSeqFiles, newCost, totalCost);
     }
   }
+
   private boolean checkClosed(TsFileResource unseqFile) {
     boolean isClosed = unseqFile.isClosed();
     if (!isClosed) {
@@ -208,6 +209,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     }
     return isClosed;
   }
+
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
 
     int tmpSelectedNum = 0;
