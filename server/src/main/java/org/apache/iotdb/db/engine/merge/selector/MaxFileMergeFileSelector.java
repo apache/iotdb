@@ -155,6 +155,13 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
           .isNeedUpgrade(unseqFile)) {
         selectOverlappedSeqFiles(unseqFile);
       }
+      boolean isClosed = checkClosed(unseqFile);
+      if (!isClosed) {
+        tmpSelectedSeqFiles.clear();
+        unseqIndex++;
+        timeConsumption = System.currentTimeMillis() - startTime;
+        continue;
+      }
 
       tempMaxSeqFileCost = maxSeqFileCost;
       long newCost = useTightBound ? calculateTightMemoryCost(unseqFile, tmpSelectedSeqFiles,
@@ -188,7 +195,19 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
           unseqFile, tmpSelectedSeqFiles, newCost, totalCost);
     }
   }
-
+  private boolean checkClosed(TsFileResource unseqFile) {
+    boolean isClosed = unseqFile.isClosed();
+    if (!isClosed) {
+      return false;
+    }
+    for (Integer seqIdx : tmpSelectedSeqFiles) {
+      if (!resource.getSeqFiles().get(seqIdx).isClosed()) {
+        isClosed = false;
+        break;
+      }
+    }
+    return isClosed;
+  }
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
 
     int tmpSelectedNum = 0;
