@@ -119,13 +119,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     while (deviceIterator.hasNext()) {
       currentDevice = deviceIterator.next();
       // get all measurements of current device
-      Set<String> measurementOfGivenDevice;
-      try {
-        MNode deviceNode = MManager.getInstance().getNodeByPath(currentDevice);
-        measurementOfGivenDevice = deviceNode.getChildren().keySet();
-      } catch (MetadataException e) {
-        throw new IOException("Cannot get node from " + currentDevice);
-      }
+      Set<String> measurementOfGivenDevice = getDeviceMeasurements(currentDevice);
+
       // extract paths and aggregations queried from all measurements
       // executeColumns is for calculating rowRecord
       executeColumns = new ArrayList<>();
@@ -191,6 +186,15 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       }
     }
     return false;
+  }
+
+  protected Set<String> getDeviceMeasurements(String device) throws IOException {
+    try {
+      MNode deviceNode = MManager.getInstance().getNodeByPath(currentDevice);
+      return deviceNode.getChildren().keySet();
+    } catch (MetadataException e) {
+      throw new IOException("Cannot get node from " + currentDevice, e);
+    }
   }
 
   protected RowRecord nextWithoutConstraint() throws IOException {

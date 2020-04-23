@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
@@ -41,17 +42,21 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -263,12 +268,20 @@ public class ClusterPlanExecutor extends PlanExecutor {
   protected MeasurementSchema[] getSeriesSchemas(String[] measurementList, String deviceId,
       String[] strValues) throws MetadataException {
 
-    MNode node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+    MNode node = null;
     boolean allSeriesExists = true;
-    for (String measurement : measurementList) {
-      if (!node.hasChild(measurement)) {
-        allSeriesExists = false;
-        break;
+    try {
+      node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+    } catch (PathNotExistException e) {
+      allSeriesExists = false;
+    }
+
+    if (node != null) {
+      for (String measurement : measurementList) {
+        if (!node.hasChild(measurement)) {
+          allSeriesExists = false;
+          break;
+        }
       }
     }
 
@@ -285,6 +298,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (MeasurementSchema schema : schemas) {
       MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
     }
+    logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
 
     if (schemas.size() == measurementList.length) {
       // all schemas can be fetched from the remote side
@@ -303,5 +317,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
     return metaGroupMember.getAllStorageGroupNodes();
+  }
+
+  @Override
+  protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
+      QueryContext context, IQueryRouter router) {
+    return new ClusterAlignByDeviceDataSet(plan, context, router, metaGroupMember);
   }
 }
