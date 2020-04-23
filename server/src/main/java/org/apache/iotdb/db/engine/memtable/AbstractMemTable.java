@@ -32,7 +32,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,12 +40,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public abstract class AbstractMemTable implements IMemTable {
 
-  private long version = Long.MAX_VALUE;
-
-  private List<Modification> modifications = new ArrayList<>();
-
   private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
-
+  private long version = Long.MAX_VALUE;
+  private List<Modification> modifications = new ArrayList<>();
   private long memSize = 0;
 
   public AbstractMemTable() {
@@ -86,20 +82,14 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
 
   @Override
-  public void insert(InsertPlan insertPlan) throws WriteProcessException {
-    try {
-      for (int i = 0; i < insertPlan.getValues().length; i++) {
+  public void insert(InsertPlan insertPlan) {
+    for (int i = 0; i < insertPlan.getValues().length; i++) {
 
-        Object value = CommonUtils.parseValue(insertPlan.getSchemas()[i].getType(),
-            insertPlan.getValues()[i]);
+      Object value = insertPlan.getValues()[i];
+      memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
 
-        memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
-
-        write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-            insertPlan.getSchemas()[i], insertPlan.getTime(), value);
-      }
-    } catch (QueryProcessException e) {
-      throw new WriteProcessException(e.getMessage());
+      write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
+          insertPlan.getSchemas()[i], insertPlan.getTime(), value);
     }
   }
 
@@ -209,12 +199,12 @@ public abstract class AbstractMemTable implements IMemTable {
     this.modifications.add(deletion);
   }
 
-  public void setVersion(long version) {
-    this.version = version;
-  }
-
   public long getVersion() {
     return version;
+  }
+
+  public void setVersion(long version) {
+    this.version = version;
   }
 
   @Override

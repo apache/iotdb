@@ -142,17 +142,20 @@ public class SeqTsFileRecoverTest {
     for (int i = 10; i < 20; i++) {
       for (int j = 0; j < 10; j++) {
         String[] measurements = new String[10];
+        TSDataType[] types = new TSDataType[10];
         String[] values = new String[10];
         for (int k = 0; k < 10; k++) {
           measurements[k] = "sensor" + k;
+          types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k);
         }
-        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, values);
+        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, types,
+            values);
         node.write(insertPlan);
       }
       node.notifyStartFlush();
     }
-    
+
     resource = new TsFileResource(tsF);
   }
 

@@ -29,6 +29,7 @@ import java.util.List;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Before;
 import org.junit.Test;
@@ -36,7 +37,7 @@ import org.junit.Test;
 public class LogWriterReaderTest {
 
   private static String filePath = "logtest.test";
-  ByteBuffer logsBuffer = ByteBuffer.allocate(64*1024);
+  ByteBuffer logsBuffer = ByteBuffer.allocate(64 * 1024);
   List<PhysicalPlan> plans = new ArrayList<>();
 
   @Before
@@ -45,8 +46,10 @@ public class LogWriterReaderTest {
       new File(filePath).delete();
     }
     InsertPlan insertPlan1 = new InsertPlan("d1", 10L, new String[]{"s1", "s2"},
+        new TSDataType[]{TSDataType.INT64, TSDataType.INT64},
         new String[]{"1", "2"});
     InsertPlan insertPlan2 = new InsertPlan("d1", 10L, new String[]{"s1", "s2"},
+        new TSDataType[]{TSDataType.INT64, TSDataType.INT64},
         new String[]{"1", "2"});
     DeletePlan deletePlan = new DeletePlan(10L, new Path("root.d1.s1"));
     plans.add(insertPlan1);

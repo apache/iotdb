@@ -131,15 +131,20 @@ public class SessionExample {
   private static void insert() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
     for (long time = 0; time < 100; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      values.add("3");
-      session.insert(deviceId, time, measurements, values);
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      session.insert(deviceId, time, measurements, types, values);
     }
   }
 
@@ -147,11 +152,16 @@ public class SessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
     for (long time = 0; time < 100; time++) {
-      session.insert(deviceId, time, measurements, 1L, 1L, 1L);
+      session.insert(deviceId, time, measurements, types, 1L, 1L, 1L);
     }
   }
 
@@ -163,21 +173,27 @@ public class SessionExample {
     measurements.add("s3");
     List<String> deviceIds = new ArrayList<>();
     List<List<String>> measurementsList = new ArrayList<>();
-    List<List<String>> valuesList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
     List<Long> timestamps = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
 
     for (long time = 0; time < 500; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      values.add("3");
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
 
       deviceIds.add(deviceId);
       measurementsList.add(measurements);
       valuesList.add(values);
+      typesList.add(types);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        session.insertInBatch(deviceIds, timestamps, measurementsList, typesList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -185,21 +201,16 @@ public class SessionExample {
       }
     }
 
-    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+    session.insertInBatch(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
-
   /**
    * insert a batch data of one device, each batch contains multiple timestamps with values of
    * sensors
-   *
+   * <p>
    * a RowBatch example:
-   *
-   *      device1
-   * time s1, s2, s3
-   * 1,   1,  1,  1
-   * 2,   2,  2,  2
-   * 3,   3,  3,  3
-   *
+   * <p>
+   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
+   * <p>
    * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
    */
   private static void insertRowBatch() throws IoTDBConnectionException, BatchExecutionException {
@@ -240,29 +251,36 @@ public class SessionExample {
       throws IoTDBConnectionException, BatchExecutionException {
     // The schema of sensors of one device
     Schema schema1 = new Schema();
-    schema1.registerTimeseries(new Path("root.sg1.d1.s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema1.registerTimeseries(new Path("root.sg1.d1.s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema1.registerTimeseries(new Path("root.sg1.d1.s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema1.registerTimeseries(new Path("root.sg1.d1.s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema1.registerTimeseries(new Path("root.sg1.d1.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema1.registerTimeseries(new Path("root.sg1.d1.s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch1 = schema1.createRowBatch("root.sg1.d1", 100);
 
     Schema schema2 = new Schema();
-    schema2.registerTimeseries(new Path("root.sg1.d2.s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema2.registerTimeseries(new Path("root.sg1.d2.s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema2.registerTimeseries(new Path("root.sg1.d2.s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema2.registerTimeseries(new Path("root.sg1.d2.s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema2.registerTimeseries(new Path("root.sg1.d2.s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema2.registerTimeseries(new Path("root.sg1.d2.s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch2 = schema2.createRowBatch("root.sg1.d2", 100);
-    
+
     Schema schema3 = new Schema();
     Map<String, MeasurementSchema> template = new HashMap<>();
     template.put("s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     template.put("s2", new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE));
     schema3.registerDeviceTemplate("template3", template);
-    schema3.extendTemplate("template3", new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.RLE));
+    schema3
+        .extendTemplate("template3", new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.RLE));
     schema3.registerDevice("root.sg1.d3", "template3");
-    
+
     RowBatch rowBatch3 = schema3.createRowBatch("root.sg1.d3", 100);
-    
+
     Map<String, RowBatch> rowBatchMap = new HashMap<>();
     rowBatchMap.put("root.sg1.d1", rowBatch1);
     rowBatchMap.put("root.sg1.d2", rowBatch2);

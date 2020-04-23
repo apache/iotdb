@@ -18,20 +18,20 @@
  */
 package org.apache.iotdb.session.pool;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
-import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.thrift.TException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,7 +60,8 @@ public class SessionPoolTest {
       final int no = i;
       service.submit(() -> {
         try {
-          pool.insert("root.sg1.d1", 1, Collections.singletonList("s" + no), Collections.singletonList("3"));
+          pool.insert("root.sg1.d1", 1, Collections.singletonList("s" + no),
+              Collections.singletonList(TSDataType.INT64), Collections.singletonList(3L));
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           fail();
         }
@@ -83,7 +84,9 @@ public class SessionPoolTest {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     assertEquals(0, pool.currentAvailableSize());
     try {
-      pool.insert(".root.sg1.d1", 1, Collections.singletonList("s" ), Collections.singletonList("3"));
+      pool.insert(".root.sg1.d1", 1, Collections.singletonList("s"),
+          Collections.singletonList(TSDataType.INT64),
+          Collections.singletonList(3L));
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       //do nothing
     }
@@ -98,7 +101,9 @@ public class SessionPoolTest {
     ExecutorService service = Executors.newFixedThreadPool(10);
     for (int i = 0; i < 10; i++) {
       try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
+        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList((long) i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
@@ -108,7 +113,8 @@ public class SessionPoolTest {
       final int no = i;
       service.submit(() -> {
         try {
-          SessionDataSetWrapper wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+          SessionDataSetWrapper wrapper = pool
+              .executeQueryStatement("select * from root.sg1.d1 where time = " + no);
           //this is incorrect becasue wrapper is not closed.
           //so all other 7 queries will be blocked
         } catch (IoTDBConnectionException | StatementExecutionException e) {
@@ -139,7 +145,9 @@ public class SessionPoolTest {
     ExecutorService service = Executors.newFixedThreadPool(10);
     for (int i = 0; i < 10; i++) {
       try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
+        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList((long) i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
@@ -149,7 +157,8 @@ public class SessionPoolTest {
       final int no = i;
       service.submit(() -> {
         try {
-          SessionDataSetWrapper wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time = " + no);
+          SessionDataSetWrapper wrapper = pool
+              .executeQueryStatement("select * from root.sg1.d1 where time = " + no);
           pool.closeResultSet(wrapper);
           pool.closeResultSet(wrapper);
         } catch (Exception e) {
@@ -174,7 +183,9 @@ public class SessionPoolTest {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, false);
     for (int i = 0; i < 10; i++) {
       try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
+        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList((long) i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
@@ -184,10 +195,10 @@ public class SessionPoolTest {
       wrapper = pool.executeQueryStatement("select * from root.sg1.d1 where time > 1");
       EnvironmentUtils.stopDaemon();
       //user does not know what happens.
-      while(wrapper.hasNext()) {
+      while (wrapper.hasNext()) {
         wrapper.next();
       }
-    } catch (IoTDBConnectionException  e) {
+    } catch (IoTDBConnectionException e) {
       try {
         pool.closeResultSet(wrapper);
       } catch (StatementExecutionException ex) {
@@ -209,7 +220,9 @@ public class SessionPoolTest {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, false);
     for (int i = 0; i < 10; i++) {
       try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
+        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i),
+            Collections.singletonList(TSDataType.INT64),
+            Collections.singletonList((long) i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
@@ -221,7 +234,7 @@ public class SessionPoolTest {
       //user does not know what happens.
       assertEquals(0, pool.currentAvailableSize());
       assertEquals(1, pool.currentOccupiedSize());
-      while(wrapper.hasNext()) {
+      while (wrapper.hasNext()) {
         wrapper.next();
       }
       assertEquals(1, pool.currentAvailableSize());

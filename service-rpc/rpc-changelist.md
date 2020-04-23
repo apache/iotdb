@@ -121,3 +121,4 @@ Last Updated on November 12th, 2019 by Tian Jiang.
 | Add optional TSQueryNonAlignDataSet in TSExecuteStatementResp, TSFetchResultsResp and required bool isAlign in TSFetchResultsReq | Haonan Hou |
 | Rename TSStatusType to TSStatus   | Jialin Qiao   |
 | Remove sessionId in TSExecuteBatchStatementResp   | Jialin Qiao   |
+| Use TsDataType and binary rather than string in TSInsertInBatchReq and TSInsertReq  | Kaifeng Xue  |

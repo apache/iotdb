@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.session;
 
+import java.nio.ByteBuffer;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,11 +45,13 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.RowBatch;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -361,7 +364,8 @@ public class Session {
    * @see Session#insertBatch(RowBatch)
    */
   public void insertInBatch(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     // check params size
     int len = deviceIds.size();
@@ -375,7 +379,14 @@ public class Session {
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
-    request.setValuesList(valuesList);
+    List<ByteBuffer> buffersList = new ArrayList<>();
+    for (int i = 0; i < measurementsList.size(); i++) {
+      ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
+      putValues(typesList.get(i), valuesList.get(i), buffer);
+      buffer.flip();
+      buffersList.add(buffer);
+    }
+    request.setValuesList(buffersList);
 
     try {
       RpcUtils.verifySuccess(client.insertRowInBatch(request).statusList);
@@ -388,34 +399,36 @@ public class Session {
    * insert data in one row, if you want improve your performance, please use insertInBatch method
    * or insertBatch method
    *
-   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertInBatch(List, List, List, List, List)
    * @see Session#insertBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements,
+      List<TSDataType> types,
       Object... values) throws IoTDBConnectionException, StatementExecutionException {
-    List<String> stringValues = new ArrayList<>();
-    for (Object o : values) {
-      stringValues.add(o.toString());
-    }
+    List<Object> valuesList = new ArrayList<>(Arrays.asList(values));
 
-    return insert(deviceId, time, measurements, stringValues);
+    return insert(deviceId, time, measurements, types, valuesList);
   }
 
   /**
    * insert data in one row, if you want improve your performance, please use insertInBatch method
    * or insertBatch method
    *
-   * @see Session#insertInBatch(List, List, List, List)
+   * @see Session#insertInBatch(List, List, List, List, List)
    * @see Session#insertBatch(RowBatch)
    */
   public TSStatus insert(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
+      List<TSDataType> types,
+      List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertReq request = new TSInsertReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
-    request.setValues(values);
+    ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
+    putValues(types, values, buffer);
+    buffer.flip();
+    request.setValues(buffer);
 
     TSStatus result;
     try {
@@ -426,6 +439,68 @@ public class Session {
     }
 
     return result;
+  }
+
+  private void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
+      throws IoTDBConnectionException {
+    for (int i = 0; i < values.size(); i++) {
+      ReadWriteIOUtils.write(types.get(i), buffer);
+      switch (types.get(i)) {
+        case BOOLEAN:
+          ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
+          break;
+        case INT32:
+          ReadWriteIOUtils.write((Integer) values.get(i), buffer);
+          break;
+        case INT64:
+          ReadWriteIOUtils.write((Long) values.get(i), buffer);
+          break;
+        case FLOAT:
+          ReadWriteIOUtils.write((Float) values.get(i), buffer);
+          break;
+        case DOUBLE:
+          ReadWriteIOUtils.write((Double) values.get(i), buffer);
+          break;
+        case TEXT:
+          ReadWriteIOUtils.write(new Binary((String) values.get(i)), buffer);
+          break;
+        default:
+          throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));
+      }
+    }
+  }
+
+  private int calculateLength(List<TSDataType> types, List<Object> values)
+      throws IoTDBConnectionException {
+    int res = 0;
+    for (int i = 0; i < types.size(); i++) {
+      // types
+      res += Short.BYTES;
+      switch (types.get(i)) {
+        case BOOLEAN:
+          res += 1;
+          break;
+        case INT32:
+          res += Integer.BYTES;
+          break;
+        case INT64:
+          res += Long.BYTES;
+          break;
+        case FLOAT:
+          res += Float.BYTES;
+          break;
+        case DOUBLE:
+          res += Double.BYTES;
+          break;
+        case TEXT:
+          res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
+          break;
+        default:
+          throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));
+      }
+    }
+
+    return res;
   }
 
   /**
@@ -471,7 +546,7 @@ public class Session {
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
-    request.setValuesList(valuesList);
+    request.setValuesList(new ArrayList<>());
 
     try {
       RpcUtils.verifySuccess(client.testInsertRowInBatch(request).statusList);
@@ -491,7 +566,7 @@ public class Session {
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
-    request.setValues(values);
+    request.setValues(ByteBuffer.allocate(1));
 
     try {
       RpcUtils.verifySuccess(client.testInsertRow(request));
@@ -624,19 +699,19 @@ public class Session {
     request.setPaths(paths);
 
     List<Integer> dataTypeOrdinals = new ArrayList<>(paths.size());
-    for (TSDataType dataType: dataTypes) {
+    for (TSDataType dataType : dataTypes) {
       dataTypeOrdinals.add(dataType.ordinal());
     }
     request.setDataTypes(dataTypeOrdinals);
 
     List<Integer> encodingOrdinals = new ArrayList<>(paths.size());
-    for (TSEncoding encoding: encodings) {
+    for (TSEncoding encoding : encodings) {
       encodingOrdinals.add(encoding.ordinal());
     }
     request.setEncodings(encodingOrdinals);
 
     List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
-    for (CompressionType compression: compressors) {
+    for (CompressionType compression : compressors) {
       compressionOrdinals.add(compression.ordinal());
     }
     request.setCompressors(compressionOrdinals);

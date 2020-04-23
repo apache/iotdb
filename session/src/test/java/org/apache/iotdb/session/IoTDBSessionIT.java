@@ -33,9 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.BatchExecutionException;
@@ -57,6 +55,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IoTDBSessionIT {
+
   private static Logger logger = LoggerFactory.getLogger(IoTDBSessionIT.class);
 
   private Session session;
@@ -207,9 +206,12 @@ public class IoTDBSessionIT {
 
     // test insert batch
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId, "s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId, "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId, "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch = schema.createRowBatch("root.sg1.d1", 100);
 
@@ -412,10 +414,13 @@ public class IoTDBSessionIT {
         }
         String sensorId = ss[ss.length - 1];
         List<String> measurements = new ArrayList<>();
-        List<String> values = new ArrayList<>();
+        List<Object> values = new ArrayList<>();
+        List<TSDataType> types = new ArrayList<>();
+
         measurements.add(sensorId);
-        values.add("100");
-        session.insert(deviceId, i, measurements, values);
+        types.add(TSDataType.INT64);
+        values.add(100L);
+        session.insert(deviceId, i, measurements, types, values);
       }
     }
   }
@@ -428,21 +433,27 @@ public class IoTDBSessionIT {
     measurements.add("s3");
     List<String> deviceIds = new ArrayList<>();
     List<List<String>> measurementsList = new ArrayList<>();
-    List<List<String>> valuesList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
     List<Long> timestamps = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
 
     for (long time = 0; time < 500; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      values.add("3");
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
 
       deviceIds.add(deviceId);
       measurementsList.add(measurements);
       valuesList.add(values);
+      typesList.add(types);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        session.insertInBatch(deviceIds, timestamps, measurementsList, typesList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -450,41 +461,54 @@ public class IoTDBSessionIT {
       }
     }
 
-    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+    session.insertInBatch(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
 
   private void insertInObject() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
     for (long time = 0; time < 100; time++) {
-      session.insert(deviceId, time, measurements, 1L, 2L, 3L);
+      session.insert(deviceId, time, measurements, types,1L, 2L, 3L);
     }
   }
 
   private void insert() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
     for (long time = 0; time < 100; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      values.add("3");
-      session.insert(deviceId, time, measurements, values);
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      session.insert(deviceId, time, measurements, types, values);
     }
   }
 
   private void insertRowBatchTest1(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId, "s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId, "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId, "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s1"),
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s2"),
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schema.registerTimeseries(new Path(deviceId, "s3"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch = schema.createRowBatch(deviceId, 100);
 
@@ -754,11 +778,11 @@ public class IoTDBSessionIT {
   private void insertRowBatchTest2(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId,"s1"), 
+    schema.registerTimeseries(new Path(deviceId, "s1"),
         new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s2"), 
+    schema.registerTimeseries(new Path(deviceId, "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s3"), 
+    schema.registerTimeseries(new Path(deviceId, "s3"),
         new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch = schema.createRowBatch(deviceId, 256);
@@ -788,11 +812,11 @@ public class IoTDBSessionIT {
   private void insertRowBatchTest3(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId,"s1"), 
+    schema.registerTimeseries(new Path(deviceId, "s1"),
         new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s2"), 
+    schema.registerTimeseries(new Path(deviceId, "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s3"), 
+    schema.registerTimeseries(new Path(deviceId, "s3"),
         new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     RowBatch rowBatch = schema.createRowBatch(deviceId, 200);
@@ -822,17 +846,17 @@ public class IoTDBSessionIT {
   private void insertRowBatchTestForTime(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
     Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId,"s1"),
+    schema.registerTimeseries(new Path(deviceId, "s1"),
         new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s2"), 
+    schema.registerTimeseries(new Path(deviceId, "s2"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s3"), 
+    schema.registerTimeseries(new Path(deviceId, "s3"),
         new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s4"), 
+    schema.registerTimeseries(new Path(deviceId, "s4"),
         new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s5"), 
+    schema.registerTimeseries(new Path(deviceId, "s5"),
         new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s6"), 
+    schema.registerTimeseries(new Path(deviceId, "s6"),
         new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
     long count = 10000000;
     long begin = 0;
