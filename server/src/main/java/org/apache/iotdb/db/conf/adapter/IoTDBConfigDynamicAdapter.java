@@ -92,7 +92,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   /**
    * Metadata size of per chunk, the default value is 1.5 KB.
    */
-  private static final long CHUNK_METADATA_SIZE_IN_BYTE = 1536L;
+  private static long CHUNK_METADATA_SIZE_IN_BYTE = 1536L;
+
+  private static final double WAL_MEMORY_RATIO = 0.1;
 
   /**
    * Average queue length in memtable pool
@@ -127,6 +129,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
   @Override
   public synchronized boolean tryToAdaptParameters() {
+    if(!CONFIG.isEnableParameterAdapter()){
+      return true;
+    }
     boolean canAdjust = true;
     double ratio = CompressionRatio.getInstance().getRatio();
     long memtableSizeInByte = calcMemTableSize(ratio);
@@ -150,6 +155,8 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
     if (canAdjust) {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
+      CONFIG.setWalBufferSize(
+          (int) Math.min(Integer.MAX_VALUE, allocateMemoryForWrite * WAL_MEMORY_RATIO / maxMemTableNum));
       CONFIG.setTsFileSizeThreshold(tsFileSizeThreshold);
       CONFIG.setMemtableSizeThreshold(memtableSizeInByte);
       if (LOGGER.isDebugEnabled() && initialized) {
@@ -178,7 +185,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     // when unit is byte, it's likely to cause Long type overflow.
     // so when b is larger than Integer.MAC_VALUE use the unit KB.
     double a = maxMemTableNum;
-    double b = allocateMemoryForWrite - staticMemory;
+    double b = allocateMemoryForWrite * (1 - WAL_MEMORY_RATIO) - staticMemory;
     int magnification = b > Integer.MAX_VALUE ? 1024 : 1;
     b /= magnification;
     double c =
@@ -198,10 +205,9 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * @return Tsfile byte threshold
    */
   private long calcTsFileSizeThreshold(long memTableSize, double ratio) {
-    return (long) (
-        (allocateMemoryForWrite - maxMemTableNum * memTableSize - staticMemory) * memTableSize / (
-            ratio * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE * MManager.getInstance()
-                .getMaximalSeriesNumberAmongStorageGroups()));
+    return (long) ((allocateMemoryForWrite * (1 - WAL_MEMORY_RATIO) - maxMemTableNum * memTableSize
+        - staticMemory) * memTableSize / (ratio * maxMemTableNum * CHUNK_METADATA_SIZE_IN_BYTE
+        * MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()));
   }
 
   /**
@@ -217,14 +223,17 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   @Override
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
     totalStorageGroup += diff;
-    maxMemTableNum += IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
-    if(!CONFIG.isEnableParameterAdapter()){
+    maxMemTableNum +=
+        IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
+    if (!CONFIG.isEnableParameterAdapter()) {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
       return;
     }
+
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
-      maxMemTableNum -= IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
+      maxMemTableNum -=
+          IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup() * diff;
       throw new ConfigAdjusterException(CREATE_STORAGE_GROUP);
     }
   }
@@ -259,6 +268,11 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     return totalStorageGroup;
   }
 
+
+  public static void setChunkMetadataSizeInByte(long chunkMetadataSizeInByte) {
+    CHUNK_METADATA_SIZE_IN_BYTE = chunkMetadataSizeInByte;
+  }
+
   /**
    * Only for test
    */
@@ -286,4 +300,5 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     }
 
   }
+
 }

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.cache.RamUsageEstimator;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
@@ -46,7 +47,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -88,6 +88,7 @@ public class TsFileProcessor {
    */
   private volatile boolean shouldClose;
   private IMemTable workMemTable;
+
   private VersionController versionController;
   /**
    * this callback is called after the corresponding TsFile is called endFile().
@@ -261,6 +262,9 @@ public class TsFileProcessor {
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if(!config.isEnableParameterAdapter()){
+      return config.getMemtableSizeThreshold();
+    }
     long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
         / IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup()
         * ActiveTimeSeriesCounter.getInstance()
@@ -268,12 +272,15 @@ public class TsFileProcessor {
     return Math.max(memTableSize, config.getMemtableSizeThreshold());
   }
 
-
   public boolean shouldClose() {
     long fileSize = tsFileResource.getFileSize();
     long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getTsFileSizeThreshold();
-    return fileSize > fileSizeThreshold;
+    if (fileSize >= fileSizeThreshold) {
+      logger.info("{} fileSize {} >= fileSizeThreshold {}", tsFileResource.getPath(),
+          fileSize, fileSizeThreshold);
+    }
+    return fileSize >= fileSizeThreshold;
   }
 
   void syncClose() {
@@ -315,7 +322,20 @@ public class TsFileProcessor {
       logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getFile().getName());
     }
     try {
-      logger.info("Async close the file: {}", tsFileResource.getFile().getAbsolutePath());
+
+      if (logger.isInfoEnabled()) {
+        if (workMemTable != null) {
+          logger.info(
+              "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile size: {}",
+              storageGroupName, tsFileResource.getFile().getAbsolutePath(), workMemTable.memSize(),
+              tsFileResource.getFileSize());
+        } else {
+          logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
+              storageGroupName, tsFileResource.getFile().getAbsolutePath(),
+              tsFileResource.getFileSize());
+        }
+      }
+
       if (shouldClose) {
         return;
       }
@@ -330,11 +350,7 @@ public class TsFileProcessor {
       //we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
       IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
-      if (logger.isDebugEnabled()) {
-        logger
-            .debug("{}: {} async flush a memtable (signal = {}) when async close",
-                storageGroupName, tsFileResource.getFile().getName(), tmpMemTable.isSignalMemTable());
-      }
+
       try {
         addAMemtableIntoFlushingList(tmpMemTable);
         shouldClose = true;
@@ -573,7 +589,7 @@ public class TsFileProcessor {
         endFile();
       } catch (Exception e) {
         logger.error("{} meet error when flush FileMetadata to {}, change system mode to read-only",
-            storageGroupName, tsFileResource.getFile().getAbsolutePath());
+            storageGroupName, tsFileResource.getFile().getAbsolutePath(), e);
         IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           writer.reset();
@@ -605,17 +621,16 @@ public class TsFileProcessor {
     // mark the TsFileResource closed, no need writer anymore
     closeTsFileCallback.call(this);
 
-    writer = null;
-
     if (logger.isInfoEnabled()) {
       long closeEndTime = System.currentTimeMillis();
-      logger.info("Storage group {} close the file {}, start time is {}, end time is {}, "
+      logger.info("Storage group {} close the file {}, TsFile size is {}, "
               + "time consumption of flushing metadata is {}ms",
           storageGroupName, tsFileResource.getFile().getAbsoluteFile(),
-          DatetimeUtils.convertMillsecondToZonedDateTime(closeStartTime),
-          DatetimeUtils.convertMillsecondToZonedDateTime(closeEndTime),
+          writer.getFile().length(),
           closeEndTime - closeStartTime);
     }
+
+    writer = null;
   }
 
 

@@ -77,7 +77,8 @@ public class PhysicalGenerator {
       case CREATE_TIMESERIES:
         CreateTimeSeriesOperator addPath = (CreateTimeSeriesOperator) operator;
         return new CreateTimeSeriesPlan(addPath.getPath(), addPath.getDataType(),
-            addPath.getEncoding(), addPath.getCompressor(), addPath.getProps());
+            addPath.getEncoding(), addPath.getCompressor(), addPath.getProps(),
+            addPath.getTags(), addPath.getAttributes(), addPath.getAlias());
       case DELETE_TIMESERIES:
         DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
         return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
@@ -124,8 +125,11 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_VERSION:
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
+            ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
             return new ShowTimeSeriesPlan(ShowContentType.TIMESERIES,
-                ((ShowTimeSeriesOperator) operator).getPath());
+                showTimeSeriesOperator.getPath(), showTimeSeriesOperator.isContains(),
+                showTimeSeriesOperator.getKey(), showTimeSeriesOperator.getValue(),
+                showTimeSeriesOperator.getLimit(), showTimeSeriesOperator.getOffset());
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowPlan(ShowContentType.STORAGE_GROUP);
           case SQLConstant.TOK_DEVICES:
@@ -178,12 +182,38 @@ public class PhysicalGenerator {
       throws QueryProcessException {
     QueryPlan queryPlan;
 
-    if (queryOperator.isGroupBy()) {
+    if (queryOperator.isGroupBy() && queryOperator.isFill()) {
+      queryPlan = new GroupByFillPlan();
+      ((GroupByFillPlan) queryPlan).setInterval(queryOperator.getUnit());
+      ((GroupByFillPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+      ((GroupByFillPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+      if (!queryOperator.isLeftCRightO()) {
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime()+1);
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime()+1);
+      } else {
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      }
+      ((GroupByFillPlan) queryPlan)
+              .setAggregations(queryOperator.getSelectOperator().getAggregations());
+      for (String aggregation : queryPlan.getAggregations()) {
+        if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
+          throw new QueryProcessException("Group By Fill only support last_value function");
+        }
+      }
+      ((GroupByFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
+    } else if (queryOperator.isGroupBy()) {
       queryPlan = new GroupByPlan();
       ((GroupByPlan) queryPlan).setInterval(queryOperator.getUnit());
       ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-      ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
-      ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      ((GroupByPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+      if (!queryOperator.isLeftCRightO()) {
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime()+1);
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime()+1);
+      } else {
+        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
+        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+      }
       ((GroupByPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
     } else if (queryOperator.isFill()) {

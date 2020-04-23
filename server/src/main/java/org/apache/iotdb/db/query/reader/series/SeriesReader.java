@@ -145,8 +145,12 @@ class SeriesReader {
 
     if (!cachedPageReaders.isEmpty()
             || firstPageReader != null
-            || mergeReader.hasNextTimeValuePair()) {
-      throw new IOException("all cached pages should be consumed first");
+        || mergeReader.hasNextTimeValuePair()) {
+      throw new IOException(
+          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+              + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader
+              != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader
+              .hasNextTimeValuePair());
     }
 
     if (firstChunkMetadata != null
@@ -180,6 +184,13 @@ class SeriesReader {
     return firstTimeSeriesMetadata.getStatistics();
   }
 
+  boolean currentFileModified() throws IOException {
+    if (firstTimeSeriesMetadata == null) {
+      throw new IOException("no first file");
+    }
+    return firstTimeSeriesMetadata.isModified();
+  }
+
   void skipCurrentFile() {
     firstTimeSeriesMetadata = null;
   }
@@ -192,7 +203,11 @@ class SeriesReader {
     if (!cachedPageReaders.isEmpty()
         || firstPageReader != null
         || mergeReader.hasNextTimeValuePair()) {
-      throw new IOException("all cached pages should be consumed first");
+      throw new IOException(
+          "all cached pages should be consumed first cachedPageReaders.isEmpty() is "
+              + cachedPageReaders.isEmpty() + " firstPageReader != null is " + (firstPageReader
+              != null) + " mergeReader.hasNextTimeValuePair() = " + mergeReader
+              .hasNextTimeValuePair());
     }
 
     if (firstChunkMetadata != null) {
@@ -258,6 +273,13 @@ class SeriesReader {
     return firstChunkMetadata.getStatistics();
   }
 
+  boolean currentChunkModified() throws IOException {
+    if (firstChunkMetadata == null) {
+      throw new IOException("no first chunk");
+    }
+    return firstChunkMetadata.isModified();
+  }
+
   void skipCurrentChunk() {
     firstChunkMetadata = null;
   }
@@ -320,6 +342,23 @@ class SeriesReader {
       }
     }
 
+    // make sure firstPageReader won't be null while cachedPageReaders has more cached page readers
+    while (firstPageReader == null && !cachedPageReaders.isEmpty()) {
+      firstPageReader = cachedPageReaders.poll();
+      if (!cachedPageReaders.isEmpty()
+              && firstPageReader.getEndTime() >= cachedPageReaders.peek().getStartTime()) {
+        /*
+         * next page is overlapped, read overlapped data and cache it
+         */
+        if (hasNextOverlappedPage()) {
+          cachedBatchData = nextOverlappedPage();
+          if (cachedBatchData != null && cachedBatchData.hasCurrent()) {
+            hasCachedNextOverlappedPage = true;
+            return true;
+          }
+        }
+      }
+    }
     return firstPageReader != null;
   }
 
@@ -375,6 +414,13 @@ class SeriesReader {
       return null;
     }
     return firstPageReader.getStatistics();
+  }
+
+  boolean currentPageModified() throws IOException {
+    if (firstPageReader == null) {
+      throw new IOException("no first page");
+    }
+    return firstPageReader.isModified();
   }
 
   void skipCurrentPage() {
@@ -543,7 +589,9 @@ class SeriesReader {
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
     while (seqTimeSeriesMetadata.isEmpty() && !seqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils
+          .loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, getAnyFilter(),
+              allSensors);
       if (timeseriesMetadata != null) {
         seqTimeSeriesMetadata.add(timeseriesMetadata);
       }
@@ -553,8 +601,11 @@ class SeriesReader {
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
     while (unSeqTimeSeriesMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils
+          .loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(),
+              allSensors);
       if (timeseriesMetadata != null) {
+        timeseriesMetadata.setModified(true);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
@@ -608,17 +659,22 @@ class SeriesReader {
 
   private void unpackAllOverlappedTsFilesToTimeSeriesMetadata(long endTime) throws IOException {
     while (!unseqFileResource.isEmpty() && endTime >= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
       if (timeseriesMetadata != null) {
+        timeseriesMetadata.setModified(true);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
     while (!seqFileResource.isEmpty() && endTime >= seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
-      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, timeFilter, allSensors);
+      TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(seqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
       if (timeseriesMetadata != null) {
         seqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
+  }
+
+  private Filter getAnyFilter() {
+    return timeFilter != null ? timeFilter : valueFilter;
   }
 
   void setTimeFilter(long timestamp) {
@@ -657,6 +713,10 @@ class SeriesReader {
 
     void setFilter(Filter filter) {
       data.setFilter(filter);
+    }
+
+    boolean isModified() {
+      return data.isModified();
     }
   }
 }

@@ -69,7 +69,7 @@ public class QueryUtils {
         return true;
       } else {
         if (metaData.getDeletedAt() >= metaData.getStartTime()) {
-          metaData.getStatistics().setCanUseStatistics(false);
+          metaData.setModified(true);
         }
         return false;
       }

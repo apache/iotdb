@@ -36,6 +36,7 @@ import java.nio.ByteBuffer;
  * writing processing, the processor records the statistics information. Statistics includes
  * maximum, minimum and null value count up to version 0.0.1.<br> Each data type extends this
  * Statistic as super class.<br>
+ * <br>For the statistics in the Unseq file TimeSeriesMetadata, only firstValue, lastValue, startTime and endTime can be used.</br>
  */
 public abstract class Statistics<T> {
 
@@ -52,11 +53,6 @@ public abstract class Statistics<T> {
 
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
-
-  /**
-   * If the statistics has been modified, it can't be used.
-   */
-  private boolean canUseStatistics = true;
 
   /**
    * static method providing statistic instance for respective data type.
@@ -413,14 +409,6 @@ public abstract class Statistics<T> {
 
   public void setCount(long count) {
     this.count = count;
-  }
-
-  public boolean canUseStatistics() {
-    return canUseStatistics;
-  }
-
-  public void setCanUseStatistics(boolean canUseStatistics) {
-    this.canUseStatistics = canUseStatistics;
   }
 
   @Override

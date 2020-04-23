@@ -18,13 +18,10 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-
 import org.junit.Test;
 
-import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 
 public class IntegerStatisticsTest {
 
@@ -45,7 +42,11 @@ public class IntegerStatisticsTest {
   @Test
   public void testMerge() {
     Statistics<Integer> intStats1 = new IntegerStatistics();
+    intStats1.setStartTime(0);
+    intStats1.setEndTime(2);
     Statistics<Integer> intStats2 = new IntegerStatistics();
+    intStats2.setStartTime(3);
+    intStats2.setEndTime(5);
 
     intStats1.updateStats(1);
     intStats1.updateStats(100);
@@ -67,5 +68,26 @@ public class IntegerStatisticsTest {
     assertEquals(1, (int) intStats3.getFirstValue());
     assertEquals(101 + 200, (int) intStats3.getSumValue());
     assertEquals(200, (int) intStats3.getLastValue());
+
+    // Unseq merge
+    Statistics<Integer> intStats4 = new IntegerStatistics();
+    intStats4.setStartTime(0);
+    intStats4.setEndTime(5);
+    Statistics<Integer> intStats5 = new IntegerStatistics();
+    intStats5.setStartTime(1);
+    intStats5.setEndTime(4);
+
+    intStats4.updateStats(11);
+    intStats4.updateStats(15);
+
+    intStats5.updateStats(20);
+
+    intStats3.mergeStatistics(intStats4);
+    assertEquals(11, (int) intStats3.getFirstValue());
+    assertEquals(15, (int) intStats3.getLastValue());
+
+    intStats3.mergeStatistics(intStats5);
+    assertEquals(11, (int) intStats3.getFirstValue());
+    assertEquals(15, (int) intStats3.getLastValue());
   }
 }
