@@ -112,7 +112,7 @@ public class FileLoaderUtils {
     if (timeSeriesMetadata != null) {
       List<Modification> pathModifications =
           context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
-      timeSeriesMetadata.getStatistics().setCanUseStatistics(pathModifications.isEmpty());
+      timeSeriesMetadata.setModified(!pathModifications.isEmpty());
       if (timeSeriesMetadata.getStatistics().getStartTime() > timeSeriesMetadata.getStatistics()
           .getEndTime()) {
         return null;

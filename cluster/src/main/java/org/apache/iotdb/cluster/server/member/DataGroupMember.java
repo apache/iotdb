@@ -30,7 +30,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -97,6 +96,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -125,7 +125,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -1436,15 +1435,16 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   }
 
   @Override
-  public void getAllMeasurementSchema(Node header, String path,
+  public void getAllMeasurementSchema(Node header, ByteBuffer planBuffer,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
     try {
+      ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
       List<ShowTimeSeriesResult> allTimeseriesSchema = MManager.getInstance()
-          .getAllTimeseriesSchema(path);
+          .getAllTimeseriesSchema(plan);
       ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
       dataOutputStream.writeInt(allTimeseriesSchema.size());
@@ -1452,7 +1452,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         result.serialize(outputStream);
       }
       resultHandler.onComplete(ByteBuffer.wrap(outputStream.toByteArray()));
-    } catch (MetadataException | IOException e) {
+    } catch (Exception e) {
       resultHandler.onError(e);
     }
   }

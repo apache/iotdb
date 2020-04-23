@@ -476,44 +476,6 @@ public class SlotPartitionTableTest {
   }
 
   @Test
-  public void testShowDevicesPlan() {
-    //TODO this case can be optimized
-    PhysicalPlan showDevicesPlan1 = new ShowDevicesPlan(ShowContentType.DEVICES, new Path("root.*.l2"));
-    PhysicalPlan showDevicesPlan2 = new ShowDevicesPlan(ShowContentType.DEVICES, new Path("root.sg.l2.l3.l4"));
-    assertTrue(showDevicesPlan1.canbeSplit());
-
-    try {
-      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
-      Map<PhysicalPlan, PartitionGroup> group1 = router.splitAndRoutePlan(showDevicesPlan1);
-      Map<PhysicalPlan, PartitionGroup> group2 = router.splitAndRoutePlan(showDevicesPlan2);
-      assertEquals(40, group1.size());
-      assertEquals(20, group2.size());
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-  @Test
-  public void testShowTimeSeriesPlan() {
-    //TODO this case can be optimized
-    PhysicalPlan showDevicesPlan1 = new ShowTimeSeriesPlan(ShowContentType.TIMESERIES, new Path(
-        "root.*.l2"), false, null, null);
-    PhysicalPlan showDevicesPlan2 = new ShowDevicesPlan(ShowContentType.TIMESERIES, new Path("root.sg.l2.l3.l4"));
-    assertTrue(showDevicesPlan1.canbeSplit());
-
-    try {
-      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
-      Map<PhysicalPlan, PartitionGroup> group1 = router.splitAndRoutePlan(showDevicesPlan1);
-      Map<PhysicalPlan, PartitionGroup> group2 = router.splitAndRoutePlan(showDevicesPlan2);
-      assertEquals(40, group1.size());
-      assertEquals(20, group2.size());
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void testDataAuthPlan() {
     List<String> users = new ArrayList(Arrays.asList("user1", "user2"));
     PhysicalPlan dataAuthPlan = new DataAuthPlan(OperatorType.GRANT_WATERMARK_EMBEDDING, users);

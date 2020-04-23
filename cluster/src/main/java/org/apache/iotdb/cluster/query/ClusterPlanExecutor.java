@@ -21,6 +21,8 @@ package org.apache.iotdb.cluster.query;
 
 import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -53,6 +55,7 @@ import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -206,10 +209,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> getTimeseriesSchemas(String path)
+  protected List<ShowTimeSeriesResult> getTimeseriesSchemas(ShowTimeSeriesPlan plan)
       throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>(
-        MManager.getInstance().getAllTimeseriesSchema(path));
+        MManager.getInstance().getAllTimeseriesSchema(plan));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
@@ -229,7 +232,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
             handler.setContact(node);
             synchronized (response) {
               if (client != null) {
-                client.getAllMeasurementSchema(node, path, handler);
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+                plan.serialize(dataOutputStream);
+                client.getAllMeasurementSchema(node, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+                    handler);
                 response.wait(connectionTimeoutInMS);
               }
             }

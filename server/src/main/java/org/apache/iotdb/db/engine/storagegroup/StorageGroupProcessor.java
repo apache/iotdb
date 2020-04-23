@@ -1356,7 +1356,6 @@ public class StorageGroupProcessor {
         logger.info("{} no files to be merged", storageGroupName);
         return;
       }
-      syncCloseAllWorkingTsFileProcessors();
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;

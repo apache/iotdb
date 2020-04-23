@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -721,7 +723,7 @@ public class MManager {
         throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
       }
       Map<String, Set<LeafMNode>> value2Node = tagIndex.get(plan.getKey());
-      Set<LeafMNode> allMatchedNodes = new HashSet<>();
+      Set<LeafMNode> allMatchedNodes = new TreeSet<>(Comparator.comparing(MNode::getFullPath));
       if (plan.isContains()) {
         for (Entry<String, Set<LeafMNode>> entry : value2Node.entrySet()) {
           String tagValue = entry.getKey();
@@ -739,8 +741,16 @@ public class MManager {
       }
       List<ShowTimeSeriesResult> res = new LinkedList<>();
       String[] prefixNodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
+      int curOffset = -1;
+      int count = 0;
+      int limit = plan.getLimit();
+      int offset = plan.getOffset();
       for (LeafMNode leaf : allMatchedNodes) {
         if (match(leaf.getFullPath(), prefixNodes)) {
+          curOffset ++;
+          if (curOffset < offset) {
+            continue;
+          }
           try {
             Pair<Map<String, String>, Map<String, String>> pair =
                     tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
@@ -750,6 +760,10 @@ public class MManager {
                     getStorageGroupName(leaf.getFullPath()), measurementSchema.getType().toString(),
                     measurementSchema.getEncodingType().toString(),
                     measurementSchema.getCompressor().toString(), pair.left));
+            count ++;
+            if (count == limit) {
+              return res;
+            }
           } catch (IOException e) {
             throw new MetadataException(
                 "Something went wrong while deserialize tag info of " + leaf.getFullPath(), e);
@@ -779,43 +793,53 @@ public class MManager {
   }
 
   /**
-   * Get all timeseries paths under the given path.
+   * Get the result of ShowTimeseriesPlan
    *
-   * @param path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
-   * wildcard can only match one level, otherwise it can match to the tail.
+   * @param plan show time series query plan
    */
-  public List<ShowTimeSeriesResult> getAllTimeseriesSchema(String path) throws MetadataException {
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan) throws MetadataException {
     lock.readLock().lock();
     try {
-      List<String[]> ans = mtree.getAllMeasurementSchema(path);
-      return getShowTimeSeriesResult(ans);
+      List<String[]> ans = mtree.getAllMeasurementSchema(plan.getPath().getFullPath());
+      int count = 0;
+      int offset = plan.getOffset();
+      List<ShowTimeSeriesResult> res = new LinkedList<>();
+      for (int i = 0; i < ans.size(); i++) {
+        if (i < offset) {
+          continue;
+        }
+
+        String[] ansString = ans.get(i);
+
+        long tagFileOffset = Long.parseLong(ansString[6]);
+        try {
+          if (tagFileOffset < 0) {
+            // no tags/attributes
+            res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
+                ansString[3], ansString[4], ansString[5], Collections.emptyMap()));
+          } else {
+            // has tags/attributes
+            Pair<Map<String, String>, Map<String, String>> pair =
+                tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
+            pair.left.putAll(pair.right);
+            res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
+                ansString[3], ansString[4], ansString[5], pair.left));
+          }
+
+          count ++;
+          if (count == plan.getLimit()) {
+            return res;
+          }
+
+        } catch (IOException e) {
+          throw new MetadataException(
+              "Something went wrong while deserialize tag info of " + ansString[0], e);
+        }
+      }
+      return res;
     }  finally {
       lock.readLock().unlock();
     }
-  }
-
-  private List<ShowTimeSeriesResult> getShowTimeSeriesResult(List<String[]> schemaStrings)
-      throws MetadataException {
-    List<ShowTimeSeriesResult> res = new LinkedList<>();
-    for (String[] ansString : schemaStrings) {
-      long offset = Long.parseLong(ansString[6]);
-      try {
-        if (offset < 0) {
-          res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
-              ansString[3], ansString[4], ansString[5], Collections.emptyMap()));
-          continue;
-        }
-        Pair<Map<String, String>, Map<String, String>> pair =
-            tagLogFile.read(config.getTagAttributeTotalSize(), offset);
-        pair.left.putAll(pair.right);
-        res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
-            ansString[3], ansString[4], ansString[5], pair.left));
-      } catch (IOException e) {
-        throw new MetadataException(
-            "Something went wrong while deserialize tag info of " + ansString[0], e);
-      }
-    }
-    return res;
   }
 
   public MeasurementSchema getSeriesSchema(String device, String measurement) throws MetadataException {
