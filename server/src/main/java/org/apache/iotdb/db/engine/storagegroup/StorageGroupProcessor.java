@@ -423,8 +423,6 @@ public class StorageGroupProcessor {
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
           if (partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
-            Collections.addAll(upgradeFiles,
-                    fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
             continue;
           }
           // some TsFileResource may be being persisted when the system crashed, try recovering such
@@ -1452,14 +1450,14 @@ public class StorageGroupProcessor {
       seqTsFileResource.setSeq(true);
       seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       seqTsFileResource.doUpgrade();
-      upgradeSeqFileList.remove(seqTsFileResource);
     }
+    upgradeSeqFileList.clear();
     for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
       unseqTsFileResource.setSeq(false);
       unseqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       unseqTsFileResource.doUpgrade();
-      upgradeSeqFileList.remove(unseqTsFileResource);
     }
+    upgradeUnseqFileList.clear();
   }
 
   private void upgradeTsFileResourceCallBack(TsFileResource tsFileResource) {
