@@ -112,7 +112,7 @@ public class FileLoaderUtils {
     if (timeSeriesMetadata != null) {
       List<Modification> pathModifications =
           context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
-      timeSeriesMetadata.getStatistics().setCanUseStatistics(pathModifications.isEmpty());
+      timeSeriesMetadata.setModified(!pathModifications.isEmpty());
       if (timeSeriesMetadata.getStatistics().getStartTime() > timeSeriesMetadata.getStatistics()
           .getEndTime()) {
         return null;
@@ -157,50 +157,6 @@ public class FileLoaderUtils {
       chunkReader.hasNextSatisfiedPage();
     }
     return chunkReader.loadPageReaderList();
-  }
-
-
-  /**
-   * load all ChunkMetadatas belong to the seriesPath
-   */
-  public static List<ChunkMetadata> loadChunkMetadataFromTsFileResource(
-      TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
-    List<ChunkMetadata> chunkMetadataList;
-    if (resource == null) {
-      return new ArrayList<>();
-    }
-    if (resource.isClosed()) {
-      chunkMetadataList = ChunkMetadataCache.getInstance().get(resource.getPath(), seriesPath);
-    } else {
-      chunkMetadataList = resource.getChunkMetadataList();
-    }
-    List<Modification> pathModifications =
-        context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
-
-    if (!pathModifications.isEmpty()) {
-      QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
-    }
-
-    TsFileSequenceReader tsFileSequenceReader =
-        FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
-    for (ChunkMetadata data : chunkMetadataList) {
-      data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
-    }
-    List<ReadOnlyMemChunk> memChunks = resource.getReadOnlyMemChunk();
-    if (memChunks != null) {
-      for (ReadOnlyMemChunk readOnlyMemChunk : memChunks) {
-        if (!memChunks.isEmpty()) {
-          chunkMetadataList.add(readOnlyMemChunk.getChunkMetaData());
-        }
-      }
-    }
-
-    /*
-     * remove empty or invalid chunk metadata
-     */
-    chunkMetadataList.removeIf(chunkMetaData -> (
-        chunkMetaData.getStartTime() > chunkMetaData.getEndTime()));
-    return chunkMetadataList;
   }
 
   public static List<ChunkMetadata> getChunkMetadataList(Path path, String filePath) throws IOException {

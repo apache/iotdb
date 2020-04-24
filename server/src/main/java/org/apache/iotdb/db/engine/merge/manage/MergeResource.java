@@ -75,7 +75,7 @@ public class MergeResource {
   }
 
   private boolean filterResource(TsFileResource res) {
-    return res.isClosed() && !res.isDeleted() && res.stillLives(timeLowerBound);
+    return !res.isDeleted() && res.stillLives(timeLowerBound);
   }
 
   public MergeResource(Collection<TsFileResource> seqFiles, List<TsFileResource> unseqFiles,

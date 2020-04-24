@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.session.Config.PATH_PATTERN;
-
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +30,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -575,7 +574,6 @@ public class Session {
 
   public void setStorageGroup(String storageGroupId)
       throws IoTDBConnectionException, StatementExecutionException {
-    checkPathValidity(storageGroupId);
     try {
       RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroupId));
     } catch (TException e) {
@@ -603,13 +601,23 @@ public class Session {
   public void createTimeseries(String path, TSDataType dataType,
       TSEncoding encoding, CompressionType compressor)
       throws IoTDBConnectionException, StatementExecutionException {
-    checkPathValidity(path);
+    createTimeseries(path, dataType, encoding, compressor, null, null, null, null);
+  }
+
+  public void createTimeseries(String path, TSDataType dataType,
+      TSEncoding encoding, CompressionType compressor, Map<String, String> props,
+      Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
+      throws IoTDBConnectionException, StatementExecutionException {
     TSCreateTimeseriesReq request = new TSCreateTimeseriesReq();
     request.setSessionId(sessionId);
     request.setPath(path);
     request.setDataType(dataType.ordinal());
     request.setEncoding(encoding.ordinal());
     request.setCompressor(compressor.ordinal());
+    request.setProps(props);
+    request.setTags(tags);
+    request.setAttributes(attributes);
+    request.setMeasurementAlias(measurementAlias);
 
     try {
       RpcUtils.verifySuccess(client.createTimeseries(request));
@@ -618,9 +626,47 @@ public class Session {
     }
   }
 
-  public boolean checkTimeseriesExists(String path)
-      throws StatementExecutionException, IoTDBConnectionException {
-    checkPathValidity(path);
+  public void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
+      List<TSEncoding> encodings, List<CompressionType> compressors,
+      List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList, List<String> measurementAliasList)
+      throws IoTDBConnectionException, BatchExecutionException {
+
+    TSCreateMultiTimeseriesReq request = new TSCreateMultiTimeseriesReq();
+    request.setSessionId(sessionId);
+    request.setPaths(paths);
+
+    List<Integer> dataTypeOrdinals = new ArrayList<>(paths.size());
+    for (TSDataType dataType: dataTypes) {
+      dataTypeOrdinals.add(dataType.ordinal());
+    }
+    request.setDataTypes(dataTypeOrdinals);
+
+    List<Integer> encodingOrdinals = new ArrayList<>(paths.size());
+    for (TSEncoding encoding: encodings) {
+      encodingOrdinals.add(encoding.ordinal());
+    }
+    request.setEncodings(encodingOrdinals);
+
+    List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
+    for (CompressionType compression: compressors) {
+      compressionOrdinals.add(compression.ordinal());
+    }
+    request.setCompressors(compressionOrdinals);
+
+    request.setPropsList(propsList);
+    request.setTagsList(tagsList);
+    request.setAttributesList(attributesList);
+    request.setMeasurementAliasList(measurementAliasList);
+
+    try {
+      RpcUtils.verifySuccess(client.createMultiTimeseries(request).statusList);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+  }
+
+  public boolean checkTimeseriesExists(String path) throws IoTDBConnectionException {
     try {
       return executeQueryStatement(String.format("SHOW TIMESERIES %s", path)).hasNext();
     } catch (Exception e) {
@@ -657,16 +703,6 @@ public class Session {
     this.zoneId = ZoneId.of(zoneId);
   }
 
-  /**
-   * check whether this sql is for query
-   *
-   * @param sql sql
-   * @return whether this sql is for query
-   */
-  private boolean checkIsQuery(String sql) {
-    sql = sql.trim().toLowerCase();
-    return sql.startsWith("select") || sql.startsWith("show") || sql.startsWith("list");
-  }
 
   /**
    * execure query sql
@@ -676,10 +712,6 @@ public class Session {
    */
   public SessionDataSet executeQueryStatement(String sql)
       throws StatementExecutionException, IoTDBConnectionException {
-    if (!checkIsQuery(sql)) {
-      throw new IllegalArgumentException("your sql \"" + sql
-          + "\" is not a query statement, you should use executeNonQueryStatement method instead.");
-    }
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     execReq.setFetchSize(fetchSize);
@@ -702,11 +734,6 @@ public class Session {
    */
   public void executeNonQueryStatement(String sql)
       throws IoTDBConnectionException, StatementExecutionException {
-    if (checkIsQuery(sql)) {
-      throw new IllegalArgumentException("your sql \"" + sql
-          + "\" is a query statement, you should use executeQueryStatement method instead.");
-    }
-
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     try {
       TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
@@ -716,9 +743,4 @@ public class Session {
     }
   }
 
-  private void checkPathValidity(String path) throws StatementExecutionException {
-    if (!PATH_PATTERN.matcher(path).matches()) {
-      throw new StatementExecutionException(String.format("Path [%s] is invalid", path));
-    }
-  }
 }

@@ -91,12 +91,16 @@ var config = {
 					  { text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					  { text: 'People', link: '/Community/Community-Project Committers'},
 					  { text: 'Powered By', link: '/Community/Community-Powered By'},
+					  { text: 'Resources', link: '/Community/Materials'},
+						{ text: 'Feedback', link: '/Community/Feedback'},
 					]
 				  },
 				  {
 					text: 'Development',
 					items: [
 					  { text: 'How to vote', link: '/Development/VoteRelease'},
+					  { text: 'How to Commit', link: '/Development/HowToCommit'},
+					  { text: 'Become a Committer', link: '/Development/Committer'},
 					  { text: 'ContributeGuide', link: '/Development/ContributeGuide'},
 					  { text: 'Changelist of TsFile', link: '/Development/format-changelist'},
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
@@ -502,13 +506,17 @@ var config = {
 						{ text: 'Wiki', link: 'https://cwiki.apache.org/confluence/display/iotdb'},
 					    { text: '开发人员', link: '/zh/Community/Community-Project Committers'},
 					    { text: '技术支持', link: '/zh/Community/Community-Powered By'},
+							{ text: '活动与报告', link: '/zh/Community/Materials'},
+							{ text: '交流与反馈', link: '/zh/Community/Feedback'},
 					]
 				  },
 				  {
 					text: '开发',
 					items: [
 					  { text: '如何投票', link: '/zh/Development/VoteRelease'},
-					  { text: '开发指南', link: '/zh/Development/ContributeGuide'},
+					  { text: '如何提交代码', link: '/Development/HowToCommit'},
+					  { text: '成为Committer', link: '/Development/Committer'},
+					  { text: '项目开发指南', link: '/zh/Development/ContributeGuide'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},
 					]

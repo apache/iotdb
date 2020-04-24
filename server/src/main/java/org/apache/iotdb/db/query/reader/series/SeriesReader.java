@@ -184,6 +184,13 @@ class SeriesReader {
     return firstTimeSeriesMetadata.getStatistics();
   }
 
+  boolean currentFileModified() throws IOException {
+    if (firstTimeSeriesMetadata == null) {
+      throw new IOException("no first file");
+    }
+    return firstTimeSeriesMetadata.isModified();
+  }
+
   void skipCurrentFile() {
     firstTimeSeriesMetadata = null;
   }
@@ -264,6 +271,13 @@ class SeriesReader {
 
   Statistics currentChunkStatistics() {
     return firstChunkMetadata.getStatistics();
+  }
+
+  boolean currentChunkModified() throws IOException {
+    if (firstChunkMetadata == null) {
+      throw new IOException("no first chunk");
+    }
+    return firstChunkMetadata.isModified();
   }
 
   void skipCurrentChunk() {
@@ -400,6 +414,13 @@ class SeriesReader {
       return null;
     }
     return firstPageReader.getStatistics();
+  }
+
+  boolean currentPageModified() throws IOException {
+    if (firstPageReader == null) {
+      throw new IOException("no first page");
+    }
+    return firstPageReader.isModified();
   }
 
   void skipCurrentPage() {
@@ -584,7 +605,7 @@ class SeriesReader {
           .loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(),
               allSensors);
       if (timeseriesMetadata != null) {
-        timeseriesMetadata.getStatistics().setCanUseStatistics(false);
+        timeseriesMetadata.setModified(true);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
@@ -640,7 +661,7 @@ class SeriesReader {
     while (!unseqFileResource.isEmpty() && endTime >= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
       TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
       if (timeseriesMetadata != null) {
-        timeseriesMetadata.getStatistics().setCanUseStatistics(false);
+        timeseriesMetadata.setModified(true);
         unSeqTimeSeriesMetadata.add(timeseriesMetadata);
       }
     }
@@ -692,6 +713,10 @@ class SeriesReader {
 
     void setFilter(Filter filter) {
       data.setFilter(filter);
+    }
+
+    boolean isModified() {
+      return data.isModified();
     }
   }
 }
