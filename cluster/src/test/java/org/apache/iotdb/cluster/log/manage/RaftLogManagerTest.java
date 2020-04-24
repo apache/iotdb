@@ -434,7 +434,7 @@ public class RaftLogManagerTest {
 			RaftLogManager instance = new RaftLogManager(committedEntryManager,
 					new SyncLogDequeSerializer(testIdentifier), logApplier);
 			instance.append(previousEntries);
-			instance.setCommitLogIndex(commit);
+			instance.commitTo(commit);
 			assertEquals(test.testLastIndex,
 					instance.maybeAppend(test.lastIndex, test.lastTerm, test.leaderCommit, test.entries));
 			assertEquals(test.testCommitIndex, instance.getCommitLogIndex());

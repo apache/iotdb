@@ -76,21 +76,31 @@ public class RaftLogManager {
 
     }
 
+    /**
+     * Return the logManager's logApplier.
+     *
+     * @return logApplier
+     */
     public LogApplier getApplier() {
         return logApplier;
     }
 
+    /**
+     * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.
+     *
+     * @param state
+     */
     public void updateHardState(HardState state) {
         stableEntryManager.setHardStateAndFlush(state);
     }
 
+    /**
+     * Return the raftNode's hardState(currentTerm,voteFor).
+     *
+     * @return state
+     */
     public HardState getHardState() {
         return stableEntryManager.getHardState();
-    }
-
-    @TestOnly
-    public void setCommitLogIndex(long commitIndex) {
-        this.commitIndex = commitIndex;
     }
 
     /**

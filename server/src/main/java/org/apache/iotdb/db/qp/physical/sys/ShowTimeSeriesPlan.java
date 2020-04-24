@@ -31,12 +31,17 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   private boolean isContains;
   private String key;
   private String value;
-  private int limit;
-  private int offset;
+  private int limit = 0;
+  private int offset = 0;
 
-  public ShowTimeSeriesPlan(ShowContentType showContentType, Path path, boolean isContains,
-      String key, String value, int limit, int offset) {
-    super(showContentType);
+  public ShowTimeSeriesPlan(Path path) {
+    super(ShowContentType.TIMESERIES);
+    this.path = path;
+  }
+
+  public ShowTimeSeriesPlan(Path path, boolean isContains, String key, String value, int limit,
+      int offset) {
+    super(ShowContentType.TIMESERIES);
     this.path = path;
     this.isContains = isContains;
     this.key = key;

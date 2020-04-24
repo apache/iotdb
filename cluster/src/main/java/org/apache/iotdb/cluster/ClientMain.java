@@ -19,11 +19,19 @@
 
 package org.apache.iotdb.cluster;
 
+import static org.apache.iotdb.db.tools.logvisual.VisualUtils.parseIntArray;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -56,6 +64,22 @@ import org.slf4j.LoggerFactory;
 public class ClientMain {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientMain.class);
+
+  private static String PARAM_INSERTION = "i";
+  private static String PARAM_QUERY = "q";
+  private static String PARAM_DELETE_STORAGE_GROUP = "dsg";
+  private static String PARAM_DELETE_SERIES = "ds";
+  private static String PARAM_QUERY_PORTS = "qp";
+  private static Options options = new Options();
+
+  static {
+    options.addOption(new Option(PARAM_INSERTION, "Perform insertion"));
+    options.addOption(new Option(PARAM_QUERY, "Perform query"));
+    options.addOption(new Option(PARAM_DELETE_SERIES, "Perform deleting timeseries"));
+    options.addOption(new Option(PARAM_DELETE_STORAGE_GROUP, "Perform deleting storage group"));
+    options.addOption(new Option(PARAM_QUERY_PORTS, true, "Ports to query (ip is currently "
+        + "localhost)"));
+  }
 
   private static Map<String, TSStatus> failedQueries;
 
@@ -122,39 +146,66 @@ public class ClientMain {
   };
 
   public static void main(String[] args)
-      throws TException, StatementExecutionException, IoTDBConnectionException {
+      throws TException, StatementExecutionException, IoTDBConnectionException, ParseException {
+    CommandLineParser parser = new DefaultParser();
+    CommandLine commandLine = parser.parse(options, args);
+    boolean noOption = args.length == 0;
+
     failedQueries = new HashMap<>();
     prepareSchema();
 
     String ip = "127.0.0.1";
     int port = 55560;
-    Client client = getClient(ip, port);
-    long sessionId = connectClient(client);
+    Client client;
+    long sessionId;
 
-    System.out.println("Test insertion");
-    testInsertion(client, sessionId);
-
-    client.closeSession(new TSCloseSessionReq(sessionId));
-
-    for (int queryPort : new int[]{55560, 55561, 55562}) {
-      System.out.println("Test port: " + queryPort);
-
-      client = getClient(ip, queryPort);
+    if (noOption || commandLine.hasOption(PARAM_INSERTION)) {
+      System.out.println("Test insertion");
+      client = getClient(ip, port);
       sessionId = connectClient(client);
-      System.out.println("Test data queries");
-      testQuery(client, sessionId, DATA_QUERIES);
-
-      System.out.println("Test metadata queries");
-      testQuery(client, sessionId, META_QUERY);
-
-      logger.info("Failed queries: {}", failedQueries);
+      testInsertion(client, sessionId);
+      client.closeSession(new TSCloseSessionReq(sessionId));
     }
 
-    System.out.println("Test delete timeseries");
-    testDeleteTimeseries(client, sessionId);
+    if (noOption || commandLine.hasOption(PARAM_QUERY)) {
+      int[] queryPorts = null;
+      if (commandLine.hasOption(PARAM_QUERY_PORTS)) {
+        queryPorts = parseIntArray(commandLine.getOptionValue(PARAM_QUERY_PORTS));
+      }
+      if (queryPorts == null) {
+        queryPorts = new int[]{55560, 55561, 55562};
+      }
+      for (int queryPort : queryPorts) {
+        System.out.println("Test port: " + queryPort);
 
-    System.out.println("Test delete storage group");
-    testDeleteStorageGroup(client, sessionId);
+        client = getClient(ip, queryPort);
+        sessionId = connectClient(client);
+        System.out.println("Test data queries");
+        testQuery(client, sessionId, DATA_QUERIES);
+
+        System.out.println("Test metadata queries");
+        testQuery(client, sessionId, META_QUERY);
+
+        logger.info("Failed queries: {}", failedQueries);
+        client.closeSession(new TSCloseSessionReq(sessionId));
+      }
+    }
+
+    if (noOption || commandLine.hasOption(PARAM_DELETE_SERIES)) {
+      System.out.println("Test delete timeseries");
+      client = getClient(ip, port);
+      sessionId = connectClient(client);
+      testDeleteTimeseries(client, sessionId);
+      client.closeSession(new TSCloseSessionReq(sessionId));
+    }
+
+    if (noOption || commandLine.hasOption(PARAM_DELETE_STORAGE_GROUP)) {
+      System.out.println("Test delete storage group");
+      client = getClient(ip, port);
+      sessionId = connectClient(client);
+      testDeleteStorageGroup(client, sessionId);
+      client.closeSession(new TSCloseSessionReq(sessionId));
+    }
   }
 
   protected static long connectClient(Client client) throws TException {

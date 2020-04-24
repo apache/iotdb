@@ -398,7 +398,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     logger.debug("{} sending a log to followers: {}", name, log);
 
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
-    AtomicBoolean logMisMatch = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
     AppendEntryRequest request = new AppendEntryRequest();
@@ -422,7 +421,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             handler.setReceiver(node);
             handler.setVoteCounter(voteCounter);
             handler.setLeaderShipStale(leaderShipStale);
-            handler.setLogMisMatch(logMisMatch);
             handler.setLog(log);
             handler.setReceiverTerm(newLeaderTerm);
             try {
@@ -449,10 +447,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return AppendLogResult.LEADERSHIP_STALE;
     }
 
-    if(logMisMatch.get()){
-      return AppendLogResult.LOG_MISMATCH;
-    }
-
     // cannot get enough agreements within a certain amount of time
     if (voteCounter.get() > 0) {
       return AppendLogResult.TIME_OUT;
@@ -462,7 +456,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   enum AppendLogResult {
-    OK, TIME_OUT, LEADERSHIP_STALE, LOG_MISMATCH
+    OK, TIME_OUT, LEADERSHIP_STALE
   }
 
   /**
@@ -855,10 +849,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
-          retryTime++;
-          break;
-        case LOG_MISMATCH:
-          logger.debug("{}: log {} out-of-order, retrying...", name, log);
           retryTime++;
           break;
         case LEADERSHIP_STALE:

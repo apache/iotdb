@@ -209,10 +209,20 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> getTimeseriesSchemas(ShowTimeSeriesPlan plan)
+  protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
-    ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>(
-        MManager.getInstance().getAllTimeseriesSchema(plan));
+    return showTimeseries(plan);
+  }
+
+  @Override
+  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+      throws MetadataException {
+    ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
+    if (plan.getKey() != null && plan.getValue() != null) {
+      resultSet.addAll(MManager.getInstance().getAllTimeseriesSchema(plan));
+    } else {
+      resultSet.addAll(MManager.getInstance().showTimeseries(plan));
+    }
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 

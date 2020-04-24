@@ -28,10 +28,12 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -50,6 +52,11 @@ public class MTree implements Serializable {
 
   private static final long serialVersionUID = -4200394435237291964L;
   private MNode root;
+
+  private int limit = 0;
+  private int offset = 0;
+  private int count = 0;
+  private int curOffset = -1;
 
   MTree() {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
@@ -466,7 +473,8 @@ public class MTree implements Serializable {
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
   List<String> getAllTimeseriesName(String prefixPath) throws MetadataException {
-    List<String[]> res = getAllMeasurementSchema(prefixPath);
+    ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(new Path(prefixPath));
+    List<String[]> res = getAllMeasurementSchema(plan);
     List<String> paths = new ArrayList<>();
     for (String[] p : res) {
       paths.add(p[0]);
@@ -477,15 +485,25 @@ public class MTree implements Serializable {
   /**
    * Get all time series schema under the given path
    *
-   * MeasurementSchema: [name, alias, storage group, dataType, encoding, compression, offset]
+   * result: [name, alias, storage group, dataType, encoding, compression, offset]
    */
-  List<String[]> getAllMeasurementSchema(String prefixPath) throws MetadataException {
-    List<String[]> res = new ArrayList<>();
-    String[] nodes = MetaUtils.getNodeNames(prefixPath);
+  List<String[]> getAllMeasurementSchema(ShowTimeSeriesPlan plan) throws MetadataException {
+    List<String[]> res;
+    String[] nodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
-      throw new IllegalPathException(prefixPath);
+      throw new IllegalPathException(plan.getPath().getFullPath());
     }
-    findPath(root, nodes, 1, "", res);
+    this.limit = plan.getLimit();
+    this.offset = plan.getOffset();
+    if (offset != 0 || limit != 0) {
+      res = new ArrayList<>(limit);
+      findPath(root, nodes, 1, "", res, true);
+      curOffset = -1;
+      count = 0;
+    } else {
+      res = new ArrayList<>();
+      findPath(root, nodes, 1, "", res, false);
+    }
     return res;
   }
 
@@ -495,9 +513,15 @@ public class MTree implements Serializable {
    * @param timeseriesSchemaList List<timeseriesSchema>
    */
   private void findPath(MNode node, String[] nodes, int idx, String parent,
-      List<String[]> timeseriesSchemaList) throws MetadataException {
+      List<String[]> timeseriesSchemaList, boolean hasLimit) throws MetadataException {
     if (node instanceof LeafMNode) {
       if (nodes.length <= idx) {
+        if (hasLimit) {
+          curOffset++;
+          if (curOffset < offset || count == limit) {
+            return;
+          }
+        }
         String nodeName;
         if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
           nodeName = "\"" + node + "\"";
@@ -515,6 +539,10 @@ public class MTree implements Serializable {
         tsRow[5] = measurementSchema.getCompressor().toString();
         tsRow[6] = String.valueOf(((LeafMNode) node).getOffset());
         timeseriesSchemaList.add(tsRow);
+
+        if (hasLimit) {
+          count++;
+        }
       }
       return;
     }
@@ -522,7 +550,7 @@ public class MTree implements Serializable {
     if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
         findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList);
+            timeseriesSchemaList, hasLimit);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
@@ -530,7 +558,7 @@ public class MTree implements Serializable {
           continue;
         }
         findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList);
+            timeseriesSchemaList, hasLimit);
       }
     }
   }
