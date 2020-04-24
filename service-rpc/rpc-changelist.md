@@ -38,6 +38,8 @@ Last Updated on 2020-4-24 by Jialin Qiao.
 | ------------------------------------------------------------ | ---------------------------------- |
 | Add parameter sessionId in getTimeZone, getProperties, setStorageGroup, createTimeseries... | Tian Jiang|
 | Add struct TSQueryNonAlignDataSet                            | Haonan Hou|
+| Add struct TSInsertTabletsReq                            | Jialin Qiao|
+| Add method insertTablets                            | Jialin Qiao|
 
 ## 3. Update
 

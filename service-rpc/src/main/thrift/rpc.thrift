@@ -183,6 +183,16 @@ struct TSInsertTabletReq {
     7: required i32 size
 }
 
+struct TSInsertTabletsReq {
+    1: required i64 sessionId
+    2: required list<string> deviceIds
+    3: required list<list<string>> measurementsList
+    4: required list<binary> valuesList
+    5: required list<binary> timestampsList
+    6: required list<list<i32>> typesList
+    7: required list<i32> sizeList
+}
+
 struct TSInsertRecordsReq {
     1: required i64 sessionId
     2: required list<string> deviceIds
@@ -284,6 +294,8 @@ service TSIService {
   TSStatus insertRecord(1:TSInsertRecordReq req);
 
   TSExecuteBatchStatementResp insertTablet(1:TSInsertTabletReq req);
+
+  TSExecuteBatchStatementResp insertTablets(1:TSInsertTabletsReq req);
 
 	TSExecuteBatchStatementResp insertRecords(1:TSInsertRecordsReq req);
 

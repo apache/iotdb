@@ -39,6 +39,7 @@ import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -260,7 +261,23 @@ public class Session {
     } else {
       sortTablet(tablet);
     }
-    insertSortedTabletIntern(tablet);
+
+    TSInsertTabletReq request = new TSInsertTabletReq();
+    request.setSessionId(sessionId);
+    request.deviceId = tablet.deviceId;
+    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
+    }
+    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+    request.setValues(SessionUtils.getValueBuffer(tablet));
+    request.setSize(tablet.rowSize);
+
+    try {
+      RpcUtils.verifySuccess(client.insertTablet(request).statusList);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
   }
 
   /**
@@ -285,8 +302,37 @@ public class Session {
    */
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, BatchExecutionException {
+
+    TSInsertTabletsReq request = new TSInsertTabletsReq();
+    request.setSessionId(sessionId);
+
     for (Tablet tablet : tablets.values()) {
-      insertTablet(tablet, sorted);
+      if (sorted) {
+        if (!checkSorted(tablet)) {
+          throw new BatchExecutionException("Times in Tablet are not in ascending order");
+        }
+      } else {
+        sortTablet(tablet);
+      }
+
+      request.addToDeviceIds(tablet.deviceId);
+      List<String> measurements = new ArrayList<>();
+      List<Integer> dataTypes = new ArrayList<>();
+      for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
+        measurements.add(measurementSchema.getMeasurementId());
+        dataTypes.add(measurementSchema.getType().ordinal());
+      }
+      request.addToMeasurementsList(measurements);
+      request.addToTypesList(dataTypes);
+      request.addToTimestampsList(SessionUtils.getTimeBuffer(tablet));
+      request.addToValuesList(SessionUtils.getValueBuffer(tablet));
+      request.addToSizeList(tablet.rowSize);
+
+      try {
+        RpcUtils.verifySuccess(client.insertTablets(request).statusList);
+      } catch (TException e) {
+        throw new IoTDBConnectionException(e);
+      }
     }
   }
 
@@ -639,32 +685,6 @@ public class Session {
 
     return true;
   }
-
-  /**
-   * use batch interface to insert sorted data
-   *
-   * @param tablet data batch
-   */
-  private void insertSortedTabletIntern(Tablet tablet)
-      throws IoTDBConnectionException, BatchExecutionException {
-    TSInsertTabletReq request = new TSInsertTabletReq();
-    request.setSessionId(sessionId);
-    request.deviceId = tablet.deviceId;
-    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
-      request.addToMeasurements(measurementSchema.getMeasurementId());
-      request.addToTypes(measurementSchema.getType().ordinal());
-    }
-    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-    request.setValues(SessionUtils.getValueBuffer(tablet));
-    request.setSize(tablet.rowSize);
-
-    try {
-      RpcUtils.verifySuccess(client.insertTablet(request).statusList);
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
-  }
-
 
   private void sortTablet(Tablet tablet) {
     /*

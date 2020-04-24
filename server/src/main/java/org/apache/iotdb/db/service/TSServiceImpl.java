@@ -1179,6 +1179,60 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public TSExecuteBatchStatementResp insertTablets(TSInsertTabletsReq req) {
+    long t1 = System.currentTimeMillis();
+    try {
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+
+      List<TSStatus> statusList = new ArrayList<>();
+      for (int i = 0; i < req.deviceIds.size(); i++) {
+        InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceIds.get(i),
+            req.measurementsList.get(i));
+        insertTabletPlan.setTimes(
+            QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
+        insertTabletPlan.setColumns(
+            QueryDataSetUtils.readValuesFromBuffer(
+                req.valuesList.get(i), req.typesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i)));
+        insertTabletPlan.setRowCount(req.sizeList.get(i));
+        insertTabletPlan.setDataTypes(req.typesList.get(i));
+
+        boolean isCurrentTabletSuccessful = true;
+        TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
+        if (status != null) {
+          statusList.add(status);
+          continue;
+        }
+        TSStatus[] tsStatusArray = executor.insertTablet(insertTabletPlan);
+        TSStatus failed = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
+
+        for (TSStatus tsStatus : tsStatusArray) {
+          if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            isCurrentTabletSuccessful = false;
+            failed = tsStatus;
+            break;
+          }
+        }
+
+        if (isCurrentTabletSuccessful) {
+          statusList.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+        } else {
+          statusList.add(failed);
+        }
+      }
+      return RpcUtils.getTSBatchExecuteStatementResp(statusList);
+    } catch (Exception e) {
+      logger.info("{}: error occurs when insertTablets", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils
+          .getTSBatchExecuteStatementResp(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
+    } finally {
+      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
+  @Override
   public TSStatus setStorageGroup(long sessionId, String storageGroup) {
     if (!checkLogin(sessionId)) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);

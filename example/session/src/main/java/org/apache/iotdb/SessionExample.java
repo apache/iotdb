@@ -81,6 +81,7 @@ public class SessionExample {
           CompressionType.SNAPPY);
     }
 
+    // create timeseries with tags and attributes
     if (!session.checkTimeseriesExists("root.sg1.d1.s4")) {
       Map<String, String> tags = new HashMap<>();
       tags.put("tag1", "v1");
@@ -94,38 +95,40 @@ public class SessionExample {
   private static void createMultiTimeseries()
       throws IoTDBConnectionException, BatchExecutionException {
 
-    List<String> paths = new ArrayList<>();
-    paths.add("root.sg1.d2.s1");
-    paths.add("root.sg1.d2.s2");
-    List<TSDataType> tsDataTypes = new ArrayList<>();
-    tsDataTypes.add(TSDataType.DOUBLE);
-    tsDataTypes.add(TSDataType.DOUBLE);
-    List<TSEncoding> tsEncodings = new ArrayList<>();
-    tsEncodings.add(TSEncoding.RLE);
-    tsEncodings.add(TSEncoding.RLE);
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    compressionTypes.add(CompressionType.SNAPPY);
-    compressionTypes.add(CompressionType.SNAPPY);
+    if (!session.checkTimeseriesExists("root.sg1.d2.s1") && !session.checkTimeseriesExists("root.sg1.d2.s2")) {
+      List<String> paths = new ArrayList<>();
+      paths.add("root.sg1.d2.s1");
+      paths.add("root.sg1.d2.s2");
+      List<TSDataType> tsDataTypes = new ArrayList<>();
+      tsDataTypes.add(TSDataType.INT64);
+      tsDataTypes.add(TSDataType.INT64);
+      List<TSEncoding> tsEncodings = new ArrayList<>();
+      tsEncodings.add(TSEncoding.RLE);
+      tsEncodings.add(TSEncoding.RLE);
+      List<CompressionType> compressionTypes = new ArrayList<>();
+      compressionTypes.add(CompressionType.SNAPPY);
+      compressionTypes.add(CompressionType.SNAPPY);
 
-    List<Map<String, String>> tagsList = new ArrayList<>();
-    Map<String, String> tags = new HashMap<>();
-    tags.put("unit", "kg");
-    tagsList.add(tags);
-    tagsList.add(tags);
+      List<Map<String, String>> tagsList = new ArrayList<>();
+      Map<String, String> tags = new HashMap<>();
+      tags.put("unit", "kg");
+      tagsList.add(tags);
+      tagsList.add(tags);
 
-    List<Map<String, String>> attributesList = new ArrayList<>();
-    Map<String, String> attributes = new HashMap<>();
-    attributes.put("minValue", "1");
-    attributes.put("maxValue", "100");
-    attributesList.add(attributes);
-    attributesList.add(attributes);
+      List<Map<String, String>> attributesList = new ArrayList<>();
+      Map<String, String> attributes = new HashMap<>();
+      attributes.put("minValue", "1");
+      attributes.put("maxValue", "100");
+      attributesList.add(attributes);
+      attributesList.add(attributes);
 
-    List<String> alias = new ArrayList<>();
-    alias.add("weight1");
-    alias.add("weight2");
+      List<String> alias = new ArrayList<>();
+      alias.add("weight1");
+      alias.add("weight2");
 
-    session.createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
-        attributesList, alias);
+      session.createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
+          attributesList, alias);
+    }
   }
 
   private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
@@ -240,17 +243,7 @@ public class SessionExample {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet1 = new Tablet("root.sg1.d1", schemaList, 100);
-
     Tablet tablet2 = new Tablet("root.sg1.d2", schemaList, 100);
-    
-    Schema schema3 = new Schema();
-    Map<String, MeasurementSchema> template = new HashMap<>();
-    template.put("s1", new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    template.put("s2", new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE));
-    schema3.registerDeviceTemplate("template3", template);
-    schema3.extendTemplate("template3", new MeasurementSchema("s3", TSDataType.FLOAT, TSEncoding.RLE));
-    schema3.registerDevice("root.sg1.d3", "template3");
-    
     Tablet tablet3 = new Tablet("root.sg1.d3", schemaList, 100);
     
     Map<String, Tablet> tabletMap = new HashMap<>();
