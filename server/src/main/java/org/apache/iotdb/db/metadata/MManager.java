@@ -1115,7 +1115,8 @@ public class MManager {
   public void cacheSchema(String path, MeasurementSchema schema) {
     // check schema is in local
     try {
-      List<String[]> schemas = mtree.getAllMeasurementSchema(path);
+      ShowTimeSeriesPlan tempPlan = new ShowTimeSeriesPlan(new Path(path), false, null, null, 0, 0);
+      List<String[]> schemas = mtree.getAllMeasurementSchema(tempPlan);
       if (schemas.isEmpty()) {
         mRemoteSchemaCache.put(path, schema);
       }

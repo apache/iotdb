@@ -1443,8 +1443,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     try {
       ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
-      List<ShowTimeSeriesResult> allTimeseriesSchema = MManager.getInstance()
-          .getAllTimeseriesSchema(plan);
+      List<ShowTimeSeriesResult> allTimeseriesSchema;
+      if (plan.getKey() != null && plan.getValue() != null) {
+        allTimeseriesSchema = MManager.getInstance().getAllTimeseriesSchema(plan);
+      } else {
+        allTimeseriesSchema = MManager.getInstance().showTimeseries(plan);
+      }
+
       ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
       DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
       dataOutputStream.writeInt(allTimeseriesSchema.size());
