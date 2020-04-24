@@ -46,6 +46,7 @@ public class Tablet {
    * deviceId of this row batch
    */
   public String deviceId;
+
   /**
    * the list of measurement schemas for creating the row batch
    */
