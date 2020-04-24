@@ -358,6 +358,7 @@ public class SessionPool {
       try {
         session.insertRecord(deviceId, time, measurements, values);
         putBack(session);
+        return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         closeSession(session);
@@ -406,8 +407,7 @@ public class SessionPool {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session
-            .testInsertRecords(deviceIds, times, measurementsList, valuesList);
+        session.testInsertRecords(deviceIds, times, measurementsList, valuesList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
