@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
@@ -352,14 +351,13 @@ public class SessionPool {
    * @see Session#insertRecords(List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public TSStatus insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  public void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.insertRecord(deviceId, time, measurements, values);
+        session.insertRecord(deviceId, time, measurements, values);
         putBack(session);
-        return resp;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         closeSession(session);

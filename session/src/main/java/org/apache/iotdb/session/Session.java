@@ -185,71 +185,45 @@ public class Session {
   }
 
   /**
-   * check whether the batch has been sorted
+   * insert data in one row, if you want to improve your performance, please use insertRecords method
+   * or insertTablet method
    *
-   * @return whether the batch has been sorted
+   * @see Session#insertRecords(List, List, List, List)
+   * @see Session#insertTablet(Tablet)
    */
-  private boolean checkSorted(Tablet tablet) {
-    for (int i = 1; i < tablet.rowSize; i++) {
-      if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
-        return false;
-      }
+  public void insertRecord(String deviceId, long time, List<String> measurements,
+      Object... values) throws IoTDBConnectionException, StatementExecutionException {
+    List<String> stringValues = new ArrayList<>();
+    for (Object o : values) {
+      stringValues.add(o.toString());
     }
 
-    return true;
+    insertRecord(deviceId, time, measurements, stringValues);
   }
 
   /**
-   * use batch interface to insert sorted data
+   * insert data in one row, if you want to improve your performance, please use insertRecords method
+   * or insertTablet method
    *
-   * @param tablet data batch
+   * @see Session#insertRecords(List, List, List, List)
+   * @see Session#insertTablet(Tablet)
    */
-  private void insertSortedTabletIntern(Tablet tablet)
-      throws IoTDBConnectionException, BatchExecutionException {
-    TSInsertTabletReq request = new TSInsertTabletReq();
+  public void insertRecord(String deviceId, long time, List<String> measurements,
+      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
+    TSInsertRecordReq request = new TSInsertRecordReq();
     request.setSessionId(sessionId);
-    request.deviceId = tablet.deviceId;
-    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
-      request.addToMeasurements(measurementSchema.getMeasurementId());
-      request.addToTypes(measurementSchema.getType().ordinal());
-    }
-    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
-    request.setValues(SessionUtils.getValueBuffer(tablet));
-    request.setSize(tablet.rowSize);
+    request.setDeviceId(deviceId);
+    request.setTimestamp(time);
+    request.setMeasurements(measurements);
+    request.setValues(values);
 
     try {
-      RpcUtils.verifySuccess(client.insertTablet(request).statusList);
+      RpcUtils.verifySuccess(client.insertRecord(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
   }
 
-  /**
-   * insert the data of several deivces.
-   * Given a deivce, for each timestamp, the number of measurements is the same.
-   *
-   * Times in each Tablet may not be in ascending order
-   *
-   * @param tablets data batch in multiple device
-   */
-  public void insertTablets(Map<String, Tablet> tablets)
-      throws IoTDBConnectionException, BatchExecutionException {
-    insertTablets(tablets, false);
-  }
-
-  /**
-   * insert the data of several devices.
-   * Given a device, for each timestamp, the number of measurements is the same.
-   *
-   * @param tablets data batch in multiple device
-   * @param sorted whether times in each Tablet are in ascending order
-   */
-  public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-      throws IoTDBConnectionException, BatchExecutionException {
-    for (Tablet tablet : tablets.values()) {
-      insertTablet(tablet, sorted);
-    }
-  }
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
@@ -289,78 +263,30 @@ public class Session {
     insertSortedTabletIntern(tablet);
   }
 
-  private void sortTablet(Tablet tablet) {
-    /*
-     * following part of code sort the batch data by time,
-     * so we can insert continuous data in value list to get a better performance
-     */
-    // sort to get index, and use index to sort value list
-    Integer[] index = new Integer[tablet.rowSize];
-    for (int i = 0; i < tablet.rowSize; i++) {
-      index[i] = i;
-    }
-    Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
-    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
-    for (int i = 0; i < tablet.getSchemas().size(); i++) {
-      tablet.values[i] =
-          sortList(tablet.values[i], tablet.getSchemas().get(i).getType(), index);
-    }
+  /**
+   * insert the data of several deivces.
+   * Given a deivce, for each timestamp, the number of measurements is the same.
+   *
+   * Times in each Tablet may not be in ascending order
+   *
+   * @param tablets data batch in multiple device
+   */
+  public void insertTablets(Map<String, Tablet> tablets)
+      throws IoTDBConnectionException, BatchExecutionException {
+    insertTablets(tablets, false);
   }
 
   /**
-   * sort value list by index
+   * insert the data of several devices.
+   * Given a device, for each timestamp, the number of measurements is the same.
    *
-   * @param valueList value list
-   * @param dataType  data type
-   * @param index     index
-   * @return sorted list
+   * @param tablets data batch in multiple device
+   * @param sorted whether times in each Tablet are in ascending order
    */
-  private Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
-    switch (dataType) {
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) valueList;
-        boolean[] sortedValues = new boolean[boolValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedValues[index[i]] = boolValues[i];
-        }
-        return sortedValues;
-      case INT32:
-        int[] intValues = (int[]) valueList;
-        int[] sortedIntValues = new int[intValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedIntValues[index[i]] = intValues[i];
-        }
-        return sortedIntValues;
-      case INT64:
-        long[] longValues = (long[]) valueList;
-        long[] sortedLongValues = new long[longValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedLongValues[index[i]] = longValues[i];
-        }
-        return sortedLongValues;
-      case FLOAT:
-        float[] floatValues = (float[]) valueList;
-        float[] sortedFloatValues = new float[floatValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedFloatValues[index[i]] = floatValues[i];
-        }
-        return sortedFloatValues;
-      case DOUBLE:
-        double[] doubleValues = (double[]) valueList;
-        double[] sortedDoubleValues = new double[doubleValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedDoubleValues[index[i]] = doubleValues[i];
-        }
-        return sortedDoubleValues;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) valueList;
-        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
-        for (int i = 0; i < index.length; i++) {
-          sortedBinaryValues[index[i]] = binaryValues[i];
-        }
-        return sortedBinaryValues;
-      default:
-        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+  public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      insertTablet(tablet, sorted);
     }
   }
 
@@ -398,30 +324,10 @@ public class Session {
   }
 
   /**
-   * insert data in one row, if you want to improve your performance, please use insertRecords method
-   * or insertTablet method
-   *
-   * @see Session#insertRecords(List, List, List, List)
-   * @see Session#insertTablet(Tablet)
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
    */
-  public TSStatus insertRecord(String deviceId, long time, List<String> measurements,
-      Object... values) throws IoTDBConnectionException, StatementExecutionException {
-    List<String> stringValues = new ArrayList<>();
-    for (Object o : values) {
-      stringValues.add(o.toString());
-    }
-
-    return insertRecord(deviceId, time, measurements, stringValues);
-  }
-
-  /**
-   * insert data in one row, if you want to improve your performance, please use insertRecords method
-   * or insertTablet method
-   *
-   * @see Session#insertRecords(List, List, List, List)
-   * @see Session#insertTablet(Tablet)
-   */
-  public TSStatus insertRecord(String deviceId, long time, List<String> measurements,
+  public void testInsertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
     TSInsertRecordReq request = new TSInsertRecordReq();
     request.setSessionId(sessionId);
@@ -430,15 +336,11 @@ public class Session {
     request.setMeasurements(measurements);
     request.setValues(values);
 
-    TSStatus result;
     try {
-      result = client.insertRecord(request);
-      RpcUtils.verifySuccess(result);
+      RpcUtils.verifySuccess(client.testInsertRecord(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
-
-    return result;
   }
 
   /**
@@ -488,26 +390,6 @@ public class Session {
 
     try {
       RpcUtils.verifySuccess(client.testInsertRecords(request).statusList);
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
-  }
-
-  /**
-   * This method NOT insert data into database and the server just return after accept the request,
-   * this method should be used to test other time cost in client
-   */
-  public void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = new TSInsertRecordReq();
-    request.setSessionId(sessionId);
-    request.setDeviceId(deviceId);
-    request.setTimestamp(time);
-    request.setMeasurements(measurements);
-    request.setValues(values);
-
-    try {
-      RpcUtils.verifySuccess(client.testInsertRecord(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -740,6 +622,122 @@ public class Session {
       RpcUtils.verifySuccess(execResp.getStatus());
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
+    }
+  }
+
+  /**
+   * check whether the batch has been sorted
+   *
+   * @return whether the batch has been sorted
+   */
+  private boolean checkSorted(Tablet tablet) {
+    for (int i = 1; i < tablet.rowSize; i++) {
+      if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * use batch interface to insert sorted data
+   *
+   * @param tablet data batch
+   */
+  private void insertSortedTabletIntern(Tablet tablet)
+      throws IoTDBConnectionException, BatchExecutionException {
+    TSInsertTabletReq request = new TSInsertTabletReq();
+    request.setSessionId(sessionId);
+    request.deviceId = tablet.deviceId;
+    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
+    }
+    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+    request.setValues(SessionUtils.getValueBuffer(tablet));
+    request.setSize(tablet.rowSize);
+
+    try {
+      RpcUtils.verifySuccess(client.insertTablet(request).statusList);
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+  }
+
+
+  private void sortTablet(Tablet tablet) {
+    /*
+     * following part of code sort the batch data by time,
+     * so we can insert continuous data in value list to get a better performance
+     */
+    // sort to get index, and use index to sort value list
+    Integer[] index = new Integer[tablet.rowSize];
+    for (int i = 0; i < tablet.rowSize; i++) {
+      index[i] = i;
+    }
+    Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
+    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      tablet.values[i] =
+          sortList(tablet.values[i], tablet.getSchemas().get(i).getType(), index);
+    }
+  }
+
+  /**
+   * sort value list by index
+   *
+   * @param valueList value list
+   * @param dataType  data type
+   * @param index     index
+   * @return sorted list
+   */
+  private Object sortList(Object valueList, TSDataType dataType, Integer[] index) {
+    switch (dataType) {
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) valueList;
+        boolean[] sortedValues = new boolean[boolValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedValues[index[i]] = boolValues[i];
+        }
+        return sortedValues;
+      case INT32:
+        int[] intValues = (int[]) valueList;
+        int[] sortedIntValues = new int[intValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedIntValues[index[i]] = intValues[i];
+        }
+        return sortedIntValues;
+      case INT64:
+        long[] longValues = (long[]) valueList;
+        long[] sortedLongValues = new long[longValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedLongValues[index[i]] = longValues[i];
+        }
+        return sortedLongValues;
+      case FLOAT:
+        float[] floatValues = (float[]) valueList;
+        float[] sortedFloatValues = new float[floatValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedFloatValues[index[i]] = floatValues[i];
+        }
+        return sortedFloatValues;
+      case DOUBLE:
+        double[] doubleValues = (double[]) valueList;
+        double[] sortedDoubleValues = new double[doubleValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedDoubleValues[index[i]] = doubleValues[i];
+        }
+        return sortedDoubleValues;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) valueList;
+        Binary[] sortedBinaryValues = new Binary[binaryValues.length];
+        for (int i = 0; i < index.length; i++) {
+          sortedBinaryValues[index[i]] = binaryValues[i];
+        }
+        return sortedBinaryValues;
+      default:
+        throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }
   }
 
