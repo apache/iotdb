@@ -300,7 +300,7 @@ public class UnCommittedEntryManagerTest {
   }
 
   @Test
-  public void truncateAndAppend() {
+  public void truncateAndAppendBatch() {
     class UnCommittedEntryManagerTester extends UnCommitEntryManagerTesterBase {
 
       public List<Log> toAppend;

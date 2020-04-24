@@ -277,7 +277,7 @@ public class RaftLogManagerTest {
 			add(new RaftLogManagerTester(offset - 10, num / 2, num / 2, half - 1));
 			add(new RaftLogManagerTester(half - 1, num / 2, num / 2, half - 1));
 			add(new RaftLogManagerTester(half, num / 2 + 1, num / 2 - 1, half));
-			add(new RaftLogManagerTester(half - 10, num / 2 + 1, num / 2 - 1, half));
+			add(new RaftLogManagerTester(half + 10, num / 2 + 11, num / 2 - 11, half + 10));
 			add(new RaftLogManagerTester(last - 1, num, 0, last - 1));
 		}};
 		for (RaftLogManagerTester test : tests) {

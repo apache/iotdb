@@ -379,18 +379,6 @@ public class CommittedEntryManagerTest {
 				add(new EmptyContentLog(4, 4));
 				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(1, 1));
-				add(new EmptyContentLog(2, 2));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-			}}, null));
-			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-			}}, new ArrayList<Log>() {{
 				add(new EmptyContentLog(3, 3));
 				add(new EmptyContentLog(4, 4));
 				add(new EmptyContentLog(5, 5));

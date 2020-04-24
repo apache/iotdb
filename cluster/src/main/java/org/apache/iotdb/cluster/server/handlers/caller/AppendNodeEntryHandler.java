@@ -44,6 +44,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   private Log log;
   private AtomicInteger voteCounter;
   private AtomicBoolean leaderShipStale;
+  private AtomicBoolean logMisMatch;
   private Node receiver;
 
   @Override
@@ -77,6 +78,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
       } else {
         //e.g., Response.RESPONSE_LOG_MISMATCH
         //But it is impossible that more than quorum nodes return RESPONSE_LOG_MISMATCH.
+        logMisMatch.set(true);
         logger.debug("The log {} is rejected because: {}", log, resp);
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
@@ -103,6 +105,10 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   public void setLeaderShipStale(AtomicBoolean leaderShipStale) {
     this.leaderShipStale = leaderShipStale;
+  }
+
+  public void setLogMisMatch(AtomicBoolean logMisMatch) {
+    this.logMisMatch = logMisMatch;
   }
 
   public void setReceiver(Node follower) {

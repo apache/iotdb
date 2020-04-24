@@ -180,31 +180,18 @@ public class CommittedEntryManager {
      * inconsistencies.
      *
      * @param appendingEntries request entries
+     * @throws TruncateCommittedEntryException
      */
-    public void append(List<Log> appendingEntries) throws TruncateCommittedEntryException{
+    public void append(List<Log> appendingEntries) throws TruncateCommittedEntryException {
         if (appendingEntries.size() == 0) {
             return;
-        }
-        long localFirstIndex = getFirstIndex();
-        long appendingLastIndex =
-            appendingEntries.get(0).getCurrLogIndex() + appendingEntries.size() - 1;
-        if (appendingLastIndex < localFirstIndex) {
-            return;
-        }
-        if (localFirstIndex > appendingEntries.get(0).getCurrLogIndex()) {
-            appendingEntries
-                .subList(0, (int) (localFirstIndex - appendingEntries.get(0).getCurrLogIndex()))
-                .clear();
         }
         long offset = appendingEntries.get(0).getCurrLogIndex() - getDummyIndex();
         if (entries.size() - offset == 0) {
             entries.addAll(appendingEntries);
         } else if (entries.size() - offset > 0) {
-            // maybe not throw a exception is better.It depends on the caller's implementation.
-            logger.error("The logs which first index is {} are going to truncate committed logs", appendingEntries.get(0).getCurrLogIndex());
-            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),getLastIndex());
-//            entries.subList((int) offset, entries.size()).clear();
-//            entries.addAll(appendingEntries);
+            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),
+                getLastIndex());
         } else {
             logger.error("missing log entry [last: {}, append at: {}]", getLastIndex(),
                 appendingEntries.get(0).getCurrLogIndex());

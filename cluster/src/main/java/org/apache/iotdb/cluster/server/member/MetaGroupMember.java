@@ -1097,8 +1097,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
       }
       logManager.setSnapshot(snapshot);
+      logManager.applyingSnapshot(snapshot);
     }
-    logManager.applyingSnapshot(snapshot);
   }
 
   /**

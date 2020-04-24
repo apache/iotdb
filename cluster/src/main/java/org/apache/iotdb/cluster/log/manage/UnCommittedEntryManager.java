@@ -93,13 +93,15 @@ public class UnCommittedEntryManager {
 
     /**
      * Remove useless prefix entries as long as these entries has been committed and persisted. This
-     * method is only called after persisting newly committed entries.
+     * method is called after persisting newly committed entries or applying a snapshot.
      *
      * @param index request entry's index
      */
     public void stableTo(long index) {
-        entries.subList(0, (int) (index + 1 - offset)).clear();
-        offset = index + 1;
+        if (index < offset + entries.size() && index >= offset) {
+            entries.subList(0, (int) (index + 1 - offset)).clear();
+            offset = index + 1;
+        }
     }
 
     /**
@@ -175,7 +177,8 @@ public class UnCommittedEntryManager {
         } else {
             // clear conflict entries
             // then append
-            logger.info("truncate the entries after index {}", after);
+            logger.info("truncate the entries after index {}, append a new entry {}", after,
+                appendingEntry);
             int truncateIndex = (int) (after - offset);
             if (truncateIndex < entries.size()) {
                 entries.subList(truncateIndex, entries.size()).clear();

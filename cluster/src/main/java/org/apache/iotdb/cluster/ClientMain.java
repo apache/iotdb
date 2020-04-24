@@ -136,7 +136,7 @@ public class ClientMain {
 
     client.closeSession(new TSCloseSessionReq(sessionId));
 
-    for (int queryPort : new int[] {55560, 55561, 55562}) {
+    for (int queryPort : new int[]{55560, 55561, 55562}) {
       System.out.println("Test port: " + queryPort);
 
       client = getClient(ip, queryPort);
@@ -224,7 +224,7 @@ public class ClientMain {
   private static void testDeleteStorageGroup(Client client, long sessionId)
       throws TException, StatementExecutionException, IoTDBConnectionException {
     logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
-    testQuery(client, sessionId, new String[] {"SELECT * FROM root"});
+    testQuery(client, sessionId, new String[]{"SELECT * FROM root"});
   }
 
   private static void testInsertion(Client client, long sessionId) throws TException {
@@ -278,6 +278,7 @@ public class ClientMain {
       }
     }
   }
+
   private static void testDeleteTimeseries(Client client, long sessionId) throws TException {
     List<String> paths = new ArrayList<>();
     for (String measurement : MEASUREMENTS) {

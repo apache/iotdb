@@ -88,6 +88,11 @@ public class RaftLogManager {
         return stableEntryManager.getHardState();
     }
 
+    @TestOnly
+    public void setCommitLogIndex(long commitIndex) {
+        this.commitIndex = commitIndex;
+    }
+
     /**
      * Return the raftNode's commitIndex.
      *
@@ -95,15 +100,6 @@ public class RaftLogManager {
      */
     public long getCommitLogIndex() {
         return commitIndex;
-    }
-
-    /**
-     * Set the raftNode's commitIndex.
-     *
-     * @param commitIndex request commitIndex
-     */
-    public void setCommitLogIndex(long commitIndex) {
-        this.commitIndex = commitIndex;
     }
 
     /**
@@ -228,7 +224,7 @@ public class RaftLogManager {
         long after = entries.get(0).getCurrLogIndex();
         if (after <= commitIndex) {
             logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
-            return getLastLogIndex();
+            return -1;
         }
         unCommittedEntryManager.truncateAndAppend(entries);
         return getLastLogIndex();
@@ -245,7 +241,7 @@ public class RaftLogManager {
         long after = entry.getCurrLogIndex();
         if (after <= commitIndex) {
             logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
-            return getLastLogIndex();
+            return -1;
         }
         unCommittedEntryManager.truncateAndAppend(entry);
         return getLastLogIndex();
@@ -289,8 +285,8 @@ public class RaftLogManager {
             stableEntryManager.removeCompactedEntries(snapshot.getLastLogIndex());
         } catch (EntryUnavailableException e) {
             committedEntryManager.applyingSnapshot(snapshot);
-            unCommittedEntryManager.applyingSnapshot(snapshot);
             stableEntryManager.applyingSnapshot(snapshot);
+            unCommittedEntryManager.applyingSnapshot(snapshot);
         }
         if (this.commitIndex < snapshot.getLastLogIndex()) {
             this.commitIndex = snapshot.getLastLogIndex();
@@ -344,9 +340,17 @@ public class RaftLogManager {
      */
     public long commitTo(long newCommitIndex) {
         if (commitIndex < newCommitIndex) {
-            List<Log> entries = unCommittedEntryManager
-                .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), newCommitIndex + 1);
+            List<Log> entries = new ArrayList<>();
+            entries.addAll(unCommittedEntryManager
+                .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(),
+                    newCommitIndex + 1));
             if (entries.size() != 0) {
+                if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
+                    entries
+                        .subList(0,
+                            (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
+                        .clear();
+                }
                 try {
                     committedEntryManager.append(entries);
                     stableEntryManager.append(entries);
