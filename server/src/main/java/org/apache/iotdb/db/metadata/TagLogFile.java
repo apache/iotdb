@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import java.util.Map;
 
 public class TagLogFile implements AutoCloseable {
@@ -66,6 +67,9 @@ public class TagLogFile implements AutoCloseable {
    * @return tags map, attributes map
    */
   public Pair<Map<String, String>, Map<String, String>> read(int size, long position) throws IOException {
+    if (position < 0) {
+      return new Pair<>(Collections.EMPTY_MAP, Collections.EMPTY_MAP);
+    }
     ByteBuffer byteBuffer = ByteBuffer.allocate(size);
     fileChannel.read(byteBuffer, position);
     byteBuffer.flip();
@@ -81,20 +85,32 @@ public class TagLogFile implements AutoCloseable {
 
   public long write(Map<String, String> tagMap, Map<String, String> attributeMap) throws IOException, MetadataException {
     long offset = fileChannel.position();
+    ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
+    fileChannel.write(byteBuffer);
+    return offset;
+  }
+
+  /**
+   * This method does not modify this file's current position.
+   */
+  public void write(Map<String, String> tagMap, Map<String, String> attributeMap, long position) throws IOException, MetadataException {
+    ByteBuffer byteBuffer = convertMapToByteBuffer(tagMap, attributeMap);
+    fileChannel.write(byteBuffer, position);
+  }
+
+  private ByteBuffer convertMapToByteBuffer(Map<String, String> tagMap, Map<String, String> attributeMap) throws MetadataException {
     ByteBuffer byteBuffer = ByteBuffer.allocate(MAX_LENGTH);
     int length = serializeMap(tagMap, byteBuffer, 0);
     length = serializeMap(attributeMap, byteBuffer, length);
 
     // fill the remaining space
-    for (int i = length+1; i <= MAX_LENGTH; i++) {
+    for (int i = length + 1; i <= MAX_LENGTH; i++) {
       byteBuffer.put(FILL_BYTE);
     }
 
     // persist to the disk
     byteBuffer.flip();
-    fileChannel.write(byteBuffer);
-
-    return offset;
+    return byteBuffer;
   }
 
   private int serializeMap(Map<String, String> map, ByteBuffer byteBuffer, int length) throws MetadataException {

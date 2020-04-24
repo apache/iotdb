@@ -143,6 +143,11 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return results;
     }
 
+    //read chunk data secondly
+    if (readAndCalcFromChunk(curStartTime, curEndTime)) {
+      return results;
+    }
+
     // read from file first
     while (reader.hasNextFile()) {
       Statistics fileStatistics = reader.currentFileStatistics();
@@ -158,25 +163,32 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       }
 
       //read chunk
-      while (reader.hasNextChunk()) {
-        Statistics chunkStatistics = reader.currentChunkStatistics();
-        if (chunkStatistics.getStartTime() >= curEndTime) {
-          return results;
-        }
-        //calc from chunkMetaData
-        if (reader.canUseCurrentChunkStatistics()
-                && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-          calcFromStatistics(chunkStatistics);
-          reader.skipCurrentChunk();
-          continue;
-        }
-        if (readAndCalcFromPage(curStartTime, curEndTime)) {
-          return results;
-        }
+      if (readAndCalcFromChunk(curStartTime, curEndTime)) {
+        return results;
       }
     }
 
     return results;
+  }
+
+  private boolean readAndCalcFromChunk(long curStartTime, long curEndTime) throws IOException, QueryProcessException {
+    while (reader.hasNextChunk()) {
+      Statistics chunkStatistics = reader.currentChunkStatistics();
+      if (chunkStatistics.getStartTime() >= curEndTime) {
+        return true;
+      }
+      //calc from chunkMetaData
+      if (reader.canUseCurrentChunkStatistics()
+              && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+        calcFromStatistics(chunkStatistics);
+        reader.skipCurrentChunk();
+        continue;
+      }
+      if (readAndCalcFromPage(curStartTime, curEndTime)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private boolean readAndCalcFromPage(long curStartTime, long curEndTime) throws IOException,

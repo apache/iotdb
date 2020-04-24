@@ -53,10 +53,10 @@ public class MTree implements Serializable {
   private static final long serialVersionUID = -4200394435237291964L;
   private MNode root;
 
-  private int limit = 0;
-  private int offset = 0;
-  private int count = 0;
-  private int curOffset = -1;
+  private ThreadLocal<Integer> limit = new ThreadLocal<>();
+  private ThreadLocal<Integer> offset = new ThreadLocal<>();
+  private ThreadLocal<Integer> count = new ThreadLocal<>();
+  private ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   MTree() {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
@@ -493,13 +493,13 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
     }
-    this.limit = plan.getLimit();
-    this.offset = plan.getOffset();
-    if (offset != 0 || limit != 0) {
-      res = new ArrayList<>(limit);
+    limit.set(plan.getLimit());
+    offset.set(plan.getOffset());
+    curOffset.set(-1);
+    count.set(0);
+    if (offset.get() != 0 || limit.get() != 0) {
+      res = new ArrayList<>(limit.get());
       findPath(root, nodes, 1, "", res, true);
-      curOffset = -1;
-      count = 0;
     } else {
       res = new ArrayList<>();
       findPath(root, nodes, 1, "", res, false);
@@ -517,8 +517,8 @@ public class MTree implements Serializable {
     if (node instanceof LeafMNode) {
       if (nodes.length <= idx) {
         if (hasLimit) {
-          curOffset++;
-          if (curOffset < offset || count == limit) {
+          curOffset.set(curOffset.get()+1);
+          if (curOffset.get() < offset.get() || count == limit) {
             return;
           }
         }
@@ -541,7 +541,7 @@ public class MTree implements Serializable {
         timeseriesSchemaList.add(tsRow);
 
         if (hasLimit) {
-          count++;
+          count.set(count.get()+1);
         }
       }
       return;

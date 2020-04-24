@@ -89,7 +89,7 @@ public class MManager {
 
   private static class MManagerHolder {
     private MManagerHolder() {
-      //allowed to do nothing
+      // allowed to do nothing
     }
 
     private static final MManager INSTANCE = new MManager();
@@ -112,27 +112,28 @@ public class MManager {
     writeToLog = false;
 
     int cacheSize = config.getmManagerCacheSize();
-    mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {
+    mNodeCache =
+        new RandomDeleteCache<String, MNode>(cacheSize) {
 
-      @Override
-      public MNode loadObjectByKey(String key) throws CacheException {
-        lock.readLock().lock();
-        try {
-          return mtree.getNodeByPathWithStorageGroupCheck(key);
-        } catch (MetadataException e) {
-          throw new CacheException(e);
-        } finally {
-          lock.readLock().unlock();
-        }
-      }
-    };
+          @Override
+          public MNode loadObjectByKey(String key) throws CacheException {
+            lock.readLock().lock();
+            try {
+              return mtree.getNodeByPathWithStorageGroupCheck(key);
+            } catch (MetadataException e) {
+              throw new CacheException(e);
+            } finally {
+              lock.readLock().unlock();
+            }
+          }
+        };
   }
 
   public static MManager getInstance() {
     return MManagerHolder.INSTANCE;
   }
 
-  //Because the writer will be used later and should not be closed here.
+  // Because the writer will be used later and should not be closed here.
   @SuppressWarnings("squid:S2093")
   public synchronized void init() {
     if (initialized) {
@@ -159,8 +160,8 @@ public class MManager {
         if (seriesNumberInStorageGroups.isEmpty()) {
           maxSeriesNumberAmongStorageGroup = 0;
         } else {
-          maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
-              .max(Integer::compareTo).get();
+          maxSeriesNumberAmongStorageGroup =
+              seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).get();
         }
       }
 
@@ -191,9 +192,7 @@ public class MManager {
     }
   }
 
-  /**
-   * function for clearing MTree
-   */
+  /** function for clearing MTree */
   public void clear() {
     lock.writeLock().lock();
     try {
@@ -221,12 +220,12 @@ public class MManager {
   }
 
   public void operation(String cmd) throws IOException, MetadataException {
-    //see createTimeseries() to get the detailed format of the cmd
+    // see createTimeseries() to get the detailed format of the cmd
     String[] args = cmd.trim().split(",", -1);
     switch (args[0]) {
       case MetadataOperationType.CREATE_TIMESERIES:
         Map<String, String> props = new HashMap<>();
-        if (!args[5].isEmpty()){
+        if (!args[5].isEmpty()) {
           String[] keyValues = args[5].split("&");
           String[] kv;
           for (String keyValue : keyValues) {
@@ -240,17 +239,22 @@ public class MManager {
           alias = args[6];
         }
         long offset = -1L;
-        Map<String, String>  tagMap = null;
+        Map<String, String> tagMap = null;
         if (!args[7].isEmpty()) {
           offset = Long.parseLong(args[7]);
           tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
         }
 
-        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(args[1]),
-            TSDataType.deserialize(Short.parseShort(args[2])),
-            TSEncoding.deserialize(Short.parseShort(args[3])),
-            CompressionType.deserialize(Short.parseShort(args[4])),
-            props, tagMap, null, alias);
+        CreateTimeSeriesPlan plan =
+            new CreateTimeSeriesPlan(
+                new Path(args[1]),
+                TSDataType.deserialize(Short.parseShort(args[2])),
+                TSEncoding.deserialize(Short.parseShort(args[3])),
+                CompressionType.deserialize(Short.parseShort(args[4])),
+                props,
+                tagMap,
+                null,
+                alias);
         createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
@@ -262,12 +266,14 @@ public class MManager {
         setStorageGroup(args[1]);
         break;
       case MetadataOperationType.DELETE_STORAGE_GROUP:
-        List<String> storageGroups = new ArrayList<>();
-        storageGroups.addAll(Arrays.asList(args).subList(1, args.length));
+        List<String> storageGroups = new ArrayList<>(Arrays.asList(args).subList(1, args.length));
         deleteStorageGroups(storageGroups);
         break;
       case MetadataOperationType.SET_TTL:
         setTTL(args[1], Long.parseLong(args[2]));
+        break;
+      case MetadataOperationType.CHANGE_OFFSET:
+        changeOffset(args[1], Long.parseLong(args[2]));
         break;
       default:
         logger.error("Unrecognizable command {}", cmd);
@@ -292,14 +298,20 @@ public class MManager {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw e;
         }
-        storageGroupName = MetaUtils.getStorageGroupNameByLevel(path,
-            config.getDefaultStorageGroupLevel());
+        storageGroupName =
+            MetaUtils.getStorageGroupNameByLevel(path, config.getDefaultStorageGroupLevel());
         setStorageGroup(storageGroupName);
       }
 
       // create time series in MTree
-      LeafMNode leafMNode = mtree.createTimeseries(path, plan.getDataType(), plan.getEncoding(),
-          plan.getCompressor(), plan.getProps(), plan.getAlias());
+      LeafMNode leafMNode =
+          mtree.createTimeseries(
+              path,
+              plan.getDataType(),
+              plan.getEncoding(),
+              plan.getCompressor(),
+              plan.getProps(),
+              plan.getAlias());
       try {
         // check memory
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
@@ -311,8 +323,8 @@ public class MManager {
       // write log
       if (writeToLog) {
         // either tags or attributes is not empty
-        if ((plan.getTags() != null && !plan.getTags().isEmpty()) || (plan.getAttributes() != null
-            && !plan.getAttributes().isEmpty())) {
+        if ((plan.getTags() != null && !plan.getTags().isEmpty())
+            || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
           offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
         }
         logWriter.createTimeseries(plan, offset);
@@ -323,7 +335,8 @@ public class MManager {
       if (plan.getTags() != null) {
         // tag key, tag value
         for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+          tagIndex
+              .computeIfAbsent(entry.getKey(), k -> new HashMap<>())
               .computeIfAbsent(entry.getValue(), v -> new HashSet<>())
               .add(leafMNode);
         }
@@ -352,22 +365,26 @@ public class MManager {
    * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    * @return whether the measurement occurs for the first time in this storage group (if true, the
-   * measurement should be registered to the StorageEngine too)
+   *     measurement should be registered to the StorageEngine too)
    */
-  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
-      CompressionType compressor, Map<String, String> props) throws MetadataException {
+  public void createTimeseries(
+      String path,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props)
+      throws MetadataException {
     createTimeseries(
-        new CreateTimeSeriesPlan(new Path(path), dataType, encoding, compressor, props, null, null,
-            null));
+        new CreateTimeSeriesPlan(
+            new Path(path), dataType, encoding, compressor, props, null, null, null));
   }
-
 
   /**
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
    * @return a set contains StorageGroups that contain no more timeseries after this deletion and
-   * files of such StorageGroups should be deleted to reclaim disk space.
+   *     files of such StorageGroups should be deleted to reclaim disk space.
    */
   public Set<String> deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
@@ -377,7 +394,8 @@ public class MManager {
         int size = seriesNumberInStorageGroups.get(prefixPath);
         seriesNumberInStorageGroups.put(prefixPath, 0);
         if (size == maxSeriesNumberAmongStorageGroup) {
-          seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
+          seriesNumberInStorageGroups.values().stream()
+              .max(Integer::compareTo)
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
         }
       }
@@ -407,6 +425,7 @@ public class MManager {
 
   /**
    * remove the node from the tag inverted index
+   *
    * @param node
    * @throws IOException
    */
@@ -414,7 +433,8 @@ public class MManager {
     if (node.getOffset() < 0) {
       return;
     }
-    Map<String, String> tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
+    Map<String, String> tagMap =
+        tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
     if (tagMap != null) {
       for (Entry<String, String> entry : tagMap.entrySet()) {
         tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
@@ -449,7 +469,8 @@ public class MManager {
         int size = seriesNumberInStorageGroups.get(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, size - 1);
         if (size == maxSeriesNumberAmongStorageGroup) {
-          seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
+          seriesNumberInStorageGroups.values().stream()
+              .max(Integer::compareTo)
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
         }
       }
@@ -515,8 +536,8 @@ public class MManager {
             if (seriesNumberInStorageGroups.isEmpty()) {
               maxSeriesNumberAmongStorageGroup = 0;
             } else {
-              maxSeriesNumberAmongStorageGroup = seriesNumberInStorageGroups.values().stream()
-                  .max(Integer::compareTo).get();
+              maxSeriesNumberAmongStorageGroup =
+                  seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).get();
             }
           }
         }
@@ -584,7 +605,7 @@ public class MManager {
    * Get all devices under given prefixPath.
    *
    * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
-   * wildcard can only match one level, otherwise it can match to the tail.
+   *     wildcard can only match one level, otherwise it can match to the tail.
    * @return A HashSet instance which stores devices names with given prefixPath.
    */
   public Set<String> getDevices(String prefixPath) throws MetadataException {
@@ -600,8 +621,8 @@ public class MManager {
    * Get all nodes from the given level
    *
    * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have
-   * wildcard. But, the level of the prefixPath can be smaller than the given level, e.g.,
-   * prefixPath = root.a while the given level is 5
+   *     wildcard. But, the level of the prefixPath can be smaller than the given level, e.g.,
+   *     prefixPath = root.a while the given level is 5
    * @param nodeLevel the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
@@ -617,7 +638,7 @@ public class MManager {
   /**
    * Get storage group name by path
    *
-   * e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
    *
    * @return storage group in the given path
    */
@@ -630,9 +651,7 @@ public class MManager {
     }
   }
 
-  /**
-   * Get all storage group names
-   */
+  /** Get all storage group names */
   public List<String> getAllStorageGroupNames() {
     lock.readLock().lock();
     try {
@@ -642,9 +661,7 @@ public class MManager {
     }
   }
 
-  /**
-   * Get all storage group MNodes
-   */
+  /** Get all storage group MNodes */
   public List<StorageGroupMNode> getAllStorageGroupNodes() {
     lock.readLock().lock();
     try {
@@ -659,7 +676,7 @@ public class MManager {
    * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
    *
    * @param prefixPath can be a prefix or a full path. if the wildcard is not at the tail, then each
-   * wildcard can only match one level, otherwise it can match to the tail.
+   *     wildcard can only match one level, otherwise it can match to the tail.
    */
   public List<String> getAllTimeseriesName(String prefixPath) throws MetadataException {
     lock.readLock().lock();
@@ -680,6 +697,9 @@ public class MManager {
         throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
       }
       Map<String, Set<LeafMNode>> value2Node = tagIndex.get(plan.getKey());
+      if (value2Node.isEmpty()) {
+        throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
+      }
       Set<LeafMNode> allMatchedNodes = new TreeSet<>(Comparator.comparing(MNode::getFullPath));
       if (plan.isContains()) {
         for (Entry<String, Set<LeafMNode>> entry : value2Node.entrySet()) {
@@ -705,20 +725,25 @@ public class MManager {
       for (LeafMNode leaf : allMatchedNodes) {
         if (match(leaf.getFullPath(), prefixNodes)) {
           if (limit != 0 || offset != 0) {
-            curOffset ++;
+            curOffset++;
             if (curOffset < offset || count == limit) {
               continue;
             }
           }
           try {
             Pair<Map<String, String>, Map<String, String>> pair =
-                    tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
+                tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
             pair.left.putAll(pair.right);
             MeasurementSchema measurementSchema = leaf.getSchema();
-            res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
-                    getStorageGroupName(leaf.getFullPath()), measurementSchema.getType().toString(),
+            res.add(
+                new ShowTimeSeriesResult(
+                    leaf.getFullPath(),
+                    leaf.getAlias(),
+                    getStorageGroupName(leaf.getFullPath()),
+                    measurementSchema.getType().toString(),
                     measurementSchema.getEncodingType().toString(),
-                    measurementSchema.getCompressor().toString(), pair.left));
+                    measurementSchema.getCompressor().toString(),
+                    pair.left));
             if (limit != 0 || offset != 0) {
               count++;
             }
@@ -729,14 +754,12 @@ public class MManager {
         }
       }
       return res;
-    }  finally {
+    } finally {
       lock.readLock().unlock();
     }
   }
 
-  /**
-   * whether the full path has the prefixNodes
-   */
+  /** whether the full path has the prefixNodes */
   private boolean match(String fullPath, String[] prefixNodes) {
     String[] nodes = MetaUtils.getNodeNames(fullPath);
     if (nodes.length < prefixNodes.length) {
@@ -755,7 +778,8 @@ public class MManager {
    *
    * @param plan show time series query plan
    */
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan) throws MetadataException {
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+      throws MetadataException {
     lock.readLock().lock();
     try {
       List<String[]> ans = mtree.getAllMeasurementSchema(plan);
@@ -765,15 +789,29 @@ public class MManager {
         try {
           if (tagFileOffset < 0) {
             // no tags/attributes
-            res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
-                ansString[3], ansString[4], ansString[5], Collections.emptyMap()));
+            res.add(
+                new ShowTimeSeriesResult(
+                    ansString[0],
+                    ansString[1],
+                    ansString[2],
+                    ansString[3],
+                    ansString[4],
+                    ansString[5],
+                    Collections.emptyMap()));
           } else {
             // has tags/attributes
             Pair<Map<String, String>, Map<String, String>> pair =
                 tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
             pair.left.putAll(pair.right);
-            res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
-                ansString[3], ansString[4], ansString[5], pair.left));
+            res.add(
+                new ShowTimeSeriesResult(
+                    ansString[0],
+                    ansString[1],
+                    ansString[2],
+                    ansString[3],
+                    ansString[4],
+                    ansString[5],
+                    pair.left));
           }
         } catch (IOException e) {
           throw new MetadataException(
@@ -781,14 +819,13 @@ public class MManager {
         }
       }
       return res;
-    }  finally {
+    } finally {
       lock.readLock().unlock();
     }
   }
 
-
-
-  public MeasurementSchema getSeriesSchema(String device, String measuremnet) throws MetadataException {
+  public MeasurementSchema getSeriesSchema(String device, String measuremnet)
+      throws MetadataException {
     lock.readLock().lock();
     try {
       InternalMNode node = (InternalMNode) mtree.getNodeByPath(device);
@@ -801,8 +838,8 @@ public class MManager {
   /**
    * Get child node path in the next level of the given path.
    *
-   * e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1, return
-   * [root.sg1.d1, root.sg1.d2]
+   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
+   * return [root.sg1.d1, root.sg1.d2]
    *
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
@@ -829,9 +866,7 @@ public class MManager {
     }
   }
 
-  /**
-   * Get node by path
-   */
+  /** Get node by path */
   public MNode getNodeByPath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
@@ -859,8 +894,8 @@ public class MManager {
    *
    * @param path path
    */
-  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
-      int sgLevel) throws MetadataException {
+  public MNode getDeviceNodeWithAutoCreateStorageGroup(
+      String path, boolean autoCreateSchema, int sgLevel) throws MetadataException {
     lock.readLock().lock();
     MNode node = null;
     boolean shouldSetStorageGroup = false;
@@ -894,13 +929,11 @@ public class MManager {
   }
 
   public MNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {
-    return getDeviceNodeWithAutoCreateStorageGroup(path, config.isAutoCreateSchemaEnabled(),
-        config.getDefaultStorageGroupLevel());
+    return getDeviceNodeWithAutoCreateStorageGroup(
+        path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
-  /**
-   * Get metadata in string
-   */
+  /** Get metadata in string */
   public String getMetadataInString() {
     lock.readLock().lock();
     try {
@@ -931,9 +964,247 @@ public class MManager {
     }
   }
 
-  /**
-   * Check whether the given path contains a storage group
-   */
+  public void changeOffset(String path, long offset) throws MetadataException {
+    lock.writeLock().lock();
+    try {
+      ((LeafMNode)mtree.getNodeByPath(path)).setOffset(offset);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+
+  public void addAttributes(Map<String, String> attributesMap, String fullPath) throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      MNode mNode = mtree.getNodeByPath(fullPath);
+      if (!(mNode instanceof LeafMNode)) {
+        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+      }
+      LeafMNode leafMNode = (LeafMNode) mNode;
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
+        long offset = tagLogFile.write(Collections.EMPTY_MAP, attributesMap);
+        logWriter.changeOffset(fullPath, offset);
+        leafMNode.setOffset(offset);
+        return;
+      }
+
+      Pair<Map<String, String>, Map<String, String>> pair =
+              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+
+      for (Entry<String, String> entry : attributesMap.entrySet()) {
+        String key = entry.getKey();
+        String value = entry.getValue();
+        if (pair.right.containsKey(key)) {
+          throw new MetadataException(
+                  String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
+        }
+        pair.right.put(key, value);
+      }
+
+      // persist the change to disk
+      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  public void addTags(Map<String, String> tagsMap, String fullPath)
+      throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      MNode mNode = mtree.getNodeByPath(fullPath);
+      if (!(mNode instanceof LeafMNode)) {
+        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+      }
+      LeafMNode leafMNode = (LeafMNode) mNode;
+      // no tag or attribute, we need to add a new record in log
+      if (leafMNode.getOffset() < 0) {
+        long offset = tagLogFile.write(tagsMap, Collections.EMPTY_MAP);
+        logWriter.changeOffset(fullPath, offset);
+        leafMNode.setOffset(offset);
+        return;
+      }
+
+      Pair<Map<String, String>, Map<String, String>> pair =
+              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+
+      for (Entry<String, String> entry : tagsMap.entrySet()) {
+        String key = entry.getKey();
+        String value = entry.getValue();
+        if (pair.left.containsKey(key)) {
+          throw new MetadataException(
+                  String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
+        }
+        pair.left.put(key, value);
+      }
+
+      // persist the change to disk
+      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+
+      // update tag inverted map
+      tagsMap.forEach(
+              (key, value) ->
+                      tagIndex
+                              .computeIfAbsent(key, k -> new HashMap<>())
+                              .computeIfAbsent(value, v -> new HashSet<>())
+                              .add(leafMNode));
+
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  public void dropTag(Set<String> keySet, String fullPath) throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      MNode mNode = mtree.getNodeByPath(fullPath);
+      if (!(mNode instanceof LeafMNode)) {
+        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+      }
+      LeafMNode leafMNode = (LeafMNode) mNode;
+      // no tag or attribute, just do nothing.
+      if (leafMNode.getOffset() < 0) {
+        return;
+      }
+      Pair<Map<String, String>, Map<String, String>> pair =
+              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+
+      Map<String, String> deleteTag = new HashMap<>();
+      for (String key : keySet) {
+        // check tag map
+        // check attribute map
+        if (pair.left.containsKey(key)) {
+          deleteTag.put(key, pair.left.remove(key));
+        } else {
+          pair.right.remove(key);
+        }
+      }
+
+      // persist the change to disk
+      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+
+      for (Entry<String, String> entry : deleteTag.entrySet()) {
+        String key = entry.getKey();
+        String value = entry.getValue();
+        // change the tag inverted index map
+        tagIndex.get(key).get(value).remove(leafMNode);
+        if (tagIndex.get(key).get(value).isEmpty()) {
+          tagIndex.get(key).remove(value);
+          if (tagIndex.get(key).isEmpty()) {
+            tagIndex.remove(key);
+          }
+        }
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  public void setTag(Map<String, String> alterMap, String fullPath)
+      throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      MNode mNode = mtree.getNodeByPath(fullPath);
+      if (!(mNode instanceof LeafMNode)) {
+        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+      }
+      LeafMNode leafMNode = (LeafMNode) mNode;
+      if (leafMNode.getOffset() < 0) {
+        throw new MetadataException(
+                String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
+      }
+      Pair<Map<String, String>, Map<String, String>> pair =
+              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+      Map<String, String> beforeTagValue = new HashMap<>();
+      Map<String, String> currentTagValue = new HashMap<>();
+      for (Entry<String, String> entry : alterMap.entrySet()) {
+        String key = entry.getKey();
+        String value = entry.getValue();
+        // check tag map
+        if (pair.left.containsKey(key)) {
+          beforeTagValue.put(key, pair.left.get(key));
+          currentTagValue.put(key, value);
+          pair.left.put(key, value);
+        } else if (pair.right.containsKey(key)) {
+          // check attribute map
+          pair.right.put(key, value);
+        } else {
+          throw new MetadataException(
+                  String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key));
+        }
+      }
+
+      // persist the change to disk
+      tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+
+      for (Entry<String, String> entry : beforeTagValue.entrySet()) {
+        String key = entry.getKey();
+        String beforeValue = entry.getValue();
+        String currentValue = currentTagValue.get(key);
+        // change the tag inverted index map
+        tagIndex.get(key).get(beforeValue).remove(leafMNode);
+        tagIndex
+                .computeIfAbsent(key, k -> new HashMap<>())
+                .computeIfAbsent(currentValue, k -> new HashSet<>())
+                .add(leafMNode);
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  public void renameTag(String beforeName, String currentName, String fullPath)
+      throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      MNode mNode = mtree.getNodeByPath(fullPath);
+      if (!(mNode instanceof LeafMNode)) {
+        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+      }
+      LeafMNode leafMNode = (LeafMNode) mNode;
+      if (leafMNode.getOffset() < 0) {
+        throw new MetadataException(
+                String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, beforeName));
+      }
+      Pair<Map<String, String>, Map<String, String>> pair =
+              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+
+      // current name has existed
+      if (pair.left.containsKey(currentName) || pair.right.containsKey(currentName)) {
+        throw new MetadataException(
+                String.format(
+                        "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, currentName));
+      }
+
+      // check tag map
+      if (pair.left.containsKey(beforeName)) {
+        String value = pair.left.remove(beforeName);
+        pair.left.put(currentName, value);
+        // persist the change to disk
+        tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+        // change the tag inverted index map
+        tagIndex.get(beforeName).get(value).remove(leafMNode);
+        tagIndex
+                .computeIfAbsent(currentName, k -> new HashMap<>())
+                .computeIfAbsent(value, k -> new HashSet<>())
+                .add(leafMNode);
+      } else if (pair.right.containsKey(beforeName)) {
+        // check attribute map
+        pair.right.put(currentName, pair.right.remove(beforeName));
+        // persist the change to disk
+        tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
+      } else {
+        throw new MetadataException(
+                String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, beforeName));
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  /** Check whether the given path contains a storage group */
   boolean checkStorageGroupByPath(String path) {
     lock.readLock().lock();
     try {
@@ -942,7 +1213,6 @@ public class MManager {
       lock.readLock().unlock();
     }
   }
-
 
   /**
    * Get all storage groups under the given path
@@ -968,8 +1238,12 @@ public class MManager {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof LeafMNode) {
         MeasurementSchema nodeSchema = ((LeafMNode) node).getSchema();
-        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(),
-            nodeSchema.getType(), nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
+        timeseriesSchemas.add(
+            new MeasurementSchema(
+                node.getFullPath(),
+                nodeSchema.getType(),
+                nodeSchema.getEncodingType(),
+                nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
       }
@@ -987,31 +1261,25 @@ public class MManager {
   }
 
   /**
-   * For a path, infer all storage groups it may belong to.
-   * The path can have wildcards.
+   * For a path, infer all storage groups it may belong to. The path can have wildcards.
    *
-   * Consider the path into two parts: (1) the sub path which can not contain a storage group name and
-   * (2) the sub path which is substring that begin after the storage group name.
+   * <p>Consider the path into two parts: (1) the sub path which can not contain a storage group
+   * name and (2) the sub path which is substring that begin after the storage group name.
    *
-   * (1) Suppose the part of the path can not contain a storage group name (e.g.,
-   * "root".contains("root.sg") == false), then:
-   * If the wildcard is not at the tail, then for each wildcard, only one level will be inferred
-   * and the wildcard will be removed.
-   * If the wildcard is at the tail, then the inference will go on until the storage groups are found
-   * and the wildcard will be kept.
-   * (2) Suppose the part of the path is a substring that begin after the storage group name. (e.g.,
-   *  For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*").
-   *  For this part, keep what it is.
+   * <p>(1) Suppose the part of the path can not contain a storage group name (e.g.,
+   * "root".contains("root.sg") == false), then: If the wildcard is not at the tail, then for each
+   * wildcard, only one level will be inferred and the wildcard will be removed. If the wildcard is
+   * at the tail, then the inference will go on until the storage groups are found and the wildcard
+   * will be kept. (2) Suppose the part of the path is a substring that begin after the storage
+   * group name. (e.g., For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part
+   * is "a.*.b.*"). For this part, keep what it is.
    *
-   * Assuming we have three SGs: root.group1, root.group2, root.area1.group3
-   * Eg1:
-   *  for input "root.*", returns ("root.group1", "root.group1.*"), ("root.group2", "root.group2.*")
-   *  ("root.area1.group3", "root.area1.group3.*")
-   * Eg2:
-   *  for input "root.*.s1", returns ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
+   * <p>Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
+   * "root.*", returns ("root.group1", "root.group1.*"), ("root.group2", "root.group2.*")
+   * ("root.area1.group3", "root.area1.group3.*") Eg2: for input "root.*.s1", returns
+   * ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
    *
-   * Eg3:
-   *  for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
+   * <p>Eg3: for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
    *
    * @param path can be a prefix or a full path.
    * @return StorageGroupName-FullPath pairs

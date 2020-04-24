@@ -52,6 +52,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private ZoneId zoneId;
   private int operatorType;
   private CreateTimeSeriesOperator createTimeSeriesOperator;
+  private AlterTimeSeriesOperator alterTimeSeriesOperator;
   private InsertOperator insertOp;
   private SelectOperator selectOp;
   private UpdateOperator updateOp;
@@ -191,6 +192,60 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     operatorType = SQLConstant.TOK_METADATA_CREATE;
     createTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
+  }
+
+  @Override
+  public void enterAlterTimeseries(SqlBaseParser.AlterTimeseriesContext ctx) {
+    super.enterAlterTimeseries(ctx);
+    alterTimeSeriesOperator = new AlterTimeSeriesOperator(SQLConstant.TOK_METADATA_ALTER);
+    operatorType = SQLConstant.TOK_METADATA_ALTER;
+    alterTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
+  }
+
+  @Override
+  public void enterAlterClause(SqlBaseParser.AlterClauseContext ctx) {
+    super.enterAlterClause(ctx);
+    Map<String, String> alterMap = new HashMap<>();
+    // rename
+    if (ctx.RENAME() != null) {
+      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.RENAME);
+      alterMap.put(ctx.beforeName.getText(), ctx.currentName.getText());
+    } else if (ctx.SET() != null) {
+      // set
+      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.SET);
+      setMap(ctx, alterMap);
+    } else if (ctx.DROP() != null) {
+      // drop
+      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.DROP);
+      for (TerminalNode dropId : ctx.ID()) {
+        alterMap.put(dropId.getText(), null);
+      }
+    } else if (ctx.TAGS() != null) {
+      // add tag
+      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.ADD_TAGS);
+      setMap(ctx, alterMap);
+    } else {
+      // add attribute
+      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.ADD_ATTRIBUTES);
+      setMap(ctx, alterMap);
+    }
+    alterTimeSeriesOperator.setAlterMap(alterMap);
+    initializedOperator = alterTimeSeriesOperator;
+  }
+
+  private void setMap(SqlBaseParser.AlterClauseContext ctx, Map<String, String> alterMap) {
+    List<PropertyContext> tagsList = ctx.property();
+    if (ctx.property(0) != null) {
+      for (PropertyContext property : tagsList) {
+        String value;
+        if(property.propertyValue().STRING_LITERAL() != null) {
+          value = removeStringQuote(property.propertyValue().getText());
+        } else {
+          value = property.propertyValue().getText();
+        }
+        alterMap.put(property.ID().getText(), value);
+      }
+    }
   }
 
   @Override

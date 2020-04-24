@@ -104,6 +104,23 @@ Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.status, root.ln.wf01.wt01.temper
 Eg: IoTDB > DELETE TIMESERIES root.ln.wf01.wt01.*
 ```
 
+* Alter Timeseries Statement
+```
+ALTER TIMESERIES fullPath alterClause
+alterClause
+    : RENAME beforeName=ID TO currentName=ID
+    | SET property (COMMA property)*
+    | DROP ID (COMMA ID)*
+    | ADD TAGS property (COMMA property)*
+    | ADD ATTRIBUTES property (COMMA property)*
+    ;
+Eg: ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+Eg: ALTER timeseries root.turbine.d1.s1 SET tag1=newV1, attr1=newV1
+Eg: ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
+Eg: ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
+Eg: ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
+```
+
 * Show All Timeseries Statement
 
 ```

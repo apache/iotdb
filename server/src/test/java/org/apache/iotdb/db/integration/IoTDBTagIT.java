@@ -832,4 +832,20 @@ public class IoTDBTagIT {
       assertTrue(e.getMessage().contains("The key H_Alarm is not a tag"));
     }
   }
+
+  @Test
+  public void sameNameTest() throws ClassNotFoundException {
+    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
+    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
+            "tags(tag1=v1, tag2=v2) attributes(tag1=v1, attr2=v2)";
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      fail();
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("Tag and attribute shouldn't have the same property key"));
+    }
+  }
 }
