@@ -19,16 +19,26 @@
 package org.apache.iotdb.tsfile.write.record;
 
 import java.util.List;
-
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * Multiple time series of one device that share a time column
+ * A tablet data of one device, the tablet contains multiple measurements of this device that share
+ * the same time column.
+ *
+ * for example:  device root.sg1.d1
+ *
+ * time, m1, m2, m3
+ *    1,  1,  2,  3
+ *    2,  1,  2,  3
+ *    3,  1,  2,  3
+ *
+ * Notice: The tablet should not have empty cell
+ *
  */
-public class RowBatch {
+public class Tablet {
 
   private static final int DEFAULT_SIZE = 1024;
 
@@ -46,49 +56,43 @@ public class RowBatch {
    */
   public long[] timestamps;
   /**
-   * each object is a primitive type array, which represents values of one
-   * measurement
+   * each object is a primitive type array, which represents values of one measurement
    */
   public Object[] values;
   /**
-   * the number of rows to include in this row batch
+   * the number of rows to include in this tablet
    */
-  public int batchSize;
+  public int rowSize;
   /**
    * the maximum number of rows for this row batch
    */
-  private int maxBatchSize;
-
-  /**
-   * total byte size that values occupies
-   */
-  private int valueOccupation = -1;
+  private int maxRowNumber;
 
   /**
    * Return a row batch with default specified row number. This is the standard
-   * constructor (all RowBatch should be the same size).
+   * constructor (all Tablet should be the same size).
    *
    * @param deviceId   the name of the device specified to be written in
    * @param timeseries the list of measurement schemas for creating the row batch
    */
-  public RowBatch(String deviceId, List<MeasurementSchema> timeseries) {
+  public Tablet(String deviceId, List<MeasurementSchema> timeseries) {
     this(deviceId, timeseries, DEFAULT_SIZE);
   }
 
   /**
    * Return a row batch with the specified number of rows (maxBatchSize). Only
-   * call this constructor directly for testing purposes. RowBatch should normally
+   * call this constructor directly for testing purposes. Tablet should normally
    * always be default size.
    *
    * @param deviceId     the name of the device specified to be written in
    * @param schemas   the list of measurement schemas for creating the row
    *                     batch
-   * @param maxBatchSize the maximum number of rows for this row batch
+   * @param maxRowNumber the maximum number of rows for this tablet
    */
-  public RowBatch(String deviceId, List<MeasurementSchema> schemas, int maxBatchSize) {
+  public Tablet(String deviceId, List<MeasurementSchema> schemas, int maxRowNumber) {
     this.deviceId = deviceId;
     this.schemas = schemas;
-    this.maxBatchSize = maxBatchSize;
+    this.maxRowNumber = maxRowNumber;
 
     createColumns();
 
@@ -102,42 +106,42 @@ public class RowBatch {
   /**
    * Return the maximum number of rows for this row batch
    */
-  public int getMaxBatchSize() {
-    return maxBatchSize;
+  public int getMaxRowNumber() {
+    return maxRowNumber;
   }
 
   /**
-   * Reset RowBatch to the default state - set the batchSize to 0
+   * Reset Tablet to the default state - set the rowSize to 0
    */
   public void reset() {
-    batchSize = 0;
+    rowSize = 0;
   }
 
   private void createColumns() {
     // create timestamp column
-    timestamps = new long[maxBatchSize];
+    timestamps = new long[maxRowNumber];
     values = new Object[schemas.size()];
     // create value columns
     for (int i = 0; i < schemas.size(); i++) {
       TSDataType dataType = schemas.get(i).getType();
       switch (dataType) {
       case INT32:
-        values[i] = new int[maxBatchSize];
+        values[i] = new int[maxRowNumber];
         break;
       case INT64:
-        values[i] = new long[maxBatchSize];
+        values[i] = new long[maxRowNumber];
         break;
       case FLOAT:
-        values[i] = new float[maxBatchSize];
+        values[i] = new float[maxRowNumber];
         break;
       case DOUBLE:
-        values[i] = new double[maxBatchSize];
+        values[i] = new double[maxRowNumber];
         break;
       case BOOLEAN:
-        values[i] = new boolean[maxBatchSize];
+        values[i] = new boolean[maxRowNumber];
         break;
       case TEXT:
-        values[i] = new Binary[maxBatchSize];
+        values[i] = new Binary[maxRowNumber];
         break;
       default:
         throw new UnSupportedDataTypeException(String.format("Data type %s is not supported.", dataType));
@@ -146,33 +150,36 @@ public class RowBatch {
   }
 
   public int getTimeBytesSize() {
-    return batchSize * 8;
+    return rowSize * 8;
   }
 
   /**
    * @return total bytes of values
    */
   public int getValueBytesSize() {
-    valueOccupation = 0;
+    /**
+     * total byte size that values occupies
+     */
+    int valueOccupation = 0;
     for (int i = 0; i < schemas.size(); i++) {
       switch (schemas.get(i).getType()) {
       case BOOLEAN:
-        valueOccupation += batchSize;
+        valueOccupation += rowSize;
         break;
       case INT32:
-        valueOccupation += batchSize * 4;
+        valueOccupation += rowSize * 4;
         break;
       case INT64:
-        valueOccupation += batchSize * 8;
+        valueOccupation += rowSize * 8;
         break;
       case FLOAT:
-        valueOccupation += batchSize * 4;
+        valueOccupation += rowSize * 4;
         break;
       case DOUBLE:
-        valueOccupation += batchSize * 8;
+        valueOccupation += rowSize * 8;
         break;
       case TEXT:
-        valueOccupation += batchSize * 4;
+        valueOccupation += rowSize * 4;
         for (Binary value : (Binary[]) values[i]) {
           valueOccupation += value.getLength();
         }

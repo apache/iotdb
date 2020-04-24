@@ -29,7 +29,7 @@ The following describes four common data manipulation operations, which are inse
 
 * Corresponding interface
   * JDBC's execute and executeBatch interfaces
-  * Session's insert and insertInBatch
+  * Session's insertRecord and insertRecords
 * Main entrance: ```public void insert(InsertPlan insertPlan)```   StorageEngine.java
   * Find the corresponding StorageGroupProcessor
   * Find the corresponding TsFileProcessor according to the time of writing the data and the last time stamp of the current device order

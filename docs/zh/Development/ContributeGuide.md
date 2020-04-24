@@ -112,7 +112,7 @@ import -> Maven -> Existing Maven Projects
 * 服务器的 rpc 实现（主要用来客户端和服务器通信，一般在这里开始打断点）：```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
 	* jdbc所有语句：executeStatement(TSExecuteStatementReq req)
 	* jdbc查询语句：executeQueryStatement(TSExecuteStatementReq req)	
-	* native写入接口：insert(TSInsertReq req)
+	* native写入接口：insertRecord(TSInsertRecordReq req)
 
 * 存储引擎 org.apache.iotdb.db.engine.StorageEngine
 * 查询引擎 org.apache.iotdb.db.qp.Planner

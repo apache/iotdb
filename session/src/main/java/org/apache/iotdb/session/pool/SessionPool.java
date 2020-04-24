@@ -19,6 +19,7 @@
 package org.apache.iotdb.session.pool;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
@@ -32,7 +33,7 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -224,7 +225,7 @@ public class SessionPool {
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
-   *  a RowBatch example:
+   *  a Tablet example:
    *
    *        device1
    *     time s1, s2, s3
@@ -232,19 +233,19 @@ public class SessionPool {
    *     2,   2,  2,  2
    *     3,   3,  3,  3
    *
-   * times in RowBatch may be not in ascending order
+   * times in Tablet may be not in ascending order
    *
-   * @param rowBatch data batch
+   * @param tablet data batch
    */
-  public void insertRowBatch(RowBatch rowBatch)
+  public void insertTablet(Tablet tablet)
       throws IoTDBConnectionException, BatchExecutionException {
-    insertRowBatch(rowBatch, false);
+    insertTablet(tablet, false);
   }
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
-   * a RowBatch example:
+   * a Tablet example:
    *
    *      device1
    * time s1, s2, s3
@@ -252,17 +253,17 @@ public class SessionPool {
    * 2,   2,  2,  2
    * 3,   3,  3,  3
    *
-   * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
+   * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    *
-   * @param rowBatch data batch
-   * @param sorted whether times in RowBatch are in ascending order
+   * @param tablet a tablet data of one device
+   * @param sorted whether times in Tablet are in ascending order
    */
-  public void insertRowBatch(RowBatch rowBatch, boolean sorted)
+  public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertRowBatch(rowBatch, sorted);
+        session.insertTablet(tablet, sorted);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -282,24 +283,24 @@ public class SessionPool {
   /**
    * use batch interface to insert data
    *
-   * @param rowBatches multiple batch
+   * @param tablets multiple batch
    */
-  public void insertMultipleRowBatches(List<RowBatch> rowBatches)
+  public void insertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, BatchExecutionException {
-    insertMultipleRowBatches(rowBatches, false);
+    insertTablets(tablets, false);
   }
 
   /**
    * use batch interface to insert data
    *
-   * @param rowBatches multiple batch
+   * @param tablets multiple batch
    */
-  public void insertMultipleRowBatches(List<RowBatch> rowBatches, boolean sorted)
+  public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertMultipleRowBatches(rowBatches, sorted);
+        session.insertTablets(tablets, sorted);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -318,17 +319,17 @@ public class SessionPool {
   /**
    * Insert data in batch format, which can reduce the overhead of network. This method is just like
    * jdbc batch insert, we pack some insert request in batch and send them to server If you want
-   * improve your performance, please see insertRowBatch method
+   * improve your performance, please see insertTablet method
    *
-   * @see Session#insertRowBatch(RowBatch)
+   * @see Session#insertTablet(Tablet)
    */
-  public void insertRows(List<String> deviceIds, List<Long> times,
+  public void insertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.insertRows(deviceIds, times, measurementsList, valuesList);
+        session.insertRecords(deviceIds, times, measurementsList, valuesList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -345,18 +346,18 @@ public class SessionPool {
   }
 
   /**
-   * insert data in one row, if you want improve your performance, please use insertRows method
-   * or insertRowBatch method
+   * insert data in one row, if you want improve your performance, please use insertRecords method
+   * or insertTablet method
    *
-   * @see Session#insertRows(List, List, List, List)
-   * @see Session#insertRowBatch(RowBatch)
+   * @see Session#insertRecords(List, List, List, List)
+   * @see Session#insertTablet(Tablet)
    */
-  public TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
+  public TSStatus insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
       throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        TSStatus resp = session.insert(deviceId, time, measurements, values);
+        TSStatus resp = session.insertRecord(deviceId, time, measurements, values);
         putBack(session);
         return resp;
       } catch (IoTDBConnectionException e) {
@@ -376,12 +377,12 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRowBatch(RowBatch rowBatch)
+  public void testInsertTablet(Tablet tablet)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.testInsertRowBatch(rowBatch);
+        session.testInsertTablet(tablet);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -401,14 +402,14 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRows(List<String> deviceIds, List<Long> times,
+  public void testInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         session
-            .testInsertRows(deviceIds, times, measurementsList, valuesList);
+            .testInsertRecords(deviceIds, times, measurementsList, valuesList);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -428,12 +429,12 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsert(String deviceId, long time, List<String> measurements,
+  public void testInsertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
-        session.testInsert(deviceId, time, measurements, values);
+        session.testInsertRecord(deviceId, time, measurements, values);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {

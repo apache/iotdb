@@ -165,7 +165,7 @@ struct TSSetTimeZoneReq {
 }
 
 // for session
-struct TSInsertReq {
+struct TSInsertRecordReq {
     1: required i64 sessionId
     2: required string deviceId
     3: required list<string> measurements
@@ -173,7 +173,7 @@ struct TSInsertReq {
     5: required i64 timestamp
 }
 
-struct TSBatchInsertionReq {
+struct TSInsertTabletReq {
     1: required i64 sessionId
     2: required string deviceId
     3: required list<string> measurements
@@ -183,7 +183,7 @@ struct TSBatchInsertionReq {
     7: required i32 size
 }
 
-struct TSInsertInBatchReq {
+struct TSInsertRecordsReq {
     1: required i64 sessionId
     2: required list<string> deviceIds
     3: required list<list<string>> measurementsList
@@ -263,17 +263,17 @@ service TSIService {
 
   TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 
-  TSStatus insert(1:TSInsertReq req);
+  TSStatus insertRecord(1:TSInsertRecordReq req);
 
-  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+  TSExecuteBatchStatementResp insertTablet(1:TSInsertTabletReq req);
 
-	TSExecuteBatchStatementResp insertRowInBatch(1:TSInsertInBatchReq req);
+	TSExecuteBatchStatementResp insertRecords(1:TSInsertRecordsReq req);
 
-	TSExecuteBatchStatementResp testInsertBatch(1:TSBatchInsertionReq req);
+	TSExecuteBatchStatementResp testInsertTablet(1:TSInsertTabletReq req);
 
-  TSStatus testInsertRow(1:TSInsertReq req);
+  TSStatus testInsertRecord(1:TSInsertRecordReq req);
 
-  TSExecuteBatchStatementResp testInsertRowInBatch(1:TSInsertInBatchReq req);
+  TSExecuteBatchStatementResp testInsertRecords(1:TSInsertRecordsReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 

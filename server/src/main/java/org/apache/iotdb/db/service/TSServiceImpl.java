@@ -1030,7 +1030,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSExecuteBatchStatementResp insertRowInBatch(TSInsertInBatchReq req) {
+  public TSExecuteBatchStatementResp insertRecords(TSInsertRecordsReq req) {
     TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -1056,25 +1056,25 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSExecuteBatchStatementResp testInsertBatch(TSBatchInsertionReq req) {
+  public TSExecuteBatchStatementResp testInsertTablet(TSInsertTabletReq req) {
     logger.debug("Test insert batch request receive.");
     return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
-  public TSStatus testInsertRow(TSInsertReq req) {
+  public TSStatus testInsertRecord(TSInsertRecordReq req) {
     logger.debug("Test insert row request receive.");
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
-  public TSExecuteBatchStatementResp testInsertRowInBatch(TSInsertInBatchReq req) {
+  public TSExecuteBatchStatementResp testInsertRecords(TSInsertRecordsReq req) {
     logger.debug("Test insert row in batch request receive.");
     return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
-  public TSStatus insert(TSInsertReq req) {
+  public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
       if (!checkLogin(req.getSessionId())) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -1121,7 +1121,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
-  public TSExecuteBatchStatementResp insertBatch(TSBatchInsertionReq req) {
+  public TSExecuteBatchStatementResp insertTablet(TSInsertTabletReq req) {
     long t1 = System.currentTimeMillis();
     try {
       if (!checkLogin(req.getSessionId())) {
@@ -1129,20 +1129,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
       }
 
-      BatchInsertPlan batchInsertPlan = new BatchInsertPlan(req.deviceId, req.measurements);
-      batchInsertPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
-      batchInsertPlan.setColumns(
+      InsertTabletPlan insertTabletPlan = new InsertTabletPlan(req.deviceId, req.measurements);
+      insertTabletPlan.setTimes(QueryDataSetUtils.readTimesFromBuffer(req.timestamps, req.size));
+      insertTabletPlan.setColumns(
           QueryDataSetUtils.readValuesFromBuffer(
               req.values, req.types, req.measurements.size(), req.size));
-      batchInsertPlan.setRowCount(req.size);
-      batchInsertPlan.setDataTypes(req.types);
+      insertTabletPlan.setRowCount(req.size);
+      insertTabletPlan.setDataTypes(req.types);
 
       boolean isAllSuccessful = true;
-      TSStatus status = checkAuthority(batchInsertPlan, req.getSessionId());
+      TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
       if (status != null) {
         return RpcUtils.getTSBatchExecuteStatementResp(status);
       }
-      TSStatus[] tsStatusArray = executor.insertBatch(batchInsertPlan);
+      TSStatus[] tsStatusArray = executor.insertTablet(insertTabletPlan);
 
       for (TSStatus tsStatus : tsStatusArray) {
         if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -1153,11 +1153,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       if (isAllSuccessful) {
         if (logger.isDebugEnabled()) {
-          logger.debug("Insert one RowBatch successfully");
+          logger.debug("Insert one Tablet successfully");
         }
         return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
       } else {
-        logger.debug("Insert one RowBatch failed!");
+        logger.debug("Insert one Tablet failed!");
         return RpcUtils.getTSBatchExecuteStatementResp(Arrays.asList(tsStatusArray));
       }
     } catch (Exception e) {

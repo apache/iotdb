@@ -25,11 +25,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
@@ -37,8 +38,8 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertInBatchReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -49,7 +50,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -189,9 +190,9 @@ public class Session {
    *
    * @return whether the batch has been sorted
    */
-  private boolean checkSorted(RowBatch rowBatch) {
-    for (int i = 1; i < rowBatch.batchSize; i++) {
-      if (rowBatch.timestamps[i] < rowBatch.timestamps[i - 1]) {
+  private boolean checkSorted(Tablet tablet) {
+    for (int i = 1; i < tablet.rowSize; i++) {
+      if (tablet.timestamps[i] < tablet.timestamps[i - 1]) {
         return false;
       }
     }
@@ -202,23 +203,23 @@ public class Session {
   /**
    * use batch interface to insert sorted data
    *
-   * @param rowBatch data batch
+   * @param tablet data batch
    */
-  private void insertSortedRowBatchIntern(RowBatch rowBatch)
+  private void insertSortedTabletIntern(Tablet tablet)
       throws IoTDBConnectionException, BatchExecutionException {
-    TSBatchInsertionReq request = new TSBatchInsertionReq();
+    TSInsertTabletReq request = new TSInsertTabletReq();
     request.setSessionId(sessionId);
-    request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema measurementSchema : rowBatch.getSchemas()) {
+    request.deviceId = tablet.deviceId;
+    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
-    request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
-    request.setValues(SessionUtils.getValueBuffer(rowBatch));
-    request.setSize(rowBatch.batchSize);
+    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+    request.setValues(SessionUtils.getValueBuffer(tablet));
+    request.setSize(tablet.rowSize);
 
     try {
-      RpcUtils.verifySuccess(client.insertBatch(request).statusList);
+      RpcUtils.verifySuccess(client.insertTablet(request).statusList);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -228,33 +229,33 @@ public class Session {
    * insert the data of several deivces.
    * Given a deivce, for each timestamp, the number of measurements is the same.
    *
-   * Times in each RowBatch may not be in ascending order
+   * Times in each Tablet may not be in ascending order
    *
-   * @param rowBatches data batch in multiple device
+   * @param tablets data batch in multiple device
    */
-  public void insertMultipleRowBatches(List<RowBatch> rowBatches)
+  public void insertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, BatchExecutionException {
-    insertMultipleRowBatches(rowBatches, false);
+    insertTablets(tablets, false);
   }
 
   /**
    * insert the data of several devices.
    * Given a device, for each timestamp, the number of measurements is the same.
    *
-   * @param rowBatches data batch in multiple device
-   * @param sorted whether times in each RowBatch are in ascending order
+   * @param tablets data batch in multiple device
+   * @param sorted whether times in each Tablet are in ascending order
    */
-  public void insertMultipleRowBatches(List<RowBatch> rowBatches, boolean sorted)
+  public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, BatchExecutionException {
-    for (RowBatch rowBatch : rowBatches) {
-      insertRowBatch(rowBatch, sorted);
+    for (Tablet tablet : tablets.values()) {
+      insertTablet(tablet, sorted);
     }
   }
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
-   *  a RowBatch example:
+   *  a Tablet example:
    *
    *        device1
    *     time s1, s2, s3
@@ -262,49 +263,48 @@ public class Session {
    *     2,   2,  2,  2
    *     3,   3,  3,  3
    *
-   * times in RowBatch may be not in ascending order
+   * times in Tablet may be not in ascending order
    *
-   * @param rowBatch data batch
+   * @param tablet data batch
    */
-  public void insertRowBatch(RowBatch rowBatch)
+  public void insertTablet(Tablet tablet)
       throws BatchExecutionException, IoTDBConnectionException {
-    insertRowBatch(rowBatch, false);
+    insertTablet(tablet, false);
   }
 
   /**
-   * insert a RowBatch
+   * insert a Tablet
    *
-   * @param rowBatch data batch
-   * @param sorted whether times in RowBatch are in ascending order
+   * @param tablet data batch
+   * @param sorted whether times in Tablet are in ascending order
    */
-  public void insertRowBatch(RowBatch rowBatch, boolean sorted)
+  public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, BatchExecutionException {
     if (sorted) {
-      if (!checkSorted(rowBatch)) {
-        throw new BatchExecutionException(
-            "Row batch has't been sorted when calling insertSortedBatch");
+      if (!checkSorted(tablet)) {
+        throw new BatchExecutionException("Times in Tablet are not in ascending order");
       }
     } else {
-      sortRowBatch(rowBatch);
+      sortTablet(tablet);
     }
-    insertSortedRowBatchIntern(rowBatch);
+    insertSortedTabletIntern(tablet);
   }
 
-  private void sortRowBatch(RowBatch rowBatch) {
+  private void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
      */
     // sort to get index, and use index to sort value list
-    Integer[] index = new Integer[rowBatch.batchSize];
-    for (int i = 0; i < rowBatch.batchSize; i++) {
+    Integer[] index = new Integer[tablet.rowSize];
+    for (int i = 0; i < tablet.rowSize; i++) {
       index[i] = i;
     }
-    Arrays.sort(index, Comparator.comparingLong(o -> rowBatch.timestamps[o]));
-    Arrays.sort(rowBatch.timestamps, 0, rowBatch.batchSize);
-    for (int i = 0; i < rowBatch.getSchemas().size(); i++) {
-      rowBatch.values[i] =
-          sortList(rowBatch.values[i], rowBatch.getSchemas().get(i).getType(), index);
+    Arrays.sort(index, Comparator.comparingLong(o -> tablet.timestamps[o]));
+    Arrays.sort(tablet.timestamps, 0, tablet.rowSize);
+    for (int i = 0; i < tablet.getSchemas().size(); i++) {
+      tablet.values[i] =
+          sortList(tablet.values[i], tablet.getSchemas().get(i).getType(), index);
     }
   }
 
@@ -368,13 +368,13 @@ public class Session {
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like
    * jdbc executeBatch, we pack some insert request in batch and send them to server.
-   * If you want improve your performance, please see insertRowBatch method
+   * If you want improve your performance, please see insertTablet method
    *
    * Each row is independent, which could have different deviceId, time, number of measurements
    *
-   * @see Session#insertRowBatch(RowBatch)
+   * @see Session#insertTablet(Tablet)
    */
-  public void insertRows(List<String> deviceIds, List<Long> times,
+  public void insertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     // check params size
@@ -384,7 +384,7 @@ public class Session {
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
 
-    TSInsertInBatchReq request = new TSInsertInBatchReq();
+    TSInsertRecordsReq request = new TSInsertRecordsReq();
     request.setSessionId(sessionId);
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
@@ -392,39 +392,39 @@ public class Session {
     request.setValuesList(valuesList);
 
     try {
-      RpcUtils.verifySuccess(client.insertRowInBatch(request).statusList);
+      RpcUtils.verifySuccess(client.insertRecords(request).statusList);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
   }
 
   /**
-   * insert data in one row, if you want to improve your performance, please use insertRows method
-   * or insertRowBatch method
+   * insert data in one row, if you want to improve your performance, please use insertRecords method
+   * or insertTablet method
    *
-   * @see Session#insertRows(List, List, List, List)
-   * @see Session#insertRowBatch(RowBatch)
+   * @see Session#insertRecords(List, List, List, List)
+   * @see Session#insertTablet(Tablet)
    */
-  public TSStatus insert(String deviceId, long time, List<String> measurements,
+  public TSStatus insertRecord(String deviceId, long time, List<String> measurements,
       Object... values) throws IoTDBConnectionException, StatementExecutionException {
     List<String> stringValues = new ArrayList<>();
     for (Object o : values) {
       stringValues.add(o.toString());
     }
 
-    return insert(deviceId, time, measurements, stringValues);
+    return insertRecord(deviceId, time, measurements, stringValues);
   }
 
   /**
-   * insert data in one row, if you want to improve your performance, please use insertRows method
-   * or insertRowBatch method
+   * insert data in one row, if you want to improve your performance, please use insertRecords method
+   * or insertTablet method
    *
-   * @see Session#insertRows(List, List, List, List)
-   * @see Session#insertRowBatch(RowBatch)
+   * @see Session#insertRecords(List, List, List, List)
+   * @see Session#insertTablet(Tablet)
    */
-  public TSStatus insert(String deviceId, long time, List<String> measurements,
+  public TSStatus insertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertReq request = new TSInsertReq();
+    TSInsertRecordReq request = new TSInsertRecordReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
@@ -433,7 +433,7 @@ public class Session {
 
     TSStatus result;
     try {
-      result = client.insert(request);
+      result = client.insertRecord(request);
       RpcUtils.verifySuccess(result);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
@@ -446,21 +446,21 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRowBatch(RowBatch rowBatch)
+  public void testInsertTablet(Tablet tablet)
       throws IoTDBConnectionException, BatchExecutionException {
-    TSBatchInsertionReq request = new TSBatchInsertionReq();
+    TSInsertTabletReq request = new TSInsertTabletReq();
     request.setSessionId(sessionId);
-    request.deviceId = rowBatch.deviceId;
-    for (MeasurementSchema measurementSchema : rowBatch.getSchemas()) {
+    request.deviceId = tablet.deviceId;
+    for (MeasurementSchema measurementSchema : tablet.getSchemas()) {
       request.addToMeasurements(measurementSchema.getMeasurementId());
       request.addToTypes(measurementSchema.getType().ordinal());
     }
-    request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
-    request.setValues(SessionUtils.getValueBuffer(rowBatch));
-    request.setSize(rowBatch.batchSize);
+    request.setTimestamps(SessionUtils.getTimeBuffer(tablet));
+    request.setValues(SessionUtils.getValueBuffer(tablet));
+    request.setSize(tablet.rowSize);
 
     try {
-      RpcUtils.verifySuccess(client.testInsertBatch(request).statusList);
+      RpcUtils.verifySuccess(client.testInsertTablet(request).statusList);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -470,7 +470,7 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsertRows(List<String> deviceIds, List<Long> times,
+  public void testInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
     // check params size
@@ -480,7 +480,7 @@ public class Session {
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
 
-    TSInsertInBatchReq request = new TSInsertInBatchReq();
+    TSInsertRecordsReq request = new TSInsertRecordsReq();
     request.setSessionId(sessionId);
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
@@ -488,7 +488,7 @@ public class Session {
     request.setValuesList(valuesList);
 
     try {
-      RpcUtils.verifySuccess(client.testInsertRowInBatch(request).statusList);
+      RpcUtils.verifySuccess(client.testInsertRecords(request).statusList);
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -498,9 +498,9 @@ public class Session {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
-  public void testInsert(String deviceId, long time, List<String> measurements,
+  public void testInsertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertReq request = new TSInsertReq();
+    TSInsertRecordReq request = new TSInsertRecordReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
@@ -508,7 +508,7 @@ public class Session {
     request.setValues(values);
 
     try {
-      RpcUtils.verifySuccess(client.testInsertRow(request));
+      RpcUtils.verifySuccess(client.testInsertRecord(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }

@@ -99,13 +99,13 @@
 * 插入时序数据
 
   ```
-  TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
+  TSStatus insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
 * 批量插入时序数据
 
   ```
-  	TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+  	TSExecuteBatchStatementResp insertTablet(Tablet tablet)
   ```
 
 ### 示例代码

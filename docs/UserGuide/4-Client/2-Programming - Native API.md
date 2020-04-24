@@ -106,19 +106,19 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Insert data into existing timeseries in batch
 
    ```java
-   	TSStatus insertInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
+   	TSStatus insertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
    ```
 
 * Insert data into existing timeseries
 
   ```
-  	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
+  	TSStatus insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
 * Batch insertion into timeseries
 
   ```
-  TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+  TSExecuteBatchStatementResp insertTablet(Tablet tablet)
   ```
 
 * Test Insert data into existing timeseries in batch. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
@@ -135,7 +135,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
 
 * Batch insertion into timeseries. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
-  ​	TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
+  ​	TSExecuteBatchStatementResp testInsertTablet(Tablet tablet)
 
 #### Sample code
 

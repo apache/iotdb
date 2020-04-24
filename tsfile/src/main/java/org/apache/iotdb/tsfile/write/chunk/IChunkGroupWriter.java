@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -51,14 +51,14 @@ public interface IChunkGroupWriter {
   /**
    * receive a row batch, write it to timeseries writers
    *
-   * @param rowBatch
+   * @param tablet
    *                - row batch to input
    * @throws WriteProcessException
    *                  exception in write process
    * @throws IOException
    *                  exception in IO
    */
-  void write(RowBatch rowBatch) throws WriteProcessException, IOException;
+  void write(Tablet tablet) throws WriteProcessException, IOException;
 
   /**
    * flushing method for serializing to local file system or HDFS.
