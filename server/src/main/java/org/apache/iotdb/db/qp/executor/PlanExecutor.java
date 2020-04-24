@@ -371,14 +371,13 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowTimeseriesWithIndex(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
-    List<ShowTimeSeriesResult> timeseriesList = MManager.getInstance()
-        .getAllTimeseriesSchema(showTimeSeriesPlan);
+    List<ShowTimeSeriesResult> timeseriesList = showTimeseriesWithIndex(showTimeSeriesPlan);
     return getQueryDataSet(timeseriesList);
   }
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
-    List<ShowTimeSeriesResult> timeseriesList =  getTimeseriesSchemas(showTimeSeriesPlan);
+    List<ShowTimeSeriesResult> timeseriesList =  showTimeseries(showTimeSeriesPlan);
     return getQueryDataSet(timeseriesList);
   }
 
@@ -422,7 +421,11 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected List<ShowTimeSeriesResult> getTimeseriesSchemas(ShowTimeSeriesPlan plan) throws MetadataException {
+  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan) throws MetadataException {
+    return MManager.getInstance().showTimeseries(plan);
+  }
+
+  protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan) throws MetadataException {
     return MManager.getInstance().getAllTimeseriesSchema(plan);
   }
 
@@ -764,6 +767,8 @@ public class PlanExecutor implements IPlanExecutor {
         Path path = new Path(deviceId, measurement);
 
         internalCreateTimeseries(path.toString(), dataType);
+        LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
+        schemas[i] = measurementNode.getSchema();
       } else if (node != null) {
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
