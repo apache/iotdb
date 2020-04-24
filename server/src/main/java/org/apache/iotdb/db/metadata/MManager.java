@@ -747,9 +747,11 @@ public class MManager {
       int offset = plan.getOffset();
       for (LeafMNode leaf : allMatchedNodes) {
         if (match(leaf.getFullPath(), prefixNodes)) {
-          curOffset ++;
-          if (curOffset < offset) {
-            continue;
+          if (limit != 0 || offset != 0) {
+            curOffset ++;
+            if (curOffset < offset || count == limit) {
+              continue;
+            }
           }
           try {
             Pair<Map<String, String>, Map<String, String>> pair =
@@ -760,9 +762,8 @@ public class MManager {
                     getStorageGroupName(leaf.getFullPath()), measurementSchema.getType().toString(),
                     measurementSchema.getEncodingType().toString(),
                     measurementSchema.getCompressor().toString(), pair.left));
-            count ++;
-            if (count == limit) {
-              return res;
+            if (limit != 0 || offset != 0) {
+              count++;
             }
           } catch (IOException e) {
             throw new MetadataException(
@@ -800,17 +801,9 @@ public class MManager {
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan) throws MetadataException {
     lock.readLock().lock();
     try {
-      List<String[]> ans = mtree.getAllMeasurementSchema(plan.getPath().getFullPath());
-      int count = 0;
-      int offset = plan.getOffset();
+      List<String[]> ans = mtree.getAllMeasurementSchema(plan);
       List<ShowTimeSeriesResult> res = new LinkedList<>();
-      for (int i = 0; i < ans.size(); i++) {
-        if (i < offset) {
-          continue;
-        }
-
-        String[] ansString = ans.get(i);
-
+      for (String[] ansString : ans) {
         long tagFileOffset = Long.parseLong(ansString[6]);
         try {
           if (tagFileOffset < 0) {
@@ -825,12 +818,6 @@ public class MManager {
             res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2],
                 ansString[3], ansString[4], ansString[5], pair.left));
           }
-
-          count ++;
-          if (count == plan.getLimit()) {
-            return res;
-          }
-
         } catch (IOException e) {
           throw new MetadataException(
               "Something went wrong while deserialize tag info of " + ansString[0], e);
