@@ -1451,13 +1451,11 @@ public class StorageGroupProcessor {
       seqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       seqTsFileResource.doUpgrade();
     }
-    upgradeSeqFileList.clear();
     for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
       unseqTsFileResource.setSeq(false);
       unseqTsFileResource.setUpgradeTsFileResourceCallBack(this::upgradeTsFileResourceCallBack);
       unseqTsFileResource.doUpgrade();
     }
-    upgradeUnseqFileList.clear();
   }
 
   private void upgradeTsFileResourceCallBack(TsFileResource tsFileResource) {
@@ -1467,12 +1465,18 @@ public class StorageGroupProcessor {
       resource.getEndTimeMap().forEach((device, time) -> 
         updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, time)
       );
-      if (tsFileResource.isSeq()) {
-        sequenceFileTreeSet.add(resource);
-      } else {
-        unSequenceFileList.add(resource);
-      }
     }
+    insertLock.writeLock().lock();
+    mergeLock.writeLock().lock();
+    if (tsFileResource.isSeq()) {
+      sequenceFileTreeSet.addAll(upgradedResources);
+      upgradeSeqFileList.remove(tsFileResource);
+    } else {
+      unSequenceFileList.addAll(upgradedResources);
+      upgradeUnseqFileList.remove(tsFileResource);
+    }
+    mergeLock.writeLock().unlock();
+    insertLock.writeLock().unlock();
   }
 
   public void merge(boolean fullMerge) {
