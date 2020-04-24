@@ -212,9 +212,8 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
           maxTime = Math.max(batchData.getTimeByIndex(batchData.length() - 1), maxTime);
         }
       }
-      synchronized (currFileWriter) {
-        mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
-      }
+      mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
+      tsFilesReader.close();
     }
     return maxTime;
   }
