@@ -31,18 +31,24 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An example of writing data with Tablet to TsFile
  */
 public class TsFileWriteWithTablet {
 
+  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTablet.class);
+
   public static void main(String[] args) {
     try {
       String path = "test.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists()) {
-        f.delete();
+        if (!f.delete()) {
+          throw new RuntimeException("can not delete " + f.getAbsolutePath());
+        }
       }
 
       Schema schema = new Schema();
@@ -92,7 +98,7 @@ public class TsFileWriteWithTablet {
       }
 
     } catch (Exception e) {
-      e.printStackTrace();
+      logger.error("meet error in TsFileWrite with tablet", e);
     }
   }
 }
