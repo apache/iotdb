@@ -24,7 +24,7 @@ sys.path.append("../target")
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
+from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, \
     TSInsertTabletReq, TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, \
     TSFetchResultsReq, TSCloseOperationReq, \
     TSCloseSessionReq
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     # insert a single row
     values = ["1", "11", "1.1", "11.1", "TRUE", "\'text0\'"]
     timestamp = 1
-    status = client.insert(TSInsertionReq(sessionId, deviceId, measurements,
+    status = client.insert(TSInsertRecordReq(sessionId, deviceId, measurements,
                                           values, timestamp))
     print(status.status)
 
