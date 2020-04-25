@@ -945,6 +945,11 @@ public class MManager {
     }
   }
 
+  /**
+   * change or set the new offset of a timeseries
+   * @param path timeseries
+   * @param offset offset in the tag file
+   */
   public void changeOffset(String path, long offset) throws MetadataException {
     lock.writeLock().lock();
     try {
@@ -954,6 +959,11 @@ public class MManager {
     }
   }
 
+  /**
+   * add new attributes key-value for the timeseries
+   * @param attributesMap newly added attributes map
+   * @param fullPath timeseries
+   */
   public void addAttributes(Map<String, String> attributesMap, String fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -991,6 +1001,11 @@ public class MManager {
     }
   }
 
+  /**
+   * add new tags key-value for the timeseries
+   * @param tagsMap newly added tags map
+   * @param fullPath timeseries
+   */
   public void addTags(Map<String, String> tagsMap, String fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
@@ -1037,7 +1052,13 @@ public class MManager {
     }
   }
 
-  public void dropTag(Set<String> keySet, String fullPath) throws MetadataException, IOException {
+  /**
+   * drop tags or attributes of the timeseries
+   * @param keySet tags key or attributes key
+   * @param fullPath timeseries path
+   */
+  public void dropTagsOrAttributes(Set<String> keySet, String fullPath)
+      throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
@@ -1083,7 +1104,12 @@ public class MManager {
     }
   }
 
-  public void setTag(Map<String, String> alterMap, String fullPath)
+  /**
+   * set/change the values of tags or attributes
+   * @param alterMap the new tags or attributes key-value
+   * @param fullPath timeseries
+   */
+  public void setTagsOrAttributesValue(Map<String, String> alterMap, String fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
@@ -1096,17 +1122,20 @@ public class MManager {
         throw new MetadataException(
             String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
       }
+
+      // tags, attributes
       Pair<Map<String, String>, Map<String, String>> pair =
           tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
-      Map<String, String> beforeTagValue = new HashMap<>();
-      Map<String, String> currentTagValue = new HashMap<>();
+      Map<String, String> oldTagValue = new HashMap<>();
+      Map<String, String> newTagValue = new HashMap<>();
+
       for (Entry<String, String> entry : alterMap.entrySet()) {
         String key = entry.getKey();
         String value = entry.getValue();
         // check tag map
         if (pair.left.containsKey(key)) {
-          beforeTagValue.put(key, pair.left.get(key));
-          currentTagValue.put(key, value);
+          oldTagValue.put(key, pair.left.get(key));
+          newTagValue.put(key, value);
           pair.left.put(key, value);
         } else if (pair.right.containsKey(key)) {
           // check attribute map
@@ -1120,10 +1149,10 @@ public class MManager {
       // persist the change to disk
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
-      for (Entry<String, String> entry : beforeTagValue.entrySet()) {
+      for (Entry<String, String> entry : oldTagValue.entrySet()) {
         String key = entry.getKey();
         String beforeValue = entry.getValue();
-        String currentValue = currentTagValue.get(key);
+        String currentValue = newTagValue.get(key);
         // change the tag inverted index map
         tagIndex.get(key).get(beforeValue).remove(leafMNode);
         tagIndex
@@ -1136,7 +1165,13 @@ public class MManager {
     }
   }
 
-  public void renameTag(String beforeName, String currentName, String fullPath)
+  /**
+   * rename the tag or attribute's key of the timeseries
+   * @param oldKey old key of tag or attribute
+   * @param newKey new key of tag or attribute
+   * @param fullPath timeseries
+   */
+  public void renameTagOrAttributeKey(String oldKey, String newKey, String fullPath)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
@@ -1148,39 +1183,40 @@ public class MManager {
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
             String.format(
-                "TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, beforeName));
+                "TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey));
       }
+      // tags, attributes
       Pair<Map<String, String>, Map<String, String>> pair =
           tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
       // current name has existed
-      if (pair.left.containsKey(currentName) || pair.right.containsKey(currentName)) {
+      if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
         throw new MetadataException(
             String.format(
-                "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, currentName));
+                "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, newKey));
       }
 
       // check tag map
-      if (pair.left.containsKey(beforeName)) {
-        String value = pair.left.remove(beforeName);
-        pair.left.put(currentName, value);
+      if (pair.left.containsKey(oldKey)) {
+        String value = pair.left.remove(oldKey);
+        pair.left.put(newKey, value);
         // persist the change to disk
         tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
         // change the tag inverted index map
-        tagIndex.get(beforeName).get(value).remove(leafMNode);
+        tagIndex.get(oldKey).get(value).remove(leafMNode);
         tagIndex
-            .computeIfAbsent(currentName, k -> new HashMap<>())
+            .computeIfAbsent(newKey, k -> new HashMap<>())
             .computeIfAbsent(value, k -> new HashSet<>())
             .add(leafMNode);
-      } else if (pair.right.containsKey(beforeName)) {
+      } else if (pair.right.containsKey(oldKey)) {
         // check attribute map
-        pair.right.put(currentName, pair.right.remove(beforeName));
+        pair.right.put(newKey, pair.right.remove(oldKey));
         // persist the change to disk
         tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
       } else {
         throw new MetadataException(
             String.format(
-                "TimeSeries [%s] does not have tag/attribute [%s].", fullPath, beforeName));
+                "TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey));
       }
     } finally {
       lock.writeLock().unlock();
@@ -1221,12 +1257,8 @@ public class MManager {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof LeafMNode) {
         MeasurementSchema nodeSchema = ((LeafMNode) node).getSchema();
-        timeseriesSchemas.add(
-            new MeasurementSchema(
-                node.getFullPath(),
-                nodeSchema.getType(),
-                nodeSchema.getEncodingType(),
-                nodeSchema.getCompressor()));
+        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(), nodeSchema.getType(),
+            nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
       }

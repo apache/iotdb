@@ -995,13 +995,13 @@ public class PlanExecutor implements IPlanExecutor {
         case RENAME:
           String beforeName = alterMap.keySet().iterator().next();
           String currentName = alterMap.get(beforeName);
-          mManager.renameTag(beforeName, currentName, path.getFullPath());
+          mManager.renameTagOrAttributeKey(beforeName, currentName, path.getFullPath());
           break;
         case SET:
-          mManager.setTag(alterMap, path.getFullPath());
+          mManager.setTagsOrAttributesValue(alterMap, path.getFullPath());
           break;
         case DROP:
-          mManager.dropTag(alterMap.keySet(), path.getFullPath());
+          mManager.dropTagsOrAttributes(alterMap.keySet(), path.getFullPath());
           break;
         case ADD_TAGS:
           mManager.addTags(alterMap, path.getFullPath());
