@@ -694,6 +694,22 @@ public class TsFileSequenceReader implements AutoCloseable {
     return tsFileInput.size();
   }
 
+  public long getStartOffset() throws IOException {
+    List<MetadataIndex> metadataIndexList = readFileMetadata().getDeviceMetadataIndex();
+    MetadataIndex metadataIndex = metadataIndexList.get(0);
+    Long endOffset = metadataIndexList.get(1).getOffset();
+    while (!metadataIndex.getChildMetadataIndexType().equals(ChildMetadataIndexType.MEASUREMENT)) {
+      ByteBuffer buffer = readData(metadataIndex.getOffset(), endOffset);
+      List<MetadataIndex> nextMetadataIndexList = new ArrayList<>();
+      while (buffer.hasRemaining()) {
+        nextMetadataIndexList.add(MetadataIndex.deserializeFrom(buffer));
+      }
+      metadataIndex = nextMetadataIndexList.get(0);
+      endOffset = nextMetadataIndexList.get(1).getOffset();
+    }
+    return metadataIndex.getOffset();
+  }
+
   /**
    * read data from tsFileInput, from the current position (if position = -1), or the given
    * position. <br> if position = -1, the tsFileInput's position will be changed to the current

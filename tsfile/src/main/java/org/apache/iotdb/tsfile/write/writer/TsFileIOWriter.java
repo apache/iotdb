@@ -319,7 +319,7 @@ public class TsFileIOWriter {
     // for timeseriesMetadata of each device
     for (Map.Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap
         .entrySet()) {
-      if (entry.getValue().size() == 0) {
+      if (entry.getValue().isEmpty()) {
         continue;
       }
       Queue<MetadataIndex> measurementMetadataIndexQueue = new ArrayDeque<>();
@@ -394,7 +394,6 @@ public class TsFileIOWriter {
           if (i != 0) {
             new MetadataIndex(deviceMetadataIndex.getName(), deviceMetadataIndex.getOffset(),
                 ChildMetadataIndexType.DEVICE).serializeTo(out.wrapAsStream());
-            ;
           }
           // add next device index item to parent node
           deviceMetadaIndexQueue.add(new MetadataIndex(deviceMetadataIndex.getName(),

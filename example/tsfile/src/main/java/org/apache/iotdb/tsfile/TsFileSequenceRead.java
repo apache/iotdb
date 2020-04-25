@@ -58,7 +58,7 @@ public class TsFileSequenceRead {
     // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
     // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
     // judge accordingly.
-    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+    reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
         .getBytes().length);
     System.out.println("[Chunk Group]");
     System.out.println("position: " + reader.position());
@@ -112,10 +112,10 @@ public class TsFileSequenceRead {
     List<MetadataIndex> metadataIndexList = metaData.getDeviceMetadataIndex();
     for (MetadataIndex metadataIndex : metadataIndexList) {
       Map<String, List<ChunkMetadata>> seriesMetaData =
-          reader.readChunkMetadataInDevice(metadataIndex.getName()); // TODO
+          reader.readChunkMetadataInDevice(metadataIndex.getName());
       System.out.println(String
           .format("\t[Device]Device %s, Number of Measurements %d", metadataIndex.getName(),
-              seriesMetaData.size())); // TODO
+              seriesMetaData.size()));
       for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
         System.out.println("\t\tMeasurement:" + serie.getKey());
         for (ChunkMetadata chunkMetadata : serie.getValue()) {

@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.ChildMetadataIndexType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -146,15 +147,7 @@ public class MergeUtils {
   }
 
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) throws IOException {
-    long minPos = Long.MAX_VALUE;
-    TsFileMetadata fileMetaData = sequenceReader.readFileMetadata();
-    // FIXME
-    List<MetadataIndex> metadataIndexList = fileMetaData.getDeviceMetadataIndex();
-    for(int i = 1; i < metadataIndexList.size(); i++){
-      long timeseriesMetaDataEndOffset = metadataIndexList.get(i).getOffset();
-      minPos = timeseriesMetaDataEndOffset < minPos ? timeseriesMetaDataEndOffset : minPos;
-    }
-    return seqFile.getFileSize() - minPos;
+    return seqFile.getFileSize() - sequenceReader.getStartOffset();
   }
 
   /**
