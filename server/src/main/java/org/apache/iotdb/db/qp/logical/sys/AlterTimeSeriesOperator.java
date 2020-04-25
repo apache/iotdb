@@ -61,7 +61,7 @@ public class AlterTimeSeriesOperator extends RootOperator {
     this.alterMap = alterMap;
   }
 
-  public static enum AlterType {
+  public enum AlterType {
     RENAME, SET, DROP, ADD_TAGS, ADD_ATTRIBUTES
   }
 }

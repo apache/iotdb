@@ -68,7 +68,7 @@ public class TagLogFile implements AutoCloseable {
    */
   public Pair<Map<String, String>, Map<String, String>> read(int size, long position) throws IOException {
     if (position < 0) {
-      return new Pair<>(Collections.EMPTY_MAP, Collections.EMPTY_MAP);
+      return new Pair<>(Collections.emptyMap(), Collections.emptyMap());
     }
     ByteBuffer byteBuffer = ByteBuffer.allocate(size);
     fileChannel.read(byteBuffer, position);

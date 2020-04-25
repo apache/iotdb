@@ -64,10 +64,10 @@ public class MTree implements Serializable {
   private static final long serialVersionUID = -4200394435237291964L;
   private MNode root;
 
-  private ThreadLocal<Integer> limit = new ThreadLocal<>();
-  private ThreadLocal<Integer> offset = new ThreadLocal<>();
-  private ThreadLocal<Integer> count = new ThreadLocal<>();
-  private ThreadLocal<Integer> curOffset = new ThreadLocal<>();
+  private transient ThreadLocal<Integer> limit = new ThreadLocal<>();
+  private transient ThreadLocal<Integer> offset = new ThreadLocal<>();
+  private transient ThreadLocal<Integer> count = new ThreadLocal<>();
+  private transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   MTree() {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);

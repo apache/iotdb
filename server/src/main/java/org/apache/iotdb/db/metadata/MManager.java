@@ -970,12 +970,12 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof LeafMNode)) {
-        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+        throw new PathNotExistException(fullPath);
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
-        long offset = tagLogFile.write(Collections.EMPTY_MAP, attributesMap);
+        long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         return;
@@ -1012,12 +1012,12 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof LeafMNode)) {
-        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+        throw new PathNotExistException(fullPath);
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
-        long offset = tagLogFile.write(tagsMap, Collections.EMPTY_MAP);
+        long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         return;
@@ -1063,7 +1063,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof LeafMNode)) {
-        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+        throw new PathNotExistException(fullPath);
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
       // no tag or attribute, just do nothing.
@@ -1115,7 +1115,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof LeafMNode)) {
-        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+        throw new PathNotExistException(fullPath);
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
       if (leafMNode.getOffset() < 0) {
@@ -1177,7 +1177,7 @@ public class MManager {
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
       if (!(mNode instanceof LeafMNode)) {
-        throw new MetadataException("TimeSeries [" + fullPath + "] does not exist.");
+        throw new PathNotExistException(fullPath);
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
       if (leafMNode.getOffset() < 0) {
