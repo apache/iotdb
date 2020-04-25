@@ -645,7 +645,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
       } finally {
         if (node != null) {
-          node.readUnlock();
+          ((InternalMNode) node).readUnlock();
         }
       }
     }
@@ -743,7 +743,7 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(e);
     } finally {
       if (node != null) {
-        node.readUnlock();
+        ((InternalMNode) node).readUnlock();
       }
     }
   }
@@ -828,7 +828,7 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(e);
     } finally {
       if (node != null) {
-        node.readUnlock();
+        ((InternalMNode) node).readUnlock();
       }
     }
   }

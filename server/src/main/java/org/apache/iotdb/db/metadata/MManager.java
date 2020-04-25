@@ -866,7 +866,7 @@ public class MManager {
       }
     } finally {
       if (node != null) {
-        node.readLock();
+        ((InternalMNode) node).readLock();
       }
       lock.readLock().unlock();
     }
@@ -892,7 +892,7 @@ public class MManager {
       return node;
     } finally {
       if (node != null) {
-        node.readLock();
+        ((InternalMNode) node).readLock();
       }
       lock.writeLock().unlock();
     }

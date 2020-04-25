@@ -23,6 +23,8 @@ import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
@@ -32,6 +34,8 @@ public class InternalMNode extends MNode {
 
   private Map<String, MNode> children;
   private Map<String, MNode> aliasChildren;
+
+  protected ReadWriteLock lock = new ReentrantReadWriteLock();
 
   public InternalMNode(MNode parent, String name) {
     super(parent, name);
@@ -50,6 +54,9 @@ public class InternalMNode extends MNode {
   }
 
 
+  /**
+   * If delete a leafMNode, lock its parent, if delete an InternalNode, lock itself
+   */
   @Override
   public void deleteChild(String name) throws DeleteFailedException {
     if (children.containsKey(name)) {
@@ -59,7 +66,7 @@ public class InternalMNode extends MNode {
         writeLock = lock.writeLock();
       } else {
         // otherwise, we only need to acquire the write lock of its child node.
-        writeLock = children.get(name).lock.writeLock();
+        writeLock = ((InternalMNode) children.get(name)).lock.writeLock();
       }
       if (writeLock.tryLock()) {
         children.remove(name);
@@ -103,5 +110,21 @@ public class InternalMNode extends MNode {
   @Override
   public Map<String, MNode> getChildren() {
     return children;
+  }
+
+  public void readLock() {
+    InternalMNode node = this;
+    while (node != null) {
+      node.lock.readLock().lock();
+      node = (InternalMNode) node.parent;
+    }
+  }
+
+  public void readUnlock() {
+    InternalMNode node = this;
+    while (node != null) {
+      node.lock.readLock().unlock();
+      node = (InternalMNode) node.parent;
+    }
   }
 }
