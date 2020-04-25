@@ -959,14 +959,14 @@ public class MManager {
   public void changeOffset(String path, long offset) throws MetadataException {
     lock.writeLock().lock();
     try {
-      ((LeafMNode)mtree.getNodeByPath(path)).setOffset(offset);
+      ((LeafMNode) mtree.getNodeByPath(path)).setOffset(offset);
     } finally {
       lock.writeLock().unlock();
     }
   }
 
-
-  public void addAttributes(Map<String, String> attributesMap, String fullPath) throws MetadataException, IOException {
+  public void addAttributes(Map<String, String> attributesMap, String fullPath)
+      throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
@@ -983,14 +983,14 @@ public class MManager {
       }
 
       Pair<Map<String, String>, Map<String, String>> pair =
-              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+          tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
       for (Entry<String, String> entry : attributesMap.entrySet()) {
         String key = entry.getKey();
         String value = entry.getValue();
         if (pair.right.containsKey(key)) {
           throw new MetadataException(
-                  String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
+              String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
         }
         pair.right.put(key, value);
       }
@@ -1020,14 +1020,14 @@ public class MManager {
       }
 
       Pair<Map<String, String>, Map<String, String>> pair =
-              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+          tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
       for (Entry<String, String> entry : tagsMap.entrySet()) {
         String key = entry.getKey();
         String value = entry.getValue();
         if (pair.left.containsKey(key)) {
           throw new MetadataException(
-                  String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
+              String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
         }
         pair.left.put(key, value);
       }
@@ -1037,11 +1037,11 @@ public class MManager {
 
       // update tag inverted map
       tagsMap.forEach(
-              (key, value) ->
-                      tagIndex
-                              .computeIfAbsent(key, k -> new HashMap<>())
-                              .computeIfAbsent(value, v -> new HashSet<>())
-                              .add(leafMNode));
+          (key, value) ->
+              tagIndex
+                  .computeIfAbsent(key, k -> new HashMap<>())
+                  .computeIfAbsent(value, v -> new HashSet<>())
+                  .add(leafMNode));
 
     } finally {
       lock.writeLock().unlock();
@@ -1061,7 +1061,7 @@ public class MManager {
         return;
       }
       Pair<Map<String, String>, Map<String, String>> pair =
-              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+          tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
       Map<String, String> deleteTag = new HashMap<>();
       for (String key : keySet) {
@@ -1105,10 +1105,10 @@ public class MManager {
       LeafMNode leafMNode = (LeafMNode) mNode;
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
-                String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
+            String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
       }
       Pair<Map<String, String>, Map<String, String>> pair =
-              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+          tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
       Map<String, String> beforeTagValue = new HashMap<>();
       Map<String, String> currentTagValue = new HashMap<>();
       for (Entry<String, String> entry : alterMap.entrySet()) {
@@ -1124,7 +1124,7 @@ public class MManager {
           pair.right.put(key, value);
         } else {
           throw new MetadataException(
-                  String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key));
+              String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key));
         }
       }
 
@@ -1138,9 +1138,9 @@ public class MManager {
         // change the tag inverted index map
         tagIndex.get(key).get(beforeValue).remove(leafMNode);
         tagIndex
-                .computeIfAbsent(key, k -> new HashMap<>())
-                .computeIfAbsent(currentValue, k -> new HashSet<>())
-                .add(leafMNode);
+            .computeIfAbsent(key, k -> new HashMap<>())
+            .computeIfAbsent(currentValue, k -> new HashSet<>())
+            .add(leafMNode);
       }
     } finally {
       lock.writeLock().unlock();
@@ -1158,16 +1158,17 @@ public class MManager {
       LeafMNode leafMNode = (LeafMNode) mNode;
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
-                String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, beforeName));
+            String.format(
+                "TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, beforeName));
       }
       Pair<Map<String, String>, Map<String, String>> pair =
-              tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
+          tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
       // current name has existed
       if (pair.left.containsKey(currentName) || pair.right.containsKey(currentName)) {
         throw new MetadataException(
-                String.format(
-                        "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, currentName));
+            String.format(
+                "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, currentName));
       }
 
       // check tag map
@@ -1179,9 +1180,9 @@ public class MManager {
         // change the tag inverted index map
         tagIndex.get(beforeName).get(value).remove(leafMNode);
         tagIndex
-                .computeIfAbsent(currentName, k -> new HashMap<>())
-                .computeIfAbsent(value, k -> new HashSet<>())
-                .add(leafMNode);
+            .computeIfAbsent(currentName, k -> new HashMap<>())
+            .computeIfAbsent(value, k -> new HashSet<>())
+            .add(leafMNode);
       } else if (pair.right.containsKey(beforeName)) {
         // check attribute map
         pair.right.put(currentName, pair.right.remove(beforeName));
@@ -1189,7 +1190,8 @@ public class MManager {
         tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
       } else {
         throw new MetadataException(
-                String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, beforeName));
+            String.format(
+                "TimeSeries [%s] does not have tag/attribute [%s].", fullPath, beforeName));
       }
     } finally {
       lock.writeLock().unlock();
