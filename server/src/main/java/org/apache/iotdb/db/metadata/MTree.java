@@ -504,6 +504,11 @@ public class MTree implements Serializable {
       res = new ArrayList<>();
       findPath(root, nodes, 1, "", res, false);
     }
+    // avoid memory leaks
+    limit.remove();
+    offset.remove();
+    curOffset.remove();
+    count.remove();
     return res;
   }
 

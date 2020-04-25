@@ -157,12 +157,8 @@ public class MManager {
           MNode node = mtree.getNodeByPath(sg);
           seriesNumberInStorageGroups.put(sg, node.getLeafCount());
         }
-        if (seriesNumberInStorageGroups.isEmpty()) {
-          maxSeriesNumberAmongStorageGroup = 0;
-        } else {
-          maxSeriesNumberAmongStorageGroup =
-              seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).get();
-        }
+        maxSeriesNumberAmongStorageGroup =
+            seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
@@ -533,12 +529,8 @@ public class MManager {
           ActiveTimeSeriesCounter.getInstance().delete(storageGroup);
           seriesNumberInStorageGroups.remove(storageGroup);
           if (size == maxSeriesNumberAmongStorageGroup) {
-            if (seriesNumberInStorageGroups.isEmpty()) {
-              maxSeriesNumberAmongStorageGroup = 0;
-            } else {
-              maxSeriesNumberAmongStorageGroup =
-                  seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).get();
-            }
+            maxSeriesNumberAmongStorageGroup =
+                seriesNumberInStorageGroups.values().stream().max(Integer::compareTo).orElse(0);
           }
         }
       }
