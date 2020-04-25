@@ -125,6 +125,7 @@ Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
 * Show Specific Timeseries Statement with where clause
+
 ```
 SHOW TIMESERIES prefixPath? showWhereClause?
 showWhereClause
@@ -136,6 +137,27 @@ containsExpression
 
 Eg: show timeseries root.ln where unit='c'
 Eg: show timeseries root.ln where description contains 'test1'
+```
+
+* Show Specific Timeseries Statement with where clause start from offset and limit the total number of result
+
+```
+SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
+
+showWhereClause
+    : WHERE (property | containsExpression)
+    ;
+containsExpression
+    : name=ID OPERATOR_CONTAINS value=propertyValue
+    ;
+limitClause
+    : LIMIT INT offsetClause?
+    | offsetClause? LIMIT INT
+    ;
+    
+Eg: show timeseries root.ln where unit='c'
+Eg: show timeseries root.ln where description contains 'test1'
+Eg: show timeseries root.ln where unit='c' limit 10 offset 10
 ```
 
 * Show Storage Group Statement

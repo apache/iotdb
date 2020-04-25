@@ -35,10 +35,11 @@ public class SeriesAggregateReader implements IAggregateReader {
 
   private final SeriesReader seriesReader;
 
-  public SeriesAggregateReader(Path seriesPath, Set<String> allSensors,  TSDataType dataType, QueryContext context,
-                               QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
-    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource, timeFilter,
-        valueFilter, fileFilter);
+  public SeriesAggregateReader(Path seriesPath, Set<String> allSensors,  TSDataType dataType,
+      QueryContext context, QueryDataSource dataSource, Filter timeFilter, Filter valueFilter,
+      TsFileFilter fileFilter) {
+    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, dataSource,
+        timeFilter, valueFilter, fileFilter);
   }
 
   @Override
@@ -49,7 +50,8 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentFileStatistics() throws IOException {
     Statistics fileStatistics = currentFileStatistics();
-    return !seriesReader.isFileOverlapped() && containedByTimeFilter(fileStatistics) && fileStatistics.canUseStatistics();
+    return !seriesReader.isFileOverlapped() && containedByTimeFilter(fileStatistics)
+        && !seriesReader.currentFileModified();
   }
 
   @Override
@@ -70,7 +72,8 @@ public class SeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = currentChunkStatistics();
-    return !seriesReader.isChunkOverlapped() && containedByTimeFilter(chunkStatistics) && chunkStatistics.canUseStatistics();
+    return !seriesReader.isChunkOverlapped() && containedByTimeFilter(chunkStatistics)
+        && !seriesReader.currentChunkModified();
   }
 
   @Override
@@ -88,14 +91,14 @@ public class SeriesAggregateReader implements IAggregateReader {
     return seriesReader.hasNextPage();
   }
 
-
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
     Statistics currentPageStatistics = currentPageStatistics();
     if (currentPageStatistics == null) {
       return false;
     }
-    return !seriesReader.isPageOverlapped() && containedByTimeFilter(currentPageStatistics) && currentPageStatistics.canUseStatistics();
+    return !seriesReader.isPageOverlapped() && containedByTimeFilter(currentPageStatistics)
+        && !seriesReader.currentPageModified();
   }
 
   @Override

@@ -61,7 +61,7 @@ mvn clean install -pl jdbc -am -Dmaven.test.skip=true
 
 要求您已经在工程中包含了数据库编程所需引入的包和 JDBC class.
 
-**注意:为了更快地插入，建议使用 insertBatch()**
+**注意:为了更快地插入，建议使用 executeBatch()**
 
 ```Java
 import java.sql.*;

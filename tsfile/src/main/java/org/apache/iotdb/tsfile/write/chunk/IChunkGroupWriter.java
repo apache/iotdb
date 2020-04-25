@@ -22,7 +22,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -49,16 +49,12 @@ public interface IChunkGroupWriter {
   void write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
 
   /**
-   * receive a row batch, write it to timeseries writers
+   * receive a tablet, write it to chunk writers
    *
-   * @param rowBatch
-   *                - row batch to input
-   * @throws WriteProcessException
-   *                  exception in write process
-   * @throws IOException
-   *                  exception in IO
+   * @throws WriteProcessException exception in write process
+   * @throws IOException exception in IO
    */
-  void write(RowBatch rowBatch) throws WriteProcessException, IOException;
+  void write(Tablet tablet) throws WriteProcessException, IOException;
 
   /**
    * flushing method for serializing to local file system or HDFS.

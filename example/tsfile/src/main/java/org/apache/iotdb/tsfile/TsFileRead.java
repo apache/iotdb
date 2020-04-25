@@ -34,8 +34,8 @@ import java.util.ArrayList;
 
 /**
  * The class is to show how to read TsFile file named "test.tsfile".
- * The TsFile file "test.tsfile" is generated from class TsFileWriteWithTSRecord or TsFileWriteWithRowBatch.
- * Run TsFileWriteWithTSRecord or TsFileWriteWithRowBatch to generate the test.tsfile first
+ * The TsFile file "test.tsfile" is generated from class TsFileWriteWithTSRecord or TsFileWriteWithTablet.
+ * Run TsFileWriteWithTSRecord or TsFileWriteWithTablet to generate the test.tsfile first
  */
 public class TsFileRead {
   private static void queryAndPrint(ArrayList<Path> paths, ReadOnlyTsFile readTsFile, IExpression statement)

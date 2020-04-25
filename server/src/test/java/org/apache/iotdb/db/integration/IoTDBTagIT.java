@@ -216,6 +216,47 @@ public class IoTDBTagIT {
     }
   }
 
+
+  @Test
+  public void queryWithLimitTest() throws ClassNotFoundException {
+    String[] ret = {"root.turbine.d1.s2,temperature2,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2",
+        "root.turbine.d1.s3,temperature3,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create timeseries root.turbine.d1.s1(temperature1) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
+          "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)");
+      statement.execute("create timeseries root.turbine.d1.s2(temperature2) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
+          "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)");
+      statement.execute("create timeseries root.turbine.d1.s3(temperature3) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
+          "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)");
+
+      boolean hasResult = statement.execute("show timeseries root.turbine.d1 where tag1=v1 limit 2 offset 1");
+      assertTrue(hasResult);
+      ResultSet resultSet = statement.getResultSet();
+      int count = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString("timeseries")
+            + "," + resultSet.getString("alias")
+            + "," + resultSet.getString("storage group")
+            + "," + resultSet.getString("dataType")
+            + "," + resultSet.getString("encoding")
+            + "," + resultSet.getString("compression")
+            + "," + resultSet.getString("attr1")
+            + "," + resultSet.getString("attr2")
+            + "," + resultSet.getString("tag1")
+            + "," + resultSet.getString("tag2");
+        assertEquals(ret[count], ans);
+        count++;
+      }
+      assertEquals(ret.length, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   @Test
   public void deleteTest() throws ClassNotFoundException {
     String[] ret1 = {
