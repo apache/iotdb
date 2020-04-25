@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -662,29 +663,30 @@ public class PlanExecutor implements IPlanExecutor {
     Set<Path> registeredSeries = new HashSet<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
-      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device, true, sgLevel);
-      for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-        Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
-        if (!registeredSeries.contains(series)) {
-          registeredSeries.add(series);
-          MeasurementSchema schema = knownSchemas.get(series);
-          if (schema == null) {
-            throw new MetadataException(
-                String.format(
-                    "Can not get the schema of measurement [%s]",
-                    chunkMetadata.getMeasurementUid()));
+      MNode node = null;
+      try {
+        node = mManager.getDeviceNodeWithAutoCreateAndReadLock(device, true, sgLevel);
+        for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+          Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
+          if (!registeredSeries.contains(series)) {
+            registeredSeries.add(series);
+            MeasurementSchema schema = knownSchemas.get(series);
+            if (schema == null) {
+              throw new MetadataException(String.format("Can not get the schema of measurement [%s]",
+                      chunkMetadata.getMeasurementUid()));
+            }
+            if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
+              mManager.createTimeseries(series.getFullPath(), schema.getType(),
+                      schema.getEncodingType(), schema.getCompressor(), Collections.emptyMap());
+            } else if (node.getChild(chunkMetadata.getMeasurementUid()) instanceof InternalMNode) {
+              throw new QueryProcessException(
+                      String.format("Current Path is not leaf node. %s", series));
+            }
           }
-          if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
-            mManager.createTimeseries(
-                series.getFullPath(),
-                schema.getType(),
-                schema.getEncodingType(),
-                schema.getCompressor(),
-                Collections.emptyMap());
-          } else if (node.getChild(chunkMetadata.getMeasurementUid()) instanceof InternalMNode) {
-            throw new QueryProcessException(
-                String.format("Current Path is not leaf node. %s", series));
-          }
+        }
+      } finally {
+        if (node != null) {
+          ((InternalMNode) node).readUnlock();
         }
       }
     }
@@ -754,10 +756,11 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessException {
+    MNode node = null;
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       String[] strValues = insertPlan.getValues();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
@@ -774,10 +777,15 @@ public class PlanExecutor implements IPlanExecutor {
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
       }
+
       insertPlan.setSchemas(schemas);
       StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
+    } finally {
+      if (node != null) {
+        ((InternalMNode) node).readUnlock();
+      }
     }
   }
 
@@ -824,10 +832,11 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
+    MNode node = null;
     try {
       String[] measurementList = insertTabletPlan.getMeasurements();
       String deviceId = insertTabletPlan.getDeviceId();
-      MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
@@ -862,6 +871,10 @@ public class PlanExecutor implements IPlanExecutor {
       return StorageEngine.getInstance().insertTablet(insertTabletPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
+    } finally {
+      if (node != null) {
+        ((InternalMNode) node).readUnlock();
+      }
     }
   }
 
@@ -953,11 +966,19 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       deleteDataOfTimeSeries(deletePathList);
       Set<String> emptyStorageGroups = new HashSet<>();
+      List<String> failedNames = new LinkedList<>();
       for (Path path : deletePathList) {
-        emptyStorageGroups.addAll(mManager.deleteTimeseries(path.toString()));
+        Pair<Set<String>, String> pair = mManager.deleteTimeseries(path.toString());
+        emptyStorageGroups.addAll(pair.left);
+        if (!pair.right.isEmpty()) {
+          failedNames.add(pair.right);
+        }
       }
       for (String deleteStorageGroup : emptyStorageGroups) {
         StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+      }
+      if (!failedNames.isEmpty()) {
+        throw new DeleteFailedException(String.join(",", failedNames));
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);

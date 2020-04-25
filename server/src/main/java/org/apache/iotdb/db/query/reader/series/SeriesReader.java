@@ -72,8 +72,7 @@ class SeriesReader {
   private TimeseriesMetadata firstTimeSeriesMetadata;
   private final List<TimeseriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
   private final PriorityQueue<TimeseriesMetadata> unSeqTimeSeriesMetadata =
-      new PriorityQueue<>(
-          Comparator.comparingLong(
+      new PriorityQueue<>(Comparator.comparingLong(
               timeSeriesMetadata -> timeSeriesMetadata.getStatistics().getStartTime()));
 
   /*
@@ -101,15 +100,8 @@ class SeriesReader {
   private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
-  SeriesReader(
-      Path seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      QueryDataSource dataSource,
-      Filter timeFilter,
-      Filter valueFilter,
-      TsFileFilter fileFilter) {
+  SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+      QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
     this.dataType = dataType;
@@ -122,15 +114,9 @@ class SeriesReader {
   }
 
   @TestOnly
-  SeriesReader(
-      Path seriesPath,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      List<TsFileResource> seqFileResource,
-      List<TsFileResource> unseqFileResource,
-      Filter timeFilter,
-      Filter valueFilter) {
+  SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+      List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
+      Filter timeFilter, Filter valueFilter) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
     this.dataType = dataType;
