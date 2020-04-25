@@ -613,7 +613,7 @@ public class StorageGroupProcessor {
       throws WriteProcessException {
     MNode node = null;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
@@ -665,7 +665,7 @@ public class StorageGroupProcessor {
       throws WriteProcessException {
     MNode node = null;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority

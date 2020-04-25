@@ -867,7 +867,7 @@ public class MManager {
    * must call the return node's readUnlock() if you call this method.
    * @param path path
    */
-  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path, boolean autoCreateSchema,
+  public MNode getDeviceNodeWithAutoCreateAndReadLock(String path, boolean autoCreateSchema,
       int sgLevel) throws MetadataException {
     lock.readLock().lock();
     MNode node = null;
@@ -913,8 +913,12 @@ public class MManager {
     }
   }
 
-  public MNode getDeviceNodeWithAutoCreateStorageGroup(String path) throws MetadataException {
-    return getDeviceNodeWithAutoCreateStorageGroup(path, config.isAutoCreateSchemaEnabled(),
+  /**
+   * !!!!!!Attention!!!!!
+   * must call the return node's readUnlock() if you call this method.
+   */
+  public MNode getDeviceNodeWithAutoCreateAndReadLock(String path) throws MetadataException {
+    return getDeviceNodeWithAutoCreateAndReadLock(path, config.isAutoCreateSchemaEnabled(),
         config.getDefaultStorageGroupLevel());
   }
 

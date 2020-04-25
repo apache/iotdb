@@ -624,7 +624,7 @@ public class PlanExecutor implements IPlanExecutor {
       String device = chunkGroupMetadata.getDevice();
       MNode node = null;
       try {
-        node = mManager.getDeviceNodeWithAutoCreateStorageGroup(device, true, sgLevel);
+        node = mManager.getDeviceNodeWithAutoCreateAndReadLock(device, true, sgLevel);
         for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
           Path series = new Path(chunkGroupMetadata.getDevice(), chunkMetadata.getMeasurementUid());
           if (!registeredSeries.contains(series)) {
@@ -719,7 +719,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       String[] measurementList = insertPlan.getMeasurements();
       String deviceId = insertPlan.getDeviceId();
-      node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       String[] strValues = insertPlan.getValues();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
@@ -794,7 +794,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       String[] measurementList = insertTabletPlan.getMeasurements();
       String deviceId = insertTabletPlan.getDeviceId();
-      node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
