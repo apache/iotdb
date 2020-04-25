@@ -19,16 +19,16 @@
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.ChildMetadataIndexType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.MetadataIndex;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -41,10 +41,11 @@ public class TestHelper {
     return metaData;
   }
 
-  private static Map<String, Pair<Long, Integer>> generateDeviceMetaDataIndex() {
-    Map<String, Pair<Long, Integer>> deviceMetaDataIndex = new HashMap<>();
+  private static List<MetadataIndex> generateDeviceMetaDataIndex() {
+    List<MetadataIndex> deviceMetaDataIndex = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      deviceMetaDataIndex.put("d" + i, new Pair<Long, Integer>((long) i * 5, 5));
+      deviceMetaDataIndex
+          .add(new MetadataIndex("d" + i, (long) i * 5, ChildMetadataIndexType.MEASUREMENT));
     }
     return deviceMetaDataIndex;
   }
@@ -60,7 +61,7 @@ public class TestHelper {
   public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
     return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
-  
+
   public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);

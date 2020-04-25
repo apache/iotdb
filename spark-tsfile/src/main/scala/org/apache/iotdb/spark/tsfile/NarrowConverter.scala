@@ -166,7 +166,7 @@ object NarrowConverter extends Converter {
     * @return query expression
     */
   def toQueryExpression(schema: StructType,
-                        device_name: util.Set[String],
+                        device_name: util.List[String],
                         measurement_name: util.Set[String],
                         filters: Seq[Filter],
                         in: TsFileSequenceReader,

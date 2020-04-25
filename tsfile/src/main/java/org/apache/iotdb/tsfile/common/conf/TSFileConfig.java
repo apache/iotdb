@@ -83,6 +83,10 @@ public class TSFileConfig implements Serializable {
    */
   private int maxNumberOfPointsInPage = 1024 * 1024;
   /**
+   * The maximum number of index items in a metadataIndex node, default value is 1024
+   */
+  private int maxNumberOfIndexItemsInNode = 5;
+  /**
    * Data type for input timestamp, TsFile supports INT32 or INT64.
    */
   private String timeSeriesDataType = "INT64";
@@ -227,6 +231,14 @@ public class TSFileConfig implements Serializable {
 
   public void setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+  }
+
+  public int getMaxNumberOfIndexItemsInNode() {
+    return maxNumberOfIndexItemsInNode;
+  }
+
+  public void setMaxNumberOfIndexItemsInNode(int maxNumberOfIndexItemsInNode) {
+    this.maxNumberOfIndexItemsInNode = maxNumberOfIndexItemsInNode;
   }
 
   public String getTimeSeriesDataType() {

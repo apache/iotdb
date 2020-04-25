@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.MetadataIndex;
 import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -129,9 +129,10 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       if (reader.isComplete()) {
         reader.loadMetadataSize();
         TsFileMetadata metaData = reader.readFileMetadata();
-        for (Pair<Long, Integer> deviceMetaData : metaData.getDeviceMetadataIndex().values()) {
-          if (position > deviceMetaData.left) {
-            position = deviceMetaData.left;
+        // TODO
+        for (MetadataIndex deviceMetaData : metaData.getDeviceMetadataIndex()) {
+          if (position > deviceMetaData.getOffset()) {
+            position = deviceMetaData.getOffset();
           }
         }
       }

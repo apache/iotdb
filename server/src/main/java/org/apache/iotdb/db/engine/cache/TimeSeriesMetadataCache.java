@@ -26,6 +26,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,7 +94,7 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      return reader.readDeviceMetadata(key.device).get(key.measurement);
+      return reader.readMeasurementMetadata(new Path(key.device, key.measurement));
     }
 
     cacheRequestNum.incrementAndGet();

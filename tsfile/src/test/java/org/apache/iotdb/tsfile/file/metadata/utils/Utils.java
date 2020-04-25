@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.utils.MetadataIndex;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.Assert;
 
@@ -123,8 +124,8 @@ public class Utils {
           .isTwoObjectsNotNULL(metadata1.getDeviceMetadataIndex(), metadata2.getDeviceMetadataIndex(),
               "Delta object metadata list")) {
 
-        Map<String, Pair<Long, Integer>> deviceMetaDataMap1 = metadata1.getDeviceMetadataIndex();
-        Map<String, Pair<Long, Integer>> deviceMetaDataMap2 = metadata2.getDeviceMetadataIndex();
+        List<MetadataIndex> deviceMetaDataMap1 = metadata1.getDeviceMetadataIndex();
+        List<MetadataIndex> deviceMetaDataMap2 = metadata2.getDeviceMetadataIndex();
         return deviceMetaDataMap1.size() == deviceMetaDataMap2.size();
       }
     }

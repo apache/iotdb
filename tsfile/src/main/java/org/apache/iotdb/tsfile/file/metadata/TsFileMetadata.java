@@ -19,19 +19,19 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import java.util.ArrayList;
-import java.util.List;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.ChildMetadataIndexType;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.MetadataIndex;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -48,8 +48,8 @@ public class TsFileMetadata {
   // bloom filter
   private BloomFilter bloomFilter;
 
-  // DeviceId -> offset and length of Map<String, TimeseriesMetadata>
-  private Map<String, Pair<Long, Integer>> deviceMetadataIndex;
+  // List of <name, offset, childMetadataIndexType>
+  private List<MetadataIndex> deviceMetadataIndex;
 
   // offset -> version
   private List<Pair<Long, Long>> versionInfo;
@@ -68,16 +68,17 @@ public class TsFileMetadata {
 
     // deviceMetadataIndex
     int deviceNum = ReadWriteIOUtils.readInt(buffer);
-    Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
+    List<MetadataIndex> deviceMetaDataList = new ArrayList<>();
     if (deviceNum > 0) {
       for (int i = 0; i < deviceNum; i++) {
-        String deviceId = ReadWriteIOUtils.readString(buffer);
+        String name = ReadWriteIOUtils.readString(buffer);
         long offset = ReadWriteIOUtils.readLong(buffer);
-        int length = ReadWriteIOUtils.readInt(buffer);
-        deviceMetaDataMap.put(deviceId, new Pair<>(offset, length));
+        ChildMetadataIndexType type = ChildMetadataIndexType
+            .deserialize(ReadWriteIOUtils.readShort(buffer));
+        deviceMetaDataList.add(new MetadataIndex(name, offset, type));
       }
     }
-    fileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
+    fileMetaData.setDeviceMetadataIndex(deviceMetaDataList);
 
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
@@ -123,10 +124,11 @@ public class TsFileMetadata {
     // deviceMetadataIndex
     if (deviceMetadataIndex != null) {
       byteLen += ReadWriteIOUtils.write(deviceMetadataIndex.size(), outputStream);
-      for (Map.Entry<String, Pair<Long, Integer>> entry : deviceMetadataIndex.entrySet()) {
-        byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
-        byteLen += ReadWriteIOUtils.write(entry.getValue().left, outputStream);
-        byteLen += ReadWriteIOUtils.write(entry.getValue().right, outputStream);
+      for (MetadataIndex metadataIndex : deviceMetadataIndex) {
+        byteLen += ReadWriteIOUtils.write(metadataIndex.getName(), outputStream);
+        byteLen += ReadWriteIOUtils.write(metadataIndex.getOffset(), outputStream);
+        byteLen += ReadWriteIOUtils
+            .write(metadataIndex.getChildMetadataIndexType().serialize(), outputStream);
       }
     } else {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
@@ -152,7 +154,7 @@ public class TsFileMetadata {
   /**
    * use the given outputStream to serialize bloom filter.
    *
-   * @param outputStream      -output stream to determine byte length
+   * @param outputStream -output stream to determine byte length
    * @return -byte length
    */
   public int serializeBloomFilter(OutputStream outputStream, Set<Path> paths)
@@ -208,11 +210,11 @@ public class TsFileMetadata {
     this.metaOffset = metaOffset;
   }
 
-  public Map<String, Pair<Long, Integer>> getDeviceMetadataIndex() {
+  public List<MetadataIndex> getDeviceMetadataIndex() {
     return deviceMetadataIndex;
   }
 
-  public void setDeviceMetadataIndex(Map<String, Pair<Long, Integer>> deviceMetadataIndex) {
+  public void setDeviceMetadataIndex(List<MetadataIndex> deviceMetadataIndex) {
     this.deviceMetadataIndex = deviceMetadataIndex;
   }
 

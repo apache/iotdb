@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.MetadataIndex;
 
 public class TsFileSequenceRead {
 
@@ -47,7 +47,8 @@ public class TsFileSequenceRead {
       filename = args[0];
     }
     TsFileSequenceReader reader = new TsFileSequenceReader(filename);
-    System.out.println("file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
+    System.out
+        .println("file length: " + FSFactoryProducer.getFSFactory().getFile(filename).length());
     System.out.println("file magic head: " + reader.readHeadMagic());
     System.out.println("file magic tail: " + reader.readTailMagic());
     System.out.println("Level 1 metadata position: " + reader.getFileMetadataPos());
@@ -57,7 +58,8 @@ public class TsFileSequenceRead {
     // first SeriesChunks (headers and data) in one ChunkGroup, then the CHUNK_GROUP_FOOTER
     // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the marker) ahead and
     // judge accordingly.
-    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER.getBytes().length);
+    reader.position(TSFileConfig.MAGIC_STRING.getBytes().length + TSFileConfig.VERSION_NUMBER
+        .getBytes().length);
     System.out.println("[Chunk Group]");
     System.out.println("position: " + reader.position());
     byte marker;
@@ -107,13 +109,13 @@ public class TsFileSequenceRead {
       }
     }
     System.out.println("[Metadata]");
-    Map<String, Pair<Long, Integer>> deviceOffsetsMap = metaData.getDeviceMetadataIndex();
-    for (Map.Entry<String, Pair<Long, Integer>>  entry: deviceOffsetsMap.entrySet()) {
-      String deviceId = entry.getKey();
+    List<MetadataIndex> metadataIndexList = metaData.getDeviceMetadataIndex();
+    for (MetadataIndex metadataIndex : metadataIndexList) {
       Map<String, List<ChunkMetadata>> seriesMetaData =
-          reader.readChunkMetadataInDevice(deviceId);
+          reader.readChunkMetadataInDevice(metadataIndex.getName()); // TODO
       System.out.println(String
-          .format("\t[Device]Device %s, Number of Measurements %d", deviceId, seriesMetaData.size()));
+          .format("\t[Device]Device %s, Number of Measurements %d", metadataIndex.getName(),
+              seriesMetaData.size())); // TODO
       for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
         System.out.println("\t\tMeasurement:" + serie.getKey());
         for (ChunkMetadata chunkMetadata : serie.getValue()) {

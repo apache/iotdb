@@ -50,6 +50,7 @@ public class TSFileConfigUtil {
 		globalConfig.setKerberosKeytabFilePath(config.getKerberosKeytabFilePath());
 		globalConfig.setKerberosPrincipal(config.getKerberosPrincipal());
 		globalConfig.setMaxNumberOfPointsInPage(config.getMaxNumberOfPointsInPage());
+		globalConfig.setMaxNumberOfIndexItemsInNode(config.getMaxNumberOfIndexItemsInNode());
 		globalConfig.setMaxStringLength(config.getMaxStringLength());
 		globalConfig.setPageCheckSizeThreshold(config.getPageCheckSizeThreshold());
 		globalConfig.setPageSizeInByte(config.getPageSizeInByte());

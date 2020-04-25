@@ -65,7 +65,7 @@ public class TsFileMetaDataCache {
         if (deviceIndexMapEntrySize == 0 && value.getDeviceMetadataIndex() != null
             && value.getDeviceMetadataIndex().size() > 0) {
           deviceIndexMapEntrySize = RamUsageEstimator
-              .sizeOf(value.getDeviceMetadataIndex().entrySet().iterator().next());
+              .sizeOf(value.getDeviceMetadataIndex().iterator().next());
         }
         // totalChunkNum, invalidChunkNum
         long valueSize = 4 + 4L;

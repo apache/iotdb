@@ -18,14 +18,15 @@
  */
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
-import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkLoader;
 import org.apache.iotdb.db.query.reader.chunk.MemChunkReader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
@@ -41,12 +42,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class FileLoaderUtils {
 
@@ -72,7 +67,8 @@ public class FileLoaderUtils {
 
   public static void updateTsFileResource(TsFileMetadata metaData, TsFileSequenceReader reader,
       TsFileResource tsFileResource) throws IOException {
-    for (String device : metaData.getDeviceMetadataIndex().keySet()) {
+    List<String> deviceList = reader.getDevicesByMetadata(metaData.getDeviceMetadataIndex());
+    for (String device : deviceList) {
       Map<String, TimeseriesMetadata> chunkMetadataListInOneDevice = reader
           .readDeviceMetadata(device);
       for (TimeseriesMetadata timeseriesMetaData : chunkMetadataListInOneDevice.values()) {
@@ -84,7 +80,6 @@ public class FileLoaderUtils {
 
 
   /**
-   *
    * @param resource TsFile
    * @param seriesPath Timeseries path
    * @param allSensors measurements queried at the same time of this device
@@ -128,6 +123,7 @@ public class FileLoaderUtils {
 
   /**
    * load all chunk metadata of one time series in one file.
+   *
    * @param timeSeriesMetadata the corresponding TimeSeriesMetadata in that file.
    */
   public static List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeSeriesMetadata)
@@ -138,6 +134,7 @@ public class FileLoaderUtils {
 
   /**
    * load all page readers in one chunk that satisfying the timeFilter
+   *
    * @param chunkMetaData the corresponding chunk metadata
    * @param timeFilter it should be a TimeFilter instead of a ValueFilter
    */
@@ -159,7 +156,8 @@ public class FileLoaderUtils {
     return chunkReader.loadPageReaderList();
   }
 
-  public static List<ChunkMetadata> getChunkMetadataList(Path path, String filePath) throws IOException {
+  public static List<ChunkMetadata> getChunkMetadataList(Path path, String filePath)
+      throws IOException {
     TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
     return tsFileReader.getChunkMetadataList(path);
   }
