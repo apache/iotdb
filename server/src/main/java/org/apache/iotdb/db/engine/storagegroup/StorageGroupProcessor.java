@@ -45,6 +45,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -624,7 +625,7 @@ public class StorageGroupProcessor {
       throw new WriteProcessException(e);
     } finally {
       if (node != null) {
-        node.readUnlock();
+        ((InternalMNode) node).readUnlock();
       }
     }
   }
@@ -677,7 +678,7 @@ public class StorageGroupProcessor {
       throw new WriteProcessException(e);
     } finally {
       if (node != null) {
-        node.readUnlock();
+        ((InternalMNode) node).readUnlock();
       }
     }
   }
