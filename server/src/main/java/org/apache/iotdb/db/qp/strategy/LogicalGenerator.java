@@ -153,7 +153,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
-    if(ctx.G()!=null){
+    if(ctx.GLOBAL()!=null){
       initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.GLOBAL);
     }else{
       initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.LOCAL);

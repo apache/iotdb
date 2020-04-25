@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -33,6 +34,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -205,12 +207,52 @@ public class ClusterDescriptor {
     return urlList;
   }
 
-  public void loadHotModifiedProps() {
-    // TODO implement some hot modified properties to load
-
+  public void loadHotModifiedProps() throws QueryProcessException {
+    String url = getPropsUrl();
+    if (url == null) {
+      return;
+    }
+    try (InputStream inputStream = new FileInputStream(new File(url))) {
+      logger.info("Start to reload config file {}", url);
+      Properties properties = new Properties();
+      properties.load(inputStream);
+      loadHotModifiedProps(properties, false);
+    } catch (Exception e) {
+      logger.warn("Fail to reload config file {}", url, e);
+      throw new QueryProcessException(
+          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+    }
   }
 
-  public void loadHotModifiedProps(Properties properties, boolean checkProperties){
+  public void loadHotModifiedProps(Properties properties, boolean toCheckProperties)
+      throws QueryProcessException {
+    if (toCheckProperties && !checkProperties(properties)) {
+      throw new QueryProcessException(
+          "Failed to load configuration from properties because some are missing locally.");
+    }
     // TODO implement some hot modified properties to load
+    logger.info("Set cluster configuration {}", properties);
+  }
+
+  private boolean checkProperties(Properties properties) throws QueryProcessException {
+    String url = getPropsUrl();
+    if (url == null) {
+      return false;
+    }
+    try (InputStream inputStream = new FileInputStream(new File(url))) {
+      Properties localProperties = System.getProperties();
+      localProperties.load(inputStream);
+      Set<String> localPropertyNames = localProperties.stringPropertyNames();
+      for (String propertyName : properties.stringPropertyNames()) {
+        if (!localPropertyNames.contains(propertyName)) {
+          return false;
+        }
+      }
+    } catch (IOException e) {
+      logger.warn("Fail to reload config file {}", url, e);
+      throw new QueryProcessException(
+          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+    }
+    return true;
   }
 }

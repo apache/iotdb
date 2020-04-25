@@ -93,7 +93,12 @@ public class LoadConfigurationPlan extends PhysicalPlan {
           for (Entry<Object, Object> entry : properties.entrySet()) {
             propertiesMap.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
           }
-          ReadWriteIOUtils.write(propertiesMap, stream);
+          stream.writeInt(propertiesMap.size());
+          for(Entry entry : propertiesMap.entrySet()){
+            putString(stream, String.valueOf(entry.getKey()));
+            putString(stream, String.valueOf(entry.getValue()));
+          }
+//          ReadWriteIOUtils.write(propertiesMap, stream);
         }
       }
     }
@@ -107,8 +112,13 @@ public class LoadConfigurationPlan extends PhysicalPlan {
       propertiesArray = new Properties[propertiesNum];
       for (int i = 0; i < propertiesArray.length; i++) {
         if (buffer.getInt() == 1) {
-          propertiesArray[i] = System.getProperties();
-          propertiesArray[i].putAll(ReadWriteIOUtils.readMap(buffer));
+          propertiesArray[i] = new Properties();
+          int size = buffer.getInt();
+          Map<String, String> values = new HashMap<>(size);
+          for(int j = 0; j < size; j++){
+            values.put(readString(buffer), readString(buffer));
+          }
+          propertiesArray[i].putAll(values);
         }
       }
     }

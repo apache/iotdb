@@ -540,7 +540,7 @@ public class IoTDBDescriptor {
       throws QueryProcessException {
     if (toCheckProperties && !checkProperties(properties)) {
       throw new QueryProcessException(
-          "Failed to load configuration from properties becase some are missing locally.");
+          "Failed to load configuration from properties because some are missing locally.");
     }
     try {
       // update data dirs
