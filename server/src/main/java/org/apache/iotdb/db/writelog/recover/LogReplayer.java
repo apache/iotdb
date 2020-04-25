@@ -34,7 +34,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
@@ -96,8 +96,8 @@ public class LogReplayer {
           replayDelete((DeletePlan) plan);
         } else if (plan instanceof UpdatePlan) {
           replayUpdate((UpdatePlan) plan);
-        } else if (plan instanceof BatchInsertPlan) {
-          replayBatchInsert((BatchInsertPlan) plan);
+        } else if (plan instanceof InsertTabletPlan) {
+          replayBatchInsert((InsertTabletPlan) plan);
         }
       }
     } catch (IOException | WriteProcessException | QueryProcessException e) {
@@ -123,32 +123,33 @@ public class LogReplayer {
     }
   }
 
-  private void replayBatchInsert(BatchInsertPlan batchInsertPlan)
+  private void replayBatchInsert(InsertTabletPlan insertTabletPlan)
       throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      Long lastEndTime = currentTsFileResource.getEndTimeMap().get(batchInsertPlan.getDeviceId());
-      if (lastEndTime != null && lastEndTime >= batchInsertPlan.getMinTime() &&
+      Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertTabletPlan.getDeviceId());
+      if (lastEndTime != null && lastEndTime >= insertTabletPlan.getMinTime() &&
           !acceptDuplication) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(batchInsertPlan.getDeviceId());
-      if (startTime == null || startTime > batchInsertPlan.getMinTime()) {
-        tempStartTimeMap.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMinTime());
+      Long startTime = tempStartTimeMap.get(insertTabletPlan.getDeviceId());
+      if (startTime == null || startTime > insertTabletPlan.getMinTime()) {
+        tempStartTimeMap.put(insertTabletPlan.getDeviceId(), insertTabletPlan.getMinTime());
       }
-      Long endTime = tempEndTimeMap.get(batchInsertPlan.getDeviceId());
-      if (endTime == null || endTime < batchInsertPlan.getMaxTime()) {
-        tempEndTimeMap.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+      Long endTime = tempEndTimeMap.get(insertTabletPlan.getDeviceId());
+      if (endTime == null || endTime < insertTabletPlan.getMaxTime()) {
+        tempEndTimeMap.put(insertTabletPlan.getDeviceId(), insertTabletPlan.getMaxTime());
       }
     }
     MeasurementSchema[] schemas;
     try {
-      schemas = MManager.getInstance().getSchemas(batchInsertPlan.getDeviceId(), batchInsertPlan.getMeasurements());
+      schemas = MManager.getInstance().getSchemas(insertTabletPlan.getDeviceId(), insertTabletPlan
+          .getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    batchInsertPlan.setSchemas(schemas);
-    recoverMemTable.insertBatch(batchInsertPlan, 0, batchInsertPlan.getRowCount());
+    insertTabletPlan.setSchemas(schemas);
+    recoverMemTable.insertTablet(insertTabletPlan, 0, insertTabletPlan.getRowCount());
   }
 
   private void replayInsert(InsertPlan insertPlan) {
