@@ -82,6 +82,7 @@ public class MManager {
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<LeafMNode>>> tagIndex = new HashMap<>();
 
+  // storage group name -> the series number
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
@@ -143,11 +144,6 @@ public class MManager {
     try {
       tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
 
-      if (config.isEnableParameterAdapter()) {
-        // storage group name -> the series number
-        seriesNumberInStorageGroups = new HashMap<>();
-      }
-
       initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
@@ -200,9 +196,7 @@ public class MManager {
       this.mtree = new MTree();
       this.mNodeCache.clear();
       this.tagIndex.clear();
-      if (seriesNumberInStorageGroups != null) {
-        this.seriesNumberInStorageGroups.clear();
-      }
+      this.seriesNumberInStorageGroups.clear();
       this.maxSeriesNumberAmongStorageGroup = 0;
       if (logWriter != null) {
         logWriter.close();
@@ -308,17 +302,6 @@ public class MManager {
         throw e;
       }
 
-      // write log
-      if (writeToLog) {
-        // either tags or attributes is not empty
-        if ((plan.getTags() != null && !plan.getTags().isEmpty()) || (plan.getAttributes() != null
-            && !plan.getAttributes().isEmpty())) {
-          offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
-        }
-        logWriter.createTimeseries(plan, offset);
-      }
-      leafMNode.setOffset(offset);
-
       // update tag index
       if (plan.getTags() != null) {
         // tag key, tag value
@@ -337,6 +320,18 @@ public class MManager {
           maxSeriesNumberAmongStorageGroup = size + 1;
         }
       }
+
+      // write log
+      if (writeToLog) {
+        // either tags or attributes is not empty
+        if ((plan.getTags() != null && !plan.getTags().isEmpty()) || (plan.getAttributes() != null
+            && !plan.getAttributes().isEmpty())) {
+          offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
+        }
+        logWriter.createTimeseries(plan, offset);
+      }
+      leafMNode.setOffset(offset);
+
     } catch (IOException | ConfigAdjusterException e) {
       throw new MetadataException(e.getMessage());
     } finally {
@@ -433,9 +428,7 @@ public class MManager {
       Pair<String, LeafMNode> pair = mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path);
       removeFromTagInvertedIndex(pair.right);
       String storageGroupName = pair.left;
-      if (writeToLog) {
-        logWriter.deleteTimeseries(path);
-      }
+
       // TODO: delete the path node and all its ancestors
       mNodeCache.clear();
       try {
@@ -453,6 +446,10 @@ public class MManager {
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
         }
       }
+
+      if (writeToLog) {
+        logWriter.deleteTimeseries(path);
+      }
       return storageGroupName;
     } finally {
       lock.writeLock().unlock();
@@ -468,14 +465,14 @@ public class MManager {
     lock.writeLock().lock();
     try {
       mtree.setStorageGroup(storageGroup);
-      if (writeToLog) {
-        logWriter.setStorageGroup(storageGroup);
-      }
       IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
 
       if (config.isEnableParameterAdapter()) {
         ActiveTimeSeriesCounter.getInstance().init(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, 0);
+      }
+      if (writeToLog) {
+        logWriter.setStorageGroup(storageGroup);
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -498,11 +495,6 @@ public class MManager {
       for (String storageGroup : storageGroups) {
         // try to delete storage group
         mtree.deleteStorageGroup(storageGroup);
-
-        // if success
-        if (writeToLog) {
-          logWriter.deleteStorageGroup(storageGroup);
-        }
         mNodeCache.clear();
 
         if (config.isEnableParameterAdapter()) {
@@ -519,6 +511,10 @@ public class MManager {
                   .max(Integer::compareTo).get();
             }
           }
+        }
+        // if success
+        if (writeToLog) {
+          logWriter.deleteStorageGroup(storageGroup);
         }
       }
     } catch (ConfigAdjusterException e) {
