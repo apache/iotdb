@@ -78,7 +78,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
   	void deleteStorageGroups(List<String> storageGroups)
   ```
 
-* Create one timeseries under a existing storage group
+* Create one or multiple timeseries
 
   ```
   	void createTimeseries(String path, TSDataType dataType,
