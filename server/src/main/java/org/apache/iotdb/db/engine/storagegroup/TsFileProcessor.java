@@ -33,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.cache.RamUsageEstimator;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
@@ -46,7 +47,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
@@ -87,6 +88,7 @@ public class TsFileProcessor {
    */
   private volatile boolean shouldClose;
   private IMemTable workMemTable;
+
   private VersionController versionController;
   /**
    * this callback is called after the corresponding TsFile is called endFile().
@@ -175,7 +177,7 @@ public class TsFileProcessor {
     }
   }
 
-  public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end,
+  public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
 
     if (workMemTable == null) {
@@ -184,11 +186,11 @@ public class TsFileProcessor {
 
     // insert insertPlan to the work memtable
     try {
-      workMemTable.insertBatch(batchInsertPlan, start, end);
+      workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-        batchInsertPlan.setStart(start);
-        batchInsertPlan.setEnd(end);
-        getLogNode().write(batchInsertPlan);
+        insertTabletPlan.setStart(start);
+        insertTabletPlan.setEnd(end);
+        getLogNode().write(insertTabletPlan);
       }
     } catch (Exception e) {
       for (int i = start; i < end; i++) {
@@ -202,13 +204,14 @@ public class TsFileProcessor {
     }
 
     tsFileResource
-        .updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[start]);
+        .updateStartTime(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[start]);
 
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource
-          .updateEndTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
+          .updateEndTime(
+              insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
     }
   }
 

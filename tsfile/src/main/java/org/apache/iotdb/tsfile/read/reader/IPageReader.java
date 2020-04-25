@@ -31,4 +31,6 @@ public interface IPageReader {
   Statistics getStatistics();
 
   void setFilter(Filter filter);
+
+  boolean isModified();
 }

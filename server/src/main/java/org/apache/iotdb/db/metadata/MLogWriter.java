@@ -20,11 +20,14 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Map;
@@ -84,8 +87,6 @@ public class MLogWriter {
       writer.write(String.valueOf(offset));
     }
 
-    writer.write(",");
-
     writer.newLine();
     writer.flush();
   }
@@ -113,4 +114,51 @@ public class MLogWriter {
     writer.newLine();
     writer.flush();
   }
+
+  public static void upgradeMLog(String schemaDir, String logFileName) throws IOException {
+    File logFile = FSFactoryProducer.getFSFactory()
+        .getFile(schemaDir + File.separator + logFileName);
+    File tmpLogFile = new File(logFile.getAbsolutePath() + ".tmp");
+
+    // if both old mlog and mlog.tmp do not exist, nothing to do
+    if (!logFile.exists() && !tmpLogFile.exists()) {
+      return;
+    } else if (!logFile.exists() && tmpLogFile.exists()) {
+      // if old mlog doesn't exsit but mlog.tmp exists, rename tmp file to mlog  
+      FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
+      return;
+    }
+
+    // if both old mlog and mlog.tmp exist, delete mlog tmp, then do upgrading
+    if (tmpLogFile.exists()) {
+      if (!tmpLogFile.delete()) {
+        throw new IOException("Deleting " + tmpLogFile + "failed.");
+      }
+    }
+    // upgrading
+    try (BufferedReader reader = new BufferedReader(new FileReader(logFile));
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tmpLogFile, true));) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        StringBuilder buf = new StringBuilder();
+        buf.append(line);
+        if (line.startsWith(MetadataOperationType.CREATE_TIMESERIES)) {
+          buf.append(",,,");
+        }
+        writer.write(buf.toString());
+        writer.newLine();
+        writer.flush();
+        
+      }
+    }
+
+    // upgrade finished, delete old mlog file
+    if (!logFile.delete()) {
+      throw new IOException("Deleting " + logFile + "failed.");
+    }
+    
+    // rename tmpLogFile to mlog
+    FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
+  }
+  
 }

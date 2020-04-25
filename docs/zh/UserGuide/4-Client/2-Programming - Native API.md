@@ -21,8 +21,6 @@
 
 # 编程 - 原生接口
 
-## 使用
-
 ## 依赖
 
 * JDK >= 1.8
@@ -48,73 +46,119 @@
 ## 原生接口使用示例
 下面将给出Session对应的接口的简要介绍和对应参数：
 
-### 建立连接
-
 * 初始化Session
+
+  ```
   ​	Session(String host, int port)
   ​	Session(String host, String port, String username, String password)
   ​	Session(String host, int port, String username, String password)
-
+  ```
+  
 * 开启Session
+
+  ```
   ​	Session.open()
-
+  ```
+  
 * 关闭Session
-  ​	Session.close()
-
-### 数据操作接口
-
+  ​
+  ```
+  	Session.close()
+  ```
+  
 * 设置存储组
 
   ```
-  TSStatus setStorageGroup(String storageGroupId)
+  void setStorageGroup(String storageGroupId)
   ```
 
 * 删除单个或多个存储组
 
   ```
-  	TSStatus deleteStorageGroup(String storageGroup)
-  	TSStatus deleteStorageGroups(List<String> storageGroups)
+  	void deleteStorageGroup(String storageGroup)
+  	void deleteStorageGroups(List<String> storageGroups)
   ```
 
-* 创建单个时间序列
+* 创建单个或多个时间序列
 
   ```
-  	TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+  	void createTimeseries(String path, TSDataType dataType,
+          TSEncoding encoding, CompressionType compressor, Map<String, String> props,
+          Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
+          
+    void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
+          List<TSEncoding> encodings, List<CompressionType> compressors,
+          List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
+          List<Map<String, String>> attributesList, List<String> measurementAliasList)
   ```
 
 * 删除一个或多个时间序列
 
   ```
-  	TSStatus deleteTimeseries(String path)
-  	TSStatus deleteTimeseries(List<String> paths)
+  	void deleteTimeseries(String path)
+  	void deleteTimeseries(List<String> paths)
   ```
 
-* 删除某一特定时间前的时间序列
+* 删除一个或多个时间序列在某个时间点前的数据
 
   ```
-  	TSStatus deleteData(String path, long time)
-  	TSStatus deleteData(List<String> paths, long time)
+  	void deleteData(String path, long time)
+  	void deleteData(List<String> paths, long time)
   ```
 
-* 插入时序数据
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 
   ```
-  TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
+    void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
-* 批量插入时序数据
+* 插入一个 Tablet，Tablet 是一个设备若干行非空数据块，每一行的列都相同
 
   ```
-  	TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+  	void insertTablet(Tablet tablet)
   ```
 
-### 示例代码
+* 插入多个 Tablet
+
+  ```
+  	void insertTablets(Map<String, Tablet> tablet)
+  ```
+  
+* 插入多个 Record
+
+  ```
+    void insertRecords(List<String> deviceIds, List<Long> times, 
+                       List<List<String>> measurementsList, List<List<String>> valuesList)
+  ```
+
+## 测试客户端逻辑+网络传输代价的接口
+
+* 测试 testInsertInBatch，不实际写入数据，只将数据传输到 server 即返回。
+
+   ```
+   TSStatus testInsertInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
+   ```
+
+* 测试 insertRecord，不实际写入数据，只将数据传输到 server 即返回。
+
+  ```
+    void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  ```
+
+* 测试 insertTablet，不实际写入数据，只将数据传输到 server 即返回。
+
+  ```
+    void testInsertTablet(Tablet tablet)
+  ```
+  
+  
+## 示例代码
 
 浏览上述接口的详细信息，请参阅代码 ```session/src/main/java/org/apache/iotdb/session/Session.java```
 
 使用上述接口的示例代码在 ```example/session/src/main/java/org/apache/iotdb/SessionExample.java```
 
-# 针对原生接口的连接池
+## 针对原生接口的连接池
 
 我们提供了一个针对原生接口的连接池(`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
 如果超过60s都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。

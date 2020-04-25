@@ -47,7 +47,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -474,17 +474,17 @@ public class StorageGroupProcessor {
     }
   }
 
-  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws WriteProcessException {
+  public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws WriteProcessException {
     writeLock();
     try {
-      TSStatus[] results = new TSStatus[batchInsertPlan.getRowCount()];
+      TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
 
       /*
        * assume that batch has been sorted by client
        */
       int loc = 0;
-      while (loc < batchInsertPlan.getRowCount()) {
-        long currTime = batchInsertPlan.getTimes()[loc];
+      while (loc < insertTabletPlan.getRowCount()) {
+        long currTime = insertTabletPlan.getTimes()[loc];
         // skip points that do not satisfy TTL
         if (!checkTTL(currTime)) {
           results[loc] = RpcUtils.getStatus(TSStatusCode.OUT_OF_TTL_ERROR,
@@ -495,34 +495,34 @@ public class StorageGroupProcessor {
         }
       }
       // loc pointing at first legal position
-      if (loc == batchInsertPlan.getRowCount()) {
+      if (loc == insertTabletPlan.getRowCount()) {
         return results;
       }
       // before is first start point
       int before = loc;
       // before time partition
-      long beforeTimePartition = StorageEngine.getTimePartition(batchInsertPlan.getTimes()[before]);
+      long beforeTimePartition = StorageEngine.getTimePartition(insertTabletPlan.getTimes()[before]);
       // init map
       long lastFlushTime = partitionLatestFlushedTimeForEachDevice.
           computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
-          computeIfAbsent(batchInsertPlan.getDeviceId(), id -> Long.MIN_VALUE);
+          computeIfAbsent(insertTabletPlan.getDeviceId(), id -> Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
-      while (loc < batchInsertPlan.getRowCount()) {
-        long time = batchInsertPlan.getTimes()[loc];
+      while (loc < insertTabletPlan.getRowCount()) {
+        long time = insertTabletPlan.getTimes()[loc];
         long curTimePartition = StorageEngine.getTimePartition(time);
         results[loc] = RpcUtils.SUCCESS_STATUS;
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
-          insertBatchToTsFileProcessor(batchInsertPlan, before, loc, isSequence, results,
+          insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence, results,
               beforeTimePartition);
           // re initialize
           before = loc;
           beforeTimePartition = curTimePartition;
           lastFlushTime = partitionLatestFlushedTimeForEachDevice.
               computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
-              computeIfAbsent(batchInsertPlan.getDeviceId(), id -> Long.MIN_VALUE);
+              computeIfAbsent(insertTabletPlan.getDeviceId(), id -> Long.MIN_VALUE);
           isSequence = false;
         }
         // still in this partition
@@ -530,7 +530,7 @@ public class StorageGroupProcessor {
           // judge if we should insert sequence
           if (!isSequence && time > lastFlushTime) {
             // insert into unsequence and then start sequence
-            insertBatchToTsFileProcessor(batchInsertPlan, before, loc, false, results,
+            insertTabletToTsFileProcessor(insertTabletPlan, before, loc, false, results,
                 beforeTimePartition);
             before = loc;
             isSequence = true;
@@ -541,7 +541,7 @@ public class StorageGroupProcessor {
 
       // do not forget last part
       if (before < loc) {
-        insertBatchToTsFileProcessor(batchInsertPlan, before, loc, isSequence, results,
+        insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence, results,
             beforeTimePartition);
       }
 
@@ -561,12 +561,12 @@ public class StorageGroupProcessor {
   /**
    * insert batch to tsfile processor thread-safety that the caller need to guarantee
    *
-   * @param batchInsertPlan batch insert plan
+   * @param insertTabletPlan insert a tablet of a device
    * @param sequence whether is sequence
    * @param results result array
    * @param timePartitionId time partition id
    */
-  private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
+  private void insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
       int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
       throws WriteProcessException {
     // return when start >= end
@@ -584,7 +584,7 @@ public class StorageGroupProcessor {
     }
 
     try {
-      tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
+      tsFileProcessor.insertTablet(insertTabletPlan, start, end, results);
     } catch (WriteProcessException e) {
       logger.error("insert to TsFileProcessor error ", e);
       return;
@@ -593,14 +593,14 @@ public class StorageGroupProcessor {
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>());
     // try to update the latest time of the device of this tsRecord
     if (sequence && latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(batchInsertPlan.getDeviceId(), Long.MIN_VALUE)
-        < batchInsertPlan.getTimes()[end - 1]) {
+        .getOrDefault(insertTabletPlan.getDeviceId(), Long.MIN_VALUE)
+        < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
-          .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
+          .put(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
     }
     long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
-        batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
-    tryToUpdateBatchInsertLastCache(batchInsertPlan, globalLatestFlushedTime);
+        insertTabletPlan.getDeviceId(), Long.MIN_VALUE);
+    tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -608,7 +608,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateBatchInsertLastCache(BatchInsertPlan plan, Long latestFlushedTime)
+  public void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
     MNode node = null;
     try {
@@ -1348,7 +1348,6 @@ public class StorageGroupProcessor {
         logger.info("{} no files to be merged", storageGroupName);
         return;
       }
-      syncCloseAllWorkingTsFileProcessors();
 
       long budget = IoTDBDescriptor.getInstance().getConfig().getMergeMemoryBudget();
       long timeLowerBound = System.currentTimeMillis() - dataTTL;

@@ -103,7 +103,8 @@ Recommended Use Intellij idea。```mvn clean package -DskipTests``` After puttin
 * Client：```client/src/main/java/org/apache/iotdb/client/```，Use Clinet for linux and WinClint for windows, you can start directly, need the parameter "-h 127.0.0.1 -p 6667 -u root -pw root"
 * Server rpc implementation (mainly used for client and server communication, generally start interruption point here):```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
   * all jdbc statements：executeStatement(TSExecuteStatementReq req)
-  * jdbc query：executeQueryStatement(TSExecuteStatementReq req)	* native Write interface：insert(TSInsertReq req)
+  * jdbc query：executeQueryStatement(TSExecuteStatementReq req)	
+  * native Write interface：insertRecord(TSInsertRecordReq req)
 
 * Storage engine org.apache.iotdb.db.engine.StorageEngine
 * Query engine org.apache.iotdb.db.qp.QueryProcessor

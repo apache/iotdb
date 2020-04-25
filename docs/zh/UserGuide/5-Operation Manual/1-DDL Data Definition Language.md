@@ -88,11 +88,21 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 
 ## 查看时间序列
 
-目前，IoTDB支持三种查看时间序列的方式：
+* SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
 
-* SHOW TIMESERIES语句以JSON形式展示系统中所有的时间序列信息
+  SHOW TIMESERIES 后可以跟三种可选的子句，查询结果为这些时间序列的所有信息
 
-* SHOW TIMESERIES <`Path`>语句以表格的形式返回给定路径的下的所有时间序列信息及时间序列总数。时间序列信息具体包括：时间序列路径名，数据类型，编码类型。其中，`Path`需要为一个前缀路径、带星路径或时间序列路径。例如，分别查看`root`路径和`root.ln`路径下的时间序列，SQL语句如下所示：
+时间序列信息具体包括：时间序列路径名，存储组，Measurement别名，数据类型，编码方式，压缩方式，属性和标签。
+
+示例：
+
+* SHOW TIMESERIES
+
+  展示系统中所有的时间序列信息
+
+* SHOW TIMESERIES <`Path`>
+
+  返回给定路径的下的所有时间序列信息。其中 `Path` 需要为一个前缀路径、带星路径或时间序列路径。例如，分别查看`root`路径和`root.ln`路径下的时间序列，SQL语句如下所示：
 
 ```
 IoTDB> show timeseries root
@@ -104,8 +114,10 @@ IoTDB> show timeseries root.ln
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
 
-* SHOW TIMESERIES (<`PrefixPath`>)? WhereClause 语句返回给定路径的下的所有满足条件的时间序列信息
-，SQL语句如下所示：
+* SHOW TIMESERIES (<`PrefixPath`>)? WhereClause 
+  
+  返回给定路径的下的所有满足条件的时间序列信息，SQL语句如下所示：
+
 ```
 show timeseries root.ln where unit=c
 show timeseries root.ln where description contains 'test1'
@@ -115,6 +127,10 @@ show timeseries root.ln where description contains 'test1'
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/79682385-61544d80-8254-11ea-8c23-9e93e7152fda.png"></center>
 
 > 注意，现在我们只支持一个查询条件，要么是等值条件查询，要么是包含条件查询。当然where子句中涉及的必须是标签值，而不能是属性值。
+
+* SHOW TIMESERIES LIMIT INT OFFSET INT
+
+  只返回从指定下标开始的结果，最大返回条数被 LIMIT 限制，用于分页查询
 
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
 
