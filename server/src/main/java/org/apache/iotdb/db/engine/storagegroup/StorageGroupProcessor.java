@@ -576,7 +576,7 @@ public class StorageGroupProcessor {
   /**
    * insert batch to tsfile processor thread-safety that the caller need to guarantee
    *
-   * @param insertTabletPlan batch insert plan
+   * @param insertTabletPlan insert a tablet of a device
    * @param sequence whether is sequence
    * @param results result array
    * @param timePartitionId time partition id

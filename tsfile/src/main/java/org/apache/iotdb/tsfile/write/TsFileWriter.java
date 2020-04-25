@@ -206,10 +206,10 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * Confirm whether the row batch is legal.
+   * Confirm whether the tablet is legal.
    *
-   * @param tablet - a row batch responding multiple columns
-   * @return - whether the row batch has been added into RecordWriter legally
+   * @param tablet - a tablet data responding multiple columns
+   * @return - whether the tablet's measurements have been added into RecordWriter legally
    * @throws WriteProcessException exception
    */
   private void checkIsTimeSeriesExist(Tablet tablet) throws WriteProcessException {
@@ -252,7 +252,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * write a row batch
+   * write a tablet
    *
    * @param tablet - multiple time series of one device that share a time column
    * @throws IOException           exception in IO

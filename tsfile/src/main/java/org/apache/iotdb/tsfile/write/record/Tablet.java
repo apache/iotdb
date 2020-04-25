@@ -43,17 +43,17 @@ public class Tablet {
   private static final int DEFAULT_SIZE = 1024;
 
   /**
-   * deviceId of this row batch
+   * deviceId of this tablet
    */
   public String deviceId;
 
   /**
-   * the list of measurement schemas for creating the row batch
+   * the list of measurement schemas for creating the tablet
    */
   private List<MeasurementSchema> schemas;
 
   /**
-   * timestamps in this row batch
+   * timestamps in this tablet
    */
   public long[] timestamps;
   /**
@@ -65,23 +65,23 @@ public class Tablet {
    */
   public int rowSize;
   /**
-   * the maximum number of rows for this row batch
+   * the maximum number of rows for this tablet
    */
   private int maxRowNumber;
 
   /**
-   * Return a row batch with default specified row number. This is the standard
+   * Return a tablet with default specified row number. This is the standard
    * constructor (all Tablet should be the same size).
    *
    * @param deviceId   the name of the device specified to be written in
-   * @param timeseries the list of measurement schemas for creating the row batch
+   * @param timeseries the list of measurement schemas for creating the tablet
    */
   public Tablet(String deviceId, List<MeasurementSchema> timeseries) {
     this(deviceId, timeseries, DEFAULT_SIZE);
   }
 
   /**
-   * Return a row batch with the specified number of rows (maxBatchSize). Only
+   * Return a tablet with the specified number of rows (maxBatchSize). Only
    * call this constructor directly for testing purposes. Tablet should normally
    * always be default size.
    *
@@ -105,7 +105,7 @@ public class Tablet {
   }
 
   /**
-   * Return the maximum number of rows for this row batch
+   * Return the maximum number of rows for this tablet
    */
   public int getMaxRowNumber() {
     return maxRowNumber;

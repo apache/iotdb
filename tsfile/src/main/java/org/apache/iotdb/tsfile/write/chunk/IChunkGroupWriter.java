@@ -49,14 +49,10 @@ public interface IChunkGroupWriter {
   void write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
 
   /**
-   * receive a row batch, write it to timeseries writers
+   * receive a tablet, write it to chunk writers
    *
-   * @param tablet
-   *                - row batch to input
-   * @throws WriteProcessException
-   *                  exception in write process
-   * @throws IOException
-   *                  exception in IO
+   * @throws WriteProcessException exception in write process
+   * @throws IOException exception in IO
    */
   void write(Tablet tablet) throws WriteProcessException, IOException;
 

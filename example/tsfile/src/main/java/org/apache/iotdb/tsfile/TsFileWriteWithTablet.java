@@ -53,9 +53,9 @@ public class TsFileWriteWithTablet {
 
       Schema schema = new Schema();
 
-      // the number of rows to include in the row batch
+      // the number of rows to include in the tablet
       int rowNum = 1000000;
-      // the number of values to include in the row batch
+      // the number of values to include in the tablet
       int sensorNum = 10;
 
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
@@ -68,7 +68,7 @@ public class TsFileWriteWithTablet {
       // add measurements into TSFileWriter
       try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
 
-        // construct the row batch
+        // construct the tablet
         Tablet tablet = new Tablet("device_1", measurementSchemas);
 
         long[] timestamps = tablet.timestamps;

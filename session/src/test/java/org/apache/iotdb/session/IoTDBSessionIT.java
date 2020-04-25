@@ -201,7 +201,7 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    // test insert batch
+    // test insert tablet
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
@@ -211,7 +211,7 @@ public class IoTDBSessionIT {
 
     session.testInsertTablet(tablet);
 
-    // test insert row
+    // test insert record
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -224,7 +224,7 @@ public class IoTDBSessionIT {
       session.testInsertRecord(deviceId, time, measurements, values);
     }
 
-    // test insert row in batch
+    // test insert records
     measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");

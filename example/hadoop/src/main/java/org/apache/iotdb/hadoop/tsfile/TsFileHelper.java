@@ -56,9 +56,9 @@ public class TsFileHelper {
 
       List<MeasurementSchema> schemaList = new ArrayList<>();
 
-      // the number of rows to include in the row batch
+      // the number of rows to include in the tablet
       int rowNum = 1000000;
-      // the number of values to include in the row batch
+      // the number of values to include in the tablet
       int sensorNum = 10;
 
       // add measurements into file schema (all with INT64 data type)
@@ -83,7 +83,7 @@ public class TsFileHelper {
       // add measurements into TSFileWriter
       TsFileWriter tsFileWriter = new TsFileWriter(file, schema);
 
-      // construct the row batch
+      // construct the tablet
       Tablet tablet = new Tablet(Constant.DEVICE_1, schemaList);
 
       long[] timestamps = tablet.timestamps;
