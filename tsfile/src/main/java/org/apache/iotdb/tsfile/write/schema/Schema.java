@@ -20,9 +20,6 @@ package org.apache.iotdb.tsfile.write.schema;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
-
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -50,25 +47,6 @@ public class Schema {
 
   public Schema(Map<Path, MeasurementSchema> knownSchema) {
     this.registeredTimeseries = knownSchema;
-  }
-
-  /**
-   * Create a row batch to write aligned data
-   *
-   * @param deviceId the name of the device specified to be written in
-   */
-  public RowBatch createRowBatch(String deviceId) {
-    return new RowBatch(deviceId, new ArrayList<>(registeredTimeseries.values()));
-  }
-
-  /**
-   * Create a row batch to write aligned data
-   *
-   * @param deviceId     the name of the device specified to be written in
-   * @param maxBatchSize max size of rows in batch
-   */
-  public RowBatch createRowBatch(String deviceId, int maxBatchSize) {
-    return new RowBatch(deviceId, new ArrayList<>(registeredTimeseries.values()), maxBatchSize);
   }
 
   public void registerTimeseries(Path path, MeasurementSchema descriptor) {

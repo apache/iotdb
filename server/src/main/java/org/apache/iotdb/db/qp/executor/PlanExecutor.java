@@ -773,12 +773,12 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
+  public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     try {
-      String[] measurementList = batchInsertPlan.getMeasurements();
-      String deviceId = batchInsertPlan.getDeviceId();
+      String[] measurementList = insertTabletPlan.getMeasurements();
+      String deviceId = insertTabletPlan.getDeviceId();
       MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
-      TSDataType[] dataTypes = batchInsertPlan.getDataTypes();
+      TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
@@ -797,16 +797,16 @@ public class PlanExecutor implements IPlanExecutor {
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
 
         // check data type
-        if (measurementNode.getSchema().getType() != batchInsertPlan.getDataTypes()[i]) {
+        if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
           throw new QueryProcessException(String
               .format("Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
-                  measurementList[i], batchInsertPlan.getDataTypes()[i],
+                  measurementList[i], insertTabletPlan.getDataTypes()[i],
                   measurementNode.getSchema().getType()));
         }
         schemas[i] = measurementNode.getSchema();
       }
-      batchInsertPlan.setSchemas(schemas);
-      return StorageEngine.getInstance().insertBatch(batchInsertPlan);
+      insertTabletPlan.setSchemas(schemas);
+      return StorageEngine.getInstance().insertTablet(insertTabletPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }

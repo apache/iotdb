@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -149,7 +149,7 @@ public abstract class PhysicalPlan {
           plan.deserializeFrom(buffer);
           break;
         case BATCHINSERT:
-          plan = new BatchInsertPlan();
+          plan = new InsertTabletPlan();
           plan.deserializeFrom(buffer);
           break;
         case SET_STORAGE_GROUP:
