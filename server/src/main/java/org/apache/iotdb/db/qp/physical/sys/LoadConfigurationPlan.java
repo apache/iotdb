@@ -43,10 +43,6 @@ public class LoadConfigurationPlan extends PhysicalPlan {
 
   LoadConfigurationPlanType loadConfigurationPlanType;
 
-  //  public LoadConfigurationPlan() {
-  //    super(false, OperatorType.LOAD_CONFIGURATION);
-  //  }
-
   public LoadConfigurationPlan(LoadConfigurationPlanType loadConfigurationPlanType,
       Properties[] propertiesArray)
       throws QueryProcessException {
