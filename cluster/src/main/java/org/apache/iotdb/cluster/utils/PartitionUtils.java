@@ -35,6 +35,7 @@ import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -85,6 +86,9 @@ public class PartitionUtils {
         && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.VERSION))
         || (plan instanceof ShowPlan
         && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.TTL))
+        || (plan instanceof LoadConfigurationPlan
+        && ((LoadConfigurationPlan) plan).getLoadConfigurationPlanType().equals(
+        LoadConfigurationPlanType.LOCAL))
         ;
   }
 
@@ -99,7 +103,8 @@ public class PartitionUtils {
     return plan instanceof SetStorageGroupPlan
         || plan instanceof SetTTLPlan
         || plan instanceof ShowTTLPlan
-        || plan instanceof LoadConfigurationPlan
+        || (plan instanceof LoadConfigurationPlan && ((LoadConfigurationPlan) plan)
+        .getLoadConfigurationPlanType().equals(LoadConfigurationPlanType.GLOBAL))
         || plan instanceof DeleteTimeSeriesPlan
         //delete timeseries plan is global because all nodes may have its data
         || plan instanceof AuthorPlan

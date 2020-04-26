@@ -1113,7 +1113,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   public TSStatus executeNonQuery(PhysicalPlan plan) {
     if (PartitionUtils.isLocalPlan(plan)) {// run locally
       //TODO run locally.
-      return null;
+      return processPlanLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
       return processNonPartitionedMetaPlan(plan);
     } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
