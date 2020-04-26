@@ -35,8 +35,8 @@
 
 ## 相关文档
 
-* [基础查询组件](/zh/SystemDesign/5-DataQuery/2-SeriesReader.html)
-* [查询中的数据删改处理](/zh/SystemDesign/5-DataQuery/3-ModificationHandle.html)
+* [查询基础介绍](/SystemDesign/5-DataQuery/2-QueryFundamentals.html)
+* [基础查询组件](/zh/SystemDesign/5-DataQuery/3-SeriesReader.html)
 * [原始数据查询](/zh/SystemDesign/5-DataQuery/4-RawDataQuery.html)
 * [聚合查询](/zh/SystemDesign/5-DataQuery/5-AggregationQuery.html)
 * [降采样查询](/zh/SystemDesign/5-DataQuery/6-GroupByQuery.html)
