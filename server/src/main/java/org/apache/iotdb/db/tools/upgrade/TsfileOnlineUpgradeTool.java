@@ -305,7 +305,7 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
    * upgrade file and resource, return the boolean value whether upgrade task completes
    * @throws IOException, WriteProcessException 
    */
-  public boolean upgradeFile(List<String> upgradedFileList, List<TsFileResource> upgradedResources) 
+  public boolean upgradeFile(List<TsFileResource> upgradedResources) 
       throws IOException, WriteProcessException {
     File oldTsFile = FSFactoryProducer.getFSFactory().getFile(this.file);
 
@@ -389,7 +389,6 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
       }
       // close upgraded tsFiles and generate resources for them
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
-        upgradedFileList.add(tsFileIOWriter.getFile().getAbsolutePath());
         upgradedResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
       return true;

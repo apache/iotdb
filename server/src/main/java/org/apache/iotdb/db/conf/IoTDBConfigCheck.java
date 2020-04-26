@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Properties;
 
 public class IoTDBConfigCheck {
@@ -121,13 +122,7 @@ public class IoTDBConfigCheck {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
       // need to upgrade
       if (!properties.containsKey("iotdb_version")) {
-        // upgrade mlog
-        try {
-          MLogWriter.upgradeMLog(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(), 
-              MetadataConstant.METADATA_LOG);
-        } catch (IOException e) {
-          logger.error("Upgrade mlog.txt from {} failed.", file.getAbsolutePath(), e);
-        }
+        UpgradeMlog();
       } else {
         checkProperties();
         return;
@@ -137,13 +132,17 @@ public class IoTDBConfigCheck {
     }
 
     // if tmpPropertiesFile exists, remove it
-    if (tmpPropertiesFile.delete()) {
-      logger.info("Remove broken file {}", tmpPropertiesFile);
+    if (tmpPropertiesFile.exists()) {
+      try {
+        Files.delete(tmpPropertiesFile.toPath());
+      } catch (IOException e) {
+        logger.error("Fail to remove broken file {}", tmpPropertiesFile);
+      }
     }
     // create an empty tmpPropertiesFile
     try {
-      if (!tmpPropertiesFile.createNewFile()) {
-        logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      if (tmpPropertiesFile.createNewFile()) {
+        logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
       }
     } catch (IOException e) {
       logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile, e);
@@ -157,8 +156,12 @@ public class IoTDBConfigCheck {
       properties.store(outputStream, "System properties:");
       checkProperties();
       // upgrade finished, delete old system.properties file
-      if (!file.delete()) {
-        throw new IOException();
+      if (file.exists()) {
+        try {
+          Files.delete(file.toPath());
+        } catch (IOException e) {
+          logger.error("Fail to old file {}", file);
+        }
       }
       // rename system.properties.tmp to system.properties
       FSFactoryProducer.getFSFactory().moveFile(tmpPropertiesFile, file);
@@ -184,6 +187,14 @@ public class IoTDBConfigCheck {
       logger.error("Wrong tsfile file system, please set as: " + properties
               .getProperty("tsfile_storage_fs") + " !");
       System.exit(-1);
+    }
+  }
+
+  private void UpgradeMlog() {
+    try {
+      MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
+    } catch (IOException e) {
+      logger.error("Upgrade mlog.txt from {} failed.", SCHEMA_DIR, e);
     }
   }
 

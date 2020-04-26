@@ -32,16 +32,13 @@ public class UpgradeTool {
    * upgrade a single tsfile
    *
    * @param tsfileName old version tsFile's absolute path
-   * @param tsfileList new version tsFiles' absolute paths
+   * @param upgradedResources new version tsFiles' resources
    * @throws WriteProcessException 
    */
-  public static void upgradeOneTsfile(String tsFileName, List<String> tsFileList, 
-      List<TsFileResource> upgradedResources) throws IOException, WriteProcessException {
-    TsfileOnlineUpgradeTool updater = new TsfileOnlineUpgradeTool(tsFileName);
-    try {
-      updater.upgradeFile(tsFileList, upgradedResources);
-    } finally {
-      updater.close();
+  public static void upgradeOneTsfile(String tsFileName, List<TsFileResource> upgradedResources) 
+      throws IOException, WriteProcessException {
+    try (TsfileOnlineUpgradeTool updater = new TsfileOnlineUpgradeTool(tsFileName)) {
+      updater.upgradeFile(upgradedResources);
     }
   }
 

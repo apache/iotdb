@@ -32,6 +32,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -80,9 +81,8 @@ public class UpgradeUtils {
     upgradeResource.deserialize();
     long firstPartitionId = upgradeResource.getTimePartition();
     File oldTsFile = upgradeResource.getFile();
-    String upgradedFileName = oldTsFile.getParent()
+    return oldTsFile.getParent()
         + File.separator + firstPartitionId + File.separator+ oldTsFile.getName();
-    return upgradedFileName;
   }
 
   public static void recoverUpgrade() {
@@ -113,9 +113,7 @@ public class UpgradeUtils {
                 for (File generatedFile : generatedFiles) {
                   if (generatedFile.getName().equals(FSFactoryProducer.getFSFactory()
                       .getFile(key).getName())) {
-                    if (!generatedFile.delete()) {
-                      logger.error("Failed to delete {} ", generatedFile);
-                    }
+                    Files.delete(generatedFile.toPath());
                   }
                 }
               }
@@ -127,12 +125,9 @@ public class UpgradeUtils {
             if (FSFactoryProducer.getFSFactory().getFile(key).exists() && FSFactoryProducer
                 .getFSFactory().getFile(upgradedFileName).exists()) {
               // if both old tsfile and upgrade file exists, delete the old tsfile and resource
-              if (!FSFactoryProducer.getFSFactory().getFile(key).delete()) {
-                logger.error("Failed to delete {} ", key);
-              }
-              if (!FSFactoryProducer.getFSFactory().getFile(key + TsFileResource.RESOURCE_SUFFIX).delete()) {
-                logger.error("Failed to delete resource {} ", key + TsFileResource.RESOURCE_SUFFIX);
-              }
+              Files.delete(FSFactoryProducer.getFSFactory().getFile(key).toPath());
+              Files.delete(FSFactoryProducer.getFSFactory().getFile(key 
+                  + TsFileResource.RESOURCE_SUFFIX).toPath());
             } 
             // move the upgrade files and resources to their own partition directories
             File upgradeDir = FSFactoryProducer.getFSFactory().getFile(key)

@@ -39,18 +39,6 @@ public class OldTsFileMetadata {
    */
   private Map<String, MeasurementSchema> measurementSchema = new HashMap<>();
 
-  /**
-   * String for application that wrote this file. This should be in the format [Application] version
-   * [App Version](build [App Build Hash]). e.g. impala version 1.0 (build SHA-1_hash_code)
-   */
-  private String createdBy;
-
-  // fields below are IoTDB extensions and they does not affect TsFile's stand-alone functionality
-  private int totalChunkNum;
-  // invalid means a chunk has been rewritten by merge and the chunk's data is in
-  // another new chunk
-  private int invalidChunkNum;
-
   // bloom filter
   private BloomFilter bloomFilter;
 
@@ -93,10 +81,10 @@ public class OldTsFileMetadata {
     }
 
     if (ReadWriteIOUtils.readIsNull(buffer)) {
-      fileMetaData.createdBy = ReadWriteIOUtils.readString(buffer);
+       ReadWriteIOUtils.readString(buffer); // createdBy String
     }
-    fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
-    fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
+    ReadWriteIOUtils.readInt(buffer); // totalChunkNum
+    ReadWriteIOUtils.readInt(buffer); // invalidChunkNum
     // read bloom filter
     if (buffer.hasRemaining()) {
       byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer).array();

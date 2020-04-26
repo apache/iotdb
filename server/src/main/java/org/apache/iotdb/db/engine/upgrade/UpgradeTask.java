@@ -22,6 +22,7 @@ import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.tools.upgrade.UpgradeTool;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,23 +46,9 @@ public class UpgradeTask extends WrappedRunnable {
   @Override
   public void runMayThrow() {
     try {
-      upgradeResource.getWriteQueryLock().readLock().lock();
-      String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
-      List<String> upgradedFiles = new ArrayList<>();
-      List<TsFileResource> upgradedResources = new ArrayList<>();
-      UpgradeLog.writeUpgradeLogFile(
-          oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
-      try {
-        UpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedFiles, upgradedResources);
-        UpgradeLog.writeUpgradeLogFile(
-            oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
-      } catch (IOException e) {
-        logger
-            .error("generate upgrade file failed, the file to be upgraded:{}", oldTsfilePath, e);
-      } finally {
-        upgradeResource.getWriteQueryLock().readLock().unlock();
-      }
+      List<TsFileResource> upgradedResources = generateUpgradedFiles();
       upgradeResource.getWriteQueryLock().writeLock().lock();
+      String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
       try {
         // delete old TsFile
         upgradeResource.remove();
@@ -94,5 +81,24 @@ public class UpgradeTask extends WrappedRunnable {
       logger.error("meet error when upgrade file:{}", upgradeResource.getFile().getAbsolutePath(),
           e);
     }
+  }
+
+  private List<TsFileResource> generateUpgradedFiles() throws WriteProcessException {
+    upgradeResource.getWriteQueryLock().readLock().lock();
+    String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
+    List<TsFileResource> upgradedResources = new ArrayList<>();
+    UpgradeLog.writeUpgradeLogFile(
+        oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
+    try {
+      UpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedResources);
+      UpgradeLog.writeUpgradeLogFile(
+          oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
+    } catch (IOException e) {
+      logger
+          .error("generate upgrade file failed, the file to be upgraded:{}", oldTsfilePath, e);
+    } finally {
+      upgradeResource.getWriteQueryLock().readLock().unlock();
+    }
+    return upgradedResources;
   }
 }
