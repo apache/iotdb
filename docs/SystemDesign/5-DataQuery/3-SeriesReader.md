@@ -21,6 +21,8 @@
 
 # Query basic components
 
+This chapter introduces some basic concepts, terms and things to pay attention in IoTDB Query design. 
+Designers and developers who hope to start with IoTDB query design may find this guide helpful, as some concepts will be treated as common sense and not explained in detail in the following chapters. 
 ## Design principle
 
 The IoTDB server module provides a total of 3 different forms of reading interfaces for a single time series to support different forms of queries.
