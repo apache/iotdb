@@ -63,7 +63,7 @@ public class TsFileMetaDataCache {
       @Override
       protected long calEntrySize(String key, TsFileMetadata value) {
         if (deviceIndexMapEntrySize == 0 && value.getDeviceMetadataIndex() != null
-            && value.getDeviceMetadataIndex().isEmpty()) {
+            && !value.getDeviceMetadataIndex().isEmpty()) {
           deviceIndexMapEntrySize = RamUsageEstimator
               .sizeOf(value.getDeviceMetadataIndex().iterator().next());
         }
