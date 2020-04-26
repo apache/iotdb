@@ -413,15 +413,17 @@ public abstract class Statistics<T> {
   public void setCount(long count) {
     this.count = count;
   }
-  
-  public static Statistics upgradeOldStatistics(OldStatistics oldstatistics, 
+
+  /**
+   * For upgrading 0.9.x -> 0.10.x
+   */
+  public static Statistics<?> upgradeOldStatistics(OldStatistics<?> oldstatistics, 
       TSDataType dataType, int numOfValues, long maxTimestamp, long minTimestamp) {
-    Statistics statistics = Statistics.getStatsByType(dataType);
+    Statistics<?> statistics = Statistics.getStatsByType(dataType);
     statistics.setStartTime(minTimestamp);
     statistics.setEndTime(maxTimestamp);
     statistics.setCount(numOfValues);
     statistics.setEmpty(false);
-    
     switch (dataType) {
       case INT32:
         ((IntegerStatistics) statistics)
@@ -472,8 +474,11 @@ public abstract class Statistics<T> {
     return statistics;
   }
 
-  public static Statistics constructStatisticsFromOldChunkMetadata(OldChunkMetadata oldChunkMetadata) {
-    Statistics statistics;
+  /**
+   * For upgrading 0.9.x -> 0.10.x
+   */
+  public static Statistics<?> constructStatisticsFromOldChunkMetadata(OldChunkMetadata oldChunkMetadata) {
+    Statistics<?> statistics;
     statistics = Statistics.getStatsByType(oldChunkMetadata.getTsDataType());
     statistics.setStartTime(oldChunkMetadata.getStartTime());
     statistics.setEndTime(oldChunkMetadata.getEndTime());
@@ -481,7 +486,6 @@ public abstract class Statistics<T> {
     statistics.setEmpty(false);
     TsDigest tsDigest = oldChunkMetadata.getDigest();
     ByteBuffer[] buffers = tsDigest.getStatistics();
-    
     switch (statistics.getType()) {
       case INT32:
         ((IntegerStatistics) statistics)

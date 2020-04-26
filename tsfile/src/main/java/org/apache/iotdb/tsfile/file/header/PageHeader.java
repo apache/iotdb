@@ -55,8 +55,8 @@ public class PageHeader {
       int numOfValues = ReadWriteIOUtils.readInt(inputStream);
       long maxTimestamp = ReadWriteIOUtils.readLong(inputStream);
       long minTimestamp = ReadWriteIOUtils.readLong(inputStream);
-      OldStatistics oldstatistics = OldStatistics.deserialize(inputStream, dataType);
-      Statistics statistics = Statistics.upgradeOldStatistics(oldstatistics, dataType, 
+      OldStatistics<?> oldstatistics = OldStatistics.deserialize(inputStream, dataType);
+      Statistics<?> statistics = Statistics.upgradeOldStatistics(oldstatistics, dataType, 
           numOfValues, maxTimestamp, minTimestamp);
       return new PageHeader(uncompressedSize, compressedSize, statistics);
     }
@@ -72,8 +72,8 @@ public class PageHeader {
       int numOfValues = ReadWriteIOUtils.readInt(buffer);
       long maxTimestamp = ReadWriteIOUtils.readLong(buffer);
       long minTimestamp = ReadWriteIOUtils.readLong(buffer);
-      OldStatistics oldstatistics = OldStatistics.deserialize(buffer, dataType);
-      Statistics statistics = Statistics.upgradeOldStatistics(oldstatistics, dataType, 
+      OldStatistics<?> oldstatistics = OldStatistics.deserialize(buffer, dataType);
+      Statistics<?> statistics = Statistics.upgradeOldStatistics(oldstatistics, dataType, 
           numOfValues, maxTimestamp, minTimestamp);
       return new PageHeader(uncompressedSize, compressedSize, statistics);
     }

@@ -45,7 +45,7 @@ public abstract class OldStatistics<T> {
    * @param type - data type
    * @return Statistics
    */
-  public static OldStatistics getStatsByType(TSDataType type) {
+  public static OldStatistics<?> getStatsByType(TSDataType type) {
     switch (type) {
       case INT32:
         return new OldIntegerStatistics();
@@ -64,16 +64,16 @@ public abstract class OldStatistics<T> {
     }
   }
   
-  public static OldStatistics deserialize(InputStream inputStream, TSDataType dataType)
+  public static OldStatistics<?> deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
-    OldStatistics statistics = getStatsByType(dataType);
+    OldStatistics<?> statistics = getStatsByType(dataType);
     statistics.deserialize(inputStream);
     statistics.isEmpty = false;
     return statistics;
   }
 
-  public static OldStatistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
-    OldStatistics statistics = getStatsByType(dataType);
+  public static OldStatistics<?> deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
+    OldStatistics<?> statistics = getStatsByType(dataType);
     statistics.deserialize(buffer);
     statistics.isEmpty = false;
     return statistics;
