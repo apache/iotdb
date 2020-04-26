@@ -32,13 +32,13 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileCheckStatus;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.MetadataIndex;
 import org.apache.iotdb.tsfile.utils.VersionUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -129,7 +129,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
       if (reader.isComplete()) {
         reader.loadMetadataSize();
         TsFileMetadata metaData = reader.readFileMetadata();
-        for (MetadataIndex deviceMetaData : metaData.getDeviceMetadataIndex()) {
+        for (MetadataIndexNode deviceMetaData : metaData.getMetadataIndex()) {
           if (position > deviceMetaData.getOffset()) {
             position = deviceMetaData.getOffset();
           }

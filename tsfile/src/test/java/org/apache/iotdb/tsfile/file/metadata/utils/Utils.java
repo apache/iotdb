@@ -29,8 +29,7 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.MetadataIndex;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.junit.Assert;
 
 public class Utils {
@@ -121,11 +120,11 @@ public class Utils {
   public static boolean isFileMetaDataEqual(TsFileMetadata metadata1, TsFileMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "File MetaData")) {
       if (Utils
-          .isTwoObjectsNotNULL(metadata1.getDeviceMetadataIndex(), metadata2.getDeviceMetadataIndex(),
+          .isTwoObjectsNotNULL(metadata1.getMetadataIndex(), metadata2.getMetadataIndex(),
               "Delta object metadata list")) {
 
-        List<MetadataIndex> deviceMetaDataMap1 = metadata1.getDeviceMetadataIndex();
-        List<MetadataIndex> deviceMetaDataMap2 = metadata2.getDeviceMetadataIndex();
+        List<MetadataIndexNode> deviceMetaDataMap1 = metadata1.getMetadataIndex();
+        List<MetadataIndexNode> deviceMetaDataMap2 = metadata2.getMetadataIndex();
         return deviceMetaDataMap1.size() == deviceMetaDataMap2.size();
       }
     }

@@ -22,13 +22,13 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.ChildMetadataIndexType;
+import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.MetadataIndex;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
@@ -36,16 +36,16 @@ public class TestHelper {
 
   public static TsFileMetadata createSimpleFileMetaData() {
     TsFileMetadata metaData = new TsFileMetadata();
-    metaData.setDeviceMetadataIndex(generateDeviceMetaDataIndex());
+    metaData.setMetadataIndex(generateDeviceMetaDataIndex());
     metaData.setVersionInfo(generateVersionInfo());
     return metaData;
   }
 
-  private static List<MetadataIndex> generateDeviceMetaDataIndex() {
-    List<MetadataIndex> deviceMetaDataIndex = new ArrayList<>();
+  private static List<MetadataIndexNode> generateDeviceMetaDataIndex() {
+    List<MetadataIndexNode> deviceMetaDataIndex = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       deviceMetaDataIndex
-          .add(new MetadataIndex("d" + i, (long) i * 5, ChildMetadataIndexType.MEASUREMENT));
+          .add(new MetadataIndexNode("d" + i, (long) i * 5, MetadataIndexNodeType.LEAF_MEASUREMENT));
     }
     return deviceMetaDataIndex;
   }

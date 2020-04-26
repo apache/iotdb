@@ -159,7 +159,7 @@ public class TsFileRecoverPerformer {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(resource.getFile().getAbsolutePath(), false)) {
       TsFileMetadata fileMetadata = reader.readFileMetadata();
-      List<String> devices = reader.getDevicesByMetadata(fileMetadata.getDeviceMetadataIndex());
+      List<String> devices = reader.getDevicesByMetadata(fileMetadata.getMetadataIndex());
       for (String deviceId : devices) {
         for (TimeseriesMetadata timeseriesMetadata : reader.readDeviceMetadata(deviceId).values()) {
           resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getStartTime());

@@ -85,7 +85,7 @@ public class TSFileConfig implements Serializable {
   /**
    * The maximum number of index items in a metadataIndex node, default value is 1024
    */
-  private int maxNumberOfIndexItemsInNode = 5;
+  private int maxDegreeOfIndexNode = 5;
   /**
    * Data type for input timestamp, TsFile supports INT32 or INT64.
    */
@@ -233,12 +233,12 @@ public class TSFileConfig implements Serializable {
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
   }
 
-  public int getMaxNumberOfIndexItemsInNode() {
-    return maxNumberOfIndexItemsInNode;
+  public int getMaxDegreeOfIndexNode() {
+    return maxDegreeOfIndexNode;
   }
 
-  public void setMaxNumberOfIndexItemsInNode(int maxNumberOfIndexItemsInNode) {
-    this.maxNumberOfIndexItemsInNode = maxNumberOfIndexItemsInNode;
+  public void setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    this.maxDegreeOfIndexNode = maxDegreeOfIndexNode;
   }
 
   public String getTimeSeriesDataType() {

@@ -62,17 +62,17 @@ public class TsFileMetaDataCache {
     cache = new LRULinkedHashMap<String, TsFileMetadata>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
       protected long calEntrySize(String key, TsFileMetadata value) {
-        if (deviceIndexMapEntrySize == 0 && value.getDeviceMetadataIndex() != null
-            && !value.getDeviceMetadataIndex().isEmpty()) {
+        if (deviceIndexMapEntrySize == 0 && value.getMetadataIndex() != null
+            && !value.getMetadataIndex().isEmpty()) {
           deviceIndexMapEntrySize = RamUsageEstimator
-              .sizeOf(value.getDeviceMetadataIndex().iterator().next());
+              .sizeOf(value.getMetadataIndex().iterator().next());
         }
         // totalChunkNum, invalidChunkNum
         long valueSize = 4 + 4L;
 
         // deviceMetadataIndex
-        if (value.getDeviceMetadataIndex() != null) {
-          valueSize += value.getDeviceMetadataIndex().size() * deviceIndexMapEntrySize;
+        if (value.getMetadataIndex() != null) {
+          valueSize += value.getMetadataIndex().size() * deviceIndexMapEntrySize;
         }
 
         // versionInfo

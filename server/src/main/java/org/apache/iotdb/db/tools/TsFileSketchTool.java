@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.MetadataIndex;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 
 public class TsFileSketchTool {
 
@@ -59,7 +59,7 @@ public class TsFileSketchTool {
       // get metadata information
       TsFileSequenceReader reader = new TsFileSequenceReader(filename);
       TsFileMetadata tsFileMetaData = reader.readFileMetadata();
-      List<MetadataIndex> metadataIndexList = tsFileMetaData.getDeviceMetadataIndex();
+      List<MetadataIndexNode> metadataIndexList = tsFileMetaData.getMetadataIndex();
       List<String> devices = reader.getDevicesByMetadata(metadataIndexList);
       Map<String, Map<String, List<ChunkMetadata>>> tsDeviceSeriesMetadataMap = new LinkedHashMap<>();
       for (String deviceId : devices) {
@@ -127,7 +127,7 @@ public class TsFileSketchTool {
       } else {
         printlnBoth(pw, String.format("%20s", reader.getStartOffset() + "|\t[marker] 2"));
       }
-      for (MetadataIndex metadataIndex : tsFileMetaData.getDeviceMetadataIndex()) {
+      for (MetadataIndexNode metadataIndex : tsFileMetaData.getMetadataIndex()) {
         printlnBoth(pw, String.format("%20s", metadataIndex.getOffset())
                 + "|\t[DeviceMetadata] of " + metadataIndex.getName());
       }
@@ -135,9 +135,9 @@ public class TsFileSketchTool {
       printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetaData]");
       printlnBoth(pw,
           String.format("%20s", "") + "|\t\t[num of devices] " + tsFileMetaData
-              .getDeviceMetadataIndex().size());
+              .getMetadataIndex().size());
       printlnBoth(pw,
-          String.format("%20s", "") + "|\t\t" + tsFileMetaData.getDeviceMetadataIndex().size()
+          String.format("%20s", "") + "|\t\t" + tsFileMetaData.getMetadataIndex().size()
               + " key&TsDeviceMetadataIndex");
       printlnBoth(pw,
           String.format("%20s", "") + "|\t\t[totalChunkNum] " + tsFileMetaData.getTotalChunkNum());

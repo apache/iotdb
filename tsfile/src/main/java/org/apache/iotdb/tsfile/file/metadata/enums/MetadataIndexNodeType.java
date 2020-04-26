@@ -23,32 +23,32 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-public enum ChildMetadataIndexType {
-  DEVICE_INDEX, DEVICE, MEASUREMENT_INDEX, MEASUREMENT;
+public enum MetadataIndexNodeType {
+  INTERNAL_DEVICE, LEAF_DEVICE, INTERNAL_MEASUREMENT, LEAF_MEASUREMENT;
 
   /**
    * deserialize short number.
    *
    * @param i short number
-   * @return ChildMetadataIndexType
+   * @return MetadataIndexNodeType
    */
-  public static ChildMetadataIndexType deserialize(short i) {
+  public static MetadataIndexNodeType deserialize(short i) {
     if (i >= 4) {
       throw new IllegalArgumentException("Invalid input: " + i);
     }
     switch (i) {
       case 0:
-        return DEVICE_INDEX;
+        return INTERNAL_DEVICE;
       case 1:
-        return DEVICE;
+        return LEAF_DEVICE;
       case 2:
-        return MEASUREMENT_INDEX;
+        return INTERNAL_MEASUREMENT;
       default:
-        return MEASUREMENT;
+        return LEAF_MEASUREMENT;
     }
   }
 
-  public static ChildMetadataIndexType deserializeFrom(ByteBuffer buffer) {
+  public static MetadataIndexNodeType deserializeFrom(ByteBuffer buffer) {
     return deserialize(buffer.getShort());
   }
 
@@ -71,13 +71,13 @@ public enum ChildMetadataIndexType {
    */
   public short serialize() {
     switch (this) {
-      case DEVICE_INDEX:
+      case INTERNAL_DEVICE:
         return 0;
-      case DEVICE:
+      case LEAF_DEVICE:
         return 1;
-      case MEASUREMENT_INDEX:
+      case INTERNAL_MEASUREMENT:
         return 2;
-      case MEASUREMENT:
+      case LEAF_MEASUREMENT:
         return 3;
       default:
         return -1;

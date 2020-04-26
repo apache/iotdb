@@ -111,7 +111,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
 
       List<String> devices = this.tsFileReader
-          .getDevicesByMetadata(fileMetaData.getDeviceMetadataIndex());
+          .getDevicesByMetadata(fileMetaData.getMetadataIndex());
       String[] deviceNames = devices.toArray(new String[devices.size()]);
       if (Arrays.binarySearch(deviceNames, selectedDevice) < 0) {
         continue;

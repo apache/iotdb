@@ -236,7 +236,7 @@ ByteBuffer[] statistics = [
 |              Member Description              |            Member Type             |
 | :------------------------------------------: | :--------------------------------: |
 |              Number of devices               |                int                 |
-| Pairs of device name and deviceMetadataIndex | String, TsDeviceMetadataIndex pair |
+| Pairs of device name and metadataIndex | String, TsDeviceMetadataIndex pair |
 |            Number of measurements            |                int                 |
 |     Pairs of measurement name and schema     |   String, MeasurementSchema pair   |
 |                 Author byte                  |                byte                |

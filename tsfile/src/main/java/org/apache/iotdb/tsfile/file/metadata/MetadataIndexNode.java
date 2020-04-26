@@ -17,27 +17,28 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.utils;
+package org.apache.iotdb.tsfile.file.metadata;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.file.metadata.enums.ChildMetadataIndexType;
+import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class MetadataIndex {
+public class MetadataIndexNode {
 
   private String name;
   private long offset;
-  private ChildMetadataIndexType childMetadataIndexType;
+  private MetadataIndexNodeType metadataIndexNodeType;
 
-  public MetadataIndex() {
+  public MetadataIndexNode() {
   }
 
-  public MetadataIndex(String name, long offset,
-      ChildMetadataIndexType childMetadataIndexType) {
+  public MetadataIndexNode(String name, long offset,
+      MetadataIndexNodeType metadataIndexNodeType) {
     this.name = name;
     this.offset = offset;
-    this.childMetadataIndexType = childMetadataIndexType;
+    this.metadataIndexNodeType = metadataIndexNodeType;
   }
 
   public String getName() {
@@ -48,8 +49,8 @@ public class MetadataIndex {
     return offset;
   }
 
-  public ChildMetadataIndexType getChildMetadataIndexType() {
-    return childMetadataIndexType;
+  public MetadataIndexNodeType getMetadataIndexNodeType() {
+    return metadataIndexNodeType;
   }
 
   public void setName(String name) {
@@ -60,29 +61,29 @@ public class MetadataIndex {
     this.offset = offset;
   }
 
-  public void setChildMetadataIndexType(
-      ChildMetadataIndexType childMetadataIndexType) {
-    this.childMetadataIndexType = childMetadataIndexType;
+  public void setMetadataIndexNodeType(
+      MetadataIndexNodeType metadataIndexNodeType) {
+    this.metadataIndexNodeType = metadataIndexNodeType;
   }
 
   public String toString() {
-    return "<" + name + "," + offset + "," + childMetadataIndexType + ">";
+    return "<" + name + "," + offset + "," + metadataIndexNodeType + ">";
   }
 
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(name, outputStream);
     byteLen += ReadWriteIOUtils.write(offset, outputStream);
-    byteLen += ReadWriteIOUtils.write(childMetadataIndexType.serialize(), outputStream);
+    byteLen += ReadWriteIOUtils.write(metadataIndexNodeType.serialize(), outputStream);
     return byteLen;
   }
 
-  public static MetadataIndex deserializeFrom(ByteBuffer buffer) {
-    MetadataIndex metadataIndex = new MetadataIndex();
+  public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
+    MetadataIndexNode metadataIndex = new MetadataIndexNode();
     metadataIndex.setName(ReadWriteIOUtils.readString(buffer));
     metadataIndex.setOffset(ReadWriteIOUtils.readLong(buffer));
-    metadataIndex.setChildMetadataIndexType(
-        ChildMetadataIndexType.deserialize(ReadWriteIOUtils.readShort(buffer)));
+    metadataIndex.setMetadataIndexNodeType(
+        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readShort(buffer)));
     return metadataIndex;
   }
 }

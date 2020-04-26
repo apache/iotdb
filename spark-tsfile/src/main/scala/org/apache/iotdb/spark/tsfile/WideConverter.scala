@@ -62,7 +62,7 @@ object WideConverter extends Converter {
   def getSeries(tsFileMetaData: TsFileMetadata, reader: TsFileSequenceReader): util.ArrayList[Series] = {
     val series = new util.ArrayList[Series]()
 
-    val devices = tsFileMetaData.getDeviceMetadataIndex
+    val devices = tsFileMetaData.getMetadataIndex
     val measurements = reader.getAllMeasurements
 
     devices.foreach(d => {
@@ -92,7 +92,7 @@ object WideConverter extends Converter {
       val in = new HDFSInput(f.getPath, conf)
       val reader = new TsFileSequenceReader(in)
       val tsFileMetaData = reader.readFileMetadata
-      val devices = tsFileMetaData.getDeviceMetadataIndex
+      val devices = tsFileMetaData.getMetadataIndex
       val measurements = reader.getAllMeasurements
 
       devices.foreach(d => {
@@ -133,7 +133,7 @@ object WideConverter extends Converter {
     } else { // Remove nonexistent schema according to the current file's metadata.
       // This may happen when queried TsFiles in the same folder do not have the same schema.
 
-      val devices = tsFileMetaData.getDeviceMetadataIndex
+      val devices = tsFileMetaData.getMetadataIndex
       val measurementIds = reader.getAllMeasurements.keySet()
       requiredSchema.foreach(f => {
         if (!QueryConstant.RESERVED_TIME.equals(f.name)) {

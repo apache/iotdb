@@ -26,10 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.ChildMetadataIndexType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.utils.MetadataIndex;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -49,7 +47,7 @@ public class TsFileMetadata {
   private BloomFilter bloomFilter;
 
   // List of <name, offset, childMetadataIndexType>
-  private List<MetadataIndex> deviceMetadataIndex;
+  private List<MetadataIndexNode> metadataIndex;
 
   // offset -> version
   private List<Pair<Long, Long>> versionInfo;
@@ -66,19 +64,15 @@ public class TsFileMetadata {
   public static TsFileMetadata deserializeFrom(ByteBuffer buffer) {
     TsFileMetadata fileMetaData = new TsFileMetadata();
 
-    // deviceMetadataIndex
+    // metadataIndex
     int deviceNum = ReadWriteIOUtils.readInt(buffer);
-    List<MetadataIndex> deviceMetaDataList = new ArrayList<>();
+    List<MetadataIndexNode> deviceMetaDataList = new ArrayList<>();
     if (deviceNum > 0) {
       for (int i = 0; i < deviceNum; i++) {
-        String name = ReadWriteIOUtils.readString(buffer);
-        long offset = ReadWriteIOUtils.readLong(buffer);
-        ChildMetadataIndexType type = ChildMetadataIndexType
-            .deserialize(ReadWriteIOUtils.readShort(buffer));
-        deviceMetaDataList.add(new MetadataIndex(name, offset, type));
+        deviceMetaDataList.add(MetadataIndexNode.deserializeFrom(buffer));
       }
     }
-    fileMetaData.setDeviceMetadataIndex(deviceMetaDataList);
+    fileMetaData.setMetadataIndex(deviceMetaDataList);
 
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
@@ -121,14 +115,11 @@ public class TsFileMetadata {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
 
-    // deviceMetadataIndex
-    if (deviceMetadataIndex != null) {
-      byteLen += ReadWriteIOUtils.write(deviceMetadataIndex.size(), outputStream);
-      for (MetadataIndex metadataIndex : deviceMetadataIndex) {
-        byteLen += ReadWriteIOUtils.write(metadataIndex.getName(), outputStream);
-        byteLen += ReadWriteIOUtils.write(metadataIndex.getOffset(), outputStream);
-        byteLen += ReadWriteIOUtils
-            .write(metadataIndex.getChildMetadataIndexType().serialize(), outputStream);
+    // metadataIndex
+    if (metadataIndex != null) {
+      byteLen += ReadWriteIOUtils.write(metadataIndex.size(), outputStream);
+      for (MetadataIndexNode metadataIndex : metadataIndex) {
+        byteLen += metadataIndex.serializeTo(outputStream);
       }
     } else {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
@@ -210,12 +201,12 @@ public class TsFileMetadata {
     this.metaOffset = metaOffset;
   }
 
-  public List<MetadataIndex> getDeviceMetadataIndex() {
-    return deviceMetadataIndex;
+  public List<MetadataIndexNode> getMetadataIndex() {
+    return metadataIndex;
   }
 
-  public void setDeviceMetadataIndex(List<MetadataIndex> deviceMetadataIndex) {
-    this.deviceMetadataIndex = deviceMetadataIndex;
+  public void setMetadataIndex(List<MetadataIndexNode> metadataIndex) {
+    this.metadataIndex = metadataIndex;
   }
 
   public void setVersionInfo(List<Pair<Long, Long>> versionInfo) {
