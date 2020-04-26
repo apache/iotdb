@@ -505,8 +505,8 @@ public abstract class Statistics<T> {
         break;
       case TEXT:
         ((BinaryStatistics) statistics)
-        .initializeStats(ReadWriteIOUtils.readBinary(buffers[2]),
-            ReadWriteIOUtils.readBinary(buffers[3]));
+        .initializeStats(new Binary(buffers[2].array()),
+            new Binary(buffers[3].array()));
         break;
       case BOOLEAN:
         ((BooleanStatistics) statistics)
