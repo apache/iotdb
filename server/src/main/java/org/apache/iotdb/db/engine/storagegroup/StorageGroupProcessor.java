@@ -422,25 +422,20 @@ public class StorageGroupProcessor {
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
-          if (partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
-            continue;
+          if (!partitionFolder.isDirectory()) {
+            logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
+          } else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+            // some TsFileResource may be being persisted when the system crashed, try recovering such
+            // resources
+            continueFailedRenames(partitionFolder, TEMP_SUFFIX);
+
+            // some TsFiles were going to be replaced by the merged files when the system crashed and
+            // the process was interrupted before the merged files could be named
+            continueFailedRenames(partitionFolder, MERGE_SUFFIX);
+
+            Collections.addAll(tsFiles,
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
           }
-          // some TsFileResource may be being persisted when the system crashed, try recovering such
-          // resources
-          continueFailedRenames(partitionFolder, TEMP_SUFFIX);
-
-          // some TsFiles were going to be replaced by the merged files when the system crashed and
-          // the process was interrupted before the merged files could be named
-          continueFailedRenames(partitionFolder, MERGE_SUFFIX);
-
-        if (!partitionFolder.isDirectory()) {
-
-          logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
-          continue;
-        }
-
-        Collections.addAll(tsFiles,
-            fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
         }
       }
 

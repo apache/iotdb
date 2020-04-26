@@ -122,7 +122,7 @@ public class IoTDBConfigCheck {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
       // need to upgrade
       if (!properties.containsKey("iotdb_version")) {
-        UpgradeMlog();
+        upgradeMlog();
       } else {
         checkProperties();
         return;
@@ -157,11 +157,7 @@ public class IoTDBConfigCheck {
       checkProperties();
       // upgrade finished, delete old system.properties file
       if (file.exists()) {
-        try {
-          Files.delete(file.toPath());
-        } catch (IOException e) {
-          logger.error("Fail to old file {}", file);
-        }
+        Files.delete(file.toPath());
       }
       // rename system.properties.tmp to system.properties
       FSFactoryProducer.getFSFactory().moveFile(tmpPropertiesFile, file);
@@ -190,7 +186,7 @@ public class IoTDBConfigCheck {
     }
   }
 
-  private void UpgradeMlog() {
+  private void upgradeMlog() {
     try {
       MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
     } catch (IOException e) {
