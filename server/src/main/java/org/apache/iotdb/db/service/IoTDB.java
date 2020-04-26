@@ -97,9 +97,9 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(TVListAllocator.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-    registerManager.register(StorageEngine.getInstance());
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(MergeManager.getINSTANCE());
+    registerManager.register(StorageEngine.getInstance());
 
     // When registering statMonitor, we should start recovering some statistics
     // with latest values stored
