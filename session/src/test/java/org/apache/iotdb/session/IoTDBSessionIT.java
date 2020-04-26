@@ -30,10 +30,10 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import org.apache.iotdb.db.conf.IoTDBConfig;
+import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.BatchExecutionException;
@@ -43,10 +43,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -73,8 +71,7 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testInsertByObject()
-      throws IoTDBConnectionException, SQLException, ClassNotFoundException, StatementExecutionException {
+  public void testInsertByObject() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -91,6 +88,7 @@ public class IoTDBSessionIT {
   }
 
 
+  @Test
   public void testAlignByDevice() throws IoTDBConnectionException,
       StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -100,7 +98,7 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    insertRowBatchTest2("root.sg1.d1");
+    insertTabletTest2("root.sg1.d1");
 
     queryForAlignByDevice();
     queryForAlignByDevice2();
@@ -116,7 +114,7 @@ public class IoTDBSessionIT {
 
     createTimeseriesForTime();
 
-    insertRowBatchTestForTime("root.sg1.d1");
+    insertTabletTestForTime("root.sg1.d1");
   }
 
   @Test
@@ -129,7 +127,7 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    insertRowBatchTest2("root.sg1.d1");
+    insertTabletTest2("root.sg1.d1");
     // flush
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
@@ -138,7 +136,7 @@ public class IoTDBSessionIT {
       statement.execute("FLUSH");
     }
     //
-    insertRowBatchTest3("root.sg1.d1");
+    insertTabletTest3("root.sg1.d1");
 
     queryForBatchSeqAndUnseq();
   }
@@ -153,11 +151,45 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    insertRowBatchTest2("root.sg1.d1");
+    insertTabletTest2("root.sg1.d1");
 
     queryForBatch();
   }
 
+  @Test
+  public void testCreateMultiTimeseries() throws IoTDBConnectionException, BatchExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d1.s2");
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    tsDataTypes.add(TSDataType.DOUBLE);
+    tsDataTypes.add(TSDataType.DOUBLE);
+    List<TSEncoding> tsEncodings = new ArrayList<>();
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.RLE);
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
+
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("tag1", "v1");
+    tagsList.add(tags);
+    tagsList.add(tags);
+
+    session
+        .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
+            null, null);
+
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
+
+  }
+
+  @Test
   public void testTestMethod()
       throws StatementExecutionException, IoTDBConnectionException, BatchExecutionException {
 
@@ -169,17 +201,17 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    // test insert batch
-    Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId, "s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId, "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId, "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    // test insert tablet
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    RowBatch rowBatch = schema.createRowBatch("root.sg1.d1", 100);
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
 
-    session.testInsertBatch(rowBatch);
+    session.testInsertTablet(tablet);
 
-    // test insert row
+    // test insert record
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -189,10 +221,10 @@ public class IoTDBSessionIT {
       values.add("1");
       values.add("2");
       values.add("3");
-      session.testInsert(deviceId, time, measurements, values);
+      session.testInsertRecord(deviceId, time, measurements, values);
     }
 
-    // test insert row in batch
+    // test insert records
     measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
@@ -213,7 +245,7 @@ public class IoTDBSessionIT {
       valuesList.add(values);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.testInsertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        session.testInsertRecords(deviceIds, timestamps, measurementsList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -221,7 +253,7 @@ public class IoTDBSessionIT {
       }
     }
 
-    session.testInsertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+    session.testInsertRecords(deviceIds, timestamps, measurementsList, valuesList);
   }
 
   @Test
@@ -268,7 +300,7 @@ public class IoTDBSessionIT {
 
     query3();
 
-//    insertRowBatchTest1();
+//    insertTabletTest1();
     deleteData();
 
     query();
@@ -277,7 +309,7 @@ public class IoTDBSessionIT {
 
     query2();
 
-    insertInBatch();
+    insertRecords();
 
     query4();
 
@@ -302,7 +334,7 @@ public class IoTDBSessionIT {
 
     // set storage group but do not create timeseries
     session.setStorageGroup("root.sg3");
-    insertRowBatchTest1("root.sg3.d1");
+    insertTabletTest1("root.sg3.d1");
 
     // create timeseries but do not set storage group
     session.createTimeseries("root.sg4.d1.s1", TSDataType.INT64, TSEncoding.RLE,
@@ -311,10 +343,10 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg4.d1.s3", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
-    insertRowBatchTest1("root.sg4.d1");
+    insertTabletTest1("root.sg4.d1");
 
     // do not set storage group and create timeseries
-    insertRowBatchTest1("root.sg5.d1");
+    insertTabletTest1("root.sg5.d1");
 
     session.close();
   }
@@ -368,7 +400,6 @@ public class IoTDBSessionIT {
   private void insertInChinese(String storageGroup, String[] devices)
       throws StatementExecutionException, IoTDBConnectionException {
     for (String path : devices) {
-      String fullPath = storageGroup + "." + path;
       for (int i = 0; i < 10; i++) {
         String[] ss = path.split("\\.");
         String deviceId = storageGroup;
@@ -380,12 +411,12 @@ public class IoTDBSessionIT {
         List<String> values = new ArrayList<>();
         measurements.add(sensorId);
         values.add("100");
-        session.insert(deviceId, i, measurements, values);
+        session.insertRecord(deviceId, i, measurements, values);
       }
     }
   }
 
-  private void insertInBatch() throws IoTDBConnectionException, BatchExecutionException {
+  private void insertRecords() throws IoTDBConnectionException, BatchExecutionException {
     String deviceId = "root.sg1.d2";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -407,7 +438,7 @@ public class IoTDBSessionIT {
       valuesList.add(values);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+        session.insertRecords(deviceIds, timestamps, measurementsList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -415,7 +446,7 @@ public class IoTDBSessionIT {
       }
     }
 
-    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+    session.insertRecords(deviceIds, timestamps, measurementsList, valuesList);
   }
 
   private void insertInObject() throws IoTDBConnectionException, StatementExecutionException {
@@ -425,7 +456,7 @@ public class IoTDBSessionIT {
     measurements.add("s2");
     measurements.add("s3");
     for (long time = 0; time < 100; time++) {
-      session.insert(deviceId, time, measurements, 1L, 2L, 3L);
+      session.insertRecord(deviceId, time, measurements, 1L, 2L, 3L);
     }
   }
 
@@ -440,38 +471,38 @@ public class IoTDBSessionIT {
       values.add("1");
       values.add("2");
       values.add("3");
-      session.insert(deviceId, time, measurements, values);
+      session.insertRecord(deviceId, time, measurements, values);
     }
   }
 
-  private void insertRowBatchTest1(String deviceId)
+  private void insertTabletTest1(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
-    Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId, "s1"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId, "s2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId, "s3"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    RowBatch rowBatch = schema.createRowBatch(deviceId, 100);
+    Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
-    long[] timestamps = rowBatch.timestamps;
-    Object[] values = rowBatch.values;
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
 
     for (long time = 0; time < 100; time++) {
-      int row = rowBatch.batchSize++;
+      int row = tablet.rowSize++;
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
         sensor[row] = i;
       }
-      if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
-        rowBatch.reset();
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
       }
     }
 
-    if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
-      rowBatch.reset();
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
     }
   }
 
@@ -716,114 +747,101 @@ public class IoTDBSessionIT {
     assertEquals(correctStatus, status);
   }
 
-  private void insertRowBatchTest2(String deviceId)
+  private void insertTabletTest2(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
-    Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId,"s1"), 
-        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s2"), 
-        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s3"), 
-        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    RowBatch rowBatch = schema.createRowBatch(deviceId, 256);
+    Tablet tablet = new Tablet(deviceId, schemaList, 256);
 
-    long[] timestamps = rowBatch.timestamps;
-    Object[] values = rowBatch.values;
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
 
     for (long time = 0; time < 1000; time++) {
-      int row = rowBatch.batchSize++;
+      int row = tablet.rowSize++;
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
         sensor[row] = i;
       }
-      if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
-        rowBatch.reset();
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
       }
     }
 
-    if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
-      rowBatch.reset();
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
     }
   }
 
-  private void insertRowBatchTest3(String deviceId)
+  private void insertTabletTest3(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
-    Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId,"s1"), 
-        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s2"), 
-        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s3"), 
-        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
-    RowBatch rowBatch = schema.createRowBatch(deviceId, 200);
+    Tablet tablet = new Tablet(deviceId, schemaList, 200);
 
-    long[] timestamps = rowBatch.timestamps;
-    Object[] values = rowBatch.values;
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
 
     for (long time = 500; time < 1500; time++) {
-      int row = rowBatch.batchSize++;
+      int row = tablet.rowSize++;
       timestamps[row] = time;
       for (int i = 0; i < 3; i++) {
         long[] sensor = (long[]) values[i];
         sensor[row] = i;
       }
-      if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
-        rowBatch.reset();
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
       }
     }
 
-    if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
-      rowBatch.reset();
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
     }
   }
 
-  private void insertRowBatchTestForTime(String deviceId)
+  private void insertTabletTestForTime(String deviceId)
       throws IoTDBConnectionException, BatchExecutionException {
-    Schema schema = new Schema();
-    schema.registerTimeseries(new Path(deviceId,"s1"),
-        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s2"), 
-        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s3"), 
-        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s4"), 
-        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s5"), 
-        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schema.registerTimeseries(new Path(deviceId,"s6"), 
-        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.INT64, TSEncoding.RLE));
     long count = 10000000;
     long begin = 0;
-    //long begin = 1579414903000L;
 
-    RowBatch rowBatch = schema.createRowBatch(deviceId, 1000);
+    Tablet tablet = new Tablet(deviceId, schemaList, 1000);
 
-    long[] timestamps = rowBatch.timestamps;
-    Object[] values = rowBatch.values;
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
 
     for (long time = begin; time < count + begin; time++) {
-      int row = rowBatch.batchSize++;
+      int row = tablet.rowSize++;
       timestamps[row] = time;
       for (int i = 0; i < 6; i++) {
         long[] sensor = (long[]) values[i];
         sensor[row] = i;
       }
-      if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-        session.insertBatch(rowBatch);
-        rowBatch.reset();
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.insertTablet(tablet);
+        tablet.reset();
       }
     }
 
-    if (rowBatch.batchSize != 0) {
-      session.insertBatch(rowBatch);
-      rowBatch.reset();
+    if (tablet.rowSize != 0) {
+      session.insertTablet(tablet);
+      tablet.reset();
     }
 
   }

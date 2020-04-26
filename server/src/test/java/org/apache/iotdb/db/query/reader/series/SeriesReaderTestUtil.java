@@ -145,9 +145,7 @@ public class SeriesReaderTestUtil {
       }
       if ((i + 1) % flushInterval == 0) {
         fileWriter.flushAllChunkGroups();
-        Pair<Long, Long> versionPair = new Pair<>(fileWriter.getIOWriter().getPos(),
-            tsFileResource.getHistoricalVersions().iterator().next());
-        fileWriter.addVersionPair(versionPair);
+        fileWriter.writeVersion(tsFileResource.getHistoricalVersions().iterator().next());
       }
     }
     fileWriter.close();

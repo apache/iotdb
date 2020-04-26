@@ -95,6 +95,8 @@ public class TSFileDescriptor {
           url = u.getFile();
         }
       }
+    } else {
+      url += (File.separatorChar + TSFileConfig.CONFIG_FILE_NAME);
     }
     try {
       inputStream = new FileInputStream(new File(url));

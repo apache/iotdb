@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.CommonUtils;
@@ -93,22 +93,22 @@ public abstract class AbstractMemTable implements IMemTable {
         Object value = CommonUtils.parseValue(insertPlan.getSchemas()[i].getType(),
             insertPlan.getValues()[i]);
 
+        memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
+
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
             insertPlan.getSchemas()[i], insertPlan.getTime(), value);
       }
-      long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
-      memSize += recordSizeInByte;
-    } catch (Exception e) {
+    } catch (QueryProcessException e) {
       throw new WriteProcessException(e.getMessage());
     }
   }
 
   @Override
-  public void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
+  public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
     try {
-      write(batchInsertPlan, start, end);
-      long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan, start, end);
+      write(insertTabletPlan, start, end);
+      long recordSizeInByte = MemUtils.getRecordSize(insertTabletPlan, start, end);
       memSize += recordSizeInByte;
     } catch (RuntimeException e) {
       throw new WriteProcessException(e.getMessage());
@@ -124,12 +124,12 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void write(BatchInsertPlan batchInsertPlan, int start, int end) {
-    for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
-      IWritableMemChunk memSeries = createIfNotExistAndGet(batchInsertPlan.getDeviceId(),
-          batchInsertPlan.getMeasurements()[i], batchInsertPlan.getSchemas()[i]);
-      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i],
-          batchInsertPlan.getDataTypes()[i], start, end);
+  public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      IWritableMemChunk memSeries = createIfNotExistAndGet(insertTabletPlan.getDeviceId(),
+          insertTabletPlan.getMeasurements()[i], insertTabletPlan.getSchemas()[i]);
+      memSeries.write(insertTabletPlan.getTimes(), insertTabletPlan.getColumns()[i],
+          insertTabletPlan.getDataTypes()[i], start, end);
     }
   }
 

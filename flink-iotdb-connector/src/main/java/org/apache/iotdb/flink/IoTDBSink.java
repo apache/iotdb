@@ -21,7 +21,7 @@ package org.apache.iotdb.flink;
 import com.google.common.base.Preconditions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,12 +44,13 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     private IoTDBOptions options;
     private IoTSerializationSchema<IN> serializationSchema;
     private Map<String, IoTDBOptions.TimeseriesOption> timeseriesOptionMap;
-    private transient Session session;
+    private transient SessionPool pool;
     private transient ScheduledExecutorService scheduledExecutor;
 
     private int batchSize = 0;
     private int flushIntervalMs = 3000;
     private List<Event> batchList;
+    private int sessionPoolSize = 2;
 
     public IoTDBSink(IoTDBOptions options, IoTSerializationSchema<IN> schema) {
         this.options = options;
@@ -68,13 +69,12 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     }
 
     void initSession() throws Exception {
-        session = new Session(options.getHost(), options.getPort(), options.getUser(), options.getPassword());
-        session.open();
+        pool = new SessionPool(options.getHost(), options.getPort(), options.getUser(), options.getPassword(), sessionPoolSize);
 
-        session.setStorageGroup(options.getStorageGroup());
+        pool.setStorageGroup(options.getStorageGroup());
         for (IoTDBOptions.TimeseriesOption option : options.getTimeseriesOptionList()) {
-            if (!session.checkTimeseriesExists(option.getPath())) {
-                session.createTimeseries(option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
+            if (!pool.checkTimeseriesExists(option.getPath())) {
+                pool.createTimeseries(option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
             }
         }
     }
@@ -93,8 +93,8 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
     }
 
     //  for testing
-    void setSession(Session session) {
-        this.session = session;
+    void setSessionPool(SessionPool pool) {
+        this.pool = pool;
     }
 
     @Override
@@ -115,7 +115,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
         }
 
         convertText(event.getDevice(), event.getMeasurements(), event.getValues());
-        session.insert(event.getDevice(), event.getTimestamp(), event.getMeasurements(),
+        pool.insertRecord(event.getDevice(), event.getTimestamp(), event.getMeasurements(),
                 event.getValues());
         LOG.debug("send event successfully");
     }
@@ -132,15 +132,21 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
         return this;
     }
 
+    public IoTDBSink<IN> withSessionPoolSize(int sessionPoolSize) {
+        Preconditions.checkArgument(sessionPoolSize > 0);
+        this.sessionPoolSize = sessionPoolSize;
+        return this;
+    }
+
     @Override
     public void close() throws Exception {
-        if (session != null) {
+        if (pool != null) {
             try {
                 flush();
             } catch (Exception e) {
                 LOG.error("flush error", e);
             }
-            session.close();
+            pool.close();
         }
         if (scheduledExecutor != null) {
             scheduledExecutor.shutdown();
@@ -176,7 +182,7 @@ public class IoTDBSink<IN> extends RichSinkFunction<IN> {
                         measurementsList.add(event.getMeasurements());
                         valuesList.add(event.getValues());
                     }
-                    session.insertInBatch(deviceIds, timestamps, measurementsList, valuesList);
+                    pool.insertRecords(deviceIds, timestamps, measurementsList, valuesList);
                     LOG.debug("send event successfully");
                     batchList.clear();
                 }

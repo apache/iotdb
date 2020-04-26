@@ -20,6 +20,7 @@ package org.apache.iotdb.db.writelog;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -129,17 +131,18 @@ public class PerformanceTest {
       MManager.getInstance().setStorageGroup("root.logTestDevice");
     } catch (MetadataException ignored) {
     }
-    MManager.getInstance().createTimeseries("root.logTestDevice.s1",
-        TSDataType.DOUBLE.name(),
-        TSEncoding.PLAIN.name());
     MManager.getInstance()
-        .createTimeseries("root.logTestDevice.s2", TSDataType.INT32.name(),
-            TSEncoding.PLAIN.name());
+        .createTimeseries("root.logTestDevice.s1", TSDataType.DOUBLE, TSEncoding.PLAIN,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     MManager.getInstance()
-        .createTimeseries("root.logTestDevice.s3", TSDataType.TEXT.name(),
-            TSEncoding.PLAIN.name());
-    MManager.getInstance().createTimeseries("root.logTestDevice.s4", TSDataType.BOOLEAN.name(),
-        TSEncoding.PLAIN.name());
+        .createTimeseries("root.logTestDevice.s2", TSDataType.INT32, TSEncoding.PLAIN,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
+    MManager.getInstance()
+        .createTimeseries("root.logTestDevice.s3", TSDataType.TEXT, TSEncoding.PLAIN,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
+    MManager.getInstance()
+        .createTimeseries("root.logTestDevice.s4", TSDataType.BOOLEAN, TSEncoding.PLAIN,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     for (int i = 0; i < 1000000; i++) {

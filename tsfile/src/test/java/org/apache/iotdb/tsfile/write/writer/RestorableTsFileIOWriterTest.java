@@ -27,10 +27,10 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.constant.TestConstant;
+import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -59,14 +59,14 @@ public class RestorableTsFileIOWriterTest {
   private static final String FILE_NAME = TestConstant.BASE_OUTPUT_PATH.concat("test.ts");
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
-  @Test(expected = IOException.class)
+  @Test(expected = NotCompatibleTsFileException.class)
   public void testBadHeadMagic() throws Exception {
     File file = fsFactory.getFile(FILE_NAME);
     FileWriter fWriter = new FileWriter(file);
     fWriter.write("Tsfile");
     fWriter.close();
     try {
-      RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
+      new RestorableTsFileIOWriter(file);
     } finally {
       assertTrue(file.delete());
     }
@@ -147,14 +147,16 @@ public class RestorableTsFileIOWriterTest {
     writer.write(new TSRecord(2, "d1").addTuple(new FloatDataPoint("s1", 5))
         .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushAllChunkGroups();
+    writer.writeVersion(0);
     long pos = writer.getIOWriter().getPos();
-    // let's delete one byte.
+    // let's delete one byte. the version is broken
     writer.getIOWriter().out.truncate(pos - 1);
     writer.getIOWriter().close();
     RestorableTsFileIOWriter rWriter = new RestorableTsFileIOWriter(file);
     writer = new TsFileWriter(rWriter);
     writer.close();
-    assertEquals(TsFileIOWriter.magicStringBytes.length, rWriter.getTruncatedPosition());
+    // truncate version marker and version
+    assertEquals(pos - 1 - Long.BYTES, rWriter.getTruncatedPosition());
     assertTrue(file.delete());
   }
 

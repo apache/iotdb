@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.read.expression;
 
-public interface IExpression {
+import java.io.Serializable;
+
+public interface IExpression extends Serializable {
 
   ExpressionType getType();
 

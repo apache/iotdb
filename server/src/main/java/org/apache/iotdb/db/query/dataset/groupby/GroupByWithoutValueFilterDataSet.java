@@ -87,7 +87,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       if (!pathExecutors.containsKey(path)) {
         //init GroupByExecutor
         pathExecutors.put(path,
-                getGroupByExecutor(path, groupByPlan.getAllSensorsInDevice(path.getDevice()), dataTypes.get(i), context, timeFilter, null));
+                getGroupByExecutor(path, groupByPlan.getAllMeasurementsInDevice(path.getDevice()), dataTypes.get(i), context, timeFilter, null));
         resultIndexes.put(path, new ArrayList<>());
       }
       resultIndexes.get(path).add(i);
@@ -104,7 +104,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
               + "in GroupByWithoutValueFilterDataSet.");
     }
     hasCachedTimeInterval = false;
-    RowRecord record = new RowRecord(curStartTime);
+    RowRecord record;
+    if (leftCRightO) {
+      record = new RowRecord(curStartTime);
+    } else {
+      record = new RowRecord(curEndTime-1);
+    }
 
     AggregateResult[] fields = new AggregateResult[paths.size()];
 

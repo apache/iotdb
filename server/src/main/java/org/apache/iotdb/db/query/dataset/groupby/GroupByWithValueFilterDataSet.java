@@ -102,7 +102,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected IReaderByTimestamp getReaderByTime(Path path, RawDataQueryPlan queryPlan,
       TSDataType dataType, QueryContext context, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-    return new SeriesReaderByTimestamp(path, queryPlan.getAllSensorsInDevice(path.getDevice()), dataType, context,
+    return new SeriesReaderByTimestamp(path, queryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, context,
         QueryResourceManager.getInstance().getQueryDataSource(path, context, null), fileFilter);
   }
 
@@ -182,7 +182,12 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private RowRecord constructRowRecord(List<AggregateResult> aggregateResultList) {
-    RowRecord record = new RowRecord(curStartTime);
+    RowRecord record;
+    if (leftCRightO) {
+      record = new RowRecord(curStartTime);
+    } else {
+      record = new RowRecord(curEndTime-1);
+    }
     for (int i = 0; i < paths.size(); i++) {
       AggregateResult aggregateResult = aggregateResultList.get(i);
       record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());

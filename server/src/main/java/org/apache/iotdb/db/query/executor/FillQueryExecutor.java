@@ -26,7 +26,6 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.fill.IFill;
-import org.apache.iotdb.db.query.fill.LinearFill;
 import org.apache.iotdb.db.query.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -38,7 +37,6 @@ import javax.activation.UnsupportedDataTypeException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class FillQueryExecutor {
 
@@ -77,8 +75,6 @@ public class FillQueryExecutor {
           case INT64:
           case FLOAT:
           case DOUBLE:
-            fill = new LinearFill(dataType, queryTime, defaultFillInterval, defaultFillInterval);
-            break;
           case BOOLEAN:
           case TEXT:
             fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
@@ -89,7 +85,8 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      configureFill(fill, dataType, path, fillQueryPlan.getAllSensorsInDevice(path.getDevice()), context, queryTime);
+      fill.configureFill(path, dataType, queryTime,
+          fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -102,12 +99,5 @@ public class FillQueryExecutor {
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
-  }
-
-  protected void configureFill(IFill fill, TSDataType dataType, Path path, Set<String> allSensors, QueryContext context,
-                               long queryTime) throws StorageEngineException, QueryProcessException {
-    fill.setDataType(dataType);
-    fill.setQueryTime(queryTime);
-    fill.constructReaders(path, allSensors, context);
   }
 }

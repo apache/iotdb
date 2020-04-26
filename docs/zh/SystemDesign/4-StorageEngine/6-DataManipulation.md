@@ -29,7 +29,7 @@
 
 * 对应的接口
 	* JDBC 的 execute 和 executeBatch 接口
-	* Session 的 insert 和 insertInBatch
+	* Session 的 insertRecord 和 insertRecords
 
 * 总入口: public void insert(InsertPlan insertPlan)   StorageEngine.java
 	* 找到对应的 StorageGroupProcessor
@@ -71,13 +71,17 @@
 * 对应的接口
 	* JDBC 的 execute 接口，使用delete SQL语句
 	
+每个 StorageGroupProsessor 中针对每个分区会维护一个自增的版本号，由 SimpleFileVersionController 管理。
+每个内存缓冲区 memtable 在持久化的时候会申请一个版本号。持久化到 TsFile 后，会在 TsFileMetadata 中记录此 memtable 对应的 多个 ChunkGroup 的终止位置和版本号。
+查询时会根据此信息对 ChunkMetadata 赋 version。
+	
 * 总入口: public void delete(String deviceId, String measurementId, long timestamp) StorageEngine.java
-    * 找到对应的 StorageGroupProcessor
-    * 找到受影响的所有TsfileProcessor
-    * 写写前日志
-    * 找到受影响的所有TsfileResource
-    * 在mod文件中记录删除的时间点
-    * 如果文件没有关闭（存在对应的TsfileProcessor），则删除内存中的数据
+  * 找到对应的 StorageGroupProcessor
+  * 找到受影响的所有 working TsFileProcessor 记录写前日志
+  * 找到受影响的所有 TsFileResource，在其对应的 mods 文件中记录一条记录：path，deleteTime，version
+  * 如果文件没有关闭，拿到对应的 TsFileProcessor
+    * 如果存在 working memtable：则删除内存中的数据
+    * 如果存在 正在 flush 的 memtable，记录一条记录，查询时跳过删掉的数据（注意此时文件中已经为这些 memtable 记录了 mods）
 
 
 ## 数据TTL设置

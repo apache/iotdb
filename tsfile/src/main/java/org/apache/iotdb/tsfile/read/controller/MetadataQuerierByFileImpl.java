@@ -33,7 +33,8 @@ import java.util.*;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
-  private static final int CHUNK_METADATA_CACHE_SIZE = 10000;
+  // number of cache entries (path -> List<ChunkMetadata>)
+  private static final int CACHED_ENTRY_NUMBER = 1000;
 
   private TsFileMetadata fileMetaData;
 
@@ -47,7 +48,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
   public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader) throws IOException {
     this.tsFileReader = tsFileReader;
     this.fileMetaData = tsFileReader.readFileMetadata();
-    chunkMetaDataCache = new LRUCache<Path, List<ChunkMetadata>>(CHUNK_METADATA_CACHE_SIZE) {
+    chunkMetaDataCache = new LRUCache<Path, List<ChunkMetadata>>(CACHED_ENTRY_NUMBER) {
       @Override
       public List<ChunkMetadata> loadObjectByKey(Path key) throws IOException {
         return loadChunkMetadata(key);
@@ -131,7 +132,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
           // check cache size, stop when reading enough
           count++;
-          if (count == CHUNK_METADATA_CACHE_SIZE) {
+          if (count == CACHED_ENTRY_NUMBER) {
             enough = true;
             break;
           }

@@ -25,11 +25,10 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -152,7 +151,7 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testIoTDBRowBatchWriteAndSyncClose()
+  public void testIoTDBTabletWriteAndSyncClose()
       throws WriteProcessException, QueryProcessException {
 
     String[] measurements = new String[2];
@@ -166,9 +165,9 @@ public class StorageGroupProcessorTest {
     schemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
     schemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
 
-    BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements,
+    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan("root.vehicle.d0", measurements,
         dataTypes);
-    batchInsertPlan1.setSchemas(schemas);
+    insertTabletPlan1.setSchemas(schemas);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
@@ -180,27 +179,27 @@ public class StorageGroupProcessorTest {
       ((int[]) columns[0])[r] = 1;
       ((long[]) columns[1])[r] = 1;
     }
-    batchInsertPlan1.setTimes(times);
-    batchInsertPlan1.setColumns(columns);
-    batchInsertPlan1.setRowCount(times.length);
+    insertTabletPlan1.setTimes(times);
+    insertTabletPlan1.setColumns(columns);
+    insertTabletPlan1.setRowCount(times.length);
 
-    processor.insertBatch(batchInsertPlan1);
+    processor.insertTablet(insertTabletPlan1);
     processor.asyncCloseAllWorkingTsFileProcessors();
 
-    BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements,
+    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan("root.vehicle.d0", measurements,
         dataTypes);
-    batchInsertPlan2.setSchemas(schemas);
+    insertTabletPlan2.setSchemas(schemas);
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
       ((int[]) columns[0])[r - 50] = 1;
       ((long[]) columns[1])[r - 50] = 1;
     }
-    batchInsertPlan2.setTimes(times);
-    batchInsertPlan2.setColumns(columns);
-    batchInsertPlan2.setRowCount(times.length);
+    insertTabletPlan2.setTimes(times);
+    insertTabletPlan2.setColumns(columns);
+    insertTabletPlan2.setRowCount(times.length);
 
-    processor.insertBatch(batchInsertPlan2);
+    processor.insertTablet(insertTabletPlan2);
     processor.asyncCloseAllWorkingTsFileProcessors();
     processor.syncCloseAllWorkingTsFileProcessors();
 

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
+import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -55,7 +56,7 @@ public class TsFileRecoverPerformer {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileRecoverPerformer.class);
 
-  private String insertFilePath;
+  private String filePath;
   private String logNodePrefix;
   private VersionController versionController;
   private TsFileResource resource;
@@ -64,7 +65,7 @@ public class TsFileRecoverPerformer {
 
   public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
       TsFileResource currentTsFileResource, boolean acceptUnseq, boolean isLastFile) {
-    this.insertFilePath = currentTsFileResource.getPath();
+    this.filePath = currentTsFileResource.getPath();
     this.logNodePrefix = logNodePrefix;
     this.versionController = versionController;
     this.resource = currentTsFileResource;
@@ -80,15 +81,19 @@ public class TsFileRecoverPerformer {
    */
   public RestorableTsFileIOWriter recover() throws StorageGroupProcessorException {
 
-    File insertFile = FSFactoryProducer.getFSFactory().getFile(insertFilePath);
-    if (!insertFile.exists()) {
-      logger.error("TsFile {} is missing, will skip its recovery.", insertFilePath);
+    File file = FSFactoryProducer.getFSFactory().getFile(filePath);
+    if (!file.exists()) {
+      logger.error("TsFile {} is missing, will skip its recovery.", filePath);
       return null;
     }
     // remove corrupted part of the TsFile
     RestorableTsFileIOWriter restorableTsFileIOWriter;
     try {
-      restorableTsFileIOWriter = new RestorableTsFileIOWriter(insertFile);
+      restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
+    } catch (NotCompatibleTsFileException e) {
+      boolean result = file.delete();
+      logger.warn("TsFile {} is incompatible. Delete it successfully {}", filePath, result);
+      throw new StorageGroupProcessorException(e);
     } catch (IOException e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -115,7 +120,7 @@ public class TsFileRecoverPerformer {
         return restorableTsFileIOWriter;
       } catch (IOException e) {
         throw new StorageGroupProcessorException(
-            "recover the resource file failed: " + insertFilePath
+            "recover the resource file failed: " + filePath
                 + RESOURCE_SUFFIX + e);
       }
     } else {
@@ -130,7 +135,7 @@ public class TsFileRecoverPerformer {
     // clean logs
     try {
       MultiFileLogNodeManager.getInstance()
-          .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(insertFilePath).getName());
+          .deleteNode(logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
     } catch (IOException e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -187,7 +192,8 @@ public class TsFileRecoverPerformer {
   private void redoLogs(RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
     IMemTable recoverMemTable = new PrimitiveMemTable();
-    LogReplayer logReplayer = new LogReplayer(logNodePrefix, insertFilePath, resource.getModFile(),
+    recoverMemTable.setVersion(versionController.nextVersion());
+    LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, resource.getModFile(),
         versionController, resource, recoverMemTable, acceptUnseq);
     logReplayer.replayLogs();
     try {

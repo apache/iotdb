@@ -68,7 +68,7 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 配置文件在"conf"文件夹下，包括：
 
   * 环境配置模块 (`iotdb-env.bat`, `iotdb-env.sh`), 
-  * 系统配置模块 (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * 系统配置模块 (`iotdb-engine.properties`)
   * 日志配置模块 (`logback.xml`). 
 
 想要了解更多，请浏览[Chapter3: Server](../3-Server/1-Download.html)
@@ -86,14 +86,18 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 Linux系统与MacOS系统启动命令如下：
 
 ```
-> sbin/start-server.sh
+> sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port>
 ```
 
 Windows系统启动命令如下：
 
 ```
-> sbin\start-server.bat
+> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
 ```
+- "-c" and "-rpc_port" 都是可选的。
+- 选项 "-c" 指定了配置文件所在的文件夹。
+- 选项 "-rpc_port" 指定了启动的 rpc port。
+- 如果两个选项同时指定，那么*rpc_port*将会覆盖*conf_path*下面的配置。
 
 
 ### 操作IoTDB

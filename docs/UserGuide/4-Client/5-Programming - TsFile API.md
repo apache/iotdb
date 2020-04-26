@@ -276,146 +276,9 @@ You could write a TsFile by constructing **TSRecord** if you have the **non-alig
 
 A more thorough example can be found at `/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTSRecord.java`
 
-```java
-package org.apache.iotdb.tsfile;
+You could write a TsFile by constructing **Tablet** if you have the **aligned** time series data.
 
-import java.io.File;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-/**
- * An example of writing data to TsFile
- * It uses the interface:
- * public void addMeasurement(MeasurementSchema MeasurementSchema) throws WriteProcessException
- */
-public class TsFileWriteWithTSRecord {
-
-  public static void main(String args[]) {
-    try {
-      String path = "test.tsfile";
-      File f = new File(path);
-      if (f.exists()) {
-        f.delete();
-      }
-      TsFileWriter tsFileWriter = new TsFileWriter(f);
-
-      // add measurements into file schema
-      tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_1", TSDataType.INT64, TSEncoding.RLE));
-      tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_2", TSDataType.INT64, TSEncoding.RLE));
-      tsFileWriter
-          .addMeasurement(new MeasurementSchema("sensor_3", TSDataType.INT64, TSEncoding.RLE));
-            
-      // construct TSRecord
-      TSRecord tsRecord = new TSRecord(1, "device_1");
-      DataPoint dPoint1 = new LongDataPoint("sensor_1", 1);
-      DataPoint dPoint2 = new LongDataPoint("sensor_2", 2);
-      DataPoint dPoint3 = new LongDataPoint("sensor_3", 3);
-      tsRecord.addTuple(dPoint1);
-      tsRecord.addTuple(dPoint2);
-      tsRecord.addTuple(dPoint3);
-            
-      // write TSRecord
-      tsFileWriter.write(tsRecord);
-      
-      // close TsFile
-      tsFileWriter.close();
-    } catch (Throwable e) {
-      e.printStackTrace();
-      System.out.println(e.getMessage());
-    }
-  }
-}
-
-```
-
-You could write a TsFile by constructing **RowBatch** if you have the **aligned** time series data.
-
-A more thorough example can be found at `/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithRowBatch.java`
-
-```java
-package org.apache.iotdb.tsfile;
-
-import java.io.File;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
-/**
- * An example of writing data with RowBatch to TsFile
- */
-public class TsFileWriteWithRowBatch {
-
-  public static void main(String[] args) {
-    try {
-      String path = "test.tsfile";
-      File f = new File(path);
-      if (f.exists()) {
-        f.delete();
-      }
-
-      Schema schema = new Schema();
-
-      // the number of rows to include in the row batch
-      int rowNum = 1000000;
-      // the number of values to include in the row batch
-      int sensorNum = 10;
-
-      // add measurements into file schema (all with INT64 data type)
-      for (int i = 0; i < sensorNum; i++) {
-        schema.registerMeasurement(
-                new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
-      }
-
-      // add measurements into TSFileWriter
-      TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
-
-      // construct the row batch
-      RowBatch rowBatch = schema.createRowBatch("device_1");
-
-      long[] timestamps = rowBatch.timestamps;
-      Object[] values = rowBatch.values;
-
-      long timestamp = 1;
-      long value = 1000000L;
-
-      for (int r = 0; r < rowNum; r++, value++) {
-        int row = rowBatch.batchSize++;
-        timestamps[row] = timestamp++;
-        for (int i = 0; i < sensorNum; i++) {
-          long[] sensor = (long[]) values[i];
-          sensor[row] = value;
-        }
-        // write RowBatch to TsFile
-        if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-          tsFileWriter.write(rowBatch);
-          rowBatch.reset();
-        }
-      }
-      // write RowBatch to TsFile
-      if (rowBatch.batchSize != 0) {
-        tsFileWriter.write(rowBatch);
-        rowBatch.reset();
-      }
-
-      // close TsFile
-      tsFileWriter.close();
-    } catch (Throwable e) {
-      e.printStackTrace();
-      System.out.println(e.getMessage());
-    }
-  }
-}
-
-```
+A more thorough example can be found at `/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTablet.java`
 
 ### Interface for Reading TsFile
 
@@ -687,15 +550,11 @@ public class TsFileRead {
 
 ```
 
-## User-specified config file path
+## Change TsFile Configuration
 
-Default config file `tsfile-format.properties.template` is located at `/tsfile/src/main/resources` directory. If you want to use your own path, you can:
-```
-System.setProperty(TsFileConstant.TSFILE_CONF, "your config file path");
-```
-and then call:
 ```
 TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
+config.setXXX();
 ```
 
 ## Bloom filter
@@ -704,9 +563,11 @@ Bloom filter checks whether a given time series is in the tsfile before loading 
 If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).
 
 #### configuration 
-you can control the false positive rate of bloom filter by the following parameter in the config file `tsfile-format.properties` which located at `/server/src/assembly/resources/conf` directory
+
+you can control the false positive rate of bloom filter by the following parameter in the config
+
 ```
 # The acceptable error rate of bloom filter, should be in [0.01, 0.1], default is 0.05
-bloom_filter_error_rate=0.05
+bloomFilterErrorRate=0.05
 ```
 
