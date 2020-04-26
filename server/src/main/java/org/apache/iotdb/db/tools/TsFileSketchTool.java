@@ -26,7 +26,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -60,12 +59,12 @@ public class TsFileSketchTool {
       // get metadata information
       TsFileSequenceReader reader = new TsFileSequenceReader(filename);
       TsFileMetadata tsFileMetaData = reader.readFileMetadata();
-      List<String> tsDeviceSortedList = tsFileMetaData.getDeviceMetadataIndex()
-          .stream().map(MetadataIndex::getName).sorted().collect(Collectors.toList());
+      List<MetadataIndex> metadataIndexList = tsFileMetaData.getDeviceMetadataIndex();
+      List<String> devices = reader.getDevicesByMetadata(metadataIndexList);
       Map<String, Map<String, List<ChunkMetadata>>> tsDeviceSeriesMetadataMap = new LinkedHashMap<>();
-      for (String deviceId : tsDeviceSortedList) {
-        Map<String, List<ChunkMetadata>> seriesMetadataMap =
-            reader.readChunkMetadataInDevice(deviceId);
+      for (String deviceId : devices) {
+        Map<String, List<ChunkMetadata>> seriesMetadataMap = reader
+            .readChunkMetadataInDevice(deviceId);
         tsDeviceSeriesMetadataMap.put(deviceId, seriesMetadataMap);
       }
 
@@ -84,8 +83,7 @@ public class TsFileSketchTool {
               + "|\t[version number] "
               + reader.readVersionNumber());
       // device begins
-      for (
-          Entry<String, Map<String, List<ChunkMetadata>>> entry : tsDeviceSeriesMetadataMap
+      for (Entry<String, Map<String, List<ChunkMetadata>>> entry : tsDeviceSeriesMetadataMap
           .entrySet()) {
         printlnBoth(pw, str1.toString() + "\t[Chunks] of " + entry.getKey() +
             ", num of Chunks:" + entry.getValue().size());
@@ -106,8 +104,7 @@ public class TsFileSketchTool {
                 String.format("%20s", "") + "|\t\t" + chunk.getHeader().getNumOfPages() + " pages");
             chunkEndPos =
                 chunkMetaData.getOffsetOfChunkHeader() + chunk.getHeader().getSerializedSize()
-                    + chunk
-                    .getHeader().getDataSize();
+                    + chunk.getHeader().getDataSize();
           }
         }
         // chunkGroupFooter begins
@@ -125,18 +122,13 @@ public class TsFileSketchTool {
       }
 
       // metadata begins
-      if (tsDeviceSortedList.isEmpty()) {
-        printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos() - 1)
-            + "|\t[marker] 2");
+      if (metadataIndexList.isEmpty()) {
+        printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos() - 1) + "|\t[marker] 2");
       } else {
-        printlnBoth(pw,
-            String.format("%20s", (tsFileMetaData.getDeviceMetadataIndex()
-                .get(0).getOffset() - 1)
-                + "|\t[marker] 2"));
+        printlnBoth(pw, String.format("%20s", reader.getStartOffset() + "|\t[marker] 2"));
       }
       for (MetadataIndex metadataIndex : tsFileMetaData.getDeviceMetadataIndex()) {
-        printlnBoth(pw,
-            String.format("%20s", metadataIndex.getOffset())
+        printlnBoth(pw, String.format("%20s", metadataIndex.getOffset())
                 + "|\t[DeviceMetadata] of " + metadataIndex.getName());
       }
 

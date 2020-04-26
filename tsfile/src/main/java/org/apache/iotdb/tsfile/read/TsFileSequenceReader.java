@@ -540,7 +540,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     while (buffer.hasRemaining()) {
       nextMetadataIndexList.add(MetadataIndex.deserializeFrom(buffer));
     }
-    return getDeviceMetaDataAndEndOffset(nextMetadataIndexList, measurement);
+    return getMeasurementMetaDataAndEndOffset(nextMetadataIndexList, measurement);
   }
 
   /**

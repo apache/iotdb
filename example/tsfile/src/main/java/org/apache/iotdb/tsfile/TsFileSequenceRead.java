@@ -110,12 +110,10 @@ public class TsFileSequenceRead {
     }
     System.out.println("[Metadata]");
     List<MetadataIndex> metadataIndexList = metaData.getDeviceMetadataIndex();
-    for (MetadataIndex metadataIndex : metadataIndexList) {
-      Map<String, List<ChunkMetadata>> seriesMetaData =
-          reader.readChunkMetadataInDevice(metadataIndex.getName());
+    for (String device: reader.getDevicesByMetadata(metadataIndexList)) {
+      Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
       System.out.println(String
-          .format("\t[Device]Device %s, Number of Measurements %d", metadataIndex.getName(),
-              seriesMetaData.size()));
+          .format("\t[Device]Device %s, Number of Measurements %d", device, seriesMetaData.size()));
       for (Map.Entry<String, List<ChunkMetadata>> serie : seriesMetaData.entrySet()) {
         System.out.println("\t\tMeasurement:" + serie.getKey());
         for (ChunkMetadata chunkMetadata : serie.getValue()) {
