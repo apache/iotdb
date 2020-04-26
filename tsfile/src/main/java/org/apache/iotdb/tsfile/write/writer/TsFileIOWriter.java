@@ -385,6 +385,8 @@ public class TsFileIOWriter {
       }
     }
 
+    deviceMetadaIndexQueue
+        .add(new MetadataIndex("", out.getPosition(), ChildMetadataIndexType.DEVICE));
     int queueSize = deviceMetadaIndexQueue.size();
     MetadataIndex deviceMetadataIndex;
     while (queueSize > maxNumOfIndexItems) {
@@ -392,15 +394,18 @@ public class TsFileIOWriter {
         deviceMetadataIndex = deviceMetadaIndexQueue.poll();
         if (i % maxNumOfIndexItems == 0) {
           if (i != 0) {
-            new MetadataIndex(deviceMetadataIndex.getName(), deviceMetadataIndex.getOffset(),
+            new MetadataIndex("", deviceMetadataIndex.getOffset(),
                 ChildMetadataIndexType.DEVICE).serializeTo(out.wrapAsStream());
           }
           // add next device index item to parent node
           deviceMetadaIndexQueue.add(new MetadataIndex(deviceMetadataIndex.getName(),
-              out.getPosition(), ChildMetadataIndexType.DEVICE
-          ));
+              out.getPosition(), ChildMetadataIndexType.DEVICE));
         }
         deviceMetadataIndex.serializeTo(out.wrapAsStream());
+        if (i == queueSize - 1 && i % maxNumOfIndexItems != 0) {
+          deviceMetadaIndexQueue
+              .add(new MetadataIndex("", out.getPosition(), ChildMetadataIndexType.DEVICE));
+        }
       }
       addEmptyMetadataIndex(ChildMetadataIndexType.DEVICE);
       queueSize = deviceMetadaIndexQueue.size();
@@ -409,9 +414,6 @@ public class TsFileIOWriter {
         metadataIndex -> metadataIndex
             .setChildMetadataIndexType(ChildMetadataIndexType.DEVICE_INDEX));
     metadataIndexList.addAll(deviceMetadaIndexQueue);
-    metadataIndexList
-        .add(new MetadataIndex("", out.getPosition(), ChildMetadataIndexType.DEVICE_INDEX));
-
     // return
     return metadataIndexList;
   }
