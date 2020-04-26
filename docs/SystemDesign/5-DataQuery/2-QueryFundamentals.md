@@ -21,7 +21,8 @@
 
 # Query Fundamentals
 
-
+This chapter introduces some basic concepts, terms and things to pay attention in IoTDB Query design. 
+Designers and developers who hope to start with IoTDB query design may find this guide helpful, as some concepts will be treated as common sense and not explained in detail in the following chapters. 
 
 ## Sequential and un-sequential TsFiles
 
