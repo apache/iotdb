@@ -260,14 +260,14 @@ public class AuthUtils {
    * add privilege.
    *
    * @param path series path
-   * @param privilgeId privilege Id
+   * @param privilegeId privilege Id
    * @param privilegeList privileges in List structure
    */
-  public static void addPrivilege(String path, int privilgeId, List<PathPrivilege> privilegeList) {
+  public static void addPrivilege(String path, int privilegeId, List<PathPrivilege> privilegeList) {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
-        if (privilgeId != PrivilegeType.ALL.ordinal()) {
-          pathPrivilege.getPrivileges().add(privilgeId);
+        if (privilegeId != PrivilegeType.ALL.ordinal()) {
+          pathPrivilege.getPrivileges().add(privilegeId);
         } else {
           for (PrivilegeType privilegeType : PrivilegeType.values()) {
             pathPrivilege.getPrivileges().add(privilegeType.ordinal());
@@ -277,8 +277,8 @@ public class AuthUtils {
       }
     }
     PathPrivilege pathPrivilege = new PathPrivilege(path);
-    if (privilgeId != PrivilegeType.ALL.ordinal()) {
-      pathPrivilege.getPrivileges().add(privilgeId);
+    if (privilegeId != PrivilegeType.ALL.ordinal()) {
+      pathPrivilege.getPrivileges().add(privilegeId);
     } else {
       for (PrivilegeType privilegeType : PrivilegeType.values()) {
         pathPrivilege.getPrivileges().add(privilegeType.ordinal());
