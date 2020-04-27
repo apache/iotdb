@@ -224,10 +224,31 @@ public class ClusterDescriptor {
     }
   }
 
+  /**
+   * This method is for setting hot modified properties of the cluster. Currently, we support
+   * enable_thrift_compression, max_concurrent_client_num, connection_time_out_ms,
+   * max_resolved_log_size
+   *
+   * @param properties
+   * @throws QueryProcessException
+   */
   public void loadHotModifiedProps(Properties properties)
       throws QueryProcessException {
 
-    // TODO implement some hot modified properties to load
+    config.setRpcThriftCompressionEnabled(Boolean.parseBoolean(properties
+        .getProperty("ENABLE_THRIFT_COMPRESSION",
+            String.valueOf(config.isRpcThriftCompressionEnabled()))));
+
+    config.setMaxConcurrentClientNum(Integer.parseInt(properties
+        .getProperty("MAX_CONCURRENT_CLIENT_NUM",
+            String.valueOf(config.getMaxConcurrentClientNum()))));
+
+    config.setConnectionTimeoutInMS(Integer.parseInt(properties
+        .getProperty("CONNECTION_TIME_OUT_MS", String.valueOf(config.getConnectionTimeoutInMS()))));
+
+    config.setMaxRemovedLogSize(Long.parseLong(properties
+        .getProperty("MAX_REMOVED_LOG_SIZE", String.valueOf(config.getMaxRemovedLogSize()))));
+
     logger.info("Set cluster configuration {}", properties);
   }
 
