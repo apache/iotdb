@@ -113,6 +113,7 @@ public class IoTDBSimpleQueryIT {
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s2) VALUES (5, 5)");
       statement.execute("INSERT INTO root.sg1.d0(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s4) VALUES (5, 5)");
 
       ResultSet resultSet = statement.executeQuery("show timeseries limit 2 offset 1");
 
@@ -122,6 +123,7 @@ public class IoTDBSimpleQueryIT {
         Assert.assertEquals(exps[count++], resultSet.getString(1));
       }
 
+      Assert.assertEquals(exps.length, count);
       resultSet.close();
     }
   }

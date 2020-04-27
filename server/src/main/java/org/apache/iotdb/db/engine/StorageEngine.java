@@ -56,7 +56,7 @@ import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -270,20 +270,20 @@ public class StorageEngine implements IService {
    *
    * @return result of each row
    */
-  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws StorageEngineException {
+  public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(batchInsertPlan.getDeviceId());
+      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
     } catch (StorageEngineException e) {
       logger.warn("get StorageGroupProcessor of device {} failed, because {}",
-          batchInsertPlan.getDeviceId(),
+          insertTabletPlan.getDeviceId(),
           e.getMessage(), e);
       throw new StorageEngineException(e);
     }
 
     // TODO monitor: update statistics
     try {
-      return storageGroupProcessor.insertBatch(batchInsertPlan);
+      return storageGroupProcessor.insertTablet(insertTabletPlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }

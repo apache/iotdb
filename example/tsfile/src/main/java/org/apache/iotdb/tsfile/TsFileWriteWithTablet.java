@@ -19,80 +19,86 @@
 
 package org.apache.iotdb.tsfile;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * An example of writing data with RowBatch to TsFile
+ * An example of writing data with Tablet to TsFile
  */
-public class TsFileWriteWithRowBatch {
+public class TsFileWriteWithTablet {
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileWriteWithTablet.class);
 
   public static void main(String[] args) {
     try {
       String path = "test.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists()) {
-        f.delete();
+        if (!f.delete()) {
+          throw new RuntimeException("can not delete " + f.getAbsolutePath());
+        }
       }
 
       Schema schema = new Schema();
 
-      // the number of rows to include in the row batch
+      // the number of rows to include in the tablet
       int rowNum = 1000000;
-      // the number of values to include in the row batch
+      // the number of values to include in the tablet
       int sensorNum = 10;
 
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < sensorNum; i++) {
-        schema.registerTimeseries(new Path("device_1", "sensor_" + (i + 1)),
+        measurementSchemas.add(
             new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
 
       // add measurements into TSFileWriter
-      TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
+      try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
 
-      // construct the row batch
-      RowBatch rowBatch = schema.createRowBatch("device_1");
+        // construct the tablet
+        Tablet tablet = new Tablet("device_1", measurementSchemas);
 
-      long[] timestamps = rowBatch.timestamps;
-      Object[] values = rowBatch.values;
+        long[] timestamps = tablet.timestamps;
+        Object[] values = tablet.values;
 
-      long timestamp = 1;
-      long value = 1000000L;
+        long timestamp = 1;
+        long value = 1000000L;
 
-      for (int r = 0; r < rowNum; r++, value++) {
-        int row = rowBatch.batchSize++;
-        timestamps[row] = timestamp++;
-        for (int i = 0; i < sensorNum; i++) {
-          long[] sensor = (long[]) values[i];
-          sensor[row] = value;
+        for (int r = 0; r < rowNum; r++, value++) {
+          int row = tablet.rowSize++;
+          timestamps[row] = timestamp++;
+          for (int i = 0; i < sensorNum; i++) {
+            long[] sensor = (long[]) values[i];
+            sensor[row] = value;
+          }
+          // write Tablet to TsFile
+          if (tablet.rowSize == tablet.getMaxRowNumber()) {
+            tsFileWriter.write(tablet);
+            tablet.reset();
+          }
         }
-        // write RowBatch to TsFile
-        if (rowBatch.batchSize == rowBatch.getMaxBatchSize()) {
-          tsFileWriter.write(rowBatch);
-          rowBatch.reset();
+        // write Tablet to TsFile
+        if (tablet.rowSize != 0) {
+          tsFileWriter.write(tablet);
+          tablet.reset();
         }
       }
-      // write RowBatch to TsFile
-      if (rowBatch.batchSize != 0) {
-        tsFileWriter.write(rowBatch);
-        rowBatch.reset();
-      }
 
-      // close TsFile
-      tsFileWriter.close();
-    } catch (Throwable e) {
-      e.printStackTrace();
-      System.out.println(e.getMessage());
+    } catch (Exception e) {
+      logger.error("meet error in TsFileWrite with tablet", e);
     }
   }
 }

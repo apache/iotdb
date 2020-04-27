@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.chunk.ChunkGroupWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkGroupWriter;
-import org.apache.iotdb.tsfile.write.record.RowBatch;
+import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
@@ -206,24 +206,24 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * Confirm whether the row batch is legal.
+   * Confirm whether the tablet is legal.
    *
-   * @param rowBatch - a row batch responding multiple columns
-   * @return - whether the row batch has been added into RecordWriter legally
+   * @param tablet - a tablet data responding multiple columns
+   * @return - whether the tablet's measurements have been added into RecordWriter legally
    * @throws WriteProcessException exception
    */
-  private void checkIsTimeSeriesExist(RowBatch rowBatch) throws WriteProcessException {
+  private void checkIsTimeSeriesExist(Tablet tablet) throws WriteProcessException {
     IChunkGroupWriter groupWriter;
-    if (!groupWriters.containsKey(rowBatch.deviceId)) {
-      groupWriter = new ChunkGroupWriterImpl(rowBatch.deviceId);
-      groupWriters.put(rowBatch.deviceId, groupWriter);
+    if (!groupWriters.containsKey(tablet.deviceId)) {
+      groupWriter = new ChunkGroupWriterImpl(tablet.deviceId);
+      groupWriters.put(tablet.deviceId, groupWriter);
     } else {
-      groupWriter = groupWriters.get(rowBatch.deviceId);
+      groupWriter = groupWriters.get(tablet.deviceId);
     }
-    String deviceId = rowBatch.deviceId;
+    String deviceId = tablet.deviceId;
 
-    // add all SeriesWriter of measurements in this RowBatch to this ChunkGroupWriter
-    for (MeasurementSchema timeseries : rowBatch.getSchemas()) {
+    // add all SeriesWriter of measurements in this Tablet to this ChunkGroupWriter
+    for (MeasurementSchema timeseries : tablet.getSchemas()) {
       String measurementId = timeseries.getMeasurementId();
       if (schema.containsTimeseries(new Path(deviceId, measurementId))) {
         groupWriter.tryToAddSeriesWriter(schema.getSeriesSchema(new Path(deviceId, measurementId)),
@@ -252,18 +252,18 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   /**
-   * write a row batch
+   * write a tablet
    *
-   * @param rowBatch - multiple time series of one device that share a time column
+   * @param tablet - multiple time series of one device that share a time column
    * @throws IOException           exception in IO
    * @throws WriteProcessException exception in write process
    */
-  public boolean write(RowBatch rowBatch) throws IOException, WriteProcessException {
-    // make sure the ChunkGroupWriter for this RowBatch exist
-    checkIsTimeSeriesExist(rowBatch);
-    // get corresponding ChunkGroupWriter and write this RowBatch
-    groupWriters.get(rowBatch.deviceId).write(rowBatch);
-    recordCount += rowBatch.batchSize;
+  public boolean write(Tablet tablet) throws IOException, WriteProcessException {
+    // make sure the ChunkGroupWriter for this Tablet exist
+    checkIsTimeSeriesExist(tablet);
+    // get corresponding ChunkGroupWriter and write this Tablet
+    groupWriters.get(tablet.deviceId).write(tablet);
+    recordCount += tablet.rowSize;
     return checkMemorySizeAndMayFlushChunks();
   }
 

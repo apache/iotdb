@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -36,12 +37,13 @@ public abstract class MNode implements Serializable {
    */
   private String name;
 
-  private MNode parent;
+  protected MNode parent;
 
   /**
    * from root to this node, only be set when used once
    */
   protected String fullPath;
+
 
   /**
    * Constructor of MNode.
@@ -64,12 +66,12 @@ public abstract class MNode implements Serializable {
   /**
    * delete a child
    */
-  public abstract void deleteChild(String name);
+  public abstract void deleteChild(String name) throws DeleteFailedException;
 
   /**
    * delete the alias of a child
    */
-  public abstract void deleteAliasChild(String alias);
+  public abstract void deleteAliasChild(String alias) throws DeleteFailedException;
 
   /**
    * get the child with the name

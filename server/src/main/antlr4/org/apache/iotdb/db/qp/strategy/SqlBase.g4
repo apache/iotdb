@@ -26,6 +26,7 @@ singleStatement
 statement
     : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
+    | ALTER TIMESERIES fullPath alterClause #alterTimeseries
     | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
@@ -118,6 +119,14 @@ lastClause
 
 alias
     : LR_BRACKET ID RR_BRACKET
+    ;
+
+alterClause
+    : RENAME beforeName=ID TO currentName=ID
+    | SET property (COMMA property)*
+    | DROP ID (COMMA ID)*
+    | ADD TAGS property (COMMA property)*
+    | ADD ATTRIBUTES property (COMMA property)*
     ;
 
 attributeClauses
@@ -798,6 +807,11 @@ ATTRIBUTES
 TAGS
     : T A G S
     ;
+
+RENAME
+    : R E N A M E
+    ;
+
 //============================
 // End of the keywords list
 //============================

@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class BatchInsertPlan extends PhysicalPlan {
+public class InsertTabletPlan extends PhysicalPlan {
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
@@ -67,22 +67,22 @@ public class BatchInsertPlan extends PhysicalPlan {
   private int start;
   private int end;
 
-  public BatchInsertPlan() {
+  public InsertTabletPlan() {
     super(false, OperatorType.BATCHINSERT);
   }
 
-  public BatchInsertPlan(String deviceId, List<String> measurements) {
+  public InsertTabletPlan(String deviceId, List<String> measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     setMeasurements(measurements);
   }
-  public BatchInsertPlan(String deviceId, String[] measurements) {
+  public InsertTabletPlan(String deviceId, String[] measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     setMeasurements(measurements);
   }
 
-  public BatchInsertPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
+  public InsertTabletPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
