@@ -23,15 +23,17 @@ import java.util.List;
 
 public interface StableEntryManager {
 
-    List<Log> getAllEntries();
+  List<Log> getAllEntries();
 
-    void append(List<Log> entries);
+  void append(List<Log> entries);
 
-    void applyingSnapshot(Snapshot snapshot);
+  void applyingSnapshot(Snapshot snapshot);
 
-    void removeCompactedEntries(long index);
+  void removeCompactedEntries(long index);
 
-    void setHardStateAndFlush(HardState state);
+  void setHardStateAndFlush(HardState state);
 
-    HardState getHardState();
+  HardState getHardState();
+
+  void close();
 }

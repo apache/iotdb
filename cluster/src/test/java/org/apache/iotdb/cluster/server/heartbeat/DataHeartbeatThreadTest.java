@@ -130,8 +130,9 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
   @Override
   @After
   public void tearDown() {
+    dataLogManager.close();
     super.tearDown();
-    File dir = new File(new SyncLogDequeSerializer(2).getLogDir());
+    File dir = new File(SyncLogDequeSerializer.getLogDir(2));
     for (File file : dir.listFiles()) {
       file.delete();
     }

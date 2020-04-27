@@ -173,6 +173,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     catchUpService.shutdownNow();
     catchUpService = null;
     heartBeatService = null;
+    closeLogManager();
     logger.info("{} stopped", name);
   }
 
@@ -1045,6 +1046,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @TestOnly
   public void setLogManager(RaftLogManager logManager) {
+    if (this.logManager != null) {
+      this.logManager.close();
+    }
     this.logManager = logManager;
+  }
+
+  public void closeLogManager() {
+    if (logManager != null) {
+      logManager.close();
+    }
   }
 }

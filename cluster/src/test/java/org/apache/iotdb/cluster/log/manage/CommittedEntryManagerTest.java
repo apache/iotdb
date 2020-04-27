@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class CommittedEntryManagerTest {

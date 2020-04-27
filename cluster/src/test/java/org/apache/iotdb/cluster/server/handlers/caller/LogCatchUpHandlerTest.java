@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,6 +43,11 @@ public class LogCatchUpHandlerTest {
   @Before
   public void setUp() {
     member = new TestMetaGroupMember();
+  }
+
+  @After
+  public void tearDown() {
+    member.closeLogManager();
   }
 
   @Test

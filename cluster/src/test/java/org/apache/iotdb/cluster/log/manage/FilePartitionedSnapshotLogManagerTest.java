@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.cluster.common.IoTDBTest;
@@ -29,16 +30,25 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
+import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
+
+  @After
+  public void tearDown() throws IOException, StorageEngineException {
+    super.tearDown();
+  }
 
   @Test
   public void testSnapshot()
@@ -48,30 +58,34 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
         partitionTable, TestUtils.getNode(0), TestUtils.getNode(0));
 
-    List<Log> logs = TestUtils.prepareTestLogs(10);
-    manager.append(logs);
-    manager.commitTo(10);
+    try {
+      List<Log> logs = TestUtils.prepareTestLogs(10);
+      manager.append(logs);
+      manager.commitTo(10);
 
-    // create files for sgs
-    for (int i = 1; i < 4; i++) {
-      String sg = TestUtils.getTestSg(i);
-      for (int j = 0; j < 4; j++) {
-        // closed files
-        prepareData(i, j * 10, 10);
-        StorageEngine.getInstance().asyncCloseProcessor(sg, true);
+      // create files for sgs
+      for (int i = 1; i < 4; i++) {
+        String sg = TestUtils.getTestSg(i);
+        for (int j = 0; j < 4; j++) {
+          // closed files
+          prepareData(i, j * 10, 10);
+          StorageEngine.getInstance().asyncCloseProcessor(sg, true);
+        }
+        // un closed files
+        prepareData(i, 40, 10);
       }
-      // un closed files
-      prepareData(i, 40, 10);
-    }
 
-    manager.takeSnapshot();
-    PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
-    for (int i = 1; i < 4; i++) {
-      FileSnapshot fileSnapshot =
-          (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlotByTime(
-              TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
-      assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
-      assertEquals(5, fileSnapshot.getDataFiles().size());
+      manager.takeSnapshot();
+      PartitionedSnapshot snapshot = (PartitionedSnapshot) manager.getSnapshot();
+      for (int i = 1; i < 4; i++) {
+        FileSnapshot fileSnapshot =
+            (FileSnapshot) snapshot.getSnapshot(PartitionUtils.calculateStorageGroupSlotByTime(
+                TestUtils.getTestSg(i), 0, ClusterConstant.SLOT_NUM));
+        assertEquals(10, fileSnapshot.getTimeseriesSchemas().size());
+        assertEquals(5, fileSnapshot.getDataFiles().size());
+      }
+    } finally {
+      manager.close();
     }
   }
 }

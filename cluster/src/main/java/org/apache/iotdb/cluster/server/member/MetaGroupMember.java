@@ -2638,7 +2638,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   @TestOnly
   public void setLogManager(MetaSingleSnapshotLogManager manager) {
+    if (logManager != null) {
+      logManager.close();
+    }
     logManager = manager;
-    super.logManager = manager;
+    super.setLogManager(manager);
+  }
+
+  public void closeLogManager() {
+    super.closeLogManager();
+    if (dataClusterServer != null) {
+      dataClusterServer.closeLogManagers();
+    }
   }
 }

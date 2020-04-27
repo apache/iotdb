@@ -50,6 +50,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
+import org.junit.After;
 import org.junit.Test;
 
 public class DataLogApplierTest extends IoTDBTest {
@@ -75,6 +76,14 @@ public class DataLogApplierTest extends IoTDBTest {
   private TestDataGroupMember testDataGroupMember = new TestDataGroupMember();
 
   private LogApplier applier = new DataLogApplier(testMetaGroupMember, testDataGroupMember);
+
+  @Override
+  @After
+  public void tearDown() throws IOException, StorageEngineException {
+    testDataGroupMember.closeLogManager();
+    testMetaGroupMember.closeLogManager();
+    super.tearDown();
+  }
 
   @Test
   public void testApplyInsert()
