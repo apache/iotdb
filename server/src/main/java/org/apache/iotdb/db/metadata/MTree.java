@@ -541,7 +541,7 @@ public class MTree implements Serializable {
       if (nodes.length <= idx) {
         if (hasLimit) {
           curOffset.set(curOffset.get() + 1);
-          if (curOffset.get() < offset.get() || count == limit) {
+          if (curOffset.get() < offset.get() || count.get() == limit.get()) {
             return;
           }
         }
