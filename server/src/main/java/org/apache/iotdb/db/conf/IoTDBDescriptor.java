@@ -536,7 +536,7 @@ public class IoTDBDescriptor {
             TSFileDescriptor.getInstance().getConfig().getCompressor().toString()));
   }
 
-  public void loadHotModifiedProps(Properties properties, boolean toCheckProperties)
+  public void loadHotModifiedProps(Properties properties)
       throws QueryProcessException {
     try {
       // update data dirs
@@ -597,7 +597,7 @@ public class IoTDBDescriptor {
       logger.info("Start to reload config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      loadHotModifiedProps(properties, false);
+      loadHotModifiedProps(properties);
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(

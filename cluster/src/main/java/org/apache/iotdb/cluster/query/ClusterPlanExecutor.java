@@ -364,8 +364,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
     switch (plan.getLoadConfigurationPlanType()) {
       case GLOBAL:
-        IoTDBDescriptor.getInstance().loadHotModifiedProps(plan.getIoTDBProperties(), true);
-        ClusterDescriptor.getInstance().loadHotModifiedProps(plan.getClusterProperties(), true);
+        IoTDBDescriptor.getInstance().loadHotModifiedProps(plan.getIoTDBProperties());
+        ClusterDescriptor.getInstance().loadHotModifiedProps(plan.getClusterProperties());
         break;
       case LOCAL:
         IoTDBDescriptor.getInstance().loadHotModifiedProps();

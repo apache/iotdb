@@ -216,7 +216,7 @@ public class ClusterDescriptor {
       logger.info("Start to reload config file {}", url);
       Properties properties = new Properties();
       properties.load(inputStream);
-      loadHotModifiedProps(properties, false);
+      loadHotModifiedProps(properties);
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(
@@ -224,7 +224,7 @@ public class ClusterDescriptor {
     }
   }
 
-  public void loadHotModifiedProps(Properties properties, boolean toCheckProperties)
+  public void loadHotModifiedProps(Properties properties)
       throws QueryProcessException {
 
     // TODO implement some hot modified properties to load
