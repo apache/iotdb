@@ -529,19 +529,13 @@ public class MTree implements Serializable {
    *
    * @param timeseriesSchemaList List<timeseriesSchema>
    */
-  private void findPath(
-      MNode node,
-      String[] nodes,
-      int idx,
-      String parent,
-      List<String[]> timeseriesSchemaList,
-      boolean hasLimit)
-      throws MetadataException {
+  private void findPath(MNode node, String[] nodes, int idx, String parent,
+      List<String[]> timeseriesSchemaList, boolean hasLimit) throws MetadataException {
     if (node instanceof LeafMNode) {
       if (nodes.length <= idx) {
         if (hasLimit) {
           curOffset.set(curOffset.get() + 1);
-          if (curOffset.get() < offset.get() || count.get() == limit.get()) {
+          if (curOffset.get() < offset.get() || count.get().intValue() == limit.get().intValue()) {
             return;
           }
         }
@@ -572,26 +566,16 @@ public class MTree implements Serializable {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
-        findPath(
-            node.getChild(nodeReg),
-            nodes,
-            idx + 1,
-            parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList,
-            hasLimit);
+        findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
+            timeseriesSchemaList, hasLimit);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
-        findPath(
-            child,
-            nodes,
-            idx + 1,
-            parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList,
-            hasLimit);
+        findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
+            timeseriesSchemaList, hasLimit);
       }
     }
   }
@@ -631,13 +615,8 @@ public class MTree implements Serializable {
       if (idx == length) {
         res.add(parent + node.getName());
       } else {
-        findChildNodePathInNextLevel(
-            node.getChild(nodeReg),
-            nodes,
-            idx + 1,
-            parent + node.getName() + PATH_SEPARATOR,
-            res,
-            length);
+        findChildNodePathInNextLevel(node.getChild(nodeReg), nodes, idx + 1,
+            parent + node.getName() + PATH_SEPARATOR, res, length);
       }
     } else {
       if (node instanceof InternalMNode && node.getChildren().size() > 0) {
