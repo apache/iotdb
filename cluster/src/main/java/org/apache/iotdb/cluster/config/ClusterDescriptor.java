@@ -226,8 +226,7 @@ public class ClusterDescriptor {
 
   /**
    * This method is for setting hot modified properties of the cluster. Currently, we support
-   * enable_thrift_compression, max_concurrent_client_num, connection_time_out_ms,
-   * max_resolved_log_size
+   * max_concurrent_client_num, connection_time_out_ms, max_resolved_log_size
    *
    * @param properties
    * @throws QueryProcessException
