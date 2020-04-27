@@ -18,9 +18,9 @@
     under the License.
 
 -->
-### Set Storage Group queries
+### Set Storage Group
 
-These types of queries take a  query object and return an array of JSON objects where each storage group 
+These types of queries take a query object and return an array of JSON objects where each storage group 
 is set successfully or not.
 
 An example set storage group query object is shown below:

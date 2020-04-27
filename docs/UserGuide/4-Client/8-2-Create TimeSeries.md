@@ -19,10 +19,10 @@
 
 -->
 
-### Create time series queries
+### Create time series
 
-These types of queries take a  query object and return an array of JSON objects where each storage group 
-is set successfully or not.
+These types of queries take a query object and return an array of JSON objects where each time series 
+is created successfully or not.
 
 An example set storage group query object is shown below:
 
