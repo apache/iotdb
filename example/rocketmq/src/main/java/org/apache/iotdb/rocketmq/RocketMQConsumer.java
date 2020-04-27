@@ -90,7 +90,7 @@ public class RocketMQConsumer {
     long time = Long.parseLong(dataArray[1]);
     List<String> measurements = Arrays.asList(dataArray[2].split(":"));
     List<String> values = Arrays.asList(dataArray[3].split(":"));
-    session.insert(device, time, measurements, values);
+    session.insertRecord(device, time, measurements, values);
   }
 
   public void start() throws MQClientException {
@@ -98,7 +98,7 @@ public class RocketMQConsumer {
   }
 
   /**
-   * Subscribe topic and add regiser Listener
+   * Subscribe topic and add register Listener
    * @throws MQClientException
    */
   public void prepareConsume() throws MQClientException {

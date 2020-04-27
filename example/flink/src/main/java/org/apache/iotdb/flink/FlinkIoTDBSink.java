@@ -20,7 +20,6 @@ package org.apache.iotdb.flink;
 import com.google.common.collect.Lists;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.apache.iotdb.db.service.IoTDB;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -28,11 +27,6 @@ import java.util.Random;
 
 public class FlinkIoTDBSink {
     public static void main(String[] args) throws Exception {
-        // launch the local iotDB server at default port: 6667
-        IoTDB.main(args);
-
-        Thread.sleep(3000);
-
         // run the flink job on local mini cluster
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 

@@ -25,6 +25,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.jdbc.IoTDBNonAlignQueryResultSet;
 import org.apache.iotdb.jdbc.IoTDBQueryResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
@@ -69,6 +70,8 @@ public abstract class AbstractClient {
   static final List<String> AGGREGRATE_TIME_LIST = new ArrayList<>();
   static final String MAX_PRINT_ROW_COUNT_ARGS = "maxPRC";
   private static final String MAX_PRINT_ROW_COUNT_NAME = "maxPrintRowCount";
+  static final String RPC_COMPRESS_ARGS = "c";
+  private static final String RPC_COMPRESS_NAME = "rpcCompressed";
   static final String SET_MAX_DISPLAY_NUM = "set max_display_num";
   static final String SET_TIMESTAMP_DISPLAY = "set time_display_type";
   static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
@@ -121,6 +124,7 @@ public abstract class AbstractClient {
     keywordSet.add("-" + EXECUTE_ARGS);
     keywordSet.add("-" + ISO8601_ARGS);
     keywordSet.add("-" + MAX_PRINT_ROW_COUNT_ARGS);
+    keywordSet.add("-" + RPC_COMPRESS_ARGS);
   }
 
 
@@ -129,10 +133,9 @@ public abstract class AbstractClient {
   }
 
   private static void printCount(int cnt) {
-    if(cnt == 0){
+    if (cnt == 0) {
       println("Empty set.");
-    }
-    else {
+    } else {
       println("Total line number = " + cnt);
     }
   }
@@ -175,6 +178,11 @@ public abstract class AbstractClient {
         .argName(MAX_PRINT_ROW_COUNT_NAME).hasArg()
         .desc("Maximum number of rows displayed (optional)").build();
     options.addOption(maxPrintCount);
+
+    Option isRpcCompressed = Option.builder(RPC_COMPRESS_ARGS)
+        .argName(RPC_COMPRESS_NAME)
+        .desc("Rpc Compression enabled or not").build();
+    options.addOption(isRpcCompressed);
     return options;
   }
 
@@ -565,50 +573,84 @@ public abstract class AbstractClient {
   /**
    * cache all results
    *
-   * @param resultSet jdbc resultSet
-   * @param maxSizeList the longest result of every column
-   * @param columnCount the number of column
+   * @param resultSet         jdbc resultSet
+   * @param maxSizeList       the longest result of every column
+   * @param columnCount       the number of column
    * @param resultSetMetaData jdbc resultSetMetaData
-   * @param zoneId your time zone
+   * @param zoneId            your time zone
    * @return List<List < String>> result
    * @throws SQLException throw exception
    */
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
-
-    boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
     List<List<String>> lists = new ArrayList<>(columnCount);
-    for (int i = 1; i <= columnCount; i++) {
-      List<String> list = new ArrayList<>(maxPrintRowCount + 1);
-      list.add(resultSetMetaData.getColumnLabel(i));
-      lists.add(list);
-      maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
+    if( resultSet instanceof  IoTDBQueryResultSet) {
+      for (int i = 1; i <= columnCount; i++) {
+        List<String> list = new ArrayList<>(maxPrintRowCount + 1);
+        list.add(resultSetMetaData.getColumnLabel(i));
+        lists.add(list);
+        maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
+      }
+    } else {
+      for (int i = 1; i <= columnCount; i+=2) {
+        List<String> timeList = new ArrayList<>(maxPrintRowCount + 1);
+        timeList.add(resultSetMetaData.getColumnLabel(i).substring(0, TIMESTAMP_STR.length()));
+        lists.add(timeList);
+        List<String> valueList = new ArrayList<>(maxPrintRowCount + 1);
+        valueList.add(resultSetMetaData.getColumnLabel(i+1));
+        lists.add(valueList);
+        maxSizeList.add(TIMESTAMP_STR.length());
+        maxSizeList.add(resultSetMetaData.getColumnLabel(i+1).length());
+      }
     }
     int j = 0;
     if (cursorBeforeFirst) {
       isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
-    while (j < maxPrintRowCount && !isReachEnd) {
-      for (int i = 1; i <= columnCount; i++) {
-        String tmp;
-        if (printTimestamp && i == 1) {
-          tmp = formatDatetime(resultSet.getLong(TIMESTAMP_STR), zoneId);
-        } else {
-          tmp = resultSet.getString(i);
+    if(resultSet instanceof IoTDBQueryResultSet) {
+      boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
+      while (j < maxPrintRowCount && !isReachEnd) {
+        for (int i = 1; i <= columnCount; i++) {
+          String tmp;
+          if (printTimestamp && i == 1) {
+            tmp = formatDatetime(resultSet.getLong(TIMESTAMP_STR), zoneId);
+          } else {
+            tmp = resultSet.getString(i);
+          }
+          if (tmp == null) {
+            tmp = NULL;
+          }
+          lists.get(i - 1).add(tmp);
+          if (maxSizeList.get(i - 1) < tmp.length()) {
+            maxSizeList.set(i - 1, tmp.length());
+          }
         }
-        if (tmp == null) {
-          tmp = NULL;
-        }
-        lists.get(i - 1).add(tmp);
-        if (maxSizeList.get(i - 1) < tmp.length()) {
-          maxSizeList.set(i - 1, tmp.length());
-        }
+        j++;
+        isReachEnd = !resultSet.next();
       }
-      j++;
-      isReachEnd = !resultSet.next();
+      return lists;
+    } else {
+      while (j < maxPrintRowCount && !isReachEnd) {
+        for (int i = 1; i <= columnCount; i++) {
+          String tmp;
+          tmp = resultSet.getString(i);
+          if (tmp == null) {
+            tmp = NULL;
+          }
+          if (i % 2 != 0 && !tmp.equals(NULL)) {
+            tmp = formatDatetime(Long.parseLong(tmp), zoneId);
+          }
+          lists.get(i - 1).add(tmp);
+          if (maxSizeList.get(i - 1) < tmp.length()) {
+            maxSizeList.set(i - 1, tmp.length());
+          }
+        }
+        j++;
+        isReachEnd = !resultSet.next();
+      }
+      return lists;
     }
-    return lists;
   }
 
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {

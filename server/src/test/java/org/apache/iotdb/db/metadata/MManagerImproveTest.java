@@ -22,17 +22,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,16 +56,13 @@ public class MManagerImproveTest {
     for (int j = 0; j < DEVICE_NUM; j++) {
       for (int i = 0; i < TIMESERIES_NUM; i++) {
         String p = "root.t1.v2.d" + j + ".s" + i;
-        mManager.createTimeseries(p, "TEXT", "RLE");
+        mManager.createTimeseries(p, TSDataType.TEXT, TSEncoding.RLE,
+            TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
       }
     }
 
   }
 
-  @After
-  public void after() throws IOException, StorageEngineException {
-    EnvironmentUtils.cleanEnv();
-  }
 
   @Test
   public void checkSetUp() {
@@ -77,7 +74,7 @@ public class MManagerImproveTest {
   }
 
   @Test
-  public void analyseTimeCost() throws MetadataException, WriteProcessException {
+  public void analyseTimeCost() throws MetadataException {
     mManager = MManager.getInstance();
 
     long startTime, endTime;
@@ -115,7 +112,7 @@ public class MManagerImproveTest {
   }
 
   private void doOriginTest(String deviceId, List<String> measurementList)
-      throws MetadataException, WriteProcessException {
+      throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       assertTrue(mManager.isPathExist(path));
@@ -125,7 +122,7 @@ public class MManagerImproveTest {
   }
 
   private void doPathLoopOnceTest(String deviceId, List<String> measurementList)
-      throws MetadataException, WriteProcessException {
+      throws MetadataException {
     for (String measurement : measurementList) {
       String path = deviceId + "." + measurement;
       TSDataType dataType = mManager.getSeriesType(path);
@@ -133,23 +130,27 @@ public class MManagerImproveTest {
     }
   }
 
-  private void doCacheTest(String deviceId, List<String> measurementList)
-      throws MetadataException {
-    MNode node = mManager.getDeviceNodeWithAutoCreateStorageGroup(deviceId);
-    for (String s : measurementList) {
-      assertTrue(node.hasChild(s));
-      MNode measurementNode = node.getChild(s);
-      assertTrue(measurementNode instanceof LeafMNode);
-      TSDataType dataType = measurementNode.getSchema().getType();
-      assertEquals(TSDataType.TEXT, dataType);
+  private void doCacheTest(String deviceId, List<String> measurementList) throws MetadataException {
+    MNode node = null;
+    try {
+      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      for (String s : measurementList) {
+        assertTrue(node.hasChild(s));
+        LeafMNode measurementNode = (LeafMNode) node.getChild(s);
+        TSDataType dataType = measurementNode.getSchema().getType();
+        assertEquals(TSDataType.TEXT, dataType);
+      }
+    } finally {
+      if (node != null) {
+        ((InternalMNode) node).readUnlock();
+      }
     }
   }
 
   @Test
-  public void improveTest() throws MetadataException, WriteProcessException, CacheException {
+  public void improveTest() throws MetadataException {
     mManager = MManager.getInstance();
 
-    long startTime, endTime;
     String[] deviceIdList = new String[DEVICE_NUM];
     for (int i = 0; i < DEVICE_NUM; i++) {
       deviceIdList[i] = "root.t1.v2.d" + i;
@@ -159,11 +160,11 @@ public class MManagerImproveTest {
       measurementList.add("s" + i);
     }
 
-    startTime = System.currentTimeMillis();
+    long startTime = System.currentTimeMillis();
     for (String deviceId : deviceIdList) {
       doOriginTest(deviceId, measurementList);
     }
-    endTime = System.currentTimeMillis();
+    long endTime = System.currentTimeMillis();
     logger.debug("origin:\t" + (endTime - startTime));
 
     startTime = System.currentTimeMillis();

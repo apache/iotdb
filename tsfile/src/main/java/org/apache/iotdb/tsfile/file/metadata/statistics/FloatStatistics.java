@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * Statistics for float type.
@@ -55,8 +56,7 @@ public class FloatStatistics extends Statistics<Float> {
     this.sumValue = sum;
   }
 
-  private void updateStats(float minValue, float maxValue, float firstValue, float last,
-      double sumValue) {
+  private void updateStats(float minValue, float maxValue, float last, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -65,6 +65,25 @@ public class FloatStatistics extends Statistics<Float> {
     }
     this.sumValue += sumValue;
     this.lastValue = last;
+  }
+
+  private void updateStats(float minValue, float maxValue, float first, float last, double sumValue, long startTime, long endTime) {
+    if (minValue < this.minValue) {
+      this.minValue = minValue;
+    }
+    if (maxValue > this.maxValue) {
+      this.maxValue = maxValue;
+    }
+    this.sumValue += sumValue;
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = first;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = last;
+    }
   }
 
   @Override
@@ -79,7 +98,7 @@ public class FloatStatistics extends Statistics<Float> {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value, value);
     }
   }
 
@@ -124,7 +143,7 @@ public class FloatStatistics extends Statistics<Float> {
       isEmpty = false;
     } else {
       updateStats(floatStats.getMinValue(), floatStats.getMaxValue(), floatStats.getFirstValue(),
-          floatStats.getLastValue(), floatStats.getSumValue());
+          floatStats.getLastValue(), floatStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
     }
   }
 

@@ -44,15 +44,19 @@ import org.junit.Test;
 public class MManagerBasicTest {
 
   private CompressionType compressionType;
+  private boolean canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
 
   @Before
   public void setUp() throws Exception {
+    canAdjust = IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter();
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
     EnvironmentUtils.envSetUp();
+    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(true);
   }
 
   @After
   public void tearDown() throws Exception {
+    IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(canAdjust);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -71,6 +75,8 @@ public class MManagerBasicTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+
+    assertTrue(manager.isPathExist("root.1"));
 
     try {
       manager.setStorageGroup("root.laptop");
@@ -99,16 +105,16 @@ public class MManagerBasicTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
       manager.createTimeseries("root.1.2.3", TSDataType.INT32, TSEncoding.RLE,
           TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.EMPTY_MAP);
+
+      assertTrue(manager.isPathExist("root.laptop.d1.s1"));
+      assertTrue(manager.isPathExist("root.laptop.d1.1_2"));
+      assertTrue(manager.isPathExist("root.laptop.d1.\"1.2.3\""));
+      assertTrue(manager.isPathExist("root.1.2"));
+      assertTrue(manager.isPathExist("root.1.2.3"));
     } catch (MetadataException e1) {
       e1.printStackTrace();
       fail(e1.getMessage());
     }
-    assertTrue(manager.isPathExist("root.laptop.d1.s1"));
-    assertTrue(manager.isPathExist("root.laptop.d1.1_2"));
-    assertTrue(manager.isPathExist("root.laptop.d1.\"1.2.3\""));
-    assertTrue(manager.isPathExist("root.1.2.3"));
-    assertTrue(manager.isPathExist("root.1"));
-    assertTrue(manager.isPathExist("root.1.2"));
 
     try {
       manager.deleteTimeseries("root.laptop.d1.s1");
@@ -162,11 +168,11 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.setStorageGroup("root.laptop.d2");
+      manager.setStorageGroup("root.laptop1");
     } catch (MetadataException e) {
       Assert.assertEquals(
           String.format("The seriesPath of %s already exist, it can't be set to the storage group",
-              "root.laptop.d2"),
+              "root.laptop1"),
           e.getMessage());
     }
 
@@ -236,7 +242,6 @@ public class MManagerBasicTest {
       list.add("root.laptop.d1");
       assertEquals(list, manager.getStorageGroupByPath("root.laptop.d1.s1"));
       assertEquals(list, manager.getStorageGroupByPath("root.laptop.d1"));
-
       list.add("root.laptop.d2");
       assertEquals(list, manager.getStorageGroupByPath("root.laptop"));
       assertEquals(list, manager.getStorageGroupByPath("root"));

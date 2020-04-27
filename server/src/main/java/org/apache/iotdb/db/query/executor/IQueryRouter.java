@@ -19,24 +19,22 @@
 package org.apache.iotdb.db.query.executor;
 
 
-import java.io.IOException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import java.io.IOException;
 
 public interface IQueryRouter {
 
   /**
    * Execute physical plan.
    */
-  QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context) throws StorageEngineException;
+  QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
+      throws StorageEngineException, QueryProcessException;
 
   /**
    * Execute aggregation query.
@@ -56,6 +54,13 @@ public interface IQueryRouter {
    */
   QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException;
+
+  /**
+   * Execute group by fill query
+   */
+  QueryDataSet groupByFill(GroupByFillPlan groupByFillPlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException,
+      QueryProcessException, IOException;
 
   /**
    * Execute last query

@@ -31,15 +31,14 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
+import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_DELTAOBJECTS;
+import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_MEASUREMENTID;
 import static org.junit.Assert.*;
 
 public class TSFHiveRecordReaderTest {
 
   private TSFHiveRecordReader tsfHiveRecordReader;
-  private String deviceId;
   private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
 
 
@@ -49,19 +48,12 @@ public class TSFHiveRecordReaderTest {
     JobConf job = new JobConf();
     Path path = new Path(filePath);
     String[] hosts = {"127.0.0.1"};
-    List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = new ArrayList<>();
-    deviceId = "device_1";
-    String[] measurementIds = new String[10];
-    for (int i = 0; i < measurementIds.length; i++) {
-      measurementIds[i] = "sensor_" + (i + 1);
-    }
-    long startOffset = 12L;
-    long endOffset = 3727528L;
-    long length = endOffset - startOffset;
-    TSFInputSplit.ChunkGroupInfo chunkGroupInfo = new TSFInputSplit.ChunkGroupInfo(deviceId, measurementIds, startOffset, endOffset);
-    chunkGroupInfoList.add(chunkGroupInfo);
-    TSFInputSplit inputSplit = new TSFInputSplit(path, hosts, length, chunkGroupInfoList);
-
+    TSFInputSplit inputSplit = new TSFInputSplit(path, hosts, 0, 3727528L);
+    String[] deviceIds = {"device_1"};// configure reading which deviceIds
+    job.set(READ_DELTAOBJECTS, String.join(",", deviceIds));
+    String[] measurementIds = {"sensor_1", "sensor_2", "sensor_3", "sensor_4", "sensor_5", "sensor_6", "sensor_7",
+            "sensor_8", "sensor_9", "sensor_10"};// configure reading which measurementIds
+    job.set(READ_MEASUREMENTID, String.join(",", measurementIds));
     tsfHiveRecordReader = new TSFHiveRecordReader(inputSplit, job);
   }
 
@@ -77,7 +69,7 @@ public class TSFHiveRecordReaderTest {
     try {
       assertTrue(tsfHiveRecordReader.next(key, value));
       assertEquals(1L, ((LongWritable)value.get(new Text("time_stamp"))).get());
-      assertEquals(deviceId, value.get(new Text("device_id")).toString());
+      assertEquals("device_1", value.get(new Text("device_id")).toString());
       assertEquals(1000000L, ((LongWritable)value.get(new Text("sensor_1"))).get());
       assertEquals(1000000L, ((LongWritable)value.get(new Text("sensor_2"))).get());
       assertEquals(1000000L, ((LongWritable)value.get(new Text("sensor_3"))).get());
@@ -94,7 +86,7 @@ public class TSFHiveRecordReaderTest {
       }
 
       assertEquals(101L, ((LongWritable)value.get(new Text("time_stamp"))).get());
-      assertEquals(deviceId, value.get(new Text("device_id")).toString());
+      assertEquals("device_1", value.get(new Text("device_id")).toString());
       assertEquals(1000100L, ((LongWritable)value.get(new Text("sensor_1"))).get());
       assertEquals(1000100L, ((LongWritable)value.get(new Text("sensor_2"))).get());
       assertEquals(1000100L, ((LongWritable)value.get(new Text("sensor_3"))).get());
@@ -111,7 +103,7 @@ public class TSFHiveRecordReaderTest {
       }
 
       assertEquals(1000000L, ((LongWritable)value.get(new Text("time_stamp"))).get());
-      assertEquals(deviceId, value.get(new Text("device_id")).toString());
+      assertEquals("device_1", value.get(new Text("device_id")).toString());
       assertEquals(1999999L, ((LongWritable)value.get(new Text("sensor_1"))).get());
       assertEquals(1999999L, ((LongWritable)value.get(new Text("sensor_2"))).get());
       assertEquals(1999999L, ((LongWritable)value.get(new Text("sensor_3"))).get());

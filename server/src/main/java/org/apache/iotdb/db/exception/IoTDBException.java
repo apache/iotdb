@@ -30,6 +30,11 @@ public class IoTDBException extends Exception {
     this.errorCode = errorCode;
   }
 
+  public IoTDBException(String message, Throwable cause, int errorCode) {
+    super(message, cause);
+    this.errorCode = errorCode;
+  }
+
   public IoTDBException(Throwable cause, int errorCode) {
     super(cause);
     this.errorCode = errorCode;

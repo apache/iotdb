@@ -24,10 +24,13 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -40,6 +43,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -70,7 +74,7 @@ public class SeriesReaderTestUtil {
     seqResources.clear();
     unseqResources.clear();
     TsFileMetaDataCache.getInstance().clear();
-    DeviceMetaDataCache.getInstance().clear();
+    ChunkMetadataCache.getInstance().clear();
     MManager.getInstance().clear();
     EnvironmentUtils.cleanAllDir();
     MergeManager.getINSTANCE().stop();
@@ -120,8 +124,13 @@ public class SeriesReaderTestUtil {
       long valueOffset, List<MeasurementSchema> measurementSchemas, List<String> deviceIds)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
+    Map<String, MeasurementSchema> template = new HashMap<>();
     for (MeasurementSchema measurementSchema : measurementSchemas) {
-      fileWriter.addMeasurement(measurementSchema);
+      template.put(measurementSchema.getMeasurementId(), measurementSchema);
+    }
+    fileWriter.registerDeviceTemplate("template0", template);
+    for (String deviceId : deviceIds) {
+      fileWriter.registerDevice(deviceId, "template0");
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
       for (String deviceId : deviceIds) {
@@ -135,7 +144,8 @@ public class SeriesReaderTestUtil {
         tsFileResource.updateEndTime(deviceId, i);
       }
       if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushForTest(tsFileResource.getHistoricalVersions().iterator().next());
+        fileWriter.flushAllChunkGroups();
+        fileWriter.writeVersion(tsFileResource.getHistoricalVersions().iterator().next());
       }
     }
     fileWriter.close();

@@ -25,22 +25,22 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -85,11 +85,11 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testUnseqUnsealedDelete() throws QueryProcessException, IOException {
+  public void testUnseqUnsealedDelete() throws WriteProcessException, IOException {
     TSRecord record = new TSRecord(10000, deviceId);
     record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(1000)));
     processor.insert(new InsertPlan(record));
-    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 1; j <= 10; j++) {
       record = new TSRecord(j, deviceId);
@@ -109,7 +109,7 @@ public class StorageGroupProcessorTest {
 
     processor.delete(deviceId, measurementId, 15L);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetaData>> pair = null;
+    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
       pair = tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
@@ -132,15 +132,15 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testSequenceSyncClose() throws QueryProcessException {
+  public void testSequenceSyncClose() throws WriteProcessException, QueryProcessException {
     for (int j = 1; j <= 10; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.putAllWorkingTsFileProcessorIntoClosingList();
+      processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
-    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.syncCloseAllWorkingTsFileProcessors();
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
         null, null);
 
@@ -151,7 +151,8 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testIoTDBRowBatchWriteAndSyncClose() throws WriteProcessException {
+  public void testIoTDBTabletWriteAndSyncClose()
+      throws WriteProcessException, QueryProcessException {
 
     String[] measurements = new String[2];
     measurements[0] = "s0";
@@ -160,8 +161,13 @@ public class StorageGroupProcessorTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.INT64.ordinal());
 
-    BatchInsertPlan batchInsertPlan1 = new BatchInsertPlan("root.vehicle.d0", measurements,
+    MeasurementSchema[] schemas = new MeasurementSchema[2];
+    schemas[0] = new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.PLAIN);
+    schemas[1] = new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN);
+
+    InsertTabletPlan insertTabletPlan1 = new InsertTabletPlan("root.vehicle.d0", measurements,
         dataTypes);
+    insertTabletPlan1.setSchemas(schemas);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];
@@ -173,28 +179,29 @@ public class StorageGroupProcessorTest {
       ((int[]) columns[0])[r] = 1;
       ((long[]) columns[1])[r] = 1;
     }
-    batchInsertPlan1.setTimes(times);
-    batchInsertPlan1.setColumns(columns);
-    batchInsertPlan1.setRowCount(times.length);
+    insertTabletPlan1.setTimes(times);
+    insertTabletPlan1.setColumns(columns);
+    insertTabletPlan1.setRowCount(times.length);
 
-    processor.insertBatch(batchInsertPlan1);
-    processor.putAllWorkingTsFileProcessorIntoClosingList();
+    processor.insertTablet(insertTabletPlan1);
+    processor.asyncCloseAllWorkingTsFileProcessors();
 
-    BatchInsertPlan batchInsertPlan2 = new BatchInsertPlan("root.vehicle.d0", measurements,
+    InsertTabletPlan insertTabletPlan2 = new InsertTabletPlan("root.vehicle.d0", measurements,
         dataTypes);
+    insertTabletPlan2.setSchemas(schemas);
 
     for (int r = 50; r < 149; r++) {
       times[r - 50] = r;
       ((int[]) columns[0])[r - 50] = 1;
       ((long[]) columns[1])[r - 50] = 1;
     }
-    batchInsertPlan2.setTimes(times);
-    batchInsertPlan2.setColumns(columns);
-    batchInsertPlan2.setRowCount(times.length);
+    insertTabletPlan2.setTimes(times);
+    insertTabletPlan2.setColumns(columns);
+    insertTabletPlan2.setRowCount(times.length);
 
-    processor.insertBatch(batchInsertPlan2);
-    processor.putAllWorkingTsFileProcessorIntoClosingList();
-    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.insertTablet(insertTabletPlan2);
+    processor.asyncCloseAllWorkingTsFileProcessors();
+    processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
         null, null);
@@ -208,24 +215,24 @@ public class StorageGroupProcessorTest {
 
 
   @Test
-  public void testSeqAndUnSeqSyncClose() throws QueryProcessException {
+  public void testSeqAndUnSeqSyncClose() throws WriteProcessException, QueryProcessException {
 
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.putAllWorkingTsFileProcessorIntoClosingList();
+      processor.asyncCloseAllWorkingTsFileProcessors();
     }
-    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.putAllWorkingTsFileProcessorIntoClosingList();
+      processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
-    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
         null, null);
@@ -240,25 +247,25 @@ public class StorageGroupProcessorTest {
   }
 
   @Test
-  public void testMerge() throws QueryProcessException {
+  public void testMerge() throws WriteProcessException, QueryProcessException {
 
     mergeLock = new AtomicLong(0);
     for (int j = 21; j <= 30; j++) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.putAllWorkingTsFileProcessorIntoClosingList();
+      processor.asyncCloseAllWorkingTsFileProcessors();
     }
-    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.syncCloseAllWorkingTsFileProcessors();
 
     for (int j = 10; j >= 1; j--) {
       TSRecord record = new TSRecord(j, deviceId);
       record.addTuple(DataPoint.getDataPoint(TSDataType.INT32, measurementId, String.valueOf(j)));
       processor.insert(new InsertPlan(record));
-      processor.putAllWorkingTsFileProcessorIntoClosingList();
+      processor.asyncCloseAllWorkingTsFileProcessors();
     }
 
-    processor.waitForAllCurrentTsFileProcessorsClosed();
+    processor.syncCloseAllWorkingTsFileProcessors();
     processor.merge(true);
     while (mergeLock.get() == 0) {
       // wait
@@ -278,8 +285,7 @@ public class StorageGroupProcessorTest {
 
   class DummySGP extends StorageGroupProcessor {
 
-    DummySGP(String systemInfoDir, String storageGroupName)
-        throws StorageGroupProcessorException, MetadataException {
+    DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
       super(systemInfoDir, storageGroupName, new TsFileFlushPolicy.DirectFlushPolicy());
     }
 

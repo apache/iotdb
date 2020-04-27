@@ -18,21 +18,8 @@
  */
 package org.apache.iotdb.hadoop.tsfile;
 
-import static java.util.stream.Collectors.toList;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.BooleanWritable;
-import org.apache.hadoop.io.DoubleWritable;
-import org.apache.hadoop.io.FloatWritable;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
@@ -47,6 +34,12 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.util.stream.Collectors.toList;
 
 public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> implements IReaderSet {
 
@@ -91,19 +84,12 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
       IReaderSet readerSet, List<QueryDataSet> dataSetList, List<String> deviceIdList)
       throws IOException {
     org.apache.hadoop.fs.Path path = split.getPath();
-    List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList = split.getChunkGroupInfoList();
     TsFileSequenceReader reader = new TsFileSequenceReader(new HDFSInput(path, configuration));
     readerSet.setReader(reader);
     // Get the read columns and filter information
 
     List<String> deviceIds = TSFInputFormat.getReadDeviceIds(configuration);
-    if (deviceIds == null) {
-      deviceIds = initDeviceIdList(chunkGroupInfoList);
-    }
     List<String> measurementIds = TSFInputFormat.getReadMeasurementIds(configuration);
-    if (measurementIds == null) {
-      measurementIds = initSensorIdList(chunkGroupInfoList);
-    }
     readerSet.setMeasurementIds(measurementIds);
     logger.info("deviceIds:" + deviceIds);
     logger.info("Sensors:" + measurementIds);
@@ -112,36 +98,17 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
     readerSet.setReadTime(TSFInputFormat.getReadTime(configuration));
 
     ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader);
-    for (TSFInputSplit.ChunkGroupInfo chunkGroupInfo : chunkGroupInfoList) {
-      String deviceId = chunkGroupInfo.getDeviceId();
-      if (deviceIds.contains(deviceId)) {
-        List<Path> paths = measurementIds.stream()
-            .map(
-                measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
-            .collect(toList());
-        QueryExpression queryExpression = QueryExpression.create(paths, null);
-        QueryDataSet dataSet = queryEngine.query(queryExpression,
-            chunkGroupInfo.getStartOffset(), chunkGroupInfo.getEndOffset());
-        dataSetList.add(dataSet);
-        deviceIdList.add(deviceId);
-      }
+    for (String deviceId : deviceIds) {
+      List<Path> paths = measurementIds.stream()
+              .map(
+                      measurementId -> new Path(deviceId + TsFileConstant.PATH_SEPARATOR + measurementId))
+              .collect(toList());
+      QueryExpression queryExpression = QueryExpression.create(paths, null);
+      QueryDataSet dataSet = queryEngine.query(queryExpression,
+              split.getStart(), split.getStart() + split.getLength());
+      dataSetList.add(dataSet);
+      deviceIdList.add(deviceId);
     }
-  }
-
-  private static List<String> initDeviceIdList(
-      List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
-    return chunkGroupInfoList.stream()
-        .map(TSFInputSplit.ChunkGroupInfo::getDeviceId)
-        .distinct()
-        .collect(toList());
-  }
-
-  private static List<String> initSensorIdList(
-      List<TSFInputSplit.ChunkGroupInfo> chunkGroupInfoList) {
-    return chunkGroupInfoList.stream()
-        .flatMap(chunkGroupMetaData -> Arrays.stream(chunkGroupMetaData.getMeasurementIds()))
-        .distinct()
-        .collect(toList());
   }
 
   @Override
@@ -239,7 +206,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
   }
 
   @Override
-  public float getProgress() throws IOException, InterruptedException {
+  public float getProgress() {
     return 0;
   }
 

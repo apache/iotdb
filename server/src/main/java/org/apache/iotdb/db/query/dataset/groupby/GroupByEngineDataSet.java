@@ -21,23 +21,30 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long queryId;
-  private long interval;
-  private long slidingStep;
+  protected long interval;
+  protected long slidingStep;
   // total query [startTime, endTime)
-  private long startTime;
-  private long endTime;
+  protected long startTime;
+  protected long endTime;
 
   // current interval [curStartTime, curEndTime)
   protected long curStartTime;
   protected long curEndTime;
-  private int usedIndex;
   protected boolean hasCachedTimeInterval;
+
+  protected boolean leftCRightO;
+
+  public GroupByEngineDataSet() {
+  }
 
   /**
    * groupBy query.
@@ -49,10 +56,10 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     this.slidingStep = groupByPlan.getSlidingStep();
     this.startTime = groupByPlan.getStartTime();
     this.endTime = groupByPlan.getEndTime();
-
+    this.leftCRightO = groupByPlan.isLeftCRightO();
     // init group by time partition
-    this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
+    this.curStartTime = this.startTime - slidingStep;
     this.curEndTime = -1;
   }
 
@@ -63,8 +70,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    curStartTime = usedIndex * slidingStep + startTime;
-    usedIndex++;
+    curStartTime += slidingStep;
     //This is an open interval , [0-100)
     if (curStartTime < endTime) {
       hasCachedTimeInterval = true;
@@ -73,6 +79,13 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
     } else {
       return false;
     }
+  }
+
+  @Override
+  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+
+  public long getStartTime() {
+    return startTime;
   }
 
   @TestOnly

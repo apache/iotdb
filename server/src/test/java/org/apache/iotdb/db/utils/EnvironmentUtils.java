@@ -37,7 +37,7 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -135,7 +135,7 @@ public class EnvironmentUtils {
     // clean cache
     if (config.isMetaDataCacheEnable()) {
       TsFileMetaDataCache.getInstance().clear();
-      DeviceMetaDataCache.getInstance().clear();
+      ChunkMetadataCache.getInstance().clear();
     }
     // close metadata
     MManager.getInstance().clear();
@@ -187,7 +187,6 @@ public class EnvironmentUtils {
    */
   public static void envSetUp() {
     logger.warn("EnvironmentUtil setup...");
-    System.setProperty(IoTDBConstant.REMOTE_JMX_PORT_NAME, "31999");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     //we do not start 8181 port in test.
     IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
@@ -220,6 +219,20 @@ public class EnvironmentUtils {
     if(daemon != null) {
       daemon.active();
     }
+  }
+
+  public static void reactiveDaemon() {
+    if (daemon == null) {
+      daemon = new IoTDB();
+      daemon.active();
+    } else {
+      activeDaemon();
+    }
+  }
+
+  public static void restartDaemon() {
+    stopDaemon();
+    reactiveDaemon();
   }
 
   private static void createAllDir() {

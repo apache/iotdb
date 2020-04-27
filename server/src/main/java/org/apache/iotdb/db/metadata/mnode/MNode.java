@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+
 import java.io.Serializable;
 import java.util.Map;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -36,12 +37,13 @@ public abstract class MNode implements Serializable {
    */
   private String name;
 
-  private MNode parent;
+  protected MNode parent;
 
   /**
    * from root to this node, only be set when used once
    */
   protected String fullPath;
+
 
   /**
    * Constructor of MNode.
@@ -57,14 +59,19 @@ public abstract class MNode implements Serializable {
   public abstract boolean hasChild(String name);
 
   /**
-   * add the given child
+   * node key, name or alias
    */
-  public abstract void addChild(MNode child);
+  public abstract void addChild(String name, MNode child);
 
   /**
    * delete a child
    */
-  public abstract void deleteChild(String name);
+  public abstract void deleteChild(String name) throws DeleteFailedException;
+
+  /**
+   * delete the alias of a child
+   */
+  public abstract void deleteAliasChild(String alias) throws DeleteFailedException;
 
   /**
    * get the child with the name
@@ -75,6 +82,11 @@ public abstract class MNode implements Serializable {
    * get the count of all leaves whose ancestor is current node
    */
   public abstract int getLeafCount();
+
+  /**
+   * add an alias
+   */
+  public abstract void addAlias(String alias, MNode child);
 
   /**
    * get full path
@@ -97,8 +109,6 @@ public abstract class MNode implements Serializable {
   public String toString() {
     return this.getName();
   }
-
-  public abstract MeasurementSchema getSchema();
 
   public MNode getParent() {
     return parent;

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -91,5 +91,5 @@ public interface IPlanExecutor {
    *
    * @return result of each row
    */
-  TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException;
+  TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException;
 }

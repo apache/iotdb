@@ -36,6 +36,7 @@ struct TSExecuteStatementResp {
   7: optional TSQueryDataSet queryDataSet
   // for disable align statements, queryDataSet is null and nonAlignQueryDataSet is not null
   8: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
+  9: optional map<string, i32> columnNameIndexMap
 }
 
 enum TSProtocolVersion {
@@ -164,7 +165,7 @@ struct TSSetTimeZoneReq {
 }
 
 // for session
-struct TSInsertReq {
+struct TSInsertRecordReq {
     1: required i64 sessionId
     2: required string deviceId
     3: required list<string> measurements
@@ -172,7 +173,7 @@ struct TSInsertReq {
     5: required i64 timestamp
 }
 
-struct TSBatchInsertionReq {
+struct TSInsertTabletReq {
     1: required i64 sessionId
     2: required string deviceId
     3: required list<string> measurements
@@ -182,7 +183,17 @@ struct TSBatchInsertionReq {
     7: required i32 size
 }
 
-struct TSInsertInBatchReq {
+struct TSInsertTabletsReq {
+    1: required i64 sessionId
+    2: required list<string> deviceIds
+    3: required list<list<string>> measurementsList
+    4: required list<binary> valuesList
+    5: required list<binary> timestampsList
+    6: required list<list<i32>> typesList
+    7: required list<i32> sizeList
+}
+
+struct TSInsertRecordsReq {
     1: required i64 sessionId
     2: required list<string> deviceIds
     3: required list<list<string>> measurementsList
@@ -202,6 +213,22 @@ struct TSCreateTimeseriesReq {
   3: required i32 dataType
   4: required i32 encoding
   5: required i32 compressor
+  6: optional map<string, string> props
+  7: optional map<string, string> tags
+  8: optional map<string, string> attributes
+  9: optional string measurementAlias
+}
+
+struct TSCreateMultiTimeseriesReq {
+  1: required i64 sessionId
+  2: required list<string> paths
+  3: required list<i32> dataTypes
+  4: required list<i32> encodings
+  5: required list<i32> compressors
+  6: optional list<map<string, string>> propsList
+  7: optional list<map<string, string>> tagsList
+  8: optional list<map<string, string>> attributesList
+  9: optional list<string> measurementAliasList
 }
 
 struct ServerProperties {
@@ -258,21 +285,25 @@ service TSIService {
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
+	TSExecuteBatchStatementResp createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
+
   TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
   TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 
-  TSStatus insert(1:TSInsertReq req);
+  TSStatus insertRecord(1:TSInsertRecordReq req);
 
-  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+  TSExecuteBatchStatementResp insertTablet(1:TSInsertTabletReq req);
 
-	TSExecuteBatchStatementResp insertRowInBatch(1:TSInsertInBatchReq req);
+  TSExecuteBatchStatementResp insertTablets(1:TSInsertTabletsReq req);
 
-	TSExecuteBatchStatementResp testInsertBatch(1:TSBatchInsertionReq req);
+	TSExecuteBatchStatementResp insertRecords(1:TSInsertRecordsReq req);
 
-  TSStatus testInsertRow(1:TSInsertReq req);
+	TSExecuteBatchStatementResp testInsertTablet(1:TSInsertTabletReq req);
 
-  TSExecuteBatchStatementResp testInsertRowInBatch(1:TSInsertInBatchReq req);
+  TSStatus testInsertRecord(1:TSInsertRecordReq req);
+
+  TSExecuteBatchStatementResp testInsertRecords(1:TSInsertRecordsReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 

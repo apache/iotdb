@@ -24,8 +24,9 @@ singleStatement
     ;
 
 statement
-    : CREATE TIMESERIES fullPath WITH attributeClauses #createTimeseries
+    : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
+    | ALTER TIMESERIES fullPath alterClause #alterTimeseries
     | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
@@ -65,7 +66,7 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | SHOW TIMESERIES prefixPath? #showTimeseries
+    | SHOW TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
@@ -116,8 +117,33 @@ lastClause
     : LAST suffixPath (COMMA suffixPath)*
     ;
 
+alias
+    : LR_BRACKET ID RR_BRACKET
+    ;
+
+alterClause
+    : RENAME beforeName=ID TO currentName=ID
+    | SET property (COMMA property)*
+    | DROP ID (COMMA ID)*
+    | ADD TAGS property (COMMA property)*
+    | ADD ATTRIBUTES property (COMMA property)*
+    | UPSERT tagClause attributeClause
+    ;
+
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
+    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*
+    tagClause
+    attributeClause
+    ;
+
+attributeClause
+    : (ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    ;
+
+tagClause
+    : (TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
     ;
 
 setClause
@@ -126,6 +152,13 @@ setClause
 
 whereClause
     : WHERE orExpression
+    ;
+
+showWhereClause
+    : WHERE (property | containsExpression)
+    ;
+containsExpression
+    : name=ID OPERATOR_CONTAINS value=propertyValue
     ;
 
 orExpression
@@ -137,8 +170,8 @@ andExpression
     ;
 
 predicate
-    : (TIME | TIMESTAMP | suffixPath | prefixPath) comparisonOperator constant
-    | (TIME | TIMESTAMP | suffixPath | prefixPath) inClause
+    : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
+    | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
@@ -153,8 +186,9 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
+    | groupByFillClause
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
-    | alignByDeviceClauseOrDisableAlign?
+    | alignByDeviceClauseOrDisableAlign
     ;
 
 specialLimit
@@ -165,6 +199,7 @@ specialLimit
 
 limitClause
     : LIMIT INT offsetClause?
+    | offsetClause? LIMIT INT
     ;
 
 offsetClause
@@ -173,6 +208,7 @@ offsetClause
 
 slimitClause
     : SLIMIT INT soffsetClause?
+    | soffsetClause? SLIMIT INT
     ;
 
 soffsetClause
@@ -205,9 +241,18 @@ groupByClause
       RR_BRACKET
     ;
 
+groupByFillClause
+    : GROUP BY LR_BRACKET
+      timeInterval
+      COMMA DURATION
+      RR_BRACKET
+      FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
+     ;
+
 typeClause
     : dataType LS_BRACKET linearClause RS_BRACKET
-    | dataType LS_BRACKET  previousClause RS_BRACKET
+    | dataType LS_BRACKET previousClause RS_BRACKET
+    | dataType LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
@@ -216,6 +261,10 @@ linearClause
 
 previousClause
     : PREVIOUS (COMMA DURATION)?
+    ;
+
+previousUntilLastClause
+    : PREVIOUSUNTILLAST (COMMA DURATION)?
     ;
 
 indexWithClause
@@ -260,6 +309,7 @@ rootOrId
 
 timeInterval
     : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
+    | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
 
 timeValue
@@ -272,6 +322,7 @@ propertyValue
     : ID
     | MINUS? INT
     | MINUS? realLiteral
+    | STRING_LITERAL
     ;
 
 propertyLabelPair
@@ -307,7 +358,7 @@ nodeNameWithoutStar
     ;
 
 dataType
-    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
+    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT | ALL
     ;
 
 dateFormat
@@ -445,6 +496,10 @@ PREVIOUS
     : P R E V I O U S
     ;
 
+PREVIOUSUNTILLAST
+    : P R E V I O U S U N T I L L A S T
+    ;
+
 METADATA
     : M E T A D A T A
     ;
@@ -552,6 +607,10 @@ BITMAP
 
 ADD
     : A D D
+    ;
+
+UPSERT
+    : U P S E R T
     ;
 
 VALUES
@@ -745,6 +804,19 @@ COMPRESSION
 TIME
     : T I M E
     ;
+
+ATTRIBUTES
+    : A T T R I B U T E S
+    ;
+
+TAGS
+    : T A G S
+    ;
+
+RENAME
+    : R E N A M E
+    ;
+
 //============================
 // End of the keywords list
 //============================
@@ -780,6 +852,10 @@ OPERATOR_OR
 
 OPERATOR_NOT
     : N O T | '!'
+    ;
+
+OPERATOR_CONTAINS
+    : C O N T A I N S
     ;
 
 MINUS : '-';
@@ -823,19 +899,24 @@ DATETIME
       (('+' | '-') INT ':' INT)?)?
     ;
 /** Allow unicode rule/token names */
-ID : NameChar NameChar*;
+ID : NAME_CHAR NAME_CHAR*;
 
 FILE
     :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
     ;
 
 fragment
-NameChar
+NAME_CHAR
     :   'A'..'Z'
     |   'a'..'z'
     |   '0'..'9'
     |   '_'
+    |   CN_CHAR
     ;
+
+fragment CN_CHAR
+  : '\u2E80'..'\u9FFF'
+  ;
 
 fragment DOUBLE_QUOTE_STRING_LITERAL
     : '"' ('\\' . | ~'"' )*? '"'

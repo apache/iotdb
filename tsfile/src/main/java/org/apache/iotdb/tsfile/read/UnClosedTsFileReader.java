@@ -19,10 +19,10 @@
 package org.apache.iotdb.tsfile.read;
 
 import java.io.IOException;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetaData;
+
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+
 /**
  * A class for reading unclosed tsfile.
  */
@@ -44,15 +44,7 @@ public class UnClosedTsFileReader extends TsFileSequenceReader {
    * unclosed file has no file metadata.
    */
   @Override
-  public TsFileMetaData readFileMetadata() throws IOException {
-    throw new NotImplementedException();
-  }
-
-  /**
-   * unclosed file has no metadata.
-   */
-  @Override
-  public TsDeviceMetadata readTsDeviceMetaData(TsDeviceMetadataIndex index) throws IOException {
+  public TsFileMetadata readFileMetadata() throws IOException {
     throw new NotImplementedException();
   }
 }

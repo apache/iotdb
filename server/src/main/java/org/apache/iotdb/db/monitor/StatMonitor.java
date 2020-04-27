@@ -28,13 +28,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
@@ -334,12 +334,12 @@ public class StatMonitor implements IService {
     private static final StatMonitor INSTANCE = new StatMonitor();
   }
 
-  class StatBackLoop implements Runnable {
+  class StatBackLoop extends WrappedRunnable {
 
     FileSize fileSize = FileSize.getInstance();
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         long currentTimeMillis = System.currentTimeMillis();
         long seconds = (currentTimeMillis - runningTimeMillis) / 1000;
@@ -384,7 +384,7 @@ public class StatMonitor implements IService {
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
-        } catch (StorageEngineException | QueryProcessException e) {
+        } catch (StorageEngineException e) {
           numInsertError.incrementAndGet();
           logger.error("Inserting stat points error.", e);
         }

@@ -42,6 +42,12 @@ public class FirstValueAggrResult extends AggregateResult {
   }
 
   @Override
+  public void reset() {
+    super.reset();
+    timestamp = Long.MAX_VALUE;
+  }
+
+  @Override
   public Object getResult() {
     return hasResult() ? getValue() : null;
   }

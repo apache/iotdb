@@ -23,6 +23,8 @@ import static org.junit.Assert.assertEquals;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,14 +37,14 @@ public class ActiveTimeSeriesCounterTest {
   private static final String TEST_SG_PREFIX = "root.sg_";
   private static int testStorageGroupNum = 10;
   private static String[] storageGroups = new String[testStorageGroupNum];
-  private static int[] sensorNum = new int[testStorageGroupNum];
+  private static int[] measurementNum = new int[testStorageGroupNum];
   private static double totalSeriesNum = 0;
 
   static {
     for (int i = 0; i < testStorageGroupNum; i++) {
       storageGroups[i] = TEST_SG_PREFIX + i;
-      sensorNum[i] = i + 1;
-      totalSeriesNum += sensorNum[i];
+      measurementNum[i] = i + 1;
+      totalSeriesNum += measurementNum[i];
     }
   }
 
@@ -79,7 +81,7 @@ public class ActiveTimeSeriesCounterTest {
     ExecutorService service = Executors.newFixedThreadPool(storageGroups.length);
     CountDownLatch finished = new CountDownLatch(storageGroups.length);
     for (int i = 0; i < storageGroups.length; i++) {
-      service.submit(new OfferThreads(storageGroups[i], sensorNum[i], finished));
+      service.submit(new OfferThreads(storageGroups[i], measurementNum[i], finished));
     }
     finished.await();
     for (String storageGroup : storageGroups) {
@@ -92,11 +94,11 @@ public class ActiveTimeSeriesCounterTest {
     }
     for (int i = 0; i < storageGroups.length; i++) {
       double r = ActiveTimeSeriesCounter.getInstance().getActiveRatio(storageGroups[i]);
-      assertEquals(sensorNum[i] / totalSeriesNum, r, 0.001);
+      assertEquals(measurementNum[i] / totalSeriesNum, r, 0.001);
     }
   }
 
-  private static class OfferThreads implements Runnable {
+  private static class OfferThreads extends WrappedRunnable {
     private int sensorNum;
     private String storageGroup;
     private CountDownLatch finished;
@@ -108,15 +110,16 @@ public class ActiveTimeSeriesCounterTest {
     }
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         for (int j = 0; j < sensorNum; j++) {
           ActiveTimeSeriesCounter.getInstance().offer(storageGroup, "device_0", "sensor_" + j);
         }
-      } finally {
+      }finally {
         finished.countDown();
       }
     }
   }
+
 
 } 
