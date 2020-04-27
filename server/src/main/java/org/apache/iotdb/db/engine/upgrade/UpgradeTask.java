@@ -73,6 +73,11 @@ public class UpgradeTask extends WrappedRunnable {
             Files.delete(upgradedFile.getParentFile().toPath());
           }
         }
+        // delete upgrade folder when it is empty
+        if (upgradeResource.getFile().getParentFile().isDirectory()
+            && upgradeResource.getFile().getParentFile().listFiles().length == 0) {
+          Files.delete(upgradeResource.getFile().getParentFile().toPath());
+        }
         upgradeResource.setUpgradedResources(upgradedResources);
         UpgradeLog.writeUpgradeLogFile(
             oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.UPGRADE_SUCCESS);
