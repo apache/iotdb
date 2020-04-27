@@ -438,7 +438,7 @@ var config = {
 						title: '5-DataQuery',
 						children: [
 							['5-DataQuery/1-DataQuery','DataQuery'],
-							['5-DataQuery/2-QueryFundamentals','QueryFundamentals']
+							['5-DataQuery/2-QueryFundamentals','QueryFundamentals'],
 							['5-DataQuery/3-SeriesReader','SeriesReader'],
 							['5-DataQuery/4-RawDataQuery','RawDataQuery'],
 							['5-DataQuery/5-AggregationQuery','AggregationQuery'],
@@ -853,7 +853,7 @@ var config = {
 						title: '5-数据查询',
 						children: [
 							['5-DataQuery/1-DataQuery','数据查询'],
-							['5-DataQuery/2-QueryFundamentals','查询基础介绍']
+							['5-DataQuery/2-QueryFundamentals','查询基础介绍'],
 							['5-DataQuery/3-SeriesReader','查询基础组件'],
 							['5-DataQuery/4-RawDataQuery','原始数据查询'],
 							['5-DataQuery/5-AggregationQuery','聚合查询'],
