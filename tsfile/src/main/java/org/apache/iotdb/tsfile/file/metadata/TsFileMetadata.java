@@ -118,8 +118,8 @@ public class TsFileMetadata {
     // metadataIndex
     if (metadataIndex != null) {
       byteLen += ReadWriteIOUtils.write(metadataIndex.size(), outputStream);
-      for (MetadataIndexNode metadataIndex : metadataIndex) {
-        byteLen += metadataIndex.serializeTo(outputStream);
+      for (MetadataIndexNode metadataIndexNode : metadataIndex) {
+        byteLen += metadataIndexNode.serializeTo(outputStream);
       }
     } else {
       byteLen += ReadWriteIOUtils.write(0, outputStream);

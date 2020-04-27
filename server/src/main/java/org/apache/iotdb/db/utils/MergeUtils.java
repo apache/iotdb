@@ -143,7 +143,7 @@ public class MergeUtils {
     return new long[] {totalChunkNum, maxChunkNum};
   }
 
-  public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) throws IOException {
+  public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) {
     return seqFile.getFileSize() - sequenceReader.getFileMetadataPos();
   }
 
