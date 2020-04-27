@@ -265,6 +265,10 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("metadata_node_cache_size",
               Integer.toString(conf.getmManagerCacheSize())).trim()));
 
+      conf.setmRemoteSchemaCacheSize(Integer
+          .parseInt(properties.getProperty("remote_schema_cache_size",
+              Integer.toString(conf.getmRemoteSchemaCacheSize())).trim()));
+
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
 
@@ -374,6 +378,11 @@ public class IoTDBDescriptor {
       conf.setDefaultFillInterval(
           Integer.parseInt(properties.getProperty("default_fill_interval",
               String.valueOf(conf.getDefaultFillInterval()))));
+
+      conf.setTagAttributeTotalSize(
+           Integer.parseInt(properties.getProperty("tag_attribute_total_size",
+              String.valueOf(conf.getTagAttributeTotalSize())))
+      );
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {

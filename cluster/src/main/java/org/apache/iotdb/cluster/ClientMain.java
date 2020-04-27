@@ -19,14 +19,20 @@
 
 package org.apache.iotdb.cluster;
 
+import static org.apache.iotdb.db.tools.logvisual.VisualUtils.parseIntArray;
+
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -44,49 +50,63 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class ClientMain {
-  
+
   private static final Logger logger = LoggerFactory.getLogger(ClientMain.class);
+
+  private static String PARAM_INSERTION = "i";
+  private static String PARAM_QUERY = "q";
+  private static String PARAM_DELETE_STORAGE_GROUP = "dsg";
+  private static String PARAM_DELETE_SERIES = "ds";
+  private static String PARAM_QUERY_PORTS = "qp";
+  private static Options options = new Options();
+  static {
+    options.addOption(new Option(PARAM_INSERTION, "Perform insertion"));
+    options.addOption(new Option(PARAM_QUERY, "Perform query"));
+    options.addOption(new Option(PARAM_DELETE_SERIES, "Perform deleting timeseries"));
+    options.addOption(new Option(PARAM_DELETE_STORAGE_GROUP, "Perform deleting storage group"));
+    options.addOption(new Option(PARAM_QUERY_PORTS, true, "Ports to query (ip is currently "
+        + "localhost)"));
+  }
 
   private static Map<String, TSStatus> failedQueries;
 
-  private static final String[] STORAGE_GROUPS = new String[] {
+  private static final String[] STORAGE_GROUPS = new String[]{
       "root.beijing",
       "root.shanghai",
       "root.guangzhou",
       "root.shenzhen",
   };
 
-  private static final String[] DEVICES = new String[] {
+  private static final String[] DEVICES = new String[]{
       "root.beijing.d1",
       "root.shanghai.d1",
       "root.guangzhou.d1",
       "root.shenzhen.d1",
   };
 
-  private static final String[] MEASUREMENTS = new String[] {
+  private static final String[] MEASUREMENTS = new String[]{
       "s1"
   };
 
-  private static final TSDataType[] DATA_TYPES = new TSDataType[] {
+  private static final TSDataType[] DATA_TYPES = new TSDataType[]{
       TSDataType.DOUBLE
   };
 
   private static List<MeasurementSchema> schemas;
 
-  private static final String[] DATA_QUERIES = new String[] {
+  private static final String[] DATA_QUERIES = new String[]{
       // raw data multi series
       "SELECT * FROM root",
       "SELECT * FROM root WHERE time <= 691200000",
@@ -116,7 +136,7 @@ public class ClientMain {
       "SELECT AVG(*) FROM root.*.* WHERE s1 <= 0.7 GROUP BY ([0, 864000000), 3d, 3d)"
   };
 
-  private static String[] META_QUERY = new String[] {
+  private static String[] META_QUERY = new String[]{
       "SHOW STORAGE GROUP",
       "SHOW TIMESERIES root",
       "COUNT TIMESERIES root",
@@ -125,37 +145,81 @@ public class ClientMain {
   };
 
   public static void main(String[] args)
-      throws TException, StatementExecutionException, IoTDBConnectionException {
+      throws TException, StatementExecutionException, IoTDBConnectionException, ParseException {
+    CommandLineParser parser = new DefaultParser();
+    CommandLine commandLine = parser.parse(options, args);
+    boolean noOption = args.length == 0;
+
     failedQueries = new HashMap<>();
     prepareSchema();
 
     String ip = "127.0.0.1";
     int port = 55560;
-    TSIService.Client.Factory factory = new Factory();
-    TTransport transport = new TFramedTransport(new TSocket(ip, port));
-    transport.open();
+    Client client;
+    long sessionId;
 
-    Client client = factory.getClient(new TCompactProtocol(transport));
+    if (noOption || commandLine.hasOption(PARAM_INSERTION)) {
+      System.out.println("Test insertion");
+      client = getClient(ip, port);
+      sessionId = connectClient(client);
+      testInsertion(client, sessionId);
+      client.closeSession(new TSCloseSessionReq(sessionId));
+    }
 
+    if (noOption || commandLine.hasOption(PARAM_QUERY)) {
+      int[] queryPorts = null;
+      if (commandLine.hasOption(PARAM_QUERY_PORTS)) {
+        queryPorts = parseIntArray(commandLine.getOptionValue(PARAM_QUERY_PORTS));
+      }
+      if (queryPorts == null) {
+        queryPorts = new int[] {55560, 55561, 55562};
+      }
+      for (int queryPort : queryPorts) {
+        System.out.println("Test port: " + queryPort);
+
+        client = getClient(ip, queryPort);
+        sessionId = connectClient(client);
+        System.out.println("Test data queries");
+        testQuery(client, sessionId, DATA_QUERIES);
+
+        System.out.println("Test metadata queries");
+        testQuery(client, sessionId, META_QUERY);
+
+        logger.info("Failed queries: {}", failedQueries);
+        client.closeSession(new TSCloseSessionReq(sessionId));
+      }
+    }
+
+    if (noOption || commandLine.hasOption(PARAM_DELETE_SERIES)) {
+      System.out.println("Test delete timeseries");
+      client = getClient(ip, port);
+      sessionId = connectClient(client);
+      testDeleteTimeseries(client, sessionId);
+      client.closeSession(new TSCloseSessionReq(sessionId));
+    }
+
+    if (noOption || commandLine.hasOption(PARAM_DELETE_STORAGE_GROUP)) {
+      System.out.println("Test delete storage group");
+      client = getClient(ip, port);
+      sessionId = connectClient(client);
+      testDeleteStorageGroup(client, sessionId);
+      client.closeSession(new TSCloseSessionReq(sessionId));
+    }
+  }
+
+  protected static long connectClient(Client client) throws TException {
     TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
-
     openReq.setUsername("root");
     openReq.setPassword("root");
     TSOpenSessionResp openResp = client.openSession(openReq);
-    long sessionId = openResp.getSessionId();
+    return openResp.getSessionId();
+  }
 
-    System.out.println("Test insertion");
-    testInsertion(client, sessionId);
-
-    System.out.println("Test data queries");
-    testQuery(client, sessionId, DATA_QUERIES);
-
-    System.out.println("Test metadata queries");
-    testQuery(client, sessionId, META_QUERY);
-
-    client.closeSession(new TSCloseSessionReq(openResp.getSessionId()));
-
-    logger.info("Failed queries: {}", failedQueries);
+  private static Client getClient(String ip, int port) throws TTransportException {
+    TSIService.Client.Factory factory = new Factory();
+    TTransport transport = new TFramedTransport(new TSocket(ip, port));
+    transport.open();
+    return factory.getClient(new TCompactProtocol(transport));
   }
 
   private static void prepareSchema() {
@@ -207,11 +271,15 @@ public class ClientMain {
     client.closeOperation(tsCloseOperationReq);
   }
 
-
+  private static void testDeleteStorageGroup(Client client, long sessionId)
+      throws TException, StatementExecutionException, IoTDBConnectionException {
+    logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
+    testQuery(client, sessionId, new String[] {"SELECT * FROM root"});
+  }
 
   private static void testInsertion(Client client, long sessionId) throws TException {
     for (String storageGroup : STORAGE_GROUPS) {
-      logger.info(client.setStorageGroup(sessionId,storageGroup ).toString());
+      logger.info(client.setStorageGroup(sessionId, storageGroup).toString());
     }
 
     TSCreateTimeseriesReq req = new TSCreateTimeseriesReq();
@@ -228,7 +296,7 @@ public class ClientMain {
     insertReq.setMeasurements(Arrays.asList(MEASUREMENTS));
     insertReq.setSessionId(sessionId);
     String[] values = new String[MEASUREMENTS.length];
-    for (int i = 0; i < 10; i ++) {
+    for (int i = 0; i < 10; i++) {
       insertReq.setTimestamp(i * 24 * 3600 * 1000L);
       for (int i1 = 0; i1 < values.length; i1++) {
         switch (DATA_TYPES[i1]) {
@@ -260,5 +328,13 @@ public class ClientMain {
       }
     }
   }
-
+  private static void testDeleteTimeseries(Client client, long sessionId) throws TException {
+    List<String> paths = new ArrayList<>();
+    for (String measurement : MEASUREMENTS) {
+      for (String device : DEVICES) {
+        paths.add(measurement + "." + device);
+      }
+    }
+    client.deleteTimeseries(sessionId, paths);
+  }
 }

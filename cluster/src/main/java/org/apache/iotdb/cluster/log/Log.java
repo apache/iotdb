@@ -40,9 +40,8 @@ public abstract class Log {
   public abstract void deserialize(ByteBuffer buffer);
 
   public enum Types {
-    // TODO-Cluster#348 support more logs
     // DO CHECK LogParser when you add a new type of log
-    ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE
+    ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE, EMPTY_CONTENT
   }
 
   public long getPreviousLogIndex() {
@@ -96,5 +95,4 @@ public abstract class Log {
   public int hashCode() {
     return Objects.hash(currLogIndex, currLogTerm, previousLogIndex, previousLogTerm);
   }
-
 }

@@ -68,6 +68,7 @@ public class PartitionUtils {
 
   /**
    * Localplan only be executed locally.
+   *
    * @param plan
    * @return
    */
@@ -77,7 +78,7 @@ public class PartitionUtils {
         || plan instanceof LoadDataPlan
         || plan instanceof OperateFilePlan
         || (plan instanceof ShowPlan
-              && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.DYNAMIC_PARAMETER))
+        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.DYNAMIC_PARAMETER))
         || (plan instanceof ShowPlan
         && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.FLUSH_TASK_INFO))
         || (plan instanceof ShowPlan
@@ -89,31 +90,35 @@ public class PartitionUtils {
 
   /**
    * GlobalMetaPlan will be executed on all meta group nodes.
+   *
    * @param plan
    * @return
    */
   public static boolean isGlobalMetaPlan(PhysicalPlan plan) {
     // TODO-Cluster#348: support more plans
     return plan instanceof SetStorageGroupPlan
-          || plan instanceof SetTTLPlan
-          || plan instanceof ShowTTLPlan
-          || plan instanceof LoadConfigurationPlan
-          || plan instanceof DeleteTimeSeriesPlan
-          //delete timeseries plan is global because all nodes may have its data
-          || plan instanceof AuthorPlan
-          || plan instanceof DeleteStorageGroupPlan
-          // DataAuthPlan is global because all nodes must have all user info
-          || plan instanceof DataAuthPlan
-    ;
+        || plan instanceof SetTTLPlan
+        || plan instanceof ShowTTLPlan
+        || plan instanceof LoadConfigurationPlan
+        || plan instanceof DeleteTimeSeriesPlan
+        //delete timeseries plan is global because all nodes may have its data
+        || plan instanceof AuthorPlan
+        || plan instanceof DeleteStorageGroupPlan
+        // DataAuthPlan is global because all nodes must have all user info
+        || plan instanceof DataAuthPlan
+        ;
   }
 
   /**
    * GlobalDataPlan will be executed on all data group nodes.
+   *
    * @param plan the plan to check
    * @return is globalDataPlan or not
    */
-  public static boolean isGlobalDataPlan(PhysicalPlan plan){
-    return plan instanceof DeletePlan; // because deletePlan has an infinite time range.
+  public static boolean isGlobalDataPlan(PhysicalPlan plan) {
+    return plan instanceof DeletePlan  // because deletePlan has an infinite time range.
+        || plan instanceof DeleteStorageGroupPlan
+        || plan instanceof DeleteTimeSeriesPlan;
   }
 
   public static int calculateStorageGroupSlotByTime(String storageGroupName, long timestamp,
@@ -253,6 +258,7 @@ public class PartitionUtils {
 
     /**
      * The union is implemented by merge, so the two intervals must be ordered.
+     *
      * @param that
      * @return
      */
@@ -282,23 +288,23 @@ public class PartitionUtils {
           if (thisLB <= thatLB) {
             lastLowerBound = thisLB;
             lastUpperBound = thisUB;
-            thisIndex ++;
+            thisIndex++;
           } else {
             lastLowerBound = thatLB;
             lastUpperBound = thatUB;
-            thatIndex ++;
+            thatIndex++;
           }
         } else {
           if (thisLB <= lastUpperBound + 1 && thisUB >= lastLowerBound - 1) {
             // the next interval from this can merge with last interval
             lastLowerBound = Math.min(thisLB, lastLowerBound);
             lastUpperBound = Math.max(thisUB, lastUpperBound);
-            thisIndex ++;
+            thisIndex++;
           } else if (thatLB <= lastUpperBound + 1 && thatUB >= lastLowerBound - 1) {
             // the next interval from that can merge with last interval
             lastLowerBound = Math.min(thatLB, lastLowerBound);
             lastUpperBound = Math.max(thatUB, lastUpperBound);
-            thatIndex ++;
+            thatIndex++;
           } else {
             // neither intervals can merge, add the last interval to the result and select a new
             // one as base
@@ -343,8 +349,8 @@ public class PartitionUtils {
       for (int i = 0; i < intervalSize - 1; i++) {
         long currentUB = getUpperBound(i);
         long nextLB = getLowerBound(i + 1);
-        if (currentUB + 1 <= nextLB -1) {
-          result.addInterval(currentUB + 1, nextLB -1);
+        if (currentUB + 1 <= nextLB - 1) {
+          result.addInterval(currentUB + 1, nextLB - 1);
         }
       }
 
@@ -357,15 +363,17 @@ public class PartitionUtils {
   }
 
   /**
-   * Calculate the headers of the groups that possibly store the data of a timeseries over the
-   * given time range.
+   * Calculate the headers of the groups that possibly store the data of a timeseries over the given
+   * time range.
+   *
    * @param storageGroupName
    * @param timeLowerBound
    * @param timeUpperBound
    * @param partitionTable
    * @param result
    */
-  public static void getIntervalHeaders(String storageGroupName, long timeLowerBound, long timeUpperBound,
+  public static void getIntervalHeaders(String storageGroupName, long timeLowerBound,
+      long timeUpperBound,
       PartitionTable partitionTable, Set<Node> result) {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
     long currPartitionStart = timeLowerBound / partitionInterval * partitionInterval;

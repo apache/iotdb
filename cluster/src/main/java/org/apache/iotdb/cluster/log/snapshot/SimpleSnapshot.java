@@ -44,9 +44,15 @@ public class SimpleSnapshot extends Snapshot {
   public SimpleSnapshot() {
   }
 
+  public SimpleSnapshot(long lastIndex, long lastTerm) {
+    this.lastLogIndex = lastIndex;
+    this.lastLogTerm = lastTerm;
+  }
+
   public SimpleSnapshot(List<Log> snapshot) {
     this.snapshot = snapshot;
-    this.lastLogId = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
+    this.lastLogIndex =
+        snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
     this.lastLogTerm = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
   }
 
@@ -82,8 +88,9 @@ public class SimpleSnapshot extends Snapshot {
         logger.error("Cannot recognize log", e);
       }
     }
-    this.lastLogId = snapshot.isEmpty()? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
-    this.lastLogTerm = snapshot.isEmpty()? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
+    this.lastLogIndex =
+        snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
+    this.lastLogTerm = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
 
     subDeserialize(buffer);
   }
@@ -98,7 +105,7 @@ public class SimpleSnapshot extends Snapshot {
 
   public void add(Log log) {
     snapshot.add(log);
-    lastLogId = log.getCurrLogIndex();
+    lastLogIndex = log.getCurrLogIndex();
     lastLogTerm = log.getCurrLogTerm();
   }
 

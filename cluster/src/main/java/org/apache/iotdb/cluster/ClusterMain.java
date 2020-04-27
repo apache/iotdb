@@ -52,6 +52,8 @@ public class ClusterMain {
   // send a request to remove a node, more arguments: {ip-of-removed-node}
   // {metaport-of-removed-node}
   private static final String MODE_REMOVE = "-r";
+  // the separator between the cluster configuration and the single-server configuration
+  private static final String SERVER_CONF_SEPARATOR = "-sc";
 
   public static MetaClusterServer metaServer;
 
@@ -63,8 +65,7 @@ public class ClusterMain {
     String mode = args[0];
     if (args.length > 1) {
       String[] params = Arrays.copyOfRange(args, 1, args.length);
-      // replace default conf params
-      ClusterDescriptor.getINSTANCE().replaceProps(params);
+      replaceDefaultPrams(params);
     }
 
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
@@ -96,6 +97,31 @@ public class ClusterMain {
       }
     } catch (IOException | TTransportException | StartupException | QueryProcessException e) {
       logger.error("Fail to start meta server", e);
+    }
+  }
+
+  private static void replaceDefaultPrams(String[] args) {
+    int index = 0;
+    String[] clusterParams = null, serverParams = null;
+    for (index = 0; index < args.length; index++) {
+      if (SERVER_CONF_SEPARATOR.equals(args[index])) {
+        break;
+      }
+    }
+    clusterParams = Arrays.copyOfRange(args, 0, index);
+
+    if (index < args.length) {
+      serverParams = Arrays.copyOfRange(args, index + 1, args.length);
+    }
+
+    if (clusterParams != null && clusterParams.length > 0) {
+      // replace the cluster default conf params
+      ClusterDescriptor.getINSTANCE().replaceProps(clusterParams);
+    }
+
+    if (serverParams != null && serverParams.length > 0) {
+      // replace the server default conf params
+      IoTDBDescriptor.getInstance().replaceProps(serverParams);
     }
   }
 

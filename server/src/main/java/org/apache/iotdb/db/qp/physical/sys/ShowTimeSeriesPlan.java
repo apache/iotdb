@@ -18,17 +18,87 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-public class ShowTimeSeriesPlan extends ShowPlan{
-  private Path path;
+public class ShowTimeSeriesPlan extends ShowPlan {
 
-  public ShowTimeSeriesPlan(ShowContentType showContentType, Path path) {
-    super(showContentType);
+  // path can be root, root.*  root.*.*.a etc.. if the wildcard is not at the tail, then each
+  // * wildcard can only match one level, otherwise it can match to the tail.
+  private Path path;
+  private boolean isContains;
+  private String key;
+  private String value;
+  private int limit = 0;
+  private int offset = 0;
+
+  public ShowTimeSeriesPlan(Path path) {
+    super(ShowContentType.TIMESERIES);
     this.path = path;
+  }
+
+  public ShowTimeSeriesPlan(Path path, boolean isContains, String key, String value, int limit,
+      int offset) {
+    super(ShowContentType.TIMESERIES);
+    this.path = path;
+    this.isContains = isContains;
+    this.key = key;
+    this.value = value;
+    this.limit = limit;
+    this.offset = offset;
+  }
+
+  public ShowTimeSeriesPlan() {
+    super(ShowContentType.TIMESERIES);
   }
 
   public Path getPath() {
     return this.path;
+  }
+
+  public boolean isContains() {
+    return isContains;
+  }
+
+  public String getKey() {
+    return key;
+  }
+
+  public String getValue() {
+    return value;
+  }
+
+  public int getLimit() {
+    return limit;
+  }
+
+  public int getOffset() {
+    return offset;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.write(PhysicalPlanType.SHOW_TIMESERIES.ordinal());
+
+    putString(outputStream, path.getFullPath());
+    outputStream.writeBoolean(isContains);
+    putString(outputStream, key);
+    putString(outputStream, value);
+
+    outputStream.writeInt(limit);
+    outputStream.writeInt(offset);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    path = new Path(readString(buffer));
+    isContains = buffer.get() == 1;
+    key = readString(buffer);
+    value = readString(buffer);
+
+    limit = buffer.getInt();
+    limit = buffer.getInt();
   }
 }

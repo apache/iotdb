@@ -39,11 +39,11 @@ import org.slf4j.LoggerFactory;
  * Different from PartitionedSnapshotLogManager, FilePartitionedSnapshotLogManager does not store
  * the committed in memory after snapshots, it considers the logs are contained in the TsFiles so it will record
  * every TsFiles in the slot instead.
- * TODO IOTDB-439 but the log is stored in memory already by appendLog method.
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 
-  private static final Logger logger = LoggerFactory.getLogger(FilePartitionedSnapshotLogManager.class);
+  private static final Logger logger = LoggerFactory
+      .getLogger(FilePartitionedSnapshotLogManager.class);
 
   public FilePartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode) {
@@ -56,30 +56,17 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
+    //TODO remove useless logs which have been compacted
     synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
-
-
-      int i = 0;
-      for (; i < logBuffer.size(); i++) {
-        if (logBuffer.get(i).getCurrLogIndex() > commitLogIndex) {
-          break;
-        }
-        snapshotLastLogId = logBuffer.get(i).getCurrLogIndex();
-        snapshotLastLogTerm = logBuffer.get(i).getCurrLogTerm();
-      }
-      removeFromHead(i);
-
+      snapshotLastLogIndex = getCommitLogIndex();
+      snapshotLastLogTerm = getCommitLogTerm();
       collectTsFiles();
-
       logger.info("Snapshot is taken");
     }
   }
 
   private void collectTsFiles() throws IOException {
-    // TODO-Cluster#349: the collection is re-collected each time to prevent inconsistency when
-    //  some of them are removed during two snapshots. Incremental addition or removal may be
-    //  used to optimize
 
     startCollect:
     while (true) {

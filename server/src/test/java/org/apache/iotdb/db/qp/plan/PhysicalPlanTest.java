@@ -109,6 +109,15 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  public void testMetadata3() throws QueryProcessException {
+    String metadata = "create timeseries root.vehicle.d1.s2(温度) with datatype=int32,encoding=rle, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    System.out.println(metadata.length());
+    Planner processor = new Planner();
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+  }
+
+  @Test
   public void testAuthor() throws QueryProcessException {
     String sql = "grant role xm privileges 'SET_STORAGE_GROUP','DELETE_TIMESERIES' on root.vehicle.d1.s1";
     Planner processor = new Planner();
@@ -461,6 +470,17 @@ public class PhysicalPlanTest {
   public void testLimitOffset() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
         + "limit 100 offset 10 slimit 1 soffset 1";
+    QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(100, plan.getRowLimit());
+    assertEquals(10, plan.getRowOffset());
+    // NOTE that the parameters of the SLIMIT clause is not stored in the physicalPlan,
+    // because the SLIMIT clause takes effect before the physicalPlan is finally generated.
+  }
+
+  @Test
+  public void testOffsetLimit() throws QueryProcessException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
+        + "offset 10 limit 100 soffset 1 slimit 1";
     QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals(100, plan.getRowLimit());
     assertEquals(10, plan.getRowOffset());

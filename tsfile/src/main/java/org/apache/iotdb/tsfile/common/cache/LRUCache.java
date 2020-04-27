@@ -27,7 +27,7 @@ import java.util.Map;
  */
 public abstract class LRUCache<K, T> implements Cache<K, T> {
 
-  private Map<K, T> cache;
+  protected Map<K, T> cache;
 
   public LRUCache(int cacheSize) {
     this.cache = new LinkedHashMap<K, T>(cacheSize, 0.75f, true) {
@@ -59,4 +59,8 @@ public abstract class LRUCache<K, T> implements Cache<K, T> {
   }
 
   protected abstract T loadObjectByKey(K key) throws IOException;
+
+  public synchronized void removeItem(K key) {
+    cache.remove(key);
+  }
 }

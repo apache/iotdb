@@ -30,7 +30,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -73,8 +75,7 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testInsertByObject()
-      throws IoTDBConnectionException, SQLException, ClassNotFoundException, StatementExecutionException {
+  public void testInsertByObject() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -91,6 +92,7 @@ public class IoTDBSessionIT {
   }
 
 
+  @Test
   public void testAlignByDevice() throws IoTDBConnectionException,
       StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -158,6 +160,40 @@ public class IoTDBSessionIT {
     queryForBatch();
   }
 
+  @Test
+  public void testCreateMultiTimeseries() throws IoTDBConnectionException, BatchExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    List<String> paths = new ArrayList<>();
+    paths.add("root.sg1.d1.s1");
+    paths.add("root.sg1.d1.s2");
+    List<TSDataType> tsDataTypes = new ArrayList<>();
+    tsDataTypes.add(TSDataType.DOUBLE);
+    tsDataTypes.add(TSDataType.DOUBLE);
+    List<TSEncoding> tsEncodings = new ArrayList<>();
+    tsEncodings.add(TSEncoding.RLE);
+    tsEncodings.add(TSEncoding.RLE);
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    compressionTypes.add(CompressionType.SNAPPY);
+    compressionTypes.add(CompressionType.SNAPPY);
+
+    List<Map<String, String>> tagsList = new ArrayList<>();
+    Map<String, String> tags = new HashMap<>();
+    tags.put("tag1", "v1");
+    tagsList.add(tags);
+    tagsList.add(tags);
+
+    session
+        .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
+            null, null);
+
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s1"));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.s2"));
+
+  }
+
+  @Test
   public void testTestMethod()
       throws StatementExecutionException, IoTDBConnectionException, BatchExecutionException {
 
@@ -368,7 +404,6 @@ public class IoTDBSessionIT {
   private void insertInChinese(String storageGroup, String[] devices)
       throws StatementExecutionException, IoTDBConnectionException {
     for (String path : devices) {
-      String fullPath = storageGroup + "." + path;
       for (int i = 0; i < 10; i++) {
         String[] ss = path.split("\\.");
         String deviceId = storageGroup;

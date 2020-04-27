@@ -465,7 +465,7 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testSendSnapshot() throws InterruptedException {
     SendSnapshotRequest request = new SendSnapshotRequest();
     List<String> newSgs = new ArrayList<>();
-    for (int i=0; i<=10; i++){
+    for (int i = 0; i <= 10; i++) {
       newSgs.add(TestUtils.getTestSg(i));
     }
     List<Log> logs = new ArrayList<>();
@@ -494,15 +494,16 @@ public class MetaGroupMemberTest extends MemberTest {
 
     try {
       LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
-      authorizer.createUser("user_1","password_1");
-      authorizer.createUser("user_2","password_2");
-      authorizer.createUser("user_3","password_3");
-      authorizer.createUser("user_4","password_4");
-    } catch (AuthException e){
+      authorizer.createUser("user_1", "password_1");
+      authorizer.createUser("user_2", "password_2");
+      authorizer.createUser("user_3", "password_3");
+      authorizer.createUser("user_4", "password_4");
+    } catch (AuthException e) {
       assertEquals("why failed?", e.getMessage());
     }
 
-    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(logs, newSgs, storageGroupTTL, userWaterMarkStatus);
+    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(logs, newSgs, storageGroupTTL,
+        userWaterMarkStatus);
     request.setSnapshotBytes(snapshot.serialize());
     AtomicReference<Void> reference = new AtomicReference<>();
     synchronized (reference) {
@@ -530,7 +531,7 @@ public class MetaGroupMemberTest extends MemberTest {
       assertTrue(authorizer.isUserUseWaterMark("user_2"));
       assertFalse(authorizer.isUserUseWaterMark("user_3"));
       assertFalse(authorizer.isUserUseWaterMark("user_4"));
-    } catch (AuthException e){
+    } catch (AuthException e) {
       assertEquals("why failed?", e.getMessage());
     }
   }
@@ -552,7 +553,8 @@ public class MetaGroupMemberTest extends MemberTest {
       MeasurementSchema schema = TestUtils.getTestSchema(i, 0);
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
           new Path(schema.getMeasurementId()), schema.getType(),
-          schema.getEncodingType(), schema.getCompressor(), schema.getProps());
+          schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
+          Collections.emptyMap(), Collections.emptyMap(), null);
       status = metaGroupMember.executeNonQuery(createTimeSeriesPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(i, 0)));

@@ -31,7 +31,7 @@ import java.util.Set;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -60,7 +60,8 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
     @Override
     public int getPartitionKey(String storageGroupName, long timestamp) {
-      return PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
+      return PartitionUtils
+          .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
     }
 
     @Override
@@ -137,6 +138,11 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     public MManager getMManager() {
       return MManager.getInstance();
     }
+
+    @Override
+    public List<PartitionGroup> getGlobalGroups() {
+      return null;
+    }
   };
 
   @Override
@@ -144,7 +150,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     return new TestMetaGroupMember() {
 
       @Override
-      public LogManager getLogManager() {
+      public RaftLogManager getLogManager() {
         return MetaHeartbeatThreadTest.this.logManager;
       }
 
@@ -180,7 +186,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         new Thread(() -> {
           if (testHeartbeat) {
             assertEquals(TestUtils.getNode(0), requestCopy.getLeader());
-            assertEquals(7, requestCopy.getCommitLogIndex());
+            assertEquals(6, requestCopy.getCommitLogIndex());
             assertEquals(10, requestCopy.getTerm());
             assertNull(requestCopy.getHeader());
             if (node.getNodeIdentifier() < 3) {
@@ -188,7 +194,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
             } else if (node.getNodeIdentifier() < 6) {
               assertTrue(requestCopy.isRequireIdentifier());
             } else if (node.getNodeIdentifier() < 9) {
-              assertEquals(partitionTableBuffer, requestCopy .partitionTableBytes);
+              assertEquals(partitionTableBuffer, requestCopy.partitionTableBytes);
             }
             synchronized (receivedNodes) {
               receivedNodes.add(getSerialNum());
@@ -213,8 +219,8 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         new Thread(() -> {
           assertEquals(TestUtils.getNode(0), request.getElector());
           assertEquals(11, request.getTerm());
-          assertEquals(9, request.getLastLogIndex());
-          assertEquals(8, request.getLastLogTerm());
+          assertEquals(6, request.getLastLogIndex());
+          assertEquals(6, request.getLastLogTerm());
           if (respondToElection) {
             resultHandler.onComplete(Response.RESPONSE_AGREE);
           }

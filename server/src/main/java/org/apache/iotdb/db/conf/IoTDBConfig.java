@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.conf;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -43,6 +46,16 @@ public class IoTDBConfig {
   private static final String MULTI_DIR_STRATEGY_PREFIX =
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
+
+  private static final String NODE_MATCHER =
+      "[" + PATH_SEPARATOR + "]" + "([a-zA-Z0-9\u2E80-\u9FFF_]+)";
+
+  // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
+  private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
+      "[" + PATH_SEPARATOR + "][\"|\']([a-zA-Z0-9\u2E80-\u9FFF_]+)(" + NODE_MATCHER + ")+[\"|\']";
+  public static final Pattern PATH_PATTERN = Pattern
+      .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
+
   /**
    * Port which the metrics service listens to.
    */
@@ -53,7 +66,7 @@ public class IoTDBConfig {
   /**
    * whether to enable the mqtt service.
    */
-  private boolean enableMQTTService = true;
+  private boolean enableMQTTService = false;
 
   /**
    * the mqtt service binding host.
@@ -269,6 +282,11 @@ public class IoTDBConfig {
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
   private int mManagerCacheSize = 400000;
+
+  /**
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   */
+  private int mRemoteSchemaCacheSize = 100000;
 
   /**
    * Is external sort enable.
@@ -529,7 +547,10 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric =50;
+  private int queryCacheSizeInMetric = 50;
+
+  // max size for tag and attribute of one time series
+  private int tagAttributeTotalSize = 700;
 
   public IoTDBConfig() {
     // empty constructor
@@ -875,6 +896,14 @@ public class IoTDBConfig {
     this.mManagerCacheSize = mManagerCacheSize;
   }
 
+  public int getmRemoteSchemaCacheSize() {
+    return mRemoteSchemaCacheSize;
+  }
+
+  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
+    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
+  }
+
   public boolean isSyncEnable() {
     return isSyncEnable;
   }
@@ -943,7 +972,7 @@ public class IoTDBConfig {
     return walBufferSize;
   }
 
-  void setWalBufferSize(int walBufferSize) {
+  public void setWalBufferSize(int walBufferSize) {
     this.walBufferSize = walBufferSize;
   }
 
@@ -1480,5 +1509,13 @@ public class IoTDBConfig {
 
   public void setMqttPayloadFormatter(String mqttPayloadFormatter) {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
+  }
+
+  public int getTagAttributeTotalSize() {
+    return tagAttributeTotalSize;
+  }
+
+  public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
+    this.tagAttributeTotalSize = tagAttributeTotalSize;
   }
 }

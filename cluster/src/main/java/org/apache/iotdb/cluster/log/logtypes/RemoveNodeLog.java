@@ -29,6 +29,7 @@ import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
 
 public class RemoveNodeLog extends Log {
+
     private Node removedNode;
 
     @Override

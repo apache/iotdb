@@ -36,7 +36,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
@@ -58,13 +58,14 @@ import org.junit.After;
 import org.junit.Before;
 
 public class MemberTest {
+
   public static AtomicLong dummyResponse = new AtomicLong(Response.RESPONSE_AGREE);
 
   protected Map<Node, DataGroupMember> dataGroupMemberMap;
   protected Map<Node, MetaGroupMember> metaGroupMemberMap;
   protected PartitionGroup allNodes;
   protected MetaGroupMember testMetaMember;
-  LogManager metaLogManager;
+  RaftLogManager metaLogManager;
   PartitionTable partitionTable;
   PlanExecutor planExecutor;
 

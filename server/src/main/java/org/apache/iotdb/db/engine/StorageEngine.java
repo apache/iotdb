@@ -111,27 +111,13 @@ public class StorageEngine implements IService {
    * TimestampPrecision
    */
   @ServerConfigConsistent
-  private static long timePartitionInterval;
+  private static long timePartitionInterval = -1;
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
     // build time Interval to divide time partition
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000_000_000L;
-        break;
-      case "us":
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000_000L;
-        break;
-      default:
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000;
-        break;
-    }
+    initTimePartition();
     // create systemDir
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
@@ -164,6 +150,27 @@ public class StorageEngine implements IService {
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
+  }
+
+  private static void initTimePartition() {
+    timePartitionInterval = convertMilliWithPrecision(IoTDBDescriptor.getInstance().
+        getConfig().getPartitionInterval() * 1000L);
+  }
+
+  public static long convertMilliWithPrecision(long milliTime) {
+    long result = milliTime;
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        result = milliTime * 1000_000L;
+        break;
+      case "us":
+        result = milliTime * 1000L;
+        break;
+      default:
+        break;
+    }
+    return result;
   }
 
   @Override
@@ -547,11 +554,14 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartitionInterval() {
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
     return timePartitionInterval;
   }
 
   public static long getTimePartition(long time) {
-    return time / timePartitionInterval;
+    return time / getTimePartitionInterval();
   }
 
   /**

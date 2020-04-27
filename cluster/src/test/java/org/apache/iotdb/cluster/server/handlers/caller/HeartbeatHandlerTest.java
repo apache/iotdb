@@ -27,7 +27,7 @@ import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
-import org.apache.iotdb.cluster.log.LogManager;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
@@ -52,7 +52,7 @@ public class HeartbeatHandlerTest {
       }
 
       @Override
-      public LogManager getLogManager() {
+      public RaftLogManager getLogManager() {
         return new TestLogManager();
       }
     };
@@ -63,7 +63,7 @@ public class HeartbeatHandlerTest {
     HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     HeartBeatResponse response = new HeartBeatResponse();
     response.setTerm(Response.RESPONSE_AGREE);
-    response.setLastLogIndex(-1);
+    response.setLastLogIndex(-2);
     catchUpFlag = false;
     synchronized (metaGroupMember) {
       new Thread(() -> handler.onComplete(response)).start();

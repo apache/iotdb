@@ -75,8 +75,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
 
   /**
-   * Add a DataGroupMember into this server, if a member with the same header exists, the old
-   * member will be stopped and replaced by the new one.
+   * Add a DataGroupMember into this server, if a member with the same header exists, the old member
+   * will be stopped and replaced by the new one.
+   *
    * @param dataGroupMember
    */
   public void addDataGroupMember(DataGroupMember dataGroupMember) {
@@ -88,11 +89,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   /**
-   *
-   * @param header the header of the group which the local node is in
+   * @param header        the header of the group which the local node is in
    * @param resultHandler can be set to null if the request is an internal request
-   * @param request the toString() of this parameter should explain what the request is and it is
-   *                only used in logs for tracing
+   * @param request       the toString() of this parameter should explain what the request is and it
+   *                      is only used in logs for tracing
    * @return
    */
   public DataGroupMember getDataMember(Node header, AsyncMethodCallback resultHandler,
@@ -130,7 +130,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   /**
-   *
    * @param header
    * @return A DataGroupMember representing this node in the data group of the header.
    * @throws NotInSameGroupException If this node is not in the group of the header.
@@ -286,7 +285,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
     DataGroupMember member = getDataMember(request.getHeader(), resultHandler,
-        "Query by timestamp:" + request.getQueryId() + "#" + request.getPath() + " of " + request.getRequester());
+        "Query by timestamp:" + request.getQueryId() + "#" + request.getPath() + " of " + request
+            .getRequester());
     if (member != null) {
       member.querySingleSeriesByTimestamp(request, resultHandler);
     }
@@ -325,6 +325,23 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     DataGroupMember dataMember = getDataMember(header, resultHandler, "Get node list");
     dataMember.getNodeList(header, path, nodeLevel, resultHandler);
   }
+
+  @Override
+  public void getChildNodePathInNextLevel(Node header, String path,
+      AsyncMethodCallback<Set<String>> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler,
+        "Get child node path in next level");
+    dataMember.getChildNodePathInNextLevel(header, path, resultHandler);
+  }
+
+  @Override
+  public void getAllMeasurementSchema(Node header, ByteBuffer planBytes,
+      AsyncMethodCallback<ByteBuffer> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler,
+        "Get all measurement schema");
+    dataMember.getAllMeasurementSchema(header, planBytes, resultHandler);
+  }
+
 
   @Override
   public void getAggrResult(GetAggrResultRequest request,
@@ -369,8 +386,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   /**
    * Try adding the node into the group of each DataGroupMember, and if the DataGroupMember no
-   * longer stays in that group, also remove and stop it.
-   * If the new group contains this node, also create and add a new DataGroupMember for it.
+   * longer stays in that group, also remove and stop it. If the new group contains this node, also
+   * create and add a new DataGroupMember for it.
+   *
    * @param node
    * @param newGroup
    */
@@ -405,14 +423,21 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   /**
-   * Set the partition table as the in-use one and build a DataGroupMember for each local group
-   * (the group which the local node is in) and start them.
+   * Set the partition table as the in-use one and build a DataGroupMember for each local group (the
+   * group which the local node is in) and start them.
+   *
    * @param partitionTable
    * @throws TTransportException
    */
   public void bulidDataGroupMembers(PartitionTable partitionTable)
       throws TTransportException {
     setPartitionTable(partitionTable);
+    // clear previous members if the partition table is reloaded
+    for (DataGroupMember value : headerGroupMap.values()) {
+      value.stop();
+    }
+    headerGroupMap.clear();
+
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
     for (PartitionGroup partitionGroup : partitionGroups) {
       logger.debug("Building member of data group: {}", partitionGroup);
@@ -424,12 +449,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   /**
-   * Try removing a node from the groups of each DataGroupMember.
-   * If the node is the header of some group, set the member to read only so that it can still
-   * provide data for other nodes that has not yet pulled its data.
-   * If the node is the local node, remove all members whose group is not headed by this node.
-   * Otherwise, just change the node list of the member and pull new data.
-   * And create a new DataGroupMember if this node should join a new group because of this removal.
+   * Try removing a node from the groups of each DataGroupMember. If the node is the header of some
+   * group, set the member to read only so that it can still provide data for other nodes that has
+   * not yet pulled its data. If the node is the local node, remove all members whose group is not
+   * headed by this node. Otherwise, just change the node list of the member and pull new data. And
+   * create a new DataGroupMember if this node should join a new group because of this removal.
+   *
    * @param node
    * @param removalResult cluster changes due to the node removal
    */
@@ -485,7 +510,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   /**
-   *
    * @return The reports of every DataGroupMember in this node.
    */
   public List<DataMemberReport> genMemberReports() {

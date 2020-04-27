@@ -162,4 +162,9 @@ public class PageReader implements IPageReader {
   public void setDeletedAt(long deletedAt) {
     this.deletedAt = deletedAt;
   }
+
+  @Override
+  public boolean isModified() {
+    return pageHeader.isModified();
+  }
 }

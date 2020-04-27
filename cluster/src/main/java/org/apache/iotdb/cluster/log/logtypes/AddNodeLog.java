@@ -40,7 +40,6 @@ public class AddNodeLog extends Log {
     this.newNode = newNode;
   }
 
-
   @Override
   public ByteBuffer serialize() {
     byte[] ipBytes = newNode.getIp().getBytes();
@@ -48,8 +47,8 @@ public class AddNodeLog extends Log {
     // marker(byte), previous index(long), previous term(long), curr index(long), curr term(long)
     // ipLength(int), inBytes(byte[]), port(int), identifier(int), dataPort(int)
     int totalSize =
-              Byte.BYTES  + Long.BYTES + Long.BYTES + Long.BYTES + Long.BYTES +
-              Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES;
+        Byte.BYTES + Long.BYTES + Long.BYTES + Long.BYTES + Long.BYTES +
+            Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES;
     byte[] buffer = new byte[totalSize];
 
     ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);

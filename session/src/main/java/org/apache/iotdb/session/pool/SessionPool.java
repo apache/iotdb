@@ -19,6 +19,7 @@
 package org.apache.iotdb.session.pool;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
@@ -258,6 +259,59 @@ public class SessionPool {
       Session session = getSession();
       try {
         session.insertBatch(rowBatch);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+
+  /**
+   * use batch interface to insert data
+   *
+   * @param rowBatchMap data batch
+   */
+  public void insertMultipleDeviceSortedBatch(Map<String, RowBatch> rowBatchMap)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertMultipleDeviceSortedBatch(rowBatchMap);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  /**
+   * use batch interface to insert data
+   *
+   * @param rowBatchMap data batch
+   */
+  public void insertMultipleDeviceBatch(Map<String, RowBatch> rowBatchMap)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertMultipleDeviceBatch(rowBatchMap);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
@@ -597,8 +651,56 @@ public class SessionPool {
         String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
   }
 
-  public boolean checkTimeseriesExists(String path)
+  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props, Map<String, String> tags,
+      Map<String, String> attributes, String measurementAlias)
       throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createTimeseries(path, dataType, encoding, compressor, props, tags, attributes,
+            measurementAlias);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  public void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
+      List<TSEncoding> encodings, List<CompressionType> compressors,
+      List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
+      List<Map<String, String>> attributesList, List<String> measurementAliasList)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createMultiTimeseries(paths, dataTypes, encodings, compressors, propsList, tagsList,
+            attributesList, measurementAliasList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        closeSession(session);
+        removeSession();
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    throw new IoTDBConnectionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  public boolean checkTimeseriesExists(String path) throws IoTDBConnectionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -609,9 +711,6 @@ public class SessionPool {
         // TException means the connection is broken, remove it and get a new one.
         closeSession(session);
         removeSession();
-      } catch (StatementExecutionException e) {
-        putBack(session);
-        throw e;
       }
     }
     throw new IoTDBConnectionException(

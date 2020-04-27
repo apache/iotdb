@@ -79,7 +79,6 @@ public class DataLogApplier extends BaseApplier {
             closeFileLog.getStorageGroupName(), closeFileLog.getPartitionId());
       }
     } else {
-      // TODO-Cluster#348 support more types of logs
       logger.error("Unsupported log: {}", log);
     }
   }

@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.common;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -43,6 +44,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Before;
 
@@ -125,14 +127,15 @@ public class IoTDBTest {
     try {
       MeasurementSchema schema = TestUtils.getTestSchema(sgNum, seriesNum);
       planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()),
-          schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps()));
+          schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
+          Collections.emptyMap(), Collections.emptyMap(), null));
     } catch (QueryProcessException e) {
       // ignore
     }
   }
 
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException {
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, TException, InterruptedException {
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setExpression(expression);
