@@ -79,6 +79,7 @@ public class HeartbeatThread implements Runnable {
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
               localMember.setLeader(null);
+              localMember.updateHardState(localMember.getTerm().get(), null);
             } else {
               logger.debug("{}: Heartbeat is still valid", memberName);
               Thread.sleep(connectionTimeoutInMS);
@@ -145,6 +146,7 @@ public class HeartbeatThread implements Runnable {
 
   /**
    * Send a heartbeat to "node" through "client".
+   *
    * @param node
    * @param client
    */
@@ -159,6 +161,7 @@ public class HeartbeatThread implements Runnable {
 
   /**
    * Start elections until this node becomes a leader or a follower.
+   *
    * @throws InterruptedException
    */
   private void startElections() throws InterruptedException {
@@ -166,6 +169,7 @@ public class HeartbeatThread implements Runnable {
       // single node group, this node is always the leader
       localMember.setCharacter(NodeCharacter.LEADER);
       localMember.setLeader(localMember.getThisNode());
+      localMember.updateHardState(localMember.getTerm().get(), localMember.getLeader());
       logger.info("{}: Winning the election because the node is the only node.", memberName);
     }
 
@@ -185,14 +189,13 @@ public class HeartbeatThread implements Runnable {
   }
 
   /**
-   * Start one round of election.
-   * Increase the local term, ask for vote from each of the nodes in the group and become the
-   * leader if at least half of them agree.
+   * Start one round of election. Increase the local term, ask for vote from each of the nodes in
+   * the group and become the leader if at least half of them agree.
    */
   void startElection() {
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();
-      localMember.updateHardState(nextTerm);
+      localMember.updateHardState(nextTerm, this.localMember.getLeader());
       // the number of votes needed to become a leader
       int quorumNum = localMember.getAllNodes().size() / 2;
       logger.info("{}: Election {} starts, quorum: {}", memberName, nextTerm, quorumNum);
@@ -233,18 +236,19 @@ public class HeartbeatThread implements Runnable {
         logger.info("{}: Election {} accepted", memberName, nextTerm);
         localMember.setCharacter(NodeCharacter.LEADER);
         localMember.setLeader(localMember.getThisNode());
+        localMember.updateHardState(localMember.getTerm().get(), localMember.getLeader());
       }
     }
   }
 
   /**
-   * Request a vote from each of the "nodes".
-   * Each for vote will decrease the counter "quorum" and when it reaches 0, the flag
-   * "electionValid" and "electionTerminated" will be set to true.
-   * Any against vote will set the flag "electionTerminated" to true and ends the election.
+   * Request a vote from each of the "nodes". Each for vote will decrease the counter "quorum" and
+   * when it reaches 0, the flag "electionValid" and "electionTerminated" will be set to true. Any
+   * against vote will set the flag "electionTerminated" to true and ends the election.
+   *
    * @param nodes
    * @param request
-   * @param nextTerm the term of the election
+   * @param nextTerm           the term of the election
    * @param quorum
    * @param electionTerminated
    * @param electionValid

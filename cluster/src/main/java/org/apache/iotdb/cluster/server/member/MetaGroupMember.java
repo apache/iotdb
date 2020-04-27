@@ -225,6 +225,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
     super.logManager = logManager;
     this.term.set(logManager.getHardState().getCurrentTerm());
+    leader = logManager.getHardState().getVoteFor();
 
     setThisNode(thisNode);
     // load the identifier from the disk or generate a new one

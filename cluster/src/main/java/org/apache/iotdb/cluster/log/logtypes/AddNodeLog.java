@@ -45,7 +45,7 @@ public class AddNodeLog extends Log {
     byte[] ipBytes = newNode.getIp().getBytes();
 
     // marker(byte), previous index(long), previous term(long), curr index(long), curr term(long)
-    // ipLength(int), inBytes(byte[]), port(int), identifier(int), dataPort(int)
+    // ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int)
     int totalSize =
         Byte.BYTES + Long.BYTES + Long.BYTES + Long.BYTES + Long.BYTES +
             Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES;

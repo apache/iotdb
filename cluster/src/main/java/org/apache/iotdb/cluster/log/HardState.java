@@ -19,85 +19,113 @@
 
 package org.apache.iotdb.cluster.log;
 
+import java.nio.ByteBuffer;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import java.nio.ByteBuffer;
 
 
 public class HardState {
 
-    private long currentTerm;
-    private long voteFor;
+  private long currentTerm;
+  private Node voteFor;
 
-    public HardState() {
-    }
+  public HardState() {
+    this.voteFor = null;
+  }
 
-    public HardState(long currentTerm, long voteFor) {
-        this.currentTerm = currentTerm;
-        this.voteFor = voteFor;
+  public static HardState deserialize(ByteBuffer buffer) {
+    HardState res = new HardState();
+    res.setCurrentTerm(ReadWriteIOUtils.readLong(buffer));
+    // marker is previously read, remaining fields:
+    // currentTerm(long), marker(byte)
+    // (optional)ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int)
+    int isNull = buffer.get();
+    if (isNull == 1) {
+      Node node = new Node();
+      SerializeUtils.deserialize(node, buffer);
+      res.setVoteFor(node);
+    } else {
+      res.setVoteFor(null);
     }
+    return res;
+  }
 
-    public static HardState deserialize(ByteBuffer buffer) {
-        HardState res = new HardState();
-        res.currentTerm = ReadWriteIOUtils.readLong(buffer);
-        res.voteFor = ReadWriteIOUtils.readLong(buffer);
-        return res;
+  public ByteBuffer serialize() {
+    int totalSize = Long.BYTES + Byte.BYTES;
+    // currentTerm(long), marker(byte)
+    // (optional)ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int)
+    if (voteFor != null) {
+      byte[] ipBytes = voteFor.getIp().getBytes();
+      totalSize +=
+          Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES;
+      byte[] buffer = new byte[totalSize];
+      ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
+      byteBuffer.putLong(currentTerm);
+      byteBuffer.put((byte) 1);
+      byteBuffer.putInt(ipBytes.length);
+      byteBuffer.put(ipBytes);
+      byteBuffer.putInt(voteFor.getMetaPort());
+      byteBuffer.putInt(voteFor.getNodeIdentifier());
+      byteBuffer.putInt(voteFor.getDataPort());
+      byteBuffer.flip();
+      return byteBuffer;
     }
+    byte[] buffer = new byte[totalSize];
+    ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
+    byteBuffer.putLong(currentTerm);
+    byteBuffer.put((byte) 0);
+    byteBuffer.flip();
 
-    public ByteBuffer serialize() {
-        ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 2);
-        byteBuffer.putLong(currentTerm);
-        byteBuffer.putLong(voteFor);
-        byteBuffer.flip();
-        return byteBuffer;
-    }
+    return byteBuffer;
+  }
 
-    public long getCurrentTerm() {
-        return currentTerm;
-    }
+  public long getCurrentTerm() {
+    return currentTerm;
+  }
 
-    public void setCurrentTerm(long currentTerm) {
-        this.currentTerm = currentTerm;
-    }
+  public void setCurrentTerm(long currentTerm) {
+    this.currentTerm = currentTerm;
+  }
 
-    public long getVoteFor() {
-        return voteFor;
-    }
+  public Node getVoteFor() {
+    return voteFor;
+  }
 
-    public void setVoteFor() {
-        this.voteFor = voteFor;
-    }
+  public void setVoteFor(Node voteFor) {
+    this.voteFor = voteFor;
+  }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof HardState)) {
-            return false;
-        }
-        HardState that = (HardState) o;
-        return new EqualsBuilder()
-            .append(currentTerm, that.currentTerm)
-            .append(voteFor, that.voteFor)
-            .isEquals();
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
+    if (!(o instanceof HardState)) {
+      return false;
+    }
+    HardState that = (HardState) o;
+    return new EqualsBuilder()
+        .append(currentTerm, that.currentTerm)
+        .append(voteFor, that.voteFor)
+        .isEquals();
+  }
 
-    @Override
-    public int hashCode() {
-        return new HashCodeBuilder(17, 37)
-            .append(currentTerm)
-            .append(voteFor)
-            .toHashCode();
-    }
+  @Override
+  public int hashCode() {
+    return new HashCodeBuilder(17, 37)
+        .append(currentTerm)
+        .append(voteFor)
+        .toHashCode();
+  }
 
-    @Override
-    public String toString() {
-        return "HardState{" +
-            "currentTerm=" + currentTerm +
-            ", voteFor=" + voteFor +
-            '}';
-    }
+  @Override
+  public String toString() {
+    return "HardState{" +
+        "currentTerm=" + currentTerm +
+        ", voteFor=" + voteFor +
+        '}';
+  }
 }

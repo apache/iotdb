@@ -165,7 +165,8 @@ public class DataGroupMemberTest extends MemberTest {
       }
 
       @Override
-      public void updateHardState(long currentTerm){}
+      public void updateHardState(long currentTerm, Node leader) {
+      }
 
 
       @Override

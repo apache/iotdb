@@ -215,17 +215,22 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           // The term of the last log needs to be the same with leader's term in order to preserve
           // safety, otherwise it may come from an invalid leader and is not committed
           if (logManager.getCommitLogIndex() < request.getCommitLogIndex() &&
-              logManager.matchTerm(request.getCommitLogTerm(),request.getCommitLogIndex())){
-            logger.info("{}: Committing to {}-{}, local: {}-{}, last: {}-{}", name, request.getCommitLogIndex(),
-                request.getCommitLogTerm(),logManager.getCommitLogIndex() ,logManager.getCommitLogTerm(),logManager.getLastLogIndex(),logManager.getLastLogTerm() );
+              logManager.matchTerm(request.getCommitLogTerm(), request.getCommitLogIndex())) {
+            logger.info("{}: Committing to {}-{}, local: {}-{}, last: {}-{}", name,
+                request.getCommitLogIndex(),
+                request.getCommitLogTerm(), logManager.getCommitLogIndex(),
+                logManager.getCommitLogTerm(), logManager.getLastLogIndex(),
+                logManager.getLastLogTerm());
             synchronized (syncLock) {
               logManager.commitTo(request.getCommitLogIndex());
               syncLock.notifyAll();
             }
           } else if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
-            logger.info("{}: Inconsistent log found, leader: {}-{}, local: {}-{}, last: {}-{}", name,
-                request.getCommitLogIndex(), request.getCommitLogTerm(),logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
-                logManager.getLastLogIndex(),logManager.getLastLogTerm());
+            logger
+                .info("{}: Inconsistent log found, leader: {}-{}, local: {}-{}, last: {}-{}", name,
+                    request.getCommitLogIndex(), request.getCommitLogTerm(),
+                    logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
+                    logManager.getLastLogIndex(), logManager.getLastLogTerm());
           }
 
         }
@@ -234,7 +239,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
         term.set(leaderTerm);
         setLeader(request.getLeader());
-        updateHardState(leaderTerm);
+        updateHardState(leaderTerm, request.getLeader());
         if (character != NodeCharacter.FOLLOWER) {
           setCharacter(NodeCharacter.FOLLOWER);
           // interrupt election
@@ -274,7 +279,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   * Check the term of the AppednEntryRequest. The term checked is the term of the leader, not the
+   * Check the term of the AppendEntryRequest. The term checked is the term of the leader, not the
    * term of the log. A new leader can still send logs of old leaders.
    *
    * @param request
@@ -297,7 +302,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return false;
       } else if (leaderTerm > localTerm) {
         term.set(leaderTerm);
-        updateHardState(leaderTerm);
+        updateHardState(leaderTerm, leader);
         localTerm = leaderTerm;
         if (character != NodeCharacter.FOLLOWER) {
           setCharacter(NodeCharacter.FOLLOWER);
@@ -573,9 +578,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
         term.set(newTerm);
-        updateHardState(newTerm);
-        setCharacter(NodeCharacter.FOLLOWER);
         setLeader(null);
+        updateHardState(newTerm, null);
+        setCharacter(NodeCharacter.FOLLOWER);
       }
     }
   }
@@ -598,19 +603,16 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             name, thatTerm,
             thatLastLogId, thatLastLogTerm);
 
-    long lastLogIndex = logManager.getLastLogIndex();
-    long lastLogTerm = logManager.getLastLogTerm();
-
     synchronized (term) {
       long thisTerm = term.get();
-      long resp = verifyElector(thisTerm, lastLogIndex, lastLogTerm, thatTerm, thatLastLogId,
+      long resp = verifyElector(thisTerm, thatTerm, thatLastLogId,
           thatLastLogTerm);
       if (resp == Response.RESPONSE_AGREE) {
         term.set(thatTerm);
-        updateHardState(thatTerm);
+        leader = electionRequest.getElector();
+        updateHardState(thatTerm, leader);
         setCharacter(NodeCharacter.FOLLOWER);
         lastHeartbeatReceivedTime = System.currentTimeMillis();
-        leader = electionRequest.getElector();
         // interrupt election
         term.notifyAll();
       }
@@ -625,31 +627,31 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * Otherwise accept the election.
    *
    * @param thisTerm
-   * @param thisLastLogIndex
-   * @param thisLastLogTerm
    * @param thatTerm
-   * @param thatLastLogId
-   * @param thatLastLogTerm
+   * @param lastLogIndex
+   * @param lastLogTerm
    * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
    * smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
    */
-  long verifyElector(long thisTerm, long thisLastLogIndex, long thisLastLogTerm,
-      long thatTerm, long thatLastLogId, long thatLastLogTerm) {
+  long verifyElector(long thisTerm,
+      long thatTerm, long lastLogIndex, long lastLogTerm) {
     long response;
-    if (thatTerm <= thisTerm) {
-      response = thisTerm;
-      logger.debug("{} rejected an election request, term:{}/{}",
-          name, thatTerm, thisTerm);
-    } else if (thatLastLogTerm < thisLastLogTerm
-        || (thatLastLogTerm == thisLastLogTerm && thatLastLogId < thisLastLogIndex)) {
-      logger.debug("{} rejected an election request, logIndex:{}/{}, logTerm:{}/{}",
-          name, thatLastLogId, thisLastLogIndex, thatLastLogTerm, thisLastLogTerm);
-      response = Response.RESPONSE_LOG_MISMATCH;
-    } else {
-      logger.debug("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-          name, thatTerm, thisTerm, thatLastLogId, thisLastLogIndex, thatLastLogTerm,
-          thisLastLogTerm);
-      response = Response.RESPONSE_AGREE;
+    synchronized (logManager) {
+      if (thatTerm <= thisTerm) {
+        response = thisTerm;
+        logger.debug("{} rejected an election request, term:{}/{}",
+            name, thatTerm, thisTerm);
+      } else if (logManager.isLogUpToDate(lastLogTerm, lastLogIndex)) {
+        logger.debug("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+            name, thatTerm, thisTerm, lastLogIndex, logManager.getLastLogIndex(), lastLogTerm,
+            logManager.getLastLogTerm());
+        response = Response.RESPONSE_AGREE;
+      } else {
+        logger.debug("{} rejected an election request, logIndex:{}/{}, logTerm:{}/{}",
+            name, lastLogIndex, logManager.getLastLogIndex(), lastLogTerm,
+            logManager.getLastLogTerm());
+        response = Response.RESPONSE_LOG_MISMATCH;
+      }
     }
     return response;
   }
@@ -694,16 +696,16 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           // if the first log has been snapshot, the snapshot should also be sent to the
           // follower, otherwise some data will be missing
           snapshot = logManager.getSnapshot();
-          try{
+          try {
             logs = logManager.getEntries(logManager.getFirstIndex(), Long.MAX_VALUE);
-          }catch(Exception e){
-            logger.error("Unexpected error: ",e);
+          } catch (Exception e) {
+            logger.error("Unexpected error: ", e);
           }
-        }else{
+        } else {
           try {
             logs = logManager.getEntries(followerLastLogIndex, Long.MAX_VALUE);
-          }catch(Exception e){
-            logger.error("Unexpected error: ",e);
+          } catch (Exception e) {
+            logger.error("Unexpected error: ", e);
           }
         }
       }
@@ -986,8 +988,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
-   * An ftp-like interface that is used for a node to pull chunks of files like TsFiles.
-   * Once the file is totally read, it will be removed.
+   * An ftp-like interface that is used for a node to pull chunks of files like TsFiles. Once the
+   * file is totally read, it will be removed.
+   *
    * @param filePath
    * @param offset
    * @param length
@@ -1022,10 +1025,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-  //TODO maintain voteFor
-  public void updateHardState(long currentTerm){
+  public void updateHardState(long currentTerm, Node leader) {
     HardState state = logManager.getHardState();
     state.setCurrentTerm(currentTerm);
+    state.setVoteFor(leader);
     logManager.updateHardState(state);
   }
 

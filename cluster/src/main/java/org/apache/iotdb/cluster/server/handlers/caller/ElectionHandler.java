@@ -32,8 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * ElectionHandler checks the result from a voter and decides whether the election goes on,
- * succeeds or fails.
+ * ElectionHandler checks the result from a voter and decides whether the election goes on, succeeds
+ * or fails.
  */
 public class ElectionHandler implements AsyncMethodCallback<Long> {
 
@@ -90,7 +90,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
           raftMember.getTerm().set(voterResp);
-          raftMember.updateHardState(voterResp);
+          raftMember.updateHardState(voterResp, raftMember.getLeader());
           logger.info("{}: Election {} rejected: The term of this node is no bigger than {}",
               memberName, currTerm, voterResp);
           // the election is rejected
