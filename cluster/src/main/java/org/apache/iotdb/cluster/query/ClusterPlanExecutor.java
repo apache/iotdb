@@ -34,6 +34,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -42,6 +43,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -55,6 +57,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -92,9 +95,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof ShowPlan) {
       return processShowQuery((ShowPlan) queryPlan);
-    } else if(queryPlan instanceof AuthorPlan){
+    } else if (queryPlan instanceof AuthorPlan) {
       return processAuthorQuery((AuthorPlan) queryPlan);
-    }else {
+    } else {
       //TODO-Cluster: support more queries
       throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
     }
@@ -117,7 +120,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
         MManager.getInstance().getNodesList(schemaPattern, level));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
-
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       Node header = group.getHeader();
@@ -254,7 +256,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
                 plan.serialize(dataOutputStream);
-                client.getAllMeasurementSchema(node, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+                client.getAllMeasurementSchema(node,
+                    ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
                     handler);
                 response.wait(connectionTimeoutInMS);
               }
@@ -276,7 +279,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
             Thread.currentThread().interrupt();
           }
         }
-        if(response.get() == null){
+        if (response.get() == null) {
           logger.info("Failed to get any result from group: {}.", group);
         }
       });
@@ -355,5 +358,23 @@ public class ClusterPlanExecutor extends PlanExecutor {
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
       QueryContext context, IQueryRouter router) {
     return new ClusterAlignByDeviceDataSet(plan, context, router, metaGroupMember);
+  }
+
+  @Override
+  protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
+    switch (plan.getLoadConfigurationPlanType()) {
+      case GLOBAL:
+        IoTDBDescriptor.getInstance().loadHotModifiedProps(plan.getIoTDBProperties(), true);
+        ClusterDescriptor.getInstance().loadHotModifiedProps(plan.getClusterProperties(), true);
+        break;
+      case LOCAL:
+        IoTDBDescriptor.getInstance().loadHotModifiedProps();
+        ClusterDescriptor.getInstance().loadHotModifiedProps();
+        break;
+      default:
+        throw new QueryProcessException(String
+            .format("Unrecognized load configuration plan type: %s",
+                plan.getLoadConfigurationPlanType()));
+    }
   }
 }

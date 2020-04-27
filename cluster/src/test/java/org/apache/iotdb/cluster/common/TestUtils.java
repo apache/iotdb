@@ -53,8 +53,8 @@ public class TestUtils {
   public static Node getNode(int nodeNum) {
     Node node = new Node();
     node.setIp("192.168.0." + nodeNum);
-    node.setMetaPort(ClusterDescriptor.getINSTANCE().getConfig().getLocalMetaPort());
-    node.setDataPort(ClusterDescriptor.getINSTANCE().getConfig().getLocalDataPort());
+    node.setMetaPort(ClusterDescriptor.getInstance().getConfig().getLocalMetaPort());
+    node.setDataPort(ClusterDescriptor.getInstance().getConfig().getLocalDataPort());
     node.setNodeIdentifier(nodeNum);
     return node;
   }
@@ -79,7 +79,7 @@ public class TestUtils {
         .setPartitionInterval(IoTDBDescriptor.getInstance().getConfig().getPartitionInterval());
     startUpStatus.setHashSalt(ClusterConstant.HASH_SALT);
     startUpStatus
-        .setReplicationNumber(ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum());
+        .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
     return startUpStatus;
   }
 

@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -33,6 +34,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,11 +54,11 @@ public class ClusterDescriptor {
     return config;
   }
 
-  public static ClusterDescriptor getINSTANCE() {
+  public static ClusterDescriptor getInstance() {
     return INSTANCE;
   }
 
-  private String getPropsUrl() {
+  public String getPropsUrl() {
     String url = System.getProperty(ClusterConstant.CLUSTER_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -204,4 +206,29 @@ public class ClusterDescriptor {
     }
     return urlList;
   }
+
+  public void loadHotModifiedProps() throws QueryProcessException {
+    String url = getPropsUrl();
+    if (url == null) {
+      return;
+    }
+    try (InputStream inputStream = new FileInputStream(new File(url))) {
+      logger.info("Start to reload config file {}", url);
+      Properties properties = new Properties();
+      properties.load(inputStream);
+      loadHotModifiedProps(properties, false);
+    } catch (Exception e) {
+      logger.warn("Fail to reload config file {}", url, e);
+      throw new QueryProcessException(
+          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+    }
+  }
+
+  public void loadHotModifiedProps(Properties properties, boolean toCheckProperties)
+      throws QueryProcessException {
+
+    // TODO implement some hot modified properties to load
+    logger.info("Set cluster configuration {}", properties);
+  }
+
 }

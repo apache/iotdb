@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -57,7 +58,8 @@ public class IoTDBDescriptor {
 
   public void replaceProps(String[] params) {
     Options options = new Options();
-    Option rpcPort = new Option("rpc_port", "rpc_port", true, "The jdbc service listens on the port");
+    Option rpcPort = new Option("rpc_port", "rpc_port", true,
+        "The jdbc service listens on the port");
     rpcPort.setRequired(false);
     options.addOption(rpcPort);
 
@@ -84,7 +86,7 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  private String getPropsUrl() {
+  public String getPropsUrl() {
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -380,7 +382,7 @@ public class IoTDBDescriptor {
               String.valueOf(conf.getDefaultFillInterval()))));
 
       conf.setTagAttributeTotalSize(
-           Integer.parseInt(properties.getProperty("tag_attribute_total_size",
+          Integer.parseInt(properties.getProperty("tag_attribute_total_size",
               String.valueOf(conf.getTagAttributeTotalSize())))
       );
 
@@ -392,15 +394,18 @@ public class IoTDBDescriptor {
         conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
       }
       if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
-        conf.setMqttHandlerPoolSize(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
+        conf.setMqttHandlerPoolSize(
+            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
       }
       if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
-        conf.setMqttPayloadFormatter(properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
+        conf.setMqttPayloadFormatter(
+            properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
       }
       if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
-        conf.setEnableMQTTService(Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
+        conf.setEnableMQTTService(
+            Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
       }
-      
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(FSType.valueOf(
@@ -531,17 +536,9 @@ public class IoTDBDescriptor {
             TSFileDescriptor.getInstance().getConfig().getCompressor().toString()));
   }
 
-  public void loadHotModifiedProps() throws QueryProcessException {
-    String url = getPropsUrl();
-    if (url == null) {
-      return;
-    }
-
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
-      logger.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-
+  public void loadHotModifiedProps(Properties properties, boolean toCheckProperties)
+      throws QueryProcessException {
+    try {
       // update data dirs
       String dataDirs = properties.getProperty("data_dirs", null);
       if (dataDirs != null) {
@@ -584,6 +581,23 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
+    } catch (Exception e) {
+      logger.warn("Fail to reload configuration ", e);
+      throw new QueryProcessException(
+          String.format("Fail to reload configuration because %s", e.getMessage()));
+    }
+  }
+
+  public void loadHotModifiedProps() throws QueryProcessException {
+    String url = getPropsUrl();
+    if (url == null) {
+      return;
+    }
+    try (InputStream inputStream = new FileInputStream(new File(url))) {
+      logger.info("Start to reload config file {}", url);
+      Properties properties = new Properties();
+      properties.load(inputStream);
+      loadHotModifiedProps(properties, false);
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(

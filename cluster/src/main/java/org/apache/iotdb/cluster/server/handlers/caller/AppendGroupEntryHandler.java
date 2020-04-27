@@ -55,7 +55,7 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   // store the flag of leadership lost and the new leader's term
   private AtomicBoolean leaderShipStale;
   private AtomicLong newLeaderTerm;
-  private int replicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+  private int replicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
   public AppendGroupEntryHandler(int[] groupReceivedCounter, int receiverNodeIndex,
       Node receiverNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm) {
