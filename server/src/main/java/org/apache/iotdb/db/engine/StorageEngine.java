@@ -266,7 +266,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * insert a BatchInsertPlan to a storage group
+   * insert a InsertTabletPlan to a storage group
    *
    * @return result of each row
    */

@@ -27,15 +27,12 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,7 +55,7 @@ public class DataLogApplier extends BaseApplier {
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();
-      if (plan instanceof InsertPlan || plan instanceof BatchInsertPlan) {
+      if (plan instanceof InsertPlan || plan instanceof InsertTabletPlan) {
         try {
           applyInsert(plan);
         } catch (StorageGroupNotSetException e) {
@@ -94,9 +91,9 @@ public class DataLogApplier extends BaseApplier {
         sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
         time = insertPlan.getTime();
       } else {
-        BatchInsertPlan batchInsertPlan = (BatchInsertPlan) plan;
-        sg = MManager.getInstance().getStorageGroupName(batchInsertPlan.getDeviceId());
-        time = batchInsertPlan.getMinTime();
+        InsertTabletPlan InsertTabletPlan = (InsertTabletPlan) plan;
+        sg = MManager.getInstance().getStorageGroupName(InsertTabletPlan.getDeviceId());
+        time = InsertTabletPlan.getMinTime();
       }
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
@@ -107,9 +104,9 @@ public class DataLogApplier extends BaseApplier {
         sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
         time = insertPlan.getTime();
       } else {
-        BatchInsertPlan batchInsertPlan = (BatchInsertPlan) plan;
-        sg = MManager.getInstance().getStorageGroupName(batchInsertPlan.getDeviceId());
-        time = batchInsertPlan.getMinTime();
+        InsertTabletPlan InsertTabletPlan = (InsertTabletPlan) plan;
+        sg = MManager.getInstance().getStorageGroupName(InsertTabletPlan.getDeviceId());
+        time = InsertTabletPlan.getMinTime();
       }
     }
     int slotId = PartitionUtils.calculateStorageGroupSlotByTime(sg, time, ClusterConstant.SLOT_NUM);

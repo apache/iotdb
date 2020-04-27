@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -85,7 +86,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      MetadataException, TException, InterruptedException {
+      MetadataException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -111,7 +112,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected List<String> getNodesList(String schemaPattern, int level)
-      throws InterruptedException, MetadataException {
+      throws MetadataException {
     ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>(
         MManager.getInstance().getNodesList(schemaPattern, level));
 
@@ -155,13 +156,17 @@ public class ClusterPlanExecutor extends PlanExecutor {
       });
     }
     pool.shutdown();
-    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    try {
+      pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    } catch (InterruptedException e) {
+      logger.error("Unexpected interruption when waiting for getNodeList()", e);
+    }
     return new ArrayList<>(nodeSet);
   }
 
   @Override
   protected Set<String> getPathNextChildren(String path)
-      throws MetadataException, InterruptedException {
+      throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>(
         MManager.getInstance().getChildNodePathInNextLevel(path));
 
@@ -204,7 +209,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
       });
     }
     pool.shutdown();
-    pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    try {
+      pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    } catch (InterruptedException e) {
+      logger.error("Unexpected interruption when waiting for getNextChildren()", e);
+    }
     return resultSet;
   }
 
@@ -288,17 +297,23 @@ public class ClusterPlanExecutor extends PlanExecutor {
     MNode node = null;
     boolean allSeriesExists = true;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(deviceId);
+      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(deviceId);
     } catch (PathNotExistException e) {
       allSeriesExists = false;
     }
 
-    if (node != null) {
-      for (String measurement : measurementList) {
-        if (!node.hasChild(measurement)) {
-          allSeriesExists = false;
-          break;
+    try {
+      if (node != null) {
+        for (String measurement : measurementList) {
+          if (!node.hasChild(measurement)) {
+            allSeriesExists = false;
+            break;
+          }
         }
+      }
+    } finally {
+      if (node != null) {
+        ((InternalMNode) node).readUnlock();
       }
     }
 

@@ -53,7 +53,7 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -384,8 +384,8 @@ public class SlotPartitionTableTest {
   }
 
   @Test
-  public void testBatchInsertPlan() {
-    PhysicalPlan batchInertPlan = new BatchInsertPlan("root.sg.l2.l3.l4.28.ld.l1.d0", new String[]{"s0", "s1"}, Arrays.asList(0, 1));
+  public void testInsertTabletPlan() {
+    PhysicalPlan batchInertPlan = new InsertTabletPlan("root.sg.l2.l3.l4.28.ld.l1.d0", new String[]{"s0", "s1"}, Arrays.asList(0, 1));
     assertTrue(batchInertPlan.canBeSplit());
     //(String deviceId, String[] measurements, List<Integer> dataTypes)
     long[] times = new long[9];
@@ -410,16 +410,16 @@ public class SlotPartitionTableTest {
       ((boolean[])values[0])[i] = new Random().nextBoolean();
       ((int[])values[1])[i] = new Random().nextInt();
     }
-    ((BatchInsertPlan)batchInertPlan).setTimes(times);
-    ((BatchInsertPlan)batchInertPlan).setColumns(values);
-    ((BatchInsertPlan)batchInertPlan).setRowCount(9);
+    ((InsertTabletPlan)batchInertPlan).setTimes(times);
+    ((InsertTabletPlan)batchInertPlan).setColumns(values);
+    ((InsertTabletPlan)batchInertPlan).setRowCount(9);
     try {
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
       Map<PhysicalPlan, PartitionGroup> result = router.splitAndRoutePlan(batchInertPlan);
       assertEquals(3, result.size());
       result.forEach( (key, value) -> {
-        assertEquals(3, ((BatchInsertPlan) key).getRowCount());
-        long[] subtimes = ((BatchInsertPlan) key).getTimes();
+        assertEquals(3, ((InsertTabletPlan) key).getRowCount());
+        long[] subtimes = ((InsertTabletPlan) key).getTimes();
         assertEquals(3, subtimes.length);
         assertEquals(subtimes[0]/StorageEngine.getTimePartitionInterval(),
             subtimes[2]/StorageEngine.getTimePartitionInterval());

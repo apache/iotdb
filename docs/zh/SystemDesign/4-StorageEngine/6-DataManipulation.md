@@ -47,7 +47,7 @@
 * 对应的接口
 	* Session 的 insertBatch
 
-* 总入口: public Integer[] insertBatch(BatchInsertPlan batchInsertPlan)  StorageEngine.java
+* 总入口: public Integer[] insertBatch(InsertTabletPlan InsertTabletPlan)  StorageEngine.java
     * 找到对应的 StorageGroupProcessor
 	* 根据这批数据的时间以及当前设备落盘的最后时间戳，将这批数据分成小批，分别对应到一个 TsFileProcessor 中
 	* 记录写前日志

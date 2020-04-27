@@ -44,7 +44,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client.Factory;
-import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -293,7 +293,7 @@ public class ClientMain {
       logger.info(client.createTimeseries(req).toString());
     }
 
-    TSInsertReq insertReq = new TSInsertReq();
+    TSInsertRecordReq insertReq = new TSInsertRecordReq();
     insertReq.setMeasurements(Arrays.asList(MEASUREMENTS));
     insertReq.setSessionId(sessionId);
     String[] values = new String[MEASUREMENTS.length];
@@ -325,7 +325,7 @@ public class ClientMain {
       for (String device : DEVICES) {
         insertReq.setDeviceId(device);
         logger.info(insertReq.toString());
-        logger.info(client.insert(insertReq).toString());
+        logger.info(client.insertRecord(insertReq).toString());
       }
     }
   }
