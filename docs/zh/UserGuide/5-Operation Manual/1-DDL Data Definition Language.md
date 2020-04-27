@@ -163,6 +163,26 @@ show timeseries root.ln where description contains 'test1'
 
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
 
+## 查看子路径
+
+```
+IoTDB> SHOW CHILD PATHS root.ln
+```
+
+你将获得类似的结果：
+
+```
+show child paths root.ln
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+Total line number = 2
+It costs 0.012s
+```
+
 ## 统计时间序列总数
 
 IoTDB支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL语句如下所示：
