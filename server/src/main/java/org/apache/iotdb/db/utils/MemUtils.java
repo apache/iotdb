@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.engine.cache.RamUsageEstimator;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
@@ -70,13 +70,13 @@ public class MemUtils {
         .sizeOf(value.getValues());
   }
 
-  public static long getRecordSize(BatchInsertPlan batchInsertPlan, int start, int end) {
+  public static long getRecordSize(InsertTabletPlan insertTabletPlan, int start, int end) {
     if (start >= end) {
       return 0L;
     }
     long memSize = 0;
-    for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
-      switch (batchInsertPlan.getDataTypes()[i]) {
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      switch (insertTabletPlan.getDataTypes()[i]) {
         case INT32:
           memSize += (end - start) * (8L + 4L); break;
         case INT64:
@@ -90,7 +90,7 @@ public class MemUtils {
         case TEXT:
           memSize += (end - start) * 8L;
           for (int j = start; j < end; j++) {
-            memSize += getBinarySize(((Binary[]) batchInsertPlan.getColumns()[i])[j]);
+            memSize += getBinarySize(((Binary[]) insertTabletPlan.getColumns()[i])[j]);
           }
           break;
         default:
