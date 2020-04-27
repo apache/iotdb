@@ -561,7 +561,7 @@ public class StorageGroupProcessor {
 
   /**
    * insert batch to tsfile processor thread-safety that the caller need to guarantee
-   * The index range to be inserted in insertTabletPlan is [start, end)
+   * The rows to be inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
    * @param sequence whether is sequence
