@@ -19,100 +19,122 @@
 
 package org.apache.iotdb.cluster.log.snapshot;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.cluster.partition.PartitionTable;
+import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.db.auth.entity.Role;
+import org.apache.iotdb.db.auth.entity.User;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * MetaSimpleSnapshot also records all storage groups.
  */
 public class MetaSimpleSnapshot extends SimpleSnapshot {
 
-  private List<String> storageGroups;
-  private Map<String, Long> storageGroupTTL;
-  private Map<String, Boolean> userWaterMarkStatus;
+  private Map<String, Long> storageGroupTTLMap;
+  private Map<String, User> userMap;
+  private Map<String, Role> roleMap;
+  private ByteBuffer partitionTableBuffer;
 
   public MetaSimpleSnapshot() {
-    storageGroups = Collections.emptyList();
-    storageGroupTTL = Collections.emptyMap();
-    userWaterMarkStatus = Collections.emptyMap();
+    storageGroupTTLMap = Collections.emptyMap();
+    userMap = Collections.emptyMap();
+    roleMap = Collections.emptyMap();
+    partitionTableBuffer = null;
   }
 
   public MetaSimpleSnapshot(
-      List<Log> snapshot,
-      List<String> storageGroups,
-      Map<String, Long> storageGroupTTL,
-      Map<String, Boolean> userWaterMarkStatus) {
-    super(snapshot);
-    this.storageGroups = storageGroups;
-    this.storageGroupTTL = storageGroupTTL;
-    this.userWaterMarkStatus = userWaterMarkStatus;
-
+      Map<String, Long> storageGroupTTLMap,
+      Map<String, User> userMap,
+      Map<String, Role> roleMap,
+      ByteBuffer partitionTableBuffer) {
+    this.storageGroupTTLMap = storageGroupTTLMap;
+    this.userMap = userMap;
+    this.roleMap = roleMap;
+    this.partitionTableBuffer = partitionTableBuffer;
   }
 
-  public List<String> getStorageGroups() {
-    return storageGroups;
+  public Map<String, Long> getStorageGroupTTLMap() {
+    return storageGroupTTLMap;
   }
 
-  public Map<String, Long> getStorageGroupTTL() {
-    return storageGroupTTL;
+  public Map<String, User> getUserMap() {
+    return userMap;
   }
 
-  public Map<String, Boolean> getUserWaterMarkStatus() {
-    return userWaterMarkStatus;
+  public Map<String, Role> getRoleMap() {
+    return roleMap;
+  }
+
+  public ByteBuffer getPartitionTableBuffer() {
+    return partitionTableBuffer;
   }
 
   @Override
-  void subSerialize(DataOutputStream dataOutputStream) {
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
     try {
-      dataOutputStream.writeInt(storageGroups.size());
-      for (String storageGroup : storageGroups) {
-        SerializeUtils.serialize(storageGroup, dataOutputStream);
-      }
-
-      dataOutputStream.writeInt(storageGroupTTL.size());
-      for (Map.Entry<String, Long> entry : storageGroupTTL.entrySet()) {
+      dataOutputStream.writeInt(storageGroupTTLMap.size());
+      for (Map.Entry<String, Long> entry : storageGroupTTLMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
         dataOutputStream.writeLong(entry.getValue());
       }
 
-      dataOutputStream.writeInt(userWaterMarkStatus.size());
-      for (Map.Entry<String, Boolean> entry : userWaterMarkStatus.entrySet()) {
+      dataOutputStream.writeInt(userMap.size());
+      for (Map.Entry<String, User> entry : userMap.entrySet()) {
         SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        dataOutputStream.writeBoolean(entry.getValue());
+        dataOutputStream.write(entry.getValue().serialize().array());
       }
+
+      dataOutputStream.writeInt(roleMap.size());
+      for (Map.Entry<String, Role> entry : roleMap.entrySet()) {
+        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
+        dataOutputStream.write(entry.getValue().serialize().array());
+      }
+
+      dataOutputStream.write(partitionTableBuffer.array());
     } catch (IOException e) {
       // unreachable
     }
+    return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
   @Override
-  void subDeserialize(ByteBuffer buffer) {
-    int size = buffer.getInt();
-    storageGroups = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) {
-      storageGroups.add(SerializeUtils.deserializeString(buffer));
+  public void deserialize(ByteBuffer buffer) {
+    int storageGroupTTLMapSize = buffer.getInt();
+    storageGroupTTLMap = new HashMap<>(storageGroupTTLMapSize);
+    for (int i = 0; i < storageGroupTTLMapSize; i++) {
+      storageGroupTTLMap.put(SerializeUtils.deserializeString(buffer), buffer.getLong());
     }
 
-    int sgtSize = buffer.getInt();
-    storageGroupTTL = new HashMap<>();
-    for (int i = 0; i < sgtSize; i++) {
-      storageGroupTTL.put(SerializeUtils.deserializeString(buffer), buffer.getLong());
+    int userMapSize = buffer.getInt();
+    userMap = new HashMap<>(userMapSize);
+    for (int i = 0; i < userMapSize; i++) {
+      String userName = SerializeUtils.deserializeString(buffer);
+      User user = new User();
+      user.deserialize(buffer);
+      userMap.put(userName, user);
     }
 
-    int uwmSize = buffer.getInt();
-    userWaterMarkStatus = new HashMap<>();
-    for (int i = 0; i < uwmSize; i++) {
-      userWaterMarkStatus.put(SerializeUtils.deserializeString(buffer), buffer.get() == 1);
+    int roleMapSize = buffer.getInt();
+    roleMap = new HashMap<>(roleMapSize);
+    for (int i = 0; i < roleMapSize; i++) {
+      String userName = SerializeUtils.deserializeString(buffer);
+      Role role = new Role();
+      role.deserialize(buffer);
+      roleMap.put(userName, role);
     }
+
+    partitionTableBuffer = buffer;
   }
 
   @Override
@@ -127,13 +149,15 @@ public class MetaSimpleSnapshot extends SimpleSnapshot {
       return false;
     }
     MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) o;
-    return Objects.equals(storageGroups, snapshot.storageGroups) &&
-        Objects.equals(storageGroupTTL, snapshot.getStorageGroupTTL()) &&
-        Objects.equals(userWaterMarkStatus, snapshot.getUserWaterMarkStatus());
+    return Objects.equals(storageGroupTTLMap, snapshot.getStorageGroupTTLMap()) &&
+        Objects.equals(userMap, snapshot.getUserMap()) &&
+        Objects.equals(roleMap, snapshot.getRoleMap()) &&
+        Objects.equals(partitionTableBuffer, snapshot.getPartitionTableBuffer());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(super.hashCode(), storageGroups, storageGroupTTL, userWaterMarkStatus);
+    return Objects
+        .hash(super.hashCode(), storageGroupTTLMap, userMap, roleMap, partitionTableBuffer);
   }
 }

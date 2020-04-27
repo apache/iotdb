@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;

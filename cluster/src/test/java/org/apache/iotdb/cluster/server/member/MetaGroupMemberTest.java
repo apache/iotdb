@@ -34,6 +34,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -49,11 +50,10 @@ import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
-import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
@@ -76,6 +76,8 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.entity.Role;
+import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -473,70 +475,90 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testSendSnapshot() {
     SendSnapshotRequest request = new SendSnapshotRequest();
-    List<String> newSgs = new ArrayList<>();
-    for (int i = 0; i <= 10; i++) {
-      newSgs.add(TestUtils.getTestSg(i));
-    }
-    List<Log> logs = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      PhysicalPlanLog log = new PhysicalPlanLog();
-      CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan();
-      MeasurementSchema schema = TestUtils.getTestSchema(10, i);
-      createTimeSeriesPlan.setPath(new Path(schema.getMeasurementId()));
-      createTimeSeriesPlan.setDataType(schema.getType());
-      createTimeSeriesPlan.setEncoding(schema.getEncodingType());
-      createTimeSeriesPlan.setCompressor(schema.getCompressor());
-      createTimeSeriesPlan.setProps(schema.getProps());
-      log.setPlan(createTimeSeriesPlan);
-      logs.add(log);
-    }
 
+    // 1. prepare storage group and its tll
     Map<String, Long> storageGroupTTL = new HashMap<>();
-    storageGroupTTL.put("root.test0", 3600L);
-    storageGroupTTL.put("root.test1", 72000L);
+    long baseTTL = 3600;
+    for (int i = 0; i <= 10; i++) {
+      storageGroupTTL.put(TestUtils.getTestSg(i), baseTTL + i * 100);
+      if (i >= 5) {
+        storageGroupTTL.put(TestUtils.getTestSg(i), Long.MAX_VALUE);
+      }
+    }
 
-    Map<String, Boolean> userWaterMarkStatus = new HashMap<>();
-    userWaterMarkStatus.put("user_1", true);
-    userWaterMarkStatus.put("user_2", true);
-    userWaterMarkStatus.put("user_3", false);
-    userWaterMarkStatus.put("user_4", false);
+    HashMap<String, User> userMap = new HashMap<>();
+    HashMap<String, Role> roleMap = new HashMap<>();
 
     try {
+
       LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+
+      // 2. prepare the role info
+      authorizer.createRole("role_1");
+      authorizer.createRole("role_2");
+      authorizer.createRole("role_3");
+      authorizer.createRole("role_4");
+
+      authorizer.grantPrivilegeToRole("role_1", TestUtils.getTestSg(3), 1);
+      authorizer.grantPrivilegeToRole("role_2", TestUtils.getTestSg(4), 1);
+
+      roleMap.put("role_1", authorizer.getRole("role_1"));
+      roleMap.put("role_2", authorizer.getRole("role_2"));
+      roleMap.put("role_3", authorizer.getRole("role_3"));
+      roleMap.put("role_4", authorizer.getRole("role_4"));
+
+      // 3. prepare the user info
       authorizer.createUser("user_1", "password_1");
       authorizer.createUser("user_2", "password_2");
       authorizer.createUser("user_3", "password_3");
       authorizer.createUser("user_4", "password_4");
+
+      authorizer.grantPrivilegeToUser("user_1", TestUtils.getTestSg(1), 1);
+      authorizer.setUserUseWaterMark("user_2", true);
+
+      authorizer.grantRoleToUser("role_1", "user_1");
+
+      userMap.put("user_1", authorizer.getUser("user_1"));
+      userMap.put("user_2", authorizer.getUser("user_2"));
+      userMap.put("user_3", authorizer.getUser("user_3"));
+      userMap.put("user_4", authorizer.getUser("user_4"));
+
+
     } catch (AuthException e) {
       assertEquals("why failed?", e.getMessage());
     }
 
-    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(logs, newSgs, storageGroupTTL,
-        userWaterMarkStatus);
+    // 4. prepare the partition table
+    PartitionTable partitionTable = TestUtils.getPartitionTable(3);
+    ByteBuffer beforePartitionTableBuffer = partitionTable.serialize();
+    // 5. serialize
+    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(storageGroupTTL, userMap, roleMap,
+        beforePartitionTableBuffer);
     request.setSnapshotBytes(snapshot.serialize());
     AtomicReference<Void> reference = new AtomicReference<>();
     testMetaMember.sendSnapshot(request, new GenericHandler(TestUtils.getNode(0), reference));
 
-    for (int i = 0; i < 10; i++) {
-      assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(10, i)));
-    }
-
-    // check whether the snapshot applied or not
-    assertEquals(newSgs, MManager.getInstance().getAllStorageGroupNames());
-
+    // 6. check whether the snapshot applied or not
     Map<String, Long> localStorageGroupTTL = MManager.getInstance().getStorageGroupsTTL();
     assertNotNull(localStorageGroupTTL);
-    assertTrue(localStorageGroupTTL.containsKey("root.test0"));
-    assertTrue(localStorageGroupTTL.containsKey("root.test1"));
-    assertEquals(3600L, localStorageGroupTTL.get("root.test0").longValue());
-    assertEquals(72000L, localStorageGroupTTL.get("root.test1").longValue());
+    assertEquals(storageGroupTTL, localStorageGroupTTL);
 
     try {
       LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
-      assertTrue(authorizer.isUserUseWaterMark("user_1"));
+
+      assertTrue(authorizer.checkUserPrivileges("user_1", TestUtils.getTestSg(1), 1));
+      assertTrue(authorizer.checkUserPrivileges("user_1", TestUtils.getTestSg(3), 1));
+      assertFalse(authorizer.checkUserPrivileges("user_3", TestUtils.getTestSg(1), 1));
+
       assertTrue(authorizer.isUserUseWaterMark("user_2"));
-      assertFalse(authorizer.isUserUseWaterMark("user_3"));
       assertFalse(authorizer.isUserUseWaterMark("user_4"));
+
+      Map<String, Role> localRoleMap = authorizer.getAllRoles();
+      assertEquals(roleMap, localRoleMap);
+
+      PartitionTable localPartitionTable = this.testMetaMember.getPartitionTable();
+      assertEquals(localPartitionTable, partitionTable);
+
     } catch (AuthException e) {
       assertEquals("why failed?", e.getMessage());
     }
