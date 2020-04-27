@@ -35,7 +35,7 @@
 
 ## 相关文档
 
-* [查询基础介绍](/SystemDesign/5-DataQuery/2-QueryFundamentals.html)
+* [查询基础介绍](/zh/SystemDesign/5-DataQuery/2-QueryFundamentals.html)
 * [基础查询组件](/zh/SystemDesign/5-DataQuery/3-SeriesReader.html)
 * [原始数据查询](/zh/SystemDesign/5-DataQuery/4-RawDataQuery.html)
 * [聚合查询](/zh/SystemDesign/5-DataQuery/5-AggregationQuery.html)
