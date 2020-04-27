@@ -85,6 +85,7 @@ public class MManager {
   private IoTDBConfig config;
 
   private static class MManagerHolder {
+
     private MManagerHolder() {
       // allowed to do nothing
     }
@@ -180,7 +181,9 @@ public class MManager {
     }
   }
 
-  /** function for clearing MTree */
+  /**
+   * function for clearing MTree
+   */
   public void clear() {
     lock.writeLock().lock();
     try {
@@ -231,16 +234,10 @@ public class MManager {
           tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
         }
 
-        CreateTimeSeriesPlan plan =
-            new CreateTimeSeriesPlan(
-                new Path(args[1]),
-                TSDataType.deserialize(Short.parseShort(args[2])),
-                TSEncoding.deserialize(Short.parseShort(args[3])),
-                CompressionType.deserialize(Short.parseShort(args[4])),
-                props,
-                tagMap,
-                null,
-                alias);
+        CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(args[1]),
+            TSDataType.deserialize(Short.parseShort(args[2])),
+            TSEncoding.deserialize(Short.parseShort(args[3])),
+            CompressionType.deserialize(Short.parseShort(args[4])), props, tagMap, null, alias);
 
         createTimeseries(plan, offset);
         break;
@@ -295,14 +292,9 @@ public class MManager {
       }
 
       // create time series in MTree
-      LeafMNode leafMNode =
-          mtree.createTimeseries(
-              path,
-              plan.getDataType(),
-              plan.getEncoding(),
-              plan.getCompressor(),
-              plan.getProps(),
-              plan.getAlias());
+      LeafMNode leafMNode = mtree
+          .createTimeseries(path, plan.getDataType(), plan.getEncoding(), plan.getCompressor(),
+              plan.getProps(), plan.getAlias());
       try {
         // check memory
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
@@ -315,10 +307,8 @@ public class MManager {
       if (plan.getTags() != null) {
         // tag key, tag value
         for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          tagIndex
-              .computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>())
-              .add(leafMNode);
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
         }
       }
 
@@ -352,23 +342,18 @@ public class MManager {
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
-   * @param path the timeseries path
-   * @param dataType the dateType {@code DataType} of the timeseries
-   * @param encoding the encoding function {@code Encoding} of the timeseries
+   * @param path       the timeseries path
+   * @param dataType   the dateType {@code DataType} of the timeseries
+   * @param encoding   the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    * @return whether the measurement occurs for the first time in this storage group (if true, the
-   *     measurement should be registered to the StorageEngine too)
+   * measurement should be registered to the StorageEngine too)
    */
-  public void createTimeseries(
-      String path,
-      TSDataType dataType,
-      TSEncoding encoding,
-      CompressionType compressor,
-      Map<String, String> props)
-      throws MetadataException {
+  public void createTimeseries(String path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props) throws MetadataException {
     createTimeseries(
-        new CreateTimeSeriesPlan(
-            new Path(path), dataType, encoding, compressor, props, null, null, null));
+        new CreateTimeSeriesPlan(new Path(path), dataType, encoding, compressor, props, null, null,
+            null));
   }
 
   /**
@@ -376,8 +361,8 @@ public class MManager {
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
    * @return 1. The Set contains StorageGroups that contain no more timeseries after this deletion
-   *     files of such StorageGroups should be deleted to reclaim disk space. 2. The String is the
-   *     deletion failed Timeseries
+   * files of such StorageGroups should be deleted to reclaim disk space. 2. The String is the
+   * deletion failed Timeseries
    */
   public Pair<Set<String>, String> deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
@@ -465,8 +450,7 @@ public class MManager {
         int size = seriesNumberInStorageGroups.get(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, size - 1);
         if (size == maxSeriesNumberAmongStorageGroup) {
-          seriesNumberInStorageGroups.values().stream()
-              .max(Integer::compareTo)
+          seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
         }
       }
@@ -600,7 +584,7 @@ public class MManager {
    * Get all devices under given prefixPath.
    *
    * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
-   *     wildcard can only match one level, otherwise it can match to the tail.
+   *                   wildcard can only match one level, otherwise it can match to the tail.
    * @return A HashSet instance which stores devices names with given prefixPath.
    */
   public Set<String> getDevices(String prefixPath) throws MetadataException {
@@ -616,9 +600,9 @@ public class MManager {
    * Get all nodes from the given level
    *
    * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have
-   *     wildcard. But, the level of the prefixPath can be smaller than the given level, e.g.,
-   *     prefixPath = root.a while the given level is 5
-   * @param nodeLevel the level can not be smaller than the level of the prefixPath
+   *                   wildcard. But, the level of the prefixPath can be smaller than the given
+   *                   level, e.g., prefixPath = root.a while the given level is 5
+   * @param nodeLevel  the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
   public List<String> getNodesList(String prefixPath, int nodeLevel) throws MetadataException {
@@ -646,7 +630,9 @@ public class MManager {
     }
   }
 
-  /** Get all storage group names */
+  /**
+   * Get all storage group names
+   */
   public List<String> getAllStorageGroupNames() {
     lock.readLock().lock();
     try {
@@ -656,7 +642,9 @@ public class MManager {
     }
   }
 
-  /** Get all storage group MNodes */
+  /**
+   * Get all storage group MNodes
+   */
   public List<StorageGroupMNode> getAllStorageGroupNodes() {
     lock.readLock().lock();
     try {
@@ -671,7 +659,7 @@ public class MManager {
    * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
    *
    * @param prefixPath can be a prefix or a full path. if the wildcard is not at the tail, then each
-   *     wildcard can only match one level, otherwise it can match to the tail.
+   *                   wildcard can only match one level, otherwise it can match to the tail.
    */
   public List<String> getAllTimeseriesName(String prefixPath) throws MetadataException {
     lock.readLock().lock();
@@ -730,15 +718,10 @@ public class MManager {
                 tagLogFile.read(config.getTagAttributeTotalSize(), leaf.getOffset());
             pair.left.putAll(pair.right);
             MeasurementSchema measurementSchema = leaf.getSchema();
-            res.add(
-                new ShowTimeSeriesResult(
-                    leaf.getFullPath(),
-                    leaf.getAlias(),
-                    getStorageGroupName(leaf.getFullPath()),
-                    measurementSchema.getType().toString(),
-                    measurementSchema.getEncodingType().toString(),
-                    measurementSchema.getCompressor().toString(),
-                    pair.left));
+            res.add(new ShowTimeSeriesResult(leaf.getFullPath(), leaf.getAlias(),
+                getStorageGroupName(leaf.getFullPath()), measurementSchema.getType().toString(),
+                measurementSchema.getEncodingType().toString(),
+                measurementSchema.getCompressor().toString(), pair.left));
             if (limit != 0 || offset != 0) {
               count++;
             }
@@ -754,7 +737,9 @@ public class MManager {
     }
   }
 
-  /** whether the full path has the prefixNodes */
+  /**
+   * whether the full path has the prefixNodes
+   */
   private boolean match(String fullPath, String[] prefixNodes) {
     String[] nodes = MetaUtils.getNodeNames(fullPath);
     if (nodes.length < prefixNodes.length) {
@@ -784,29 +769,15 @@ public class MManager {
         try {
           if (tagFileOffset < 0) {
             // no tags/attributes
-            res.add(
-                new ShowTimeSeriesResult(
-                    ansString[0],
-                    ansString[1],
-                    ansString[2],
-                    ansString[3],
-                    ansString[4],
-                    ansString[5],
-                    Collections.emptyMap()));
+            res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2], ansString[3],
+                ansString[4], ansString[5], Collections.emptyMap()));
           } else {
             // has tags/attributes
             Pair<Map<String, String>, Map<String, String>> pair =
                 tagLogFile.read(config.getTagAttributeTotalSize(), tagFileOffset);
             pair.left.putAll(pair.right);
-            res.add(
-                new ShowTimeSeriesResult(
-                    ansString[0],
-                    ansString[1],
-                    ansString[2],
-                    ansString[3],
-                    ansString[4],
-                    ansString[5],
-                    pair.left));
+            res.add(new ShowTimeSeriesResult(ansString[0], ansString[1], ansString[2], ansString[3],
+                ansString[4], ansString[5], pair.left));
           }
         } catch (IOException e) {
           throw new MetadataException(
@@ -861,7 +832,9 @@ public class MManager {
     }
   }
 
-  /** Get node by path */
+  /**
+   * Get node by path
+   */
   public MNode getNodeByPath(String path) throws MetadataException {
     lock.readLock().lock();
     try {
@@ -937,13 +910,17 @@ public class MManager {
     }
   }
 
-  /** !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method. */
+  /**
+   * !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
+   */
   public MNode getDeviceNodeWithAutoCreateAndReadLock(String path) throws MetadataException {
     return getDeviceNodeWithAutoCreateAndReadLock(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
-  /** Get metadata in string */
+  /**
+   * Get metadata in string
+   */
   public String getMetadataInString() {
     lock.readLock().lock();
     try {
@@ -977,7 +954,7 @@ public class MManager {
   /**
    * change or set the new offset of a timeseries
    *
-   * @param path timeseries
+   * @param path   timeseries
    * @param offset offset in the tag file
    */
   public void changeOffset(String path, long offset) throws MetadataException {
@@ -993,9 +970,9 @@ public class MManager {
    * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
    *
-   * @param tagsMap newly added tags map
+   * @param tagsMap       newly added tags map
    * @param attributesMap newly added attributes map
-   * @param fullPath timeseries
+   * @param fullPath      timeseries
    */
   public void upsertTagsAndAttributes(
       Map<String, String> tagsMap, Map<String, String> attributesMap, String fullPath)
@@ -1035,10 +1012,8 @@ public class MManager {
         // if the key doesn't exist or the value is not equal to the new one
         // we should add a new key-value to inverted index map
         if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex
-              .computeIfAbsent(key, k -> new HashMap<>())
-              .computeIfAbsent(value, v -> new HashSet<>())
-              .add(leafMNode);
+          tagIndex.computeIfAbsent(key, k -> new HashMap<>())
+              .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
         }
       }
       pair.left.putAll(tagsMap);
@@ -1056,7 +1031,7 @@ public class MManager {
    * add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
-   * @param fullPath timeseries
+   * @param fullPath      timeseries
    */
   public void addAttributes(Map<String, String> attributesMap, String fullPath)
       throws MetadataException, IOException {
@@ -1098,7 +1073,7 @@ public class MManager {
   /**
    * add new tags key-value for the timeseries
    *
-   * @param tagsMap newly added tags map
+   * @param tagsMap  newly added tags map
    * @param fullPath timeseries
    */
   public void addTags(Map<String, String> tagsMap, String fullPath)
@@ -1135,12 +1110,8 @@ public class MManager {
       tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
 
       // update tag inverted map
-      tagsMap.forEach(
-          (key, value) ->
-              tagIndex
-                  .computeIfAbsent(key, k -> new HashMap<>())
-                  .computeIfAbsent(value, v -> new HashSet<>())
-                  .add(leafMNode));
+      tagsMap.forEach((key, value) -> tagIndex.computeIfAbsent(key, k -> new HashMap<>())
+          .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode));
 
     } finally {
       lock.writeLock().unlock();
@@ -1150,7 +1121,7 @@ public class MManager {
   /**
    * drop tags or attributes of the timeseries
    *
-   * @param keySet tags key or attributes key
+   * @param keySet   tags key or attributes key
    * @param fullPath timeseries path
    */
   public void dropTagsOrAttributes(Set<String> keySet, String fullPath)
@@ -1252,10 +1223,8 @@ public class MManager {
         String currentValue = newTagValue.get(key);
         // change the tag inverted index map
         tagIndex.get(key).get(beforeValue).remove(leafMNode);
-        tagIndex
-            .computeIfAbsent(key, k -> new HashMap<>())
-            .computeIfAbsent(currentValue, k -> new HashSet<>())
-            .add(leafMNode);
+        tagIndex.computeIfAbsent(key, k -> new HashMap<>())
+            .computeIfAbsent(currentValue, k -> new HashSet<>()).add(leafMNode);
       }
     } finally {
       lock.writeLock().unlock();
@@ -1265,8 +1234,8 @@ public class MManager {
   /**
    * rename the tag or attribute's key of the timeseries
    *
-   * @param oldKey old key of tag or attribute
-   * @param newKey new key of tag or attribute
+   * @param oldKey   old key of tag or attribute
+   * @param newKey   new key of tag or attribute
    * @param fullPath timeseries
    */
   public void renameTagOrAttributeKey(String oldKey, String newKey, String fullPath)
@@ -1301,10 +1270,8 @@ public class MManager {
         tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
         // change the tag inverted index map
         tagIndex.get(oldKey).get(value).remove(leafMNode);
-        tagIndex
-            .computeIfAbsent(newKey, k -> new HashMap<>())
-            .computeIfAbsent(value, k -> new HashSet<>())
-            .add(leafMNode);
+        tagIndex.computeIfAbsent(newKey, k -> new HashMap<>())
+            .computeIfAbsent(value, k -> new HashSet<>()).add(leafMNode);
       } else if (pair.right.containsKey(oldKey)) {
         // check attribute map
         pair.right.put(newKey, pair.right.remove(oldKey));
@@ -1319,7 +1286,9 @@ public class MManager {
     }
   }
 
-  /** Check whether the given path contains a storage group */
+  /**
+   * Check whether the given path contains a storage group
+   */
   boolean checkStorageGroupByPath(String path) {
     lock.readLock().lock();
     try {
@@ -1353,12 +1322,8 @@ public class MManager {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof LeafMNode) {
         MeasurementSchema nodeSchema = ((LeafMNode) node).getSchema();
-        timeseriesSchemas.add(
-            new MeasurementSchema(
-                node.getFullPath(),
-                nodeSchema.getType(),
-                nodeSchema.getEncodingType(),
-                nodeSchema.getCompressor()));
+        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(), nodeSchema.getType(),
+            nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
       }
