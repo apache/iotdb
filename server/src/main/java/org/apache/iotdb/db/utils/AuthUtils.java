@@ -55,7 +55,7 @@ public class AuthUtils {
   public static void validatePassword(String password) throws AuthException {
     if (password.length() < MIN_PASSWORD_LENGTH) {
       throw new AuthException(
-          "Password's size must be greater than or equal to " + MIN_USERNAME_LENGTH);
+          "Password's size must be greater than or equal to " + MIN_PASSWORD_LENGTH);
     }
   }
 
