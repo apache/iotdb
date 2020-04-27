@@ -106,7 +106,7 @@ public class IoTDBSchema extends AbstractSchema {
       while (timeseries.next()) {
         String sensorName = timeseries.getString(1);
         sensorName = sensorName.substring(sensorName.lastIndexOf('.') + 1);
-        IoTDBFieldType sensorType = IoTDBFieldType.of(timeseries.getString(3));
+        IoTDBFieldType sensorType = IoTDBFieldType.of(timeseries.getString(4));
 
         if (!tmpMeasurementMap.containsKey(sensorName)) {
           tmpMeasurementMap.put(sensorName, sensorType);
