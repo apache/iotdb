@@ -18,6 +18,28 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -40,7 +62,12 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -68,17 +95,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
@@ -394,30 +410,36 @@ public class StorageGroupProcessor {
       // the process was interrupted before the merged files could be named
       continueFailedRenames(fileFolder, MERGE_SUFFIX);
 
-      // create upgrade directory if not exist
-      File upgradeFolder = fsFactory.getFile(fileFolder, IoTDBConstant.UPGRADE_FOLDER_NAME);
-      if (upgradeFolder.mkdirs()) {
-        logger.info("Upgrade Directory {} doesn't exist, create it",
-                upgradeFolder.getPath());
-      } else if (!upgradeFolder.exists()) {
-        logger.error("Create upgrade Directory {} failed",
-                upgradeFolder.getPath());
-      }
-      // move .tsfile to upgrade folder
-      for (File file : fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX)) {
-        if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-          logger.error("Failed to move {} to upgrade folder", file);
-        }
-      }
-      // move .resource to upgrade folder
-      for (File file : fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX)) {
-        if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
-          logger.error("Failed to move {} to upgrade folder", file);
-        }
-      }
+      File[] oldTsfileArray = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX);
+      File[] olfResourceFileArray = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX);
 
-      Collections.addAll(upgradeFiles,
-              fsFactory.listFilesBySuffix(upgradeFolder.getAbsolutePath(), TSFILE_SUFFIX));
+      // move the old files to upgrade folder if exists
+      if (oldTsfileArray.length != 0 || olfResourceFileArray.length != 0) {
+        // create upgrade directory if not exist
+        File upgradeFolder = fsFactory.getFile(fileFolder, IoTDBConstant.UPGRADE_FOLDER_NAME);
+        if (upgradeFolder.mkdirs()) {
+          logger.info("Upgrade Directory {} doesn't exist, create it",
+              upgradeFolder.getPath());
+        } else if (!upgradeFolder.exists()) {
+          logger.error("Create upgrade Directory {} failed",
+              upgradeFolder.getPath());
+        }
+        // move .tsfile to upgrade folder
+        for (File file : oldTsfileArray) {
+          if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+            logger.error("Failed to move {} to upgrade folder", file);
+          }
+        }
+        // move .resource to upgrade folder
+        for (File file : olfResourceFileArray) {
+          if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+            logger.error("Failed to move {} to upgrade folder", file);
+          }
+        }
+
+        Collections.addAll(upgradeFiles,
+            fsFactory.listFilesBySuffix(upgradeFolder.getAbsolutePath(), TSFILE_SUFFIX));
+      }
 
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
