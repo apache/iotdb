@@ -131,7 +131,11 @@ public class IoTDBTable extends AbstractQueryableTable
       }
     } else {
       for (String field : selectFields) {
-        addField.apply(field);
+        if (field.startsWith("'")) {
+          fieldInfo.add(field, SqlTypeName.VARCHAR);
+        } else {
+          addField.apply(field);
+        }
       }
     }
 

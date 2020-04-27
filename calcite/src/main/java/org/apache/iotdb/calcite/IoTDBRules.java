@@ -152,17 +152,6 @@ public class IoTDBRules {
       super(LogicalProject.class, Convention.NONE, IoTDBRel.CONVENTION, "IoTDBProjectRule");
     }
 
-    @Override
-    public boolean matches(RelOptRuleCall call) {
-      LogicalProject project = call.rel(0);
-      for (RexNode e : project.getProjects()) {
-        if (!(e instanceof RexInputRef)) {
-          return false;
-        }
-      }
-      return true;
-    }
-
     public RelNode convert(RelNode rel) {
       final LogicalProject project = (LogicalProject) rel;
       final RelTraitSet traitSet = project.getTraitSet().replace(IoTDBRel.CONVENTION);

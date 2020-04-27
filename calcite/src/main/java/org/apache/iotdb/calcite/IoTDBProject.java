@@ -67,7 +67,11 @@ public class IoTDBProject extends Project implements IoTDBRel {
     final List<String> selectFields = new ArrayList<>();
     for (Pair<RexNode, String> pair : getNamedProjects()) {
       final String originalName = pair.left.accept(translator);
-      selectFields.add(originalName);
+      if (originalName == null){
+        selectFields.add(pair.left.toString());
+      } else {
+        selectFields.add(originalName);
+      }
     }
 
     implementor.addFields(selectFields);
