@@ -54,7 +54,7 @@ public class RestConstant {
 
   public static final String MEASUREMENTS = "measurements";
 
-  public static final String TIME = "time";
+  public static final String TIMESTAMPS = "timestamps";
 
   public static final String INSERT = "insert";
 

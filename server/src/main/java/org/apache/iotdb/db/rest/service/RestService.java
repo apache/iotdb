@@ -198,7 +198,7 @@ public class RestService {
             TSDataType.valueOf(dataType.trim().toUpperCase()),
             TSEncoding.valueOf(encoding.trim().toUpperCase()),
             CompressionType.findByShortName(compressor.trim().toUpperCase()),
-            new HashMap<>());
+            new HashMap<>(), new HashMap<>(), new HashMap<>(), path);
     return executeNonQuery(plan);
   }
 

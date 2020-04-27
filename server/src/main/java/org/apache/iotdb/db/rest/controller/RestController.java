@@ -37,7 +37,7 @@ import static org.apache.iotdb.db.rest.constant.RestConstant.SUCCESS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TABLE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TARGET;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TARGETS;
-import static org.apache.iotdb.db.rest.constant.RestConstant.TIME;
+import static org.apache.iotdb.db.rest.constant.RestConstant.TIMESTAMPS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TIMESERIE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TO;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TYPE;
@@ -157,18 +157,20 @@ public class RestController {
       JSONObject object = (JSONObject) o;
       String deviceID = (String) object.get(DEVICE_ID);
       JSONArray measurements = (JSONArray) object.get(MEASUREMENTS);
-      Integer time = (Integer) object.get(TIME);
+      JSONArray timestamps = (JSONArray) object.get(TIMESTAMPS);
       JSONArray values  = (JSONArray) object.get(VALUES);
-      try {
-        if (restService.insert(deviceID, time, getList(measurements), getList(values))) {
-          result.add(deviceID + COLON + SUCCESS);
-        } else {
-          result.add(deviceID + COLON + FAIL);
+      for(int i = 0; i < timestamps.size(); i++){
+        try {
+          if (restService.insert(deviceID, (Integer)timestamps.get(i), getList(measurements), getList((JSONArray) values.get(i)))) {
+            result.add(deviceID + COLON + SUCCESS);
+          } else {
+            result.add(deviceID + COLON + FAIL);
+            hasError = true;
+          }
+        } catch (QueryProcessException e) {
+          result.add(deviceID + COLON + e.getMessage());
           hasError = true;
         }
-      } catch (QueryProcessException e) {
-        result.add(deviceID + COLON + e.getMessage());
-        hasError = true;
       }
     }
     if(!hasError) {

@@ -6,49 +6,9 @@
       "measurements" : [
         "temperature", "status", "hardware"
       ],
-      "time" : 1,
+      "timestamps" : [1, 2, 3, 4, 5],
       "values" : [
-        "1.1", "false", "11"
-      ]
-    },
-    {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 2,
-      "values" : [
-        "2.2", "true", "22"
-      ]
-    },
-    {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 3,
-      "values" : [
-        "3.3", "false", "33"
-      ]
-    },
-    {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 4,
-      "values" : [
-        "4.4", "false", "44"
-      ]
-    },
-    {
-      "deviceId" : "root.ln.wf01.wt01",
-      "measurements" : [
-        "temperature", "status", "hardware"
-      ],
-      "time" : 5,
-      "values" : [
-        "5.5", "false", "55"
+        ["1.1", "false", "11"], ["2.2", "true", "22"], [ "3.3", "false", "33"], ["4.4", "false", "44"], ["5.5", "false", "55"]
       ]
     }
   ]
