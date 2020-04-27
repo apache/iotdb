@@ -75,6 +75,10 @@ public class Field {
     return dataType;
   }
 
+  public boolean isNull() {
+    return dataType == null;
+  }
+
   public boolean getBoolV() {
     return boolV;
   }

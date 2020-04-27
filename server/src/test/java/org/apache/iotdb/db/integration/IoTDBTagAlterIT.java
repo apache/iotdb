@@ -18,18 +18,20 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
-
-import static org.junit.Assert.*;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 public class IoTDBTagAlterIT {
 
@@ -362,4 +364,92 @@ public class IoTDBTagAlterIT {
     }
   }
 
+  @Test
+  public void upsertTest() throws ClassNotFoundException {
+    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
+    String[] ret2 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,newV2,v3"};
+    String[] ret3 = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,newA1,v2,v3,newV1,newV2,newV3"};
+
+
+    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
+        "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      boolean hasResult = statement.execute("show timeseries");
+      assertTrue(hasResult);
+      ResultSet resultSet = statement.getResultSet();
+      int count = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString("timeseries")
+            + "," + resultSet.getString("alias")
+            + "," + resultSet.getString("storage group")
+            + "," + resultSet.getString("dataType")
+            + "," + resultSet.getString("encoding")
+            + "," + resultSet.getString("compression")
+            + "," + resultSet.getString("attr1")
+            + "," + resultSet.getString("attr2")
+            + "," + resultSet.getString("tag1")
+            + "," + resultSet.getString("tag2");
+        assertEquals(ret[count], ans);
+        count++;
+      }
+      assertEquals(ret.length, count);
+
+      statement.execute("ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag3=v3, tag2=newV2)");
+      hasResult = statement.execute("show timeseries where tag3=v3");
+      assertTrue(hasResult);
+      resultSet = statement.getResultSet();
+      count = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString("timeseries")
+            + "," + resultSet.getString("alias")
+            + "," + resultSet.getString("storage group")
+            + "," + resultSet.getString("dataType")
+            + "," + resultSet.getString("encoding")
+            + "," + resultSet.getString("compression")
+            + "," + resultSet.getString("attr1")
+            + "," + resultSet.getString("attr2")
+            + "," + resultSet.getString("tag1")
+            + "," + resultSet.getString("tag2")
+            + "," + resultSet.getString("tag3");
+        assertEquals(ret2[count], ans);
+        count++;
+      }
+      assertEquals(ret2.length, count);
+
+      statement.execute("ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag1=newV1, tag3=newV3) ATTRIBUTES(attr1=newA1, attr3=v3)");
+      hasResult = statement.execute("show timeseries where tag3=newV3");
+      assertTrue(hasResult);
+      resultSet = statement.getResultSet();
+      count = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString("timeseries")
+            + "," + resultSet.getString("alias")
+            + "," + resultSet.getString("storage group")
+            + "," + resultSet.getString("dataType")
+            + "," + resultSet.getString("encoding")
+            + "," + resultSet.getString("compression")
+            + "," + resultSet.getString("attr1")
+            + "," + resultSet.getString("attr2")
+            + "," + resultSet.getString("attr3")
+            + "," + resultSet.getString("tag1")
+            + "," + resultSet.getString("tag2")
+            + "," + resultSet.getString("tag3");
+        assertEquals(ret3[count], ans);
+        count++;
+      }
+      assertEquals(ret3.length, count);
+
+      statement.execute("show timeseries where tag3=v3");
+      resultSet = statement.getResultSet();
+      assertFalse(resultSet.next());
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 }
