@@ -291,16 +291,16 @@ public class AuthUtils {
    * remove privilege.
    *
    * @param path series path
-   * @param privilgeId privilege Id
+   * @param privilegeId privilege Id
    * @param privilegeList privileges in List structure
    */
-  public static void removePrivilege(String path, int privilgeId,
+  public static void removePrivilege(String path, int privilegeId,
       List<PathPrivilege> privilegeList) {
     PathPrivilege emptyPrivilege = null;
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (pathPrivilege.getPath().equals(path)) {
-        if (privilgeId != PrivilegeType.ALL.ordinal()) {
-          pathPrivilege.getPrivileges().remove(privilgeId);
+        if (privilegeId != PrivilegeType.ALL.ordinal()) {
+          pathPrivilege.getPrivileges().remove(privilegeId);
         } else {
           privilegeList.remove(pathPrivilege);
           return;
