@@ -54,8 +54,7 @@ public class FileLoaderUtils {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader = new TsFileSequenceReader(
           tsFileResource.getFile().getAbsolutePath())) {
-        TsFileMetadata metaData = reader.readFileMetadata();
-        updateTsFileResource(metaData, reader, tsFileResource);
+        updateTsFileResource(reader, tsFileResource);
       }
       // write .resource file
       tsFileResource.serialize();
@@ -65,10 +64,9 @@ public class FileLoaderUtils {
     tsFileResource.setClosed(true);
   }
 
-  public static void updateTsFileResource(TsFileMetadata metaData, TsFileSequenceReader reader,
+  public static void updateTsFileResource(TsFileSequenceReader reader,
       TsFileResource tsFileResource) throws IOException {
-    List<String> deviceList = reader.getDevicesByMetadata(metaData.getMetadataIndex());
-    for (String device : deviceList) {
+    for (String device : reader.getAllDevices()) {
       Map<String, TimeseriesMetadata> chunkMetadataListInOneDevice = reader
           .readDeviceMetadata(device);
       for (TimeseriesMetadata timeseriesMetaData : chunkMetadataListInOneDevice.values()) {

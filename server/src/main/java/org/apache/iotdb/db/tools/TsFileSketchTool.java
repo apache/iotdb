@@ -29,12 +29,12 @@ import java.util.Map.Entry;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 
 public class TsFileSketchTool {
 
@@ -59,8 +59,7 @@ public class TsFileSketchTool {
       // get metadata information
       TsFileSequenceReader reader = new TsFileSequenceReader(filename);
       TsFileMetadata tsFileMetaData = reader.readFileMetadata();
-      List<MetadataIndexNode> metadataIndexList = tsFileMetaData.getMetadataIndex();
-      List<String> devices = reader.getDevicesByMetadata(metadataIndexList);
+      List<String> devices = reader.getAllDevices();
       Map<String, Map<String, List<ChunkMetadata>>> tsDeviceSeriesMetadataMap = new LinkedHashMap<>();
       for (String deviceId : devices) {
         Map<String, List<ChunkMetadata>> seriesMetadataMap = reader
@@ -122,14 +121,15 @@ public class TsFileSketchTool {
       }
 
       // metadata begins
-      if (metadataIndexList.isEmpty()) {
+      if (tsFileMetaData.getMetadataIndex().isEmpty()) {
         printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos() - 1) + "|\t[marker] 2");
       } else {
-        printlnBoth(pw, String.format("%20s", reader.getStartOffset() + "|\t[marker] 2"));
+        printlnBoth(pw,
+            String.format("%20s", reader.readFileMetadata().getMetaOffset() + "|\t[marker] 2"));
       }
       for (MetadataIndexNode metadataIndex : tsFileMetaData.getMetadataIndex()) {
         printlnBoth(pw, String.format("%20s", metadataIndex.getOffset())
-                + "|\t[DeviceMetadata] of " + metadataIndex.getName());
+            + "|\t[DeviceMetadata] of " + metadataIndex.getName());
       }
 
       printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetaData]");

@@ -40,7 +40,6 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -108,8 +107,7 @@ public class TsFileRecoverPerformer {
           // .resource file does not exist, read file metadata and recover tsfile resource
           try (TsFileSequenceReader reader = new TsFileSequenceReader(
               resource.getFile().getAbsolutePath())) {
-            TsFileMetadata metaData = reader.readFileMetadata();
-            FileLoaderUtils.updateTsFileResource(metaData, reader, resource);
+            FileLoaderUtils.updateTsFileResource(reader, resource);
           }
           // write .resource file
           long fileVersion =
@@ -158,9 +156,7 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromReader() throws IOException {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(resource.getFile().getAbsolutePath(), false)) {
-      TsFileMetadata fileMetadata = reader.readFileMetadata();
-      List<String> devices = reader.getDevicesByMetadata(fileMetadata.getMetadataIndex());
-      for (String deviceId : devices) {
+      for (String deviceId : reader.getAllDevices()) {
         for (TimeseriesMetadata timeseriesMetadata : reader.readDeviceMetadata(deviceId).values()) {
           resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getStartTime());
           resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getEndTime());

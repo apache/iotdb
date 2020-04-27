@@ -144,7 +144,7 @@ public class MergeUtils {
   }
 
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) throws IOException {
-    return seqFile.getFileSize() - sequenceReader.getStartOffset();
+    return seqFile.getFileSize() - sequenceReader.getFileMetadataPos();
   }
 
   /**

@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 
 public class TsFileSequenceRead {
 
@@ -109,8 +108,7 @@ public class TsFileSequenceRead {
       }
     }
     System.out.println("[Metadata]");
-    List<MetadataIndexNode> metadataIndexList = metaData.getMetadataIndex();
-    for (String device: reader.getDevicesByMetadata(metadataIndexList)) {
+    for (String device : reader.getAllDevices()) {
       Map<String, List<ChunkMetadata>> seriesMetaData = reader.readChunkMetadataInDevice(device);
       System.out.println(String
           .format("\t[Device]Device %s, Number of Measurements %d", device, seriesMetaData.size()));

@@ -115,7 +115,7 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
 
       if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
-        val deviceNames = reader.getDevicesByMetadata(tsFileMetaData.getMetadataIndex)
+        val deviceNames = reader.getAllDevices()
         val measurementNames = reader.getAllMeasurements.keySet()
 
         // construct queryExpression based on queriedSchema and filters
