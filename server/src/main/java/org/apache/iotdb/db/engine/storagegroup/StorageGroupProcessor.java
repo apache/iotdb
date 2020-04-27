@@ -545,6 +545,9 @@ public class StorageGroupProcessor {
         insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence, results,
             beforeTimePartition);
       }
+      long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
+          insertTabletPlan.getDeviceId(), Long.MIN_VALUE);
+      tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       return results;
     } finally {
@@ -602,9 +605,6 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.get(timePartitionId)
           .put(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
     }
-    long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
-        insertTabletPlan.getDeviceId(), Long.MIN_VALUE);
-    tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {

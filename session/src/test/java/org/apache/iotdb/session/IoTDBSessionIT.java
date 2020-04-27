@@ -389,8 +389,19 @@ public class IoTDBSessionIT {
     schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
+    for (int time = 1; time <= 100; time++) {
+      timestamps[time - 1] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor = (long[]) values[i];
+        sensor[time - 1] = i;
+      }
+      tablet.rowSize++;
+    }
 
-    session.testInsertTablet(tablet);
+    session.insertTablet(tablet);
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(true);
     session.close();
   }
 
