@@ -29,4 +29,5 @@ public class MetadataOperationType {
   public static final String SET_STORAGE_GROUP = "2";
   public static final String SET_TTL = "10";
   public static final String DELETE_STORAGE_GROUP = "11";
+  public static final String CHANGE_OFFSET = "12";
 }

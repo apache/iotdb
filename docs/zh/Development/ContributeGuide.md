@@ -35,11 +35,17 @@ Wiki 文档管理：https://cwiki.apache.org/confluence/display/IOTDB/Home
 
 ## 订阅邮件列表
 
-邮件列表是 Apache 项目进行技术讨论和用户沟通的地方，关注邮件列表就可以收到邮件了。
+邮件列表是 Apache 项目进行技术讨论和用户沟通的地方，订阅邮件列表就可以收到邮件了。
 
 邮件列表地址：dev@iotdb.apache.org
 
-关注方法：用想接收邮件的邮箱向 dev-subscribe@iotdb.apache.org 发一封邮件，主题内容不限，收到回复后，再次向确认地址发一封确认邮件（确认地址比较长，推荐qq邮箱）。
+订阅方法：用想接收邮件的邮箱向 dev-subscribe@iotdb.apache.org 发一封邮件，主题内容不限，收到回复后，再次向确认地址发一封确认邮件（确认地址比较长，推荐qq邮箱）。
+
+其他邮件列表:
+* notifications@iotdb.apache.org (用于接收JIRA通知.)
+  * 如果你只想接收个别感兴趣的JIRA通知，你不需要订阅这个列表。你只需要在JIRA issue页面上点击"开始关注这个issue" 或者在这个issue上做评论就行了。
+* commits@iotdb.apache.org (任何代码改动都会通知到此处。该邮件列表邮件数量十分多，请注意。)
+* reviews@iotdb.apache.org (任何代码审阅意见都会通知到此处。该邮件列表邮件数量十分多，请注意。)
 
 ## 新功能、Bug 反馈、改进等
 
@@ -114,7 +120,7 @@ import -> Maven -> Existing Maven Projects
 * 服务器的 rpc 实现（主要用来客户端和服务器通信，一般在这里开始打断点）：```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
 	* jdbc所有语句：executeStatement(TSExecuteStatementReq req)
 	* jdbc查询语句：executeQueryStatement(TSExecuteStatementReq req)	
-	* native写入接口：insert(TSInsertReq req)
+	* native写入接口：insertRecord(TSInsertRecordReq req)
 
 * 存储引擎 org.apache.iotdb.db.engine.StorageEngine
 * 查询引擎 org.apache.iotdb.db.qp.Planner

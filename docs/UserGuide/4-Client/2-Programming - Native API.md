@@ -20,19 +20,18 @@
 -->
 
 # Programming - Native API
-## Usage
 
-### Dependencies
+## Dependencies
 
 * JDK >= 1.8
 * Maven >= 3.1
 
-### How to install in local maven repository
+## How to install in local maven repository
 
 In root directory:
 > mvn clean install -pl session -am -DskipTests
 
-### Using IoTDB Native API with Maven
+## Using IoTDB Native API with Maven
 
 ```
 <dependencies>
@@ -45,106 +44,127 @@ In root directory:
 ```
 
 
-### Examples with Native API
+## Native APIs
 
 Here we show the commonly used interfaces and their parameters in the Native API:
 
-#### Run the Native API
-
 * Initialize a Session
 
-  	Session(String host, int port)
+  ```
+  Session(String host, int port)
 
-  	Session(String host, String port, String username, String password)
+  Session(String host, String port, String username, String password)
 
-  	Session(String host, int port, String username, String password)
+  Session(String host, int port, String username, String password)
+  ```
 
 * Open a Session
 
-  ​	Session.open()
+  ```
+  Session.open()
+  ```
 
 * Close a Session
 
-  ​	Session.close()
-
-#### Operations
-
+  ```
+  ​Session.close()
+  ```
+  
 * Set storage group
 
-  ​	TSStatus setStorageGroup(String storageGroupId)
+  ```
+  void setStorageGroup(String storageGroupId)    
+  ```
+  ​	
 
 * Delete one or several storage groups
 
-  ​	TSStatus deleteStorageGroup(String storageGroup)
+  ```
+  void deleteStorageGroup(String storageGroup)
+  void deleteStorageGroups(List<String> storageGroups)
+  ```
+
+* Create one or multiple timeseries
 
   ```
-  TSStatus deleteStorageGroups(List<String> storageGroups)
-  ```
-
-* Create one timeseries under a existing storage group
-
-  ```
-  TSStatus createTimeseries(String path, TSDataType dataType, TSEncoding encoding, CompressionType compressor)
+  void createTimeseries(String path, TSDataType dataType,
+          TSEncoding encoding, CompressionType compressor, Map<String, String> props,
+          Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
+          
+  void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
+          List<TSEncoding> encodings, List<CompressionType> compressors,
+          List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
+          List<Map<String, String>> attributesList, List<String> measurementAliasList)
   ```
 
 * Delete one or several timeseries
 
-  ​	TSStatus deleteTimeseries(String path)
-
-  ```java
-  TSStatus deleteTimeseries(List<String> paths)
+  ```
+  void deleteTimeseries(String path)
+  void deleteTimeseries(List<String> paths)
   ```
 
-* Delete one or several timeseries before a certain timestamp
-
-  ​	TSStatus deleteData(String path, long time)
+* Delete data before or equal to a timestamp of one or several timeseries
 
   ```
-  TSStatus deleteData(List<String> paths, long time)
+  void deleteData(String path, long time)
+  void deleteData(List<String> paths, long time)
   ```
 
-* Insert data into existing timeseries in batch
-
-   ```java
-   	TSStatus insertInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
-   ```
-
-* Insert data into existing timeseries
+* Insert a Record，which contains multiple measurement value of a device at a timestamp
 
   ```
-  	TSStatus insert(String deviceId, long time, List<String> measurements, List<String> values)
+  void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
-* Batch insertion into timeseries
+* Insert a Tablet，which is multiple rows of a device, each row has the same measurements
 
   ```
-  TSExecuteBatchStatementResp insertBatch(RowBatch rowBatch)
+  void insertTablet(Tablet tablet)
   ```
 
-* Test Insert data into existing timeseries in batch. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
-
-   ```
-   TSStatus testInsertInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
-   ```
-
-* Insert data into existing timeseries. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+* Insert multiple Tablets
 
   ```
-  TSStatus testInsert(String deviceId, long time, List<String> measurements, List<String> values)
+  void insertTablets(Map<String, Tablet> tablet)
+  ```
+  
+* Insert multiple Records
+
+  ```
+  void insertRecords(List<String> deviceIds, List<Long> times, 
+                       List<List<String>> measurementsList, List<List<String>> valuesList)
   ```
 
-* Batch insertion into timeseries. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+## Native APIs for profiling network cost
 
-  ​	TSExecuteBatchStatementResp testInsertBatch(RowBatch rowBatch)
+* Test the network and client cost of insertRecords. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
-#### Sample code
+  ```
+  void testInsertRecords(List<String> deviceIds, List<Long> times,
+                  List<List<String>> measurementsList, List<List<String>> valuesList)
+  ```
+
+* Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+
+  ```
+  void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  ```
+
+* Test the network and client cost of insertTablet. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+
+  ```
+  void testInsertTablet(Tablet tablet)
+  ```
+  
+## Sample code
 
 To get more information of the following interfaces, please view session/src/main/java/org/apache/iotdb/session/Session.java
 
 The sample code of using these interfaces is in example/session/src/main/java/org/apache/iotdb/SessionExample.java，which provides an example of how to open an IoTDB session, execute a batch insertion.
 
 
-# Session Pool for Native API
+## Session Pool for Native API
 
 We provided a connection pool (`SessionPool) for Native API.
 Using the interface, you need to define the pool size.

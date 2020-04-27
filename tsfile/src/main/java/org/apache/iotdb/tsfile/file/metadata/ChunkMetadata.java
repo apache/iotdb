@@ -53,6 +53,8 @@ public class ChunkMetadata {
    */
   private long deletedAt = Long.MIN_VALUE;
 
+  private boolean modified;
+
   /**
    * ChunkLoader of metadata, used to create ChunkReaderWrap
    */
@@ -198,5 +200,13 @@ public class ChunkMetadata {
   public int hashCode() {
     return Objects.hash(measurementUid, deletedAt, tsDataType, statistics,
         version, offsetOfChunkHeader);
+  }
+
+  public boolean isModified() {
+    return modified;
+  }
+
+  public void setModified(boolean modified) {
+    this.modified = modified;
   }
 }

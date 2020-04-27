@@ -171,7 +171,7 @@ export default {
         {
           src: "/img/home-Slide1.png",
           des:"High-end equipment",
-          detail:" In high-end manufacturing, there are many devices equipped with sensors collecting working status data.Meteorological stations, wind turbines are common high-end devices.These devices, if supports Java or Go (in developing), can run TsFile to store data locally.In this way, TsFile can provide the ability to save data with high throughput, high compression ratio, and millisecond query.Together with TsFile-Sync tool, TsFiles can be transmitted to the data center."
+          detail:" In high-end manufacturing, there are many devices equipped with sensors collecting working status data.Meteorological stations, wind turbines are common high-end devices.These devices, if supports Java or Go (in development), can run TsFile to store data locally.In this way, TsFile can provide the ability to save data with high throughput, high compression ratio, and millisecond query.Together with TsFile-Sync tool, TsFiles can be transmitted to the data center."
         },
         {
           src: "/img/home-Slide2.png",
@@ -181,7 +181,7 @@ export default {
         {
           src: "/img/home-Slide3.png",
           des:"Cloud Data Management",
-          detail:"In the scene of high-speed network (Internet of Vehicles, etc.), a car installed sensors on it can collect monitoring information(driving status, etc.) of itself at a certain frequency. Usually, these automotive devices have limited hardware configurations and are difficult to carry complex applications. Lightweight IoTDB(IoTDB Client) came into being. With JDBC API, it can make data sent by narrow-band IoT or 4G possible. In this way, devices and cloud are connected together."
+          detail:"In the scene of high-speed networks (Internet of Vehicles, etc.), a car installed of sensors, can collect monitoring information (driving status, etc.) of itself at a certain frequency. Usually, these automotive devices have limited hardware configurations and are difficult to carry complex applications. Here, lightweight IoTDB(IoTDB Client) came into being. IoTDB's JDBC API can make data that can be sent through narrow-band IoT networks or 4G whichever is possible. In this way, devices and cloud are connected together."
         },
       ],
       isHover: false

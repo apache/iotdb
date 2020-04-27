@@ -43,7 +43,7 @@ TsFile file layer has two write interfaces
 
 Write a device with a timestamp and multiple measurement points.
 
-- TsFileWriter.write(RowBatch rowBatch)
+- TsFileWriter.write(Tablet tablet)
 
  Write multiple timestamps and multiple measurement points on one device.
 

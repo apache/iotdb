@@ -18,25 +18,11 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
-
-import java.util.regex.Pattern;
-
 public class Config {
 
   public static final String DEFAULT_USER = "user";
   public static final String DEFAULT_PASSWORD = "password";
   public static final int DEFAULT_FETCH_SIZE = 10000;
   public static final int DEFAULT_TIMEOUT_MS = 0;
-
-  public static final String NODE_MATCHER =
-      "[" + PATH_SEPARATOR + "]" + "([a-zA-Z0-9\u2E80-\u9FFF_]+)";
-
-  // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
-  public static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']([a-zA-Z0-9\u2E80-\u9FFF_]+)(" + NODE_MATCHER + ")+[\"|\']";
-  public static final Pattern PATH_PATTERN = Pattern
-      .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
 }
