@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -66,6 +67,11 @@ public class UpgradeTask extends WrappedRunnable {
           upgradedResource.setFile(
               FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()));
           upgradedResource.serialize();
+          // delete tmp partition folder when it is empty
+          if (upgradedFile.getParentFile().isDirectory() 
+              && upgradedFile.getParentFile().listFiles().length == 0) {
+            Files.delete(upgradedFile.getParentFile().toPath());
+          }
         }
         upgradeResource.setUpgradedResources(upgradedResources);
         UpgradeLog.writeUpgradeLogFile(
