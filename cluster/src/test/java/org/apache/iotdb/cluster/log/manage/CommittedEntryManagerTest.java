@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
+import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
@@ -362,12 +363,14 @@ public class CommittedEntryManagerTest {
 			public List<Log> entries;
 			public List<Log> toAppend;
 			public List<Log> testEntries;
+			public Class throwClass;
 
 			public CommittedEntryManagerTester(List<Log> entries, List<Log> toAppend,
-					List<Log> testEntries) {
+					List<Log> testEntries, Class throwClass) {
 				this.entries = entries;
 				this.toAppend = toAppend;
 				this.testEntries = testEntries;
+				this.throwClass = throwClass;
 			}
 		}
 		List<CommittedEntryManagerTester> tests = new ArrayList<CommittedEntryManagerTester>() {{
@@ -376,26 +379,10 @@ public class CommittedEntryManagerTest {
 				add(new EmptyContentLog(4, 4));
 				add(new EmptyContentLog(5, 5));
 			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(1, 1));
-				add(new EmptyContentLog(2, 2));
-			}}, new ArrayList<Log>() {{
 				add(new EmptyContentLog(3, 3));
 				add(new EmptyContentLog(4, 4));
 				add(new EmptyContentLog(5, 5));
-			}}));
-			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-			}}));
+			}}, null, TruncateCommittedEntryException.class));
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new EmptyContentLog(3, 3));
 				add(new EmptyContentLog(4, 4));
@@ -404,50 +391,7 @@ public class CommittedEntryManagerTest {
 				add(new EmptyContentLog(3, 3));
 				add(new EmptyContentLog(4, 6));
 				add(new EmptyContentLog(5, 6));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 6));
-				add(new EmptyContentLog(5, 6));
-			}}));
-			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-				add(new EmptyContentLog(6, 5));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-				add(new EmptyContentLog(6, 5));
-			}}));
-			// truncate incoming entries, truncate the existing entries and append
-			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(2, 3));
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 5));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 5));
-			}}));
-			// truncate the existing entries and append
-			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 4));
-				add(new EmptyContentLog(5, 5));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(4, 5));
-			}}, new ArrayList<Log>() {{
-				add(new EmptyContentLog(3, 3));
-				add(new EmptyContentLog(4, 5));
-			}}));
+			}}, null, TruncateCommittedEntryException.class));
 			// direct append
 			add(new CommittedEntryManagerTester(new ArrayList<Log>() {{
 				add(new EmptyContentLog(3, 3));
@@ -460,12 +404,22 @@ public class CommittedEntryManagerTest {
 				add(new EmptyContentLog(4, 4));
 				add(new EmptyContentLog(5, 5));
 				add(new EmptyContentLog(6, 5));
-			}}));
+			}}, null));
 		}};
 		for (CommittedEntryManagerTester test : tests) {
 			CommittedEntryManager instance = new CommittedEntryManager(test.entries);
-			instance.append(test.toAppend);
-			assertEquals(test.testEntries, instance.getAllEntries());
+			try {
+				instance.append(test.toAppend);
+				if (test.throwClass != null) {
+					fail("The expected exception is not thrown");
+				} else {
+					assertEquals(test.testEntries, instance.getAllEntries());
+				}
+			} catch (Exception e) {
+				if (!e.getClass().getName().equals(test.throwClass.getName())) {
+					fail("An unexpected exception was thrown.");
+				}
+			}
 		}
 	}
 }

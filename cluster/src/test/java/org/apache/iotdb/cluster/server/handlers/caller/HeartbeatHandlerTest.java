@@ -53,7 +53,7 @@ public class HeartbeatHandlerTest {
 
       @Override
       public RaftLogManager getLogManager() {
-        return new TestLogManager();
+        return new TestLogManager(1);
       }
     };
   }

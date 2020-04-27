@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -32,6 +33,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
@@ -43,6 +45,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -63,6 +66,9 @@ public class HeartbeatThreadTest {
       public RaftLogManager getLogManager() {
         return HeartbeatThreadTest.this.logManager;
       }
+
+      @Override
+      public void updateHardState(long currentTerm){}
 
       @Override
       public AsyncClient connectNode(Node node) {
@@ -121,7 +127,7 @@ public class HeartbeatThreadTest {
 
   @Before
   public void setUp() {
-    logManager = new TestLogManager();
+    logManager = new TestLogManager(1);
     member = getMember();
 
     HeartbeatThread heartBeatThread = getHeartbeatThread(member);
@@ -140,6 +146,15 @@ public class HeartbeatThreadTest {
     member.setAllNodes(partitionGroup);
     member.setThisNode(TestUtils.getNode(0));
     receivedNodes.clear();
+  }
+
+  @After
+  public void tearDown() {
+    File dir = new File(new SyncLogDequeSerializer(1).getLogDir());
+    for (File file : dir.listFiles()) {
+      file.delete();
+    }
+    dir.delete();
   }
 
   @Test

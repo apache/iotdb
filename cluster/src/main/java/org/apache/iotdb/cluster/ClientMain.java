@@ -71,6 +71,7 @@ public class ClientMain {
   private static String PARAM_DELETE_SERIES = "ds";
   private static String PARAM_QUERY_PORTS = "qp";
   private static Options options = new Options();
+
   static {
     options.addOption(new Option(PARAM_INSERTION, "Perform insertion"));
     options.addOption(new Option(PARAM_QUERY, "Perform query"));
@@ -172,7 +173,7 @@ public class ClientMain {
         queryPorts = parseIntArray(commandLine.getOptionValue(PARAM_QUERY_PORTS));
       }
       if (queryPorts == null) {
-        queryPorts = new int[] {55560, 55561, 55562};
+        queryPorts = new int[]{55560, 55561, 55562};
       }
       for (int queryPort : queryPorts) {
         System.out.println("Test port: " + queryPort);
@@ -274,7 +275,7 @@ public class ClientMain {
   private static void testDeleteStorageGroup(Client client, long sessionId)
       throws TException, StatementExecutionException, IoTDBConnectionException {
     logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
-    testQuery(client, sessionId, new String[] {"SELECT * FROM root"});
+    testQuery(client, sessionId, new String[]{"SELECT * FROM root"});
   }
 
   private static void testInsertion(Client client, long sessionId) throws TException {
@@ -328,6 +329,7 @@ public class ClientMain {
       }
     }
   }
+
   private static void testDeleteTimeseries(Client client, long sessionId) throws TException {
     List<String> paths = new ArrayList<>();
     for (String measurement : MEASUREMENTS) {

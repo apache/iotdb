@@ -92,4 +92,12 @@ public class HardState {
             .append(voteFor)
             .toHashCode();
     }
+
+    @Override
+    public String toString() {
+        return "HardState{" +
+            "currentTerm=" + currentTerm +
+            ", voteFor=" + voteFor +
+            '}';
+    }
 }

@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.cluster.common;
 
-import org.apache.iotdb.cluster.log.manage.CommittedEntryManager;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
-import org.apache.iotdb.cluster.log.manage.StableEntryManager;
+import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 
 public class TestLogManager extends RaftLogManager {
 
-  public TestLogManager() {
-    super(new CommittedEntryManager(), new StableEntryManager(),
-        new TestLogApplier());
+  public TestLogManager(int nodeIdentifier) {
+    super(new SyncLogDequeSerializer(nodeIdentifier), new TestLogApplier());
   }
 }

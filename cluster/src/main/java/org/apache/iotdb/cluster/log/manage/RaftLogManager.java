@@ -25,9 +25,12 @@ import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
+import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
+import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -48,12 +51,15 @@ public class RaftLogManager {
     private long commitIndex;
     private LogApplier logApplier;
 
-    public RaftLogManager(CommittedEntryManager committedEntryManager,
-        StableEntryManager stableEntryManager, LogApplier applier) {
+    public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier) {
         this.logApplier = applier;
-        this.committedEntryManager = committedEntryManager;
+        this.committedEntryManager = new CommittedEntryManager();
         this.stableEntryManager = stableEntryManager;
-        this.committedEntryManager.append(stableEntryManager.getAllEntries());
+        try {
+            this.committedEntryManager.append(stableEntryManager.getAllEntries());
+        } catch (TruncateCommittedEntryException e) {
+            logger.error("Unexpected error:", e);
+        }
         long last = committedEntryManager.getLastIndex();
         this.unCommittedEntryManager = new UnCommittedEntryManager(last + 1);
         // must have applied entry [compactIndex,last] to state machine
@@ -70,8 +76,31 @@ public class RaftLogManager {
 
     }
 
+    /**
+     * Return the logManager's logApplier.
+     *
+     * @return logApplier
+     */
     public LogApplier getApplier() {
         return logApplier;
+    }
+
+    /**
+     * Update the raftNode's hardState(currentTerm,voteFor) and flush to disk.
+     *
+     * @param state
+     */
+    public void updateHardState(HardState state) {
+        stableEntryManager.setHardStateAndFlush(state);
+    }
+
+    /**
+     * Return the raftNode's hardState(currentTerm,voteFor).
+     *
+     * @return state
+     */
+    public HardState getHardState() {
+        return stableEntryManager.getHardState();
     }
 
     /**
@@ -81,15 +110,6 @@ public class RaftLogManager {
      */
     public long getCommitLogIndex() {
         return commitIndex;
-    }
-
-    /**
-     * Set the raftNode's commitIndex.
-     *
-     * @param commitIndex request commitIndex
-     */
-    public void setCommitLogIndex(long commitIndex) {
-        this.commitIndex = commitIndex;
     }
 
     /**
@@ -214,6 +234,7 @@ public class RaftLogManager {
         long after = entries.get(0).getCurrLogIndex();
         if (after <= commitIndex) {
             logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
+            return -1;
         }
         unCommittedEntryManager.truncateAndAppend(entries);
         return getLastLogIndex();
@@ -230,6 +251,7 @@ public class RaftLogManager {
         long after = entry.getCurrLogIndex();
         if (after <= commitIndex) {
             logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
+            return -1;
         }
         unCommittedEntryManager.truncateAndAppend(entry);
         return getLastLogIndex();
@@ -273,8 +295,8 @@ public class RaftLogManager {
             stableEntryManager.removeCompactedEntries(snapshot.getLastLogIndex());
         } catch (EntryUnavailableException e) {
             committedEntryManager.applyingSnapshot(snapshot);
-            unCommittedEntryManager.applyingSnapshot(snapshot);
             stableEntryManager.applyingSnapshot(snapshot);
+            unCommittedEntryManager.applyingSnapshot(snapshot);
         }
         if (this.commitIndex < snapshot.getLastLogIndex()) {
             this.commitIndex = snapshot.getLastLogIndex();
@@ -328,15 +350,27 @@ public class RaftLogManager {
      */
     public long commitTo(long newCommitIndex) {
         if (commitIndex < newCommitIndex) {
-            List<Log> entries = unCommittedEntryManager
-                .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(), newCommitIndex + 1);
+            List<Log> entries = new ArrayList<>();
+            entries.addAll(unCommittedEntryManager
+                .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(),
+                    newCommitIndex + 1));
             if (entries.size() != 0) {
-                stableEntryManager.append(entries);
-                applyEntries(entries);
-                committedEntryManager.append(entries);
-                Log lastLog = entries.get(entries.size() - 1);
-                unCommittedEntryManager.stableTo(lastLog.getCurrLogIndex());
-                commitIndex = lastLog.getCurrLogIndex();
+                if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
+                    entries
+                        .subList(0,
+                            (int) (getCommitLogIndex() - entries.get(0).getCurrLogIndex() + 1))
+                        .clear();
+                }
+                try {
+                    committedEntryManager.append(entries);
+                    stableEntryManager.append(entries);
+                    applyEntries(entries);
+                    Log lastLog = entries.get(entries.size() - 1);
+                    unCommittedEntryManager.stableTo(lastLog.getCurrLogIndex());
+                    commitIndex = lastLog.getCurrLogIndex();
+                } catch (TruncateCommittedEntryException e) {
+                    logger.error("Unexpected error:", e);
+                }
             }
         }
         return commitIndex;
@@ -424,12 +458,14 @@ public class RaftLogManager {
     }
 
     @TestOnly
-    public RaftLogManager(LogApplier applier) {
-        this.committedEntryManager = new CommittedEntryManager();
-        this.stableEntryManager = new StableEntryManager();
+    public RaftLogManager(CommittedEntryManager committedEntryManager,
+        StableEntryManager stableEntryManager,
+        LogApplier applier) {
+        this.committedEntryManager = committedEntryManager;
+        this.stableEntryManager = stableEntryManager;
         this.logApplier = applier;
         long last = committedEntryManager.getLastIndex();
         this.unCommittedEntryManager = new UnCommittedEntryManager(last + 1);
-        this.commitIndex = -1;
+        this.commitIndex = last;
     }
 }

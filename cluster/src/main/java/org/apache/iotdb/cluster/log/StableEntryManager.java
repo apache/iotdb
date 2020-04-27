@@ -17,29 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.log.manage;
+package org.apache.iotdb.cluster.log;
 
-import java.util.Collections;
 import java.util.List;
-import org.apache.iotdb.cluster.log.HardState;
-import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.log.Snapshot;
 
-public class StableEntryManager {
+public interface StableEntryManager {
 
-    public List<Log> getAllEntries(){
-        return Collections.emptyList();
-    }
+    List<Log> getAllEntries();
 
-    public void append(List<Log> entries){}
+    void append(List<Log> entries);
 
-    public void applyingSnapshot(Snapshot snapshot){}
+    void applyingSnapshot(Snapshot snapshot);
 
-    public void removeCompactedEntries(long index){}
+    void removeCompactedEntries(long index);
 
-    public void setHardStateAndFlush(HardState state){}
+    void setHardStateAndFlush(HardState state);
 
-    public HardState getHardState(){
-        return null;
-    }
+    HardState getHardState();
 }

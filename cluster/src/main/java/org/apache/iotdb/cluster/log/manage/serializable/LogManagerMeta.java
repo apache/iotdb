@@ -27,14 +27,14 @@ public class LogManagerMeta {
 
   private long commitLogTerm = -1;
   private long commitLogIndex = -1;
-  private long lastLogId = -1;
+  private long lastLogIndex = -1;
   private long lastLogTerm = -1;
 
   public static LogManagerMeta deserialize(ByteBuffer buffer) {
     LogManagerMeta res = new LogManagerMeta();
     res.commitLogTerm = ReadWriteIOUtils.readLong(buffer);
     res.commitLogIndex = ReadWriteIOUtils.readLong(buffer);
-    res.lastLogId = ReadWriteIOUtils.readLong(buffer);
+    res.lastLogIndex = ReadWriteIOUtils.readLong(buffer);
     res.lastLogTerm = ReadWriteIOUtils.readLong(buffer);
 
     return res;
@@ -52,7 +52,7 @@ public class LogManagerMeta {
     ByteBuffer byteBuffer = ByteBuffer.allocate(Long.BYTES * 4);
     byteBuffer.putLong(commitLogTerm);
     byteBuffer.putLong(commitLogIndex);
-    byteBuffer.putLong(lastLogId);
+    byteBuffer.putLong(lastLogIndex);
     byteBuffer.putLong(lastLogTerm);
 
     byteBuffer.flip();
@@ -63,18 +63,18 @@ public class LogManagerMeta {
   public String toString() {
     return "LogManagerMeta{" +
         "commitLogTerm=" + commitLogTerm +
-        "commitLogIndex=" + commitLogIndex +
-        ", lastLogId=" + lastLogId +
+        ", commitLogIndex=" + commitLogIndex +
+        ", lastLogIndex=" + lastLogIndex +
         ", lastLogTerm=" + lastLogTerm +
         '}';
   }
 
-  public long getLastLogId() {
-    return lastLogId;
+  public long getLastLogIndex() {
+    return lastLogIndex;
   }
 
-  public void setLastLogId(long lastLogId) {
-    this.lastLogId = lastLogId;
+  public void setLastLogIndex(long lastLogIndex) {
+    this.lastLogIndex = lastLogIndex;
   }
 
   public long getLastLogTerm() {
@@ -107,7 +107,7 @@ public class LogManagerMeta {
 
     return new EqualsBuilder()
         .append(commitLogIndex, that.commitLogIndex)
-        .append(lastLogId, that.lastLogId)
+        .append(lastLogIndex, that.lastLogIndex)
         .append(lastLogTerm, that.lastLogTerm)
         .append(commitLogTerm, that.commitLogTerm)
         .isEquals();
@@ -117,7 +117,7 @@ public class LogManagerMeta {
   public int hashCode() {
     return new HashCodeBuilder(17, 37)
         .append(commitLogIndex)
-        .append(lastLogId)
+        .append(lastLogIndex)
         .append(lastLogTerm)
         .append(commitLogTerm)
         .toHashCode();

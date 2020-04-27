@@ -165,6 +165,10 @@ public class DataGroupMemberTest extends MemberTest {
       }
 
       @Override
+      public void updateHardState(long currentTerm){}
+
+
+      @Override
       public AsyncClient connectNode(Node node) {
         try {
           return new TestDataClient(node, dataGroupMemberMap) {

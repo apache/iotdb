@@ -62,7 +62,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
       long localLastLogTerm = localMember.getLogManager().getLastLogTerm();
       logger.trace("{}: Node {} is still alive, log index: {}/{}, log term: {}/{}",
           memberName, follower, lastLogIdx
-          ,localLastLogIdx, lastLogTerm, localLastLogTerm);
+          , localLastLogIdx, lastLogTerm, localLastLogTerm);
 
       if (localLastLogIdx > lastLogIdx ||
           lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {

@@ -32,9 +32,11 @@ import java.util.Iterator;
 import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -42,7 +44,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SyncLogDequeSerializer implements LogDequeSerializer {
+public class SyncLogDequeSerializer implements StableEntryManager {
 
   private static final Logger logger = LoggerFactory.getLogger(SyncLogDequeSerializer.class);
 
@@ -52,6 +54,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   private FileOutputStream currentLogOutputStream;
   private Deque<Integer> logSizeDeque = new ArrayDeque<>();
   private LogManagerMeta meta;
+  private HardState state;
   // mark first log position
   private long firstLogPosition = 0;
   // removed log size
@@ -65,6 +68,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   private long maxAvailableTime = Long.MAX_VALUE;
   // log dir
   private String logDir;
+
   /**
    * for log tools
    *
@@ -80,11 +84,11 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
    * log in disk is [size of log1 | log1 buffer] [size of log2 | log2 buffer]... log meta buffer
    * build serializer with node id
    */
-  public SyncLogDequeSerializer(Node headerNode) {
+  public SyncLogDequeSerializer(int nodeIdentifier) {
     String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     logFileList = new ArrayList<>();
     logDir = systemDir + File.separator + "raftLog" + File.separator +
-        headerNode.nodeIdentifier + File.separator;
+        nodeIdentifier + File.separator;
     init();
   }
 
@@ -102,6 +106,38 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
   public void setMaxRemovedLogSize(long maxRemovedLogSize) {
     this.maxRemovedLogSize = maxRemovedLogSize;
   }
+
+  public List<Log> getAllEntries() {
+    return recoverLog();
+  }
+
+  public void append(List<Log> entries) {
+    Log entry = entries.get(entries.size() - 1);
+    meta.setCommitLogIndex(entry.getCurrLogIndex());
+    meta.setCommitLogTerm(entry.getCurrLogTerm());
+    meta.setLastLogIndex(entry.getCurrLogIndex());
+    meta.setLastLogTerm(entry.getCurrLogTerm());
+    append(entries, meta);
+  }
+
+  public void setHardStateAndFlush(HardState state) {
+    this.state = state;
+    serializeMeta(meta);
+  }
+
+  public HardState getHardState() {
+    return state;
+  }
+
+
+  public void applyingSnapshot(Snapshot snapshot) {
+
+  }
+
+  public void removeCompactedEntries(long index) {
+
+  }
+
 
   public Deque<Integer> getLogSizeDeque() {
     return logSizeDeque;
@@ -141,12 +177,8 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     metaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta");
 
     // build dir
-    if (!metaFile.getParentFile().getParentFile().exists()) {
-      metaFile.getParentFile().getParentFile().mkdir();
-    }
-
     if (!metaFile.getParentFile().exists()) {
-      metaFile.getParentFile().mkdir();
+      metaFile.getParentFile().mkdirs();
     }
 
     File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
@@ -179,7 +211,6 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     return logFile;
   }
 
-  @Override
   public void append(Log log, LogManagerMeta meta) {
     ByteBuffer data = log.serialize();
     int totalSize = 0;
@@ -194,7 +225,6 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     serializeMeta(meta);
   }
 
-  @Override
   public void append(List<Log> logs, LogManagerMeta meta) {
     int bufferSize = 0;
     List<ByteBuffer> bufferList = new ArrayList<>(logs.size());
@@ -223,13 +253,11 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     serializeMeta(meta);
   }
 
-  @Override
   public void removeLast(LogManagerMeta meta) {
     truncateLogIntern(1);
     serializeMeta(meta);
   }
 
-  @Override
   public void truncateLog(int count, LogManagerMeta meta) {
     truncateLogIntern(count);
     serializeMeta(meta);
@@ -283,7 +311,6 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   }
 
-  @Override
   public void removeFirst(int num) {
     firstLogPosition += num;
     for (int i = 0; i < num; i++) {
@@ -299,7 +326,6 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     }
   }
 
-  @Override
   public List<Log> recoverLog() {
     // if we can totally remove some old file, remove them
     if (removedLogSize > 0) {
@@ -354,25 +380,30 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
     return log;
   }
 
-  @Override
   public LogManagerMeta recoverMeta() {
-    if (meta == null && metaFile.exists() && metaFile.length() > 0) {
-      try (FileInputStream metaReader = new FileInputStream(metaFile)) {
-        firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
-        removedLogSize = ReadWriteIOUtils.readLong(metaReader);
-        minAvailableTime = ReadWriteIOUtils.readLong(metaReader);
-        maxAvailableTime = ReadWriteIOUtils.readLong(metaReader);
-        meta = LogManagerMeta.deserialize(
-            ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
-      } catch (IOException e) {
-        logger.error("Error in log serialization: " + e.getMessage());
+    if (meta == null) {
+      if (metaFile.exists() && metaFile.length() > 0) {
+        try (FileInputStream metaReader = new FileInputStream(metaFile)) {
+          firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
+          removedLogSize = ReadWriteIOUtils.readLong(metaReader);
+          minAvailableTime = ReadWriteIOUtils.readLong(metaReader);
+          maxAvailableTime = ReadWriteIOUtils.readLong(metaReader);
+          meta = LogManagerMeta.deserialize(
+              ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
+          state = HardState.deserialize(
+              ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
+        } catch (IOException e) {
+          logger.error("Error in log serialization: " + e.getMessage());
+        }
+      } else {
+        meta = new LogManagerMeta();
+        state = new HardState();
       }
     }
 
     return meta;
   }
 
-  @Override
   public void serializeMeta(LogManagerMeta meta) {
     File tempMetaFile = new File(logDir + "logMeta.tmp");
     try (FileOutputStream tempMetaFileOutputStream = new FileOutputStream(tempMetaFile)) {
@@ -382,6 +413,7 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
       ReadWriteIOUtils.write(minAvailableTime, tempMetaFileOutputStream);
       ReadWriteIOUtils.write(maxAvailableTime, tempMetaFileOutputStream);
       ReadWriteIOUtils.write(meta.serialize(), tempMetaFileOutputStream);
+      ReadWriteIOUtils.write(state.serialize(), tempMetaFileOutputStream);
 
       // close stream
       tempMetaFileOutputStream.close();
@@ -397,7 +429,6 @@ public class SyncLogDequeSerializer implements LogDequeSerializer {
 
   }
 
-  @Override
   public void close() {
     try {
       currentLogOutputStream.close();

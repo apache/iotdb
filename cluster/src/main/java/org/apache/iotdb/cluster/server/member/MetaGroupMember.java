@@ -224,6 +224,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     LogApplier metaLogApplier = new MetaLogApplier(this);
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
     super.logManager = logManager;
+    this.term.set(logManager.getHardState().getCurrentTerm());
 
     setThisNode(thisNode);
     // load the identifier from the disk or generate a new one
@@ -267,7 +268,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     addSeedNodes();
     super.start();
-
     QueryCoordinator.getINSTANCE().setMetaGroupMember(this);
     StorageEngine.getInstance().setFileFlushPolicy(new ClusterFileFlushPolicy(this));
     reportThread = Executors.newSingleThreadScheduledExecutor(n -> new Thread(n,
@@ -1093,8 +1093,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
       }
       logManager.setSnapshot(snapshot);
+      logManager.applyingSnapshot(snapshot);
     }
-    logManager.applyingSnapshot(snapshot);
   }
 
   /**
@@ -2634,5 +2634,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     fillHandler.onError(new QueryTimeOutException(String.format("PreviousFill %s@%d range: %d",
         path.getFullPath(), queryTime, beforeRange)));
+  }
+
+  @TestOnly
+  public void setLogManager(MetaSingleSnapshotLogManager manager) {
+    logManager = manager;
+    super.logManager = manager;
   }
 }

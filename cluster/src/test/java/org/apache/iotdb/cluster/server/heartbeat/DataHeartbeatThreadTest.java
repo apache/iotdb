@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.heartbeat;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
@@ -28,6 +29,7 @@ import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
@@ -38,6 +40,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
 
 public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
@@ -51,6 +54,9 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
       public RaftLogManager getLogManager() {
         return dataLogManager;
       }
+
+      @Override
+      public void updateHardState(long currentTerm){}
 
       @Override
       public AsyncClient connectNode(Node node) {
@@ -115,10 +121,21 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
   @Before
   public void setUp() {
     super.setUp();
-    dataLogManager = new TestLogManager();
+    dataLogManager = new TestLogManager(2);
     List<Log> logs = TestUtils.prepareTestLogs(14);
     dataLogManager.append(logs);
     dataLogManager.commitTo(13);
+  }
+
+  @Override
+  @After
+  public void tearDown() {
+    super.tearDown();
+    File dir = new File(new SyncLogDequeSerializer(2).getLogDir());
+    for (File file : dir.listFiles()) {
+      file.delete();
+    }
+    dir.delete();
   }
 
   @Override

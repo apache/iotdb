@@ -91,7 +91,7 @@ public class MemberTest {
 
     dataGroupMemberMap = new HashMap<>();
     metaGroupMemberMap = new HashMap<>();
-    metaLogManager = new TestLogManager();
+    metaLogManager = new TestLogManager(1);
     testMetaMember = getMetaGroupMember(TestUtils.getNode(0));
     for (Node node : allNodes) {
       // pre-create data members

@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
+import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -90,6 +91,18 @@ public class LogParserTest {
 
     ByteBuffer buffer = log.serialize();
     Log serialized = logParser.parse(buffer);
+    assertEquals(log, serialized);
+  }
+
+  @Test
+  public void testEmptyContentLog() throws UnknownLogTypeException {
+    EmptyContentLog log = new EmptyContentLog();
+    log.setCurrLogIndex(8);
+    log.setCurrLogTerm(8);
+    log.setPreviousLogIndex(7);
+    log.setPreviousLogTerm(7);
+    ByteBuffer byteBuffer = log.serialize();
+    Log serialized = logParser.parse(byteBuffer);
     assertEquals(log, serialized);
   }
 }
