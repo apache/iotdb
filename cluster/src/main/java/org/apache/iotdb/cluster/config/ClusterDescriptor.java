@@ -226,33 +226,9 @@ public class ClusterDescriptor {
 
   public void loadHotModifiedProps(Properties properties, boolean toCheckProperties)
       throws QueryProcessException {
-    if (toCheckProperties && !checkProperties(properties)) {
-      throw new QueryProcessException(
-          "Failed to load configuration from properties because some are missing locally.");
-    }
+
     // TODO implement some hot modified properties to load
     logger.info("Set cluster configuration {}", properties);
   }
 
-  private boolean checkProperties(Properties properties) throws QueryProcessException {
-    String url = getPropsUrl();
-    if (url == null) {
-      return false;
-    }
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
-      Properties localProperties = System.getProperties();
-      localProperties.load(inputStream);
-      Set<String> localPropertyNames = localProperties.stringPropertyNames();
-      for (String propertyName : properties.stringPropertyNames()) {
-        if (!localPropertyNames.contains(propertyName)) {
-          return false;
-        }
-      }
-    } catch (IOException e) {
-      logger.warn("Fail to reload config file {}", url, e);
-      throw new QueryProcessException(
-          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
-    }
-    return true;
-  }
 }

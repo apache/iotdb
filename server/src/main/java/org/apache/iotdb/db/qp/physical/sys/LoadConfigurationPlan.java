@@ -69,7 +69,7 @@ public class LoadConfigurationPlan extends PhysicalPlan {
   }
 
   // only for deserialize
-  public LoadConfigurationPlan(){
+  public LoadConfigurationPlan() {
     super(false, OperatorType.LOAD_CONFIGURATION);
   }
 
@@ -85,16 +85,11 @@ public class LoadConfigurationPlan extends PhysicalPlan {
           stream.writeInt(0);
         } else {
           stream.writeInt(1);
-          Map<String, String> propertiesMap = new HashMap<>();
+          stream.writeInt(properties.entrySet().size());
           for (Entry<Object, Object> entry : properties.entrySet()) {
-            propertiesMap.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
-          }
-          stream.writeInt(propertiesMap.size());
-          for(Entry entry : propertiesMap.entrySet()){
             putString(stream, String.valueOf(entry.getKey()));
             putString(stream, String.valueOf(entry.getValue()));
           }
-//          ReadWriteIOUtils.write(propertiesMap, stream);
         }
       }
     }
@@ -110,11 +105,9 @@ public class LoadConfigurationPlan extends PhysicalPlan {
         if (buffer.getInt() == 1) {
           propertiesArray[i] = new Properties();
           int size = buffer.getInt();
-          Map<String, String> values = new HashMap<>(size);
-          for(int j = 0; j < size; j++){
-            values.put(readString(buffer), readString(buffer));
+          for (int j = 0; j < size; j++) {
+            propertiesArray[i].setProperty(readString(buffer), readString(buffer));
           }
-          propertiesArray[i].putAll(values);
         }
       }
     }
