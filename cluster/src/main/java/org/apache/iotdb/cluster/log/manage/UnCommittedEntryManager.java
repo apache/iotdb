@@ -128,11 +128,8 @@ public class UnCommittedEntryManager {
         long len = after - offset;
         if (len < 0) {
             // the logs are being truncated to before our current offset portion, which is committed entries
-            // Maybe throw a exception here is better
             logger.error("The logs which first index is {} are going to truncate committed logs",
                 after);
-//            throw new TruncateCommittedEntryException(appendingEntries.get(0).getCurrLogIndex(),
-//                offset);
         } else if (len == entries.size()) {
             // after is the next index in the entries
             // directly append
@@ -161,11 +158,8 @@ public class UnCommittedEntryManager {
         long len = after - offset;
         if (len < 0) {
             // the logs are being truncated to before our current offset portion, which is committed entries
-            // Maybe throw a exception here is better
             logger.error("The logs which first index is {} are going to truncate committed logs",
                 after);
-//            throw new TruncateCommittedEntryException(appendingEntry.getCurrLogIndex(),
-//                offset);
         } else if (len == entries.size()) {
             // after is the next index in the entries
             // directly append
