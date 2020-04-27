@@ -379,7 +379,7 @@ public class IoTDBSessionIT {
       values.add("1");
       values.add("2");
       values.add("3");
-      session.testInsertRecord(deviceId, time, measurements, values);
+      session.insertRecord(deviceId, time, measurements, values);
     }
 
     // test insert tablet
