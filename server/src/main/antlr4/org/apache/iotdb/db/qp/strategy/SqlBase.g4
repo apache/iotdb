@@ -71,7 +71,7 @@ statement
     | SHOW DEVICES prefixPath? #showDevices
     | COUNT TIMESERIES prefixPath (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
-    | LOAD CONFIGURATION #loadConfigurationStatement
+    | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE #removeFile
     | MOVE FILE FILE #moveFile
@@ -798,6 +798,11 @@ ATTRIBUTES
 TAGS
     : T A G S
     ;
+
+GLOBAL
+  : G L O B A L
+  | G
+  ;
 //============================
 // End of the keywords list
 //============================
