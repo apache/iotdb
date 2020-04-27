@@ -26,6 +26,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.logical.sys.*;
+import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
 import org.apache.iotdb.db.query.fill.IFill;
@@ -208,26 +209,29 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     Map<String, String> alterMap = new HashMap<>();
     // rename
     if (ctx.RENAME() != null) {
-      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.RENAME);
+      alterTimeSeriesOperator.setAlterType(AlterType.RENAME);
       alterMap.put(ctx.beforeName.getText(), ctx.currentName.getText());
     } else if (ctx.SET() != null) {
       // set
-      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.SET);
+      alterTimeSeriesOperator.setAlterType(AlterType.SET);
       setMap(ctx, alterMap);
     } else if (ctx.DROP() != null) {
       // drop
-      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.DROP);
+      alterTimeSeriesOperator.setAlterType(AlterType.DROP);
       for (TerminalNode dropId : ctx.ID()) {
         alterMap.put(dropId.getText(), null);
       }
     } else if (ctx.TAGS() != null) {
       // add tag
-      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.ADD_TAGS);
+      alterTimeSeriesOperator.setAlterType(AlterType.ADD_TAGS);
+      setMap(ctx, alterMap);
+    } else if (ctx.ATTRIBUTES() != null){
+      // add attribute
+      alterTimeSeriesOperator.setAlterType(AlterType.ADD_ATTRIBUTES);
       setMap(ctx, alterMap);
     } else {
-      // add attribute
-      alterTimeSeriesOperator.setAlterType(AlterTimeSeriesOperator.AlterType.ADD_ATTRIBUTES);
-      setMap(ctx, alterMap);
+      // upsert
+      alterTimeSeriesOperator.setAlterType(AlterType.UPSERT);
     }
     alterTimeSeriesOperator.setAlterMap(alterMap);
     initializedOperator = alterTimeSeriesOperator;
@@ -930,32 +934,32 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterAttributeClause(AttributeClauseContext ctx) {
     super.enterAttributeClause(ctx);
-    List<PropertyContext> attributesList = ctx.property();
-    String value;
-    Map<String, String> attributes = new HashMap<>(attributesList.size());
-    if (ctx.property(0) != null) {
-      for (PropertyContext property : attributesList) {
-        if(property.propertyValue().STRING_LITERAL() != null) {
-          value = removeStringQuote(property.propertyValue().getText());
-        } else {
-          value = property.propertyValue().getText();
-
-        }
-        attributes.put(property.ID().getText(), value);
-      }
+    Map<String, String> attributes = extractMap(ctx.property(), ctx.property(0));
+    if (createTimeSeriesOperator != null) {
+      createTimeSeriesOperator.setAttributes(attributes);
+    } else if (alterTimeSeriesOperator != null) {
+      alterTimeSeriesOperator.setAttributesMap(attributes);
     }
-    createTimeSeriesOperator.setAttributes(attributes);
   }
 
   @Override
   public void enterTagClause(TagClauseContext ctx) {
     super.enterTagClause(ctx);
-    List<PropertyContext> tagsList = ctx.property();
+    Map<String, String> tags = extractMap(ctx.property(), ctx.property(0));
+    if (createTimeSeriesOperator != null) {
+      createTimeSeriesOperator.setTags(tags);
+    } else if (alterTimeSeriesOperator != null) {
+      alterTimeSeriesOperator.setTagsMap(tags);
+    }
+  }
+
+  private Map<String, String> extractMap(List<PropertyContext> property2,
+      PropertyContext property3) {
     String value;
-    Map<String, String> tags = new HashMap<>(tagsList.size());
-    if (ctx.property(0) != null) {
-      for (PropertyContext property : tagsList) {
-        if(property.propertyValue().STRING_LITERAL() != null) {
+    Map<String, String> tags = new HashMap<>(property2.size());
+    if (property3 != null) {
+      for (PropertyContext property : property2) {
+        if (property.propertyValue().STRING_LITERAL() != null) {
           value = removeStringQuote(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
@@ -963,7 +967,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         tags.put(property.ID().getText(), value);
       }
     }
-    createTimeSeriesOperator.setTags(tags);
+    return tags;
   }
 
   @Override

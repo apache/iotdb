@@ -19,28 +19,44 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.tsfile.read.common.Path;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 public class AlterTimeSeriesPlan extends PhysicalPlan {
 
-  private Path path;
+  private final Path path;
 
-  private AlterTimeSeriesOperator.AlterType alterType;
+  private final AlterTimeSeriesOperator.AlterType alterType;
 
-  private Map<String, String> alterMap;
+  // used when the alterType is RENAME, SET, DROP, ADD_TAGS, ADD_ATTRIBUTES
+  // when the alterType is RENAME, alterMap has only one entry, key is the beforeName, value is the
+  // currentName
+  // when the alterType is DROP, only the keySet of alterMap is useful, it contains all the key
+  // names needed to be removed
+  private final Map<String, String> alterMap;
 
-  public AlterTimeSeriesPlan(Path path, AlterTimeSeriesOperator.AlterType alterType, Map<String, String> alterMap) {
+  // used when the alterType is UPSERT
+  private final Map<String, String> tagsMap;
+  private final Map<String, String> attributesMap;
+
+  public AlterTimeSeriesPlan(
+      Path path,
+      AlterType alterType,
+      Map<String, String> alterMap,
+      Map<String, String> tagsMap,
+      Map<String, String> attributesMap) {
     super(false, Operator.OperatorType.ALTER_TIMESERIES);
     this.path = path;
     this.alterType = alterType;
     this.alterMap = alterMap;
+    this.tagsMap = tagsMap;
+    this.attributesMap = attributesMap;
   }
 
   public Path getPath() {
@@ -53,6 +69,14 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
 
   public Map<String, String> getAlterMap() {
     return alterMap;
+  }
+
+  public Map<String, String> getTagsMap() {
+    return tagsMap;
+  }
+
+  public Map<String, String> getAttributesMap() {
+    return attributesMap;
   }
 
   @Override
