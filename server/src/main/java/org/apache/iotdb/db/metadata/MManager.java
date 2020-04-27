@@ -989,6 +989,11 @@ public class MManager {
         long offset = tagLogFile.write(tagsMap, attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
+        // update inverted Index map
+        for (Entry<String, String> entry : tagsMap.entrySet()) {
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+        }
         return;
       }
 
@@ -1090,6 +1095,11 @@ public class MManager {
         long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
+        // update inverted Index map
+        for (Entry<String, String> entry : tagsMap.entrySet()) {
+          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+        }
         return;
       }
 
