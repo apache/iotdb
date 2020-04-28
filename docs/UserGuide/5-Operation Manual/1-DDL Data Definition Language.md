@@ -165,7 +165,7 @@ The results are shown below respectly:
   
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
-## Show Child Path
+## Show Child Paths
 
 ```
 SHOW CHILD PATHS prefixPath
