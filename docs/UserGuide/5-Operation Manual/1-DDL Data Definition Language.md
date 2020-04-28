@@ -111,7 +111,11 @@ ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
-
+* upsert tags and attributes
+> add new key-value if the key doesn't exist, otherwise, update the old one with new value.
+```
+ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
+```
 
 ## Show Timeseries
 

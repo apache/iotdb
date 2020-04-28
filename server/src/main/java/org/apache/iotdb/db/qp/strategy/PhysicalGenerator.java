@@ -165,7 +165,9 @@ public class PhysicalGenerator {
         return new AlterTimeSeriesPlan(
             alterTimeSeriesOperator.getPath(),
             alterTimeSeriesOperator.getAlterType(),
-            alterTimeSeriesOperator.getAlterMap());
+            alterTimeSeriesOperator.getAlterMap(),
+            alterTimeSeriesOperator.getTagsMap(),
+            alterTimeSeriesOperator.getAttributesMap());
       case DELETE:
         DeleteDataOperator delete = (DeleteDataOperator) operator;
         paths = delete.getSelectedPaths();
