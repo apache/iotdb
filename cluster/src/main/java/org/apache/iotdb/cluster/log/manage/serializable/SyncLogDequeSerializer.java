@@ -26,6 +26,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.Iterator;
@@ -152,14 +154,22 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     recoverMetaFile();
     recoverMeta();
     try {
-      for (File file : metaFile.getParentFile().listFiles()) {
-        if (file.getName().startsWith("data")) {
-          long fileTime = getFileTime(file);
-          // this means system down between save meta and data
-          if (fileTime <= minAvailableTime || fileTime >= maxAvailableTime) {
-            file.delete();
-          } else {
-            logFileList.add(file);
+      File[] logFiles = metaFile.getParentFile().listFiles();
+      if (logger.isInfoEnabled()) {
+        logger.info("Find log files {}", logFiles != null ? Arrays.asList(logFiles) :
+            Collections.emptyList());
+      }
+
+      if (logFiles != null) {
+        for (File file : logFiles) {
+          if (file.getName().startsWith("data")) {
+            long fileTime = getFileTime(file);
+            // this means system down between save meta and data
+            if (fileTime <= minAvailableTime || fileTime >= maxAvailableTime) {
+              file.delete();
+            } else {
+              logFileList.add(file);
+            }
           }
         }
       }
@@ -342,6 +352,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     boolean shouldSkip = true;
 
     for (File logFile : logFileList) {
+      int logNumInFile = 0;
       try (FileInputStream logReader = new FileInputStream(logFile)) {
         FileChannel logChannel = logReader.getChannel();
         if (shouldSkip) {
@@ -358,12 +369,14 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           // actual log
           Log log = readLog(logReader);
           result.add(log);
+          logNumInFile ++;
         }
       } catch (IOException e) {
         logger.error("Error in log serialization: ", e);
       }
+      logger.info("Recovered {} logs from {}", logNumInFile, logFile);
     }
-
+    logger.info("Recovered {} logs totally", result.size());
     return result;
   }
 
@@ -405,7 +418,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         state = new HardState();
       }
     }
-
+    logger.info("Recovered log meta: {}", meta);
     return meta;
   }
 
