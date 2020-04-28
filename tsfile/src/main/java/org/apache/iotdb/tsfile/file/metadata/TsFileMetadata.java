@@ -66,13 +66,13 @@ public class TsFileMetadata {
 
     // metadataIndex
     int deviceNum = ReadWriteIOUtils.readInt(buffer);
-    List<MetadataIndexNode> deviceMetaDataList = new ArrayList<>();
+    List<MetadataIndexNode> metadataIndexList = new ArrayList<>();
     if (deviceNum > 0) {
       for (int i = 0; i < deviceNum; i++) {
-        deviceMetaDataList.add(MetadataIndexNode.deserializeFrom(buffer));
+        metadataIndexList.add(MetadataIndexNode.deserializeFrom(buffer));
       }
     }
-    fileMetaData.setMetadataIndex(deviceMetaDataList);
+    fileMetaData.setMetadataIndex(metadataIndexList);
 
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
