@@ -47,6 +47,7 @@ import org.apache.iotdb.cluster.common.TestMetaClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
@@ -115,16 +116,21 @@ public class MetaGroupMemberTest extends MemberTest {
   private boolean mockDataClusterServer;
   private Node exiledNode;
 
+  private int prevReplicaNum;
+
   @Override
   @After
   public void tearDown() throws Exception {
     metaGroupMember.closeLogManager();
     dataClusterServer.closeLogManagers();
     super.tearDown();
+    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(prevReplicaNum);
   }
 
   @Before
   public void setUp() throws Exception {
+    prevReplicaNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(2);
     super.setUp();
     dummyResponse.set(Response.RESPONSE_AGREE);
     metaGroupMember = getMetaGroupMember(TestUtils.getNode(0));
