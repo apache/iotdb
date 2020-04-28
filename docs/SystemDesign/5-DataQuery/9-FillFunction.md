@@ -23,7 +23,7 @@
 
 The main logic of Fill function is in FillQueryExecutor
 
-* org.apache.iotdb.db.query.executor.FillQueryExecutor
+* org.apache.iotdb.db.query.executor.fill.FillQueryExecutor
 
 Two fill functions are support in IoTDB, Previous Fill and Linear Fill. The logic of Linear Fill is very straightforward. We mainly highlight on introducing Previous Fill in this chapter.
 

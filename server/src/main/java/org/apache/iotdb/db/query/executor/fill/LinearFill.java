@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.fill;
+package org.apache.iotdb.db.query.executor.fill;
 
 import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
