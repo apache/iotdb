@@ -61,7 +61,7 @@ public class RemoteSimpleSeriesReaderTest {
 
       @Override
       public DataClient getDataClient(Node node) throws IOException {
-        return new DataClient(null, null, TestUtils.getNode(0), null){
+        return new DataClient(null, null, node, null){
           @Override
           public void fetchSingleSeries(Node header, long readerId,
                                         AsyncMethodCallback<ByteBuffer> resultHandler) {
@@ -72,8 +72,8 @@ public class RemoteSimpleSeriesReaderTest {
                 ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                 DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
                 SerializeUtils.serializeBatchData(batchData, dataOutputStream);
-                resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
                 batchUsed = true;
+                resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
               }
             }).start();
           }
@@ -155,7 +155,7 @@ public class RemoteSimpleSeriesReaderTest {
       }
 
       @Override
-      public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+      public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
         new Thread(() -> {
           resultHandler.onComplete(1L);
         }).start();
