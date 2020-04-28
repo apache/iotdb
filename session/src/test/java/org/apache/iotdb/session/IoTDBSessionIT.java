@@ -366,6 +366,7 @@ public class IoTDBSessionIT {
     session.setStorageGroup("root.sg1");
     String deviceId = "root.sg1.d1";
 
+    boolean isEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
     createTimeseries();
 
@@ -401,7 +402,7 @@ public class IoTDBSessionIT {
     }
 
     session.insertTablet(tablet);
-    IoTDBDescriptor.getInstance().getConfig().setEnableWal(true);
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(isEnableWAL);
     session.close();
   }
 
