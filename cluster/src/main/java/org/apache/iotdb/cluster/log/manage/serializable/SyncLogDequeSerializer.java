@@ -323,7 +323,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
     // firstLogPosition changed
     serializeMeta(meta);
-
+    // TODO-Cluster: change to debug or remove
+    logger.info("Log size after removal: {}/{}", removedLogSize, maxRemovedLogSize);
     // do actual deletion
     if (removedLogSize > maxRemovedLogSize) {
       openNewLogFile();
