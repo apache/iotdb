@@ -35,7 +35,7 @@ TsFile 各级结构在前面的[1-TsFile](/#/SystemDesign/progress/chap1/sec1)�
 文件读取的功能方法在
 `org.apache.iotdb.db.utils.FileLoaderUtils`
 
-* `loadTimeSeriesMetadata()`用来读取一个TsFileResource对应于某一个时间序列的timeseriesMetadata，该方法同时接受一个时间戳的Filter条件来保证该方法返回满足条件的timeseriesMetadata，若没有满足条件的timeseriesMetadata则返回null。
+* `loadTimeSeriesMetadata()`用来读取一个TsFileResource对应于某一个时间序列的 TimeseriesMetadata，该方法同时接受一个时间戳的Filter条件来保证该方法返回满足条件的 TimeseriesMetadata，若没有满足条件的 TimeseriesMetadata 则返回null。
 * `loadChunkMetadataList()`得到这个timeseries所包含的所有chunkMetadata列表。
 * `loadPageReaderList()`可以用来读取一个chunkMetadata所包含的所有page列表，用pageReader来进行访问。
 
