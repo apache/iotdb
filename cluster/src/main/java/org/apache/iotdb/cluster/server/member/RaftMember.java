@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -86,7 +87,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   protected Node thisNode;
   // the nodes known by this node
   protected volatile List<Node> allNodes;
-  ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+  ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the name of the member, to distinguish several members from the logs
   String name;
   // to choose nodes to join cluster request randomly
@@ -166,6 +167,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     catchUpService.shutdownNow();
     catchUpService = null;
     heartBeatService = null;
+    closeLogManager();
     logger.info("{} stopped", name);
   }
 
@@ -201,29 +203,33 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         response.setFollower(thisNode);
         // TODO-CLuster: the log being sent should be chosen wisely instead of the last log, so that
         //  the leader would be able to find the last match log
-        response.setLastLogIndex(logManager.getLastLogIndex());
-        response.setLastLogTerm(logManager.getLastLogTerm());
+        synchronized (logManager) {
+          response.setLastLogIndex(logManager.getLastLogIndex());
+          response.setLastLogTerm(logManager.getLastLogTerm());
 
-        // The term of the last log needs to be the same with leader's term in order to preserve
-        // safety, otherwise it may come from an invalid leader and is not committed
-        if (logManager.getCommitLogIndex() < request.getCommitLogIndex() &&
-            logManager.matchTerm(request.getCommitLogTerm(), request.getCommitLogIndex())) {
-          logger.info("{}: Committing to {}-{}", name, request.getCommitLogIndex(),
-              request.getCommitLogTerm());
-          synchronized (syncLock) {
-            logManager.commitTo(request.getCommitLogIndex());
-            syncLock.notifyAll();
+          // The term of the last log needs to be the same with leader's term in order to preserve
+          // safety, otherwise it may come from an invalid leader and is not committed
+          if (logManager.getCommitLogIndex() < request.getCommitLogIndex() &&
+              logManager.matchTerm(request.getCommitLogTerm(),request.getCommitLogIndex())){
+            logger.info("{}: Committing to {}-{}, local: {}-{}, last: {}-{}", name, request.getCommitLogIndex(),
+                request.getCommitLogTerm(),logManager.getCommitLogIndex() ,logManager.getCommitLogTerm(),logManager.getLastLogIndex(),logManager.getLastLogTerm() );
+            synchronized (syncLock) {
+              logManager.commitTo(request.getCommitLogIndex());
+              syncLock.notifyAll();
+            }
+          } else if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
+            logger.info("{}: Inconsistent log found, leader: {}-{}, local: {}-{}, last: {}-{}", name,
+                request.getCommitLogIndex(), request.getCommitLogTerm(),logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
+                logManager.getLastLogIndex(),logManager.getLastLogTerm());
           }
-        } else if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
-          logger.info("{}: Inconsistent log found, local: {}-{}, leader: {}-{}", name,
-              logManager.getCommitLogIndex(), logManager.getCommitLogTerm(),
-              request.getCommitLogIndex(), request.getCommitLogTerm());
+
         }
         // if the log is not consistent, the commitment will be blocked until the leader makes the
         // node catch up
 
         term.set(leaderTerm);
         setLeader(request.getLeader());
+        updateHardState(leaderTerm);
         if (character != NodeCharacter.FOLLOWER) {
           setCharacter(NodeCharacter.FOLLOWER);
           // interrupt election
@@ -290,6 +296,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return false;
       } else if (leaderTerm > localTerm) {
         term.set(leaderTerm);
+        updateHardState(leaderTerm);
         localTerm = leaderTerm;
         if (character != NodeCharacter.FOLLOWER) {
           setCharacter(NodeCharacter.FOLLOWER);
@@ -351,16 +358,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   private long appendEntry(Log log) {
     long resp;
     synchronized (logManager) {
-      long success = logManager.append(log);
-      if (success != -1) {
+      if (log.getCurrLogIndex() > logManager.getLastLogIndex() + 1) {
+        // the incoming log points to an illegal position, reject it
+        resp = Response.RESPONSE_LOG_MISMATCH;
+      } else {
+        logManager.append(log);
         if (logger.isDebugEnabled()) {
           logger.debug("{} append a new log {}", name, log);
         }
         resp = Response.RESPONSE_AGREE;
-      } else {
-        // the incoming log points to an illegal position, reject it
-        logger.debug("{} cannot append the log because the last log does not match", name);
-        resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
     return resp;
@@ -627,6 +633,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
         term.set(newTerm);
+        updateHardState(newTerm);
         setCharacter(NodeCharacter.FOLLOWER);
         setLeader(null);
       }
@@ -660,6 +667,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           thatLastLogTerm);
       if (resp == Response.RESPONSE_AGREE) {
         term.set(thatTerm);
+        updateHardState(thatTerm);
         setCharacter(NodeCharacter.FOLLOWER);
         lastHeartbeatReceivedTime = System.currentTimeMillis();
         leader = electionRequest.getElector();
@@ -895,7 +903,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       switch (result) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
-          logManager.commitTo(log.getCurrLogIndex());
+          synchronized (logManager) {
+            logManager.commitTo(log.getCurrLogIndex());
+          }
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
@@ -1072,6 +1082,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
+  //TODO maintain voteFor
+  public void updateHardState(long currentTerm){
+    HardState state = logManager.getHardState();
+    state.setCurrentTerm(currentTerm);
+    logManager.updateHardState(state);
+  }
+
   public void setReadOnly() {
     synchronized (logManager) {
       readOnly = true;
@@ -1087,6 +1104,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @TestOnly
   public void setLogManager(RaftLogManager logManager) {
+    if (this.logManager != null) {
+      this.logManager.close();
+    }
     this.logManager = logManager;
+  }
+
+  public void closeLogManager() {
+    if (logManager != null) {
+      logManager.close();
+    }
   }
 }

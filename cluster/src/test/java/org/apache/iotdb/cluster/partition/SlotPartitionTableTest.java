@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
@@ -48,12 +49,13 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
@@ -66,6 +68,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -94,13 +97,16 @@ public class SlotPartitionTableTest {
   SlotPartitionTable[] tables;//The PartitionTable on each node.
   List<Node> nodes;
 
+  private int prevReplicaNum;
+
   @Before
   public void setUp() throws MetadataException {
     MManager.getInstance().init();
     nodes = new ArrayList<>();
     IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
     localNode = nodes.get(3);
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(replica_size);
+    prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(replica_size);
     tables = new SlotPartitionTable[20];
     mManager = new MManager[20];
 
@@ -150,7 +156,7 @@ public class SlotPartitionTableTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(3);
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
     if (mManager != null) {
       for (MManager manager : mManager) {
         manager.clear();
@@ -291,7 +297,7 @@ public class SlotPartitionTableTest {
   }
 
   @Test
-  public void testPhysicalPlan() {
+  public void testPhysicalPlan() throws QueryProcessException {
     PhysicalPlan aggregationPlan = new AggregationPlan();
     assertTrue(PartitionUtils.isLocalPlan(aggregationPlan));
     PhysicalPlan deletePlan = new DeletePlan();
@@ -323,8 +329,11 @@ public class SlotPartitionTableTest {
     }
     PhysicalPlan deleteStorageGroup = new DeleteStorageGroupPlan(Collections.emptyList());
     assertTrue(PartitionUtils.isGlobalMetaPlan(deleteStorageGroup));
-    PhysicalPlan loadConfigPlan = new LoadConfigurationPlan();
-    assertTrue(PartitionUtils.isGlobalMetaPlan(loadConfigPlan));
+    PhysicalPlan globalLoadConfigPlan =
+        new LoadConfigurationPlan(LoadConfigurationPlanType.GLOBAL, new Properties[2]);
+    assertTrue(PartitionUtils.isGlobalMetaPlan(globalLoadConfigPlan));
+    PhysicalPlan localLoadConfigPlan = new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
+    assertFalse(PartitionUtils.isGlobalMetaPlan(localLoadConfigPlan));
     PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.TABLESCAN);
     assertTrue(PartitionUtils.isLocalPlan(operateFilePlan));
 
@@ -384,8 +393,8 @@ public class SlotPartitionTableTest {
   }
 
   @Test
-  public void testBatchInsertPlan() {
-    PhysicalPlan batchInertPlan = new BatchInsertPlan("root.sg.l2.l3.l4.28.ld.l1.d0", new String[]{"s0", "s1"}, Arrays.asList(0, 1));
+  public void testInsertTabletPlan() {
+    PhysicalPlan batchInertPlan = new InsertTabletPlan("root.sg.l2.l3.l4.28.ld.l1.d0", new String[]{"s0", "s1"}, Arrays.asList(0, 1));
     assertTrue(batchInertPlan.canBeSplit());
     //(String deviceId, String[] measurements, List<Integer> dataTypes)
     long[] times = new long[9];
@@ -410,16 +419,16 @@ public class SlotPartitionTableTest {
       ((boolean[])values[0])[i] = new Random().nextBoolean();
       ((int[])values[1])[i] = new Random().nextInt();
     }
-    ((BatchInsertPlan)batchInertPlan).setTimes(times);
-    ((BatchInsertPlan)batchInertPlan).setColumns(values);
-    ((BatchInsertPlan)batchInertPlan).setRowCount(9);
+    ((InsertTabletPlan)batchInertPlan).setTimes(times);
+    ((InsertTabletPlan)batchInertPlan).setColumns(values);
+    ((InsertTabletPlan)batchInertPlan).setRowCount(9);
     try {
       ClusterPlanRouter router = new ClusterPlanRouter(localTable);
       Map<PhysicalPlan, PartitionGroup> result = router.splitAndRoutePlan(batchInertPlan);
       assertEquals(3, result.size());
       result.forEach( (key, value) -> {
-        assertEquals(3, ((BatchInsertPlan) key).getRowCount());
-        long[] subtimes = ((BatchInsertPlan) key).getTimes();
+        assertEquals(3, ((InsertTabletPlan) key).getRowCount());
+        long[] subtimes = ((InsertTabletPlan) key).getTimes();
         assertEquals(3, subtimes.length);
         assertEquals(subtimes[0]/StorageEngine.getTimePartitionInterval(),
             subtimes[2]/StorageEngine.getTimePartitionInterval());

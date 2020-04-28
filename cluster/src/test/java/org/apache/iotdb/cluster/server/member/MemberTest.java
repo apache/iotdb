@@ -74,13 +74,13 @@ public class MemberTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    prevUrls = ClusterDescriptor.getINSTANCE().getConfig().getSeedNodeUrls();
+    prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
     List<String> testUrls = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Node node = TestUtils.getNode(i);
       testUrls.add(node.getIp() + ":" + node.getMetaPort() + ":" + node.getDataPort());
     }
-    ClusterDescriptor.getINSTANCE().getConfig().setSeedNodeUrls(testUrls);
+    ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(testUrls);
 
     allNodes = new PartitionGroup();
     for (int i = 0; i < 100; i += 10) {
@@ -91,7 +91,7 @@ public class MemberTest {
 
     dataGroupMemberMap = new HashMap<>();
     metaGroupMemberMap = new HashMap<>();
-    metaLogManager = new TestLogManager();
+    metaLogManager = new TestLogManager(1);
     testMetaMember = getMetaGroupMember(TestUtils.getNode(0));
     for (Node node : allNodes) {
       // pre-create data members
@@ -114,8 +114,16 @@ public class MemberTest {
 
   @After
   public void tearDown() throws Exception {
+    testMetaMember.closeLogManager();
+    metaLogManager.close();
+    for (DataGroupMember member : dataGroupMemberMap.values()) {
+      member.closeLogManager();
+    }
+    for (MetaGroupMember member : metaGroupMemberMap.values()) {
+      member.closeLogManager();
+    }
     EnvironmentUtils.cleanEnv();
-    ClusterDescriptor.getINSTANCE().getConfig().setSeedNodeUrls(prevUrls);
+    ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
     new File(MetaGroupMember.PARTITION_FILE_NAME).delete();
     new File(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME).delete();
   }

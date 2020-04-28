@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.common;
 
 import java.util.ArrayList;
+import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 
 public class TestMetaGroupMember extends MetaGroupMember {
@@ -31,5 +32,8 @@ public class TestMetaGroupMember extends MetaGroupMember {
     for (int i = 0; i < 10; i++) {
       allNodes.add(TestUtils.getNode(i));
     }
+    MetaSingleSnapshotLogManager manager = new MetaSingleSnapshotLogManager(new TestLogApplier());
+    setLogManager(manager);
   }
+
 }

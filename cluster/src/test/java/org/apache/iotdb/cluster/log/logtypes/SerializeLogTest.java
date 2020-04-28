@@ -48,7 +48,7 @@ public class SerializeLogTest {
     plan.setMeasurements(new String[]{"s1", "s2", "s3"});
     plan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 1),
         TestUtils.getTestSchema(0, 2), TestUtils.getTestSchema(0, 3)});
-    plan.setValues(new String[] {"0.1", "1", "\"dd\""});
+    plan.setValues(new String[]{"0.1", "1", "\"dd\""});
     plan.setTime(1);
     log.setPlan(plan);
 
@@ -102,4 +102,15 @@ public class SerializeLogTest {
     assertEquals(log, logPrime);
   }
 
+  @Test
+  public void testEmptyContentLog() throws UnknownLogTypeException {
+    EmptyContentLog log = new EmptyContentLog();
+    log.setPreviousLogIndex(1);
+    log.setPreviousLogTerm(1);
+    log.setCurrLogIndex(2);
+    log.setCurrLogTerm(2);
+    ByteBuffer byteBuffer = log.serialize();
+    EmptyContentLog logPrime = (EmptyContentLog) LogParser.getINSTANCE().parse(byteBuffer);
+    assertEquals(log, logPrime);
+  }
 }

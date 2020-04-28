@@ -87,6 +87,36 @@ The `temprature` in the brackets is an alias for the sensor `s1`. So we can use 
 
 The only difference between tag and attribute is that we will maintain an inverted index on the tag, so we can use tag property in the show timeseries where clause which you can see in the following `Show Timeseries` section.
 
+
+## UPDATE TAG OPERATION
+We can update the tag information after creating it as following:
+
+* Rename the tag/attribute key
+```
+ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+* reset the tag/attribute value
+```
+ALTER timeseries root.turbine.d1.s1 SET tag1=newV1, attr1=newV1
+```
+* delete the existing tag/attribute
+```
+ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
+```
+* add new tags
+```
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
+```
+* add new attributes
+```
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
+```
+* upsert tags and attributes
+> add new key-value if the key doesn't exist, otherwise, update the old one with new value.
+```
+ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
+```
+
 ## Show Timeseries
 
 * SHOW TIMESERIES prefixPath? showWhereClause? limitClause?

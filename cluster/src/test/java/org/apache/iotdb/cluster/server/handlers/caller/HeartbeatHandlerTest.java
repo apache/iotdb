@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,11 +52,13 @@ public class HeartbeatHandlerTest {
         }
       }
 
-      @Override
-      public RaftLogManager getLogManager() {
-        return new TestLogManager();
-      }
     };
+    metaGroupMember.setLogManager(new TestLogManager(1));
+  }
+
+  @After
+  public void tearDown() {
+    metaGroupMember.closeLogManager();
   }
 
   @Test

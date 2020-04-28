@@ -43,7 +43,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class BatchInsertPlan extends PhysicalPlan {
+public class InsertTabletPlan extends PhysicalPlan {
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
 
@@ -67,22 +67,22 @@ public class BatchInsertPlan extends PhysicalPlan {
   private int start;
   private int end;
 
-  public BatchInsertPlan() {
+  public InsertTabletPlan() {
     super(false, OperatorType.BATCHINSERT);
   }
 
-  public BatchInsertPlan(String deviceId, List<String> measurements) {
+  public InsertTabletPlan(String deviceId, List<String> measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     setMeasurements(measurements);
   }
-  public BatchInsertPlan(String deviceId, String[] measurements) {
+  public InsertTabletPlan(String deviceId, String[] measurements) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     setMeasurements(measurements);
   }
 
-  public BatchInsertPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
+  public InsertTabletPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
     super(false, OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
@@ -425,33 +425,33 @@ public class BatchInsertPlan extends PhysicalPlan {
     switch (dataTypes[measurementIndex]) {
       case INT32:
         int[] intValues = (int[]) columns[measurementIndex];
-        value = new TsInt(intValues[end - 1]);
+        value = new TsInt(intValues[rowCount - 1]);
         break;
       case INT64:
         long[] longValues = (long[]) columns[measurementIndex];
-        value = new TsLong(longValues[end - 1]);
+        value = new TsLong(longValues[rowCount - 1]);
         break;
       case FLOAT:
         float[] floatValues = (float[]) columns[measurementIndex];
-        value = new TsFloat(floatValues[end - 1]);
+        value = new TsFloat(floatValues[rowCount - 1]);
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) columns[measurementIndex];
-        value = new TsDouble(doubleValues[end - 1]);
+        value = new TsDouble(doubleValues[rowCount - 1]);
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) columns[measurementIndex];
-        value = new TsBoolean(boolValues[end - 1]);
+        value = new TsBoolean(boolValues[rowCount - 1]);
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) columns[measurementIndex];
-        value = new TsBinary(binaryValues[end - 1]);
+        value = new TsBinary(binaryValues[rowCount - 1]);
         break;
       default:
         throw new UnSupportedDataTypeException(
             String.format(DATATYPE_UNSUPPORTED, dataTypes[measurementIndex]));
     }
-    return new TimeValuePair(times[end - 1], value);
+    return new TimeValuePair(times[rowCount - 1], value);
   }
 
   public long[] getTimes() {

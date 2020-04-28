@@ -191,6 +191,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
         this), metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode);
     super.logManager = logManager;
+    this.term.set(logManager.getHardState().getCurrentTerm());
   }
 
   /**
@@ -273,6 +274,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // partition table
     synchronized (term) {
       term.incrementAndGet();
+      updateHardState(term.get());
       setLastHeartbeatReceivedTime(System.currentTimeMillis());
       setCharacter(NodeCharacter.ELECTOR);
       leader = null;
@@ -350,6 +352,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (resp == Response.RESPONSE_AGREE) {
       // the elector wins the vote, follow it
       term.set(thatTerm);
+      updateHardState(thatTerm);
       setCharacter(NodeCharacter.FOLLOWER);
       lastHeartbeatReceivedTime = System.currentTimeMillis();
       leader = electionRequest.getElector();
@@ -1558,8 +1561,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @TestOnly
   public void setLogManager(PartitionedSnapshotLogManager logManager) {
+    if (this.logManager != null) {
+      this.logManager.close();
+    }
     this.logManager = logManager;
-    super.logManager = logManager;
+    super.setLogManager(logManager);
   }
 
   /**

@@ -116,8 +116,8 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Before
   public void setUp() throws Exception {
-    prevReplicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(3);
+    prevReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(3);
     super.setUp();
     dataGroupMember = getDataGroupMember(TestUtils.getNode(0));
     snapshotMap = new HashMap<>();
@@ -131,8 +131,9 @@ public class DataGroupMemberTest extends MemberTest {
 
   @After
   public void tearDown() throws Exception {
+    dataGroupMember.closeLogManager();
     super.tearDown();
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(prevReplicationNum);
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
   }
 
   private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup) {
@@ -153,7 +154,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   DataGroupMember getDataGroupMember(Node node) {
     PartitionGroup nodes = partitionTable.getHeaderGroup(node);
-    return getDataGroupMember(node, nodes);
+    return dataGroupMemberMap.computeIfAbsent(node, n -> getDataGroupMember(n, nodes));
   }
 
   private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
@@ -163,6 +164,10 @@ public class DataGroupMemberTest extends MemberTest {
       public boolean syncLeader() {
         return true;
       }
+
+      @Override
+      public void updateHardState(long currentTerm){}
+
 
       @Override
       public AsyncClient connectNode(Node node) {
@@ -225,19 +230,25 @@ public class DataGroupMemberTest extends MemberTest {
     DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90),
         new PartitionGroup(partitionGroup));
 
-    Node newNodeBeforeGroup = TestUtils.getNode(-5);
-    assertFalse(firstMember.addNode(newNodeBeforeGroup));
-    assertFalse(midMember.addNode(newNodeBeforeGroup));
-    assertFalse(lastMember.addNode(newNodeBeforeGroup));
+    try {
+      Node newNodeBeforeGroup = TestUtils.getNode(-5);
+      assertFalse(firstMember.addNode(newNodeBeforeGroup));
+      assertFalse(midMember.addNode(newNodeBeforeGroup));
+      assertFalse(lastMember.addNode(newNodeBeforeGroup));
 
-    Node newNodeInGroup = TestUtils.getNode(66);
-    assertFalse(firstMember.addNode(newNodeInGroup));
-    assertFalse(midMember.addNode(newNodeInGroup));
-    assertTrue(lastMember.addNode(newNodeInGroup));
+      Node newNodeInGroup = TestUtils.getNode(66);
+      assertFalse(firstMember.addNode(newNodeInGroup));
+      assertFalse(midMember.addNode(newNodeInGroup));
+      assertTrue(lastMember.addNode(newNodeInGroup));
 
-    Node newNodeAfterGroup = TestUtils.getNode(101);
-    assertFalse(firstMember.addNode(newNodeAfterGroup));
-    assertFalse(midMember.addNode(newNodeAfterGroup));
+      Node newNodeAfterGroup = TestUtils.getNode(101);
+      assertFalse(firstMember.addNode(newNodeAfterGroup));
+      assertFalse(midMember.addNode(newNodeAfterGroup));
+    } finally {
+      firstMember.closeLogManager();
+      midMember.closeLogManager();
+      lastMember.closeLogManager();
+    }
   }
 
   @Test
@@ -888,43 +899,51 @@ public class DataGroupMemberTest extends MemberTest {
     // get an executor from a node holding this timeseries
     request.setHeader(TestUtils.getNode(10));
     dataGroupMember = getDataGroupMember(TestUtils.getNode(10));
-    resultRef = new AtomicReference<>();
-    handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
-    dataGroupMember.getGroupByExecutor(request, handler);
-    executorId = resultRef.get();
-    assertEquals(1L, (long) executorId);
+    try {
+      resultRef = new AtomicReference<>();
+      handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+      dataGroupMember.getGroupByExecutor(request, handler);
+      executorId = resultRef.get();
+      assertEquals(1L, (long) executorId);
 
-    // fetch result
-    aggrResultRef = new AtomicReference<>();
-    aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-    dataGroupMember.getGroupByResult(TestUtils.getNode(10), executorId, 0, 20, aggrResultHandler);
+      // fetch result
+      aggrResultRef = new AtomicReference<>();
+      aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
+      dataGroupMember.getGroupByResult(TestUtils.getNode(10), executorId, 0, 20, aggrResultHandler);
 
-    byteBuffers = aggrResultRef.get();
-    assertNotNull(byteBuffers);
-    aggregateResults = new ArrayList<>();
-    for (ByteBuffer byteBuffer : byteBuffers) {
-      aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
+      byteBuffers = aggrResultRef.get();
+      assertNotNull(byteBuffers);
+      aggregateResults = new ArrayList<>();
+      for (ByteBuffer byteBuffer : byteBuffers) {
+        aggregateResults.add(AggregateResult.deserializeFrom(byteBuffer));
+      }
+      answers = new Object[]{15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0};
+      checkAggregates(answers, aggregateResults);
+    } finally {
+      dataGroupMember.closeLogManager();
     }
-    answers = new Object[]{15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0};
-    checkAggregates(answers, aggregateResults);
 
     // get an executor from a node not holding this timeseries
     request.setHeader(TestUtils.getNode(30));
     dataGroupMember = getDataGroupMember(TestUtils.getNode(30));
-    resultRef = new AtomicReference<>();
-    handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
-    request.timeFilterBytes.position(0);
-    dataGroupMember.getGroupByExecutor(request, handler);
-    executorId = resultRef.get();
-    assertEquals(-1L, (long) executorId);
+    try {
+      resultRef = new AtomicReference<>();
+      handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
+      request.timeFilterBytes.position(0);
+      dataGroupMember.getGroupByExecutor(request, handler);
+      executorId = resultRef.get();
+      assertEquals(-1L, (long) executorId);
 
-    // fetch result
-    aggrResultRef = new AtomicReference<>();
-    aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-    dataGroupMember.getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
+      // fetch result
+      aggrResultRef = new AtomicReference<>();
+      aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
+      dataGroupMember.getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
 
-    byteBuffers = aggrResultRef.get();
-    assertNull(byteBuffers);
+      byteBuffers = aggrResultRef.get();
+      assertNull(byteBuffers);
+    } finally {
+      dataGroupMember.closeLogManager();
+    }
   }
 
   private void checkAggregates(Object[] answers, List<AggregateResult> aggregateResults) {

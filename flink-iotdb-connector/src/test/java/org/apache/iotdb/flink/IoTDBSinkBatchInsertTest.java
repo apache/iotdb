@@ -73,7 +73,7 @@ public class IoTDBSinkBatchInsertTest {
         tuple.put("values", "37.1");
         ioTDBSink.invoke(tuple, null);
 
-        verify(pool).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
+        verify(pool).insertRecords(any(List.class), any(List.class), any(List.class), any(List.class));
 
         tuple = new HashMap();
         tuple.put("device", "root.sg.D01");
@@ -96,7 +96,7 @@ public class IoTDBSinkBatchInsertTest {
         verifyZeroInteractions(pool);
 
         ioTDBSink.close();
-        verify(pool).insertInBatch(any(List.class), any(List.class), any(List.class), any(List.class));
+        verify(pool).insertRecords(any(List.class), any(List.class), any(List.class), any(List.class));
         verify(pool).close();
     }
 }

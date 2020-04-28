@@ -19,19 +19,14 @@
 package org.apache.iotdb.session.pool;
 
 import static org.junit.Assert.*;
-
-import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,7 +55,7 @@ public class SessionPoolTest {
       final int no = i;
       service.submit(() -> {
         try {
-          pool.insert("root.sg1.d1", 1, Collections.singletonList("s" + no), Collections.singletonList("3"));
+          pool.insertRecord("root.sg1.d1", 1, Collections.singletonList("s" + no), Collections.singletonList("3"));
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           fail();
         }
@@ -83,7 +78,7 @@ public class SessionPoolTest {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
     assertEquals(0, pool.currentAvailableSize());
     try {
-      pool.insert(".root.sg1.d1", 1, Collections.singletonList("s" ), Collections.singletonList("3"));
+      pool.insertRecord(".root.sg1.d1", 1, Collections.singletonList("s" ), Collections.singletonList("3"));
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       //do nothing
     }
@@ -98,7 +93,7 @@ public class SessionPoolTest {
     ExecutorService service = Executors.newFixedThreadPool(10);
     for (int i = 0; i < 10; i++) {
       try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
+        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
@@ -139,7 +134,7 @@ public class SessionPoolTest {
     ExecutorService service = Executors.newFixedThreadPool(10);
     for (int i = 0; i < 10; i++) {
       try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
+        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
@@ -174,7 +169,7 @@ public class SessionPoolTest {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 6000, true);
     for (int i = 0; i < 10; i++) {
       try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
+        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }
@@ -209,7 +204,7 @@ public class SessionPoolTest {
     SessionPool pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3, 1, 60000, true);
     for (int i = 0; i < 10; i++) {
       try {
-        pool.insert("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
+        pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i), Collections.singletonList("" + i));
       } catch (IoTDBConnectionException | StatementExecutionException e) {
         fail();
       }

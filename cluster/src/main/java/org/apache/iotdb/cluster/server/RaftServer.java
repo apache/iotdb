@@ -51,13 +51,13 @@ import org.slf4j.LoggerFactory;
 public abstract class RaftServer implements RaftService.AsyncIface {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftService.class);
-  public static int connectionTimeoutInMS = ClusterDescriptor.getINSTANCE().getConfig().getConnectionTimeoutInMS();
+  public static int connectionTimeoutInMS = ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
   public static int queryTimeOutInSec =
-      ClusterDescriptor.getINSTANCE().getConfig().getQueryTimeoutInSec();
+      ClusterDescriptor.getInstance().getConfig().getQueryTimeoutInSec();
   public static int syncLeaderMaxWaitMs = 20 * 1000;
   public static long heartBeatIntervalMs = 1000L;
 
-  ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+  ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the socket poolServer will listen to
   private TNonblockingServerTransport socket;
   // RPC processing server

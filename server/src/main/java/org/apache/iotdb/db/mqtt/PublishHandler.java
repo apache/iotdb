@@ -77,7 +77,7 @@ public class PublishHandler extends AbstractInterceptHandler {
             return;
         }
 
-        // since device ids from messages maybe different, so we use the InsertPlan not BatchInsertPlan.
+        // since device ids from messages maybe different, so we use the InsertPlan not InsertTabletPlan.
         for (Message event : events) {
             if (event == null) {
                 continue;

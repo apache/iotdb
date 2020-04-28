@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -59,8 +60,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode, SnapshotFactory<T> factory) {
-    super(new CommittedEntryManager(), new StableEntryManager(),
-        logApplier);
+    super(new SyncLogDequeSerializer(header.nodeIdentifier), logApplier);
     this.partitionTable = partitionTable;
     this.header = header;
     this.factory = factory;

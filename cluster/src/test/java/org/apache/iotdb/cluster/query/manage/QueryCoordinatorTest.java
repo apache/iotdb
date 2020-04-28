@@ -49,15 +49,15 @@ public class QueryCoordinatorTest {
   public void setUp() {
     nodeStatusMap = new HashMap<>();
     nodeLatencyMap = new HashMap<>();
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       NodeStatus status = new NodeStatus();
       TNodeStatus nodeStatus = new TNodeStatus();
       status.setStatus(nodeStatus);
       status.setLastResponseLatency(i);
       Node node = TestUtils.getNode(i);
       nodeStatusMap.put(node, status);
-      // nodes with smaller num has lower latency
-      nodeLatencyMap.put(node, i * 100L);
+      // nodes with smaller num have lower latency
+      nodeLatencyMap.put(node, i * 200L);
     }
 
     MetaGroupMember metaGroupMember = new MetaGroupMember() {
@@ -89,13 +89,17 @@ public class QueryCoordinatorTest {
   @Test
   public void test() {
     List<Node> orderedNodes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 5; i++) {
       orderedNodes.add(TestUtils.getNode(i));
     }
     List<Node> unorderedNodes = new ArrayList<>(orderedNodes);
     Collections.shuffle(unorderedNodes);
 
     List<Node> reorderedNodes = coordinator.reorderNodes(unorderedNodes);
+    for (Node orderedNode : orderedNodes) {
+      long latency = coordinator.getLastResponseLatency(orderedNode);
+      System.out.printf("%s -> %d%n", orderedNode, latency);
+    }
     assertEquals(orderedNodes, reorderedNodes);
   }
 }

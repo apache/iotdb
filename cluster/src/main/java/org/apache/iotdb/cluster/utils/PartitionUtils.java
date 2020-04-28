@@ -27,14 +27,15 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -85,6 +86,9 @@ public class PartitionUtils {
         && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.VERSION))
         || (plan instanceof ShowPlan
         && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.TTL))
+        || (plan instanceof LoadConfigurationPlan
+        && ((LoadConfigurationPlan) plan).getLoadConfigurationPlanType().equals(
+        LoadConfigurationPlanType.LOCAL))
         ;
   }
 
@@ -99,7 +103,8 @@ public class PartitionUtils {
     return plan instanceof SetStorageGroupPlan
         || plan instanceof SetTTLPlan
         || plan instanceof ShowTTLPlan
-        || plan instanceof LoadConfigurationPlan
+        || (plan instanceof LoadConfigurationPlan && ((LoadConfigurationPlan) plan)
+        .getLoadConfigurationPlanType().equals(LoadConfigurationPlanType.GLOBAL))
         || plan instanceof DeleteTimeSeriesPlan
         //delete timeseries plan is global because all nodes may have its data
         || plan instanceof AuthorPlan
@@ -135,8 +140,8 @@ public class PartitionUtils {
   }
 
 
-  public static BatchInsertPlan copy(BatchInsertPlan plan, long[] times, Object[] values) {
-    BatchInsertPlan newPlan = new BatchInsertPlan(plan.getDeviceId(), plan.getMeasurements());
+  public static InsertTabletPlan copy(InsertTabletPlan plan, long[] times, Object[] values) {
+    InsertTabletPlan newPlan = new InsertTabletPlan(plan.getDeviceId(), plan.getMeasurements());
     newPlan.setDataTypes(plan.getDataTypes());
     //according to TSServiceImpl.insertBatch(), only the deviceId, measurements, dataTypes,
     //times, columns, and rowCount are need to be maintained.

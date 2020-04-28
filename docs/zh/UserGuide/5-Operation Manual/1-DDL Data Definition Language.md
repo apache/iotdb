@@ -86,6 +86,35 @@ create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=R
 
 标签和属性的唯一差别在于，我们为标签信息在内存中维护了一个倒排索引，所以可以在`show timeseries`的条件语句中使用标签作为查询条件，你将会在下一节看到具体查询内容。
 
+## 标签点属性更新
+创建时间序列后，我们也可以对其原有的标签点属性进行更新，主要有以下五种更新方式：
+
+* 重命名标签或属性
+```
+ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+* 重新设置标签或属性的值
+```
+ALTER timeseries root.turbine.d1.s1 SET tag1=newV1, attr1=newV1
+```
+* 删除已经存在的标签或属性
+```
+ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
+```
+* 添加新的标签
+```
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
+```
+* 添加新的属性
+```
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
+```
+* 更新插入标签和属性
+> 如果该标签或属性原来不存在，则插入，否则，用新值更新原来的旧值
+```
+ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
+```
+
 ## 查看时间序列
 
 * SHOW TIMESERIES prefixPath? showWhereClause? limitClause?

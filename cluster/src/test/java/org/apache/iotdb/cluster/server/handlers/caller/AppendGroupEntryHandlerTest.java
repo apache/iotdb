@@ -42,14 +42,14 @@ public class AppendGroupEntryHandlerTest {
 
   @Before
   public void setUp() {
-    prevReplicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(2);
-    REPLICATION_NUM = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+    prevReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
+    REPLICATION_NUM = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
   }
 
   @After
   public void tearDown() {
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(prevReplicationNum);
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
   }
 
   @Test

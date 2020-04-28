@@ -34,15 +34,13 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
@@ -106,8 +104,8 @@ public class ClusterPlanRouter {
 
   public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(PhysicalPlan plan)
       throws UnsupportedPlanException, MetadataException {
-    if (plan instanceof BatchInsertPlan) {
-      return splitAndRoutePlan((BatchInsertPlan) plan);
+    if (plan instanceof InsertTabletPlan) {
+      return splitAndRoutePlan((InsertTabletPlan) plan);
     } else if (plan instanceof UpdatePlan) {
       return splitAndRoutePlan((UpdatePlan) plan);
     } else if (plan instanceof CountPlan) {
@@ -144,7 +142,7 @@ public class ClusterPlanRouter {
   }
 
   @SuppressWarnings("SuspiciousSystemArraycopy")
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(BatchInsertPlan plan)
+  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertTabletPlan plan)
       throws MetadataException {
     String storageGroup = getMManager().getStorageGroupName(plan.getDeviceId());
     Map<PhysicalPlan, PartitionGroup> result = new HashMap<>();
@@ -223,7 +221,7 @@ public class ClusterPlanRouter {
         }
         destLoc += end - start;
       }
-      BatchInsertPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
+      InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
       result.put(newBatch, entry.getKey());
     }
     return result;

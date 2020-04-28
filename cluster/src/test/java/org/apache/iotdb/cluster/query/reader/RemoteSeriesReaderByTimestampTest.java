@@ -19,22 +19,25 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Test;
+
+import static org.junit.Assert.*;
 
 public class RemoteSeriesReaderByTimestampTest {
 
@@ -71,18 +74,120 @@ public class RemoteSeriesReaderByTimestampTest {
             resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
           }).start();
         }
+
+        @Override
+        public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+          new Thread(() -> {
+            resultHandler.onComplete(1L);
+          }).start();
+        }
       };
     }
   };
 
   @Test
   public void test() throws IOException {
-    RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(0,
-        TestUtils.getNode(1), TestUtils.getNode(0),
-        metaGroupMember);
+    PartitionGroup group = new PartitionGroup();
+    group.add(TestUtils.getNode(0));
+    group.add(TestUtils.getNode(1));
+    group.add(TestUtils.getNode(2));
+
+    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    RemoteQueryContext context = new RemoteQueryContext(1);
+
+    DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
+      request, context, metaGroupMember, group);
+    sourceInfo.nextDataClient(true, Long.MIN_VALUE);
+
+    RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
+
     for (int i = 0; i < 100; i++) {
       assertEquals(i * 1.0, reader.getValueInTimestamp(i));
     }
     assertNull(reader.getValueInTimestamp(101));
+  }
+
+  @Test
+  public void testFailedNode() throws IOException {
+    batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
+    PartitionGroup group = new PartitionGroup();
+    group.add(TestUtils.getNode(0));
+    group.add(TestUtils.getNode(1));
+    group.add(TestUtils.getNode(2));
+
+    SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
+    RemoteQueryContext context = new RemoteQueryContext(1);
+
+    DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
+      request, context, metaGroupMember, group);
+    long startTime=System.currentTimeMillis();
+    sourceInfo.nextDataClient(true, Long.MIN_VALUE);
+    RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
+
+    long endTime=System.currentTimeMillis();
+    System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
+    // normal read
+    assertEquals(TestUtils.getNode(0), sourceInfo.getCurrentNode());
+    for (int i = 0; i < 50; i++) {
+      assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+    }
+
+    // a bad client, change to another node
+    DataClient badClient = new DataClient(null, null, TestUtils.getNode(0), null) {
+      @Override
+      public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
+                                               AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
+        throw new TException("Good bye.");
+      }
+
+      @Override
+      public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+        new Thread(() -> {
+          resultHandler.onComplete(1L);
+        }).start();
+      }
+    };
+
+    endTime=System.currentTimeMillis();
+    System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
+    reader.setClientForTest(badClient);
+    for (int i = 50; i < 80; i++) {
+      assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+    }
+    assertEquals(TestUtils.getNode(1), sourceInfo.getCurrentNode());
+
+    // a bad client, change to another node again
+    reader.setClientForTest(badClient);
+    for (int i = 80; i < 90; i++) {
+      assertEquals(i * 1.0, reader.getValueInTimestamp(i));
+    }
+    assertEquals(TestUtils.getNode(2), sourceInfo.getCurrentNode());
+
+    endTime=System.currentTimeMillis();
+    System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
+    // all node failed
+    reader.setClientForTest(badClient);
+    {
+      MetaGroupMember tmpMetaGroupMember = new MetaGroupMember() {
+        @Override
+        public DataClient getDataClient(Node node) throws IOException {
+          return new DataClient(null, null, node, null) {
+            @Override
+            public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+              throw new TException("Don't worry, this is the exception I constructed.");
+            }
+          };
+        }
+      };
+      sourceInfo.setMetaGroupMemberForTest(tmpMetaGroupMember);
+    }
+    try {
+      reader.getValueInTimestamp(90);
+      fail();
+    } catch (IOException e) {
+      assertEquals(e.getMessage(), "no available client.");
+    }
+    endTime=System.currentTimeMillis();
+    System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
   }
 }

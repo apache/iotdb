@@ -47,6 +47,7 @@ import org.apache.iotdb.cluster.common.TestMetaClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
@@ -103,6 +104,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -114,23 +116,33 @@ public class MetaGroupMemberTest extends MemberTest {
   private boolean mockDataClusterServer;
   private Node exiledNode;
 
+  private int prevReplicaNum;
+
+  @Override
+  @After
+  public void tearDown() throws Exception {
+    metaGroupMember.closeLogManager();
+    dataClusterServer.closeLogManagers();
+    super.tearDown();
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
+  }
+
   @Before
   public void setUp() throws Exception {
+    prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
     super.setUp();
     dummyResponse.set(Response.RESPONSE_AGREE);
     metaGroupMember = getMetaGroupMember(TestUtils.getNode(0));
     metaGroupMember.setAllNodes(allNodes);
-    // a faked data member to respond requests
-    DataGroupMember dataGroupMember = getDataGroupMember(allNodes, TestUtils.getNode(0));
-    dataGroupMember.setCharacter(LEADER);
+
     dataClusterServer = new DataClusterServer(TestUtils.getNode(0),
         new DataGroupMember.Factory(null, metaGroupMember) {
           @Override
           public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
             return getDataGroupMember(partitionGroup, thisNode);
           }
-        }) {
-    };
+        });
     buildDataGroups(dataClusterServer);
     metaGroupMember.setPartitionTable(partitionTable);
     metaGroupMember.getThisNode().setNodeIdentifier(0);
@@ -234,6 +246,9 @@ public class MetaGroupMemberTest extends MemberTest {
       protected DataGroupMember getLocalDataMember(Node header) {
         return getDataGroupMember(header);
       }
+
+      @Override
+      public void updateHardState(long currentTerm){}
 
       @Override
       public AsyncClient connectNode(Node node) {
@@ -456,6 +471,7 @@ public class MetaGroupMemberTest extends MemberTest {
       dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
       MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
       assertFalse(newMember.joinCluster());
+      newMember.closeLogManager();
     } finally {
       RaftServer.heartBeatIntervalMs = prevInterval;
     }
@@ -726,6 +742,7 @@ public class MetaGroupMemberTest extends MemberTest {
       metaGroupMember.processValidHeartbeatReq(request, response);
       assertEquals(partitionTable, metaGroupMember.getPartitionTable());
     } finally {
+      metaGroupMember.closeLogManager();
       metaGroupMember.stop();
     }
   }
@@ -746,6 +763,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       assertNotNull(metaGroupMember.getPartitionTable());
     } finally {
+      metaGroupMember.closeLogManager();
       metaGroupMember.stop();
     }
   }
@@ -950,6 +968,7 @@ public class MetaGroupMemberTest extends MemberTest {
     }
     MetaGroupMember metaGroupMember = getMetaGroupMember(new Node());
     assertEquals(100, metaGroupMember.getThisNode().getNodeIdentifier());
+    metaGroupMember.closeLogManager();
   }
 
   @Test
@@ -1058,7 +1077,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveTooManyNodes() throws InterruptedException {
-    for (int i = 0; i < 7; i++) {
+    for (int i = 0; i < 8; i++) {
       AtomicReference<Long> resultRef = new AtomicReference<>();
       metaGroupMember.setCharacter(LEADER);
       doRemoveNode(resultRef, TestUtils.getNode(90 - i * 10));
@@ -1067,9 +1086,9 @@ public class MetaGroupMemberTest extends MemberTest {
     }
     AtomicReference<Long> resultRef = new AtomicReference<>();
     metaGroupMember.setCharacter(LEADER);
-    doRemoveNode(resultRef, TestUtils.getNode(20));
+    doRemoveNode(resultRef, TestUtils.getNode(10));
     assertEquals(Response.RESPONSE_CLUSTER_TOO_SMALL, (long) resultRef.get());
-    assertTrue(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+    assertTrue(metaGroupMember.getAllNodes().contains(TestUtils.getNode(10)));
   }
 
   private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove)

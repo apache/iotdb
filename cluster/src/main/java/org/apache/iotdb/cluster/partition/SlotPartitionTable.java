@@ -52,7 +52,7 @@ public class SlotPartitionTable implements PartitionTable {
 
   private static final Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
   private int replicationNum =
-      ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+      ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
   //all nodes
   private List<Node> nodeRing = new ArrayList<>();

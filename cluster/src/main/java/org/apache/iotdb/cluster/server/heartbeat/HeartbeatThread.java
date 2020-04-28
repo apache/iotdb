@@ -192,6 +192,7 @@ public class HeartbeatThread implements Runnable {
   void startElection() {
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();
+      localMember.updateHardState(nextTerm);
       // the number of votes needed to become a leader
       int quorumNum = localMember.getAllNodes().size() / 2;
       logger.info("{}: Election {} starts, quorum: {}", memberName, nextTerm, quorumNum);

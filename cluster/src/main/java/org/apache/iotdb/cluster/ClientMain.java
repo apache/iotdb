@@ -44,7 +44,7 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client.Factory;
-import org.apache.iotdb.service.rpc.thrift.TSInsertReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -71,6 +71,7 @@ public class ClientMain {
   private static String PARAM_DELETE_SERIES = "ds";
   private static String PARAM_QUERY_PORTS = "qp";
   private static Options options = new Options();
+
   static {
     options.addOption(new Option(PARAM_INSERTION, "Perform insertion"));
     options.addOption(new Option(PARAM_QUERY, "Perform query"));
@@ -172,7 +173,7 @@ public class ClientMain {
         queryPorts = parseIntArray(commandLine.getOptionValue(PARAM_QUERY_PORTS));
       }
       if (queryPorts == null) {
-        queryPorts = new int[] {55560, 55561, 55562};
+        queryPorts = new int[]{55560, 55561, 55562};
       }
       for (int queryPort : queryPorts) {
         System.out.println("Test port: " + queryPort);
@@ -274,7 +275,7 @@ public class ClientMain {
   private static void testDeleteStorageGroup(Client client, long sessionId)
       throws TException, StatementExecutionException, IoTDBConnectionException {
     logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
-    testQuery(client, sessionId, new String[] {"SELECT * FROM root"});
+    testQuery(client, sessionId, new String[]{"SELECT * FROM root"});
   }
 
   private static void testInsertion(Client client, long sessionId) throws TException {
@@ -292,7 +293,7 @@ public class ClientMain {
       logger.info(client.createTimeseries(req).toString());
     }
 
-    TSInsertReq insertReq = new TSInsertReq();
+    TSInsertRecordReq insertReq = new TSInsertRecordReq();
     insertReq.setMeasurements(Arrays.asList(MEASUREMENTS));
     insertReq.setSessionId(sessionId);
     String[] values = new String[MEASUREMENTS.length];
@@ -324,10 +325,11 @@ public class ClientMain {
       for (String device : DEVICES) {
         insertReq.setDeviceId(device);
         logger.info(insertReq.toString());
-        logger.info(client.insert(insertReq).toString());
+        logger.info(client.insertRecord(insertReq).toString());
       }
     }
   }
+
   private static void testDeleteTimeseries(Client client, long sessionId) throws TException {
     List<String> paths = new ArrayList<>();
     for (String measurement : MEASUREMENTS) {

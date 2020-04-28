@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.utils.nodetool.function;
 import io.airlift.airline.Command;
 import io.airlift.airline.Option;
 import java.util.List;
+import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
@@ -42,11 +43,15 @@ public class LogView implements Runnable {
     SyncLogDequeSerializer logDequeSerializer = new SyncLogDequeSerializer(path);
 
     LogManagerMeta managerMeta = logDequeSerializer.recoverMeta();
+    HardState state = logDequeSerializer.getHardState();
     List<Log> logs = logDequeSerializer.recoverLog();
 
     Printer.msgPrintln("-------------------LOG META-------------------------");
     Printer.msgPrintln(managerMeta.toString());
     Printer.msgPrintln("-------------------LOG DATA-------------------------");
+    Printer.msgPrintln("-------------------NODE STATE-------------------------");
+    Printer.msgPrintln(state.toString());
+    Printer.msgPrintln("-------------------NODE STATE-------------------------");
     int count = 0;
 
     for (int i = 0; i < logs.size(); i++) {
