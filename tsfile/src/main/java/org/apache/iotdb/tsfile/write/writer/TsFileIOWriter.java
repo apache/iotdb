@@ -348,18 +348,17 @@ public class TsFileIOWriter {
             // add next measurement index item to parent node
             measurementMetadataIndexQueue.add(new MetadataIndexNode(metadataIndex.getName(),
                 metadataIndex.getOffset(), MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-            if (i % ((maxDegreeOfIndexNode + 1) * (maxDegreeOfIndexNode + 1)) == 0 && i != 0) {
-              measurementMetadataIndexQueue.add(new MetadataIndexNode("", out.getPosition(),
-                  MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-            }
           }
           metadataIndex.serializeTo(out.wrapAsStream());
+          if ((i + 1) % ((maxDegreeOfIndexNode + 1) * maxDegreeOfIndexNode) == 0 && i != 0 && i != queueSize - 1) {
+            measurementMetadataIndexQueue.add(new MetadataIndexNode("", out.getPosition(),
+                MetadataIndexNodeType.INTERNAL_MEASUREMENT));
+          }
         }
         measurementMetadataIndexQueue.add(new MetadataIndexNode("", metadataIndex.getOffset(),
             MetadataIndexNodeType.INTERNAL_MEASUREMENT));
         queueSize = measurementMetadataIndexQueue.size();
       }
-
       deviceMetadataIndexMap.put(entry.getKey(), measurementMetadataIndexQueue);
     }
 
@@ -409,16 +408,16 @@ public class TsFileIOWriter {
         if (i % (maxDegreeOfIndexNode + 1) == 0) {
           // add next device index item to parent node
           deviceMetadaIndexQueue.add(new MetadataIndexNode(deviceMetadataIndex.getName(),
-              out.getPosition(), MetadataIndexNodeType.LEAF_DEVICE));
+              out.getPosition(), MetadataIndexNodeType.INTERNAL_DEVICE));
         }
         deviceMetadataIndex.serializeTo(out.wrapAsStream());
-        if (i == queueSize - 1 && i % (maxDegreeOfIndexNode + 1) != 0) {
-          deviceMetadaIndexQueue
-              .add(new MetadataIndexNode("", out.getPosition(), MetadataIndexNodeType.LEAF_DEVICE));
+        if ((i + 1) % ((maxDegreeOfIndexNode + 1) * maxDegreeOfIndexNode) == 0 && i != 0 && i != queueSize - 1) {
+          deviceMetadaIndexQueue.add(new MetadataIndexNode("", out.getPosition(),
+              MetadataIndexNodeType.INTERNAL_DEVICE));
         }
       }
       deviceMetadaIndexQueue.add(new MetadataIndexNode("",
-          out.getPosition(), MetadataIndexNodeType.LEAF_DEVICE));
+          out.getPosition(), MetadataIndexNodeType.INTERNAL_DEVICE));
       queueSize = deviceMetadaIndexQueue.size();
     }
     if (hasDeviceHierarchy) {
