@@ -37,7 +37,7 @@ TsFile 各级结构在前面的[1-TsFile](/#/SystemDesign/progress/chap1/sec1)�
 
 * `loadTimeSeriesMetadata()`用来读取一个TsFileResource对应于某一个时间序列的 TimeseriesMetadata，该方法同时接受一个时间戳的Filter条件来保证该方法返回满足条件的 TimeseriesMetadata，若没有满足条件的 TimeseriesMetadata 则返回null。
 * `loadChunkMetadataList()`得到这个timeseries所包含的所有ChunkMetadata列表。
-* `loadPageReaderList()`可以用来读取一个chunkMetadata所包含的所有page列表，用pageReader来进行访问。
+* `loadPageReaderList()`可以用来读取一个 ChunkMetadata 对应的 Chunk 所包含的所有page列表，用PageReader来进行访问。
 
 以上在对于时间序列数据的各种读取方法中总会涉及到读取内存和磁盘数据两种情况。
 
