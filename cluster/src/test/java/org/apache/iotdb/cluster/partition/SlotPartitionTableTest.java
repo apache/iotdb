@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 import java.util.stream.IntStream;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
@@ -328,8 +329,11 @@ public class SlotPartitionTableTest {
     }
     PhysicalPlan deleteStorageGroup = new DeleteStorageGroupPlan(Collections.emptyList());
     assertTrue(PartitionUtils.isGlobalMetaPlan(deleteStorageGroup));
-    PhysicalPlan loadConfigPlan = new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
-    assertTrue(PartitionUtils.isGlobalMetaPlan(loadConfigPlan));
+    PhysicalPlan globalLoadConfigPlan =
+        new LoadConfigurationPlan(LoadConfigurationPlanType.GLOBAL, new Properties[2]);
+    assertTrue(PartitionUtils.isGlobalMetaPlan(globalLoadConfigPlan));
+    PhysicalPlan localLoadConfigPlan = new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
+    assertFalse(PartitionUtils.isGlobalMetaPlan(localLoadConfigPlan));
     PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.TABLESCAN);
     assertTrue(PartitionUtils.isLocalPlan(operateFilePlan));
 
