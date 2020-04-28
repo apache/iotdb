@@ -124,13 +124,13 @@ public class MetaGroupMemberTest extends MemberTest {
     metaGroupMember.closeLogManager();
     dataClusterServer.closeLogManagers();
     super.tearDown();
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(prevReplicaNum);
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
   }
 
   @Before
   public void setUp() throws Exception {
-    prevReplicaNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(2);
+    prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
     super.setUp();
     dummyResponse.set(Response.RESPONSE_AGREE);
     metaGroupMember = getMetaGroupMember(TestUtils.getNode(0));
