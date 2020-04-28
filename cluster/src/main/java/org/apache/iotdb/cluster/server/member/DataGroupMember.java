@@ -1561,8 +1561,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @TestOnly
   public void setLogManager(PartitionedSnapshotLogManager logManager) {
+    if (this.logManager != null) {
+      this.logManager.close();
+    }
     this.logManager = logManager;
-    super.logManager = logManager;
+    super.setLogManager(logManager);
   }
 
   /**

@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,6 +39,11 @@ public class ElectionHandlerTest {
   @Before
   public void setUp() {
     member = new TestMetaGroupMember();
+  }
+
+  @After
+  public void tearDown() {
+    member.closeLogManager();
   }
 
   @Test

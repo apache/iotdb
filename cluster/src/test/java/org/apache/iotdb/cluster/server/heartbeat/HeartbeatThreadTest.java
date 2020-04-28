@@ -150,7 +150,9 @@ public class HeartbeatThreadTest {
 
   @After
   public void tearDown() {
-    File dir = new File(new SyncLogDequeSerializer(1).getLogDir());
+    logManager.close();
+    member.closeLogManager();
+    File dir = new File(SyncLogDequeSerializer.getLogDir(1));
     for (File file : dir.listFiles()) {
       file.delete();
     }

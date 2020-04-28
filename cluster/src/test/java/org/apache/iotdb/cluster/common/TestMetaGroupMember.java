@@ -35,4 +35,5 @@ public class TestMetaGroupMember extends MetaGroupMember {
     MetaSingleSnapshotLogManager manager = new MetaSingleSnapshotLogManager(new TestLogApplier());
     setLogManager(manager);
   }
+
 }

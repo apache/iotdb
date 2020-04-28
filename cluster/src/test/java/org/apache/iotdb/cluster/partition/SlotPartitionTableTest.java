@@ -96,12 +96,15 @@ public class SlotPartitionTableTest {
   SlotPartitionTable[] tables;//The PartitionTable on each node.
   List<Node> nodes;
 
+  private int prevReplicaNum;
+
   @Before
   public void setUp() throws MetadataException {
     MManager.getInstance().init();
     nodes = new ArrayList<>();
     IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
     localNode = nodes.get(3);
+    prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(replica_size);
     tables = new SlotPartitionTable[20];
     mManager = new MManager[20];
@@ -152,7 +155,7 @@ public class SlotPartitionTableTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    ClusterDescriptor.getInstance().getConfig().setReplicationNum(3);
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
     if (mManager != null) {
       for (MManager manager : mManager) {
         manager.clear();

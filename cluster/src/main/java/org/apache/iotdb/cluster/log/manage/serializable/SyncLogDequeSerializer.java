@@ -85,11 +85,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
    * build serializer with node id
    */
   public SyncLogDequeSerializer(int nodeIdentifier) {
-    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
     logFileList = new ArrayList<>();
-    logDir = systemDir + File.separator + "raftLog" + File.separator +
-        nodeIdentifier + File.separator;
+    logDir = getLogDir(nodeIdentifier);
     init();
+  }
+
+  public static String getLogDir(int nodeIdentifier) {
+    String systemDir = IoTDBDescriptor.getInstance().getConfig().getSystemDir();
+    return systemDir + File.separator + "raftLog" + File.separator +
+        nodeIdentifier + File.separator;
   }
 
   @TestOnly
@@ -431,7 +435,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   public void close() {
     try {
-      currentLogOutputStream.close();
+      if (currentLogOutputStream != null) {
+        currentLogOutputStream.close();
+        currentLogOutputStream = null;
+      }
     } catch (IOException e) {
       logger.error("Error in log serialization: " + e.getMessage());
     }

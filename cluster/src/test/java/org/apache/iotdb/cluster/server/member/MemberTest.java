@@ -114,6 +114,14 @@ public class MemberTest {
 
   @After
   public void tearDown() throws Exception {
+    testMetaMember.closeLogManager();
+    metaLogManager.close();
+    for (DataGroupMember member : dataGroupMemberMap.values()) {
+      member.closeLogManager();
+    }
+    for (MetaGroupMember member : metaGroupMemberMap.values()) {
+      member.closeLogManager();
+    }
     EnvironmentUtils.cleanEnv();
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
     new File(MetaGroupMember.PARTITION_FILE_NAME).delete();

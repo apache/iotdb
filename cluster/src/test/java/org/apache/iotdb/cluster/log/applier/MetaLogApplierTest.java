@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.applier;
 import static junit.framework.TestCase.assertEquals;
 import static junit.framework.TestCase.assertTrue;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,6 +32,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -40,6 +42,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.junit.After;
 import org.junit.Test;
 
 public class MetaLogApplierTest extends IoTDBTest {
@@ -54,6 +57,13 @@ public class MetaLogApplierTest extends IoTDBTest {
   };
 
   private LogApplier applier = new MetaLogApplier(testMetaGroupMember);
+
+  @Override
+  @After
+  public void tearDown() throws IOException, StorageEngineException {
+    testMetaGroupMember.closeLogManager();
+    super.tearDown();
+  }
 
   @Test
   public void testApplyAddNode() throws QueryProcessException {
