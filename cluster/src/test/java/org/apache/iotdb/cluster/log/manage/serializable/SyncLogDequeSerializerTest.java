@@ -167,12 +167,15 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       syncLogDequeSerializer.close();
     }
     for (File file : syncLogDequeSerializer.logFileList) {
-      System.out.printf("%s len: %d%n", file, file.length());
+      System.out.printf("Before recovery: %s len: %d%n", file, file.length());
     }
 
     // recovery
     System.out.println("Recover logs in testRemoveOldFile()");
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    for (File file : syncLogDequeSerializer.logFileList) {
+      System.out.printf("After recovery: %s len: %d%n", file, file.length());
+    }
     try {
       List<Log> logs = syncLogDequeSerializer.recoverLog();
       assertEquals(9, logs.size());
