@@ -116,8 +116,8 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Before
   public void setUp() throws Exception {
-    prevReplicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(3);
+    prevReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(3);
     super.setUp();
     dataGroupMember = getDataGroupMember(TestUtils.getNode(0));
     snapshotMap = new HashMap<>();
@@ -133,7 +133,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void tearDown() throws Exception {
     dataGroupMember.closeLogManager();
     super.tearDown();
-    ClusterDescriptor.getINSTANCE().getConfig().setReplicationNum(prevReplicationNum);
+    ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
   }
 
   private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup) {

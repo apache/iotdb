@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -33,6 +34,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,11 +54,11 @@ public class ClusterDescriptor {
     return config;
   }
 
-  public static ClusterDescriptor getINSTANCE() {
+  public static ClusterDescriptor getInstance() {
     return INSTANCE;
   }
 
-  private String getPropsUrl() {
+  public String getPropsUrl() {
     String url = System.getProperty(ClusterConstant.CLUSTER_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -204,4 +206,45 @@ public class ClusterDescriptor {
     }
     return urlList;
   }
+
+  public void loadHotModifiedProps() throws QueryProcessException {
+    String url = getPropsUrl();
+    if (url == null) {
+      return;
+    }
+    try (InputStream inputStream = new FileInputStream(new File(url))) {
+      logger.info("Start to reload config file {}", url);
+      Properties properties = new Properties();
+      properties.load(inputStream);
+      loadHotModifiedProps(properties);
+    } catch (Exception e) {
+      logger.warn("Fail to reload config file {}", url, e);
+      throw new QueryProcessException(
+          String.format("Fail to reload config file %s because %s", url, e.getMessage()));
+    }
+  }
+
+  /**
+   * This method is for setting hot modified properties of the cluster. Currently, we support
+   * max_concurrent_client_num, connection_time_out_ms, max_resolved_log_size
+   *
+   * @param properties
+   * @throws QueryProcessException
+   */
+  public void loadHotModifiedProps(Properties properties)
+      throws QueryProcessException {
+
+    config.setMaxConcurrentClientNum(Integer.parseInt(properties
+        .getProperty("MAX_CONCURRENT_CLIENT_NUM",
+            String.valueOf(config.getMaxConcurrentClientNum()))));
+
+    config.setConnectionTimeoutInMS(Integer.parseInt(properties
+        .getProperty("CONNECTION_TIME_OUT_MS", String.valueOf(config.getConnectionTimeoutInMS()))));
+
+    config.setMaxRemovedLogSize(Long.parseLong(properties
+        .getProperty("MAX_REMOVED_LOG_SIZE", String.valueOf(config.getMaxRemovedLogSize()))));
+
+    logger.info("Set cluster configuration {}", properties);
+  }
+
 }

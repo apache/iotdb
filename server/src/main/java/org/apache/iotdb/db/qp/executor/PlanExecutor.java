@@ -97,6 +97,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -218,7 +219,7 @@ public class PlanExecutor implements IPlanExecutor {
         operateTTL((SetTTLPlan) plan);
         return true;
       case LOAD_CONFIGURATION:
-        IoTDBDescriptor.getInstance().loadHotModifiedProps();
+        loadConfiguration((LoadConfigurationPlan)plan);
         return true;
       case LOAD_FILES:
         operateLoadFiles((OperateFilePlan) plan);
@@ -1348,5 +1349,9 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     return dataSet;
+  }
+
+  protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
+    IoTDBDescriptor.getInstance().loadHotModifiedProps();
   }
 }

@@ -27,6 +27,7 @@ import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
 import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.query.fill.LinearFill;
@@ -153,7 +154,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
-    initializedOperator = new LoadConfigurationOperator();
+    if(ctx.GLOBAL()!=null){
+      initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.GLOBAL);
+    }else{
+      initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.LOCAL);
+    }
+
   }
 
   @Override
