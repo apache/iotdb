@@ -166,21 +166,33 @@ show timeseries root.ln where description contains 'test1'
 ## 查看子路径
 
 ```
-IoTDB> SHOW CHILD PATHS root.ln
+SHOW CHILD PATHS prefixPath
 ```
 
-你将获得类似的结果：
+可以查看此前缀路径的下一层的所有路径，前缀路径允许使用 * 通配符。
+
+示例：
+
+* 查询 root.ln 的下一层：show child paths root.ln
 
 ```
-show child paths root.ln
 +------------+
 | child paths|
 +------------+
 |root.ln.wf01|
 |root.ln.wf02|
 +------------+
-Total line number = 2
-It costs 0.012s
+```
+
+* 查询形如 root.xx.xx.xx 的路径：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
 ```
 
 ## 统计时间序列总数

@@ -168,22 +168,35 @@ It is worth noting that when the queried path does not exist, the system will re
 ## Show Child Path
 
 ```
-IoTDB> SHOW CHILD PATHS root.ln
+SHOW CHILD PATHS prefixPath
 ```
 
-You will get results be similar to below:
+Return all child paths of the prefixPath, the prefixPath could contains *.
+
+Example：
+
+* return the child paths of root.ln：show child paths root.ln
 
 ```
-show child paths root.ln
 +------------+
 | child paths|
 +------------+
 |root.ln.wf01|
 |root.ln.wf02|
 +------------+
-Total line number = 2
-It costs 0.012s
 ```
+
+* get all paths in form of root.xx.xx.xx：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
+```
+
 ## Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
