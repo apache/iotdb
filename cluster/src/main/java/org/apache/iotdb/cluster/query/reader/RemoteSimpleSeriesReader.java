@@ -113,7 +113,9 @@ public class RemoteSimpleSeriesReader implements IPointReader {
           fetchResult.wait(connectionTimeoutInMS);
         } catch (TException | InterruptedException e) {
           // try other nodes
-          this.client = sourceInfo.nextDataClient(false, this.lastTimestamp);
+          DataClient newClient = sourceInfo.nextDataClient(false, this.lastTimestamp);
+          logger.info("Client failed, changed from {} to {}", client, newClient);
+          this.client = newClient;
           if (client == null) {
             if (!sourceInfo.isNoData()) {
               throw new IOException("no available client.");

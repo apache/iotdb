@@ -79,7 +79,7 @@ public class RemoteSimpleSeriesReaderTest {
           }
 
           @Override
-          public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
+          public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
             new Thread(() -> {
               resultHandler.onComplete(1L);
             }).start();
@@ -119,6 +119,8 @@ public class RemoteSimpleSeriesReaderTest {
 
   @Test
   public void testFailedNode() throws IOException {
+    System.out.println("Start testFailedNode()");
+
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     PartitionGroup group = new PartitionGroup();
     group.add(TestUtils.getNode(0));
