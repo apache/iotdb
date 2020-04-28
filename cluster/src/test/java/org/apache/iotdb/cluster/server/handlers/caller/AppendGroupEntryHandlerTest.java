@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.junit.After;
 import org.junit.Before;
@@ -67,7 +68,7 @@ public class AppendGroupEntryHandlerTest {
             TestUtils.getNode(i), leadershipStale, testLog, newLeaderTerm);
         new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
       }
-      groupReceivedCounter.wait(10 * 1000);
+      groupReceivedCounter.wait();
     }
     for (int i = 0; i < 10; i++) {
       assertEquals(0, groupReceivedCounter[i]);
@@ -89,9 +90,8 @@ public class AppendGroupEntryHandlerTest {
       for (int i = 0; i < 5; i++) {
         AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, i,
             TestUtils.getNode(i), leadershipStale, testLog, newLeaderTerm);
-        new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
+        handler.onComplete(Response.RESPONSE_AGREE);
       }
-      groupReceivedCounter.wait(2 * 1000);
     }
     for (int i = 0; i < 10; i++) {
       if (i < 5) {
@@ -118,7 +118,7 @@ public class AppendGroupEntryHandlerTest {
       AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, 0,
           TestUtils.getNode(0), leadershipStale, testLog, newLeaderTerm);
       new Thread(() -> handler.onComplete(100L)).start();
-      groupReceivedCounter.wait(10 * 1000);
+      groupReceivedCounter.wait();
     }
     for (int i = 0; i < 10; i++) {
       assertEquals(REPLICATION_NUM / 2, groupReceivedCounter[i]);
@@ -136,12 +136,11 @@ public class AppendGroupEntryHandlerTest {
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     AtomicLong newLeaderTerm = new AtomicLong(-1);
     Log testLog = new TestLog();
-    synchronized (groupReceivedCounter) {
-      AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, 0,
-          TestUtils.getNode(0), leadershipStale, testLog, newLeaderTerm);
-      new Thread(() -> handler.onError(new TestException())).start();
-      groupReceivedCounter.wait(100);
-    }
+
+    AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, 0,
+        TestUtils.getNode(0), leadershipStale, testLog, newLeaderTerm);
+    handler.onError(new TestException());
+
     for (int i = 0; i < 10; i++) {
       assertEquals(REPLICATION_NUM / 2, groupReceivedCounter[i]);
     }

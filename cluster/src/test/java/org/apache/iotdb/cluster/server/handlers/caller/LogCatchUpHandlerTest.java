@@ -62,7 +62,7 @@ public class LogCatchUpHandlerTest {
     handler.setRaftMember(member);
     synchronized (appendSucceed) {
       new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
-      appendSucceed.wait(10 * 1000);
+      appendSucceed.wait();
     }
     assertTrue(appendSucceed.get());
   }
@@ -79,7 +79,7 @@ public class LogCatchUpHandlerTest {
     handler.setRaftMember(member);
     synchronized (appendSucceed) {
       new Thread(() -> handler.onComplete(Response.RESPONSE_LOG_MISMATCH)).start();
-      appendSucceed.wait(10 * 1000);
+      appendSucceed.wait();
     }
     assertFalse(appendSucceed.get());
   }
@@ -96,7 +96,7 @@ public class LogCatchUpHandlerTest {
     handler.setRaftMember(member);
     synchronized (appendSucceed) {
       new Thread(() -> handler.onComplete(100L)).start();
-      appendSucceed.wait(10 * 1000);
+      appendSucceed.wait();
     }
     assertFalse(appendSucceed.get());
     assertEquals(100, member.getTerm().get());
@@ -114,7 +114,7 @@ public class LogCatchUpHandlerTest {
     handler.setRaftMember(member);
     synchronized (appendSucceed) {
       new Thread(() -> handler.onError(new TestException())).start();
-      appendSucceed.wait(10 * 1000);
+      appendSucceed.wait();
     }
     assertFalse(appendSucceed.get());
   }

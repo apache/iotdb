@@ -353,6 +353,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
     for (File logFile : logFileList) {
       int logNumInFile = 0;
+      if (logFile.length() == 0) {
+        continue;
+      }
+
       try (FileInputStream logReader = new FileInputStream(logFile)) {
         FileChannel logChannel = logReader.getChannel();
         if (shouldSkip) {

@@ -46,6 +46,8 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class TestUtils {
 
+  public static long TEST_TIME_OUT_MS = 200;
+
   private TestUtils() {
     // util class
   }

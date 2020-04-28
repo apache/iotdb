@@ -59,7 +59,7 @@ public class PullSnapshotHandlerTest {
         resp.setSnapshotBytes(snapshotBufferMap);
         handler.onComplete(resp);
       }).start();
-      result.wait(10 * 1000);
+      result.wait();
     }
     assertEquals(snapshotMap, result.get());
   }
@@ -73,7 +73,7 @@ public class PullSnapshotHandlerTest {
         TestSnapshot::new);
     synchronized (result) {
       new Thread(() -> handler.onError(new TestException())).start();
-      result.wait(10 * 1000);
+      result.wait();
     }
     assertNull(result.get());
   }
