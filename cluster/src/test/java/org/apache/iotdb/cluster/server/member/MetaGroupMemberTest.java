@@ -328,6 +328,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
             @Override
             public void exile(AsyncMethodCallback<Void> resultHandler) {
+              System.out.printf("%s was exiled%n", node);
               exiledNode = node;
             }
 
@@ -786,7 +787,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testRemoteAddNode() throws InterruptedException {
+  public void testRemoteAddNode() {
     int prevTimeout = RaftServer.connectionTimeoutInMS;
     RaftServer.connectionTimeoutInMS = 100;
     try {
@@ -991,6 +992,7 @@ public class MetaGroupMemberTest extends MemberTest {
     doRemoveNode(resultRef, TestUtils.getNode(20));
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
     assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+    System.out.println("Checking exiled node in testRemoveNodeAsLeader()");
     assertEquals(TestUtils.getNode(20), exiledNode);
   }
 
