@@ -203,7 +203,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       try {
         metaFile.createNewFile();
       } catch (IOException e) {
-        logger.error("Error in log serialization: " + e.getMessage());
+        logger.error("Error in log serialization: ",  e);
       }
     }
   }
@@ -222,7 +222,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     try {
       totalSize = ReadWriteIOUtils.write(data, currentLogOutputStream);
     } catch (IOException e) {
-      logger.error("Error in log serialization: " + e.getMessage());
+      logger.error("Error in log serialization: ",  e);
     }
 
     logSizeDeque.addLast(totalSize);
@@ -251,7 +251,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     try {
       ReadWriteIOUtils.writeWithoutSize(finalBuffer, currentLogOutputStream);
     } catch (IOException e) {
-      logger.error("Error in log serialization: " + e.getMessage());
+      logger.error("Error in log serialization: ",  e);
     }
 
     serializeMeta(meta);
@@ -297,7 +297,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           logFileList.add(createNewLogFile(logDir));
           currentLogOutputStream = new FileOutputStream(getCurrentLogFile());
         } catch (IOException e) {
-          logger.error("Error in log serialization: " + e.getMessage());
+          logger.error("Error in log serialization: ", e);
         }
 
         logFileList.remove(logFileList.size() - 1);
@@ -308,7 +308,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           currentLogOutputStream.getChannel().truncate(getCurrentLogFile().length() - size);
           break;
         } catch (IOException e) {
-          logger.error("Error in log serialization: " + e.getMessage());
+          logger.error("Error in log serialization: ", e);
         }
       }
     }
@@ -359,7 +359,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           result.add(log);
         }
       } catch (IOException e) {
-        logger.error("Error in log serialization: " + e.getMessage());
+        logger.error("Error in log serialization: ", e);
       }
     }
 
@@ -376,7 +376,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     try {
       log = parser.parse(ByteBuffer.wrap(ReadWriteIOUtils.readBytes(logReader, logSize)));
     } catch (UnknownLogTypeException e) {
-      logger.error("Error in log serialization: " + e.getMessage());
+      logger.error("Error in log serialization: ",  e);
     }
 
     logSizeDeque.addLast(totalSize);
@@ -397,7 +397,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           state = HardState.deserialize(
               ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
         } catch (IOException e) {
-          logger.error("Error in log serialization: " + e.getMessage());
+          logger.error("Error in log serialization: ", e);
         }
       } else {
         meta = new LogManagerMeta();
@@ -429,7 +429,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
       this.meta = meta;
     } catch (IOException e) {
-      logger.error("Error in log serialization: " + e.getMessage());
+      logger.error("Error in log serialization: ", e);
     }
 
   }
@@ -441,7 +441,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         currentLogOutputStream = null;
       }
     } catch (IOException e) {
-      logger.error("Error in log serialization: " + e.getMessage());
+      logger.error("Error in log serialization: ", e);
     }
   }
 
@@ -495,7 +495,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       currentLogOutputStream.close();
       currentLogOutputStream = new FileOutputStream(newLogFile);
     } catch (IOException e) {
-      logger.error("Error in log serialization: " + e.getMessage());
+      logger.error("Error in log serialization: ", e);
     }
   }
 
