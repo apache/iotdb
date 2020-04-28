@@ -236,6 +236,8 @@ Here is a list of Status Code and related message:
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
 |202|INVALID_HANDLE_STATUS||
+|298|NODE_DELETE_FAILED_ERROR|Failed while deleting node|
+|299|ALIAS_ALREADY_EXIST_ERROR|Alias already exists|
 |300|TIMESERIES_ALREADY_EXIST_ERROR|Timeseries already exists|
 |301|TIMESERIES_NOT_EXIST_ERROR|Timeseries does not exist|
 |302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|Unsupported fetch metadata operation|
@@ -249,6 +251,9 @@ Here is a list of Status Code and related message:
 |311|STORAGE_GROUP_PROCESSOR_ERROR|Storage group processor related error|
 |312|STORAGE_GROUP_ERROR|Storage group related error|
 |313|STORAGE_ENGINE_ERROR|Storage engine related error|
+|314|TSFILE_PROCESSOR_ERROR|TsFile processor related error|
+|315|PATH_ILLEGAL|Illegal path|
+|316|LOAD_FILE_ERROR|Meet error while loading file|
 |400|EXECUTE_STATEMENT_ERROR|Execute statement error|
 |401|SQL_PARSE_ERROR|Meet error while parsing SQL|
 |402|GENERATE_TIME_ZONE_ERROR|Meet error while generating time zone|
@@ -260,6 +265,8 @@ Here is a list of Status Code and related message:
 |408|LOGICAL_OPTIMIZE_ERROR|Logical optimize related error|
 |409|UNSUPPORTED_FILL_TYPE_ERROR|Unsupported fill type related error|
 |410|PATH_ERROR|Path related error|
+|411|QUERY_PROCESS_ERROR|Query process related error|
+|412|WRITE_PROCESS_ERROR|Writing data related error|
 |500|INTERNAL_SERVER_ERROR|Internal server error|
 |501|CLOSE_OPERATION_ERROR|Meet error in close operation|
 |502|READ_ONLY_SYSTEM_ERROR|Operating system is read only|
@@ -269,6 +276,7 @@ Here is a list of Status Code and related message:
 |601|NOT_LOGIN_ERROR|Has not logged in|
 |602|NO_PERMISSION_ERROR|No permissions for this operation|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
+|203|INCOMPATIBLE_VERSION|Incompatible version|
 
 > All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
 A base exception class "ProcessException" is also added to be extended by all exceptions.
