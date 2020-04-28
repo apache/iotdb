@@ -75,9 +75,54 @@ That means, two orderings within pages are guaranteed:
 
 This certain ordering will be fully utilized to accelerate query process within our design.
 
-## Modifications in query
+## Modification Handling
 
 Data deletion in IoTDB records a series of mods file for disk data. The data is not really deleted, so we need to consider the existence of modifications in query.
 
+### Related class
+
+Modification file: org.apache.iotdb.db.engine.modification.ModificationFile
+
+Deletion operation: org.apache.iotdb.db.engine.modification.Modification
+
+### Query with Modifications
+
 For any TsFile data units, their metadata structures including TimeseriesMetadata, ChunkMetadata and PageHeader use a `modified` flag to indicate whether this data unit is modified or not.
-Upon setting this `modified` flag to "true", the integrity of this data unit is supposed to be damaged and some statistics turns invalid. In the following document chapters, sometimes we have to check this flag before using statistics data.
+Upon setting this `modified` flag to "true", the integrity of this data unit is supposed to be damaged and some statistics turns invalid. 
+
+
+![](https://user-images.githubusercontent.com/7240743/78339324-deca5d80-75c6-11ea-8fa8-dbd94232b756.png)
+
+Modifications affects timeseries reading process in the 5 levels mentioned before:
+* TsFileResource -> TimeseriesMetadata
+
+```
+// Set the statistics in TimeseriesMetadata unusable if the timeseries contains deletion operations 
+FileLoaderUtils.loadTimeseriesMetadata()
+```
+
+* TimeseriesMetadata -> List\<ChunkMetadata\>
+
+```
+// For each ChunkMetadata, find the largest timestamp in all deletion operations whose version is larger than it. Set deleted time to ChunkMetadata. 
+// set the statistics in ChunkMetadata unusable if it is affected by deletion
+FileLoaderUtils.loadChunkMetadataList()
+```
+
+E.g., the got ChunkMetadatas are:
+
+![](https://user-images.githubusercontent.com/7240743/78339335-e427a800-75c6-11ea-815f-16dc5b6ebfa3.png)
+
+* ChunkMetadata -> List\<IPageReader\>
+
+```
+// Skip the fully deleted page, set deleteAt into PageReader，Set the page statistics unusable if it is affected by deletion
+FileLoaderUtils.loadPageReaderList()
+```
+
+* IPageReader -> BatchData
+
+```
+// For disk page, skip the data points that be deleted and filtered out. For memory data, skip data points be filtered out.
+IPageReader.getAllSatisfiedPageData()
+```
