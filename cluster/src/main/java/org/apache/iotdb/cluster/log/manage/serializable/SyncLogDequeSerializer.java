@@ -409,7 +409,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   public void serializeMeta(LogManagerMeta meta) {
-    File tempMetaFile = new File(logDir + "logMeta.tmp");
+    File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
+    tempMetaFile.getParentFile().mkdirs();
     try (FileOutputStream tempMetaFileOutputStream = new FileOutputStream(tempMetaFile)) {
 
       ReadWriteIOUtils.write(firstLogPosition, tempMetaFileOutputStream);
