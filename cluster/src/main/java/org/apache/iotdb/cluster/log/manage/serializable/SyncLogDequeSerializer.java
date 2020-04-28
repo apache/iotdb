@@ -455,6 +455,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public void close() {
     try {
       if (currentLogOutputStream != null) {
+        currentLogOutputStream.flush();
         currentLogOutputStream.close();
         currentLogOutputStream = null;
       }
