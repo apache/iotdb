@@ -146,7 +146,7 @@ public class SessionExample {
     }
   }
 
-  private static void insertInObject()
+  private static void insertRecordInObject()
       throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
