@@ -328,7 +328,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
             @Override
             public void exile(AsyncMethodCallback<Void> resultHandler) {
-              new Thread(() -> exiledNode = node).start();
+              exiledNode = node;
             }
 
             @Override
