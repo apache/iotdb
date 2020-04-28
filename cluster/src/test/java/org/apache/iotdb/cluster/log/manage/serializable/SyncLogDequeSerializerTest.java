@@ -191,6 +191,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRemoveOldFileAtRecovery() {
+    System.out.println("Start testRemoveOldFileAtRecovery()");
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     List<Log> testLogs2;
     try {
@@ -214,9 +215,16 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
     } finally {
       syncLogDequeSerializer.close();
     }
+    for (File file : syncLogDequeSerializer.logFileList) {
+      System.out.printf("Before recovery: %s len: %d%n", file, file.length());
+    }
 
     // recovery
+    System.out.println("Recover logs in testRemoveOldFileAtRecovery()");
     syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    for (File file : syncLogDequeSerializer.logFileList) {
+      System.out.printf("After recovery: %s len: %d%n", file, file.length());
+    }
     try {
       List<Log> logs = syncLogDequeSerializer.recoverLog();
       assertEquals(9, logs.size());

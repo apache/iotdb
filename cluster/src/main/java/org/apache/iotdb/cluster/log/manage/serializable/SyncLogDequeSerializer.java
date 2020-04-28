@@ -422,7 +422,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         state = new HardState();
       }
     }
-    logger.info("Recovered log meta: {}", meta);
+    logger.info("Recovered log meta: {}, firstLogPos: {}, removedLogSize: {}, availableTime: [{},"
+            + " {}], state: {}",
+        meta, firstLogPosition, removedLogSize, minAvailableTime, maxAvailableTime, state);
     return meta;
   }
 
@@ -484,6 +486,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         break;
       }
 
+      logger.info("Removing a log file {}, len: {}, removedLogSize: {}", logFile,
+          logFile.length(), removedLogSize);
       removedLogSize -= logFile.length();
       // if system down before delete, we can use this to delete file during recovery
       minAvailableTime = getFileTime(logFile);
