@@ -27,9 +27,9 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.junit.Assert;
 
 public class Utils {
@@ -120,11 +120,10 @@ public class Utils {
   public static boolean isFileMetaDataEqual(TsFileMetadata metadata1, TsFileMetadata metadata2) {
     if (Utils.isTwoObjectsNotNULL(metadata1, metadata2, "File MetaData")) {
       if (Utils.isTwoObjectsNotNULL(metadata1.getMetadataIndex(), metadata2.getMetadataIndex(),
-              "Metadata Index")) {
-
-        List<MetadataIndexNode> metaDataIndex1 = metadata1.getMetadataIndex();
-        List<MetadataIndexNode> metaDataIndex2 = metadata2.getMetadataIndex();
-        return metaDataIndex1.size() == metaDataIndex2.size();
+          "Metadata Index")) {
+        MetadataIndexNode metaDataIndex1 = metadata1.getMetadataIndex();
+        MetadataIndexNode metaDataIndex2 = metadata2.getMetadataIndex();
+        return metaDataIndex1.getChildren().size() == metaDataIndex2.getChildren().size();
       }
     }
     return false;

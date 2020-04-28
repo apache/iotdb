@@ -65,7 +65,7 @@ object WideConverter extends Converter {
     val devices = tsFileMetaData.getMetadataIndex
     val measurements = reader.getAllMeasurements
 
-    devices.foreach(d => {
+    devices.getChildren.foreach(d => {
       measurements.foreach(m => {
         val fullPath = d + "." + m._1
         series.add(new Series(fullPath, m._2)
@@ -95,7 +95,7 @@ object WideConverter extends Converter {
       val devices = tsFileMetaData.getMetadataIndex
       val measurements = reader.getAllMeasurements
 
-      devices.foreach(d => {
+      devices.getChildren.foreach(d => {
         measurements.foreach(m => {
           val fullPath = d + "." + m._1
           if (!seriesSet.contains(fullPath)) {
@@ -138,7 +138,7 @@ object WideConverter extends Converter {
       requiredSchema.foreach(f => {
         if (!QueryConstant.RESERVED_TIME.equals(f.name)) {
           val path = new org.apache.iotdb.tsfile.read.common.Path(f.name)
-          if (devices.contains(path.getDevice) && measurementIds.contains(path.getMeasurement)) {
+          if (devices.getChildren.contains(path.getDevice) && measurementIds.contains(path.getMeasurement)) {
             queriedSchema = queriedSchema.add(f)
           }
         }

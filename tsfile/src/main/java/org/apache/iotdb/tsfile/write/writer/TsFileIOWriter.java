@@ -20,14 +20,12 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -36,11 +34,12 @@ import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -77,7 +76,6 @@ public class TsFileIOWriter {
   protected int totalChunkNum = 0;
   protected int invalidChunkNum;
   protected File file;
-
 
   // current flushed Chunk
   private ChunkMetadata currentChunkMetadata;
@@ -238,9 +236,9 @@ public class TsFileIOWriter {
       }
     }
 
-    List<MetadataIndexNode> metadataIndexList = flushTsFileMetadata(chunkMetadataListMap);
+    MetadataIndexNode metadataIndex = flushTsFileMetadata(chunkMetadataListMap);
     TsFileMetadata tsFileMetaData = new TsFileMetadata();
-    tsFileMetaData.setMetadataIndex(metadataIndexList);
+    tsFileMetaData.setMetadataIndex(metadataIndex);
     tsFileMetaData.setVersionInfo(versionInfo);
     tsFileMetaData.setTotalChunkNum(totalChunkNum);
     tsFileMetaData.setInvalidChunkNum(invalidChunkNum);
@@ -280,9 +278,9 @@ public class TsFileIOWriter {
   /**
    * Flush TsFileMetadata, including ChunkMetadataList and TimeseriesMetaData
    *
-   * @return MetadataIndexNode list in TsFileMetadata
+   * @return MetadataIndexEntry list in TsFileMetadata
    */
-  private List<MetadataIndexNode> flushTsFileMetadata(
+  private MetadataIndexNode flushTsFileMetadata(
       Map<Path, List<ChunkMetadata>> chunkMetadataListMap) throws IOException {
 
     // convert ChunkMetadataList to this field
@@ -311,122 +309,8 @@ public class TsFileIOWriter {
           .add(timeseriesMetaData);
     }
 
-    // create TsFileMetadata
-    Map<String, Queue<MetadataIndexNode>> deviceMetadataIndexMap = new TreeMap<>();
-    int maxDegreeOfIndexNode = config.getMaxDegreeOfIndexNode();
-
-    // for timeseriesMetadata of each device
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap
-        .entrySet()) {
-      if (entry.getValue().isEmpty()) {
-        continue;
-      }
-      Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
-      TimeseriesMetadata timeseriesMetadata;
-      for (int i = 0; i < entry.getValue().size(); i++) {
-        timeseriesMetadata = entry.getValue().get(i);
-        if (i % maxDegreeOfIndexNode == 0) {
-          if (i % (maxDegreeOfIndexNode * maxDegreeOfIndexNode) == 0 && i != 0) {
-            measurementMetadataIndexQueue.add(new MetadataIndexNode("", out.getPosition(),
-                MetadataIndexNodeType.LEAF_MEASUREMENT));
-          }
-          measurementMetadataIndexQueue
-              .add(new MetadataIndexNode(timeseriesMetadata.getMeasurementId(), out.getPosition(),
-                  MetadataIndexNodeType.LEAF_MEASUREMENT));
-        }
-        timeseriesMetadata.serializeTo(out.wrapAsStream());
-      }
-      measurementMetadataIndexQueue.add(
-          new MetadataIndexNode("", out.getPosition(), MetadataIndexNodeType.LEAF_MEASUREMENT));
-
-      int queueSize = measurementMetadataIndexQueue.size();
-      MetadataIndexNode metadataIndex = measurementMetadataIndexQueue.peek();
-      while (queueSize > maxDegreeOfIndexNode + 1) {
-        for (int i = 0; i < queueSize; i++) {
-          metadataIndex = measurementMetadataIndexQueue.poll();
-          if (i % (maxDegreeOfIndexNode + 1) == 0) {
-            // add next measurement index item to parent node
-            measurementMetadataIndexQueue.add(new MetadataIndexNode(metadataIndex.getName(),
-                metadataIndex.getOffset(), MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-          }
-          metadataIndex.serializeTo(out.wrapAsStream());
-          if ((i + 1) % ((maxDegreeOfIndexNode + 1) * maxDegreeOfIndexNode) == 0 && i != 0 && i != queueSize - 1) {
-            measurementMetadataIndexQueue.add(new MetadataIndexNode("", out.getPosition(),
-                MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-          }
-        }
-        measurementMetadataIndexQueue.add(new MetadataIndexNode("", metadataIndex.getOffset(),
-            MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-        queueSize = measurementMetadataIndexQueue.size();
-      }
-      deviceMetadataIndexMap.put(entry.getKey(), measurementMetadataIndexQueue);
-    }
-
-    List<MetadataIndexNode> metadataIndexList = new ArrayList<>();
-    // if not exceed the max child nodes num, ignore the device index and directly point to the measurement
-    if (deviceMetadataIndexMap.size() < maxDegreeOfIndexNode) {
-      for (Map.Entry<String, Queue<MetadataIndexNode>> entry : deviceMetadataIndexMap.entrySet()) {
-        metadataIndexList.add(new MetadataIndexNode(entry.getKey(), out.getPosition(),
-            MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-        for (MetadataIndexNode metadataIndex : entry.getValue()) {
-          new MetadataIndexNode(metadataIndex.getName(), metadataIndex.getOffset(),
-              MetadataIndexNodeType.LEAF_MEASUREMENT).serializeTo(out.wrapAsStream());
-        }
-      }
-      metadataIndexList.add(new MetadataIndexNode("", out.getPosition(),
-          MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-      return metadataIndexList;
-    }
-
-    // else, build level index for devices
-    Queue<MetadataIndexNode> deviceMetadaIndexQueue = new ArrayDeque<>();
-    int deviceIndex = 0;
-    for (Map.Entry<String, Queue<MetadataIndexNode>> entry : deviceMetadataIndexMap.entrySet()) {
-      if (deviceIndex % maxDegreeOfIndexNode == 0 && deviceIndex != 0) {
-        deviceMetadaIndexQueue.add(new MetadataIndexNode("", out.getPosition(),
-            MetadataIndexNodeType.LEAF_DEVICE));
-      }
-      deviceMetadaIndexQueue.add(new MetadataIndexNode(entry.getKey(), out.getPosition(),
-          MetadataIndexNodeType.LEAF_DEVICE));
-      for (MetadataIndexNode measurementMetadataIndex : entry.getValue()) {
-        new MetadataIndexNode(measurementMetadataIndex.getName(),
-            measurementMetadataIndex.getOffset(),
-            MetadataIndexNodeType.LEAF_MEASUREMENT).serializeTo(out.wrapAsStream());
-      }
-      deviceIndex++;
-    }
-
-    deviceMetadaIndexQueue
-        .add(new MetadataIndexNode("", out.getPosition(), MetadataIndexNodeType.LEAF_DEVICE));
-    int queueSize = deviceMetadaIndexQueue.size();
-    MetadataIndexNode deviceMetadataIndex;
-    boolean hasDeviceHierarchy = false;
-    while (queueSize > maxDegreeOfIndexNode + 1) {
-      hasDeviceHierarchy = true;
-      for (int i = 0; i < queueSize; i++) {
-        deviceMetadataIndex = deviceMetadaIndexQueue.poll();
-        if (i % (maxDegreeOfIndexNode + 1) == 0) {
-          // add next device index item to parent node
-          deviceMetadaIndexQueue.add(new MetadataIndexNode(deviceMetadataIndex.getName(),
-              out.getPosition(), MetadataIndexNodeType.INTERNAL_DEVICE));
-        }
-        deviceMetadataIndex.serializeTo(out.wrapAsStream());
-        if ((i + 1) % ((maxDegreeOfIndexNode + 1) * maxDegreeOfIndexNode) == 0 && i != 0 && i != queueSize - 1) {
-          deviceMetadaIndexQueue.add(new MetadataIndexNode("", out.getPosition(),
-              MetadataIndexNodeType.INTERNAL_DEVICE));
-        }
-      }
-      deviceMetadaIndexQueue.add(new MetadataIndexNode("",
-          out.getPosition(), MetadataIndexNodeType.INTERNAL_DEVICE));
-      queueSize = deviceMetadaIndexQueue.size();
-    }
-    if (hasDeviceHierarchy) {
-      deviceMetadaIndexQueue.forEach(metadataIndex -> metadataIndex
-          .setMetadataIndexNodeType(MetadataIndexNodeType.INTERNAL_DEVICE));
-    }
-    metadataIndexList.addAll(deviceMetadaIndexQueue);
-    // return
-    return metadataIndexList;
+    // construct TsFileMetadata and return
+    return MetadataIndexConstructor.constructMetadataIndex(deviceTimeseriesMetadataMap, out);
   }
 
   /**

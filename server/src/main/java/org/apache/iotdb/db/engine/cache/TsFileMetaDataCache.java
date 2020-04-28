@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -28,9 +30,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class is used to cache <code>TsFileMetaData</code> of tsfile in IoTDB.
@@ -63,16 +62,16 @@ public class TsFileMetaDataCache {
       @Override
       protected long calEntrySize(String key, TsFileMetadata value) {
         if (metadataIndexEntrySize == 0 && value.getMetadataIndex() != null
-            && !value.getMetadataIndex().isEmpty()) {
+            && !value.getMetadataIndex().getChildren().isEmpty()) {
           metadataIndexEntrySize = RamUsageEstimator
-              .sizeOf(value.getMetadataIndex().iterator().next());
+              .sizeOf(value.getMetadataIndex().getChildren().iterator().next());
         }
         // totalChunkNum, invalidChunkNum
         long valueSize = 4 + 4L;
 
         // deviceMetadataIndex
         if (value.getMetadataIndex() != null) {
-          valueSize += value.getMetadataIndex().size() * metadataIndexEntrySize;
+          valueSize += value.getMetadataIndex().getChildren().size() * metadataIndexEntrySize;
         }
 
         // versionInfo

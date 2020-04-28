@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -41,11 +42,11 @@ public class TestHelper {
     return metaData;
   }
 
-  private static List<MetadataIndexNode> generateDeviceMetaDataIndex() {
-    List<MetadataIndexNode> deviceMetaDataIndex = new ArrayList<>();
+  private static MetadataIndexNode generateDeviceMetaDataIndex() {
+    MetadataIndexNode deviceMetaDataIndex = new MetadataIndexNode();
     for (int i = 0; i < 5; i++) {
-      deviceMetaDataIndex
-          .add(new MetadataIndexNode("d" + i, (long) i * 5, MetadataIndexNodeType.LEAF_MEASUREMENT));
+      deviceMetaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5,
+          MetadataIndexNodeType.LEAF_MEASUREMENT));
     }
     return deviceMetaDataIndex;
   }
@@ -53,7 +54,7 @@ public class TestHelper {
   private static List<Pair<Long, Long>> generateVersionInfo() {
     List<Pair<Long, Long>> versionInfo = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      versionInfo.add(new Pair<Long, Long>((long) i * 5, 0L));
+      versionInfo.add(new Pair<>((long) i * 5, 0L));
     }
     return versionInfo;
   }

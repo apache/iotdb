@@ -29,7 +29,7 @@ import java.util.Map.Entry;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -121,24 +121,23 @@ public class TsFileSketchTool {
       }
 
       // metadata begins
-      if (tsFileMetaData.getMetadataIndex().isEmpty()) {
+      if (tsFileMetaData.getMetadataIndex().getChildren().isEmpty()) {
         printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos() - 1) + "|\t[marker] 2");
       } else {
         printlnBoth(pw,
             String.format("%20s", reader.readFileMetadata().getMetaOffset() + "|\t[marker] 2"));
       }
-      for (MetadataIndexNode metadataIndex : tsFileMetaData.getMetadataIndex()) {
+      for (MetadataIndexEntry metadataIndex : tsFileMetaData.getMetadataIndex().getChildren()) {
         printlnBoth(pw, String.format("%20s", metadataIndex.getOffset())
             + "|\t[DeviceMetadata] of " + metadataIndex.getName());
       }
 
       printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetaData]");
+      printlnBoth(pw, String.format("%20s", "") + "|\t\t[num of devices] " + tsFileMetaData
+          .getMetadataIndex().getChildren().size());
       printlnBoth(pw,
-          String.format("%20s", "") + "|\t\t[num of devices] " + tsFileMetaData
-              .getMetadataIndex().size());
-      printlnBoth(pw,
-          String.format("%20s", "") + "|\t\t" + tsFileMetaData.getMetadataIndex().size()
-              + " key&TsDeviceMetadataIndex");
+          String.format("%20s", "") + "|\t\t" + tsFileMetaData.getMetadataIndex().getChildren()
+              .size() + " key&TsDeviceMetadataIndex");
       printlnBoth(pw,
           String.format("%20s", "") + "|\t\t[totalChunkNum] " + tsFileMetaData.getTotalChunkNum());
       printlnBoth(pw,

@@ -47,7 +47,7 @@ public class TsFileMetadata {
   private BloomFilter bloomFilter;
 
   // List of <name, offset, childMetadataIndexType>
-  private List<MetadataIndexNode> metadataIndex;
+  private MetadataIndexNode metadataIndex;
 
   // offset -> version
   private List<Pair<Long, Long>> versionInfo;
@@ -65,15 +65,7 @@ public class TsFileMetadata {
     TsFileMetadata fileMetaData = new TsFileMetadata();
 
     // metadataIndex
-    int deviceNum = ReadWriteIOUtils.readInt(buffer);
-    List<MetadataIndexNode> metadataIndexList = new ArrayList<>();
-    if (deviceNum > 0) {
-      for (int i = 0; i < deviceNum; i++) {
-        metadataIndexList.add(MetadataIndexNode.deserializeFrom(buffer));
-      }
-    }
-    fileMetaData.setMetadataIndex(metadataIndexList);
-
+    fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
@@ -117,10 +109,7 @@ public class TsFileMetadata {
 
     // metadataIndex
     if (metadataIndex != null) {
-      byteLen += ReadWriteIOUtils.write(metadataIndex.size(), outputStream);
-      for (MetadataIndexNode metadataIndexNode : metadataIndex) {
-        byteLen += metadataIndexNode.serializeTo(outputStream);
-      }
+      byteLen += metadataIndex.serializeTo(outputStream);
     } else {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     }
@@ -201,11 +190,11 @@ public class TsFileMetadata {
     this.metaOffset = metaOffset;
   }
 
-  public List<MetadataIndexNode> getMetadataIndex() {
+  public MetadataIndexNode getMetadataIndex() {
     return metadataIndex;
   }
 
-  public void setMetadataIndex(List<MetadataIndexNode> metadataIndex) {
+  public void setMetadataIndex(MetadataIndexNode metadataIndex) {
     this.metadataIndex = metadataIndex;
   }
 

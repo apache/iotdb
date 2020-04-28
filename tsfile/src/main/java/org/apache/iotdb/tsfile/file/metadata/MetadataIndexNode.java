@@ -22,68 +22,76 @@ package org.apache.iotdb.tsfile.file.metadata;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexNode {
 
-  private String name;
-  private long offset;
-  private MetadataIndexNodeType metadataIndexNodeType;
+  private static final int MAX_DEGREE_OF_INDEX_NODE = TSFileDescriptor.getInstance().getConfig()
+      .getMaxDegreeOfIndexNode();
+  private List<MetadataIndexEntry> children;
+  private long endOffset;
 
   public MetadataIndexNode() {
+    children = new ArrayList<>();
+    endOffset = -1L;
   }
 
-  public MetadataIndexNode(String name, long offset,
-      MetadataIndexNodeType metadataIndexNodeType) {
-    this.name = name;
-    this.offset = offset;
-    this.metadataIndexNodeType = metadataIndexNodeType;
+  public MetadataIndexNode(List<MetadataIndexEntry> children, long endOffset) {
+    this.children = children;
+    this.endOffset = endOffset;
   }
 
-  public String getName() {
-    return name;
+  public static int getMaxDegreeOfIndexNode() {
+    return MAX_DEGREE_OF_INDEX_NODE;
   }
 
-  public long getOffset() {
-    return offset;
+  public List<MetadataIndexEntry> getChildren() {
+    return children;
   }
 
-  public MetadataIndexNodeType getMetadataIndexNodeType() {
-    return metadataIndexNodeType;
+  public long getEndOffset() {
+    return endOffset;
   }
 
-  public void setName(String name) {
-    this.name = name;
+  public void setEndOffset(long endOffset) {
+    this.endOffset = endOffset;
   }
 
-  public void setOffset(long offset) {
-    this.offset = offset;
+  public void addEntry(MetadataIndexEntry metadataIndexEntry) {
+    this.children.add(metadataIndexEntry);
   }
 
-  public void setMetadataIndexNodeType(
-      MetadataIndexNodeType metadataIndexNodeType) {
-    this.metadataIndexNodeType = metadataIndexNodeType;
+  boolean isFull() {
+    return children.size() == MAX_DEGREE_OF_INDEX_NODE;
   }
 
-  public String toString() {
-    return "<" + name + "," + offset + "," + metadataIndexNodeType + ">";
+  MetadataIndexEntry peek() {
+    if (children.isEmpty()) {
+      return null;
+    }
+    return children.get(0);
   }
 
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(name, outputStream);
-    byteLen += ReadWriteIOUtils.write(offset, outputStream);
-    byteLen += ReadWriteIOUtils.write(metadataIndexNodeType.serialize(), outputStream);
+    byteLen += ReadWriteIOUtils.write(children.size(), outputStream);
+    for (MetadataIndexEntry metadataIndexEntry : children) {
+      byteLen += metadataIndexEntry.serializeTo(outputStream);
+    }
+    byteLen += ReadWriteIOUtils.write(endOffset, outputStream);
     return byteLen;
   }
 
   public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
-    MetadataIndexNode metadataIndex = new MetadataIndexNode();
-    metadataIndex.setName(ReadWriteIOUtils.readString(buffer));
-    metadataIndex.setOffset(ReadWriteIOUtils.readLong(buffer));
-    metadataIndex.setMetadataIndexNodeType(
-        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readShort(buffer)));
-    return metadataIndex;
+    List<MetadataIndexEntry> children = new ArrayList<>();
+    int size = ReadWriteIOUtils.readInt(buffer);
+    for (int i = 0; i < size; i++) {
+      children.add(MetadataIndexEntry.deserializeFrom(buffer));
+    }
+    long offset = ReadWriteIOUtils.readLong(buffer);
+    return new MetadataIndexNode(children, offset);
   }
 }
