@@ -236,6 +236,7 @@ Here is a list of Status Code and related message:
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
 |202|INVALID_HANDLE_STATUS||
+|203|INCOMPATIBLE_VERSION|Incompatible version|
 |298|NODE_DELETE_FAILED_ERROR|Failed while deleting node|
 |299|ALIAS_ALREADY_EXIST_ERROR|Alias already exists|
 |300|TIMESERIES_ALREADY_EXIST_ERROR|Timeseries already exists|
@@ -276,7 +277,6 @@ Here is a list of Status Code and related message:
 |601|NOT_LOGIN_ERROR|Has not logged in|
 |602|NO_PERMISSION_ERROR|No permissions for this operation|
 |603|UNINITIALIZED_AUTH_ERROR|Uninitialized authorizer|
-|203|INCOMPATIBLE_VERSION|Incompatible version|
 
 > All exceptions are refactored in latest version by extracting uniform message into exception classes. Different error codes are added to all exceptions. When an exception is caught and a higher-level exception is thrown, the error code will keep and pass so that users will know the detailed error reason.
 A base exception class "ProcessException" is also added to be extended by all exceptions.

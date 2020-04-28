@@ -237,6 +237,7 @@ try {
 |200|SUCCESS_STATUS||
 |201|STILL_EXECUTING_STATUS||
 |202|INVALID_HANDLE_STATUS||
+|203|INCOMPATIBLE_VERSION|版本不兼容|
 |298|NODE_DELETE_FAILED_ERROR|删除节点失败|
 |299|ALIAS_ALREADY_EXIST_ERROR|路径别名已经存在|
 |300|TIMESERIES_ALREADY_EXIST_ERROR|时间序列已经存在|
@@ -277,8 +278,6 @@ try {
 |601|NOT_LOGIN_ERROR|没有登录|
 |602|NO_PERMISSION_ERROR|没有操作权限|
 |603|UNINITIALIZED_AUTH_ERROR|授权人未初始化|
-|203|INCOMPATIBLE_VERSION|版本不兼容|
-
 
 > 在最新版本中，我们重构了IoTDB的异常类。通过将错误信息统一提取到异常类中，并为所有异常添加不同的错误代码，从而当捕获到异常并引发更高级别的异常时，错误代码将保留并传递，以便用户了解详细的错误原因。
 除此之外，我们添加了一个基础异常类“ProcessException”，由所有异常扩展。
