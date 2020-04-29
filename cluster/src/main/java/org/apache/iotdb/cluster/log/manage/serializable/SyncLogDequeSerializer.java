@@ -67,10 +67,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   // when the removedLogSize larger than this, we actually delete logs
   private long maxRemovedLogSize = ClusterDescriptor.getInstance().getConfig()
       .getMaxRemovedLogSize();
-  // min time of available log
-  private long minAvailableTime = 0;
-  // max time of available log
-  private long maxAvailableTime = Long.MAX_VALUE;
+  // min version of available log
+  private long minAvailableVersion = 0;
+  // max version of available log
+  private long maxAvailableVersion = Long.MAX_VALUE;
   // log dir
   private String logDir;
   // version controller
@@ -178,9 +178,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           }
 
           if (file.getName().startsWith("data")) {
-            long fileTime = getFileTime(file);
+            long fileVersion = getFileVersion(file);
             // this means system down between save meta and data
-            if (fileTime <= minAvailableTime || fileTime >= maxAvailableTime) {
+            if (fileVersion <= minAvailableVersion || fileVersion >= maxAvailableVersion) {
               file.delete();
             } else {
               logFileList.add(file);
@@ -323,7 +323,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
             currentLogOutputStream.close();
           }
           // if system down before delete, we can use this to delete file during recovery
-          maxAvailableTime = getFileTime(currentLogFile);
+          maxAvailableVersion = getFileVersion(currentLogFile);
           serializeMeta(meta);
 
           currentLogFile.delete();
@@ -432,8 +432,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         try (FileInputStream metaReader = new FileInputStream(metaFile)) {
           firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
           removedLogSize = ReadWriteIOUtils.readLong(metaReader);
-          minAvailableTime = ReadWriteIOUtils.readLong(metaReader);
-          maxAvailableTime = ReadWriteIOUtils.readLong(metaReader);
+          minAvailableVersion = ReadWriteIOUtils.readLong(metaReader);
+          maxAvailableVersion = ReadWriteIOUtils.readLong(metaReader);
           meta = LogManagerMeta.deserialize(
               ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
           state = HardState.deserialize(
@@ -446,9 +446,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         state = new HardState();
       }
     }
-    logger.info("Recovered log meta: {}, firstLogPos: {}, removedLogSize: {}, availableTime: [{},"
+    logger.info("Recovered log meta: {}, firstLogPos: {}, removedLogSize: {}, availableVersion: [{},"
             + " {}], state: {}",
-        meta, firstLogPosition, removedLogSize, minAvailableTime, maxAvailableTime, state);
+        meta, firstLogPosition, removedLogSize, minAvailableVersion, maxAvailableVersion, state);
     return meta;
   }
 
@@ -459,8 +459,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
       ReadWriteIOUtils.write(firstLogPosition, tempMetaFileOutputStream);
       ReadWriteIOUtils.write(removedLogSize, tempMetaFileOutputStream);
-      ReadWriteIOUtils.write(minAvailableTime, tempMetaFileOutputStream);
-      ReadWriteIOUtils.write(maxAvailableTime, tempMetaFileOutputStream);
+      ReadWriteIOUtils.write(minAvailableVersion, tempMetaFileOutputStream);
+      ReadWriteIOUtils.write(maxAvailableVersion, tempMetaFileOutputStream);
       ReadWriteIOUtils.write(meta.serialize(), tempMetaFileOutputStream);
       ReadWriteIOUtils.write(state.serialize(), tempMetaFileOutputStream);
 
@@ -517,7 +517,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           logFile.length(), removedLogSize);
       removedLogSize -= logFile.length();
       // if system down before delete, we can use this to delete file during recovery
-      minAvailableTime = getFileTime(logFile);
+      minAvailableVersion = getFileVersion(logFile);
       serializeMeta(meta);
 
       logFile.delete();
@@ -538,7 +538,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     try {
       File newLogFile = createNewLogFile(logDir);
       // save meta first
-      maxAvailableTime = getFileTime(newLogFile) + 1;
+      maxAvailableVersion = getFileVersion(newLogFile) + 1;
       serializeMeta(meta);
 
       logFileList.add(newLogFile);
@@ -549,12 +549,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   /**
-   * get file create time from file
+   * get file version from file
    *
    * @param file file
-   * @return create time from file
+   * @return version from file
    */
-  private long getFileTime(File file) {
+  private long getFileVersion(File file) {
     return Long.parseLong(file.getName().split("-")[1]);
   }
 }
