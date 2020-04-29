@@ -58,6 +58,7 @@ public class TsFileMetaDataCache {
   private long deviceIndexMapEntrySize = 0;
 
   private TsFileMetaDataCache() {
+    logger.info("TsFileMetaDataCache size = " + MEMORY_THRESHOLD_IN_B);
     cache = new LRULinkedHashMap<String, TsFileMetadata>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
       protected long calEntrySize(String key, TsFileMetadata value) {

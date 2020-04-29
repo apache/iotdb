@@ -602,6 +602,9 @@ public class IoTDBDescriptor {
           maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
     }
 
+    logger.info("allocateMemoryForRead = " + conf.getAllocateMemoryForRead());
+    logger.info("allocateMemoryForWrite = " + conf.getAllocateMemoryForWrite());
+
     if (!conf.isMetaDataCacheEnable()) {
       return;
     }
