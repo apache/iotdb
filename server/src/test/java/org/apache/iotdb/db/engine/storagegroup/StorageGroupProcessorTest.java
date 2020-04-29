@@ -274,8 +274,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource = processor.query(deviceId, measurementId, context,
         null, null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
-    // FIXME
-    Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
+    Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
     }

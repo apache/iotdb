@@ -332,8 +332,10 @@ public class TsFileSequenceReader implements AutoCloseable {
         .map(TimeseriesMetadata::getMeasurementId).collect(Collectors.toList())
         .toArray(new String[timeseriesMetadataList.size()]);
 
-    return timeseriesMetadataList
-        .get(Arrays.binarySearch(measurementNameList, path.getMeasurement()));
+    // return null if path does not exist in the TsFile
+    int searchResult;
+    return (searchResult = Arrays.binarySearch(measurementNameList, path.getMeasurement())) >= 0
+        ? timeseriesMetadataList.get(searchResult) : null;
   }
 
   public List<String> getAllDevices() throws IOException {
