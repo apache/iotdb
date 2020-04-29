@@ -501,27 +501,14 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceTimeseriesMetadata;
   }
 
-  private Pair<MetadataIndexEntry, Long> getMetaDataAndEndOffset(
-      MetadataIndexNode metadataIndexNode, String device, MetadataIndexNodeType type)
-      throws IOException {
-    int size = metadataIndexNode.getChildren().size();
-    String[] deviceNameList = metadataIndexNode.getChildren().stream()
-        .map(MetadataIndexEntry::getName).collect(
-            Collectors.toList()).toArray(new String[size]);
-    int deviceIndex = Arrays.binarySearch(deviceNameList, device);
-    if (deviceIndex < 0) {
-      deviceIndex = -deviceIndex - 2;
+  private Pair<MetadataIndexEntry, Long> getMetaDataAndEndOffset(MetadataIndexNode metadataIndex,
+      String name, MetadataIndexNodeType type) throws IOException {
+    Pair<MetadataIndexEntry, Long> childIndexEntry = metadataIndex.getChildIndexEntry(name);
+    if (!childIndexEntry.left.getChildNodeType().equals(type)) {
+      return childIndexEntry;
     }
-    MetadataIndexEntry metadataIndexEntry = metadataIndexNode.getChildren().get(deviceIndex);
-    long endOffset = metadataIndexNode.getEndOffset();
-    if (deviceIndex != size - 1) {
-      endOffset = metadataIndexNode.getChildren().get(deviceIndex + 1).getOffset();
-    }
-    if (!metadataIndexEntry.getChildNodeType().equals(type)) {
-      return new Pair<>(metadataIndexEntry, endOffset);
-    }
-    ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
-    return getMetaDataAndEndOffset(MetadataIndexNode.deserializeFrom(buffer), device, type);
+    ByteBuffer buffer = readData(childIndexEntry.left.getOffset(), childIndexEntry.right);
+    return getMetaDataAndEndOffset(MetadataIndexNode.deserializeFrom(buffer), name, type);
   }
 
   /**

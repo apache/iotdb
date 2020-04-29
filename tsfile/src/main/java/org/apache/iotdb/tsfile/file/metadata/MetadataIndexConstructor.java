@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -49,8 +50,7 @@ public class MetadataIndexConstructor {
     Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
 
     // for timeseriesMetadata of each device
-    for (Map.Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap
-        .entrySet()) {
+    for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
       if (entry.getValue().isEmpty()) {
         continue;
       }
@@ -137,13 +137,13 @@ public class MetadataIndexConstructor {
         metadataIndexNode.serializeTo(out.wrapAsStream());
       }
       addCurrentIndexNodeToQueueAndReset(currentIndexNode, metadataIndexNodeQueue, out);
+      currentIndexNode = new MetadataIndexNode();
       queueSize = metadataIndexNodeQueue.size();
     }
     return metadataIndexNodeQueue.poll();
   }
 
-  private static void addCurrentIndexNodeToQueueAndReset(
-      MetadataIndexNode currentIndexNode,
+  private static void addCurrentIndexNodeToQueueAndReset(MetadataIndexNode currentIndexNode,
       Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out) throws IOException {
     currentIndexNode.setEndOffset(out.getPosition());
     metadataIndexNodeQueue.add(currentIndexNode);

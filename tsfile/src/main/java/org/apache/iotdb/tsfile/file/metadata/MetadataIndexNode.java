@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class MetadataIndexNode {
@@ -89,5 +90,36 @@ public class MetadataIndexNode {
     }
     long offset = ReadWriteIOUtils.readLong(buffer);
     return new MetadataIndexNode(children, offset);
+  }
+
+  public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key) {
+    int index = binarySearchInChildren(key);
+    long endOffset;
+    if (index != children.size() - 1) {
+      endOffset = children.get(index + 1).getOffset();
+    } else {
+      endOffset = this.endOffset;
+    }
+    return new Pair<>(children.get(index), endOffset);
+  }
+
+  public int binarySearchInChildren(String key) {
+    int low = 0;
+    int high = children.size() - 1;
+
+    while (low <= high) {
+      int mid = (low + high) >>> 1;
+      MetadataIndexEntry midVal = children.get(mid);
+      int cmp = midVal.getName().compareTo(key);
+
+      if (cmp < 0) {
+        low = mid + 1;
+      } else if (cmp > 0) {
+        high = mid - 1;
+      } else {
+        return mid; // key found
+      }
+    }
+    return low - 1;  // key not found
   }
 }
