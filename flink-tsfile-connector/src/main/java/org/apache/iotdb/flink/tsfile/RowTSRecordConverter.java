@@ -107,7 +107,7 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
 	}
 
 	@Override
-	public void covertAndCollect(Row input, Collector<TSRecord> collector) throws IOException {
+	public void convert(Row input, Collector<TSRecord> collector) throws IOException {
 		long timestamp = (long) input.getField(timeIndex);
 		for (TSRecord tsRecord : reuse) {
 			tsRecord.dataPointList.clear();

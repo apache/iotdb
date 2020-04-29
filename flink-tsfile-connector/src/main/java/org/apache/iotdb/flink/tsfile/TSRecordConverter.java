@@ -26,11 +26,36 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import java.io.IOException;
 import java.io.Serializable;
 
+/**
+ * The converter describes how to turn a data object into multiple TSRecord objects, which is required by the
+ * {@link TSRecordOutputFormat}.
+ *
+ * @param <T> The type of the upstream data.
+ */
 public interface TSRecordConverter<T> extends Serializable {
 
+	/**
+	 * Opens current converter.
+	 *
+	 * @param schema The schema of the TSRecord.
+	 */
 	void open(Schema schema) throws IOException;
 
-	void covertAndCollect(T input, Collector<TSRecord> collector) throws IOException;
+	/**
+	 * Converts the input data into one or multiple TSRecords. The collector in param list is used to collect the
+	 * output.
+	 *
+	 * When this method is called, the converter is guaranteed to be opened.
+	 *
+	 * @param input The input data.
+	 * @param collector The collector used to collect the output.
+	 */
+	void convert(T input, Collector<TSRecord> collector) throws IOException;
 
+	/**
+	 * Method that marks the end of the life-cycle of this converter.
+	 *
+	 * When this method is called, the converter is guaranteed to be opened.
+	 */
 	void close() throws IOException;
 }
