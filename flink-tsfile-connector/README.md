@@ -108,11 +108,11 @@ String[] filedNames = {
 TypeInformation[] typeInformations = new TypeInformation[] {
 	Types.LONG,
 	Types.FLOAT,
-	Types.INT,
-	Types.INT,
+	Types.LONG,
+	Types.LONG,
 	Types.FLOAT,
-	Types.INT,
-	Types.INT
+	Types.LONG,
+	Types.LONG
 };
 RowTypeInfo rowTypeInfo = new RowTypeInfo(typeInformations, filedNames);
 Schema schema = new Schema();

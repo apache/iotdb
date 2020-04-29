@@ -120,21 +120,27 @@ public class RowTSRecordConverter implements TSRecordConverter<Row> {
 			DataPoint templateDataPoint = templateRecord.dataPointList.get(dataPointIndexMapping[i]);
 			Object o = input.getField(i);
 			if (o != null) {
-				Class typeClass = o.getClass();
-				if (typeClass == Boolean.class || typeClass == boolean.class) {
-					templateDataPoint.setBoolean((Boolean) o);
-				} else if (typeClass == Integer.class || typeClass == int.class) {
-					templateDataPoint.setInteger((Integer) o);
-				} else if (typeClass == Long.class || typeClass == long.class) {
-					templateDataPoint.setLong((Long) o);
-				} else if (typeClass == Float.class || typeClass == float.class) {
-					templateDataPoint.setFloat((Float) o);
-				} else if (typeClass == Double.class || typeClass == double.class) {
-					templateDataPoint.setDouble((Double) o);
-				} else if (typeClass == String.class) {
-					templateDataPoint.setString(Binary.valueOf((String) o));
-				} else {
-					throw new UnSupportedDataTypeException(typeClass.toString());
+				switch (templateDataPoint.getType()) {
+					case BOOLEAN:
+						templateDataPoint.setBoolean((Boolean) o);
+						break;
+					case INT32:
+						templateDataPoint.setInteger((Integer) o);
+						break;
+					case INT64:
+						templateDataPoint.setLong((Long) o);
+						break;
+					case FLOAT:
+						templateDataPoint.setFloat((Float) o);
+						break;
+					case DOUBLE:
+						templateDataPoint.setDouble((Double) o);
+						break;
+					case TEXT:
+						templateDataPoint.setString(Binary.valueOf((String) o));
+						break;
+					default:
+						templateDataPoint.setString(Binary.valueOf(o.toString()));
 				}
 				reuse[tsRecordIndexMapping[i]].addTuple(templateDataPoint);
 			}
