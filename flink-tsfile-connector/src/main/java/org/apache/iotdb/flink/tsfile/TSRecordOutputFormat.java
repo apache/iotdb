@@ -70,7 +70,7 @@ public class TSRecordOutputFormat<T> extends TsFileOutputFormat<T> {
 	@Override
 	public void writeRecord(T t) throws IOException {
 		try {
-			converter.covertAndCollect(t, tsRecordCollector);
+			converter.convert(t, tsRecordCollector);
 		} catch (FlinkRuntimeException e) {
 			throw new IOException(e.getCause());
 		}

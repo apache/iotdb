@@ -91,7 +91,7 @@ for (String s : result) {
 }
 ```
 
-### TSRecordOutputFormat Example
+### Example of TSRecordOutputFormat 
 
 1. create TSRecordOutputFormat with default RowTSRecordConverter.
 

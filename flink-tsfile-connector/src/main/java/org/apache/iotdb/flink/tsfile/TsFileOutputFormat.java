@@ -40,6 +40,10 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Optional;
 
+/**
+ * The abstract base class of the output formats which write data to TsFile.
+ * @param <T> The input data type.
+ */
 public abstract class TsFileOutputFormat<T> extends FileOutputFormat<T> {
 
 	protected Schema schema;

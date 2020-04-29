@@ -40,7 +40,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * The example of writing TsFile via Flink DataSet API.
+ * The example of writing to TsFile via Flink DataSet API.
  */
 public class FlinkTsFileBatchSink {
 
