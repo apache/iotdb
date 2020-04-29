@@ -23,15 +23,22 @@ import com.alibaba.fastjson.JSONException;
 import com.alibaba.fastjson.JSONObject;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
@@ -62,11 +69,26 @@ public class RestService {
   private static final Logger logger = LoggerFactory.getLogger(RestService.class);
   private IPlanExecutor executor;
 
+  // Record the username for every http connection (session).
+  private Map<Long, String> httpIdUsernameMap = new ConcurrentHashMap<>();
+  private Map<Long, ZoneId> httpIdZoneIdMap = new ConcurrentHashMap<>();
+
+  // The httpId is unique in one IoTDB instance.
+  private AtomicLong httpIdGenerator = new AtomicLong();
+
+  // (sessionId -> Set(statementId))
+  private Map<Long, Set<Long>> sessionId2StatementId = new ConcurrentHashMap<>();
+  // (statementId -> Set(queryId))
+  private Map<Long, Set<Long>> statementId2QueryId = new ConcurrentHashMap<>();
+
+  // (queryId -> QueryDataSet)
+  private Map<Long, QueryDataSet> queryId2DataSet = new ConcurrentHashMap<>();
+
   private RestService() {
     try {
       executor = new PlanExecutor();
     } catch (QueryProcessException e) {
-      logger.error(String.valueOf(e));
+      logger.error(e.getMessage());
     }
   }
 
@@ -74,7 +96,11 @@ public class RestService {
   private String username;
 
   private List<TimeValue> querySeries(String s, Pair<String, String> timeRange)
-      throws QueryProcessException, AuthException, IOException, MetadataException, QueryFilterOptimizationException, SQLException, StorageEngineException {
+      throws QueryProcessException, AuthException, IOException,
+      MetadataException, QueryFilterOptimizationException, SQLException,
+      StorageEngineException {
+
+    long queryId;
     String from = timeRange.left;
     String to = timeRange.right;
     String suffixPath = s.substring(s.lastIndexOf('.') + 1);
@@ -94,9 +120,11 @@ public class RestService {
       throw new AuthException("Don't have permissions");
     }
 
-    QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    QueryDataSet queryDataSet = executor.processQuery(plan, context);
+    // generate the queryId for the operation
+    queryId = generateQueryId(true);
     String[] args;
+
+    QueryDataSet queryDataSet = createQueryDataSet(queryId, plan);
     List<TimeValue> list = new ArrayList<>();
     while(queryDataSet.hasNext()) {
       TimeValue timeValue = new TimeValue();
@@ -106,6 +134,24 @@ public class RestService {
       list.add(timeValue);
     }
     return list;
+  }
+
+  private long generateQueryId(boolean isDataQuery) {
+    return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
+  }
+
+  private QueryContext genQueryContext(long queryId) {
+    return new QueryContext(queryId);
+  }
+
+  private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
+      IOException, MetadataException, SQLException {
+
+    QueryContext context = genQueryContext(queryId);
+    QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
+    queryId2DataSet.put(queryId, queryDataSet);
+    return queryDataSet;
   }
 
   private boolean checkLogin() {
@@ -224,6 +270,15 @@ public class RestService {
     }
     return executor.processNonQuery(plan);
   }
+
+  public boolean executeStatement(String statement) {
+    if(checkLogin()) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return false;
+    }
+    return true;
+  }
+
 
   public static RestService getInstance() {
     return RestServiceHolder.INSTANCE;
