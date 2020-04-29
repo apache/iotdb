@@ -545,10 +545,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   public void setLeader(Node leader) {
-    if (!Objects.equals(leader, this.leader)) {
-      if (!Objects.equals(leader, this.thisNode)) {
-        logger.info("{} has become a follower of {}", getName(), leader);
-      }
+    if (!Objects.equals(leader, this.thisNode)) {
+      logger.info("{} has become a follower of {}", getName(), leader);
       this.leader = leader;
     }
   }
