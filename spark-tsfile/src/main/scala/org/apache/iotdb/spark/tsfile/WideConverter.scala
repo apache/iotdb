@@ -62,10 +62,10 @@ object WideConverter extends Converter {
   def getSeries(tsFileMetaData: TsFileMetadata, reader: TsFileSequenceReader): util.ArrayList[Series] = {
     val series = new util.ArrayList[Series]()
 
-    val devices = tsFileMetaData.getMetadataIndex
+    val devices = reader.getAllDevices
     val measurements = reader.getAllMeasurements
 
-    devices.getChildren.foreach(d => {
+    devices.foreach(d => {
       measurements.foreach(m => {
         val fullPath = d + "." + m._1
         series.add(new Series(fullPath, m._2)
@@ -92,10 +92,10 @@ object WideConverter extends Converter {
       val in = new HDFSInput(f.getPath, conf)
       val reader = new TsFileSequenceReader(in)
       val tsFileMetaData = reader.readFileMetadata
-      val devices = tsFileMetaData.getMetadataIndex
+      val devices = reader.getAllDevices
       val measurements = reader.getAllMeasurements
 
-      devices.getChildren.foreach(d => {
+      devices.foreach(d => {
         measurements.foreach(m => {
           val fullPath = d + "." + m._1
           if (!seriesSet.contains(fullPath)) {
@@ -133,12 +133,12 @@ object WideConverter extends Converter {
     } else { // Remove nonexistent schema according to the current file's metadata.
       // This may happen when queried TsFiles in the same folder do not have the same schema.
 
-      val devices = tsFileMetaData.getMetadataIndex
+      val devices = reader.getAllDevices
       val measurementIds = reader.getAllMeasurements.keySet()
       requiredSchema.foreach(f => {
         if (!QueryConstant.RESERVED_TIME.equals(f.name)) {
           val path = new org.apache.iotdb.tsfile.read.common.Path(f.name)
-          if (devices.getChildren.contains(path.getDevice) && measurementIds.contains(path.getMeasurement)) {
+          if (devices.contains(path.getDevice) && measurementIds.contains(path.getMeasurement)) {
             queriedSchema = queriedSchema.add(f)
           }
         }

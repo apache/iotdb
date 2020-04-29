@@ -44,10 +44,6 @@ public class MetadataIndexNode {
     this.endOffset = endOffset;
   }
 
-  public static int getMaxDegreeOfIndexNode() {
-    return MAX_DEGREE_OF_INDEX_NODE;
-  }
-
   public List<MetadataIndexEntry> getChildren() {
     return children;
   }

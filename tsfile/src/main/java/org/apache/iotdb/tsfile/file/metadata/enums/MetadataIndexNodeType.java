@@ -27,12 +27,12 @@ public enum MetadataIndexNodeType {
   INTERNAL_DEVICE, LEAF_DEVICE, INTERNAL_MEASUREMENT, LEAF_MEASUREMENT;
 
   /**
-   * deserialize short number.
+   * deserialize byte number.
    *
-   * @param i short number
+   * @param i byte number
    * @return MetadataIndexNodeType
    */
-  public static MetadataIndexNodeType deserialize(short i) {
+  public static MetadataIndexNodeType deserialize(byte i) {
     if (i >= 4) {
       throw new IllegalArgumentException("Invalid input: " + i);
     }
@@ -49,19 +49,19 @@ public enum MetadataIndexNodeType {
   }
 
   public static MetadataIndexNodeType deserializeFrom(ByteBuffer buffer) {
-    return deserialize(buffer.getShort());
+    return deserialize(buffer.get());
   }
 
   public static int getSerializedSize() {
-    return Short.BYTES;
+    return Byte.BYTES;
   }
 
   public void serializeTo(ByteBuffer byteBuffer) {
-    byteBuffer.putShort(serialize());
+    byteBuffer.put(serialize());
   }
 
   public void serializeTo(DataOutputStream outputStream) throws IOException {
-    outputStream.writeShort(serialize());
+    outputStream.write(serialize());
   }
 
   /**
@@ -69,7 +69,7 @@ public enum MetadataIndexNodeType {
    *
    * @return -enum type
    */
-  public short serialize() {
+  public byte serialize() {
     switch (this) {
       case INTERNAL_DEVICE:
         return 0;

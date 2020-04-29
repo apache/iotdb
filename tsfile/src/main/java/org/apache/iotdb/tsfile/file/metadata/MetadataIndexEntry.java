@@ -29,16 +29,19 @@ public class MetadataIndexEntry {
 
   private String name;
   private long offset;
-  private MetadataIndexNodeType metadataIndexNodeType;
+
+  /**
+   * type of the child node at offset
+   */
+  private MetadataIndexNodeType childNodeType;
 
   public MetadataIndexEntry() {
   }
 
-  public MetadataIndexEntry(String name, long offset,
-      MetadataIndexNodeType metadataIndexNodeType) {
+  public MetadataIndexEntry(String name, long offset, MetadataIndexNodeType childNodeType) {
     this.name = name;
     this.offset = offset;
-    this.metadataIndexNodeType = metadataIndexNodeType;
+    this.childNodeType = childNodeType;
   }
 
   public String getName() {
@@ -49,8 +52,8 @@ public class MetadataIndexEntry {
     return offset;
   }
 
-  public MetadataIndexNodeType getMetadataIndexNodeType() {
-    return metadataIndexNodeType;
+  public MetadataIndexNodeType getChildNodeType() {
+    return childNodeType;
   }
 
   public void setName(String name) {
@@ -61,20 +64,19 @@ public class MetadataIndexEntry {
     this.offset = offset;
   }
 
-  public void setMetadataIndexNodeType(
-      MetadataIndexNodeType metadataIndexNodeType) {
-    this.metadataIndexNodeType = metadataIndexNodeType;
+  public void setChildNodeType(MetadataIndexNodeType childNodeType) {
+    this.childNodeType = childNodeType;
   }
 
   public String toString() {
-    return "<" + name + "," + offset + "," + metadataIndexNodeType + ">";
+    return "<" + name + "," + offset + "," + childNodeType + ">";
   }
 
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
     byteLen += ReadWriteIOUtils.write(name, outputStream);
     byteLen += ReadWriteIOUtils.write(offset, outputStream);
-    byteLen += ReadWriteIOUtils.write(metadataIndexNodeType.serialize(), outputStream);
+    byteLen += ReadWriteIOUtils.write(childNodeType.serialize(), outputStream);
     return byteLen;
   }
 
@@ -82,8 +84,8 @@ public class MetadataIndexEntry {
     MetadataIndexEntry metadataIndex = new MetadataIndexEntry();
     metadataIndex.setName(ReadWriteIOUtils.readString(buffer));
     metadataIndex.setOffset(ReadWriteIOUtils.readLong(buffer));
-    metadataIndex.setMetadataIndexNodeType(
-        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readShort(buffer)));
+    metadataIndex
+        .setChildNodeType(MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer)));
     return metadataIndex;
   }
 }

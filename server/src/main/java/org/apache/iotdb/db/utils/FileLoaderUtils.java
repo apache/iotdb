@@ -20,7 +20,7 @@ package org.apache.iotdb.db.utils;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -66,16 +66,16 @@ public class FileLoaderUtils {
 
   public static void updateTsFileResource(TsFileSequenceReader reader,
       TsFileResource tsFileResource) throws IOException {
-    for (String device : reader.getAllDevices()) {
-      Map<String, TimeseriesMetadata> chunkMetadataListInOneDevice = reader
-          .readDeviceMetadata(device);
-      for (TimeseriesMetadata timeseriesMetaData : chunkMetadataListInOneDevice.values()) {
-        tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
-        tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());
+    for (Entry<String, List<TimeseriesMetadata>> entry : reader.getAllTimeseriesMetadata()
+        .entrySet()) {
+      for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
+        tsFileResource
+            .updateStartTime(entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
+        tsFileResource
+            .updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
       }
     }
   }
-
 
   /**
    * @param resource TsFile

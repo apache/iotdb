@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -156,10 +157,12 @@ public class TsFileRecoverPerformer {
   private void recoverResourceFromReader() throws IOException {
     try (TsFileSequenceReader reader =
         new TsFileSequenceReader(resource.getFile().getAbsolutePath(), false)) {
-      for (String deviceId : reader.getAllDevices()) {
-        for (TimeseriesMetadata timeseriesMetadata : reader.readDeviceMetadata(deviceId).values()) {
-          resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getStartTime());
-          resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getEndTime());
+      for (Entry<String, List<TimeseriesMetadata>> entry : reader.getAllTimeseriesMetadata()
+          .entrySet()) {
+        for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
+          resource
+              .updateStartTime(entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
+          resource.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
         }
       }
     }

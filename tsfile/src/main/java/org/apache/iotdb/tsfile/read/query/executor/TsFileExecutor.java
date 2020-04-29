@@ -46,7 +46,6 @@ import org.slf4j.LoggerFactory;
 
 public class TsFileExecutor implements QueryExecutor {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileExecutor.class);
   private IMetadataQuerier metadataQuerier;
   private IChunkLoader chunkLoader;
 
