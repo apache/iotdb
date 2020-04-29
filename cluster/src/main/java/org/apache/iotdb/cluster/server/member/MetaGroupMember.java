@@ -226,6 +226,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     LogApplier metaLogApplier = new MetaLogApplier(this);
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
     this.term.set(logManager.getHardState().getCurrentTerm());
+    voteFor = logManager.getHardState().getVoteFor();
 
     setThisNode(thisNode);
     // load the identifier from the disk or generate a new one
@@ -1550,7 +1551,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     request.setDeviceMeasurements(deviceMeasurements);
 
     DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
-      (RemoteQueryContext) context, this, partitionGroup);
+        (RemoteQueryContext) context, this, partitionGroup);
 
     DataClient client = dataSourceInfo.nextDataClient(true, Long.MIN_VALUE);
     if (client != null) {
@@ -1879,7 +1880,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
 
     DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
-      (RemoteQueryContext) context, this, orderedNodes);
+        (RemoteQueryContext) context, this, orderedNodes);
 
     DataClient client = dataSourceInfo.nextDataClient(false, Long.MIN_VALUE);
     if (client != null) {

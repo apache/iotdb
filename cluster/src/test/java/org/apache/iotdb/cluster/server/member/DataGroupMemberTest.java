@@ -166,7 +166,8 @@ public class DataGroupMemberTest extends MemberTest {
       }
 
       @Override
-      public void updateHardState(long currentTerm){}
+      public void updateHardState(long currentTerm, Node leader) {
+      }
 
 
       @Override
@@ -250,42 +251,95 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testProcessElectionRequest() {
+  public void testStartElection() {
+    class TestHandler implements AsyncMethodCallback<Long> {
+
+      private long response;
+
+      @Override
+      public void onComplete(Long resp) {
+        response = resp;
+      }
+
+      @Override
+      public void onError(Exception e) {
+      }
+
+      public long getResponse() {
+        return response;
+      }
+    }
     List<Log> dataLogs = TestUtils.prepareTestLogs(11);
     dataGroupMember.getLogManager().append(dataLogs);
     dataGroupMember.getTerm().set(10);
     testMetaMember.getTerm().set(10);
     List<Log> metaLogs = TestUtils.prepareTestLogs(6);
     metaLogManager.append(metaLogs);
+    Node voteFor = new Node("127.0.0.1", 30000, 0, 40000);
+    Node elector = new Node("127.0.0.1", 30001, 1, 40001);
 
-    // a valid request
+    // a request with smaller term
     ElectionRequest electionRequest = new ElectionRequest();
-    electionRequest.setTerm(11);
+    electionRequest.setTerm(1);
     electionRequest.setLastLogIndex(100);
     electionRequest.setLastLogTerm(100);
     electionRequest.setDataLogLastTerm(100);
     electionRequest.setDataLogLastIndex(100);
-    assertEquals(Response.RESPONSE_AGREE, dataGroupMember.processElectionRequest(electionRequest));
+    TestHandler handler = new TestHandler();
+    dataGroupMember.startElection(electionRequest, handler);
+    assertEquals(10, handler.getResponse());
 
-    // a request with too small term
-    electionRequest.setTerm(1);
-    assertEquals(11, dataGroupMember.processElectionRequest(electionRequest));
+    // a valid request with same term and voteFor is empty
+    electionRequest.setTerm(10);
+    handler = new TestHandler();
+    dataGroupMember.startElection(electionRequest, handler);
+    assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
 
-    // a request with stale meta log
-    electionRequest.setTerm(11);
+    dataGroupMember.setVoteFor(voteFor);
+
+    // a request with same term and voteFor is not empty and elector is not same to voteFor
+    // should reject election
+    electionRequest.setTerm(10);
+    electionRequest.setElector(elector);
+    handler = new TestHandler();
+    dataGroupMember.startElection(electionRequest, handler);
+    assertEquals(Response.RESPONSE_REJECT, handler.getResponse());
+
+    // a valid request with same term and voteFor is not empty and elector is same to voteFor
+    electionRequest.setTerm(10);
+    electionRequest.setElector(voteFor);
+    handler = new TestHandler();
+    dataGroupMember.startElection(electionRequest, handler);
+    assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
+
+    // a request with larger term and stale meta log
+    // should reject election but update term
+    electionRequest.setTerm(13);
     electionRequest.setLastLogIndex(1);
     electionRequest.setLastLogTerm(1);
-    assertEquals(Response.RESPONSE_META_LOG_STALE,
-        dataGroupMember.processElectionRequest(electionRequest));
+    handler = new TestHandler();
+    dataGroupMember.startElection(electionRequest, handler);
+    assertEquals(Response.RESPONSE_META_LOG_STALE, handler.getResponse());
+    assertEquals(13, dataGroupMember.getTerm().get());
 
-    // a request with stale data log
-    electionRequest.setTerm(12);
+    // a request with with larger term and stale data log
+    // should reject election but update term
+    electionRequest.setTerm(14);
     electionRequest.setLastLogIndex(100);
     electionRequest.setLastLogTerm(100);
     electionRequest.setDataLogLastTerm(1);
     electionRequest.setDataLogLastIndex(1);
-    assertEquals(Response.RESPONSE_LOG_MISMATCH,
-        dataGroupMember.processElectionRequest(electionRequest));
+    dataGroupMember.startElection(electionRequest, handler);
+    assertEquals(Response.RESPONSE_LOG_MISMATCH, handler.getResponse());
+    assertEquals(14, dataGroupMember.getTerm().get());
+
+    // a valid request with with larger term
+    electionRequest.setTerm(15);
+    electionRequest.setDataLogLastTerm(100);
+    electionRequest.setDataLogLastIndex(100);
+    dataGroupMember.startElection(electionRequest, handler);
+    assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
+    assertEquals(15, dataGroupMember.getTerm().get());
   }
 
   @Test

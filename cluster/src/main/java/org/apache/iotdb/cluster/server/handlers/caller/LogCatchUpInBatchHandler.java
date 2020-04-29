@@ -66,7 +66,7 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
         if (currTerm < resp) {
           logger.debug("{}: Received a rejection because term is stale: {}/{}", memberName,
               currTerm, resp);
-          raftMember.retireFromLeader(resp);
+          raftMember.stepDown(resp);
         }
       }
       synchronized (appendSucceed) {

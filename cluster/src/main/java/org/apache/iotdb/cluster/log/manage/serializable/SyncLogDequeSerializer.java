@@ -188,7 +188,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       }
 
     } catch (IOException e) {
-      logger.error("Error in init log file: " + e.getMessage());
+      logger.error("Error in init log file: ", e);
     }
   }
 
