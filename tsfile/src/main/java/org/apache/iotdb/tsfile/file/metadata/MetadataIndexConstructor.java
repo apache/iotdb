@@ -35,6 +35,7 @@ public class MetadataIndexConstructor {
       .getMaxDegreeOfIndexNode();
 
   public MetadataIndexConstructor() {
+    throw new IllegalStateException("Utility class");
   }
 
   public static MetadataIndexNode constructMetadataIndex(Map<String, List<TimeseriesMetadata>>
@@ -113,12 +114,10 @@ public class MetadataIndexConstructor {
     while (queueSize >= MAX_DEGREE_OF_INDEX_NODE) {
       for (int i = 0; i < queueSize; i++) {
         metadataIndexNode = metadataIndexNodeQueue.poll();
-        if (i % MAX_DEGREE_OF_INDEX_NODE == 0) {
-          if (currentIndexNode.isFull()) {
-            currentIndexNode.setEndOffset(out.getPosition());
-            metadataIndexNodeQueue.add(currentIndexNode);
-            currentIndexNode = new MetadataIndexNode();
-          }
+        if (i % MAX_DEGREE_OF_INDEX_NODE == 0 && currentIndexNode.isFull()) {
+          currentIndexNode.setEndOffset(out.getPosition());
+          metadataIndexNodeQueue.add(currentIndexNode);
+          currentIndexNode = new MetadataIndexNode();
         }
         currentIndexNode.addEntry(new MetadataIndexEntry(metadataIndexNode.peek().getName(),
             out.getPosition(), type));

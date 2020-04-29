@@ -59,8 +59,9 @@ public class IoTDBDescriptor {
   }
 
   public void replaceProps(String[] params) {
+    String RPC_PORT = "rpc_port";
     Options options = new Options();
-    Option rpcPort = new Option("rpc_port", "rpc_port", true,
+    Option rpcPort = new Option(RPC_PORT, RPC_PORT, true,
         "The jdbc service listens on the port");
     rpcPort.setRequired(false);
     options.addOption(rpcPort);
@@ -70,8 +71,8 @@ public class IoTDBDescriptor {
       logger.error("replaces properties failed, use default conf params");
       return;
     } else {
-      if (commandLine.hasOption("rpc_port")) {
-        conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue("rpc_port")));
+      if (commandLine.hasOption(RPC_PORT)) {
+        conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue(RPC_PORT)));
         logger.debug("replace rpc port with={}", conf.getRpcPort());
       }
     }
