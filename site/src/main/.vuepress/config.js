@@ -271,7 +271,9 @@ var config = {
 							['6-System Tools/4-Watermark Tool','Watermark Tool'],
 							['6-System Tools/5-Log Visualizer','Log Visualizer'],
 							['6-System Tools/6-Query History Visualization Tool','Query History Visualization Tool'],
-							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools']
+							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools'],
+							['6-System Tools/8-Load External Tsfile','Load External Tsfile']
+							
 						]
 					},
 					{
@@ -685,7 +687,8 @@ var config = {
 							['6-System Tools/4-Watermark Tool','水印工具'],
 							['6-System Tools/5-Log Visualizer','日志可视化工具'],
 							['6-System Tools/6-Query History Visualization Tool','查询历史可视化工具'],
-							['6-System Tools/7-Monitor and Log Tools','监控与日志工具']
+							['6-System Tools/7-Monitor and Log Tools','监控与日志工具'],
+							['6-System Tools/8-Load External Tsfile','加载外部tsfile文件']
 						]
 					},
 					{
