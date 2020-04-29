@@ -763,6 +763,9 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testAppendEntry() {
+    System.out.println("Start testAppendEntry()");
+    System.out.println("Term before append: " + metaGroupMember.getTerm().get());
+
     metaGroupMember.setPartitionTable(null);
     CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
     log.setCurrLogIndex(0);
@@ -775,9 +778,11 @@ public class MetaGroupMemberTest extends MemberTest {
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
     metaGroupMember.appendEntry(request, handler);
     assertEquals(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE, (long) result.get());
+    System.out.println("Term after first append: " + metaGroupMember.getTerm().get());
 
     metaGroupMember.setPartitionTable(partitionTable);
     metaGroupMember.appendEntry(request, handler);
+    System.out.println("Term after second append: " + metaGroupMember.getTerm().get());
     assertEquals(Response.RESPONSE_AGREE, (long) result.get());
   }
 
