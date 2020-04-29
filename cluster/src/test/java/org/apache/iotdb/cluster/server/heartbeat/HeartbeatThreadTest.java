@@ -26,6 +26,7 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -56,7 +57,7 @@ public class HeartbeatThreadTest {
   boolean respondToElection;
   boolean testHeartbeat;
 
-  Set<Integer> receivedNodes = new HashSet<>();
+  Set<Integer> receivedNodes = new ConcurrentSkipListSet<>();
   PartitionGroup partitionGroup;
 
   RaftMember getMember() {

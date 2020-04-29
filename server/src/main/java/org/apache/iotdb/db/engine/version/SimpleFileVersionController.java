@@ -54,6 +54,12 @@ public class SimpleFileVersionController implements VersionController {
     restore();
   }
 
+  public SimpleFileVersionController(String directoryPath)
+      throws IOException {
+    this.directoryPath = directoryPath;
+    restore();
+  }
+
   public static long getSaveInterval() {
     return saveInterval;
   }
