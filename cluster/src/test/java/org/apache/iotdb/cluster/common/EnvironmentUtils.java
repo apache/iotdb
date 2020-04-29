@@ -20,7 +20,8 @@ package org.apache.iotdb.cluster.common;
 
 import java.io.File;
 import java.io.IOException;
-import org.apache.commons.io.FileUtils;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -130,8 +131,23 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    FileUtils.deleteDirectory(new File(dir));
+    deleteRecursively(new File(dir));
   }
+
+  public static void deleteRecursively(File file) throws IOException {
+    if (file.exists()) {
+      if (file.isDirectory()) {
+        File[] files = file.listFiles();
+        if (files != null) {
+          for (File child : files) {
+            deleteRecursively(child);
+          }
+        }
+      }
+      Files.delete(Paths.get(file.getAbsolutePath()));
+    }
+  }
+
 
   /**
    * disable the system monitor</br> this function should be called before all code in the setup
