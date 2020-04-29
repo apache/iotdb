@@ -61,6 +61,7 @@ public class HeartbeatThread implements Runnable {
 
   @Override
   public void run() {
+    logger.info("{}: Heartbeat thread starts...", memberName);
     // sleep random time to reduce first election conflicts
     long electionWait = ClusterConstant.ELECTION_LEAST_TIME_OUT_MS
         + Math.abs(random.nextLong() % ClusterConstant.ELECTION_RANDOM_TIME_OUT_MS);
@@ -70,7 +71,6 @@ public class HeartbeatThread implements Runnable {
     } catch (InterruptedException e) {
       logger.error("Heartbeat thread first sleep failed...", e);
     }
-    logger.info("{}: Heartbeat thread starts...", memberName);
     while (!Thread.interrupted()) {
       try {
         switch (localMember.getCharacter()) {

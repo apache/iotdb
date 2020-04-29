@@ -338,10 +338,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     long resp = verifyElector(thatDataLastLogIndex, thatDataLastLogTerm);
     if (resp == Response.RESPONSE_AGREE) {
-      setCharacter(NodeCharacter.FOLLOWER);
-      lastHeartbeatReceivedTime = System.currentTimeMillis();
-      setVoteFor(electionRequest.getElector());
-      updateHardState(thatTerm, getVoteFor());
       logger.info(
           "{} accepted an dataGroup election request, term:{}/{}, dataLogIndex:{}/{}, dataLogTerm:{}/{}, metaLogIndex:{}/{},metaLogTerm:{}/{}",
           name, thatTerm, term.get(), thatDataLastLogIndex, logManager.getLastLogIndex(),
@@ -349,6 +345,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           logManager.getLastLogTerm(), thatMetaLastLogIndex,
           metaGroupMember.getLogManager().getLastLogIndex(), thatMetaLastLogTerm,
           metaGroupMember.getLogManager().getLastLogTerm());
+      setCharacter(NodeCharacter.FOLLOWER);
+      lastHeartbeatReceivedTime = System.currentTimeMillis();
+      setVoteFor(electionRequest.getElector());
+      updateHardState(thatTerm, getVoteFor());
     } else {
       logger.info(
           "{} rejected an dataGroup election request, term:{}/{}, dataLogIndex:{}/{}, dataLogTerm:{}/{}, metaLogIndex:{}/{},metaLogTerm:{}/{}",

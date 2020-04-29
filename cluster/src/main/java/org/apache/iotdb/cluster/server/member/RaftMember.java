@@ -279,6 +279,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return;
       }
       if (electionRequest.getTerm() > currentTerm) {
+        logger.info(
+            "{} received an election from elector {} which has bigger term {} than localTerm {}, raftMember should step down first and then continue to decide whether to grant it's vote by log status.",
+            name,
+            electionRequest.getElector(),electionRequest.getTerm() ,currentTerm);
         stepDown(electionRequest.getTerm());
       }
 
@@ -628,14 +632,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     long resp = verifyElector(thatLastLogIndex,
         thatLastLogTerm);
     if (resp == Response.RESPONSE_AGREE) {
-      setCharacter(NodeCharacter.FOLLOWER);
-      lastHeartbeatReceivedTime = System.currentTimeMillis();
-      setVoteFor(electionRequest.getElector());
-      updateHardState(thatTerm, getVoteFor());
       logger.info("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
           name, thatTerm, term.get(), thatLastLogIndex, logManager.getLastLogIndex(),
           thatLastLogTerm,
           logManager.getLastLogTerm());
+      setCharacter(NodeCharacter.FOLLOWER);
+      lastHeartbeatReceivedTime = System.currentTimeMillis();
+      setVoteFor(electionRequest.getElector());
+      updateHardState(thatTerm, getVoteFor());
     } else {
       logger.info("{} rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
           name, thatTerm, term.get(), thatLastLogIndex, logManager.getLastLogIndex(),
