@@ -163,6 +163,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
       if (logFiles != null) {
         for (File file : logFiles) {
+          if (file.length() == 0) {
+            file.delete();
+            continue;
+          }
+
           if (file.getName().startsWith("data")) {
             long fileTime = getFileTime(file);
             // this means system down between save meta and data
