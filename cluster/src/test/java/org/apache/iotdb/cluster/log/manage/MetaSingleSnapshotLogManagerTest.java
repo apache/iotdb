@@ -72,14 +72,4 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
     assertEquals(4, snapshot.getLastLogIndex());
     assertEquals(4, snapshot.getLastLogTerm());
   }
-
-  @Test
-  public void testSetSnapshot() {
-    List<Log> testLogs = TestUtils.prepareTestLogs(10);
-    SimpleSnapshot simpleSnapshot = new SimpleSnapshot(testLogs);
-    logManager.setSnapshot(simpleSnapshot);
-
-    MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
-    assertEquals(testLogs, snapshot.getSnapshot());
-  }
 }
