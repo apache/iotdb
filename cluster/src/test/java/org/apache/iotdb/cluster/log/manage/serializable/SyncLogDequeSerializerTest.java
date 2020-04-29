@@ -160,7 +160,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       assertEquals(17, syncLogDequeSerializer.getLogSizeDeque().size());
       assertEquals(2, syncLogDequeSerializer.logFileList.size());
 
-      // sleep to avoid the new file have the same name as the old one
+      // sleep to avoid the new file having the same name as the old one
       // TODO-Cluster: remove when the log file naming is fixed
       Thread.sleep(10);
       // this will remove first file and build a new file
@@ -206,7 +206,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       syncLogDequeSerializer.setMaxRemovedLogSize(10000000);
       assertEquals(2, syncLogDequeSerializer.logFileList.size());
 
-      // sleep to avoid the new file have the same name as the old one
+      // sleep to avoid the new file having the same name as the old one
       // TODO-Cluster: remove when the log file naming is fixed
       Thread.sleep(10);
       // this will not remove first file and build a new file
