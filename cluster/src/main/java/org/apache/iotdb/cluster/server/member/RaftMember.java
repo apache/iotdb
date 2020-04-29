@@ -202,8 +202,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           logger.trace("{} received a heartbeat from a stale leader {}", name, request.getLeader());
         }
       } else {
-        stepDown(leaderTerm);
-        setLeader(request.getLeader());
+
         // the heartbeat comes from a valid leader, process it with the sub-class logic
         processValidHeartbeatReq(request, response);
 
@@ -242,7 +241,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // node catch up
 
         // interrupt election
-        term.notifyAll();
+
+        stepDown(leaderTerm);
+        setLeader(request.getLeader());
+        if (character != NodeCharacter.FOLLOWER) {
+          term.notifyAll();
+        }
+
         if (logger.isTraceEnabled()) {
           logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
@@ -319,6 +324,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       } else {
         stepDown(leaderTerm);
         setLeader(request.getHeader());
+        if(character != NodeCharacter.FOLLOWER){
+          term.notifyAll();
+        }
       }
     }
     logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
@@ -606,8 +614,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       if (currTerm < newTerm) {
         logger.info("{} has update it's term to {}", getName(), newTerm);
         term.set(newTerm);
-        setLeader(null);
         setVoteFor(null);
+        setLeader(null);
         updateHardState(newTerm, getVoteFor());
       }
       setCharacter(NodeCharacter.FOLLOWER);

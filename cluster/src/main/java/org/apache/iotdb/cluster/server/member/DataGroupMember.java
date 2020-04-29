@@ -268,8 +268,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // partition table
     synchronized (term) {
       term.incrementAndGet();
-      leader = null;
-      voteFor = thisNode;
+      setLeader(null);
+      setVoteFor(thisNode);
       updateHardState(term.get(), getVoteFor());
       setLastHeartbeatReceivedTime(System.currentTimeMillis());
       setCharacter(NodeCharacter.ELECTOR);
