@@ -195,11 +195,15 @@ public class SessionExample {
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   * <p>
+   *
    * a Tablet example:
-   * <p>
-   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
-   * <p>
+   *
+   *      device1
+   * time s1, s2, s3
+   * 1,   1,  1,  1
+   * 2,   2,  2,  2
+   * 3,   3,  3,  3
+   *
    * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    */
   private static void insertTablet() throws IoTDBConnectionException, BatchExecutionException {

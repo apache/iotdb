@@ -58,7 +58,9 @@ public class SessionDataSet {
   private List<String> columnNameList;
   protected List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   // column name -> column location
-  Map<String, Integer> columnOrdinalMap;
+  private Map<String, Integer> columnOrdinalMap;
+  // duplicated column index -> origin index
+  private Map<Integer, Integer> duplicateLocation;
   // column size
   int columnSize = 0;
 
@@ -73,7 +75,8 @@ public class SessionDataSet {
   private byte[][] values; // used to cache the current row record value
 
 
-  public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList, Map<String, Integer> columnNameIndex,
+  public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
+      Map<String, Integer> columnNameIndex,
       long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet) {
     this.sessionId = sessionId;
     this.sql = sql;
@@ -89,6 +92,12 @@ public class SessionDataSet {
     this.columnOrdinalMap = new HashMap<>();
     this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
 
+    // duplicated column index -> origin index
+    duplicateLocation = new HashMap<>();
+
+    // deduplicated column name -> column location
+    Map<String, Integer> columnMap = new HashMap<>();
+
     // deduplicate and map
     if (columnNameIndex != null) {
       this.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
@@ -100,8 +109,11 @@ public class SessionDataSet {
         this.columnNameList.add(name);
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
-          columnOrdinalMap.put(name, index+START_INDEX);
+          columnMap.put(name, i);
+          columnOrdinalMap.put(name, index + START_INDEX);
           columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
+        } else {
+          duplicateLocation.put(i, columnMap.get(name));
         }
       }
     } else {
@@ -111,8 +123,11 @@ public class SessionDataSet {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
         if (!columnOrdinalMap.containsKey(name)) {
+          columnMap.put(name, i);
           columnOrdinalMap.put(name, index++);
           columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
+        } else {
+          duplicateLocation.put(i, columnMap.put(name, i));
         }
       }
     }
@@ -163,23 +178,21 @@ public class SessionDataSet {
   }
 
 
-
   private void constructOneRow() {
     List<Field> outFields = new ArrayList<>();
-    int loc = 0;
     for (int i = 0; i < columnSize; i++) {
       Field field;
-      int deduplicatedIndex = columnOrdinalMap.get(columnNameList.get(i+1)) - START_INDEX;
-      if (deduplicatedIndex < i) {
-        field = Field.copy(outFields.get(deduplicatedIndex));
+      if (duplicateLocation.containsKey(i)) {
+        field = Field.copy(outFields.get(duplicateLocation.get(i)));
       } else {
+        int loc = columnOrdinalMap.get(columnNameList.get(i + 1)) - START_INDEX;
         ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(loc);
         // another new 8 row, should move the bitmap buffer position to next byte
         if (rowsIndex % 8 == 0) {
-          currentBitmap[loc] = bitmapBuffer.get();
+          currentBitmap[i] = bitmapBuffer.get();
         }
 
-        if (!isNull(loc, rowsIndex)) {
+        if (!isNull(i, rowsIndex)) {
           ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(loc);
           TSDataType dataType = columnTypeDeduplicatedList.get(loc);
           field = new Field(dataType);
@@ -217,7 +230,6 @@ public class SessionDataSet {
         } else {
           field = new Field(null);
         }
-        loc++;
       }
       outFields.add(field);
     }
@@ -351,7 +363,8 @@ public class SessionDataSet {
               break;
             default:
               throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+                  String
+                      .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
           }
         }
       }
@@ -371,8 +384,7 @@ public class SessionDataSet {
       int index = columnOrdinalMap.get(columnName) - START_INDEX;
       if (values[index] != null) {
         return BytesUtils.bytesToBool(values[index]);
-      }
-      else {
+      } else {
         throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
       }
     }
