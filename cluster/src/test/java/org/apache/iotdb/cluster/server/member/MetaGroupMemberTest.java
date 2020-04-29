@@ -450,15 +450,9 @@ public class MetaGroupMemberTest extends MemberTest {
     try {
       assertTrue(newMember.joinCluster());
       newMember.setCharacter(ELECTOR);
-      long startTime = System.currentTimeMillis();
-      long timeConsumption = 0;
-      while (timeConsumption < 5000 && newMember.getCharacter() != LEADER) {
-        timeConsumption = System.currentTimeMillis() - startTime;
+      while (!LEADER.equals(newMember.getCharacter())) {
+
       }
-      if (timeConsumption >= 5000) {
-        fail("The member takes too long to be the leader");
-      }
-      assertEquals(LEADER, newMember.getCharacter());
     } finally {
       newMember.stop();
     }
