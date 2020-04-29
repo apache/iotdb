@@ -18,21 +18,21 @@
  */
 package org.apache.iotdb;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class SessionExample {
 
@@ -49,7 +49,6 @@ public class SessionExample {
       if (!e.getMessage().contains("StorageGroupAlreadySetException")) {
         throw e;
       }
-//       ignore duplicated set
     }
 
     createTimeseries();
@@ -60,6 +59,7 @@ public class SessionExample {
     insertRecords();
     nonQuery();
     query();
+    queryByIterator();
     deleteData();
     deleteTimeseries();
     session.close();
@@ -95,7 +95,8 @@ public class SessionExample {
   private static void createMultiTimeseries()
       throws IoTDBConnectionException, BatchExecutionException {
 
-    if (!session.checkTimeseriesExists("root.sg1.d2.s1") && !session.checkTimeseriesExists("root.sg1.d2.s2")) {
+    if (!session.checkTimeseriesExists("root.sg1.d2.s1") && !session
+        .checkTimeseriesExists("root.sg1.d2.s2")) {
       List<String> paths = new ArrayList<>();
       paths.add("root.sg1.d2.s1");
       paths.add("root.sg1.d2.s2");
@@ -126,8 +127,9 @@ public class SessionExample {
       alias.add("weight1");
       alias.add("weight2");
 
-      session.createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
-          attributesList, alias);
+      session
+          .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
+              attributesList, alias);
     }
   }
 
@@ -193,15 +195,11 @@ public class SessionExample {
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   *
+   * <p>
    * a Tablet example:
-   *
-   *      device1
-   * time s1, s2, s3
-   * 1,   1,  1,  1
-   * 2,   2,  2,  2
-   * 3,   3,  3,  3
-   *
+   * <p>
+   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
+   * <p>
    * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    */
   private static void insertTablet() throws IoTDBConnectionException, BatchExecutionException {
@@ -245,7 +243,7 @@ public class SessionExample {
     Tablet tablet1 = new Tablet("root.sg1.d1", schemaList, 100);
     Tablet tablet2 = new Tablet("root.sg1.d2", schemaList, 100);
     Tablet tablet3 = new Tablet("root.sg1.d3", schemaList, 100);
-    
+
     Map<String, Tablet> tabletMap = new HashMap<>();
     tabletMap.put("root.sg1.d1", tablet1);
     tabletMap.put("root.sg1.d2", tablet2);
@@ -312,6 +310,22 @@ public class SessionExample {
     dataSet.setBatchSize(1024); // default is 512
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void queryByIterator()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet;
+    dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    DataIterator iterator = dataSet.iterator();
+    System.out.println(dataSet.getColumnNames());
+    dataSet.setBatchSize(1024); // default is 512
+    while (iterator.next()) {
+      System.out.println(String.format("%s,%s,%s,%s,%s", iterator.getLong(1), iterator.getLong(2),
+          iterator.getLong("root.sg1.d1.s2"), iterator.getLong(4),
+          iterator.getObject("root.sg1.d1.s4")));
     }
 
     dataSet.closeOperationHandle();
