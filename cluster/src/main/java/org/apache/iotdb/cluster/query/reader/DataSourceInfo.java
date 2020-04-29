@@ -133,7 +133,7 @@ public class DataSourceInfo {
         logger.error("Cannot query {} from {}", this.request.path, node, e);
       }
       nextNodePos = (nextNodePos + 1) % this.nodes.size();
-      if (nextNodePos == this.curPos) {
+      if ((this.curPos != -1 && nextNodePos == this.curPos) || (this.curPos == -1 && nextNodePos == 0)) {
         // has iterate over all nodes
         break;
       }
