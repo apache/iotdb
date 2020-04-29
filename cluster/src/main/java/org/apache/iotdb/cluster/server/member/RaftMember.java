@@ -99,6 +99,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   AtomicLong term = new AtomicLong(0);
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   volatile Node leader;
+  volatile Node voteFor;
   volatile long lastHeartbeatReceivedTime;
 
   // the raft logs are all stored and maintained in the log manager
@@ -200,6 +201,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           logger.trace("{} received a heartbeat from a stale leader {}", name, request.getLeader());
         }
       } else {
+        stepDown(leaderTerm);
+        setLeader(request.getLeader());
         // the heartbeat comes from a valid leader, process it with the sub-class logic
         processValidHeartbeatReq(request, response);
 
@@ -237,15 +240,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // if the log is not consistent, the commitment will be blocked until the leader makes the
         // node catch up
 
-        term.set(leaderTerm);
-        setLeader(request.getLeader());
-        updateHardState(leaderTerm, request.getLeader());
-        if (character != NodeCharacter.FOLLOWER) {
-          setCharacter(NodeCharacter.FOLLOWER);
-          // interrupt election
-          term.notifyAll();
-        }
-        setLastHeartbeatReceivedTime(System.currentTimeMillis());
+        // interrupt election
+        term.notifyAll();
         if (logger.isTraceEnabled()) {
           logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
@@ -264,10 +260,25 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   @Override
   public void startElection(ElectionRequest electionRequest, AsyncMethodCallback resultHandler) {
     synchronized (term) {
-      if (electionRequest.getElector().equals(leader)) {
-        // always agree with the last leader
-        resultHandler.onComplete(Response.RESPONSE_AGREE);
+      long currentTerm = term.get();
+      if (electionRequest.getTerm() < currentTerm) {
+        logger.info("{} sending term {} to the elector {} because it's term({}) is smaller.", name,
+            currentTerm,
+            electionRequest.getElector(), electionRequest.getTerm());
+        resultHandler.onComplete(currentTerm);
         return;
+      }
+      if (currentTerm == electionRequest.getTerm() && voteFor != null && !Objects
+          .equals(voteFor, electionRequest.getElector())) {
+        logger.info(
+            "{} sending rejection to the elector {} because member already has voted({}) in this term.",
+            name,
+            electionRequest.getElector(), voteFor);
+        resultHandler.onComplete(Response.RESPONSE_REJECT);
+        return;
+      }
+      if (electionRequest.getTerm() > currentTerm) {
+        stepDown(electionRequest.getTerm());
       }
 
       // check the log status of the elector
@@ -300,13 +311,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             localTerm);
         resultHandler.onComplete(localTerm);
         return false;
-      } else if (leaderTerm > localTerm) {
-        term.set(leaderTerm);
-        updateHardState(leaderTerm, leader);
-        localTerm = leaderTerm;
-        if (character != NodeCharacter.FOLLOWER) {
-          setCharacter(NodeCharacter.FOLLOWER);
-        }
+      } else {
+        stepDown(leaderTerm);
+        setLeader(request.getHeader());
       }
     }
     logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
@@ -448,7 +455,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     // some node has a larger term than the local node, this node is no longer a valid leader
     if (leaderShipStale.get()) {
-      retireFromLeader(newLeaderTerm.get());
+      stepDown(newLeaderTerm.get());
       return AppendLogResult.LEADERSHIP_STALE;
     }
 
@@ -490,8 +497,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   public void setCharacter(NodeCharacter character) {
-    logger.info("{} has become a {}", name, character);
-    this.character = character;
+    if (!Objects.equals(character, this.character)) {
+      logger.info("{} has become a {}", name, character);
+      this.character = character;
+    }
   }
 
   public NodeCharacter getCharacter() {
@@ -510,6 +519,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return leader;
   }
 
+  public Node getVoteFor() {
+    return voteFor;
+  }
+
   public void setTerm(AtomicLong term) {
     this.term = term;
   }
@@ -520,8 +533,17 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   public void setLeader(Node leader) {
     if (!Objects.equals(leader, this.leader)) {
-      logger.info("{} has become a follower of {}", getName(), leader);
+      if (!Objects.equals(leader, this.thisNode)) {
+        logger.info("{} has become a follower of {}", getName(), leader);
+      }
       this.leader = leader;
+    }
+  }
+
+  public void setVoteFor(Node voteFor) {
+    if (!Objects.equals(voteFor, this.voteFor)) {
+      logger.info("{} has update it's voteFor to {}", getName(), voteFor);
+      this.voteFor = voteFor;
     }
   }
 
@@ -572,16 +594,19 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    *
    * @param newTerm
    */
-  public void retireFromLeader(long newTerm) {
+  public void stepDown(long newTerm) {
     synchronized (term) {
       long currTerm = term.get();
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
+        logger.info("{} has update it's term to {}", getName(), newTerm);
         term.set(newTerm);
         setLeader(null);
-        updateHardState(newTerm, null);
-        setCharacter(NodeCharacter.FOLLOWER);
+        setVoteFor(null);
+        updateHardState(newTerm, getVoteFor());
       }
+      setCharacter(NodeCharacter.FOLLOWER);
+      lastHeartbeatReceivedTime = System.currentTimeMillis();
     }
   }
 
@@ -596,60 +621,45 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   long processElectionRequest(ElectionRequest electionRequest) {
 
     long thatTerm = electionRequest.getTerm();
-    long thatLastLogId = electionRequest.getLastLogIndex();
+    long thatLastLogIndex = electionRequest.getLastLogIndex();
     long thatLastLogTerm = electionRequest.getLastLogTerm();
-    logger
-        .info("{} received an election request, term:{}, metaLastLogId:{}, metaLastLogTerm:{}",
-            name, thatTerm,
-            thatLastLogId, thatLastLogTerm);
 
-    synchronized (term) {
-      long thisTerm = term.get();
-      long resp = verifyElector(thisTerm, thatTerm, thatLastLogId,
-          thatLastLogTerm);
-      if (resp == Response.RESPONSE_AGREE) {
-        term.set(thatTerm);
-        leader = electionRequest.getElector();
-        updateHardState(thatTerm, leader);
-        setCharacter(NodeCharacter.FOLLOWER);
-        lastHeartbeatReceivedTime = System.currentTimeMillis();
-        // interrupt election
-        term.notifyAll();
-      }
-      return resp;
+    long resp = verifyElector(thatLastLogIndex,
+        thatLastLogTerm);
+    if (resp == Response.RESPONSE_AGREE) {
+      setCharacter(NodeCharacter.FOLLOWER);
+      lastHeartbeatReceivedTime = System.currentTimeMillis();
+      setVoteFor(electionRequest.getElector());
+      updateHardState(thatTerm, getVoteFor());
+      logger.info("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          name, thatTerm, term.get(), thatLastLogIndex, logManager.getLastLogIndex(),
+          thatLastLogTerm,
+          logManager.getLastLogTerm());
+    } else {
+      logger.info("{} rejected an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
+          name, thatTerm, term.get(), thatLastLogIndex, logManager.getLastLogIndex(),
+          thatLastLogTerm,
+          logManager.getLastLogTerm());
     }
+    return resp;
   }
 
   /**
-   * Reject the election if one of the four holds: 1. the term of the candidate is no bigger than
-   * the voter's 2. the lastLogTerm of the candidate is smaller than the voter's 3. the lastLogTerm
-   * of the candidate equals to the voter's but its lastLogIndex is smaller than the voter's
-   * Otherwise accept the election.
+   * Reject the election if one of the three holds: 1. the lastLogTerm of the candidate is smaller
+   * than the voter's 2. the lastLogTerm of the candidate equals to the voter's but its lastLogIndex
+   * is smaller than the voter's Otherwise accept the election.
    *
-   * @param thisTerm
-   * @param thatTerm
    * @param lastLogIndex
    * @param lastLogTerm
    * @return Response.RESPONSE_AGREE if the elector is valid or the local term if the elector has a
    * smaller term or Response.RESPONSE_LOG_MISMATCH if the elector has older logs.
    */
-  long verifyElector(long thisTerm,
-      long thatTerm, long lastLogIndex, long lastLogTerm) {
+  long verifyElector(long lastLogIndex, long lastLogTerm) {
     long response;
     synchronized (logManager) {
-      if (thatTerm <= thisTerm) {
-        response = thisTerm;
-        logger.debug("{} rejected an election request, term:{}/{}",
-            name, thatTerm, thisTerm);
-      } else if (logManager.isLogUpToDate(lastLogTerm, lastLogIndex)) {
-        logger.debug("{} accepted an election request, term:{}/{}, logIndex:{}/{}, logTerm:{}/{}",
-            name, thatTerm, thisTerm, lastLogIndex, logManager.getLastLogIndex(), lastLogTerm,
-            logManager.getLastLogTerm());
+      if (logManager.isLogUpToDate(lastLogTerm, lastLogIndex)) {
         response = Response.RESPONSE_AGREE;
       } else {
-        logger.debug("{} rejected an election request, logIndex:{}/{}, logTerm:{}/{}",
-            name, lastLogIndex, logManager.getLastLogIndex(), lastLogTerm,
-            logManager.getLastLogTerm());
         response = Response.RESPONSE_LOG_MISMATCH;
       }
     }
@@ -1025,10 +1035,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-  public void updateHardState(long currentTerm, Node leader) {
+  public void updateHardState(long currentTerm, Node voteFor) {
     HardState state = logManager.getHardState();
     state.setCurrentTerm(currentTerm);
-    state.setVoteFor(leader);
+    state.setVoteFor(voteFor);
     logManager.updateHardState(state);
   }
 

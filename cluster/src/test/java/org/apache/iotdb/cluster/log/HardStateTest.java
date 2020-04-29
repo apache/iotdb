@@ -18,7 +18,7 @@ public class HardStateTest {
     HardState newState = HardState.deserialize(buffer);
     assertEquals(state, newState);
 
-    //NULL
+    // NULL
     state.setVoteFor(null);
     buffer = state.serialize();
     newState = HardState.deserialize(buffer);

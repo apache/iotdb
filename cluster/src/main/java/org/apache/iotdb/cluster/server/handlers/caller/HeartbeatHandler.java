@@ -78,7 +78,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
         if (currTerm < followerTerm) {
           logger.info("{}: Losing leadership because current term {} is smaller than {}",
               memberName, currTerm, followerTerm);
-          localMember.retireFromLeader(followerTerm);
+          localMember.stepDown(followerTerm);
         }
       }
     }
