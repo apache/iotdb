@@ -69,6 +69,8 @@ public interface Filter {
 
   void serialize(DataOutputStream outputStream);
 
+  void serialize(ByteBuffer buffer);
+
   void deserialize(ByteBuffer buffer);
 
   FilterSerializeId getSerializeId();

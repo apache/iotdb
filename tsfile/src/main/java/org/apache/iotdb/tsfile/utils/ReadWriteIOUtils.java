@@ -76,7 +76,7 @@ public class ReadWriteIOUtils {
    * read bytes array in given size
    *
    * @param buffer buffer
-   * @param size size
+   * @param size   size
    * @return bytes array
    */
   public static byte[] readBytes(ByteBuffer buffer, int size) {
@@ -132,7 +132,6 @@ public class ReadWriteIOUtils {
     }
     return length;
   }
-
 
 
   /**
@@ -215,7 +214,6 @@ public class ReadWriteIOUtils {
     outputStream.write(bytes);
     return INT_LEN;
   }
-
 
 
   /**
@@ -608,7 +606,7 @@ public class ReadWriteIOUtils {
   /**
    * read bytes from byteBuffer, this method makes sure that you can read length bytes or reach to
    * the end of the buffer.
-   *
+   * <p>
    * read a int + buffer
    */
   public static ByteBuffer readByteBufferWithSelfDescriptionLength(ByteBuffer buffer) {
@@ -763,8 +761,8 @@ public class ReadWriteIOUtils {
 
 
   /**
-   * to check whether the byte buffer is reach the magic string
-   * this method doesn't change the position of the byte buffer
+   * to check whether the byte buffer is reach the magic string this method doesn't change the
+   * position of the byte buffer
    *
    * @param byteBuffer byte buffer
    * @return whether the byte buffer is reach the magic string
@@ -777,8 +775,8 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * to check whether the inputStream is reach the magic string
-   * this method doesn't change the position of the inputStream
+   * to check whether the inputStream is reach the magic string this method doesn't change the
+   * position of the inputStream
    *
    * @param inputStream inputStream
    * @return whether the inputStream is reach the magic string
@@ -792,38 +790,70 @@ public class ReadWriteIOUtils {
   }
 
   public static void writeObject(Object value, DataOutputStream outputStream) {
-      try {
-        if (value instanceof Long) {
-          outputStream.write(LONG.ordinal());
-          outputStream.writeLong((Long) value);
-        } else if (value instanceof Double) {
-          outputStream.write(DOUBLE.ordinal());
-          outputStream.writeDouble((Double) value);
-        } else if (value instanceof Integer) {
-          outputStream.write(INTEGER.ordinal());
-          outputStream.writeInt((Integer) value);
-        } else if (value instanceof Float) {
-          outputStream.write(FLOAT.ordinal());
-          outputStream.writeFloat((Float) value);
-        } else if (value instanceof Binary) {
-          outputStream.write(BINARY.ordinal());
-          byte[] bytes = ((Binary) value).getValues();
-          outputStream.writeInt(bytes.length);
-          outputStream.write(bytes);
-        } else if (value instanceof Boolean) {
-          outputStream.write(BOOLEAN.ordinal());
-          outputStream.write(((Boolean) value) ? 1 : 0);
-        } else if (value == null) {
-          outputStream.write(NULL.ordinal());
-        } else {
-          outputStream.write(STRING.ordinal());
-          byte[] bytes = value.toString().getBytes();
-          outputStream.writeInt(bytes.length);
-          outputStream.write(bytes);
-        }
-      } catch (IOException ignored) {
-        // ignored
+    try {
+      if (value instanceof Long) {
+        outputStream.write(LONG.ordinal());
+        outputStream.writeLong((Long) value);
+      } else if (value instanceof Double) {
+        outputStream.write(DOUBLE.ordinal());
+        outputStream.writeDouble((Double) value);
+      } else if (value instanceof Integer) {
+        outputStream.write(INTEGER.ordinal());
+        outputStream.writeInt((Integer) value);
+      } else if (value instanceof Float) {
+        outputStream.write(FLOAT.ordinal());
+        outputStream.writeFloat((Float) value);
+      } else if (value instanceof Binary) {
+        outputStream.write(BINARY.ordinal());
+        byte[] bytes = ((Binary) value).getValues();
+        outputStream.writeInt(bytes.length);
+        outputStream.write(bytes);
+      } else if (value instanceof Boolean) {
+        outputStream.write(BOOLEAN.ordinal());
+        outputStream.write(((Boolean) value) ? 1 : 0);
+      } else if (value == null) {
+        outputStream.write(NULL.ordinal());
+      } else {
+        outputStream.write(STRING.ordinal());
+        byte[] bytes = value.toString().getBytes();
+        outputStream.writeInt(bytes.length);
+        outputStream.write(bytes);
       }
+    } catch (IOException ignored) {
+      // ignored
+    }
+  }
+
+
+  public static void writeObject(Object value, ByteBuffer buffer) {
+    if (value instanceof Long) {
+      buffer.putInt(LONG.ordinal());
+      buffer.putLong((Long) value);
+    } else if (value instanceof Double) {
+      buffer.putInt(DOUBLE.ordinal());
+      buffer.putDouble((Double) value);
+    } else if (value instanceof Integer) {
+      buffer.putInt(INTEGER.ordinal());
+      buffer.putInt((Integer) value);
+    } else if (value instanceof Float) {
+      buffer.putInt(FLOAT.ordinal());
+      buffer.putFloat((Float) value);
+    } else if (value instanceof Binary) {
+      buffer.putInt(BINARY.ordinal());
+      byte[] bytes = ((Binary) value).getValues();
+      buffer.putInt(bytes.length);
+      buffer.put(bytes);
+    } else if (value instanceof Boolean) {
+      buffer.putInt(BOOLEAN.ordinal());
+      buffer.putInt(((Boolean) value) ? 1 : 0);
+    } else if (value == null) {
+      buffer.putInt(NULL.ordinal());
+    } else {
+      buffer.putInt(STRING.ordinal());
+      byte[] bytes = value.toString().getBytes();
+      buffer.putInt(bytes.length);
+      buffer.put(bytes);
+    }
   }
 
   public static Object readObject(ByteBuffer buffer) {

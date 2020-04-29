@@ -38,6 +38,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 import java.io.File;
@@ -225,7 +228,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       // add tag
       alterTimeSeriesOperator.setAlterType(AlterType.ADD_TAGS);
       setMap(ctx, alterMap);
-    } else if (ctx.ATTRIBUTES() != null){
+    } else if (ctx.ATTRIBUTES() != null) {
       // add attribute
       alterTimeSeriesOperator.setAlterType(AlterType.ADD_ATTRIBUTES);
       setMap(ctx, alterMap);
@@ -242,7 +245,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : tagsList) {
         String value;
-        if(property.propertyValue().STRING_LITERAL() != null) {
+        if (property.propertyValue().STRING_LITERAL() != null) {
           value = removeStringQuote(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
@@ -630,7 +633,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setFill(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
-
     // parse timeUnit
     queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
     queryOp.setSlidingStep(queryOp.getUnit());
@@ -923,7 +925,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : properties) {
         props.put(property.ID().getText().toLowerCase(),
-                property.propertyValue().getText().toLowerCase());
+            property.propertyValue().getText().toLowerCase());
       }
     }
     createTimeSeriesOperator.setCompressor(compressor);
@@ -1119,8 +1121,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     switch (operatorType) {
       case SQLConstant.TOK_DELETE:
         deleteDataOp.setFilterOperator(whereOp.getChildren().get(0));
-        long deleteTime = parseDeleteTimeFilter(deleteDataOp);
-        deleteDataOp.setTime(deleteTime);
+        parseDeleteTimeFilter(deleteDataOp);
         break;
       case SQLConstant.TOK_QUERY:
         queryOp.setFilterOperator(whereOp.getChildren().get(0));
@@ -1149,7 +1150,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       operator.setKey(ctx.property().ID().getText());
     }
     String value;
-    if(propertyValueContext.STRING_LITERAL() != null) {
+    if (propertyValueContext.STRING_LITERAL() != null) {
       value = removeStringQuote(propertyValueContext.getText());
     } else {
       value = propertyValueContext.getText();
@@ -1317,18 +1318,46 @@ public class LogicalGenerator extends SqlBaseBaseListener {
    *
    * @param operator delete logical plan
    */
-  private long parseDeleteTimeFilter(DeleteDataOperator operator) {
+  private Filter parseDeleteTimeFilter(DeleteDataOperator operator) {
     FilterOperator filterOperator = operator.getFilterOperator();
-    if (filterOperator.getTokenIntType() != SQLConstant.LESSTHAN
-        && filterOperator.getTokenIntType() != SQLConstant.LESSTHANOREQUALTO) {
+    if (!filterOperator.isLeaf() && filterOperator.getTokenIntType() != SQLConstant.KW_AND) {
       throw new SQLParserException(
-          "For delete command, where clause must be like : time < XXX or time <= XXX");
+          "For delete command, where clause must be like : time > XXX and time <= XXX");
     }
+    if (filterOperator.isLeaf()) {
+      return calcOperatorTime(filterOperator, operator);
+    }
+
+    List<FilterOperator> children = filterOperator.getChildren();
+    FilterOperator lOperator = children.get(0);
+    FilterOperator rOperator = children.get(1);
+    if (!lOperator.isLeaf() || !rOperator.isLeaf()) {
+      throw new SQLParserException(
+          "For delete command, where clause must be like : time > XXX and time <= XXX");
+    }
+    return FilterFactory.and(calcOperatorTime(lOperator, operator),
+        calcOperatorTime(rOperator, operator));
+  }
+
+  private Filter calcOperatorTime(FilterOperator filterOperator, DeleteDataOperator operator) {
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
-    if (filterOperator.getTokenIntType() == SQLConstant.LESSTHAN) {
-      time = time - 1;
+    switch (filterOperator.getTokenIntType()) {
+      case SQLConstant.LESSTHAN:
+        operator.setMinTime(time - 1);
+        return TimeFilter.lt(time);
+      case SQLConstant.LESSTHANOREQUALTO:
+        operator.setMinTime(time);
+        return TimeFilter.ltEq(time);
+      case SQLConstant.GREATERTHAN:
+        operator.setMaxTime(time + 1);
+        return TimeFilter.gt(time);
+      case SQLConstant.GREATERTHANOREQUALTO:
+        operator.setMaxTime(time);
+        return TimeFilter.gtEq(time);
+      default:
+        throw new SQLParserException(
+            "For delete command, where clause must be like : time > XXX and time <= XXX");
     }
-    return time;
   }
 
   private void checkMetadataArgs(String dataType, String encoding, String compressor) {

@@ -160,7 +160,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
-          QueryProcessException, MetadataException {
+      QueryProcessException, MetadataException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -237,7 +237,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-          IOException {
+      IOException {
     QueryDataSet queryDataSet;
     if (queryPlan instanceof AlignByDevicePlan) {
       queryDataSet = new AlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
@@ -625,7 +625,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
       }
       for (String path : existingPaths) {
-        delete(new Path(path), deletePlan.getDeleteTime());
+        delete(new Path(path), deletePlan);
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
@@ -794,7 +794,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void delete(Path path, long timestamp) throws QueryProcessException {
+  public void delete(Path path, DeletePlan plan) throws QueryProcessException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
@@ -803,7 +803,7 @@ public class PlanExecutor implements IPlanExecutor {
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getStorageGroupName(path.getFullPath());
-      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
+      StorageEngine.getInstance().delete(deviceId, measurementId, plan);
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
@@ -844,7 +844,9 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  /** create timeseries with ignore PathAlreadyExistException */
+  /**
+   * create timeseries with ignore PathAlreadyExistException
+   */
   private void internalCreateTimeseries(String path, TSDataType dataType) throws MetadataException {
     try {
       mManager.createTimeseries(
@@ -863,7 +865,9 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  /** Get default encoding by dataType */
+  /**
+   * Get default encoding by dataType
+   */
   private TSEncoding getDefaultEncoding(TSDataType dataType) {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     switch (dataType) {
@@ -1117,7 +1121,7 @@ public class PlanExecutor implements IPlanExecutor {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);
-      deletePlan.setDeleteTime(Long.MAX_VALUE);
+      deletePlan.setTimeFilter(null);
       processNonQuery(deletePlan);
     }
   }

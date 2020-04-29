@@ -53,30 +53,30 @@ public class GroupByFilter implements Filter, Serializable {
 
   @Override
   public boolean satisfy(long time, Object value) {
-    if (time < startTime || time > endTime)
+    if (time < startTime || time > endTime) {
       return false;
-    else
+    } else {
       return (time - startTime) % slidingStep <= interval;
+    }
   }
 
   @Override
   public boolean satisfyStartEndTime(long startTime, long endTime) {
-    if (endTime < this.startTime)
+    if (endTime < this.startTime) {
       return false;
-    else if (startTime <= this.startTime)
+    } else if (startTime <= this.startTime) {
       return true;
-    else if (startTime > this.endTime)
+    } else if (startTime > this.endTime) {
       return false;
-    else {
+    } else {
       long minTime = startTime - this.startTime;
       long count = minTime / slidingStep;
-      if (minTime <= interval + count * slidingStep)
+      if (minTime <= interval + count * slidingStep) {
         return true;
-      else {
+      } else {
         if (this.endTime <= (count + 1) * slidingStep + this.startTime) {
           return false;
-        }
-        else {
+        } else {
           return endTime >= (count + 1) * slidingStep + this.startTime;
         }
       }
@@ -115,6 +115,15 @@ public class GroupByFilter implements Filter, Serializable {
     } catch (IOException ignored) {
       // ignored
     }
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(getSerializeId().ordinal());
+    buffer.putLong(interval);
+    buffer.putLong(slidingStep);
+    buffer.putLong(startTime);
+    buffer.putLong(endTime);
   }
 
   @Override

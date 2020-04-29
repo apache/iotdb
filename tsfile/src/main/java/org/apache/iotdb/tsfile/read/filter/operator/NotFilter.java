@@ -92,6 +92,12 @@ public class NotFilter implements Filter, Serializable {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(getSerializeId().ordinal());
+    that.serialize(buffer);
+  }
+
+  @Override
   public void deserialize(ByteBuffer buffer) {
     that = FilterFactory.deserialize(buffer);
   }

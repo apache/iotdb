@@ -71,6 +71,13 @@ public abstract class BinaryFilter implements Filter, Serializable {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(getSerializeId().ordinal());
+    left.serialize(buffer);
+    right.serialize(buffer);
+  }
+
+  @Override
   public void deserialize(ByteBuffer buffer) {
     left = FilterFactory.deserialize(buffer);
     right = FilterFactory.deserialize(buffer);

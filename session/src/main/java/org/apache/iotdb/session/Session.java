@@ -186,8 +186,8 @@ public class Session {
   }
 
   /**
-   * insert data in one row, if you want to improve your performance, please use insertRecords method
-   * or insertTablet method
+   * insert data in one row, if you want to improve your performance, please use insertRecords
+   * method or insertTablet method
    *
    * @see Session#insertRecords(List, List, List, List)
    * @see Session#insertTablet(Tablet)
@@ -203,8 +203,8 @@ public class Session {
   }
 
   /**
-   * insert data in one row, if you want to improve your performance, please use insertRecords method
-   * or insertTablet method
+   * insert data in one row, if you want to improve your performance, please use insertRecords
+   * method or insertTablet method
    *
    * @see Session#insertRecords(List, List, List, List)
    * @see Session#insertTablet(Tablet)
@@ -228,15 +228,11 @@ public class Session {
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
-   *
-   *  a Tablet example:
-   *
-   *        device1
-   *     time s1, s2, s3
-   *     1,   1,  1,  1
-   *     2,   2,  2,  2
-   *     3,   3,  3,  3
-   *
+   * <p>
+   * a Tablet example:
+   * <p>
+   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
+   * <p>
    * times in Tablet may be not in ascending order
    *
    * @param tablet data batch
@@ -281,9 +277,9 @@ public class Session {
   }
 
   /**
-   * insert the data of several deivces.
-   * Given a deivce, for each timestamp, the number of measurements is the same.
-   *
+   * insert the data of several deivces. Given a deivce, for each timestamp, the number of
+   * measurements is the same.
+   * <p>
    * Times in each Tablet may not be in ascending order
    *
    * @param tablets data batch in multiple device
@@ -294,11 +290,11 @@ public class Session {
   }
 
   /**
-   * insert the data of several devices.
-   * Given a device, for each timestamp, the number of measurements is the same.
+   * insert the data of several devices. Given a device, for each timestamp, the number of
+   * measurements is the same.
    *
    * @param tablets data batch in multiple device
-   * @param sorted whether times in each Tablet are in ascending order
+   * @param sorted  whether times in each Tablet are in ascending order
    */
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, BatchExecutionException {
@@ -337,10 +333,10 @@ public class Session {
   }
 
   /**
-   * Insert multiple rows, which can reduce the overhead of network. This method is just like
-   * jdbc executeBatch, we pack some insert request in batch and send them to server.
-   * If you want improve your performance, please see insertTablet method
-   *
+   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
+   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
+   * your performance, please see insertTablet method
+   * <p>
    * Each row is independent, which could have different deviceId, time, number of measurements
    *
    * @see Session#insertTablet(Tablet)
@@ -483,15 +479,36 @@ public class Session {
   /**
    * delete data <= time in multiple timeseries
    *
-   * @param paths data in which time series to delete
-   * @param time  data with time stamp less than or equal to time will be deleted
+   * @param paths   data in which time series to delete
+   * @param maxTime data with time stamp less than or equal to time will be deleted
    */
-  public void deleteData(List<String> paths, long time)
+  public void deleteData(List<String> paths, long maxTime)
       throws IoTDBConnectionException, StatementExecutionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
     request.setSessionId(sessionId);
     request.setPaths(paths);
-    request.setTimestamp(time);
+    request.setMaxTime(maxTime);
+
+    try {
+      RpcUtils.verifySuccess(client.deleteData(request));
+    } catch (TException e) {
+      throw new IoTDBConnectionException(e);
+    }
+  }
+
+  /**
+   * delete data >= minTime and data <= maxTime in multiple timeseries
+   *
+   * @param paths   data in which time series to delete
+   * @param maxTime data with time stamp less than or equal to time will be deleted
+   */
+  public void deleteData(List<String> paths, long minTime, long maxTime)
+      throws IoTDBConnectionException, StatementExecutionException {
+    TSDeleteDataReq request = new TSDeleteDataReq();
+    request.setSessionId(sessionId);
+    request.setPaths(paths);
+    request.setMinTime(minTime);
+    request.setMaxTime(maxTime);
 
     try {
       RpcUtils.verifySuccess(client.deleteData(request));
@@ -565,19 +582,19 @@ public class Session {
     request.setPaths(paths);
 
     List<Integer> dataTypeOrdinals = new ArrayList<>(paths.size());
-    for (TSDataType dataType: dataTypes) {
+    for (TSDataType dataType : dataTypes) {
       dataTypeOrdinals.add(dataType.ordinal());
     }
     request.setDataTypes(dataTypeOrdinals);
 
     List<Integer> encodingOrdinals = new ArrayList<>(paths.size());
-    for (TSEncoding encoding: encodings) {
+    for (TSEncoding encoding : encodings) {
       encodingOrdinals.add(encoding.ordinal());
     }
     request.setEncodings(encodingOrdinals);
 
     List<Integer> compressionOrdinals = new ArrayList<>(paths.size());
-    for (CompressionType compression: compressors) {
+    for (CompressionType compression : compressors) {
       compressionOrdinals.add(compression.ordinal());
     }
     request.setCompressors(compressionOrdinals);

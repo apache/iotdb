@@ -24,13 +24,14 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public interface IPlanExecutor {
@@ -74,10 +75,10 @@ public interface IPlanExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param path       : delete series seriesPath
-   * @param deleteTime end time in delete command
+   * @param path        : delete series seriesPath
+   * @param deletedTime : time range in delete command
    */
-  void delete(Path path, long deleteTime) throws QueryProcessException;
+  void delete(Path path, DeletePlan deletedTime) throws QueryProcessException;
 
   /**
    * execute insert command and return whether the operator is successful.

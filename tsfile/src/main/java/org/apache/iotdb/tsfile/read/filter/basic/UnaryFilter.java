@@ -76,6 +76,13 @@ public abstract class UnaryFilter<T extends Comparable<T>> implements Filter, Se
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(getSerializeId().ordinal());
+    buffer.putInt(filterType.ordinal());
+    ReadWriteIOUtils.writeObject(value, buffer);
+  }
+
+  @Override
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     value = (T) ReadWriteIOUtils.readObject(buffer);

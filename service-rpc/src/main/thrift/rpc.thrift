@@ -204,7 +204,8 @@ struct TSInsertRecordsReq {
 struct TSDeleteDataReq {
     1: required i64 sessionId
     2: required list<string> paths
-    3: required i64 timestamp
+    3: required i64 maxTime
+    4: optional i64 minTime
 }
 
 struct TSCreateTimeseriesReq {

@@ -98,6 +98,17 @@ public class In<T extends Comparable<T>> implements Filter {
   }
 
   @Override
+  public void serialize(ByteBuffer buffer) {
+    buffer.putInt(getSerializeId().ordinal());
+    buffer.putInt(filterType.ordinal());
+    ReadWriteIOUtils.write(not, buffer);
+    buffer.putInt(values.size());
+    for (T value : values) {
+      ReadWriteIOUtils.writeObject(value, buffer);
+    }
+  }
+
+  @Override
   public void deserialize(ByteBuffer buffer) {
     filterType = FilterType.values()[buffer.get()];
     not = ReadWriteIOUtils.readBool(buffer);
