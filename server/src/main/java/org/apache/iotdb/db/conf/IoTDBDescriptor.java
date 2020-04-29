@@ -59,8 +59,8 @@ public class IoTDBDescriptor {
   }
 
   public void replaceProps(String[] params) {
-    String RPC_PORT = "rpc_port";
     Options options = new Options();
+    final String RPC_PORT = "rpc_port";
     Option rpcPort = new Option(RPC_PORT, RPC_PORT, true,
         "The jdbc service listens on the port");
     rpcPort.setRequired(false);

@@ -91,7 +91,6 @@ object WideConverter extends Converter {
     files.foreach(f => {
       val in = new HDFSInput(f.getPath, conf)
       val reader = new TsFileSequenceReader(in)
-      val tsFileMetaData = reader.readFileMetadata
       val devices = reader.getAllDevices
       val measurements = reader.getAllMeasurements
 

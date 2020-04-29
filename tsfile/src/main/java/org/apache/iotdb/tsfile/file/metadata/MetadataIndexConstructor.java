@@ -34,7 +34,7 @@ public class MetadataIndexConstructor {
   private static final int MAX_DEGREE_OF_INDEX_NODE = TSFileDescriptor.getInstance().getConfig()
       .getMaxDegreeOfIndexNode();
 
-  public MetadataIndexConstructor() {
+  private MetadataIndexConstructor() {
     throw new IllegalStateException("Utility class");
   }
 
@@ -56,8 +56,9 @@ public class MetadataIndexConstructor {
         // when constructing from leaf node, every "degree number of nodes" are related to an entry
         if (i % MAX_DEGREE_OF_INDEX_NODE == 0) {
           if (currentIndexNode.isFull()) {
-            currentIndexNode = addCurrentIndexNodeToQueueAndReset(currentIndexNode,
-                measurementMetadataIndexQueue, out);
+            addCurrentIndexNodeToQueueAndReset(currentIndexNode, measurementMetadataIndexQueue,
+                out);
+            currentIndexNode = new MetadataIndexNode();
           }
           currentIndexNode.addEntry(new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(),
               out.getPosition(), MetadataIndexNodeType.LEAF_MEASUREMENT));
@@ -69,9 +70,9 @@ public class MetadataIndexConstructor {
           out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
     }
 
-    MetadataIndexNode metadataIndexNode = new MetadataIndexNode();
     // if not exceed the max child nodes num, ignore the device index and directly point to the measurement
     if (deviceMetadataIndexMap.size() <= MAX_DEGREE_OF_INDEX_NODE) {
+      MetadataIndexNode metadataIndexNode = new MetadataIndexNode();
       for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
         metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition(),
             MetadataIndexNodeType.INTERNAL_MEASUREMENT));
@@ -89,8 +90,8 @@ public class MetadataIndexConstructor {
     for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
       // when constructing from internal node, each node is related to an entry
       if (currentIndexNode.isFull()) {
-        currentIndexNode = addCurrentIndexNodeToQueueAndReset(currentIndexNode,
-            deviceMetadaIndexQueue, out);
+        addCurrentIndexNodeToQueueAndReset(currentIndexNode, deviceMetadaIndexQueue, out);
+        currentIndexNode = new MetadataIndexNode();
       }
       currentIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(),
           out.getPosition(), MetadataIndexNodeType.LEAF_DEVICE));
@@ -114,26 +115,23 @@ public class MetadataIndexConstructor {
         metadataIndexNode = metadataIndexNodeQueue.poll();
         // when constructing from internal node, each node is related to an entry
         if (currentIndexNode.isFull()) {
-          currentIndexNode = addCurrentIndexNodeToQueueAndReset(currentIndexNode,
-              metadataIndexNodeQueue, out);
+          addCurrentIndexNodeToQueueAndReset(currentIndexNode, metadataIndexNodeQueue, out);
+          currentIndexNode = new MetadataIndexNode();
         }
         currentIndexNode.addEntry(new MetadataIndexEntry(metadataIndexNode.peek().getName(),
             out.getPosition(), type));
         metadataIndexNode.serializeTo(out.wrapAsStream());
       }
-      currentIndexNode.setEndOffset(out.getPosition());
-      metadataIndexNodeQueue.add(currentIndexNode);
-      currentIndexNode = new MetadataIndexNode();
+      addCurrentIndexNodeToQueueAndReset(currentIndexNode, metadataIndexNodeQueue, out);
       queueSize = metadataIndexNodeQueue.size();
     }
     return metadataIndexNodeQueue.poll();
   }
 
-  private static MetadataIndexNode addCurrentIndexNodeToQueueAndReset(
+  private static void addCurrentIndexNodeToQueueAndReset(
       MetadataIndexNode currentIndexNode,
       Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out) throws IOException {
     currentIndexNode.setEndOffset(out.getPosition());
     metadataIndexNodeQueue.add(currentIndexNode);
-    return new MetadataIndexNode();
   }
 }
