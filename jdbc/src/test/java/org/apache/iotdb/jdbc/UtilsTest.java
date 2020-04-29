@@ -99,7 +99,7 @@ public class UtilsTest {
     assertEquals(params.getPort(), port);
   }
 
-  @Test(expected = NumberFormatException.class)
+  @Test(expected = IoTDBURLException.class)
   public void testParseWrongDomain() throws IoTDBURLException {
     String userName = "test";
     String userPwd = "test";
@@ -113,7 +113,7 @@ public class UtilsTest {
             properties);
   }
 
-  @Test(expected = IoTDBURLException.class)
+  @Test
   public void testParseWrongIP() throws IoTDBURLException {
     String userName = "test";
     String userPwd = "test";
