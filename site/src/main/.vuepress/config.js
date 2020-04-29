@@ -273,7 +273,6 @@ var config = {
 							['6-System Tools/6-Query History Visualization Tool','Query History Visualization Tool'],
 							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools'],
 							['6-System Tools/8-Load External Tsfile','Load External Tsfile']
-							
 						]
 					},
 					{
