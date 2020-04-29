@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster.common;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import org.apache.iotdb.db.auth.AuthException;
@@ -144,7 +145,11 @@ public class EnvironmentUtils {
           }
         }
       }
-      Files.delete(Paths.get(file.getAbsolutePath()));
+      try {
+        Files.delete(Paths.get(file.getAbsolutePath()));
+      } catch (DirectoryNotEmptyException e) {
+        deleteRecursively(file);
+      }
     }
   }
 
