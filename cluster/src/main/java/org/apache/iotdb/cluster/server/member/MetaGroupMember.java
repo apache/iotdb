@@ -82,7 +82,12 @@ import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.query.reader.*;
+import org.apache.iotdb.cluster.query.reader.DataSourceInfo;
+import org.apache.iotdb.cluster.query.reader.EmptyReader;
+import org.apache.iotdb.cluster.query.reader.ManagedMergeReader;
+import org.apache.iotdb.cluster.query.reader.MergedReaderByTime;
+import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
+import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
@@ -198,9 +203,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   // MetaGroupMember so they can be processed cluster-wide
   private ClientServer clientServer;
 
-  // this logManger manages the logs of the meta group
-  private MetaSingleSnapshotLogManager logManager;
-
   // dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
   // nodes
   private ClientPool dataClientPool;
@@ -223,7 +225,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
     LogApplier metaLogApplier = new MetaLogApplier(this);
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
-    super.logManager = logManager;
     this.term.set(logManager.getHardState().getCurrentTerm());
 
     setThisNode(thisNode);
@@ -1092,7 +1093,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
         }
       }
-      logManager.setSnapshot(snapshot);
       logManager.applyingSnapshot(snapshot);
     }
   }
@@ -2634,15 +2634,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     fillHandler.onError(new QueryTimeOutException(String.format("PreviousFill %s@%d range: %d",
         path.getFullPath(), queryTime, beforeRange)));
-  }
-
-  @TestOnly
-  public void setLogManager(MetaSingleSnapshotLogManager manager) {
-    if (logManager != null) {
-      logManager.close();
-    }
-    logManager = manager;
-    super.setLogManager(manager);
   }
 
   public void closeLogManager() {

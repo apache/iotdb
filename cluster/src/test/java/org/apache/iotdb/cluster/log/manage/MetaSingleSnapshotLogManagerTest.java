@@ -27,12 +27,10 @@ import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
-import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
@@ -71,15 +69,5 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
     assertEquals(testLogs.subList(0, 5), snapshot.getSnapshot());
     assertEquals(4, snapshot.getLastLogIndex());
     assertEquals(4, snapshot.getLastLogTerm());
-  }
-
-  @Test
-  public void testSetSnapshot() {
-    List<Log> testLogs = TestUtils.prepareTestLogs(10);
-    SimpleSnapshot simpleSnapshot = new SimpleSnapshot(testLogs);
-    logManager.setSnapshot(simpleSnapshot);
-
-    MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
-    assertEquals(testLogs, snapshot.getSnapshot());
   }
 }

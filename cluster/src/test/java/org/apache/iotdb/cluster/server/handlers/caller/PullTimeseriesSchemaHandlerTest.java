@@ -67,7 +67,7 @@ public class PullTimeseriesSchemaHandlerTest {
         resp.setSchemaBytes(outputStream.toByteArray());
         handler.onComplete(resp);
       }).start();
-      result.wait(10 * 1000);
+      result.wait();
     }
     assertEquals(measurementSchemas, result.get());
   }
@@ -82,7 +82,7 @@ public class PullTimeseriesSchemaHandlerTest {
         Collections.singletonList(prefixPath), result);
     synchronized (result) {
       new Thread(() -> handler.onError(new TestException())).start();
-      result.wait(10 * 1000);
+      result.wait();
     }
     assertNull(result.get());
   }

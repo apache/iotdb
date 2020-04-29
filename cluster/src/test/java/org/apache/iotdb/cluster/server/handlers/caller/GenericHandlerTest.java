@@ -37,7 +37,7 @@ public class GenericHandlerTest {
     GenericHandler<String> handler = new GenericHandler<>(node, result);
     synchronized (result) {
       new Thread(() -> handler.onComplete("Hello world!")).start();
-      result.wait(10 * 1000);
+      result.wait();
     }
     assertEquals("Hello world!", result.get());
   }
@@ -49,7 +49,7 @@ public class GenericHandlerTest {
     GenericHandler<String> handler = new GenericHandler<>(node, result);
     synchronized (result) {
       new Thread(() -> handler.onError(new TestException())).start();
-      result.wait(10 * 1000);
+      result.wait();
     }
     assertNull(result.get());
   }

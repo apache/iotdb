@@ -37,7 +37,7 @@ public class SnapshotCatchUpHandlerTest {
     SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeeded, receiver, null);
     synchronized (succeeded) {
       new Thread(() -> handler.onComplete(null)).start();
-      succeeded.wait(10 * 1000);
+      succeeded.wait();
     }
     assertTrue(succeeded.get());
   }
@@ -49,7 +49,7 @@ public class SnapshotCatchUpHandlerTest {
     SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeeded, receiver, null);
     synchronized (succeeded) {
       new Thread(() -> handler.onError(new TestException())).start();
-      succeeded.wait(10 * 1000);
+      succeeded.wait();
     }
     assertFalse(succeeded.get());
   }

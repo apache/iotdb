@@ -52,7 +52,7 @@ public class AppendNodeEntryHandlerTest {
         long resp = i < 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
         new Thread(() -> handler.onComplete(resp)).start();
       }
-      quorum.wait(10 * 1000);
+      quorum.wait();
     }
     assertEquals(-1, receiverTerm.get());
     assertFalse(leadershipStale.get());
@@ -60,23 +60,22 @@ public class AppendNodeEntryHandlerTest {
   }
 
   @Test
-  public void testNoAgreement() throws InterruptedException {
+  public void testNoAgreement() {
     AtomicLong receiverTerm = new AtomicLong(-1);
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     AtomicInteger quorum = new AtomicInteger(5);
-    synchronized (quorum) {
-      for (int i = 0; i < 3; i++) {
-        AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-        handler.setLeaderShipStale(leadershipStale);
-        handler.setVoteCounter(quorum);
-        handler.setLog(log);
-        handler.setReceiverTerm(receiverTerm);
-        handler.setReceiver(TestUtils.getNode(i));
-        new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
-      }
-      quorum.wait(2 * 1000);
+
+    for (int i = 0; i < 3; i++) {
+      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+      handler.setLeaderShipStale(leadershipStale);
+      handler.setVoteCounter(quorum);
+      handler.setLog(log);
+      handler.setReceiverTerm(receiverTerm);
+      handler.setReceiver(TestUtils.getNode(i));
+      handler.onComplete(Response.RESPONSE_AGREE);
     }
+
     assertEquals(-1, receiverTerm.get());
     assertFalse(leadershipStale.get());
     assertEquals(2, quorum.get());
@@ -96,7 +95,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));
       new Thread(() -> handler.onComplete(100L)).start();
-      quorum.wait(2 * 1000);
+      quorum.wait();
     }
     assertEquals(100, receiverTerm.get());
     assertTrue(leadershipStale.get());
@@ -104,21 +103,20 @@ public class AppendNodeEntryHandlerTest {
   }
 
   @Test
-  public void testError() throws InterruptedException {
+  public void testError() {
     AtomicLong receiverTerm = new AtomicLong(-1);
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     AtomicInteger quorum = new AtomicInteger(5);
-    synchronized (quorum) {
-      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-      handler.setLeaderShipStale(leadershipStale);
-      handler.setVoteCounter(quorum);
-      handler.setLog(log);
-      handler.setReceiverTerm(receiverTerm);
-      handler.setReceiver(TestUtils.getNode(0));
-      new Thread(() -> handler.onError(new TestException())).start();
-      quorum.wait(2 * 1000);
-    }
+
+    AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+    handler.setLeaderShipStale(leadershipStale);
+    handler.setVoteCounter(quorum);
+    handler.setLog(log);
+    handler.setReceiverTerm(receiverTerm);
+    handler.setReceiver(TestUtils.getNode(0));
+    handler.onError(new TestException());
+
     assertEquals(-1, receiverTerm.get());
     assertFalse(leadershipStale.get());
     assertEquals(5, quorum.get());

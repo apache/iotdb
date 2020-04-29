@@ -35,7 +35,9 @@
     </appender>
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtil" level="debug" />-->
     <!--<logger name="org.apache.iotdb.db.utils.OpenFileNumUtilTest" level="debug" />-->
-    <logger name="org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer" level="INFO"/>
+<!--    <logger name="org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer" level="INFO"/>-->
+<!--    <logger name="org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader" level="DEBUG"/>-->
+<!--    <logger name="org.apache.iotdb.cluster.query.reader.DataSourceInfo" level="DEBUG"/>-->
     <root level="warn">
         <appender-ref ref="stdout"/>
     </root>

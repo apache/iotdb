@@ -44,7 +44,7 @@ public class JoinClusterHandlerTest {
     handler.setResponse(result);
     synchronized (result) {
       new Thread(() -> handler.onComplete(response)).start();
-      result.wait(10 * 1000);
+      result.wait();
     }
     assertEquals(response, result.get());
   }
@@ -58,7 +58,7 @@ public class JoinClusterHandlerTest {
     handler.setResponse(result);
     synchronized (result) {
       new Thread(() -> handler.onError(new TestException())).start();
-      result.wait(10 * 1000);
+      result.wait();
     }
     assertNull(result.get());
   }

@@ -20,12 +20,15 @@ package org.apache.iotdb.cluster.log.manage.serializable;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.Iterator;
@@ -152,14 +155,27 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     recoverMetaFile();
     recoverMeta();
     try {
-      for (File file : metaFile.getParentFile().listFiles()) {
-        if (file.getName().startsWith("data")) {
-          long fileTime = getFileTime(file);
-          // this means system down between save meta and data
-          if (fileTime <= minAvailableTime || fileTime >= maxAvailableTime) {
+      File[] logFiles = metaFile.getParentFile().listFiles();
+      if (logger.isInfoEnabled()) {
+        logger.info("Find log files {}", logFiles != null ? Arrays.asList(logFiles) :
+            Collections.emptyList());
+      }
+
+      if (logFiles != null) {
+        for (File file : logFiles) {
+          if (file.length() == 0) {
             file.delete();
-          } else {
-            logFileList.add(file);
+            continue;
+          }
+
+          if (file.getName().startsWith("data")) {
+            long fileTime = getFileTime(file);
+            // this means system down between save meta and data
+            if (fileTime <= minAvailableTime || fileTime >= maxAvailableTime) {
+              file.delete();
+            } else {
+              logFileList.add(file);
+            }
           }
         }
       }
@@ -171,7 +187,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         logFileList.add(createNewLogFile(metaFile.getParentFile().getPath()));
       }
 
-      currentLogOutputStream = new FileOutputStream(getCurrentLogFile(), true);
     } catch (IOException e) {
       logger.error("Error in init log file: " + e.getMessage());
     }
@@ -208,6 +223,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
   }
 
+  private void checkStream() throws FileNotFoundException {
+    if (currentLogOutputStream == null) {
+      currentLogOutputStream = new FileOutputStream(getCurrentLogFile(), true);
+    }
+  }
+
   private File createNewLogFile(String dirName) throws IOException {
     File logFile = SystemFileFactory.INSTANCE
         .getFile(dirName + File.separator + "data" + "-" + System.currentTimeMillis());
@@ -220,6 +241,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     int totalSize = 0;
     // write into disk
     try {
+      checkStream();
       totalSize = ReadWriteIOUtils.write(data, currentLogOutputStream);
     } catch (IOException e) {
       logger.error("Error in log serialization: ",  e);
@@ -249,6 +271,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
     // write into disk
     try {
+      checkStream();
       ReadWriteIOUtils.writeWithoutSize(finalBuffer, currentLogOutputStream);
     } catch (IOException e) {
       logger.error("Error in log serialization: ",  e);
@@ -287,7 +310,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       if (currentLogFile.length() < size) {
         size -= currentLogFile.length();
         try {
-          currentLogOutputStream.close();
+          if (currentLogOutputStream != null) {
+            currentLogOutputStream.close();
+          }
           // if system down before delete, we can use this to delete file during recovery
           maxAvailableTime = getFileTime(currentLogFile);
           serializeMeta(meta);
@@ -295,7 +320,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           currentLogFile.delete();
           logFileList.remove(logFileList.size() - 1);
           logFileList.add(createNewLogFile(logDir));
-          currentLogOutputStream = new FileOutputStream(getCurrentLogFile());
         } catch (IOException e) {
           logger.error("Error in log serialization: ", e);
         }
@@ -305,6 +329,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       // else we just truncate it
       else {
         try {
+          checkStream();
           currentLogOutputStream.getChannel().truncate(getCurrentLogFile().length() - size);
           break;
         } catch (IOException e) {
@@ -342,6 +367,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     boolean shouldSkip = true;
 
     for (File logFile : logFileList) {
+      int logNumInFile = 0;
+      if (logFile.length() == 0) {
+        continue;
+      }
+
       try (FileInputStream logReader = new FileInputStream(logFile)) {
         FileChannel logChannel = logReader.getChannel();
         if (shouldSkip) {
@@ -358,12 +388,14 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           // actual log
           Log log = readLog(logReader);
           result.add(log);
+          logNumInFile ++;
         }
       } catch (IOException e) {
         logger.error("Error in log serialization: ", e);
       }
+      logger.info("Recovered {} logs from {}", logNumInFile, logFile);
     }
-
+    logger.info("Recovered {} logs totally", result.size());
     return result;
   }
 
@@ -405,7 +437,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         state = new HardState();
       }
     }
-
+    logger.info("Recovered log meta: {}, firstLogPos: {}, removedLogSize: {}, availableTime: [{},"
+            + " {}], state: {}",
+        meta, firstLogPosition, removedLogSize, minAvailableTime, maxAvailableTime, state);
     return meta;
   }
 
@@ -462,10 +496,16 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     Iterator<File> logFileIterator = logFileList.iterator();
     while (logFileIterator.hasNext()) {
       File logFile = logFileIterator.next();
+      if (logger.isDebugEnabled()) {
+        logger.debug("Examining file for removal, file: {}, len: {}, removedLogSize: {}", logFile
+            , logFile.length(), removedLogSize);
+      }
       if (logFile.length() > removedLogSize) {
         break;
       }
 
+      logger.info("Removing a log file {}, len: {}, removedLogSize: {}", logFile,
+          logFile.length(), removedLogSize);
       removedLogSize -= logFile.length();
       // if system down before delete, we can use this to delete file during recovery
       minAvailableTime = getFileTime(logFile);
@@ -493,8 +533,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       serializeMeta(meta);
 
       logFileList.add(newLogFile);
-      currentLogOutputStream.close();
-      currentLogOutputStream = new FileOutputStream(newLogFile);
+      close();
     } catch (IOException e) {
       logger.error("Error in log serialization: ", e);
     }

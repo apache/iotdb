@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
+import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
 import org.apache.iotdb.db.auth.AuthException;
@@ -75,7 +76,10 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
         userWaterMarkStatus);
   }
 
-  public void setSnapshot(SimpleSnapshot snapshot) {
-    this.snapshot = snapshot.getSnapshot();
+  @Override
+  public void applyingSnapshot(Snapshot snapshot) {
+    super.applyingSnapshot(snapshot);
+    MetaSimpleSnapshot metaSimpleSnapshot = (MetaSimpleSnapshot) snapshot;
+    this.snapshot = metaSimpleSnapshot.getSnapshot();
   }
 }

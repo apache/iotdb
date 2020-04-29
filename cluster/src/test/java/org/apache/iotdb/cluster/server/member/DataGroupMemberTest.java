@@ -177,21 +177,19 @@ public class DataGroupMemberTest extends MemberTest {
             @Override
             public void pullSnapshot(PullSnapshotRequest request,
                 AsyncMethodCallback<PullSnapshotResp> resultHandler) {
-              new Thread(() -> {
-                PullSnapshotResp resp = new PullSnapshotResp();
-                Map<Integer, ByteBuffer> snapshotBufferMap = new HashMap<>();
-                for (Integer requiredSlot : request.getRequiredSlots()) {
-                  FileSnapshot fileSnapshot = snapshotMap.get(requiredSlot);
-                  if (fileSnapshot != null) {
-                    snapshotBufferMap.put(requiredSlot, fileSnapshot.serialize());
-                  }
-                  synchronized (DataGroupMemberTest.this.dataGroupMember) {
-                    pulledSnapshots.add(requiredSlot);
-                  }
+              PullSnapshotResp resp = new PullSnapshotResp();
+              Map<Integer, ByteBuffer> snapshotBufferMap = new HashMap<>();
+              for (Integer requiredSlot : request.getRequiredSlots()) {
+                FileSnapshot fileSnapshot = snapshotMap.get(requiredSlot);
+                if (fileSnapshot != null) {
+                  snapshotBufferMap.put(requiredSlot, fileSnapshot.serialize());
                 }
-                resp.setSnapshotBytes(snapshotBufferMap);
-                resultHandler.onComplete(resp);
-              }).start();
+                synchronized (DataGroupMemberTest.this.dataGroupMember) {
+                  pulledSnapshots.add(requiredSlot);
+                }
+              }
+              resp.setSnapshotBytes(snapshotBufferMap);
+              resultHandler.onComplete(resp);
             }
 
             @Override
@@ -377,7 +375,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testForwardPullSnapshot() throws InterruptedException {
+  public void testForwardPullSnapshot() {
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
     PullSnapshotRequest request = new PullSnapshotRequest();
@@ -386,10 +384,7 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<Map<Integer, FileSnapshot>> reference = new AtomicReference<>();
     PullSnapshotHandler<FileSnapshot> handler = new PullSnapshotHandler<>(reference,
         TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot::new);
-    synchronized (reference) {
-      dataGroupMember.pullSnapshot(request, handler);
-      reference.wait(500);
-    }
+    dataGroupMember.pullSnapshot(request, handler);
     assertEquals(requiredSlots.size(), reference.get().size());
     for (Integer requiredSlot : requiredSlots) {
       assertEquals(snapshotMap.get(requiredSlot), reference.get().get(requiredSlot));
@@ -406,10 +401,7 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<Map<Integer, FileSnapshot>> reference = new AtomicReference<>();
     PullSnapshotHandler<FileSnapshot> handler = new PullSnapshotHandler<>(reference,
         TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot::new);
-    synchronized (reference) {
-      dataGroupMember.pullSnapshot(request, handler);
-      reference.wait(500);
-    }
+    dataGroupMember.pullSnapshot(request, handler);
     assertEquals(requiredSlots.size() - 1, reference.get().size());
     for (int i = 0; i < requiredSlots.size() - 1; i++) {
       Integer requiredSlot = requiredSlots.get(i);
@@ -462,10 +454,7 @@ public class DataGroupMemberTest extends MemberTest {
       AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
       PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(TestUtils.getNode(1),
           request.getPrefixPaths(), result);
-      synchronized (result) {
-        dataGroupMember.pullTimeSeriesSchema(request, handler);
-        result.wait(500);
-      }
+      dataGroupMember.pullTimeSeriesSchema(request, handler);
       for (int i = 0; i < 10; i++) {
         assertEquals(TestUtils.getTestSchema(0, i), result.get().get(i));
       }
@@ -475,10 +464,7 @@ public class DataGroupMemberTest extends MemberTest {
       result.set(null);
       handler = new PullTimeseriesSchemaHandler(TestUtils.getNode(1),
           request.getPrefixPaths(), result);
-      synchronized (result) {
-        dataGroupMember.pullTimeSeriesSchema(request, handler);
-        result.wait(500);
-      }
+      dataGroupMember.pullTimeSeriesSchema(request, handler);
       for (int i = 0; i < 10; i++) {
         assertEquals(TestUtils.getTestSchema(0, i), result.get().get(i));
       }
@@ -518,20 +504,14 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    synchronized (result) {
-      dataGroupMember.querySingleSeries(request, handler);
-      result.wait(200);
-    }
+    dataGroupMember.querySingleSeries(request, handler);
     long readerId = result.get();
     assertEquals(1, readerId);
 
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
-    synchronized (dataResult) {
-      dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
-      dataResult.wait(200);
-    }
+    dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 10; i++) {
@@ -577,20 +557,14 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    synchronized (result) {
-      dataGroupMember.querySingleSeries(request, handler);
-      result.wait(200);
-    }
+    dataGroupMember.querySingleSeries(request, handler);
     long readerId = result.get();
     assertEquals(1, readerId);
 
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
-    synchronized (dataResult) {
-      dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
-      dataResult.wait(200);
-    }
+    dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 9; i++) {
@@ -636,10 +610,7 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    synchronized (result) {
-      dataGroupMember.querySingleSeriesByTimestamp(request, handler);
-      result.wait(200);
-    }
+    dataGroupMember.querySingleSeriesByTimestamp(request, handler);
     long readerId = result.get();
     assertEquals(1, readerId);
 
@@ -648,11 +619,8 @@ public class DataGroupMemberTest extends MemberTest {
         dataResult);
 
     for (int i = 5; i < 10; i++) {
-      synchronized (dataResult) {
-        dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
-            dataHandler);
-        dataResult.wait(200);
-      }
+      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+          dataHandler);
       Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
@@ -662,8 +630,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testQuerySingleSeriesByTimestampWithValueFilter() throws QueryProcessException,
-      InterruptedException {
+  public void testQuerySingleSeriesByTimestampWithValueFilter() throws QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
@@ -692,10 +659,7 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    synchronized (result) {
-      dataGroupMember.querySingleSeriesByTimestamp(request, handler);
-      result.wait(200);
-    }
+    dataGroupMember.querySingleSeriesByTimestamp(request, handler);
     long readerId = result.get();
     assertEquals(1, readerId);
 
@@ -703,11 +667,8 @@ public class DataGroupMemberTest extends MemberTest {
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
     for (int i = 5; i < 9; i++) {
-      synchronized (dataResult) {
-        dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
-            dataHandler);
-        dataResult.wait(200);
-      }
+      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+          dataHandler);
       Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
@@ -717,14 +678,11 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testGetPaths() throws InterruptedException {
+  public void testGetPaths() {
     String path = TestUtils.getTestSg(0);
     AtomicReference<List<String>> pathResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
-    synchronized (pathResult) {
-      dataGroupMember.getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
-      pathResult.wait(200);
-    }
+    dataGroupMember.getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
     List<String> result = pathResult.get();
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
@@ -733,60 +691,34 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testFetchWithoutQuery() throws InterruptedException {
+  public void testFetchWithoutQuery() {
     AtomicReference<Exception> result = new AtomicReference<>();
-    synchronized (result) {
-      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), 0, 0,
-          new AsyncMethodCallback<ByteBuffer>() {
-            @Override
-            public void onComplete(ByteBuffer buffer) {
-              new Thread(() -> {
-                synchronized (result) {
-                  result.notifyAll();
-                }
-              }).start();
-            }
+    dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), 0, 0,
+        new AsyncMethodCallback<ByteBuffer>() {
+          @Override
+          public void onComplete(ByteBuffer buffer) {
+          }
 
-            @Override
-            public void onError(Exception e) {
-              new Thread(() -> {
-                synchronized (result) {
-                  result.set(e);
-                  result.notifyAll();
-                }
-              }).start();
-            }
-          });
-      result.wait(200);
-    }
+          @Override
+          public void onError(Exception e) {
+            result.set(e);
+          }
+        });
     Exception exception = result.get();
     assertTrue(exception instanceof ReaderNotFoundException);
     assertEquals("The requested reader 0 is not found", exception.getMessage());
 
-    synchronized (result) {
-      dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), 0,
-          new AsyncMethodCallback<ByteBuffer>() {
-            @Override
-            public void onComplete(ByteBuffer buffer) {
-              new Thread(() -> {
-                synchronized (result) {
-                  result.notifyAll();
-                }
-              }).start();
-            }
+    dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), 0,
+        new AsyncMethodCallback<ByteBuffer>() {
+          @Override
+          public void onComplete(ByteBuffer buffer) {
+          }
 
-            @Override
-            public void onError(Exception e) {
-              new Thread(() -> {
-                synchronized (result) {
-                  result.set(e);
-                  result.notifyAll();
-                }
-              }).start();
-            }
-          });
-      result.wait(200);
-    }
+          @Override
+          public void onError(Exception e) {
+            result.set(e);
+          }
+        });
     exception = result.get();
     assertTrue(exception instanceof ReaderNotFoundException);
     assertEquals("The requested reader 0 is not found", exception.getMessage());
@@ -813,7 +745,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testRemoveLeader() throws TTransportException, InterruptedException {
+  public void testRemoveLeader() throws TTransportException {
     Node nodeToRemove = TestUtils.getNode(10);
     NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
         .removeNode(nodeToRemove);
@@ -821,17 +753,16 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.start();
 
     try {
-      synchronized (dataGroupMember) {
-        dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
-        dataGroupMember.wait(500);
-      }
+      dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
 
       assertEquals(NodeCharacter.ELECTOR, dataGroupMember.getCharacter());
       assertEquals(Long.MIN_VALUE, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
       List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
-      assertEquals(newSlots.size(), pulledSnapshots.size());
+      while (newSlots.size() != pulledSnapshots.size()) {
+
+      }
       for (Integer newSlot : newSlots) {
         assertTrue(pulledSnapshots.contains(newSlot));
       }
@@ -841,7 +772,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testRemoveNonLeader() throws TTransportException, InterruptedException {
+  public void testRemoveNonLeader() throws TTransportException {
     Node nodeToRemove = TestUtils.getNode(10);
     NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
         .removeNode(nodeToRemove);
@@ -849,16 +780,15 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.start();
 
     try {
-      synchronized (dataGroupMember) {
-        dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
-        dataGroupMember.wait(500);
-      }
+      dataGroupMember.removeNode(nodeToRemove, nodeRemovalResult);
 
       assertEquals(0, dataGroupMember.getLastHeartbeatReceivedTime());
       assertTrue(dataGroupMember.getAllNodes().contains(TestUtils.getNode(30)));
       assertFalse(dataGroupMember.getAllNodes().contains(nodeToRemove));
       List<Integer> newSlots = nodeRemovalResult.getNewSlotOwners().get(TestUtils.getNode(0));
-      assertEquals(newSlots.size(), pulledSnapshots.size());
+      while (newSlots.size() != pulledSnapshots.size()) {
+
+      }
       for (Integer newSlot : newSlots) {
         assertTrue(pulledSnapshots.contains(newSlot));
       }
