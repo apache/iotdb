@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -149,6 +150,8 @@ public class EnvironmentUtils {
         Files.delete(Paths.get(file.getAbsolutePath()));
       } catch (DirectoryNotEmptyException e) {
         deleteRecursively(file);
+      } catch (NoSuchFileException e) {
+        // ignore;
       }
     }
   }
