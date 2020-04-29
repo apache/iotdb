@@ -61,7 +61,16 @@ public class HeartbeatThread implements Runnable {
 
   @Override
   public void run() {
-    logger.info("Heartbeat thread starts...");
+    logger.info("{}: Heartbeat thread starts...", memberName);
+    // sleep random time to reduce first election conflicts
+    long electionWait = ClusterConstant.ELECTION_LEAST_TIME_OUT_MS
+        + Math.abs(random.nextLong() % ClusterConstant.ELECTION_RANDOM_TIME_OUT_MS);
+    try {
+      logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
+      Thread.sleep(electionWait);
+    } catch (InterruptedException e) {
+      logger.error("Heartbeat thread first sleep failed...", e);
+    }
     while (!Thread.interrupted()) {
       try {
         switch (localMember.getCharacter()) {
@@ -86,7 +95,7 @@ public class HeartbeatThread implements Runnable {
             break;
           case ELECTOR:
           default:
-            logger.info("Start elections");
+            logger.info("{}: Start elections", memberName);
             startElections();
             break;
         }
@@ -145,6 +154,7 @@ public class HeartbeatThread implements Runnable {
 
   /**
    * Send a heartbeat to "node" through "client".
+   *
    * @param node
    * @param client
    */
@@ -159,6 +169,7 @@ public class HeartbeatThread implements Runnable {
 
   /**
    * Start elections until this node becomes a leader or a follower.
+   *
    * @throws InterruptedException
    */
   private void startElections() throws InterruptedException {
@@ -173,7 +184,7 @@ public class HeartbeatThread implements Runnable {
     while (localMember.getCharacter() == NodeCharacter.ELECTOR) {
       startElection();
       if (localMember.getCharacter() == NodeCharacter.ELECTOR) {
-        // sleep 2s~10s to reduce election conflicts
+        // sleep random time to reduce election conflicts
         long electionWait = ClusterConstant.ELECTION_LEAST_TIME_OUT_MS
             + Math.abs(random.nextLong() % ClusterConstant.ELECTION_RANDOM_TIME_OUT_MS);
         logger.info("{}: Sleep {}ms until next election", memberName, electionWait);
@@ -185,14 +196,14 @@ public class HeartbeatThread implements Runnable {
   }
 
   /**
-   * Start one round of election.
-   * Increase the local term, ask for vote from each of the nodes in the group and become the
-   * leader if at least half of them agree.
+   * Start one round of election. Increase the local term, ask for vote from each of the nodes in
+   * the group and become the leader if at least half of them agree.
    */
   void startElection() {
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();
-      localMember.updateHardState(nextTerm);
+      localMember.setVoteFor(localMember.getThisNode());
+      localMember.updateHardState(nextTerm, this.localMember.getVoteFor());
       // the number of votes needed to become a leader
       int quorumNum = localMember.getAllNodes().size() / 2;
       logger.info("{}: Election {} starts, quorum: {}", memberName, nextTerm, quorumNum);
@@ -237,14 +248,15 @@ public class HeartbeatThread implements Runnable {
     }
   }
 
+
   /**
-   * Request a vote from each of the "nodes".
-   * Each for vote will decrease the counter "quorum" and when it reaches 0, the flag
-   * "electionValid" and "electionTerminated" will be set to true.
-   * Any against vote will set the flag "electionTerminated" to true and ends the election.
+   * Request a vote from each of the "nodes". Each for vote will decrease the counter "quorum" and
+   * when it reaches 0, the flag "electionValid" and "electionTerminated" will be set to true. Any
+   * against vote will set the flag "electionTerminated" to true and ends the election.
+   *
    * @param nodes
    * @param request
-   * @param nextTerm the term of the election
+   * @param nextTerm           the term of the election
    * @param quorum
    * @param electionTerminated
    * @param electionValid

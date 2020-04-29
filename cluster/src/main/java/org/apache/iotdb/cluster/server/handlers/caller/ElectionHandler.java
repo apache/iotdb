@@ -32,8 +32,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * ElectionHandler checks the result from a voter and decides whether the election goes on,
- * succeeds or fails.
+ * ElectionHandler checks the result from a voter and decides whether the election goes on, succeeds
+ * or fails.
  */
 public class ElectionHandler implements AsyncMethodCallback<Long> {
 
@@ -62,17 +62,18 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onComplete(Long resp) {
     long voterResp = resp;
-    logger.info("{}: Election response term {} from {}", memberName, voterResp, voter);
     synchronized (raftMember.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
         // this node is not able to be the leader
+        logger.info("{}: Terminated election received a election response {} from {}", memberName,
+            voterResp, voter);
         return;
       }
 
       if (voterResp == RESPONSE_AGREE) {
         long remaining = quorum.decrementAndGet();
-        logger.info("{}: Received a for vote from {}, reaming votes to succeed: {}",
+        logger.info("{}: Received a grant vote from {}, remaining votes to succeed: {}",
             memberName, voter, remaining);
         if (remaining == 0) {
           // the election is valid
@@ -89,10 +90,10 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterResp);
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
-          raftMember.getTerm().set(voterResp);
-          raftMember.updateHardState(voterResp);
-          logger.info("{}: Election {} rejected: The term of this node is no bigger than {}",
-              memberName, currTerm, voterResp);
+          logger
+              .info("{}: Election {} rejected from {}: The term of this node is no bigger than {}",
+                  memberName, currTerm, voter, voterResp);
+          raftMember.stepDown(voterResp);
           // the election is rejected
           terminated.set(true);
           raftMember.getTerm().notifyAll();

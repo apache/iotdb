@@ -184,7 +184,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
     logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
         this), metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode);
-    this.term.set(logManager.getHardState().getCurrentTerm());
+    term.set(logManager.getHardState().getCurrentTerm());
+    voteFor = logManager.getHardState().getVoteFor();
   }
 
   /**
@@ -267,10 +268,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // partition table
     synchronized (term) {
       term.incrementAndGet();
-      updateHardState(term.get());
+      setLeader(null);
+      setVoteFor(thisNode);
+      updateHardState(term.get(), getVoteFor());
       setLastHeartbeatReceivedTime(System.currentTimeMillis());
       setCharacter(NodeCharacter.ELECTOR);
-      leader = null;
     }
     synchronized (allNodes) {
       int insertIndex = -1;
@@ -317,38 +319,44 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // to be a data group leader, a node should also be qualified to be the meta group leader
     // which guarantees the data group leader has the newest partition table.
     long thatTerm = electionRequest.getTerm();
-    long thatMetaLastLogId = electionRequest.getLastLogIndex();
+    long thatMetaLastLogIndex = electionRequest.getLastLogIndex();
     long thatMetaLastLogTerm = electionRequest.getLastLogTerm();
-    logger.info("{} received an election request, term:{}, metaLastLogId:{}, metaLastLogTerm:{}",
-        name, thatTerm, thatMetaLastLogId, thatMetaLastLogTerm);
-
-    long thisMetaLastLogIndex = metaGroupMember.getLogManager().getLastLogIndex();
-    long thisMetaLastLogTerm = metaGroupMember.getLogManager().getLastLogTerm();
+    long thatDataLastLogIndex = electionRequest.getDataLogLastIndex();
+    long thatDataLastLogTerm = electionRequest.getDataLogLastTerm();
+    logger.info(
+        "{} received an dataGroup election request, term:{}, metaLastLogIndex:{}, metaLastLogTerm:{}, dataLastLogIndex:{}, dataLastLogTerm:{}",
+        name, thatTerm, thatMetaLastLogIndex, thatMetaLastLogTerm, thatDataLastLogIndex,
+        thatDataLastLogTerm);
 
     // check meta logs
     // term of the electors's MetaGroupMember is not verified, so 0 and 1 are used to make sure
     // the verification does not fail
-    long metaResponse = verifyElector(0, thisMetaLastLogIndex, thisMetaLastLogTerm,
-        1, thatMetaLastLogId, thatMetaLastLogTerm);
+    long metaResponse = metaGroupMember.verifyElector(thatMetaLastLogIndex, thatMetaLastLogTerm);
     if (metaResponse == Response.RESPONSE_LOG_MISMATCH) {
       return Response.RESPONSE_META_LOG_STALE;
     }
 
-    // check data logs
-    long thatDataLastLogId = electionRequest.getDataLogLastIndex();
-    long thatDataLastLogTerm = electionRequest.getDataLogLastTerm();
-    logger.info("{} received an election request, term:{}, dataLastLogId:{}, dataLastLogTerm:{}",
-        name, thatTerm, thatDataLastLogId, thatDataLastLogTerm);
-
-    long resp = verifyElector(term.get(), logManager.getLastLogIndex(),
-        logManager.getLastLogTerm(), thatTerm, thatDataLastLogId, thatDataLastLogTerm);
+    long resp = verifyElector(thatDataLastLogIndex, thatDataLastLogTerm);
     if (resp == Response.RESPONSE_AGREE) {
-      // the elector wins the vote, follow it
-      term.set(thatTerm);
-      updateHardState(thatTerm);
+      logger.info(
+          "{} accepted an dataGroup election request, term:{}/{}, dataLogIndex:{}/{}, dataLogTerm:{}/{}, metaLogIndex:{}/{},metaLogTerm:{}/{}",
+          name, thatTerm, term.get(), thatDataLastLogIndex, logManager.getLastLogIndex(),
+          thatDataLastLogTerm,
+          logManager.getLastLogTerm(), thatMetaLastLogIndex,
+          metaGroupMember.getLogManager().getLastLogIndex(), thatMetaLastLogTerm,
+          metaGroupMember.getLogManager().getLastLogTerm());
       setCharacter(NodeCharacter.FOLLOWER);
       lastHeartbeatReceivedTime = System.currentTimeMillis();
-      leader = electionRequest.getElector();
+      setVoteFor(electionRequest.getElector());
+      updateHardState(thatTerm, getVoteFor());
+    } else {
+      logger.info(
+          "{} rejected an dataGroup election request, term:{}/{}, dataLogIndex:{}/{}, dataLogTerm:{}/{}, metaLogIndex:{}/{},metaLogTerm:{}/{}",
+          name, thatTerm, term.get(), thatDataLastLogIndex, logManager.getLastLogIndex(),
+          thatDataLastLogTerm,
+          logManager.getLastLogTerm(), thatMetaLastLogIndex,
+          metaGroupMember.getLogManager().getLastLogIndex(), thatMetaLastLogTerm,
+          metaGroupMember.getLogManager().getLastLogTerm());
     }
     return resp;
   }
