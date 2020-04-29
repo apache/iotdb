@@ -94,16 +94,16 @@ public class MetadataIndexNode {
 
   public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key) {
     int index = binarySearchInChildren(key);
-    long endOffset;
+    long childEndOffset;
     if (index != children.size() - 1) {
-      endOffset = children.get(index + 1).getOffset();
+      childEndOffset = children.get(index + 1).getOffset();
     } else {
-      endOffset = this.endOffset;
+      childEndOffset = this.endOffset;
     }
-    return new Pair<>(children.get(index), endOffset);
+    return new Pair<>(children.get(index), childEndOffset);
   }
 
-  public int binarySearchInChildren(String key) {
+  int binarySearchInChildren(String key) {
     int low = 0;
     int high = children.size() - 1;
 
