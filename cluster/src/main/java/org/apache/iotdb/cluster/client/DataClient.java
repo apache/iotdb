@@ -58,4 +58,11 @@ public class DataClient extends AsyncClient {
       return new DataClient(protocolFactory, new TAsyncClientManager(), node, pool);
     }
   }
+
+  @Override
+  public String toString() {
+    return "DataClient{" +
+        "node=" + node +
+        '}';
+  }
 }

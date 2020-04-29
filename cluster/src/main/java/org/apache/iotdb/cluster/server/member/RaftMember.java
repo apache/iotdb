@@ -82,7 +82,7 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class RaftMember implements RaftService.AsyncIface {
 
-  ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+  ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
   // the name of the member, to distinguish several members from the logs
@@ -174,6 +174,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     catchUpService.shutdownNow();
     catchUpService = null;
     heartBeatService = null;
+    closeLogManager();
     logger.info("{} stopped", name);
   }
 
@@ -1058,6 +1059,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @TestOnly
   public void setLogManager(RaftLogManager logManager) {
+    if (this.logManager != null) {
+      this.logManager.close();
+    }
     this.logManager = logManager;
+  }
+
+  public void closeLogManager() {
+    if (logManager != null) {
+      logManager.close();
+    }
   }
 }

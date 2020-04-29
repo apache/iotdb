@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,36 +52,32 @@ public class HeartbeatHandlerTest {
         }
       }
 
-      @Override
-      public RaftLogManager getLogManager() {
-        return new TestLogManager(1);
-      }
     };
+    metaGroupMember.setLogManager(new TestLogManager(1));
+  }
+
+  @After
+  public void tearDown() {
+    metaGroupMember.closeLogManager();
   }
 
   @Test
-  public void testComplete() throws InterruptedException {
+  public void testComplete() {
     HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     HeartBeatResponse response = new HeartBeatResponse();
     response.setTerm(Response.RESPONSE_AGREE);
     response.setLastLogIndex(-2);
     catchUpFlag = false;
-    synchronized (metaGroupMember) {
-      new Thread(() -> handler.onComplete(response)).start();
-      metaGroupMember.wait(10 * 1000);
-    }
+    handler.onComplete(response);
     assertTrue(catchUpFlag);
   }
 
   @Test
-  public void testLeaderShipStale() throws InterruptedException {
+  public void testLeaderShipStale() {
     HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     HeartBeatResponse response = new HeartBeatResponse();
     response.setTerm(10);
-    synchronized (metaGroupMember.getTerm()) {
-      new Thread(() -> handler.onComplete(response)).start();
-      metaGroupMember.getTerm().wait(1000);
-    }
+    handler.onComplete(response);
     assertEquals(10, metaGroupMember.getTerm().get());
   }
 
@@ -88,8 +85,7 @@ public class HeartbeatHandlerTest {
   public void testError() throws InterruptedException {
     HeartbeatHandler handler = new HeartbeatHandler(metaGroupMember, TestUtils.getNode(1));
     catchUpFlag = false;
-    new Thread(() -> handler.onError(new TestException())).start();
-    Thread.sleep(1000);
+    handler.onError(new TestException());
     assertFalse(catchUpFlag);
   }
 }

@@ -28,6 +28,7 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -38,6 +39,11 @@ public class ElectionHandlerTest {
   @Before
   public void setUp() {
     member = new TestMetaGroupMember();
+  }
+
+  @After
+  public void tearDown() {
+    member.closeLogManager();
   }
 
   @Test
@@ -52,7 +58,7 @@ public class ElectionHandlerTest {
             quorum, terminated, electionValid);
         new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
       }
-      member.getTerm().wait(10 * 1000);
+      member.getTerm().wait();
     }
     assertEquals(0, quorum.get());
     assertTrue(electionValid.get());
@@ -65,18 +71,15 @@ public class ElectionHandlerTest {
     AtomicBoolean electionValid = new AtomicBoolean(false);
     long electorTerm = 10;
     AtomicInteger quorum = new AtomicInteger(5);
-    synchronized (member.getTerm()) {
-      for (int i = 0; i < 3; i++) {
-        ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
-            quorum, terminated, electionValid);
-        new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
-      }
-      for (int i = 6; i < 10; i++) {
-        ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
-            quorum, terminated, electionValid);
-        new Thread(() -> handler.onComplete(electorTerm - 3)).start();
-      }
-      member.getTerm().wait(10 * 1000);
+    for (int i = 0; i < 3; i++) {
+      ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
+          quorum, terminated, electionValid);
+      handler.onComplete(Response.RESPONSE_AGREE);
+    }
+    for (int i = 6; i < 10; i++) {
+      ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
+          quorum, terminated, electionValid);
+      handler.onComplete(electorTerm - 3);
     }
     assertFalse(electionValid.get());
   }
@@ -98,7 +101,7 @@ public class ElectionHandlerTest {
             quorum, terminated, electionValid);
         new Thread(() -> handler.onComplete(electorTerm + 3)).start();
       }
-      member.getTerm().wait(10 * 1000);
+      member.getTerm().wait();
     }
     assertFalse(electionValid.get());
     assertTrue(terminated.get());
@@ -106,17 +109,16 @@ public class ElectionHandlerTest {
   }
 
   @Test
-  public void testError() throws InterruptedException {
+  public void testError() {
     AtomicBoolean terminated = new AtomicBoolean(false);
     AtomicBoolean electionValid = new AtomicBoolean(false);
     long electorTerm = 10;
     AtomicInteger quorum = new AtomicInteger(5);
-    synchronized (member.getTerm()) {
-      ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(0), electorTerm,
-          quorum, terminated, electionValid);
-      new Thread(() -> handler.onError(new TestException())).start();
-      member.getTerm().wait(10 * 1000);
-    }
+
+    ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(0), electorTerm,
+        quorum, terminated, electionValid);
+    handler.onError(new TestException());
+
     assertEquals(5, quorum.get());
     assertFalse(electionValid.get());
     assertFalse(terminated.get());

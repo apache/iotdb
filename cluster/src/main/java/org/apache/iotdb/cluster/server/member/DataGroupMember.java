@@ -154,12 +154,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   private ExecutorService pullSnapshotService;
 
-  /**
-   * "logManager" manages the logs of this DataGroupMember. Although the logs of different data
-   * partitions (slots) are mixed together before a snapshot is taken, after the taking of snapshot,
-   * logs of different logs will be stored separately.
-   */
-  private PartitionedSnapshotLogManager logManager;
 
   /**
    * "queryManger" records the remote nodes which have queried this node, and the readers or
@@ -1568,8 +1562,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @TestOnly
   public void setLogManager(PartitionedSnapshotLogManager logManager) {
+    if (this.logManager != null) {
+      this.logManager.close();
+    }
     this.logManager = logManager;
-    super.logManager = logManager;
+    super.setLogManager(logManager);
   }
 
   /**

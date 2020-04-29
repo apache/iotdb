@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.read.common;
 
+import org.apache.iotdb.tsfile.exception.NullFieldException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -75,7 +76,14 @@ public class Field {
     return dataType;
   }
 
+  public boolean isNull() {
+    return dataType == null;
+  }
+
   public boolean getBoolV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return boolV;
   }
 
@@ -84,6 +92,9 @@ public class Field {
   }
 
   public int getIntV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return intV;
   }
 
@@ -92,6 +103,9 @@ public class Field {
   }
 
   public long getLongV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return longV;
   }
 
@@ -100,6 +114,9 @@ public class Field {
   }
 
   public float getFloatV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return floatV;
   }
 
@@ -108,6 +125,9 @@ public class Field {
   }
 
   public double getDoubleV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return doubleV;
   }
 
@@ -116,6 +136,9 @@ public class Field {
   }
 
   public Binary getBinaryV() {
+    if (dataType == null) {
+      throw new NullFieldException();
+    }
     return binaryV;
   }
 

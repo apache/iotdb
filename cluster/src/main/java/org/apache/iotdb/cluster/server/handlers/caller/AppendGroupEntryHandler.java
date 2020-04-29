@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
@@ -55,7 +56,9 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   // store the flag of leadership lost and the new leader's term
   private AtomicBoolean leaderShipStale;
   private AtomicLong newLeaderTerm;
-  private int replicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+  private int replicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+
+  private AtomicInteger erroredNodeNum = new AtomicInteger(0);
 
   public AppendGroupEntryHandler(int[] groupReceivedCounter, int receiverNodeIndex,
       Node receiverNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm) {
@@ -129,5 +132,11 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onError(Exception exception) {
     logger.error("Cannot send the add node request to node {}", receiverNode, exception);
+    if (erroredNodeNum.incrementAndGet() >= replicationNum / 2) {
+      synchronized (groupReceivedCounter) {
+        logger.error("Over half of the nodes failed, the request is rejected");
+        groupReceivedCounter.notifyAll();
+      }
+    }
   }
 }

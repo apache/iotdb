@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -15,28 +15,18 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
- *
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.tsfile.read.common;
 
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.tsfile.exception.NullFieldException;
+import org.junit.Test;
 
-public class LoadConfigurationOperator extends RootOperator {
+public class FieldTest {
 
-  LoadConfigurationOperatorType loadConfigurationOperatorType;
-
-  public LoadConfigurationOperator(LoadConfigurationOperatorType type) {
-    super(SQLConstant.TOK_LOAD_CONFIGURATION);
-    this.operatorType = OperatorType.LOAD_CONFIGURATION;
-    this.loadConfigurationOperatorType = type;
+  @Test(expected = NullFieldException.class)
+  public void construct() {
+    Field field = new Field(null);
+    field.getIntV();
   }
 
-  public LoadConfigurationOperatorType getLoadConfigurationOperatorType() {
-    return loadConfigurationOperatorType;
-  }
-
-  public enum LoadConfigurationOperatorType{
-    LOCAL, GLOBAL
-  }
 }

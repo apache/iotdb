@@ -112,10 +112,10 @@ public class DataSourceInfo {
         }
         Long readerId = result.get();
         if (readerId != null) {
+          logger.debug("get a readerId {} for {} from {}", readerId, request.path, node);
           if (readerId != -1) {
             // register the node so the remote resources can be released
             context.registerRemoteNode(partitionGroup.getHeader(), node);
-            logger.debug("get a readerId {} for {} from {}", readerId, request.path, node);
             this.readerId = readerId;
             this.curSource = node;
             this.curPos = nextNodePos;

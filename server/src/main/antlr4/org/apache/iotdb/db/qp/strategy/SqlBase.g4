@@ -72,7 +72,7 @@ statement
     | SHOW DEVICES prefixPath? #showDevices
     | COUNT TIMESERIES prefixPath (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
-    | LOAD CONFIGURATION #loadConfigurationStatement
+    | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
     | REMOVE FILE #removeFile
     | MOVE FILE FILE #moveFile
@@ -127,6 +127,7 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
+    | UPSERT tagClause attributeClause
     ;
 
 attributeClauses
@@ -608,6 +609,10 @@ ADD
     : A D D
     ;
 
+UPSERT
+    : U P S E R T
+    ;
+
 VALUES
     : V A L U E S
     ;
@@ -811,6 +816,11 @@ TAGS
 RENAME
     : R E N A M E
     ;
+
+GLOBAL
+  : G L O B A L
+  | G
+  ;
 
 //============================
 // End of the keywords list

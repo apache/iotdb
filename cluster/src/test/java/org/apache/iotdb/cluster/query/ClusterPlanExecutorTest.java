@@ -49,7 +49,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
   @Test
   public void testQuery()
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException,
-      MetadataException, TException, InterruptedException {
+      MetadataException {
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedPaths(pathList);
     queryPlan.setDeduplicatedDataTypes(dataTypes);

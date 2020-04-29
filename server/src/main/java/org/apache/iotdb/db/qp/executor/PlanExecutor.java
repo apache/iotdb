@@ -97,6 +97,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -218,7 +219,7 @@ public class PlanExecutor implements IPlanExecutor {
         operateTTL((SetTTLPlan) plan);
         return true;
       case LOAD_CONFIGURATION:
-        IoTDBDescriptor.getInstance().loadHotModifiedProps();
+        loadConfiguration((LoadConfigurationPlan)plan);
         return true;
       case LOAD_FILES:
         operateLoadFiles((OperateFilePlan) plan);
@@ -743,15 +744,21 @@ public class PlanExecutor implements IPlanExecutor {
             registeredSeries.add(series);
             MeasurementSchema schema = knownSchemas.get(series);
             if (schema == null) {
-              throw new MetadataException(String.format("Can not get the schema of measurement [%s]",
+              throw new MetadataException(
+                  String.format(
+                      "Can not get the schema of measurement [%s]",
                       chunkMetadata.getMeasurementUid()));
             }
             if (!node.hasChild(chunkMetadata.getMeasurementUid())) {
-              mManager.createTimeseries(series.getFullPath(), schema.getType(),
-                      schema.getEncodingType(), schema.getCompressor(), Collections.emptyMap());
+              mManager.createTimeseries(
+                  series.getFullPath(),
+                  schema.getType(),
+                  schema.getEncodingType(),
+                  schema.getCompressor(),
+                  Collections.emptyMap());
             } else if (node.getChild(chunkMetadata.getMeasurementUid()) instanceof InternalMNode) {
               throw new QueryProcessException(
-                      String.format("Current Path is not leaf node. %s", series));
+                  String.format("Current Path is not leaf node. %s", series));
             }
           }
         }
@@ -1107,6 +1114,12 @@ public class PlanExecutor implements IPlanExecutor {
         case ADD_ATTRIBUTES:
           mManager.addAttributes(alterMap, path.getFullPath());
           break;
+        case UPSERT:
+          mManager.upsertTagsAndAttributes(
+              alterTimeSeriesPlan.getTagsMap(),
+              alterTimeSeriesPlan.getAttributesMap(),
+              path.getFullPath());
+          break;
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
@@ -1348,5 +1361,9 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     return dataSet;
+  }
+
+  protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
+    IoTDBDescriptor.getInstance().loadHotModifiedProps();
   }
 }

@@ -82,7 +82,12 @@ import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.query.reader.*;
+import org.apache.iotdb.cluster.query.reader.DataSourceInfo;
+import org.apache.iotdb.cluster.query.reader.EmptyReader;
+import org.apache.iotdb.cluster.query.reader.ManagedMergeReader;
+import org.apache.iotdb.cluster.query.reader.MergedReaderByTime;
+import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
+import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
@@ -174,7 +179,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private static final int REPORT_INTERVAL_SEC = 10;
   // how many times is a data record replicated, also the number of nodes in a data group
   public final int REPLICATION_NUM =
-      ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+      ClusterDescriptor.getInstance().getConfig().getReplicationNum();
 
   // blind nodes are nodes that do not have the partition table, and if the node is the leader,
   // the partition table should be sent to them at the next heartbeat
@@ -198,9 +203,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   // MetaGroupMember so they can be processed cluster-wide
   private ClientServer clientServer;
 
-  // this logManger manages the logs of the meta group
-  private MetaSingleSnapshotLogManager logManager;
-
   // dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
   // nodes
   private ClientPool dataClientPool;
@@ -223,7 +225,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
     LogApplier metaLogApplier = new MetaLogApplier(this);
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
-    super.logManager = logManager;
     this.term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
 
@@ -415,7 +416,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         .setPartitionInterval(IoTDBDescriptor.getInstance().getConfig().getPartitionInterval());
     startUpStatus.setHashSalt(ClusterConstant.HASH_SALT);
     startUpStatus
-        .setReplicationNumber(ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum());
+        .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
     return startUpStatus;
   }
 
@@ -722,7 +723,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig()
           .getPartitionInterval();
       int localHashSalt = ClusterConstant.HASH_SALT;
-      int localReplicationNum = ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum();
+      int localReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
       boolean partitionIntervalEquals = true;
       boolean hashSaltEquals = true;
       boolean replicationNumEquals = true;
@@ -1093,7 +1094,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
         }
       }
-      logManager.setSnapshot(snapshot);
       logManager.applyingSnapshot(snapshot);
     }
   }
@@ -1110,7 +1110,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   public TSStatus executeNonQuery(PhysicalPlan plan) {
     if (PartitionUtils.isLocalPlan(plan)) {// run locally
       //TODO run locally.
-      return null;
+      return processPlanLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
       return processNonPartitionedMetaPlan(plan);
     } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
@@ -2205,7 +2205,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private boolean processRemoveNodeLocally(Node node, AsyncMethodCallback resultHandler) {
     if (character == NodeCharacter.LEADER) {
       // if we cannot have enough replica after the removal, reject it
-      if (allNodes.size() <= ClusterDescriptor.getINSTANCE().getConfig().getReplicationNum()) {
+      if (allNodes.size() <= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
         resultHandler.onComplete(Response.RESPONSE_CLUSTER_TOO_SMALL);
         return true;
       }
@@ -2637,9 +2637,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         path.getFullPath(), queryTime, beforeRange)));
   }
 
-  @TestOnly
-  public void setLogManager(MetaSingleSnapshotLogManager manager) {
-    logManager = manager;
-    super.logManager = manager;
+  public void closeLogManager() {
+    super.closeLogManager();
+    if (dataClusterServer != null) {
+      dataClusterServer.closeLogManagers();
+    }
   }
 }

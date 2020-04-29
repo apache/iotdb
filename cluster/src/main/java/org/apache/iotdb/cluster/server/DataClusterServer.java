@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -73,6 +74,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     this.dataMemberFactory = dataMemberFactory;
   }
 
+  @Override
+  public void stop() {
+    closeLogManagers();
+    super.stop();
+  }
 
   /**
    * Add a DataGroupMember into this server, if a member with the same header exists, the old member
@@ -529,5 +535,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);
     dataMember.previousFill(request, resultHandler);
+  }
+
+  public void closeLogManagers() {
+    for (DataGroupMember member : headerGroupMap.values()) {
+      member.closeLogManager();
+    }
   }
 }

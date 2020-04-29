@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.server.heartbeat;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.HashSet;
@@ -151,7 +150,9 @@ public class HeartbeatThreadTest {
 
   @After
   public void tearDown() {
-    File dir = new File(new SyncLogDequeSerializer(1).getLogDir());
+    logManager.close();
+    member.closeLogManager();
+    File dir = new File(SyncLogDequeSerializer.getLogDir(1));
     for (File file : dir.listFiles()) {
       file.delete();
     }
@@ -166,10 +167,17 @@ public class HeartbeatThreadTest {
     synchronized (receivedNodes) {
       testThread.start();
     }
-    testThread.join(10 * 1000);
-    for (int i = 1; i < 10; i++) {
-      assertTrue(receivedNodes.contains(i));
+    begin:
+    while (true) {
+      for (int i = 1; i < 10; i++) {
+        if (!receivedNodes.contains(i)) {
+          continue begin;
+        }
+      }
+      break;
     }
+    testThread.interrupt();
+    testThread.join();
   }
 
   @Test
@@ -181,8 +189,9 @@ public class HeartbeatThreadTest {
     respondToElection = false;
     try {
       testThread.start();
-      Thread.sleep(1000);
-      assertEquals(NodeCharacter.ELECTOR, member.getCharacter());
+      while (!NodeCharacter.ELECTOR.equals(member.getCharacter())) {
+
+      }
       testThread.interrupt();
       testThread.join();
     } finally {
@@ -194,11 +203,10 @@ public class HeartbeatThreadTest {
   public void testAsElector() throws InterruptedException {
     member.setCharacter(NodeCharacter.ELECTOR);
     respondToElection = true;
-    synchronized (testThread) {
-      testThread.start();
-      testThread.wait(10 * 1000);
+    testThread.start();
+    while (!NodeCharacter.LEADER.equals(member.getCharacter())) {
+
     }
-    assertEquals(NodeCharacter.LEADER, member.getCharacter());
     testThread.interrupt();
     testThread.join();
   }
@@ -208,11 +216,10 @@ public class HeartbeatThreadTest {
     member.getAllNodes().clear();
     member.getAllNodes().add(TestUtils.getNode(0));
     member.setCharacter(NodeCharacter.ELECTOR);
-    synchronized (testThread) {
-      testThread.start();
-      testThread.wait(500);
+    testThread.start();
+    while (!NodeCharacter.LEADER.equals(member.getCharacter())) {
+
     }
-    assertEquals(NodeCharacter.LEADER, member.getCharacter());
     testThread.interrupt();
     testThread.join();
   }

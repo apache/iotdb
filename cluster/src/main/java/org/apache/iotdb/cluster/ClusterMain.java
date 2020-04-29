@@ -73,7 +73,7 @@ public class ClusterMain {
     try {
       if (MODE_START.equals(mode)) {
         metaServer = new MetaClusterServer();
-        ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+        ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
         // check the initial cluster size and refuse to start when the size < quorum
         int quorum = config.getReplicationNum() / 2 + 1;
         if (config.getSeedNodeUrls().size() < quorum) {
@@ -116,7 +116,7 @@ public class ClusterMain {
 
     if (clusterParams != null && clusterParams.length > 0) {
       // replace the cluster default conf params
-      ClusterDescriptor.getINSTANCE().replaceProps(clusterParams);
+      ClusterDescriptor.getInstance().replaceProps(clusterParams);
     }
 
     if (serverParams != null && serverParams.length > 0) {
@@ -132,7 +132,7 @@ public class ClusterMain {
     }
     String ip = args[1];
     int metaPort = Integer.parseInt(args[2]);
-    ClusterConfig config = ClusterDescriptor.getINSTANCE().getConfig();
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     TProtocolFactory factory = config
         .isRpcThriftCompressionEnabled() ? new TCompactProtocol.Factory() : new Factory();
     Node nodeToRemove = new Node();

@@ -49,24 +49,17 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private List<AggregateResult> results = new ArrayList<>();
   private TimeRange timeRange;
 
-
   private QueryDataSource queryDataSource;
 
-  public LocalGroupByExecutor(
-      Path path,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      Filter timeFilter,
-      TsFileFilter fileFilter)
+  public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
+      QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
       queryDataSource = QueryResourceManager.getInstance()
           .getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-    this.reader =
-        new SeriesAggregateReader(
-            path, allSensors, dataType, context, queryDataSource, timeFilter, null, fileFilter);
+    this.reader = new SeriesAggregateReader(path, allSensors, dataType, context, queryDataSource,
+        timeFilter, null, fileFilter);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
   }
@@ -98,9 +91,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
       throws IOException {
     // is error data
-    if (batchData == null
-        || !batchData.hasCurrent()
-        || batchData.getMaxTimestamp() < curStartTime
+    if (batchData == null || !batchData.hasCurrent() || batchData.getMaxTimestamp() < curStartTime
         || batchData.currentTime() >= curEndTime) {
       return;
     }
