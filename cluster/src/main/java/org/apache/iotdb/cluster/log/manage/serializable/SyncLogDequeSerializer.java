@@ -42,6 +42,8 @@ import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
+import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
@@ -71,6 +73,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private long maxAvailableTime = Long.MAX_VALUE;
   // log dir
   private String logDir;
+  // version controller
+  private VersionController versionController;
 
   /**
    * for log tools
@@ -90,6 +94,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public SyncLogDequeSerializer(int nodeIdentifier) {
     logFileList = new ArrayList<>();
     logDir = getLogDir(nodeIdentifier);
+    try {
+      versionController = new SimpleFileVersionController(logDir);
+    } catch (IOException e) {
+      logger.error("log serializer build version controller failed");
+    }
     init();
   }
 
@@ -231,7 +240,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private File createNewLogFile(String dirName) throws IOException {
     File logFile = SystemFileFactory.INSTANCE
-        .getFile(dirName + File.separator + "data" + "-" + System.currentTimeMillis());
+        .getFile(dirName + File.separator + "data" + "-" + versionController.nextVersion());
     logFile.createNewFile();
     return logFile;
   }
