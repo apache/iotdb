@@ -145,6 +145,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
 
   @Test
   public void testRemoveOldFile() {
+    System.out.println("Start testRemoveOldFile()");
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     List<Log> testLogs2;
     try {
@@ -160,7 +161,13 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       assertEquals(2, syncLogDequeSerializer.logFileList.size());
 
       // this will remove first file and build a new file
+      for (File file : syncLogDequeSerializer.logFileList) {
+        System.out.printf("Before file removal: %s len: %d%n", file, file.length());
+      }
       syncLogDequeSerializer.removeFirst(8);
+      for (File file : syncLogDequeSerializer.logFileList) {
+        System.out.printf("After file removal: %s len: %d%n", file, file.length());
+      }
       assertEquals(9, syncLogDequeSerializer.getLogSizeDeque().size());
       assertEquals(2, syncLogDequeSerializer.logFileList.size());
     } finally {

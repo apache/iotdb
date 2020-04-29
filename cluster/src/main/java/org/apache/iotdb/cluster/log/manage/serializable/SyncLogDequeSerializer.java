@@ -496,6 +496,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     Iterator<File> logFileIterator = logFileList.iterator();
     while (logFileIterator.hasNext()) {
       File logFile = logFileIterator.next();
+      if (logger.isDebugEnabled()) {
+        logger.debug("Examining file for removal, file: {}, len: {}, removedLogSize: {}", logFile
+            , logFile.length(), removedLogSize);
+      }
       if (logFile.length() > removedLogSize) {
         break;
       }
