@@ -20,6 +20,10 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
+import java.io.IOException;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -28,25 +32,17 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import static org.junit.Assert.assertEquals;
-
 public class DatasourceInfoTest {
   private MetaGroupMember metaGroupMember;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() {
     metaGroupMember = new TestMetaGroupMember() {
       @Override
       public DataClient getDataClient(Node node) throws IOException {
@@ -61,7 +57,7 @@ public class DatasourceInfoTest {
   }
 
   @Test
-  public void testFailedAll() throws IOException {
+  public void testFailedAll() {
     PartitionGroup group = new PartitionGroup();
     group.add(TestUtils.getNode(0));
     group.add(TestUtils.getNode(1));
@@ -74,6 +70,6 @@ public class DatasourceInfoTest {
       request, context, metaGroupMember, group);
     DataClient client = sourceInfo.nextDataClient(false, Long.MIN_VALUE);
 
-    assertEquals(client, null);
+    assertNull(client);
   }
 }
