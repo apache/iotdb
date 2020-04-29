@@ -38,6 +38,12 @@ public class MetadataIndexConstructor {
     throw new IllegalStateException("Utility class");
   }
 
+  /**
+   * Construct metadata index tree
+   *
+   * @param deviceTimeseriesMetadataMap device - >List<TimeseriesMetadata>
+   * @param out tsfile output
+   */
   public static MetadataIndexNode constructMetadataIndex(Map<String, List<TimeseriesMetadata>>
       deviceTimeseriesMetadataMap, TsFileOutput out) throws IOException {
     Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
@@ -66,7 +72,7 @@ public class MetadataIndexConstructor {
         timeseriesMetadata.serializeTo(out.wrapAsStream());
       }
       addCurrentIndexNodeToQueueAndReset(currentIndexNode, measurementMetadataIndexQueue, out);
-      deviceMetadataIndexMap.put(entry.getKey(), generateDeviceNode(measurementMetadataIndexQueue,
+      deviceMetadataIndexMap.put(entry.getKey(), generateRootNode(measurementMetadataIndexQueue,
           out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
     }
 
@@ -98,15 +104,23 @@ public class MetadataIndexConstructor {
       entry.getValue().serializeTo(out.wrapAsStream());
     }
     addCurrentIndexNodeToQueueAndReset(currentIndexNode, deviceMetadaIndexQueue, out);
-    deviceMetadataIndexNode = generateDeviceNode(deviceMetadaIndexQueue,
+    deviceMetadataIndexNode = generateRootNode(deviceMetadaIndexQueue,
         out, MetadataIndexNodeType.INTERNAL_DEVICE);
     deviceMetadataIndexNode.setEndOffset(out.getPosition());
     return deviceMetadataIndexNode;
   }
 
-  private static MetadataIndexNode generateDeviceNode(
-      Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out,
-      MetadataIndexNodeType type) throws IOException {
+  /**
+   * Generate root node, using the nodes in the queue as leaf nodes. The final metadata tree has two
+   * levels: measurement leaf nodes will generate to measurement root node; device leaf nodes will
+   * generate to device root node
+   *
+   * @param metadataIndexNodeQueue queue of metadataIndexNode
+   * @param out tsfile output
+   * @param type MetadataIndexNode type
+   */
+  private static MetadataIndexNode generateRootNode(Queue<MetadataIndexNode> metadataIndexNodeQueue,
+      TsFileOutput out, MetadataIndexNodeType type) throws IOException {
     int queueSize = metadataIndexNodeQueue.size();
     MetadataIndexNode metadataIndexNode;
     MetadataIndexNode currentIndexNode = new MetadataIndexNode();

@@ -31,7 +31,6 @@ import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
@@ -94,7 +93,7 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      return reader.readMeasurementMetadata(new Path(key.device, key.measurement));
+      return reader.readTimeseriesMetadata(new Path(key.device, key.measurement));
     }
 
     cacheRequestNum.incrementAndGet();
@@ -126,20 +125,9 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      Map<String, TimeseriesMetadata> timeSeriesMetadataMap = reader.readDeviceMetadata(key.device);
-      TimeseriesMetadata res = timeSeriesMetadataMap.get(key.measurement);
-      lruCache.put(key, res);
-
-      if (!allSensors.isEmpty()) {
-        // put TimeSeriesMetadata of all sensors used in this query into cache
-        allSensors.forEach(sensor -> {
-          if (timeSeriesMetadataMap.containsKey(sensor)) {
-            lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device, sensor),
-                timeSeriesMetadataMap.get(sensor));
-          }
-        });
-      }
-      return res;
+      TimeseriesMetadata timeseriesMetadata = reader.readTimeseriesMetadata(new Path(key.device, key.measurement));
+      lruCache.put(key, timeseriesMetadata);
+      return timeseriesMetadata;
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", key.filePath);
       throw e;
