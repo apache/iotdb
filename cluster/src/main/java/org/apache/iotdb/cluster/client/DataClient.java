@@ -27,11 +27,17 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DataClient extends AsyncClient {
 
+  private static final Logger logger = LoggerFactory.getLogger(DataClient.class);
+
   private Node node;
   private ClientPool pool;
+
+  private volatile boolean inPool = false;
 
   public DataClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
@@ -44,9 +50,22 @@ public class DataClient extends AsyncClient {
 
   @Override
   public void onComplete() {
-    super.onComplete();
-    // return itself to the pool if the job is done
-    pool.putClient(node, this);
+    synchronized (this) {
+      super.onComplete();
+      if (!inPool) {
+        // return itself to the pool if the job is done
+        pool.putClient(node, this);
+        inPool = true;
+      }
+    }
+  }
+
+  @Override
+  protected void checkReady() {
+    synchronized (this) {
+      super.checkReady();
+      inPool = false;
+    }
   }
 
   public static class Factory implements ClientFactory {
