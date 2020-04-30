@@ -735,7 +735,6 @@ public class MetaGroupMemberTest extends MemberTest {
       metaGroupMember.processValidHeartbeatReq(request, response);
       assertEquals(partitionTable, metaGroupMember.getPartitionTable());
     } finally {
-      metaGroupMember.closeLogManager();
       metaGroupMember.stop();
     }
   }
@@ -756,7 +755,6 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       assertNotNull(metaGroupMember.getPartitionTable());
     } finally {
-      metaGroupMember.closeLogManager();
       metaGroupMember.stop();
     }
   }
