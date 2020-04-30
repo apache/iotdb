@@ -44,7 +44,7 @@
 *启动 IoTDB 的命令行界面:
 
 ```
-> ./start-client.sh -p 6667 -pw root -u root -h localhost
+> ./start-cli.sh -p 6667 -pw root -u root -h localhost
  _____       _________  ______   ______    
 |_   _|     |  _   _  ||_   _ `.|_   _ \   
   | |   .--.|_/ | | \_|  | | `. \ | |_) |  
@@ -89,7 +89,7 @@ $ pwd
 
 $ ls -l
 server/
-client/
+cli/
 pom.xml
 Readme.md
 ...
@@ -97,7 +97,7 @@ Readme.md
 
 假如 `$IOTDB_HOME = /workspace/incubator-iotdb/server/target/iotdb-server-{project.version}`
 
-假如 `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/client/target/iotdb-client-{project.version}`
+假如 `$IOTDB_CLI_HOME = /workspace/incubator-iotdb/cli/target/iotdb-cli-{project.version}`
 
 在默认的设置里，logs 文件夹会被存储在```IOTDB_HOME/logs```。您可以在```IOTDB_HOME/conf```目录下的```logback.xml```文件中修改日志的级别和日志的存储路径。
 
@@ -163,5 +163,5 @@ IoTDB> show timeseries root.fit.d1.*
 IoTDB 客户端默认显示的时间是人类可读的(比如：```1970-01-01T08:00:00.001```)，如果您想显示是时间戳或者其他可读格式, 请在启动命令上添加参数```-disableIS08601```:
 
 ```
-> $IOTDB_CLI_HOME/sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
+> $IOTDB_CLI_HOME/sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root -disableIS08601
 ```

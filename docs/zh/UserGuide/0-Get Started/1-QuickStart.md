@@ -106,20 +106,20 @@ Windows系统启动命令如下：
 
 IoTDB为用户提供多种与服务器交互的方式，在此我们介绍使用Cli工具进行写入、查询数据的基本步骤。
 
-初始安装后的IoTDB中有一个默认用户：root，默认密码为root。用户可以使用该用户运行Cli工具操作IoTDB。Cli工具启动脚本为sbin文件夹下的start-client脚本。启动脚本时需要指定运行ip、port、username和password。若脚本未给定对应参数,则默认参数为"-h 127.0.0.1 -p 6667 -u root -pw -root"
+初始安装后的IoTDB中有一个默认用户：root，默认密码为root。用户可以使用该用户运行Cli工具操作IoTDB。Cli工具启动脚本为sbin文件夹下的start-cli脚本。启动脚本时需要指定运行ip、port、username和password。若脚本未给定对应参数,则默认参数为"-h 127.0.0.1 -p 6667 -u root -pw -root"
 
 以下启动语句为服务器在本机运行，且用户未更改运行端口号的示例。
 
 Linux系统与MacOS系统启动命令如下：
 
 ```
-> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 Windows系统启动命令如下：
 
 ```
-> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 启动后出现如图提示即为启动成功。
@@ -291,7 +291,7 @@ Windows系统停止命令如下：
 在incubator-iotdb的根路径下：
 
 ```
-> mvn clean package -pl client -am -DskipTests
+> mvn clean package -pl cli -am -DskipTests
 ```
 
-构建后，IoTDB客户端将位于文件夹“ client / target / iotdb-client- {project.version}”下。
+构建后，IoTDB客户端将位于文件夹“ cli / target / iotdb-cli- {project.version}”下。
