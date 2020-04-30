@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -429,6 +430,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public LogManagerMeta recoverMeta() {
     if (meta == null) {
       if (metaFile.exists() && metaFile.length() > 0) {
+        if (logger.isInfoEnabled()) {
+          logger.info("MetaFile {} exists, last modified: {}", metaFile.getPath(),
+              new Date(metaFile.lastModified()));
+        }
         try (FileInputStream metaReader = new FileInputStream(metaFile)) {
           firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
           removedLogSize = ReadWriteIOUtils.readLong(metaReader);
