@@ -52,7 +52,7 @@ public class TsFileMetaDataCache {
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   /**
-   * estimated size of a deviceMetaDataMap entry in TsFileMetaData.
+   * estimated size of metadataIndex entry in TsFileMetaData.
    */
   private long metadataIndexEntrySize = 0;
 
@@ -69,7 +69,7 @@ public class TsFileMetaDataCache {
         // totalChunkNum, invalidChunkNum
         long valueSize = 4 + 4L;
 
-        // deviceMetadataIndex
+        // metadataIndex
         if (value.getMetadataIndex() != null) {
           valueSize += value.getMetadataIndex().getChildren().size() * metadataIndexEntrySize;
         }

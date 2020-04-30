@@ -129,7 +129,7 @@ public class TsFileSketchTool {
       }
       for (MetadataIndexEntry metadataIndex : tsFileMetaData.getMetadataIndex().getChildren()) {
         printlnBoth(pw, String.format("%20s", metadataIndex.getOffset())
-            + "|\t[DeviceMetadata] of " + metadataIndex.getName());
+            + "|\t[MetadataIndex] of " + metadataIndex.getName());
       }
 
       printlnBoth(pw, String.format("%20s", reader.getFileMetadataPos()) + "|\t[TsFileMetaData]");
@@ -137,7 +137,7 @@ public class TsFileSketchTool {
           .getMetadataIndex().getChildren().size());
       printlnBoth(pw,
           String.format("%20s", "") + "|\t\t" + tsFileMetaData.getMetadataIndex().getChildren()
-              .size() + " key&TsDeviceMetadataIndex");
+              .size() + " key&TsMetadataIndex");
       printlnBoth(pw,
           String.format("%20s", "") + "|\t\t[totalChunkNum] " + tsFileMetaData.getTotalChunkNum());
       printlnBoth(pw,

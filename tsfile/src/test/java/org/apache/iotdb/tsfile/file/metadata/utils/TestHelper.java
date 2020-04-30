@@ -37,18 +37,18 @@ public class TestHelper {
 
   public static TsFileMetadata createSimpleFileMetaData() {
     TsFileMetadata metaData = new TsFileMetadata();
-    metaData.setMetadataIndex(generateDeviceMetaDataIndex());
+    metaData.setMetadataIndex(generateMetaDataIndex());
     metaData.setVersionInfo(generateVersionInfo());
     return metaData;
   }
 
-  private static MetadataIndexNode generateDeviceMetaDataIndex() {
-    MetadataIndexNode deviceMetaDataIndex = new MetadataIndexNode();
+  private static MetadataIndexNode generateMetaDataIndex() {
+    MetadataIndexNode metaDataIndex = new MetadataIndexNode();
     for (int i = 0; i < 5; i++) {
-      deviceMetaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5,
+      metaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5,
           MetadataIndexNodeType.LEAF_MEASUREMENT));
     }
-    return deviceMetaDataIndex;
+    return metaDataIndex;
   }
 
   private static List<Pair<Long, Long>> generateVersionInfo() {
