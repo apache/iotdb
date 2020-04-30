@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.web.grafana.dao.impl;
 
+import java.sql.DatabaseMetaData;
 import java.time.Duration;
+import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.dao.BasicDao;
@@ -35,15 +37,11 @@ import org.springframework.stereotype.Repository;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-/**
- * Created by dell on 2017/7/17.
- */
 @Repository
 @PropertySource("classpath:application.properties")
 public class BasicDaoImpl implements BasicDao {
