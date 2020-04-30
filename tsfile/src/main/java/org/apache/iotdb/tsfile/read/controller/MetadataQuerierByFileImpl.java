@@ -115,13 +115,11 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         continue;
       }
 
-      Map<String, TimeseriesMetadata> timeseriesMetaDataInDevice = tsFileReader
-          .readDeviceMetadata(selectedDevice);
+      List<TimeseriesMetadata> timeseriesMetaDataList = tsFileReader
+          .readTimeseriesMetadata(selectedDevice, selectedMeasurements);
       List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-      for (Map.Entry<String, TimeseriesMetadata> entry : timeseriesMetaDataInDevice.entrySet()) {
-        if (selectedMeasurements.contains(entry.getKey())) {
-          chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(entry.getValue()));
-        }
+      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
+        chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(timeseriesMetadata));
       }
       // d1
       for (ChunkMetadata chunkMetaData : chunkMetadataList) {
