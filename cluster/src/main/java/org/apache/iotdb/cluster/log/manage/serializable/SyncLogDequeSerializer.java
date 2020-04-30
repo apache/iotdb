@@ -447,6 +447,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
               ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
         } catch (IOException e) {
           logger.error("Error in log serialization: ", e);
+          meta = new LogManagerMeta();
+          state = new HardState();
         }
       } else {
         meta = new LogManagerMeta();
