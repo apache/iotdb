@@ -28,6 +28,10 @@ import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
 
+/**
+ * Notice: Because a client will be returned to a pool immediately after a successful request,
+ * you should not cache it anywhere else or there may be conflicts.
+ */
 public class MetaClient extends AsyncClient {
 
   private Node node;

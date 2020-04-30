@@ -30,14 +30,16 @@ import org.apache.thrift.transport.TNonblockingSocket;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Notice: Because a client will be returned to a pool immediately after a successful request,
+ * you should not cache it anywhere else or there may be conflicts.
+ */
 public class DataClient extends AsyncClient {
 
   private static final Logger logger = LoggerFactory.getLogger(DataClient.class);
 
   private Node node;
   private ClientPool pool;
-
-  private volatile boolean inPool = false;
 
   public DataClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
@@ -50,22 +52,8 @@ public class DataClient extends AsyncClient {
 
   @Override
   public void onComplete() {
-    synchronized (this) {
-      super.onComplete();
-      if (!inPool) {
-        // return itself to the pool if the job is done
-        pool.putClient(node, this);
-        inPool = true;
-      }
-    }
-  }
-
-  @Override
-  protected void checkReady() {
-    synchronized (this) {
-      super.checkReady();
-      inPool = false;
-    }
+    super.onComplete();
+    pool.putClient(node, this);
   }
 
   public static class Factory implements ClientFactory {

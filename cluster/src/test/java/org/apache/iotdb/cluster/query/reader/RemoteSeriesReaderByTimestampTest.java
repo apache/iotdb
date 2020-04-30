@@ -23,6 +23,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -42,6 +44,7 @@ import static org.junit.Assert.*;
 public class RemoteSeriesReaderByTimestampTest {
 
   private BatchData batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
+  private Set<Node> failedNodes = new ConcurrentSkipListSet<>();
 
   private MetaGroupMember metaGroupMember = new MetaGroupMember() {
     @Override
@@ -49,7 +52,11 @@ public class RemoteSeriesReaderByTimestampTest {
       return new DataClient(null, null, node, null) {
         @Override
         public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
-            AsyncMethodCallback<ByteBuffer> resultHandler) {
+            AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
+          if (failedNodes.contains(node)) {
+            throw new TException("Node down.");
+          }
+
           new Thread(() -> {
             ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
@@ -77,9 +84,11 @@ public class RemoteSeriesReaderByTimestampTest {
 
         @Override
         public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
-          new Thread(() -> {
-            resultHandler.onComplete(1L);
-          }).start();
+          if (failedNodes.contains(node)) {
+            throw new TException("Node down.");
+          }
+
+          new Thread(() -> resultHandler.onComplete(1L)).start();
         }
       };
     }
@@ -132,32 +141,16 @@ public class RemoteSeriesReaderByTimestampTest {
       assertEquals(i * 1.0, reader.getValueInTimestamp(i));
     }
 
-    // a bad client, change to another node
-    DataClient badClient = new DataClient(null, null, TestUtils.getNode(0), null) {
-      @Override
-      public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
-                                               AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
-        throw new TException("Good bye.");
-      }
-
-      @Override
-      public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
-        new Thread(() -> {
-          resultHandler.onComplete(1L);
-        }).start();
-      }
-    };
-
     endTime=System.currentTimeMillis();
     System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
-    reader.setClientForTest(badClient);
+    failedNodes.add(TestUtils.getNode(0));
     for (int i = 50; i < 80; i++) {
       assertEquals(i * 1.0, reader.getValueInTimestamp(i));
     }
     assertEquals(TestUtils.getNode(1), sourceInfo.getCurrentNode());
 
     // a bad client, change to another node again
-    reader.setClientForTest(badClient);
+    failedNodes.add(TestUtils.getNode(1));
     for (int i = 80; i < 90; i++) {
       assertEquals(i * 1.0, reader.getValueInTimestamp(i));
     }
@@ -166,21 +159,8 @@ public class RemoteSeriesReaderByTimestampTest {
     endTime=System.currentTimeMillis();
     System.out.println(Thread.currentThread().getStackTrace()[1].getLineNumber() + " begin: " + (endTime-startTime));
     // all node failed
-    reader.setClientForTest(badClient);
-    {
-      MetaGroupMember tmpMetaGroupMember = new MetaGroupMember() {
-        @Override
-        public DataClient getDataClient(Node node) throws IOException {
-          return new DataClient(null, null, node, null) {
-            @Override
-            public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
-              throw new TException("Don't worry, this is the exception I constructed.");
-            }
-          };
-        }
-      };
-      sourceInfo.setMetaGroupMemberForTest(tmpMetaGroupMember);
-    }
+    failedNodes.add(TestUtils.getNode(2));
+
     try {
       reader.getValueInTimestamp(90);
       fail();

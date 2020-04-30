@@ -38,7 +38,6 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
 
   private DataSourceInfo sourceInfo;
-  private DataClient client;
 
   private AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
   private GenericHandler<ByteBuffer> handler;
@@ -46,12 +45,11 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
   public RemoteSeriesReaderByTimestamp(DataSourceInfo sourceInfo) {
     this.sourceInfo = sourceInfo;
     handler = new GenericHandler<>(sourceInfo.getCurrentNode(), fetchResult);
-    this.client = sourceInfo.getCurClient();
 }
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    if (client == null) {
+    if (sourceInfo.getCurClient() == null) {
       if (!sourceInfo.isNoData()) {
         throw new IOException("no available client.");
       } else {
@@ -64,12 +62,12 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       synchronized (fetchResult) {
         fetchResult.set(null);
         try {
-          client.fetchSingleSeriesByTimestamp(sourceInfo.getHeader(), sourceInfo.getReaderId(), timestamp,
-            handler);
+          sourceInfo.getCurClient().fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
+              sourceInfo.getReaderId(), timestamp, handler);
           fetchResult.wait(connectionTimeoutInMS);
         } catch (TException | InterruptedException e) {
           //try other node
-          client = sourceInfo.nextDataClient(true, timestamp);
+          DataClient client = sourceInfo.nextDataClient(true, timestamp);
           if (client == null) {
             if (!sourceInfo.isNoData()) {
               throw new IOException("no available client.");
@@ -83,9 +81,5 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       }
       return SerializeUtils.deserializeObject(fetchResult.get());
     }
-  }
-
-  public void setClientForTest(DataClient client) {
-    this.client = client;
   }
 }

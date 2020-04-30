@@ -28,6 +28,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -52,9 +54,10 @@ public class RemoteSimpleSeriesReaderTest {
   private BatchData batchData;
   private boolean batchUsed;
   private MetaGroupMember metaGroupMember;
+  private Set<Node> failedNodes = new ConcurrentSkipListSet<>();
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() {
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember() {
@@ -64,7 +67,12 @@ public class RemoteSimpleSeriesReaderTest {
         return new DataClient(null, null, node, null){
           @Override
           public void fetchSingleSeries(Node header, long readerId,
-                                        AsyncMethodCallback<ByteBuffer> resultHandler) {
+                                        AsyncMethodCallback<ByteBuffer> resultHandler)
+              throws TException {
+            if (failedNodes.contains(node)) {
+              throw new TException("Node down.");
+            }
+
             new Thread(() -> {
               if (batchUsed) {
                 resultHandler.onComplete(ByteBuffer.allocate(0));
@@ -79,10 +87,13 @@ public class RemoteSimpleSeriesReaderTest {
           }
 
           @Override
-          public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
-            new Thread(() -> {
-              resultHandler.onComplete(1L);
-            }).start();
+          public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
+              throws TException {
+            if (failedNodes.contains(node)) {
+              throw new TException("Node down.");
+            }
+
+            new Thread(() -> resultHandler.onComplete(1L)).start();
           }
         };
       }
@@ -146,26 +157,10 @@ public class RemoteSimpleSeriesReaderTest {
       assertEquals(i * 1.0, pair.getValue().getDouble(), 0.00001);
     }
 
-    // a bad client, change to another node
-    DataClient badClient = new DataClient(null, null, TestUtils.getNode(0), null){
-      @Override
-      public void fetchSingleSeries(Node header, long readerId,
-                                    AsyncMethodCallback<ByteBuffer> resultHandler)  throws TException {
-        throw new TException("Good bye");
-      }
-
-      @Override
-      public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
-        new Thread(() -> {
-          resultHandler.onComplete(1L);
-        }).start();
-      }
-    };
-
     this.batchUsed = false;
     this.batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     // a bad client, change to another node
-    reader.setClientForTest(badClient);
+    failedNodes.add(TestUtils.getNode(0));
     reader.clearCurDataForTest();
     for (int i = 50; i < 80; i++) {
       TimeValuePair pair = reader.nextTimeValuePair();
@@ -177,7 +172,7 @@ public class RemoteSimpleSeriesReaderTest {
     this.batchUsed = false;
     this.batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     // a bad client, change to another node again
-    reader.setClientForTest(badClient);
+    failedNodes.add(TestUtils.getNode(1));
     reader.clearCurDataForTest();
     for (int i = 80; i < 90; i++) {
       TimeValuePair pair = reader.nextTimeValuePair();
@@ -187,22 +182,8 @@ public class RemoteSimpleSeriesReaderTest {
     assertEquals(TestUtils.getNode(2), sourceInfo.getCurrentNode());
 
     // all node failed
-    reader.setClientForTest(badClient);
+    failedNodes.add(TestUtils.getNode(2));
     reader.clearCurDataForTest();
-    {
-      MetaGroupMember tmpMetaGroupMember = new MetaGroupMember() {
-        @Override
-        public DataClient getDataClient(Node node) throws IOException {
-          return new DataClient(null, null, node, null) {
-            @Override
-            public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
-              throw new TException("Don't worry, this is the exception I constructed.");
-            }
-          };
-        }
-      };
-      sourceInfo.setMetaGroupMemberForTest(tmpMetaGroupMember);
-    }
     try {
       reader.nextTimeValuePair();
       fail();
