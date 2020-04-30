@@ -553,16 +553,3 @@ TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 config.setXXX();
 ```
 
-## Bloom filter
-
-在加载元数据之前 Bloom filter 可以检查给定的时间序列是否在 TsFile 中。这可以优化加载元数据的性能，并跳过不包含指定时间序列的 TsFile。
-如果你想了解更多关于它的细节，你可以参考: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).
-
-#### 配置 
-
-您可以通过修改 TsFileConfig 中的配置项来控制bloom过滤器的误报率：
-
-```
-# The acceptable error rate of bloom filter, should be in [0.01, 0.1], default is 0.05
-bloomFilterErrorRate=0.05
-```

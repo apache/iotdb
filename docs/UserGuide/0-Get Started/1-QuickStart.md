@@ -35,7 +35,7 @@
     - Basic commands for IoTDB
   - Stop IoTDB
 - Only build server
-- Only build client
+- Only build cli
 
 <!-- /TOC -->
 
@@ -110,17 +110,17 @@ to $IOTDB_JMX_OPTS in iotdb-env.sh. or iotdb-env.bat
 IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insert and query data.
 
 After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
-default user to login Cli to use IoTDB. The startup script of Cli is the start-client script in the folder sbin. When executing the script, user should assign  
+default user to login Cli to use IoTDB. The startup script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
 IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
 
 Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
-> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 The command line client is interactive so if everything is ready you should see the welcome logo and statements:
@@ -250,12 +250,12 @@ The server can be stopped with ctrl-C or the following script:
 ```
 
 
-## Only build client 
+## Only build cli
 
 Under the root path of incubator-iotdb:
 
 ```
-> mvn clean package -pl client -am -DskipTests
+> mvn clean package -pl cli -am -DskipTests
 ```
 
 After build, the IoTDB client will be at the folder "client/target/iotdb-client-{project.version}".
