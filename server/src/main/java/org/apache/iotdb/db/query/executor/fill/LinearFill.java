@@ -19,13 +19,20 @@
 
 package org.apache.iotdb.db.query.executor.fill;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.query.executor.AggregationExecutor;
+import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -40,10 +47,13 @@ import java.io.IOException;
 
 public class LinearFill extends IFill {
 
+  private Path seriesPath;
   private long beforeRange;
   private long afterRange;
-  private IBatchReader dataReader;
-  private BatchData batchData;
+  private Filter beforeFilter;
+  private Filter afterFilter;
+  private QueryContext context;
+  private Set<String> allSensors;
 
   public LinearFill(long beforeRange, long afterRange) {
     this.beforeRange = beforeRange;
@@ -58,7 +68,6 @@ public class LinearFill extends IFill {
     super(dataType, queryTime);
     this.beforeRange = beforeRange;
     this.afterRange = afterRange;
-    batchData = new BatchData();
   }
 
   public long getBeforeRange() {
@@ -83,55 +92,78 @@ public class LinearFill extends IFill {
   }
 
   @Override
-  Filter constructFilter() {
+  void constructFilter() {
     Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
         : TimeFilter.gtEq(queryTime - beforeRange);
     Filter upperBound = afterRange == -1 ? TimeFilter.ltEq(Long.MAX_VALUE)
         : TimeFilter.ltEq(queryTime + afterRange);
     // [queryTIme - beforeRange, queryTime + afterRange]
-    return FilterFactory.and(lowerBound, upperBound);
+    beforeFilter = FilterFactory.and(lowerBound, TimeFilter.ltEq(queryTime));
+    afterFilter = FilterFactory.and(TimeFilter.gtEq(queryTime), upperBound);
   }
 
   @Override
-  public void configureFill(Path path, TSDataType dataType, long queryTime,
-      Set<String> sensors, QueryContext context)
-      throws StorageEngineException, QueryProcessException {
+  public void configureFill(
+      Path path, TSDataType dataType, long queryTime, Set<String> sensors, QueryContext context) {
+    this.seriesPath = path;
     this.dataType = dataType;
     this.queryTime = queryTime;
-    Filter timeFilter = constructFilter();
-    dataReader = new SeriesRawDataBatchReader(path, sensors, dataType, context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter),
-        timeFilter, null, null);
+    this.context = context;
+    this.allSensors = sensors;
+    constructFilter();
   }
 
   @Override
-  public TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException {
-    TimeValuePair beforePair = null;
-    TimeValuePair afterPair = null;
-    while (batchData.hasCurrent() || dataReader.hasNextBatch()) {
-      if (!batchData.hasCurrent() && dataReader.hasNextBatch()) {
-        batchData = dataReader.nextBatch();
-      }
-      afterPair = new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType());
-      batchData.next();
-      if (afterPair.getTimestamp() <= queryTime) {
-        beforePair = afterPair;
-      } else {
-        break;
-      }
-    }
+  public TimeValuePair getFillResult()
+      throws IOException, QueryProcessException, StorageEngineException {
+    QueryDataSource dataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, beforeFilter);
+    LastPointReader lastReader =
+        new LastPointReader(seriesPath, dataType, allSensors, context, dataSource, queryTime, beforeFilter);
+
+    TimeValuePair beforePair = lastReader.getTimeseriesLastPointXXX();
+    TimeValuePair afterPair = calculatFirstPointAfterQueryTime();
 
     // no before data or has data on the query timestamp
-    if (beforePair == null || beforePair.getTimestamp() == queryTime) {
+    if (beforePair.getValue() == null || beforePair.getTimestamp() == queryTime) {
       return beforePair;
     }
 
     // on after data or after data is out of range
-    if (afterPair.getTimestamp() < queryTime || (afterRange != -1 && afterPair.getTimestamp() > queryTime + afterRange)) {
+    if (afterPair.getValue() == null || afterPair.getTimestamp() < queryTime ||
+        (afterRange != -1 && afterPair.getTimestamp() > queryTime + afterRange)) {
       return new TimeValuePair(queryTime, null);
     }
 
     return average(beforePair, afterPair);
+  }
+
+  private TimeValuePair calculatFirstPointAfterQueryTime()
+      throws IOException, StorageEngineException, QueryProcessException {
+    TimeValuePair result = new TimeValuePair(0, null);
+    List<String> aggregations = new ArrayList<>();
+    aggregations.add(AggregationType.MIN_TIME.toString());
+    aggregations.add(AggregationType.FIRST_VALUE.toString());
+
+    List<AggregateResult> aggregateResultList = new ArrayList<>();
+    for (String agg : aggregations) {
+      AggregateResult aggregateResult = AggregateResultFactory.getAggrResultByName(agg, dataType);
+      aggregateResultList.add(aggregateResult);
+    }
+    AggregationExecutor.aggregateOneSeries(
+        seriesPath, allSensors, context, afterFilter, dataType, aggregateResultList, null);
+
+    AggregateResult timeResult = aggregateResultList.get(0);
+    if (timeResult.getResult() != null) {
+      long timestamp = (long)(timeResult.getResult());
+      result.setTimestamp(timestamp);
+    }
+    AggregateResult valueResult = aggregateResultList.get(1);
+    if (valueResult.getResult() != null) {
+      Object value = valueResult.getResult();
+      result.setValue(TsPrimitiveType.getByType(dataType, value));
+    }
+    return result;
   }
 
   // returns the average of two points

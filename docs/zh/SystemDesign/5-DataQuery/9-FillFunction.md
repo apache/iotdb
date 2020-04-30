@@ -23,7 +23,7 @@
 
 空值填充的主要逻辑在 FillQueryExecutor
 
-* org.apache.iotdb.db.query.executor.fill.FillQueryExecutor
+* org.apache.iotdb.db.query.executor.FillQueryExecutor
 
 IoTDB 中支持两种填充方式，Previous填充和Linear填充。Linear填充的实现逻辑较为简单，在此章中重点介绍Previous填充的实现逻辑。
 
