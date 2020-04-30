@@ -24,6 +24,8 @@ import java.nio.file.DirectoryNotEmptyException;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -74,7 +76,7 @@ public class EnvironmentUtils {
   private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
   public static void cleanEnv() throws IOException, StorageEngineException {
-
+    System.out.println("Cleaning environment...");
     QueryResourceManager.getInstance().endQuery(testQueryId);
 
     // clear opened file streams
@@ -147,6 +149,11 @@ public class EnvironmentUtils {
         }
       }
       try {
+        if (file.getName().contains("logMeta")) {
+          SimpleDateFormat dateFormat = new SimpleDateFormat();
+          System.out.printf("%s is removed, last modified: %s", file.getPath(),
+              dateFormat.format(new Date(file.lastModified())));
+        }
         Files.delete(Paths.get(file.getAbsolutePath()));
       } catch (DirectoryNotEmptyException e) {
         deleteRecursively(file);
