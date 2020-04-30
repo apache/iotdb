@@ -69,7 +69,7 @@ public class HeartbeatThread implements Runnable {
       logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
       Thread.sleep(electionWait);
     } catch (InterruptedException e) {
-      logger.error("Heartbeat thread first sleep failed...", e);
+      Thread.currentThread().interrupt();
     }
     while (!Thread.interrupted()) {
       try {
