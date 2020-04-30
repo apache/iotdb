@@ -25,6 +25,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -431,8 +432,9 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     if (meta == null) {
       if (metaFile.exists() && metaFile.length() > 0) {
         if (logger.isInfoEnabled()) {
+          SimpleDateFormat format = new SimpleDateFormat();
           logger.info("MetaFile {} exists, last modified: {}", metaFile.getPath(),
-              new Date(metaFile.lastModified()));
+              format.format(new Date(metaFile.lastModified())));
         }
         try (FileInputStream metaReader = new FileInputStream(metaFile)) {
           firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
