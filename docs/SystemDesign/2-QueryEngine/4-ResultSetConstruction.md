@@ -19,13 +19,17 @@
 
 -->
 
-# Query Result Set Header Construction
+# Query Result Set Construction
 
 ## Introduction
 
-This text will introduce the result set header construction way of RawDataQuery, AlignByDeviceQuery and LastQuery. e.g. DownsamplingQuery and FillQuery etc. will be introduced as subquery in these three queries.
+This text mainly introduces the construction principle of query result set, including three parts: header construction, generating non repeated result set and restoring complete result set.
 
-## Raw data query
+## Header construction
+
+Next Introduce the first part: including the result set header construction way of RawDataQuery, AlignByDeviceQuery and LastQuery. e.g. DownsamplingQuery and FillQuery etc. will be introduced as subquery in these three queries.
+
+### Raw data query
 
 The header construction logic of raw data query is in the `getWideQueryHeaders()` method.
 
@@ -53,7 +57,7 @@ SQL2：`SELECT count(s1), max_time(s1) FROM root.sg.d1;` ->
 | -------------------- | ----------------------- |
 |                      |                         |
 
-## Align by device query
+### Align by device query
 
 The header construction logic of align by device query is in the `getAlignByDeviceQueryHeaders()` method.
 
@@ -81,7 +85,7 @@ SQL：`SELECT '111', s1, s2, *, s5 FROM root.sg.d1 ALIGN BY DEVICE;`
 | ---- | ------ | --- | --- | --- | --- | --- | --- |
 |      |        |     |     |     |     |     |     |
 
-## LastQuery
+### LastQuery
 
 The header construction logic of last query is in the static method `LAST_RESP`.
 
@@ -99,3 +103,59 @@ SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 | ---- | ------------- | ----- |
 | ...  | root.sg.d1.s1 | ...   |
 | ...  | root.sg.d1.s2 | ...   |
+
+## Generate non repeated result set
+
+Unlike the header construction, we do not need to query duplicate data when executing the physical query plan. For example, for the query `select s1, s1 from root.sg.d1`, we only need to query the value of the timeseries `root.sg.d1.s1` once. Therefore, after the header is constructed, we need to generate a non repeated result set on the server side.
+
+In addition to AlignByDeviceQuery, the deduplication logic of **RawDataQuery, AggregateQuery, LastQuery** etc. is in the `duplicate()` method.
+
+- org.apache.iotdb.db.qp.strategy.PhysicalGenerator.deduplicate()
+
+The deduplication logic is relatively simple: first, get the path not deduplicated from the query plan, and then create a `Set` structure to deduplicate during traversal.
+
+It is worth noting that the timeseries paths of the query are sorted by device before the RawDataQuery and AggregateQuery are deduplicated, in order to reduce I/O and deserialization operations and speed up the query.
+Here an additional data structure `pathToIndex` is calculated to record the position of each path in the query.
+
+The deduplication logic of **AlignByDeviceQuery** is in the  `hasNextWithoutConstraint()` method of its result set.
+
+- org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet.hasNextWithoutConstraint()
+
+Because AlignByDeviceQuery need to organize their query plans by device, each device query may not have the same path, and it is allowed to contain constant columns and nonexistent timeseries, so it cannot simply be deduplicated with other queries. Deduplication requires **removing not only the repeated timeseries path, but also the constant columns appearing in the query and the timeseries that do not exist in the current device**.
+The implementation logic can be referred to [Align by device query](/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html).
+
+After the deduplication paths in the query plan are completed, the query executor of IoTDB can be called to execute the query and obtain the deduplication result set.
+
+## Restore the complete result set
+
+The construction of headers and the generation of non-repeating result set above are done on the server side and then returned to the client side. After the client restores the non-repeating result set based on the original header, it is presented to the user.
+
+To explain simply, an example is given first：
+
+SQL: `SELECT s2, s1, s2 FROM root.sg.d1;`
+
+The list of column names `columnNameList` in the header which has been calculated using the steps above is：
+
+`[root.sg.d1.s2, root.sg.d1.s1, root.sg.d1.s2].`
+
+The position of the timeseries path in the query `pathToIndex` is：
+
+`root.sg.d1.s1 -> 0, root.sg.d1.s2 -> 1;`
+
+To restore the result set, we need to construct a mapping set `columnOrdinalMap` with the column name to its position in the query result set, which is aimed at fetching the corresponding result of a column from the result set. This part of logic is completed in the constructor of the new result set `IoTDBQueryResultSet`.
+
+- org.apache.iotdb.jdbc.AbstractIoTDBResultSet.AbstractIoTDBResultSet()
+
+When calculating `columnordinalmap`, we need to judge whether to print a timestamp first. If so, record the timestamp as the first column.
+
+Then traverse the column name list in the header and then check whether `columnnameindex` is initialized. This field comes from `pathtoindex` calculated during deduplication, which records the location of each timeseries path in the query. If it is initialized, record the position + 2 as its position in the result set. If not, record the positions in order.
+
+The `columnNameIndex` in example is：
+
+`Time -> 1, root.sg.d1.s2 -> 3, root.sg.d1.s1 -> 2`
+
+Next, traverse the column names in the header, and then fill in the complete result set according to the mapping set. Its logic is in the `cacheresult()` method.
+
+- org.apache.iotdb.cli.AbstractCli.cacheResult()
+
+For example, the second column in the example is `root.sg.d2`, therefore the result of the third column will be taken as its value from the result set. Repeat the process to fill the results of each row until there is no next result in the result set or the maximum number of output rows is reached.
