@@ -515,35 +515,11 @@ public class PhysicalGenerator {
     List<TSDataType> dataTypes = getSeriesTypes(paths);
     queryPlan.setDataTypes(dataTypes);
 
-    List<Pair<Path, Integer>> indexedPaths = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      indexedPaths.add(new Pair<>(paths.get(i), i));
-    }
-    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
-
     // deduplicate from here
     if (queryPlan instanceof AlignByDevicePlan) {
       return;
     }
-    if (queryPlan instanceof AggregationPlan) {
-      AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
-      List<String> aggregations = aggregationPlan.getAggregations();
-      Set<String> columnSet = new HashSet<>();
-      int index = 0;
-      for (Pair<Path, Integer> indexedPath : indexedPaths) {
-        String column =
-            aggregations.get(indexedPath.right) + "(" + indexedPath.left.toString() + ")";
-        if (!columnSet.contains(column)) {
-          aggregationPlan.addDeduplicatedPaths(indexedPath.left);
-          TSDataType seriesType = dataTypes.get(indexedPath.right);
-          aggregationPlan.addDeduplicatedDataTypes(seriesType);
-          aggregationPlan.addDeduplicatedAggregations(aggregations.get(indexedPath.right));
-          columnSet.add(column);
-          aggregationPlan.addColumn(column, index++);
-        }
-      }
-      return;
-    }
+
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
     Set<String> columnSet = new HashSet<>();
     // if it's a last query, no need to sort by device
@@ -561,16 +537,31 @@ public class PhysicalGenerator {
       return;
     }
 
+    // sort path by device
+    List<Pair<Path, Integer>> indexedPaths = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      indexedPaths.add(new Pair<>(paths.get(i), i));
+    }
+    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
+
     int index = 0;
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
-      Path path = indexedPath.left;
-      String column = path.toString();
+      String column;
+      if (queryPlan instanceof AggregationPlan) {
+        column = queryPlan.getAggregations().get(indexedPath.right) + "(" + indexedPath.left.toString() + ")";
+      } else {
+        column = indexedPath.left.toString();
+      }
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypes.get(indexedPath.right);
-        rawDataQueryPlan.addDeduplicatedPaths(path);
+        rawDataQueryPlan.addDeduplicatedPaths(indexedPath.left);
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
-        rawDataQueryPlan.addColumn(column, index++);
+        rawDataQueryPlan.addPathToIndex(column, index++);
+        if (queryPlan instanceof AggregationPlan){
+          ((AggregationPlan) queryPlan)
+              .addDeduplicatedAggregations(queryPlan.getAggregations().get(indexedPath.right));
+        }
       }
     }
   }
