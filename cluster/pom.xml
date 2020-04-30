@@ -113,7 +113,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipTests>${cluster.ut.skip}</skipTests>
-                    <forkMode>pretest</forkMode>
+                    <forkMode>pertest</forkMode>
                 </configuration>
             </plugin>
             <plugin>
