@@ -121,15 +121,7 @@ public class TimeSeriesMetadataCache {
       printCacheLog(false);
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      BloomFilter bloomFilter;
-      if (reader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
-        OldTsFileMetadata fileMetaData = reader.readOldFileMetadata();
-        bloomFilter = fileMetaData.getBloomFilter();
-      }
-      else {
-        TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(key.filePath);
-        bloomFilter = fileMetaData.getBloomFilter();
-      }
+      BloomFilter bloomFilter = reader.readBloomFilter();
       if (bloomFilter != null && !bloomFilter
           .contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return null;

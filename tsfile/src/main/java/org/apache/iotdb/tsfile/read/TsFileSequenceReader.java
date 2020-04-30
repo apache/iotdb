@@ -62,6 +62,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.VersionUtils;
@@ -275,6 +276,17 @@ public class TsFileSequenceReader implements AutoCloseable {
     return oldTsFileMetaData;
   }
 
+  public BloomFilter readBloomFilter() throws IOException {
+    if (isOldVersion) {
+      readOldFileMetadata();
+      return oldTsFileMetaData.getBloomFilter();
+    }
+    else {
+      readFileMetadata();
+      return tsFileMetaData.getBloomFilter();
+    }
+  }
+
   /**
    * this function reads measurements and TimeseriesMetaDatas in given device Thread Safe
    *
@@ -374,6 +386,9 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   public TimeseriesMetadata readTimeseriesMetadata(Path path) throws IOException {
+    if (isOldVersion) {
+      return getTimeseriesMetadataFromOldFile(path);
+    }
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetaDataAndEndOffset(
@@ -400,6 +415,16 @@ public class TsFileSequenceReader implements AutoCloseable {
         ? timeseriesMetadataList.get(searchResult) : null;
   }
 
+  /*
+   *  for old TsFile
+   */
+  private TimeseriesMetadata getTimeseriesMetadataFromOldFile(Path path) throws IOException {
+    Map<String, TimeseriesMetadata> deviceMetadata = 
+        constructDeviceMetadataFromOldFile(path.getDevice());
+    return deviceMetadata.get(path.getMeasurement());
+  }
+  
+  
   public List<String> getAllDevices() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();

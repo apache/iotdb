@@ -396,12 +396,11 @@ public class StorageGroupProcessor {
       continueFailedRenames(fileFolder, MERGE_SUFFIX);
 
       File[] oldTsfileArray = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX);
-      File[] olfResourceFileArray = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX);
-
+      File[] oldResourceFileArray = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX);
+      File upgradeFolder = fsFactory.getFile(fileFolder, IoTDBConstant.UPGRADE_FOLDER_NAME);
       // move the old files to upgrade folder if exists
-      if (oldTsfileArray.length != 0 || olfResourceFileArray.length != 0) {
+      if (oldTsfileArray.length != 0 || oldResourceFileArray.length != 0) {
         // create upgrade directory if not exist
-        File upgradeFolder = fsFactory.getFile(fileFolder, IoTDBConstant.UPGRADE_FOLDER_NAME);
         if (upgradeFolder.mkdirs()) {
           logger.info("Upgrade Directory {} doesn't exist, create it",
               upgradeFolder.getPath());
@@ -416,12 +415,17 @@ public class StorageGroupProcessor {
           }
         }
         // move .resource to upgrade folder
-        for (File file : olfResourceFileArray) {
+        for (File file : oldResourceFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
             logger.error("Failed to move {} to upgrade folder", file);
           }
         }
 
+        Collections.addAll(upgradeFiles,
+            fsFactory.listFilesBySuffix(upgradeFolder.getAbsolutePath(), TSFILE_SUFFIX));
+      }
+      // if already move old files to upgradeFolder 
+      else if (upgradeFolder.exists()) {
         Collections.addAll(upgradeFiles,
             fsFactory.listFilesBySuffix(upgradeFolder.getAbsolutePath(), TSFILE_SUFFIX));
       }
