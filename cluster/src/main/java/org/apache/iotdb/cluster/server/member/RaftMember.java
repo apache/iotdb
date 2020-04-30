@@ -166,6 +166,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @throws TTransportException
    */
   public void stop() {
+    closeLogManager();
     if (heartBeatService == null) {
       return;
     }
@@ -174,7 +175,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     catchUpService.shutdownNow();
     catchUpService = null;
     heartBeatService = null;
-    closeLogManager();
     logger.info("{} stopped", name);
   }
 

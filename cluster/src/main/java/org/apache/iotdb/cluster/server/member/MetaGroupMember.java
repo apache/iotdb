@@ -287,6 +287,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     super.stop();
     if (getDataClusterServer() != null) {
       getDataClusterServer().stop();
+    }
+    if (clientServer != null) {
       clientServer.stop();
     }
     if (reportThread != null) {

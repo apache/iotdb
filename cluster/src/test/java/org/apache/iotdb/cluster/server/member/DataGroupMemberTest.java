@@ -131,7 +131,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @After
   public void tearDown() throws Exception {
-    dataGroupMember.closeLogManager();
+    dataGroupMember.stop();
     super.tearDown();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
   }

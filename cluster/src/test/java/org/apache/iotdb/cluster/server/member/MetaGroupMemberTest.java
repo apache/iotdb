@@ -121,8 +121,8 @@ public class MetaGroupMemberTest extends MemberTest {
   @Override
   @After
   public void tearDown() throws Exception {
-    metaGroupMember.closeLogManager();
-    dataClusterServer.closeLogManagers();
+    metaGroupMember.stop();
+    dataClusterServer.stop();
     super.tearDown();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
   }

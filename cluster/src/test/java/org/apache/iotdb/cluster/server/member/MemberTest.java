@@ -114,13 +114,13 @@ public class MemberTest {
 
   @After
   public void tearDown() throws Exception {
-    testMetaMember.closeLogManager();
+    testMetaMember.stop();
     metaLogManager.close();
     for (DataGroupMember member : dataGroupMemberMap.values()) {
-      member.closeLogManager();
+      member.stop();
     }
     for (MetaGroupMember member : metaGroupMemberMap.values()) {
-      member.closeLogManager();
+      member.stop();
     }
     EnvironmentUtils.cleanEnv();
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
