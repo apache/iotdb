@@ -40,13 +40,13 @@ public class UpgradeTask extends WrappedRunnable {
   @Override
   public void runMayThrow() {
     try {
-      upgradeResource.getWriteQueryLock().readLock().lock();
+      upgradeResource.readLock();
       String tsfilePathBefore = upgradeResource.getFile().getAbsolutePath();
       String tsfilePathAfter = UpgradeUtils.getUpgradeFileName(upgradeResource.getFile());
 
       UpgradeLog.writeUpgradeLogFile(
           tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
-      upgradeResource.getWriteQueryLock().writeLock().lock();
+      upgradeResource.writeLock();
       try {
         FSFactoryProducer.getFSFactory().getFile(tsfilePathBefore).delete();
         FSFactoryProducer.getFSFactory()
@@ -56,7 +56,7 @@ public class UpgradeTask extends WrappedRunnable {
             tsfilePathBefore + COMMA_SEPERATOR + UpgradeCheckStatus.UPGRADE_SUCCESS);
         FSFactoryProducer.getFSFactory().getFile(tsfilePathAfter).getParentFile().delete();
       } finally {
-        upgradeResource.getWriteQueryLock().writeLock().unlock();
+        upgradeResource.writeUnlock();
       }
       UpgradeSevice.setCntUpgradeFileNum(UpgradeSevice.getCntUpgradeFileNum() - 1);
       logger.info("Upgrade completes, file path:{} , the remaining upgraded file num: {}",

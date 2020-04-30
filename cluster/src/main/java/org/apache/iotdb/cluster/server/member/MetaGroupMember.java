@@ -293,6 +293,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     if (reportThread != null) {
       reportThread.shutdownNow();
+      try {
+        reportThread.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.error("Unexpected interruption when waiting for reportThread to end", e);
+      }
     }
   }
 

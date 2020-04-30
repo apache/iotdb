@@ -34,6 +34,7 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -173,6 +174,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     heartBeatService.shutdownNow();
     catchUpService.shutdownNow();
+    try {
+      heartBeatService.awaitTermination(10, TimeUnit.SECONDS);
+      catchUpService.awaitTermination(10, TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      logger.error("Unexpected interruption when waiting for heartBeatService and catchUpService "
+          + "to end", e);
+    }
     catchUpService = null;
     heartBeatService = null;
     logger.info("{} stopped", name);
