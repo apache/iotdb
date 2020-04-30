@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
@@ -126,7 +127,7 @@ public class DataGroupMemberTest extends MemberTest {
       fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestSchema(1, i)));
       snapshotMap.put(i, fileSnapshot);
     }
-    pulledSnapshots = new HashSet<>();
+    pulledSnapshots = new ConcurrentSkipListSet<>();
   }
 
   @After
