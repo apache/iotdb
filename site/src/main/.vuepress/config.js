@@ -271,8 +271,7 @@ var config = {
 							['6-System Tools/4-Watermark Tool','Watermark Tool'],
 							['6-System Tools/5-Log Visualizer','Log Visualizer'],
 							['6-System Tools/6-Query History Visualization Tool','Query History Visualization Tool'],
-							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools'],
-							['6-System Tools/8-Load External Tsfile','Load External Tsfile']
+							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools']
 						]
 					},
 					{
@@ -438,8 +437,8 @@ var config = {
 						title: '5-DataQuery',
 						children: [
 							['5-DataQuery/1-DataQuery','DataQuery'],
-							['5-DataQuery/2-SeriesReader','SeriesReader'],
-							['5-DataQuery/3-ModificationHandle','ModificationHandle'],
+							['5-DataQuery/2-QueryFundamentals','QueryFundamentals'],
+							['5-DataQuery/3-SeriesReader','SeriesReader'],
 							['5-DataQuery/4-RawDataQuery','RawDataQuery'],
 							['5-DataQuery/5-AggregationQuery','AggregationQuery'],
 							['5-DataQuery/6-GroupByQuery','GroupByQuery'],
@@ -686,8 +685,7 @@ var config = {
 							['6-System Tools/4-Watermark Tool','水印工具'],
 							['6-System Tools/5-Log Visualizer','日志可视化工具'],
 							['6-System Tools/6-Query History Visualization Tool','查询历史可视化工具'],
-							['6-System Tools/7-Monitor and Log Tools','监控与日志工具'],
-							['6-System Tools/8-Load External Tsfile','加载外部tsfile文件']
+							['6-System Tools/7-Monitor and Log Tools','监控与日志工具']
 						]
 					},
 					{
@@ -853,8 +851,8 @@ var config = {
 						title: '5-数据查询',
 						children: [
 							['5-DataQuery/1-DataQuery','数据查询'],
-							['5-DataQuery/2-SeriesReader','查询基础组件'],
-							['5-DataQuery/3-ModificationHandle','查询中的数据修改处理'],
+							['5-DataQuery/2-QueryFundamentals','查询基础介绍'],
+							['5-DataQuery/3-SeriesReader','查询基础组件'],
 							['5-DataQuery/4-RawDataQuery','原始数据查询'],
 							['5-DataQuery/5-AggregationQuery','聚合查询'],
 							['5-DataQuery/6-GroupByQuery','降采样查询'],

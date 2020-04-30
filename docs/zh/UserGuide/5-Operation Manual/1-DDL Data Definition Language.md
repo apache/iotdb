@@ -163,6 +163,38 @@ show timeseries root.ln where description contains 'test1'
 
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
 
+## 查看子路径
+
+```
+SHOW CHILD PATHS prefixPath
+```
+
+可以查看此前缀路径的下一层的所有路径，前缀路径允许使用 * 通配符。
+
+示例：
+
+* 查询 root.ln 的下一层：show child paths root.ln
+
+```
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+```
+
+* 查询形如 root.xx.xx.xx 的路径：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
+```
+
 ## 统计时间序列总数
 
 IoTDB支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL语句如下所示：
