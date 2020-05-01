@@ -50,42 +50,48 @@ Here we show the commonly used interfaces and their parameters in the Native API
 
 * Initialize a Session
 
-  	Session(String host, int port)
+  ```
+  Session(String host, int port)
 
-  	Session(String host, String port, String username, String password)
+  Session(String host, String port, String username, String password)
 
-  	Session(String host, int port, String username, String password)
+  Session(String host, int port, String username, String password)
+  ```
 
 * Open a Session
 
-  ​	Session.open()
+  ```
+  Session.open()
+  ```
 
 * Close a Session
 
-  ​	Session.close()
-
+  ```
+  ​Session.close()
+  ```
+  
 * Set storage group
 
   ```
-    TSStatus setStorageGroup(String storageGroupId)    
+  void setStorageGroup(String storageGroupId)    
   ```
   ​	
 
 * Delete one or several storage groups
 
   ```
-  	void deleteStorageGroup(String storageGroup)
-  	void deleteStorageGroups(List<String> storageGroups)
+  void deleteStorageGroup(String storageGroup)
+  void deleteStorageGroups(List<String> storageGroups)
   ```
 
 * Create one or multiple timeseries
 
   ```
-  	void createTimeseries(String path, TSDataType dataType,
+  void createTimeseries(String path, TSDataType dataType,
           TSEncoding encoding, CompressionType compressor, Map<String, String> props,
           Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
           
-    void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
+  void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
           List<TSEncoding> encodings, List<CompressionType> compressors,
           List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
           List<Map<String, String>> attributesList, List<String> measurementAliasList)
@@ -94,39 +100,39 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Delete one or several timeseries
 
   ```
-  	void deleteTimeseries(String path)
-  	void deleteTimeseries(List<String> paths)
+  void deleteTimeseries(String path)
+  void deleteTimeseries(List<String> paths)
   ```
 
-* Delete data before or equal to a timestap of one or several timeseries
+* Delete data before or equal to a timestamp of one or several timeseries
 
   ```
-  	void deleteData(String path, long time)
-  	void deleteData(List<String> paths, long time)
+  void deleteData(String path, long time)
+  void deleteData(List<String> paths, long time)
   ```
 
 * Insert a Record，which contains multiple measurement value of a device at a timestamp
 
   ```
-    void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
 * Insert a Tablet，which is multiple rows of a device, each row has the same measurements
 
   ```
-  	void insertTablet(Tablet tablet)
+  void insertTablet(Tablet tablet)
   ```
 
 * Insert multiple Tablets
 
   ```
-  	void insertTablets(Map<String, Tablet> tablet)
+  void insertTablets(Map<String, Tablet> tablet)
   ```
   
 * Insert multiple Records
 
   ```
-    void insertRecords(List<String> deviceIds, List<Long> times, 
+  void insertRecords(List<String> deviceIds, List<Long> times, 
                        List<List<String>> measurementsList, List<List<String>> valuesList)
   ```
 
@@ -134,21 +140,21 @@ Here we show the commonly used interfaces and their parameters in the Native API
 
 * Test the network and client cost of insertRecords. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
-   ```
-    void testInsertRecords(List<String> deviceIds, List<Long> times,
+  ```
+  void testInsertRecords(List<String> deviceIds, List<Long> times,
                   List<List<String>> measurementsList, List<List<String>> valuesList)
-   ```
+  ```
 
 * Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
   ```
-    void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
 * Test the network and client cost of insertTablet. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
   ```
-    void testInsertTablet(Tablet tablet)
+  void testInsertTablet(Tablet tablet)
   ```
   
 ## Sample code

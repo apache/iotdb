@@ -111,7 +111,11 @@ ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
-
+* upsert tags and attributes
+> add new key-value if the key doesn't exist, otherwise, update the old one with new value.
+```
+ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
+```
 
 ## Show Timeseries
 
@@ -160,6 +164,38 @@ The results are shown below respectly:
   returns all the timeseries information start from the offset and limit the number of series returned
   
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
+
+## Show Child Paths
+
+```
+SHOW CHILD PATHS prefixPath
+```
+
+Return all child paths of the prefixPath, the prefixPath could contains *.
+
+Example：
+
+* return the child paths of root.ln：show child paths root.ln
+
+```
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+```
+
+* get all paths in form of root.xx.xx.xx：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
+```
 
 ## Count Timeseries
 

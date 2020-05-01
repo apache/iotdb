@@ -30,9 +30,11 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
@@ -209,7 +211,7 @@ public class MTree implements Serializable {
   }
 
   /** Delete a storage group */
-  void deleteStorageGroup(String path) throws MetadataException {
+  List<LeafMNode> deleteStorageGroup(String path) throws MetadataException {
     MNode cur = getNodeByPath(path);
     if (!(cur instanceof StorageGroupMNode)) {
       throw new StorageGroupNotSetException(path);
@@ -217,12 +219,29 @@ public class MTree implements Serializable {
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
     cur.getParent().deleteChild(cur.getName());
+
+    // collect all the LeafMNode in this storage group
+    List<LeafMNode> leafMNodes = new LinkedList<>();
+    Queue<MNode> queue = new LinkedList<>();
+    queue.add(cur);
+    while (!queue.isEmpty()) {
+      MNode node = queue.poll();
+      for (MNode child : node.getChildren().values()) {
+        if (child instanceof LeafMNode) {
+          leafMNodes.add((LeafMNode) child);
+        } else {
+          queue.add(child);
+        }
+      }
+    }
+
     cur = cur.getParent();
     // delete node b while retain root.a.sg2
     while (!IoTDBConstant.PATH_ROOT.equals(cur.getName()) && cur.getChildren().size() == 0) {
       cur.getParent().deleteChild(cur.getName());
       cur = cur.getParent();
     }
+    return leafMNodes;
   }
 
   /**
@@ -529,19 +548,13 @@ public class MTree implements Serializable {
    *
    * @param timeseriesSchemaList List<timeseriesSchema>
    */
-  private void findPath(
-      MNode node,
-      String[] nodes,
-      int idx,
-      String parent,
-      List<String[]> timeseriesSchemaList,
-      boolean hasLimit)
-      throws MetadataException {
+  private void findPath(MNode node, String[] nodes, int idx, String parent,
+      List<String[]> timeseriesSchemaList, boolean hasLimit) throws MetadataException {
     if (node instanceof LeafMNode) {
       if (nodes.length <= idx) {
         if (hasLimit) {
           curOffset.set(curOffset.get() + 1);
-          if (curOffset.get() < offset.get() || count == limit) {
+          if (curOffset.get() < offset.get() || count.get().intValue() == limit.get().intValue()) {
             return;
           }
         }
@@ -572,26 +585,16 @@ public class MTree implements Serializable {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
-        findPath(
-            node.getChild(nodeReg),
-            nodes,
-            idx + 1,
-            parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList,
-            hasLimit);
+        findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
+            timeseriesSchemaList, hasLimit);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
         if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
           continue;
         }
-        findPath(
-            child,
-            nodes,
-            idx + 1,
-            parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList,
-            hasLimit);
+        findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
+            timeseriesSchemaList, hasLimit);
       }
     }
   }
@@ -631,13 +634,8 @@ public class MTree implements Serializable {
       if (idx == length) {
         res.add(parent + node.getName());
       } else {
-        findChildNodePathInNextLevel(
-            node.getChild(nodeReg),
-            nodes,
-            idx + 1,
-            parent + node.getName() + PATH_SEPARATOR,
-            res,
-            length);
+        findChildNodePathInNextLevel(node.getChild(nodeReg), nodes, idx + 1,
+            parent + node.getName() + PATH_SEPARATOR, res, length);
       }
     } else {
       if (node instanceof InternalMNode && node.getChildren().size() > 0) {

@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -30,8 +28,11 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashSet;
 import java.util.Set;
-
-import static org.junit.Assert.*;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 public class IoTDBTagIT {
 
@@ -835,7 +836,6 @@ public class IoTDBTagIT {
 
   @Test
   public void sameNameTest() throws ClassNotFoundException {
-    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
     String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
             "tags(tag1=v1, tag2=v2) attributes(tag1=v1, attr2=v2)";
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -846,6 +846,45 @@ public class IoTDBTagIT {
       fail();
     } catch (Exception e) {
       assertTrue(e.getMessage().contains("Tag and attribute shouldn't have the same property key"));
+    }
+  }
+
+  @Test
+  public void deleteStorageGroupTest() throws ClassNotFoundException {
+    String[] ret = {"root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,v1,v2,v1,v2"};
+
+    String sql = "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY " +
+        "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(sql);
+      boolean hasResult = statement.execute("show timeseries");
+      assertTrue(hasResult);
+      ResultSet resultSet = statement.getResultSet();
+      int count = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString("timeseries")
+            + "," + resultSet.getString("alias")
+            + "," + resultSet.getString("storage group")
+            + "," + resultSet.getString("dataType")
+            + "," + resultSet.getString("encoding")
+            + "," + resultSet.getString("compression")
+            + "," + resultSet.getString("attr1")
+            + "," + resultSet.getString("attr2")
+            + "," + resultSet.getString("tag1")
+            + "," + resultSet.getString("tag2");
+        assertEquals(ret[count], ans);
+        count++;
+      }
+      assertEquals(ret.length, count);
+
+      statement.execute("delete storage group root.turbine");
+      statement.execute("show timeseries where tag1=v1");
+      fail();
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("The key tag1 is not a tag"));
     }
   }
 }

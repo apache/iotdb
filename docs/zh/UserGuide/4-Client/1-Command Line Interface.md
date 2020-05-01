@@ -33,33 +33,33 @@
 
 <!-- /TOC -->
 
-IOTDB为用户提供Client/Shell工具用于启动客户端和服务端程序。下面介绍每个Client/Shell工具的运行方式和相关参数。
+IOTDB为用户提供cli/Shell工具用于启动客户端和服务端程序。下面介绍每个cli/Shell工具的运行方式和相关参数。
 > \$IOTDB\_HOME表示IoTDB的安装目录所在路径。
 
 ## Cli / Shell安装
 在incubator-iotdb的根目录下执行
 
 ```
-> mvn clean package -pl client -am -DskipTests
+> mvn clean package -pl cli -am -DskipTests
 ```
 
-在生成完毕之后，IoTDB的cli工具位于文件夹"client/target/iotdb-client-{project.version}"中。
+在生成完毕之后，IoTDB的cli工具位于文件夹"cli/target/iotdb-cli-{project.version}"中。
 
 ## Cli  / Shell运行方式
-安装后的IoTDB中有一个默认用户：`root`，默认密码为`root`。用户可以使用该用户尝试运行IoTDB客户端以测试服务器是否正常启动。客户端启动脚本为$IOTDB_HOME/bin文件夹下的`start-client`脚本。启动脚本时需要指定运行IP和PORT。以下为服务器在本机启动，且用户未更改运行端口号的示例，默认端口为6667。若用户尝试连接远程服务器或更改了服务器运行的端口号，请在-h和-p项处使用服务器的IP和PORT。</br>
-用户也可以在启动脚本的最前方设置自己的环境变量，如JAVA_HOME等 (对于linux用户，脚本路径为："/sbin/start-client.sh"； 对于windows用户，脚本路径为："/sbin/start-client.bat")
+安装后的IoTDB中有一个默认用户：`root`，默认密码为`root`。用户可以使用该用户尝试运行IoTDB客户端以测试服务器是否正常启动。客户端启动脚本为$IOTDB_HOME/bin文件夹下的`start-cli`脚本。启动脚本时需要指定运行IP和PORT。以下为服务器在本机启动，且用户未更改运行端口号的示例，默认端口为6667。若用户尝试连接远程服务器或更改了服务器运行的端口号，请在-h和-p项处使用服务器的IP和PORT。</br>
+用户也可以在启动脚本的最前方设置自己的环境变量，如JAVA_HOME等 (对于linux用户，脚本路径为："/sbin/start-cli.sh"； 对于windows用户，脚本路径为："/sbin/start-cli.bat")
 
 
 
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell > sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+  Shell > sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 回车后即可成功启动客户端。启动后出现如图提示即为启动成功。
 ```
@@ -74,7 +74,7 @@ Windows系统启动命令如下：
 IoTDB> login successfully
 IoTDB>
 ```
-输入`quit`或`exit`可退出Client结束本次会话，Client输出`quit normally`表示退出成功。
+输入`quit`或`exit`可退出cli结束本次会话，cli输出`quit normally`表示退出成功。
 
 ## Cli / Shell运行参数
 
@@ -95,22 +95,22 @@ IoTDB>
 Linux系统与MacOS系统启动命令如下：
 
 ```
-  Shell > sbin/start-client.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > sbin/start-cli.sh -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 Windows系统启动命令如下：
 
 ```
-  Shell > sbin\start-client.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
+  Shell > sbin\start-cli.bat -h 10.129.187.21 -p 6667 -u root -pw root -disableIS08601 -maxPRC 10
 ```
 ## Cli / Shell的-e参数
 当您想要通过脚本的方式通过Cli / Shell对IoTDB进行批量操作时，可以使用-e参数。通过使用该参数，您可以在不进入客户端输入模式的情况下操作IoTDB。
 
 为了避免SQL语句和其他参数混淆，现在只支持-e参数作为最后的参数使用。
 
-针对Client/Shell工具的-e参数用法如下：
+针对cli/Shell工具的-e参数用法如下：
 
 ```
-  Shell > sbin/start-client.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
+  Shell > sbin/start-cli.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
 为了更好的解释-e参数的使用，可以参考下面的例子。
@@ -125,7 +125,7 @@ Windows系统启动命令如下：
 
 4.查询验证数据是否插入成功
 
-那么通过使用Client/Shell工具的-e参数，可以采用如下的脚本：
+那么通过使用cli/Shell工具的-e参数，可以采用如下的脚本：
 
 ```
 # !/bin/bash
@@ -135,12 +135,12 @@ port=6667
 user=root
 pass=root
 
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "set storage group to root.demo"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
-./sbin/start-client.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "select s1 from root.demo"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "set storage group to root.demo"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "create timeseries root.demo.s1 WITH DATATYPE=INT32, ENCODING=RLE"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(1,10)"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(2,11)"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "insert into root.demo(timestamp,s1) values(3,12)"
+./sbin/start-cli.sh -h ${host} -p ${port} -u ${user} -pw ${pass} -e "select s1 from root.demo"
 ```
 
 打印出来的结果显示在下图，通过这种方式进行的操作与客户端的输入模式以及通过JDBC进行操作结果是一致的。

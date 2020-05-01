@@ -30,7 +30,16 @@ public class AlterTimeSeriesOperator extends RootOperator {
 
   private AlterType alterType;
 
+  // used when the alterType is RENAME, SET, DROP, ADD_TAGS, ADD_ATTRIBUTES
+  // when the alterType is RENAME, alterMap has only one entry, key is the beforeName, value is the
+  // currentName
+  // when the alterType is DROP, only the keySet of alterMap is useful, it contains all the key
+  // names needed to be removed
   private Map<String, String> alterMap;
+
+  // used when the alterType is UPSERT
+  private Map<String, String> tagsMap;
+  private Map<String, String> attributesMap;
 
   public AlterTimeSeriesOperator(int tokenIntType) {
     super(tokenIntType);
@@ -61,7 +70,28 @@ public class AlterTimeSeriesOperator extends RootOperator {
     this.alterMap = alterMap;
   }
 
+  public Map<String, String> getTagsMap() {
+    return tagsMap;
+  }
+
+  public void setTagsMap(Map<String, String> tagsMap) {
+    this.tagsMap = tagsMap;
+  }
+
+  public Map<String, String> getAttributesMap() {
+    return attributesMap;
+  }
+
+  public void setAttributesMap(Map<String, String> attributesMap) {
+    this.attributesMap = attributesMap;
+  }
+
   public enum AlterType {
-    RENAME, SET, DROP, ADD_TAGS, ADD_ATTRIBUTES
+    RENAME,
+    SET,
+    DROP,
+    ADD_TAGS,
+    ADD_ATTRIBUTES,
+    UPSERT
   }
 }

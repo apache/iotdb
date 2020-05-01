@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -28,9 +30,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * This class is used to cache <code>TsFileMetaData</code> of tsfile in IoTDB.
@@ -53,25 +52,26 @@ public class TsFileMetaDataCache {
   private AtomicLong cacheRequestNum = new AtomicLong();
 
   /**
-   * estimated size of a deviceMetaDataMap entry in TsFileMetaData.
+   * estimated size of metadataIndex entry in TsFileMetaData.
    */
-  private long deviceIndexMapEntrySize = 0;
+  private long metadataIndexEntrySize = 0;
 
   private TsFileMetaDataCache() {
+    logger.info("TsFileMetaDataCache size = " + MEMORY_THRESHOLD_IN_B);
     cache = new LRULinkedHashMap<String, TsFileMetadata>(MEMORY_THRESHOLD_IN_B, true) {
       @Override
       protected long calEntrySize(String key, TsFileMetadata value) {
-        if (deviceIndexMapEntrySize == 0 && value.getDeviceMetadataIndex() != null
-            && value.getDeviceMetadataIndex().size() > 0) {
-          deviceIndexMapEntrySize = RamUsageEstimator
-              .sizeOf(value.getDeviceMetadataIndex().entrySet().iterator().next());
+        if (metadataIndexEntrySize == 0 && value.getMetadataIndex() != null
+            && !value.getMetadataIndex().getChildren().isEmpty()) {
+          metadataIndexEntrySize = RamUsageEstimator
+              .sizeOf(value.getMetadataIndex().getChildren().iterator().next());
         }
         // totalChunkNum, invalidChunkNum
         long valueSize = 4 + 4L;
 
-        // deviceMetadataIndex
-        if (value.getDeviceMetadataIndex() != null) {
-          valueSize += value.getDeviceMetadataIndex().size() * deviceIndexMapEntrySize;
+        // metadataIndex
+        if (value.getMetadataIndex() != null) {
+          valueSize += value.getMetadataIndex().getChildren().size() * metadataIndexEntrySize;
         }
 
         // versionInfo

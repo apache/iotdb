@@ -127,6 +127,7 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
+    | UPSERT tagClause attributeClause
     ;
 
 attributeClauses
@@ -606,6 +607,10 @@ BITMAP
 
 ADD
     : A D D
+    ;
+
+UPSERT
+    : U P S E R T
     ;
 
 VALUES

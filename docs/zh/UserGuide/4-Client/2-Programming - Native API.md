@@ -44,26 +44,27 @@
 ```
 
 ## 原生接口使用示例
+
 下面将给出Session对应的接口的简要介绍和对应参数：
 
 * 初始化Session
 
   ```
-  ​	Session(String host, int port)
-  ​	Session(String host, String port, String username, String password)
-  ​	Session(String host, int port, String username, String password)
+  ​Session(String host, int port)
+  ​Session(String host, String port, String username, String password)
+  ​Session(String host, int port, String username, String password)
   ```
   
 * 开启Session
 
   ```
-  ​	Session.open()
+  ​Session.open()
   ```
   
 * 关闭Session
   ​
   ```
-  	Session.close()
+  Session.close()
   ```
   
 * 设置存储组
@@ -75,18 +76,18 @@
 * 删除单个或多个存储组
 
   ```
-  	void deleteStorageGroup(String storageGroup)
-  	void deleteStorageGroups(List<String> storageGroups)
+  void deleteStorageGroup(String storageGroup)
+  void deleteStorageGroups(List<String> storageGroups)
   ```
 
 * 创建单个或多个时间序列
 
   ```
-  	void createTimeseries(String path, TSDataType dataType,
+  void createTimeseries(String path, TSDataType dataType,
           TSEncoding encoding, CompressionType compressor, Map<String, String> props,
           Map<String, String> tags, Map<String, String> attributes, String measurementAlias)
           
-    void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
+  void createMultiTimeseries(List<String> paths, List<TSDataType> dataTypes,
           List<TSEncoding> encodings, List<CompressionType> compressors,
           List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
           List<Map<String, String>> attributesList, List<String> measurementAliasList)
@@ -95,60 +96,60 @@
 * 删除一个或多个时间序列
 
   ```
-  	void deleteTimeseries(String path)
-  	void deleteTimeseries(List<String> paths)
+  void deleteTimeseries(String path)
+  void deleteTimeseries(List<String> paths)
   ```
 
 * 删除一个或多个时间序列在某个时间点前的数据
 
   ```
-  	void deleteData(String path, long time)
-  	void deleteData(List<String> paths, long time)
+  void deleteData(String path, long time)
+  void deleteData(List<String> paths, long time)
   ```
 
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 
   ```
-    void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
 * 插入一个 Tablet，Tablet 是一个设备若干行非空数据块，每一行的列都相同
 
   ```
-  	void insertTablet(Tablet tablet)
+  void insertTablet(Tablet tablet)
   ```
 
 * 插入多个 Tablet
 
   ```
-  	void insertTablets(Map<String, Tablet> tablet)
+  void insertTablets(Map<String, Tablet> tablet)
   ```
   
 * 插入多个 Record
 
   ```
-    void insertRecords(List<String> deviceIds, List<Long> times, 
+  void insertRecords(List<String> deviceIds, List<Long> times, 
                        List<List<String>> measurementsList, List<List<String>> valuesList)
   ```
 
 ## 测试客户端逻辑+网络传输代价的接口
 
-* 测试 testInsertInBatch，不实际写入数据，只将数据传输到 server 即返回。
+* 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。
 
    ```
-   TSStatus testInsertInBatch(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
+   void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
    ```
 
 * 测试 insertRecord，不实际写入数据，只将数据传输到 server 即返回。
 
   ```
-    void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
 * 测试 insertTablet，不实际写入数据，只将数据传输到 server 即返回。
 
   ```
-    void testInsertTablet(Tablet tablet)
+  void testInsertTablet(Tablet tablet)
   ```
   
   

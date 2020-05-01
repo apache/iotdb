@@ -109,6 +109,11 @@ ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
+* 更新插入标签和属性
+> 如果该标签或属性原来不存在，则插入，否则，用新值更新原来的旧值
+```
+ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
+```
 
 ## 查看时间序列
 
@@ -157,6 +162,38 @@ show timeseries root.ln where description contains 'test1'
   只返回从指定下标开始的结果，最大返回条数被 LIMIT 限制，用于分页查询
 
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
+
+## 查看子路径
+
+```
+SHOW CHILD PATHS prefixPath
+```
+
+可以查看此前缀路径的下一层的所有路径，前缀路径允许使用 * 通配符。
+
+示例：
+
+* 查询 root.ln 的下一层：show child paths root.ln
+
+```
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+```
+
+* 查询形如 root.xx.xx.xx 的路径：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
+```
 
 ## 统计时间序列总数
 
