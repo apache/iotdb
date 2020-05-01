@@ -121,7 +121,7 @@ public class LinearFill extends IFill {
     LastPointReader lastReader =
         new LastPointReader(seriesPath, dataType, allSensors, context, dataSource, queryTime, beforeFilter);
 
-    TimeValuePair beforePair = lastReader.getTimeseriesLastPointXXX();
+    TimeValuePair beforePair = lastReader.readLastPoint();
     TimeValuePair afterPair = calculatFirstPointAfterQueryTime();
 
     // no before data or has data on the query timestamp

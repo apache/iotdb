@@ -104,7 +104,7 @@ public class PreviousFill extends IFill {
     LastPointReader lastReader = new LastPointReader(
         seriesPath, dataType, allSensors, context, dataSource, queryTime, timeFilter);
 
-    return lastReader.getTimeseriesLastPointXXX();
+    return lastReader.readLastPoint();
   }
 
   public boolean isUntilLast() {

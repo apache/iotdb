@@ -67,7 +67,7 @@ public class LastPointReader {
     this.timeFilter = timeFilter;
   }
 
-  public TimeValuePair getTimeseriesLastPointXXX() throws IOException {
+  public TimeValuePair readLastPoint() throws IOException {
     TimeValuePair lastPointResult = retrieveValidLastPointFromSeqFiles();
     UnpackOverlappedUnseqFiles(lastPointResult.getTimestamp());
 
