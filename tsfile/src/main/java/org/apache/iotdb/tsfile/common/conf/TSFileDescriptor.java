@@ -120,6 +120,8 @@ public class TSFileDescriptor {
       }
       conf.setMaxNumberOfPointsInPage(Integer.parseInt(
           properties.getProperty("max_number_of_points_in_page", Integer.toString(conf.getMaxNumberOfPointsInPage()))));
+      conf.setMaxDegreeOfIndexNode(Integer.parseInt(
+          properties.getProperty("max_degree_of_index_node", Integer.toString(conf.getMaxDegreeOfIndexNode()))));
       conf.setTimeSeriesDataType(properties.getProperty("time_series_data_type", conf.getTimeSeriesDataType()));
       conf.setMaxStringLength(
           Integer.parseInt(properties.getProperty("max_string_length", Integer.toString(conf.getMaxStringLength()))));

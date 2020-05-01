@@ -61,20 +61,6 @@ Shell > uzip iotdb-<version>.zip
 Shell > tar -zxf iotdb-<version>.tar.gz # For Linux or MacOS
 ```
 
-解压后文件夹内容见图：
-
-```
-server/     <-- root path
-|
-+- sbin/       <-- script files
-|
-+- conf/      <-- configuration files
-|
-+- lib/       <-- project dependencies
-|
-+- LICENSE    <-- LICENSE
-```
-
 ## 使用源码编译
 
 您可以获取已发布的源码https://iotdb.apache.org/Download/，或者从git仓库获取https://github.com/apache/incubator-iotdb/tree/master
@@ -85,34 +71,16 @@ server/     <-- root path
 > mvn clean package -pl server -am -Dmaven.test.skip=true
 ```
 
-成功后，可以在终端看到如下信息:
-
-```
-[INFO] ------------------------------------------------------------------------
-[INFO] Reactor Summary:
-[INFO]
-[INFO] Apache IoTDB (incubating) Project Parent POM ....... SUCCESS [  6.405 s]
-[INFO] TsFile ............................................. SUCCESS [ 10.435 s]
-[INFO] Service-rpc ........................................ SUCCESS [  4.170 s]
-[INFO] IoTDB Jdbc ......................................... SUCCESS [  3.252 s]
-[INFO] IoTDB Server ....................................... SUCCESS [  8.072 s]
-[INFO] ------------------------------------------------------------------------
-[INFO] BUILD SUCCESS
-[INFO] ------------------------------------------------------------------------
-```
-
-否则，你需要检查错误语句，并修复问题。
-
 编译后，IoTDB 服务器会在 "server/target/iotdb-server-{project.version}" 文件夹下，包含以下内容：
 
 ```
-$IOTDB_HOME/
-|
 +- sbin/       <-- script files
 |
 +- conf/      <-- configuration files
 |
 +- lib/       <-- project dependencies
+|
++- tools/      <-- system tools
 ```
 
 ## 通过Docker安装 (Dockerfile)

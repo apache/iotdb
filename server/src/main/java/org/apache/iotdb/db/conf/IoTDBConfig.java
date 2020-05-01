@@ -365,7 +365,7 @@ public class IoTDBConfig {
   /**
    * Storage group level when creating schema automatically is enabled
    */
-  private int defaultStorageGroupLevel = 2;
+  private int defaultStorageGroupLevel = 1;
 
   /**
    * BOOLEAN encoding when creating schema automatically is enabled

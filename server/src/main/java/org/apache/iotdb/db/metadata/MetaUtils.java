@@ -59,18 +59,18 @@ class MetaUtils {
   /**
    * Get storage group name when creating schema automatically is enable
    *
-   * e.g., path = root.a.b.c and level = 2, return root.a
+   * e.g., path = root.a.b.c and level = 1, return root.a
    *
    * @param path path
    * @param level level
    */
   public static String getStorageGroupNameByLevel(String path, int level) throws MetadataException {
     String[] nodeNames = MetaUtils.getNodeNames(path);
-    if (nodeNames.length < level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
+    if (nodeNames.length <= level || !nodeNames[0].equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(path);
     }
     StringBuilder storageGroupName = new StringBuilder(nodeNames[0]);
-    for (int i = 1; i < level; i++) {
+    for (int i = 1; i <= level; i++) {
       storageGroupName.append(IoTDBConstant.PATH_SEPARATOR).append(nodeNames[i]);
     }
     return storageGroupName.toString();
