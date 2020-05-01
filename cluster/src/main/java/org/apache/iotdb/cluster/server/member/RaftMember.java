@@ -418,18 +418,21 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
   private long appendEntries(List<Log> logs) {
+    if (logs.isEmpty()) {
+      return Response.RESPONSE_AGREE;
+    }
+
     long resp;
     synchronized (logManager) {
-      long success = logManager.append(logs);
-      if (success != -1) {
+      if (logs.get(0).getCurrLogIndex() > logManager.getLastLogIndex() + 1) {
+        // the incoming log points to an illegal position, reject it
+        resp = Response.RESPONSE_LOG_MISMATCH;
+      } else {
+        logManager.append(logs);
         if (logger.isDebugEnabled()) {
           logger.debug("{} append new logs list {}", name, logs);
         }
         resp = Response.RESPONSE_AGREE;
-      } else {
-        // the incoming log points to an illegal position, reject it
-        logger.debug("{} cannot append the log because the last log does not match", name);
-        resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
     return resp;
