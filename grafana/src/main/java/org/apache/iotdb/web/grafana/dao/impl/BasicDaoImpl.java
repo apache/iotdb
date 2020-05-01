@@ -18,13 +18,8 @@
  */
 package org.apache.iotdb.web.grafana.dao.impl;
 
-import java.sql.Connection;
 import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.ZonedDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.Duration;
 import org.apache.iotdb.jdbc.Constant;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
@@ -32,24 +27,57 @@ import org.apache.iotdb.web.grafana.dao.BasicDao;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
-/**
- * Created by dell on 2017/7/17.
- */
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
 @Repository
+@PropertySource("classpath:application.properties")
 public class BasicDaoImpl implements BasicDao {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicDaoImpl.class);
 
   private final JdbcTemplate jdbcTemplate;
 
+  private static long TIMESTAMP_RADIX = 1L;
+
+  @Value("${isDownSampling}")
+  private boolean isDownSampling;
+
+  @Value("${function}")
+  private String function;
+
+  @Value("${interval}")
+  private String interval;
+
+
   @Autowired
   public BasicDaoImpl(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
+    Properties properties = new Properties();
+    String tsPrecision = properties.getProperty("timestamp_precision", "ms");
+    switch (tsPrecision) {
+      case "us":
+        TIMESTAMP_RADIX = 1000;
+        break;
+      case "ns":
+        TIMESTAMP_RADIX = 1000_000;
+        break;
+      default:
+        TIMESTAMP_RADIX = 1;
+    }
+    logger.info("Use timestamp precision {}", tsPrecision);
   }
 
   @Override
@@ -74,12 +102,28 @@ public class BasicDaoImpl implements BasicDao {
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
-    String sql = "SELECT " + s.substring(s.lastIndexOf('.') + 1) + " FROM root."
-        + s.substring(0, s.lastIndexOf('.')) + " WHERE time > " + from + " and time < " + to;
-    logger.info(sql);
+    final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
     List<TimeValues> rows = null;
+    String sql = String.format("SELECT %s FROM root.%s WHERE time > %d and time < %d",
+        s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
+        from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX);
+    String columnName = "root." + s;
+    if (isDownSampling && (hours > 1)) {
+      if (hours < 30 * 24 && hours > 24) {
+        interval = "1h";
+      } else if (hours > 30 * 24) {
+        interval = "1d";
+      }
+      sql = String.format(
+          "SELECT " + function
+              + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
+          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')), from, to, from,
+          to, interval);
+      columnName = function + "(root." + s + ")";
+    }
+    logger.info(sql);
     try {
-      rows = jdbcTemplate.query(sql, new TimeValuesRowMapper("root." + s));
+      rows = jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
     } catch (Exception e) {
       logger.error(e.getMessage());
     }
