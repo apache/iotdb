@@ -769,6 +769,11 @@ public class MetaGroupMemberTest extends MemberTest {
     log.setPreviousLogTerm(-1);
     AppendEntryRequest request = new AppendEntryRequest();
     request.setEntry(log.serialize());
+    request.setTerm(0);
+    request.setLeaderCommit(0);
+    request.setPrevLogIndex(-1);
+    request.setPrevLogTerm(-1);
+    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000));
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
     testMetaMember.appendEntry(request, handler);
