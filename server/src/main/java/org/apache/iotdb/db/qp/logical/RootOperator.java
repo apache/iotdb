@@ -26,6 +26,5 @@ public abstract class RootOperator extends Operator {
 
   public RootOperator(int tokenIntType) {
     super(tokenIntType);
-    operatorType = OperatorType.MERGE;
   }
 }

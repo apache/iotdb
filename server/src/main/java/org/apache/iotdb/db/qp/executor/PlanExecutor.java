@@ -239,6 +239,7 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case MERGE:
         operateMerge((MergePlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));

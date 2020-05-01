@@ -24,5 +24,6 @@ public class MergeOperator extends RootOperator {
 
   public MergeOperator(int tokenIntType) {
     super(tokenIntType);
+    operatorType = OperatorType.MERGE;
   }
 }
