@@ -116,9 +116,9 @@ public class BasicDaoImpl implements BasicDao {
       }
       sql = String.format(
           "SELECT " + function
-              + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
-          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')), from, to, from,
-          to, interval);
+              + "(%s) FROM root.%s WHERE time > %d and time < %d group by (%s, [%d, %d])",
+          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')), from, to,
+          interval, from, to);
       columnName = function + "(root." + s + ")";
     }
     logger.info(sql);
