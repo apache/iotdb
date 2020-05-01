@@ -271,7 +271,7 @@ Ts文件以6字节的魔术字符串结尾（至文件）。 恭喜你！ 您已
 
 #### 1.3.1 TsFileResource打印工具
 
-构建服务器后，此工具的启动脚本将出现在`server \ target \ iotdb-server-0.9.2 \ tools`目录下。
+构建服务器后，此工具的启动脚本将出现在`server \ target \ iotdb-server-0.9.3 \ tools`目录下。
 
 命令:
 
@@ -290,7 +290,7 @@ Ts文件以6字节的魔术字符串结尾（至文件）。 恭喜你！ 您已
 Windows上的示例：
 
 ```
-D:\incubator-iotdb\server\target\iotdb-server-0.9.2\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
+D:\incubator-iotdb\server\target\iotdb-server-0.9.3\tools>.\print-tsfile-resource-files.bat D:\data\data\sequence\root.vehicle
 ​````````````````````````
 Starting Printing the TsFileResources
 ​````````````````````````
@@ -302,7 +302,7 @@ analyzing the resource file finished.
 
 #### 1.3.2 TsFile素描工具
 
-构建服务器后，此工具的启动脚本将出现在` server \ target \ iotdb-server-0.9.2 \ tools`目录下。
+构建服务器后，此工具的启动脚本将出现在` server \ target \ iotdb-server-0.9.3 \ tools`目录下。
 
 命令：
 
@@ -325,7 +325,7 @@ analyzing the resource file finished.
 Windows上的示例：
 
 ```$xslt
-D:\incubator-iotdb\server\target\iotdb-server-0.9.2\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+D:\incubator-iotdb\server\target\iotdb-server-0.9.3\tools>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````

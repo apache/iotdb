@@ -325,7 +325,7 @@ When the fill method is not specified, each data type bears its own default fill
 |float|linear, 0, 0|
 |double|linear, 0, 0|
 |text|previous, 0|
-> Note: In version 0.9.2, at least one fill method should be specified in the Fill statement.
+> Note: In version 0.9.3, at least one fill method should be specified in the Fill statement.
 
 ### Row and Column Control over Query Results
 

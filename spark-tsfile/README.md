@@ -33,7 +33,7 @@ With this connector, you can
 
 |Spark Version | Scala Version | Java Version | TsFile |
 |------------- | ------------- | ------------ |------------ |
-| `2.4.3`        | `2.11.8`        | `1.8`        | `0.9.2`|
+| `2.4.3`        | `2.11.8`        | `1.8`        | `0.9.3`|
 
 > Note: For more information about how to download and use TsFile, please see the following link: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
@@ -43,7 +43,7 @@ With this connector, you can
 Start Spark with TsFile-Spark-Connector in local mode: 
 
 ```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.9.2-jar-with-dependencies.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.9.3-jar-with-dependencies.jar
 ```
 
 Note:
@@ -58,7 +58,7 @@ Note:
 Start Spark with TsFile-Spark-Connector in distributed mode (That is, the spark cluster is connected by spark-shell): 
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-0.9.2-jar-with-dependencies.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-0.9.3-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 Note:
@@ -337,4 +337,4 @@ TsFile-Spark-Connector can display one or more TsFiles as a table in SparkSQL By
 The writing process is to write a DataFrame as one or more TsFiles. By default, two columns need to be included: time and delta_object. The rest of the columns are used as Measurement. If user wants to write the second table structure back to TsFile, user can set the "delta\_object\_name" parameter(refer to Section 5.1 of Section 5.1 of this manual).
 
 ## Appendix B: Old Note
-NOTE: Check the jar packages in the root directory  of your Spark and replace libthrift-0.9.2.jar and libfb303-0.9.2.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.
+NOTE: Check the jar packages in the root directory  of your Spark and replace libthrift-0.9.3.jar and libfb303-0.9.3.jar with libthrift-0.9.1.jar and libfb303-0.9.1.jar respectively.

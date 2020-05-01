@@ -34,7 +34,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 
 |Spark版本 | Scala 版本 | Java 版本 | TsFile |
 |------------- | ------------- | ------------ |------------ |
-| `2.4.3`        | `2.11.8`        | `1.8`        | `0.9.2`|
+| `2.4.3`        | `2.11.8`        | `1.8`        | `0.9.3`|
 
 > 注意：有关如何下载和使用TsFile的更多信息，请参见以下链接: https://github.com/apache/incubator-iotdb/tree/master/tsfile.
 
@@ -44,7 +44,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 在本地模式下使用TsFile-Spark-Connector启动Spark：
 
 ```
-./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.9.2-jar-with-dependencies.jar
+./<spark-shell-path>  --jars  tsfile-spark-connector.jar,tsfile-0.9.3-jar-with-dependencies.jar
 ```
 
 注意：
@@ -59,7 +59,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 在分布式模式下使用TsFile-Spark-Connector启动Spark（即，Spark集群通过spark-shell连接）：
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-0.9.2-jar-with-dependencies.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-0.9.3-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 注意：
@@ -340,4 +340,4 @@ TsFile-Spark-Connector可以在SparkSQL By SparkSQL中将一个或多个TsFiles�
 写入过程是将一个DataFrame写入一个或多个TsFiles。 默认情况下，需要包括两列：time和delta_object。 其余的列用作“度量”。 如果用户想将第二个表结构写回到TsFile，则可以设置“ delta \ _object \ _name”参数（请参阅本手册5.1节的5.1节）。
 
 ## 附录B：旧注
-注意：检查Spark根目录中的jar软件包，并分别用libthrift-0.9.1.jar和libfb303-0.9.1.jar替换libthrift-0.9.2.jar和libfb303-0.9.2.jar。
+注意：检查Spark根目录中的jar软件包，并分别用libthrift-0.9.1.jar和libfb303-0.9.1.jar替换libthrift-0.9.3.jar和libfb303-0.9.3.jar。

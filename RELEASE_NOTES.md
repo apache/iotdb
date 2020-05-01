@@ -19,6 +19,17 @@
 
 -->
 
+# Apache IoTDB (incubating) 0.9.3
+
+## Bug Fix
+- IOTDB-531 Fix that JDBC URL does not support domain issue
+- IOTDB-608 Skip error mlog
+
+## Miscellaneous changes
+- IOTDB-528 Modify grafana group by
+- Remove docs of Load External Tsfile
+
+
 # Apache IoTDB (incubating) 0.9.2
 
 ## Bug Fixs

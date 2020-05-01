@@ -40,7 +40,7 @@ There are several ways to identify the version of IoTDB that you are using:
 * Check pom.xml file:
 
 ```
-<version>0.9.2</version>
+<version>0.9.3</version>
 ```
 
 * Use JDBC API:

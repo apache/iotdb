@@ -81,7 +81,7 @@ $ start-client.sh -h localhost -p 6667 -u root -pw root
         <dependency>
             <groupId>org.apache.iotdb</groupId>
             <artifactId>iotdb-jdbc</artifactId>
-            <version>0.9.2</version>
+            <version>0.9.3</version>
         </dependency>
 ```
 可以在以下位置找到有关如何将IoTDB与IoTDB-JDBC一起使用的一些示例： https://github.com/apache/incubator-iotdb/tree/master/example/jdbc/src/main/java/org/apache/iotdb

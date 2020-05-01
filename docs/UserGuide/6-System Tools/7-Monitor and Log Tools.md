@@ -148,7 +148,7 @@ There are several attributes under Monitor, including the numbers of files opene
 
 ### Data Status Monitoring
 
-This module is the statistical monitoring method provided by IoTDB for users to store data information. We will record the statistical data in the system and store it in the database. The current 0.9.2 version of IoTDB provides statistics for writing data.
+This module is the statistical monitoring method provided by IoTDB for users to store data information. We will record the statistical data in the system and store it in the database. The current 0.9.3 version of IoTDB provides statistics for writing data.
 
 The user can choose to enable or disable the data statistics monitoring function (set the `enable_stat_monitor` item in the configuration file, see [Engine Layer](../3-Server/2-Single%20Node%20Setup.html) for details).
 
