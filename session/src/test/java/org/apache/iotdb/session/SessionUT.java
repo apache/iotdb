@@ -18,20 +18,21 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.rpc.BatchExecutionException;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.fail;
+
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import org.junit.Test;
 
 public class SessionUT {
 
-    public static void main(String[] args) throws BatchExecutionException, IoTDBConnectionException {
+    @Test
+    public void testSortTablet() {
         /*
         To test sortTablet in Class Session
         !!!
@@ -63,37 +64,27 @@ public class SessionUT {
         sensor[1] = 1;
         sensor[2] = 2;
         tablet.rowSize = 3;
-        System.out.printf("%s\t%s\n", "timestamp", "s1");
-        for (int i = 0; i < 3; i++) {
-            System.out.println(timestamps[i] + "\t\t\t" + sensor[i]);
-        }
-
-        session.sortTablet(tablet);
 
         /*
         After sorting, if the tablet data is sorted according to the timestamps,
         data in tablet will be
         timestamp   s1
         0           1
-        1           0
-        2           2
+        1           2
+        2           0
 
         If the data equal to above tablet, test pass, otherwise test fialed
          */
         long[] resTimestamps = tablet.timestamps;
         long[] resValues = (long[])tablet.values[0];
-        boolean ifPass = false;
-        if (resTimestamps[0] == 0 && resTimestamps[1] == 1 && resTimestamps[2] == 2) {
-            if (resValues[0] == 1 && resValues[1] == 2 && resValues[2] == 0) {
-                ifPass = true;
-            }
+        long[] expectedTimestamps = new long[]{0, 1, 2};
+        long[] expectedValues = new long[]{1,2,0};
+        try {
+            assertArrayEquals(expectedTimestamps, resTimestamps);
+            assertArrayEquals(expectedValues, resValues);
         }
-
-        System.out.printf("Test Result: %s\n", ifPass? "Yes" : "NO");
-        System.out.printf("%s\t%s\n", "timestamp", "s1");
-        for (int i = 0; i < 3; i++) {
-            System.out.println(resTimestamps[i] + "\t\t\t" + resValues[i]);
+        catch (Exception e) {
+            fail();
         }
-
     }
 }
