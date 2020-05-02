@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -130,20 +131,18 @@ public class TimeSeriesMetadataCache {
         return null;
       }
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-      TimeseriesMetadata resultTimeseriesMetadata = reader
-          .readTimeseriesMetadata(new Path(key.device, key.measurement));
-      lruCache.put(key, resultTimeseriesMetadata);
-
+      Set<String> allSensorsIncludingKey = new HashSet<>(allSensors);
+      allSensorsIncludingKey.add(key.measurement);
       List<TimeseriesMetadata> timeSeriesMetadataList = reader
-          .readTimeseriesMetadata(key.device, allSensors);
-      if (!allSensors.isEmpty()) {
+          .readTimeseriesMetadata(key.device, allSensorsIncludingKey);
+      if (!allSensorsIncludingKey.isEmpty()) {
         // put TimeSeriesMetadata of all sensors used in this query into cache
         timeSeriesMetadataList.forEach(timeseriesMetadata -> {
           lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device,
               timeseriesMetadata.getMeasurementId()), timeseriesMetadata);
         });
       }
-      return resultTimeseriesMetadata;
+      return lruCache.get(key);
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", key.filePath);
       throw e;

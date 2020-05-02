@@ -338,6 +338,11 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
         deviceMetadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE);
     List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
+    if (measurements.size() > config.getMaxDegreeOfIndexNode()) {
+      traverseAndReadTimeseriesMetadataInOneDevice(resultTimeseriesMetadataList, metadataIndexPair,
+          measurements);
+      return resultTimeseriesMetadataList;
+    }
     for (String measurement : measurements) {
       ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
       Pair<MetadataIndexEntry, Long> measurementMetadataIndexPair = metadataIndexPair;
@@ -360,6 +365,39 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
     }
     return resultTimeseriesMetadataList;
+  }
+
+  private void traverseAndReadTimeseriesMetadataInOneDevice(
+      List<TimeseriesMetadata> timeseriesMetadataList,
+      Pair<MetadataIndexEntry, Long> metadataIndexPair, Set<String> measurements)
+      throws IOException {
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    switch (metadataIndexPair.left.getChildNodeType()) {
+      case LEAF_DEVICE:
+      case INTERNAL_MEASUREMENT:
+        MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+        int metadataIndexListSize = metadataIndexNode.getChildren().size();
+        for (int i = 0; i < metadataIndexListSize; i++) {
+          long endOffset = metadataIndexNode.getEndOffset();
+          if (i != metadataIndexListSize - 1) {
+            endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+          }
+          traverseAndReadTimeseriesMetadataInOneDevice(timeseriesMetadataList,
+              new Pair<>(metadataIndexNode.getChildren().get(i), endOffset), measurements);
+        }
+        break;
+      case LEAF_MEASUREMENT:
+        while (buffer.hasRemaining()) {
+          TimeseriesMetadata timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer);
+          if (measurements.contains(timeseriesMetadata.getMeasurementId())) {
+            timeseriesMetadataList.add(timeseriesMetadata);
+          }
+        }
+        break;
+      default:
+        throw new IOException("Failed to traverse and read TimeseriesMetadata in device: " +
+            metadataIndexPair.left.getName() + ". Wrong MetadataIndexEntry type.");
+    }
   }
 
   private int binarySearchInTimeseriesMetadataList(List<TimeseriesMetadata> timeseriesMetadataList,
