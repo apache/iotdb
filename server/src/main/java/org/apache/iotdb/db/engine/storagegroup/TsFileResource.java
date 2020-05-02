@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -361,7 +360,7 @@ public class TsFileResource {
     fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
-  void moveTo(File targetDir) throws IOException {
+  void moveTo(File targetDir) {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
     fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
         fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));

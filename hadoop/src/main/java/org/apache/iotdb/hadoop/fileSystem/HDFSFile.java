@@ -205,7 +205,7 @@ public class HDFSFile extends File {
 
   @Override
   public boolean equals(Object obj) {
-    return (obj != null) && (obj instanceof HDFSFile) && compareTo((HDFSFile) obj) == 0;
+    return obj instanceof HDFSFile && compareTo((HDFSFile) obj) == 0;
   }
 
   @Override
