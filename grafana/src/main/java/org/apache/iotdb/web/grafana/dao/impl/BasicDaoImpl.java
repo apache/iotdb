@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.web.grafana.dao.impl;
 
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.time.Duration;
+import java.util.Collections;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.web.grafana.bean.TimeValues;
 import org.apache.iotdb.web.grafana.dao.BasicDao;
@@ -52,13 +56,19 @@ public class BasicDaoImpl implements BasicDao {
 
   private final JdbcTemplate jdbcTemplate;
 
-  private static long TIMESTAMP_RADIX = 1L;
+  private static long TIMESTAMP_RADIX = -1L;
+
+  @Value("${timestamp_precision}")
+  private String timestampPrecision = "ms";
 
   @Value("${isDownSampling}")
   private boolean isDownSampling;
 
-  @Value("${function}")
-  private String function;
+  @Value("${continuous_data_function}")
+  private String continuous_data_function;
+
+  @Value("${discrete_data_function}")
+  private String discrete_data_function;
 
   @Value("${interval}")
   private String interval;
@@ -67,19 +77,6 @@ public class BasicDaoImpl implements BasicDao {
   @Autowired
   public BasicDaoImpl(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
-    Properties properties = new Properties();
-    String tsPrecision = properties.getProperty("timestamp_precision", "ms");
-    switch (tsPrecision) {
-      case "us":
-        TIMESTAMP_RADIX = 1000;
-        break;
-      case "ns":
-        TIMESTAMP_RADIX = 1000_000;
-        break;
-      default:
-        TIMESTAMP_RADIX = 1;
-    }
-    logger.info("Use timestamp precision {}", tsPrecision);
   }
 
   @Override
@@ -101,9 +98,43 @@ public class BasicDaoImpl implements BasicDao {
     return (List<String>) jdbcTemplate.execute(connectionCallback);
   }
 
+  /**
+  * Note: If the query fails this could be due to AGGREGATIION like AVG on booleayn field.
+  * Thus, we then do a retry with FIRST aggregation.
+  * This should be solved better in the long run.
+  */
+
+
   @Override
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
-    Long from = zonedCovertToLong(timeRange.left);
+    if (TIMESTAMP_RADIX == -1) {
+      switch (timestampPrecision) {
+        case "us":
+          TIMESTAMP_RADIX = 1000;
+          break;
+        case "ns":
+          TIMESTAMP_RADIX = 1000_000;
+          break;
+        default:
+          TIMESTAMP_RADIX = 1;
+      }
+      logger.info("Use timestamp precision {}", timestampPrecision);
+    }
+    try {
+      return querySeriesInternal(s, timeRange, continuous_data_function);
+    } catch (Exception e) {
+      // Try it with discrete_data_function
+      try {
+        return querySeriesInternal(s, timeRange, discrete_data_function);
+      } catch (Exception e2) {
+        logger.warn("Even {} query did not succeed, returning NULL now", discrete_data_function, e2);
+        return Collections.emptyList();
+      }
+    }
+  }
+
+  public List<TimeValues> querySeriesInternal(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange, String function) {
+      Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
     final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
     List<TimeValues> rows = null;
@@ -120,8 +151,9 @@ public class BasicDaoImpl implements BasicDao {
       sql = String.format(
           "SELECT " + function
               + "(%s) FROM root.%s WHERE time > %d and time < %d group by ([%d, %d),%s)",
-          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')), from, to, from,
-          to, interval);
+          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
+          from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX,
+          from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX, interval);
       columnName = function + "(root." + s + ")";
     }
     logger.info(sql);

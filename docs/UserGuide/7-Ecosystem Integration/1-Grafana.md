@@ -154,7 +154,10 @@ isDownSampling=true
 interval=1m
 # aggregation function to use to downsampling the data
 # COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
-function=avg
+continuous_data_function=AVG
+# aggregation function to use to downsampling the data
+# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MIN_TIME, NOW
+discrete_data_function=LAST_VALUE
 ```
 
 The specific configuration information of interval is as follows
