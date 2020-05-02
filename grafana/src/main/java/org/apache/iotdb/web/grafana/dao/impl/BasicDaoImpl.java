@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.web.grafana.dao.impl;
 
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.Collections;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -103,8 +100,6 @@ public class BasicDaoImpl implements BasicDao {
   * Thus, we then do a retry with FIRST aggregation.
   * This should be solved better in the long run.
   */
-
-
   @Override
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     if (TIMESTAMP_RADIX == -1) {
