@@ -153,7 +153,7 @@ isDownSampling=true
 # defaut sampling intervals
 interval=1m
 # aggregation function to use to downsampling the data
-# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
+# COUNT, FIRST, LAST, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
 function=avg
 ```
 

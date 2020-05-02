@@ -53,7 +53,10 @@ public class BasicDaoImpl implements BasicDao {
 
   private final JdbcTemplate jdbcTemplate;
 
-  private static long TIMESTAMP_RADIX = 1L;
+  private static long TIMESTAMP_RADIX = -1L;
+
+  @Value("${timestamp_precision}")
+  private String timestampPrecision;
 
   @Value("${isDownSampling}")
   private boolean isDownSampling;
@@ -68,19 +71,6 @@ public class BasicDaoImpl implements BasicDao {
   @Autowired
   public BasicDaoImpl(JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
-    Properties properties = new Properties();
-    String tsPrecision = properties.getProperty("timestamp_precision", "ms");
-    switch (tsPrecision) {
-      case "us":
-        TIMESTAMP_RADIX = 1000;
-        break;
-      case "ns":
-        TIMESTAMP_RADIX = 1000_000;
-        break;
-      default:
-        TIMESTAMP_RADIX = 1;
-    }
-    logger.info("Use timestamp precision {}", tsPrecision);
   }
 
   @Override
@@ -108,6 +98,19 @@ public class BasicDaoImpl implements BasicDao {
    */
   @Override
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
+    if(TIMESTAMP_RADIX == -1) {
+      switch (timestampPrecision) {
+        case "us":
+          TIMESTAMP_RADIX = 1000;
+          break;
+        case "ns":
+          TIMESTAMP_RADIX = 1000_000;
+          break;
+        default:
+          TIMESTAMP_RADIX = 1;
+      }
+      logger.info("Use timestamp precision {}", timestampPrecision);
+    }
     try {
       return querySeriesInternal(s, timeRange, function);
     } catch (Exception e) {
@@ -140,8 +143,9 @@ public class BasicDaoImpl implements BasicDao {
       sql = String.format(
           "SELECT " + function
               + "(%s) FROM root.%s WHERE time > %d and time < %d group by (%s, [%d, %d])",
-          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')), from, to,
-          interval, from, to);
+          s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
+          from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX,
+          interval, from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX);
       columnName = function + "(root." + s + ")";
     }
     logger.info(sql);
