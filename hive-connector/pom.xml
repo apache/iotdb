@@ -147,4 +147,20 @@
             </plugin>
         </plugins>
     </build>
+    <repositories>
+        <!-- as it is not good to upgrade the hive dependency version in a minor version of IoTDB,
+        we add the repo here. see IOTDB-563 -->
+        <repository>
+            <id>for_pentaho</id>
+            <name>spring.io</name>
+            <url>https://repo.spring.io/libs-milestone</url>
+            <layout>default</layout>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 </project>
