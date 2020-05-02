@@ -152,10 +152,10 @@ timestamp_precision=ms
 isDownSampling=true
 # defaut sampling intervals
 interval=1m
-# aggregation function to use to downsampling the data
+# aggregation function to use to downsampling the data (int, long, float, double)
 # COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
 continuous_data_function=AVG
-# aggregation function to use to downsampling the data
+# aggregation function to use to downsampling the data (boolean, string)
 # COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MIN_TIME, NOW
 discrete_data_function=LAST_VALUE
 ```
