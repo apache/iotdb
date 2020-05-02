@@ -33,8 +33,8 @@ statement
     | DELETE STORAGE GROUP fullPath (COMMA fullPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
-    | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
-    | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
+    | CREATE INDEX ON fullPath USING function=ID #createIndex // indexWithClause? whereClause?
+    | DROP INDEX function=ID ON fullPath #dropIndex
     | MERGE #merge //not support yet
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser

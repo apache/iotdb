@@ -29,7 +29,9 @@ import java.util.Map;
 import java.util.Set;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.index.UnSupportedIndexTypeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.index.IndexManager.IndexType;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
@@ -38,6 +40,8 @@ import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
 import org.apache.iotdb.db.qp.logical.crud.InOperator;
+import org.apache.iotdb.db.qp.logical.crud.IndexOperator;
+import org.apache.iotdb.db.qp.logical.crud.IndexOperator.IndexOperatorType;
 import org.apache.iotdb.db.qp.logical.crud.InsertOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -69,6 +73,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AutoCreateSchemaContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateIndexContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
@@ -76,6 +81,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteTimeseriesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropIndexContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DropUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.FillClauseContext;
@@ -92,8 +98,8 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertValuesSpecContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LastClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.LimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllRoleOfUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListAllUserOfRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ListPrivilegesRoleContext;
@@ -584,6 +590,34 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterShowAllTTLStatement(ctx);
     List<String> storageGroups = new ArrayList<>();
     initializedOperator = new ShowTTLOperator(storageGroups);
+  }
+
+  @Override
+  public void enterCreateIndex(CreateIndexContext ctx) {
+    super.enterCreateIndex(ctx);
+    IndexType indexType;
+    try {
+      indexType = IndexType.getIndexType(ctx.ID().getText());
+    } catch (UnSupportedIndexTypeException e) {
+      throw new SQLParserException(e);
+    }
+    initializedOperator = new IndexOperator(SQLConstant.TOK_CREATE_INDEX,
+        parseFullPath(ctx.fullPath()), IndexOperatorType.CREATE_INDEX, indexType);
+    operatorType = SQLConstant.TOK_CREATE_INDEX;
+  }
+
+  @Override
+  public void enterDropIndex(DropIndexContext ctx) {
+    super.enterDropIndex(ctx);
+    IndexType indexType;
+    try {
+      indexType = IndexType.getIndexType(ctx.ID().getText());
+    } catch (UnSupportedIndexTypeException e) {
+      throw new SQLParserException(e);
+    }
+    initializedOperator = new IndexOperator(SQLConstant.TOK_DROP_INDEX,
+        parseFullPath(ctx.fullPath()), IndexOperatorType.DROP_INDEX, indexType);
+    operatorType = SQLConstant.TOK_DROP_INDEX;
   }
 
   private String[] parsePrivilege(PrivilegesContext ctx) {
@@ -1196,10 +1230,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   /**
    * parse time expression, which is addition and subtraction expression of duration time, now() or
-   * DataTimeFormat time.
-   * <p>
-   * eg. now() + 1d - 2h
-   * </p>
+   * DataTimeFormat time. <p> eg. now() + 1d - 2h </p>
    */
   private Long parseDateExpression(DateExpressionContext ctx) {
     long time;

@@ -62,10 +62,15 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.index.IndexException;
+import org.apache.iotdb.db.exception.index.UnSupportedIndexTypeException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.index.IndexManager;
+import org.apache.iotdb.db.index.IndexManager.IndexType;
+import org.apache.iotdb.db.index.PisaIndex;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
@@ -80,10 +85,11 @@ import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.IndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
@@ -220,6 +226,9 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case MOVE_FILE:
         operateMoveFile((OperateFilePlan) plan);
+        return true;
+      case INDEX:
+        operateIndex((IndexPlan) plan);
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -376,7 +385,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected Set<String> getPathNextChildren(String path) throws MetadataException {
-     return MManager.getInstance().getChildNodePathInNextLevel(path);
+    return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
   private QueryDataSet processShowStorageGroup() {
@@ -668,6 +677,48 @@ public class PlanExecutor implements IPlanExecutor {
       MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
       StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
     } catch (MetadataException | StorageEngineException e) {
+      throw new QueryProcessException(e);
+    } catch (IOException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
+  }
+
+  private void operateIndex(IndexPlan indexPlan) throws QueryProcessException {
+    try {
+      String path = indexPlan.getPaths().get(0).getFullPath();
+      IndexType indexType = indexPlan.getIndexType();
+      if (!mManager.isPathExist(path)) {
+        throw new PathNotExistException(path);
+      }
+      PisaIndex pisaIndex = IndexManager.getIndexInstance(indexType);
+      if (pisaIndex == null) {
+        throw new UnSupportedIndexTypeException(indexType.toString());
+      }
+      switch (indexPlan.getIndexOperatorType()) {
+        case CREATE_INDEX:
+          if (mManager.checkIndex(path, indexType)) {
+            throw new IndexException(
+                String.format("Timeseries %s has already been indexed.", path));
+          }
+
+          if (pisaIndex.build(new Path(path))) {
+            mManager.addIndex(path, indexType);
+          }
+          break;
+        case DROP_INDEX:
+          if (!mManager.checkIndex(path, indexType)) {
+            throw new IndexException(
+                String.format("Timeseries %s hasn't been indexed.", path));
+          }
+          if (pisaIndex.drop(new Path(path))) {
+            mManager.dropIndex(path, indexType);
+          }
+          break;
+        default:
+          throw new IndexException(String
+              .format("Not supported index operation %s", indexPlan.getIndexOperatorType()));
+      }
+    } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {
       throw new QueryProcessException(e.getMessage());

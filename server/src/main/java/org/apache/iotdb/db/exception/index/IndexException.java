@@ -16,23 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.exception.index;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class PathException extends QueryProcessException {
+public class IndexException extends QueryProcessException {
 
-  private static final long serialVersionUID = 2141197032898163234L;
 
-  public PathException() {
-    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
+  private static final long serialVersionUID = 2585920847533339136L;
+
+  public IndexException(Throwable cause) {
+    super(cause, TSStatusCode.INDEX_ERROR.getStatusCode());
   }
 
-  public PathException(String message) {
-    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
+  public IndexException(String message) {
+    super(message, TSStatusCode.INDEX_ERROR.getStatusCode());
   }
 
-  public PathException(String message, int errorCode) {
+  public IndexException(String message, int errorCode) {
     super(message, errorCode);
   }
 }

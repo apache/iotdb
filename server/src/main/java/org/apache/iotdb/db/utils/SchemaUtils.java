@@ -57,16 +57,19 @@ public class SchemaUtils {
       logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getMeasurementId(),
           e);
     }
-
   }
 
   public static List<TSDataType> getSeriesTypesByPath(Collection<Path> paths)
       throws MetadataException {
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
-      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+      dataTypes.add(getSeriesTypeByPath(path));
     }
     return dataTypes;
+  }
+
+  public static TSDataType getSeriesTypeByPath(Path path) throws MetadataException {
+    return MManager.getInstance().getSeriesType(path.getFullPath());
   }
 
   /**

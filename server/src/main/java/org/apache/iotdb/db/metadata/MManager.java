@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.index.IndexManager.IndexType;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -654,7 +655,8 @@ public class MManager {
     }
   }
 
-  public MeasurementSchema getSeriesSchema(String device, String measuremnet) throws MetadataException {
+  public MeasurementSchema getSeriesSchema(String device, String measuremnet)
+      throws MetadataException {
     lock.readLock().lock();
     try {
       InternalMNode node = (InternalMNode) mtree.getNodeByPath(device);
@@ -778,6 +780,7 @@ public class MManager {
   }
 
   private static class MManagerHolder {
+
     private MManagerHolder() {
       //allowed to do nothing
     }
@@ -793,6 +796,54 @@ public class MManager {
         BufferedWriter writer = getLogWriter();
         writer
             .write(String.format("%s,%s,%s", MetadataOperationType.SET_TTL, storageGroup, dataTTL));
+        writer.newLine();
+        writer.flush();
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * Check whether the timeseries has index
+   */
+  public boolean checkIndex(String path, IndexType indexType) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getSchema(path).isIndexed(indexType.toString());
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Create index for timeseries
+   */
+  public void addIndex(String path, IndexType indexType) throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      mtree.getSchema(path).setIndex(indexType.toString(), true);
+      if (writeToLog) {
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.ADD_INDEX + "," + path + "," + indexType);
+        writer.newLine();
+        writer.flush();
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  /**
+   * Drop index for one timeseries
+   */
+  public void dropIndex(String path, IndexType indexType) throws MetadataException, IOException {
+    lock.writeLock().lock();
+    try {
+      mtree.getSchema(path).setIndex(indexType.toString(), false);
+      if (writeToLog) {
+        BufferedWriter writer = getLogWriter();
+        writer.write(MetadataOperationType.DROP_INDEX + "," + path + "," + indexType);
         writer.newLine();
         writer.flush();
       }
@@ -857,31 +908,25 @@ public class MManager {
   }
 
   /**
-   * For a path, infer all storage groups it may belong to.
-   * The path can have wildcards.
+   * For a path, infer all storage groups it may belong to. The path can have wildcards.
    *
-   * Consider the path into two parts: (1) the sub path which can not contain a storage group name and
-   * (2) the sub path which is substring that begin after the storage group name.
+   * Consider the path into two parts: (1) the sub path which can not contain a storage group name
+   * and (2) the sub path which is substring that begin after the storage group name.
    *
    * (1) Suppose the part of the path can not contain a storage group name (e.g.,
-   * "root".contains("root.sg") == false), then:
-   * If the wildcard is not at the tail, then for each wildcard, only one level will be inferred
-   * and the wildcard will be removed.
-   * If the wildcard is at the tail, then the inference will go on until the storage groups are found
-   * and the wildcard will be kept.
-   * (2) Suppose the part of the path is a substring that begin after the storage group name. (e.g.,
-   *  For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part is "a.*.b.*").
-   *  For this part, keep what it is.
+   * "root".contains("root.sg") == false), then: If the wildcard is not at the tail, then for each
+   * wildcard, only one level will be inferred and the wildcard will be removed. If the wildcard is
+   * at the tail, then the inference will go on until the storage groups are found and the wildcard
+   * will be kept. (2) Suppose the part of the path is a substring that begin after the storage
+   * group name. (e.g., For "root.*.sg1.a.*.b.*" and "root.x.sg1" is a storage group, then this part
+   * is "a.*.b.*"). For this part, keep what it is.
    *
-   * Assuming we have three SGs: root.group1, root.group2, root.area1.group3
-   * Eg1:
-   *  for input "root.*", returns ("root.group1", "root.group1.*"), ("root.group2", "root.group2.*")
-   *  ("root.area1.group3", "root.area1.group3.*")
-   * Eg2:
-   *  for input "root.*.s1", returns ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
+   * Assuming we have three SGs: root.group1, root.group2, root.area1.group3 Eg1: for input
+   * "root.*", returns ("root.group1", "root.group1.*"), ("root.group2", "root.group2.*")
+   * ("root.area1.group3", "root.area1.group3.*") Eg2: for input "root.*.s1", returns
+   * ("root.group1", "root.group1.s1"), ("root.group2", "root.group2.s1")
    *
-   * Eg3:
-   *  for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
+   * Eg3: for input "root.area1.*", returns ("root.area1.group3", "root.area1.group3.*")
    *
    * @param path can be a prefix or a full path.
    * @return StorageGroupName-FullPath pairs

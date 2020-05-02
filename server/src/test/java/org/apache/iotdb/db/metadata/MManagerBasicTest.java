@@ -30,7 +30,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -276,7 +275,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataException, PathException {
+  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataException {
     MManager manager = MManager.getInstance();
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
     manager.setStorageGroup("root.laptop");

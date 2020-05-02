@@ -25,8 +25,10 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
@@ -44,12 +46,15 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
  */
 public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
 
+  private static final long serialVersionUID = -2954441882827172377L;
+
   private String measurementId;
   private TSDataType type;
   private TSEncoding encoding;
   private TSEncodingBuilder encodingConverter;
   private CompressionType compressor;
   private Map<String, String> props = new HashMap<>();
+  private Set<String> indexSet;
 
   public MeasurementSchema() {
   }
@@ -88,6 +93,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     this.encoding = encoding;
     this.props = props == null ? Collections.emptyMap() : props;
     this.compressor = compressionType;
+    this.indexSet = new HashSet<>();
   }
 
   /**
@@ -172,6 +178,18 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     this.props = props;
   }
 
+  public boolean isIndexed(String indexType) {
+    return indexSet.contains(indexType);
+  }
+
+  public void setIndex(String indexType, boolean isIndexed) {
+    if (isIndexed) {
+      indexSet.add(indexType);
+    } else {
+      indexSet.remove(indexType);
+    }
+  }
+
   /**
    * function for getting time encoder.
    */
@@ -183,6 +201,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
 
   /**
    * get Encoder of value from encodingConverter by measurementID and data type.
+   *
    * @return Encoder for value
    */
   public Encoder getValueEncoder() {
@@ -293,5 +312,4 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     sc.addTail("]");
     return sc.toString();
   }
-
 }

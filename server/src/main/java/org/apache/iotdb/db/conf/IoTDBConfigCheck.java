@@ -109,17 +109,17 @@ public class IoTDBConfigCheck {
                 .getProperty("timestamp_precision") + " !");
         System.exit(-1);
       }
-      if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
-              == partitionInterval)) {
-        logger.error("Wrong storage group time range, please set as: " + properties
-                .getProperty("storage_group_time_range") + " !");
-        System.exit(-1);
-      }
-      if (!(properties.getProperty("tsfile_storage_fs").equals(tsfileFileSystem))) {
-        logger.error("Wrong tsfile file system, please set as: " + properties
-            .getProperty("tsfile_storage_fs") + " !");
-        System.exit(-1);
-      }
+//      if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
+//              == partitionInterval)) {
+//        logger.error("Wrong storage group time range, please set as: " + properties
+//                .getProperty("storage_group_time_range") + " !");
+//        System.exit(-1);
+//      }
+//      if (!(properties.getProperty("tsfile_storage_fs").equals(tsfileFileSystem))) {
+//        logger.error("Wrong tsfile file system, please set as: " + properties
+//            .getProperty("tsfile_storage_fs") + " !");
+//        System.exit(-1);
+//      }
     } catch (IOException e) {
       logger.error("Load system.properties from {} failed.", file.getAbsolutePath(), e);
     }
