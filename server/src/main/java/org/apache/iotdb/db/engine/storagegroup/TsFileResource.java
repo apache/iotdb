@@ -362,9 +362,9 @@ public class TsFileResource {
   }
 
   void moveTo(File targetDir) throws IOException {
-    FileUtils.moveFile(file, new File(targetDir, file.getName()));
-    FileUtils.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
-        new File(targetDir, file.getName() + RESOURCE_SUFFIX));
+    fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
+    fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
+        fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
     fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
@@ -442,7 +442,7 @@ public class TsFileResource {
    */
   void setCloseFlag() {
     try {
-      new File(file.getAbsoluteFile() + CLOSING_SUFFIX).createNewFile();
+      fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).createNewFile();
     } catch (IOException e) {
       logger.error("Cannot create close flag for {}", file, e);
     }
@@ -452,11 +452,11 @@ public class TsFileResource {
    * clean the close flag (if existed) when the file is successfully closed.
    */
   public void cleanCloseFlag() {
-    new File(file.getAbsoluteFile() + CLOSING_SUFFIX).delete();
+    fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).delete();
   }
 
   public boolean isCloseFlagSet() {
-    return new File(file.getAbsoluteFile() + CLOSING_SUFFIX).exists();
+    return fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).exists();
   }
 
   public Set<Long> getHistoricalVersions() {
