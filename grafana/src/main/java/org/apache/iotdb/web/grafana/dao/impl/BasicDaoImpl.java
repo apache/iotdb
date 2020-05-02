@@ -39,6 +39,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 
@@ -47,6 +48,8 @@ import java.util.Properties;
 public class BasicDaoImpl implements BasicDao {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicDaoImpl.class);
+
+  public static final String FALLBACK_AGG_FUNCTION = "LAST";
 
   private final JdbcTemplate jdbcTemplate;
 
@@ -98,8 +101,28 @@ public class BasicDaoImpl implements BasicDao {
     return (List<String>) jdbcTemplate.execute(connectionCallback);
   }
 
+  /**
+   * Note: If the query fails this could be due to AGGREGATIION like AVG on booleayn field.
+   * Thus, we then do a retry with FIRST aggregation.
+   * This should be solved better in the long run.
+   */
   @Override
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
+    try {
+      return querySeriesInternal(s, timeRange, function);
+    } catch (Exception e) {
+      logger.info("Execution failed, trying now with FIRST Function!");
+      // Try it with FIRST
+      try {
+        return querySeriesInternal(s, timeRange, FALLBACK_AGG_FUNCTION);
+      } catch (Exception e2) {
+        logger.warn("Even FIRST query did not succeed, returning NULL now", e2);
+        return Collections.emptyList();
+      }
+    }
+  }
+
+  public List<TimeValues> querySeriesInternal(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange, String function) {
     Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
     final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
@@ -126,6 +149,7 @@ public class BasicDaoImpl implements BasicDao {
       rows = jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
     } catch (Exception e) {
       logger.error(e.getMessage());
+      throw new RuntimeException("Query did not sucees", e);
     }
     return rows;
   }
