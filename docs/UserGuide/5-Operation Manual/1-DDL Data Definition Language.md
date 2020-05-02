@@ -287,4 +287,19 @@ IoTDB> unset ttl to root.ln
 ```
 After unset TTL, all data will be accepted in `root.ln`
 
+## FLUSH
+
+```
+IoTDB> FLUSH 
+IoTDB> FLUSH root.ln
+IoTDB> FLUSH root.sg1,root.sg2
+```
+
+## MERGE
+
+```
+IoTDB> MERGE
+IoTDB> FULL MERGE
+```
+
 

@@ -286,4 +286,19 @@ IoTDB> unset ttl to root.ln
 ```
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
 
+## FLUSH
+
+```
+IoTDB> FLUSH 
+IoTDB> FLUSH root.ln
+IoTDB> FLUSH root.sg1,root.sg2
+```
+
+## MERGE
+
+```
+IoTDB> MERGE
+IoTDB> FULL MERGE
+```
+
 
