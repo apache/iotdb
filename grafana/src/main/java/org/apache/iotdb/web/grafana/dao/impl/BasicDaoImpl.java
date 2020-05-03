@@ -41,7 +41,6 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Properties;
 
 @Repository
 @PropertySource("classpath:application.properties")
@@ -53,7 +52,7 @@ public class BasicDaoImpl implements BasicDao {
 
   private final JdbcTemplate jdbcTemplate;
 
-  private static long TIMESTAMP_RADIX = -1L;
+  private static long timestampRadioX = -1L;
 
   @Value("${timestamp_precision}")
   private String timestampPrecision;
@@ -91,6 +90,20 @@ public class BasicDaoImpl implements BasicDao {
     return (List<String>) jdbcTemplate.execute(connectionCallback);
   }
 
+  private static void setTimestampRadioX(String timestampPrecision) {
+    switch (timestampPrecision) {
+      case "us":
+        timestampRadioX = 1000;
+        break;
+      case "ns":
+        timestampRadioX = 1000_000;
+        break;
+      default:
+        timestampRadioX = 1;
+    }
+    logger.info("Use timestamp precision {}", timestampPrecision);
+  }
+
   /**
    * Note: If the query fails this could be due to AGGREGATIION like AVG on booleayn field.
    * Thus, we then do a retry with FIRST aggregation.
@@ -98,18 +111,8 @@ public class BasicDaoImpl implements BasicDao {
    */
   @Override
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
-    if(TIMESTAMP_RADIX == -1) {
-      switch (timestampPrecision) {
-        case "us":
-          TIMESTAMP_RADIX = 1000;
-          break;
-        case "ns":
-          TIMESTAMP_RADIX = 1000_000;
-          break;
-        default:
-          TIMESTAMP_RADIX = 1;
-      }
-      logger.info("Use timestamp precision {}", timestampPrecision);
+    if(timestampRadioX == -1) {
+      setTimestampRadioX(timestampPrecision);
     }
     try {
       return querySeriesInternal(s, timeRange, function);
@@ -132,7 +135,7 @@ public class BasicDaoImpl implements BasicDao {
     List<TimeValues> rows = null;
     String sql = String.format("SELECT %s FROM root.%s WHERE time > %d and time < %d",
         s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
-        from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX);
+        from * timestampRadioX, to * timestampRadioX);
     String columnName = "root." + s;
     if (isDownSampling && (hours > 1)) {
       if (hours < 30 * 24 && hours > 24) {
@@ -144,8 +147,8 @@ public class BasicDaoImpl implements BasicDao {
           "SELECT " + function
               + "(%s) FROM root.%s WHERE time > %d and time < %d group by (%s, [%d, %d])",
           s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
-          from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX,
-          interval, from * TIMESTAMP_RADIX, to * TIMESTAMP_RADIX);
+          from * timestampRadioX, to * timestampRadioX,
+          interval, from * timestampRadioX, to * timestampRadioX);
       columnName = function + "(root." + s + ")";
     }
     logger.info(sql);
