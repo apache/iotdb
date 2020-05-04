@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.DeviceMetaDataCache;
 import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
@@ -38,6 +37,8 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetaData;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -62,6 +63,8 @@ class MergeFileTask {
   private MergeLogger mergeLogger;
   private MergeResource resource;
   private List<TsFileResource> unmergedFiles;
+
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   MergeFileTask(String taskName, MergeContext context, MergeLogger mergeLogger,
       MergeResource resource, List<TsFileResource> unmergedSeqFiles) {
@@ -157,10 +160,11 @@ class MergeFileTask {
       newFileWriter.getFile().delete();
 
       File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
-      FileUtils.moveFile(seqFile.getFile(), nextMergeVersionFile);
-      FileUtils
-          .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-              new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      fsFactory.moveFile(seqFile.getFile(), nextMergeVersionFile);
+      fsFactory.moveFile(fsFactory
+                  .getFile(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+              fsFactory.getFile(
+                  nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
@@ -226,10 +230,11 @@ class MergeFileTask {
       seqFile.getFile().delete();
 
       File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
-      FileUtils.moveFile(fileWriter.getFile(), nextMergeVersionFile);
-      FileUtils
-          .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-              new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      fsFactory.moveFile(fileWriter.getFile(), nextMergeVersionFile);
+      fsFactory.moveFile(fsFactory
+                  .getFile(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+              fsFactory.getFile(
+                  nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } finally {
       seqFile.getWriteQueryLock().writeLock().unlock();
@@ -240,7 +245,7 @@ class MergeFileTask {
     String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
         .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
     int mergeVersion = Integer.parseInt(splits[2]) + 1;
-    return new File(seqFile.getParentFile(),
+    return fsFactory.getFile(seqFile.getParentFile(),
         splits[0] + IoTDBConstant.TSFILE_NAME_SEPARATOR + splits[1]
             + IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX);
   }
