@@ -124,7 +124,8 @@ public class MLogWriter {
   public static void upgradeMLog(String schemaDir, String logFileName) throws IOException {
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(schemaDir + File.separator + logFileName);
-    File tmpLogFile = new File(logFile.getAbsolutePath() + ".tmp");
+    File tmpLogFile = FSFactoryProducer.getFSFactory()
+        .getFile(logFile.getAbsolutePath() + ".tmp");
 
     // if both old mlog and mlog.tmp do not exist, nothing to do
     if (!logFile.exists() && !tmpLogFile.exists()) {
