@@ -107,10 +107,10 @@ String[] filedNames = {
 };
 TypeInformation[] typeInformations = new TypeInformation[] {
 	Types.LONG,
-	Types.FLOAT,
 	Types.LONG,
 	Types.LONG,
-	Types.FLOAT,
+	Types.LONG,
+	Types.LONG,
 	Types.LONG,
 	Types.LONG
 };
