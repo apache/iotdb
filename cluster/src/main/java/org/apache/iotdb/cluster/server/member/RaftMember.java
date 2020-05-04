@@ -331,7 +331,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         resultHandler.onComplete(localTerm);
         return false;
       } else {
-        stepDown(leaderTerm);
+        if (leaderTerm > localTerm) {
+          stepDown(leaderTerm);
+        } else {
+          lastHeartbeatReceivedTime = System.currentTimeMillis();
+        }
         setLeader(request.getLeader());
         if (character != NodeCharacter.FOLLOWER) {
           term.notifyAll();
