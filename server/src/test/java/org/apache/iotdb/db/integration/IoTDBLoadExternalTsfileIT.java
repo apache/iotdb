@@ -408,7 +408,7 @@ public class IoTDBLoadExternalTsfileIT {
       // test wrong statement
       boolean hasError = false;
       try {
-        statement.execute(String.format("load %s true1 2", tmpDir.getAbsolutePath()));
+        statement.execute(String.format("load %s true1 1", tmpDir.getAbsolutePath()));
       } catch (Exception e) {
         hasError = true;
         Assert.assertEquals(
@@ -420,7 +420,7 @@ public class IoTDBLoadExternalTsfileIT {
       // test not load metadata automatically, it will occur errors.
       hasError = false;
       try {
-        statement.execute(String.format("load %s false 2", tmpDir.getAbsolutePath()));
+        statement.execute(String.format("load %s false 1", tmpDir.getAbsolutePath()));
       } catch (Exception e) {
         hasError = true;
       }
@@ -428,7 +428,7 @@ public class IoTDBLoadExternalTsfileIT {
 
       // test load metadata automatically, it will succeed.
       tmpDir = tmpDir.getParentFile().getParentFile();
-      statement.execute(String.format("load %s true 2", tmpDir.getAbsolutePath()));
+      statement.execute(String.format("load %s true 1", tmpDir.getAbsolutePath()));
       resources = new ArrayList<>(
           StorageEngine.getInstance().getProcessor("root.vehicle")
               .getSequenceFileTreeSet());

@@ -115,6 +115,12 @@ public class MLogWriter {
     writer.flush();
   }
 
+  public void changeOffset(String path, long offset) throws IOException {
+    writer.write(String.format("%s,%s,%s", MetadataOperationType.CHANGE_OFFSET, path, offset));
+    writer.newLine();
+    writer.flush();
+  }
+
   public static void upgradeMLog(String schemaDir, String logFileName) throws IOException {
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(schemaDir + File.separator + logFileName);

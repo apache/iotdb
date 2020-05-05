@@ -19,10 +19,42 @@
 
 -->
 
+
+# 0.10.0 (version-1) -> version-2
+
+Last Updated on 2020-4-24 by Jialin Qiao.
+
+
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+| Remove TS_SessionHandle,TSHandleIdentifier            | Tian Jiang         |
+| Remove TSStatus,TSExecuteInsertRowInBatchResp            | Jialin Qiao|
+
+## 2. Add New
+
+| Latest Changes                                               | Related Committers                 |
+| ------------------------------------------------------------ | ---------------------------------- |
+| Add parameter sessionId in getTimeZone, getProperties, setStorageGroup, createTimeseries... | Tian Jiang|
+| Add struct TSQueryNonAlignDataSet                            | Haonan Hou|
+| Add struct TSInsertTabletsReq                            | Jialin Qiao|
+| Add method insertTablets                            | Jialin Qiao|
+
+## 3. Update
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| Replace TS_SessionHandles with SessionIds, TSOperationHandle with queryIds  | Tian Jiang  |
+| Add optional TSQueryNonAlignDataSet in TSExecuteStatementResp, TSFetchResultsResp and required bool isAlign in TSFetchResultsReq | Haonan Hou |
+| Rename TSStatusType to TSStatus   | Jialin Qiao   |
+| Remove sessionId in TSExecuteBatchStatementResp   | Jialin Qiao   |
+| Rename insertRows to insertReords, insert to insertRecord, insertBatch to insertTablet   | Jialin Qiao   |
+
+
 # 0.8.0 (version-0) -> version-1
 
-Last Updated on October 27th, 2019 by Lei Rui.
-
+Last Updated on 2019-10-27 by Lei Rui.
 
 
 ## 1. Delete Old
@@ -38,8 +70,6 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Remove optional list<list<string>> timeseriesList in TSFetchMetadataResp | Genius_pig |
 | Remove optinoal optional i32 timeseriesNum in TSFetchMetadataResp | Genius_pig |
 | Remove optional i32 nodeLevel in TSFetchMetadataReq | Genius_pig |
-
-
 
 
 ## 2. Add New
@@ -91,6 +121,7 @@ Last Updated on October 27th, 2019 by Lei Rui.
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
 | Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
 | Add optional i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
+<<<<<<< HEAD
 | Add optional map<string, string> props, optional map<string, string> tags, optional map<string, string> attributes and optional string aliasPath in TSCreateTimeseriesReq | Yuan Tian | 
 
 

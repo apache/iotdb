@@ -43,7 +43,7 @@ TsFile 文件层的写入接口有两种
 
  写入一个设备一个时间戳多个测点。
 
-* TsFileWriter.write(RowBatch rowBatch)
+* TsFileWriter.write(Tablet tablet)
 
  写入一个设备多个时间戳多个测点。
 

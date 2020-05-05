@@ -29,7 +29,7 @@
 
 * 对应的接口
 	* JDBC 的 execute 和 executeBatch 接口
-	* Session 的 insert 和 insertInBatch
+	* Session 的 insertRecord 和 insertRecords
 
 * 总入口: public void insert(InsertPlan insertPlan)   StorageEngine.java
 	* 找到对应的 StorageGroupProcessor
