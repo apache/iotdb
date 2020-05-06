@@ -81,6 +81,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
+import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -185,6 +186,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
     logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
         this), metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode);
+    initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
   }
@@ -301,8 +303,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
       if (insertIndex > 0) {
         allNodes.add(insertIndex, node);
+        peerMap.putIfAbsent(node, new Peer(logManager.getLastLogIndex()));
         // remove the last node because the group size is fixed to replication number
         Node removedNode = allNodes.remove(allNodes.size() - 1);
+        peerMap.remove(removedNode);
         // if the local node is the last node and the insertion succeeds, this node should leave
         // the group
         logger.debug("{}: Node {} is inserted into the data group {}", name, node, allNodes);
@@ -923,7 +927,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return false;
     }
     CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
-    long commitIndex;
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setPreviousLogIndex(logManager.getLastLogIndex());
@@ -931,11 +934,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       logManager.append(log);
-      commitIndex = logManager.getCommitLogIndex();
 
       logger.info("Send the close file request of {} to other nodes", log);
     }
-    return appendLogInGroup(log, commitIndex);
+    return appendLogInGroup(log);
   }
 
   /**
@@ -1374,6 +1376,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       if (allNodes.contains(removedNode)) {
         // update the group if the deleted node was in it
         allNodes = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+        initPeerMap();
         if (removedNode.equals(leader)) {
           // if the leader is removed, also start an election immediately
           synchronized (term) {
@@ -1578,6 +1581,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     this.logManager = logManager;
     super.setLogManager(logManager);
+    initPeerMap();
   }
 
   /**

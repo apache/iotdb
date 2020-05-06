@@ -24,6 +24,7 @@ import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
 import java.net.ConnectException;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -64,8 +65,10 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
           memberName, follower, lastLogIdx
           , localLastLogIdx, lastLogTerm, localLastLogTerm);
 
-      if (localLastLogIdx > lastLogIdx ||
-          lastLogIdx == localLastLogIdx && localLastLogTerm > lastLogTerm) {
+      Peer peer = localMember.getPeerMap()
+          .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
+      if (!peer.isCatchUp() || !localMember.getLogManager()
+          .isLogUpToDate(lastLogTerm, lastLogIdx)) {
         logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}", memberName, follower,
             lastLogIdx, lastLogTerm,
             localLastLogIdx, localLastLogTerm);

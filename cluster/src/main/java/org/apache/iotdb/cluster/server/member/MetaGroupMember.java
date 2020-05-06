@@ -220,6 +220,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   public MetaGroupMember(TProtocolFactory factory, Node thisNode) throws QueryProcessException {
     super("Meta", new ClientPool(new MetaClient.Factory(factory)));
     allNodes = new ArrayList<>();
+    initPeerMap();
 
     dataClientPool = new ClientPool(new DataClient.Factory(factory));
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
@@ -531,6 +532,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     router = new ClusterPlanRouter(partitionTable);
 
     allNodes = new ArrayList<>(partitionTable.getAllNodes());
+    initPeerMap();
     logger.info("Received cluster nodes from the leader: {}", allNodes);
     initIdNodeMap();
     for (Node n : allNodes) {
@@ -952,6 +954,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       partitionTable = new SlotPartitionTable(thisNode);
       partitionTable.deserialize(ByteBuffer.wrap(tableBuffer));
       allNodes = new ArrayList<>(partitionTable.getAllNodes());
+      initPeerMap();
       for (Node node : allNodes) {
         idNodeMap.put(node.getNodeIdentifier(), node);
       }
@@ -2376,6 +2379,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   @Override
   public void setAllNodes(List<Node> allNodes) {
     super.setAllNodes(allNodes);
+    initPeerMap();
     idNodeMap = new HashMap<>();
     for (Node node : allNodes) {
       idNodeMap.put(node.getNodeIdentifier(), node);
