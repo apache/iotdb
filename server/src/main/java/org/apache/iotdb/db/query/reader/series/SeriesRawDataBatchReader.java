@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.reader.series;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -58,7 +58,9 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   public SeriesRawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
-    this.seriesReader = new SeriesReader(seriesPath, Collections.emptySet(), dataType, context,
+    Set<String> allSensors = new HashSet<>();
+    allSensors.add(seriesPath.getMeasurement());
+    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context,
         seqFileResource, unseqFileResource, timeFilter, valueFilter);
   }
 
