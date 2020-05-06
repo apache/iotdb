@@ -211,6 +211,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
       } else {
 
+        // interrupt election
+
+        stepDown(leaderTerm);
+        setLeader(request.getLeader());
+        if (character != NodeCharacter.FOLLOWER) {
+          term.notifyAll();
+        }
+
         // the heartbeat comes from a valid leader, process it with the sub-class logic
         processValidHeartbeatReq(request, response);
 
@@ -248,14 +256,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // if the log is not consistent, the commitment will be blocked until the leader makes the
         // node catch up
 
-        // interrupt election
-
-        stepDown(leaderTerm);
-        setLeader(request.getLeader());
-        if (character != NodeCharacter.FOLLOWER) {
-          term.notifyAll();
-        }
-
         if (logger.isTraceEnabled()) {
           logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
@@ -276,7 +276,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     synchronized (term) {
       long currentTerm = term.get();
       if (electionRequest.getTerm() < currentTerm) {
-        logger.info("{} sending term {} to the elector {} because it's term({}) is smaller.", name,
+        logger.info("{} sending localTerm {} to the elector {} because it's term {} is smaller.",
+            name,
             currentTerm,
             electionRequest.getElector(), electionRequest.getTerm());
         resultHandler.onComplete(currentTerm);
@@ -285,9 +286,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       if (currentTerm == electionRequest.getTerm() && voteFor != null && !Objects
           .equals(voteFor, electionRequest.getElector())) {
         logger.info(
-            "{} sending rejection to the elector {} because member already has voted({}) in this term.",
+            "{} sending rejection to the elector {} because member already has voted {} in this term {}.",
             name,
-            electionRequest.getElector(), voteFor);
+            electionRequest.getElector(), voteFor, currentTerm);
         resultHandler.onComplete(Response.RESPONSE_REJECT);
         return;
       }
@@ -295,7 +296,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         logger.info(
             "{} received an election from elector {} which has bigger term {} than localTerm {}, raftMember should step down first and then continue to decide whether to grant it's vote by log status.",
             name,
-            electionRequest.getElector(),electionRequest.getTerm() ,currentTerm);
+            electionRequest.getElector(), electionRequest.getTerm(), currentTerm);
         stepDown(electionRequest.getTerm());
       }
 
@@ -330,9 +331,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         resultHandler.onComplete(localTerm);
         return false;
       } else {
-        stepDown(leaderTerm);
-        setLeader(request.getHeader());
-        if(character != NodeCharacter.FOLLOWER){
+        if (leaderTerm > localTerm) {
+          stepDown(leaderTerm);
+        } else {
+          lastHeartbeatReceivedTime = System.currentTimeMillis();
+        }
+        setLeader(request.getLeader());
+        if (character != NodeCharacter.FOLLOWER) {
           term.notifyAll();
         }
       }
@@ -349,18 +354,18 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
    * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  private long appendEntry(Log log) {
+  private long appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
     long resp;
     synchronized (logManager) {
-      if (log.getCurrLogIndex() > logManager.getLastLogIndex() + 1) {
-        // the incoming log points to an illegal position, reject it
-        resp = Response.RESPONSE_LOG_MISMATCH;
-      } else {
-        logManager.append(log);
+      long success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
+      if (success != -1) {
         if (logger.isDebugEnabled()) {
           logger.debug("{} append a new log {}", name, log);
         }
         resp = Response.RESPONSE_AGREE;
+      } else {
+        // the incoming log points to an illegal position, reject it
+        resp = Response.RESPONSE_LOG_MISMATCH;
       }
     }
     return resp;
@@ -383,7 +388,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     try {
       Log log = LogParser.getINSTANCE().parse(request.entry);
-      resultHandler.onComplete(appendEntry(log));
+      resultHandler.onComplete(
+          appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log));
       logger.debug("{} AppendEntryRequest of {} completed", name, log);
     } catch (UnknownLogTypeException e) {
       resultHandler.onError(e);
@@ -404,11 +410,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    *                       0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
-  protected AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
+  protected AppendLogResult sendLogToFollowers(Log log, long commitIndex, int requiredQuorum) {
     if (requiredQuorum <= 0) {
-      return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
+      return sendLogToFollowers(log, commitIndex, new AtomicInteger(allNodes.size() / 2));
     } else {
-      return sendLogToFollowers(log, new AtomicInteger(requiredQuorum));
+      return sendLogToFollowers(log, commitIndex, new AtomicInteger(requiredQuorum));
     }
   }
 
@@ -422,7 +428,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param voteCounter a decreasing vote counter
    * @return an AppendLogResult indicating a success or a failure and why
    */
-  private AppendLogResult sendLogToFollowers(Log log, AtomicInteger voteCounter) {
+  private AppendLogResult sendLogToFollowers(Log log, long commitIndex, AtomicInteger voteCounter) {
     if (allNodes.size() == 1) {
       // single node group, does not need the agreement of others
       return AppendLogResult.OK;
@@ -436,6 +442,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     request.setEntry(log.serialize());
+    request.setLeader(getThisNode());
+    request.setLeaderCommit(commitIndex);
+    request.setPrevLogIndex(log.getCurrLogIndex() - 1);
+    try {
+      request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
+    } catch (Exception e) {
+      logger.error("getTerm failed for newly append entries", e);
+    }
     if (getHeader() != null) {
       // data groups use header to find a particular DataGroupMember
       request.setHeader(getHeader());
@@ -554,8 +568,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   public void setLeader(Node leader) {
     if (!Objects.equals(leader, this.leader)) {
-      if (!Objects.equals(leader, this.thisNode)) {
-        logger.info("{} has become a follower of {}", getName(), leader);
+      if (leader == null) {
+        logger.info("{} has been set to null in term {}", getName(), term.get());
+      } else if (!Objects.equals(leader, this.thisNode)) {
+        logger.info("{} has become a follower of {} in term {}", getName(), leader, term.get());
       }
       this.leader = leader;
     }
@@ -843,6 +859,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
+    long commitIndex;
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setPreviousLogIndex(logManager.getLastLogIndex());
@@ -851,9 +868,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
       log.setPlan(plan);
       logManager.append(log);
+
+      commitIndex = logManager.getCommitLogIndex();
     }
 
-    if (appendLogInGroup(log)) {
+    if (appendLogInGroup(log, commitIndex)) {
       return StatusUtils.OK;
     }
     return null;
@@ -865,14 +884,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * is lost.
    *
    * @param log
+   * @param commitIndex
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
-  protected boolean appendLogInGroup(Log log) {
+  protected boolean appendLogInGroup(Log log, long commitIndex) {
     int retryTime = 0;
     retry:
     while (true) {
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
-      AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
+      AppendLogResult result = sendLogToFollowers(log, commitIndex, allNodes.size() / 2);
       switch (result) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);

@@ -383,7 +383,7 @@ public class RaftLogManagerTest {
   }
 
   @Test
-  public void maybeAppend() {
+  public void maybeAppendBatch() {
     class RaftLogManagerTester {
 
       public List<Log> entries;
@@ -393,7 +393,6 @@ public class RaftLogManagerTest {
       public long testLastIndex;
       public long testCommitIndex;
       public boolean testAppend;
-
 
       public RaftLogManagerTester(List<Log> entries, long lastIndex, long lastTerm,
           long leaderCommit, long testLastIndex, long testCommitIndex, boolean testAppend) {
@@ -474,11 +473,84 @@ public class RaftLogManagerTest {
         if (test.testAppend) {
           try {
             List<Log> entries = instance
-                .getEntries(instance.getLastLogIndex() - test.entries.size() + 1, Integer.MAX_VALUE);
+                .getEntries(instance.getLastLogIndex() - test.entries.size() + 1,
+                    Integer.MAX_VALUE);
             assertEquals(test.entries, entries);
           } catch (Exception e) {
             fail("An unexpected exception was thrown.");
           }
+        }
+      } finally {
+        instance.close();
+      }
+    }
+  }
+
+  @Test
+  public void maybeAppendSingle() {
+    class RaftLogManagerTester {
+
+      public Log entry;
+      public long lastIndex;
+      public long lastTerm;
+      public long leaderCommit;
+      public long testLastIndex;
+      public long testCommitIndex;
+      public boolean testAppend;
+
+      public RaftLogManagerTester(Log entry, long lastIndex, long lastTerm,
+          long leaderCommit, long testLastIndex, long testCommitIndex, boolean testAppend) {
+        this.entry = entry;
+        this.lastIndex = lastIndex;
+        this.lastTerm = lastTerm;
+        this.leaderCommit = leaderCommit;
+        this.testLastIndex = testLastIndex;
+        this.testCommitIndex = testCommitIndex;
+        this.testAppend = testAppend;
+      }
+    }
+    List<Log> previousEntries = new ArrayList<Log>() {{
+      add(new EmptyContentLog(1, 1));
+      add(new EmptyContentLog(2, 2));
+      add(new EmptyContentLog(3, 3));
+    }};
+    long lastIndex = 3;
+    long lastTerm = 3;
+    long commit = 1;
+    List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
+      // not match: term is different
+      add(new RaftLogManagerTester(null, lastIndex, lastTerm - 1, lastIndex, -1,
+          commit, false));
+      // not match: index out of bound
+      add(new RaftLogManagerTester(null, lastIndex + 1, lastTerm, lastIndex, -1,
+          commit, false));
+      // normal case
+      add(new RaftLogManagerTester(new EmptyContentLog(lastIndex + 1, 4), lastIndex, lastTerm,
+          lastIndex, lastIndex + 1, lastIndex, true));
+      add(new RaftLogManagerTester(new EmptyContentLog(lastIndex + 1, 4), lastIndex, lastTerm,
+          lastIndex + 1, lastIndex + 1, lastIndex + 1, true));
+      // do not increase commit higher than newLastIndex
+      add(new RaftLogManagerTester(new EmptyContentLog(lastIndex + 1, 4), lastIndex, lastTerm,
+          lastIndex + 2, lastIndex + 1, lastIndex + 1, true));
+      // match with the the entry in the middle
+      add(new RaftLogManagerTester(new EmptyContentLog(lastIndex, 4), lastIndex - 1, lastTerm - 1,
+          lastIndex, lastIndex, lastIndex, true));
+      add(new RaftLogManagerTester(new EmptyContentLog(lastIndex - 1, 4), lastIndex - 2,
+          lastTerm - 2, lastIndex, lastIndex - 1, lastIndex - 1, true));
+    }};
+    for (RaftLogManagerTester test : tests) {
+      CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+      committedEntryManager.applyingSnapshot(new SimpleSnapshot(0, 0));
+      RaftLogManager instance = new RaftLogManager(committedEntryManager,
+          new SyncLogDequeSerializer(testIdentifier), logApplier);
+      try {
+        instance.append(previousEntries);
+        instance.commitTo(commit);
+        assertEquals(test.testLastIndex,
+            instance.maybeAppend(test.lastIndex, test.lastTerm, test.leaderCommit, test.entry));
+        assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
+        if (test.testAppend) {
+          assertTrue(instance.matchTerm(test.entry.getCurrLogTerm(), test.entry.getCurrLogIndex()));
         }
       } finally {
         instance.close();
@@ -607,7 +679,8 @@ public class RaftLogManagerTest {
         try {
           List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);
           assertEquals(test.testEntries, entries);
-          assertEquals(test.testOffset, instance.unCommittedEntryManager.getFirstUnCommittedIndex());
+          assertEquals(test.testOffset,
+              instance.unCommittedEntryManager.getFirstUnCommittedIndex());
         } catch (Exception e) {
           fail("An unexpected exception was thrown.");
         }

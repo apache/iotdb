@@ -74,11 +74,15 @@ struct ElectionRequest {
 // leader -> follower
 struct AppendEntryRequest {
   1: required long term // leader's
-  2: required binary entry // data
+  2: required Node leader
+  3: required long prevLogIndex
+  4: required long prevLogTerm
+  5: required long leaderCommit
+  6: required binary entry // data
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  3: optional Node header
+  7: optional Node header
 }
 
 // leader -> follower

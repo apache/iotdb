@@ -923,6 +923,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return false;
     }
     CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
+    long commitIndex;
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setPreviousLogIndex(logManager.getLastLogIndex());
@@ -930,10 +931,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       logManager.append(log);
+      commitIndex = logManager.getCommitLogIndex();
 
       logger.info("Send the close file request of {} to other nodes", log);
     }
-    return appendLogInGroup(log);
+    return appendLogInGroup(log, commitIndex);
   }
 
   /**
