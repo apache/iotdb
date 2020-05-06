@@ -761,7 +761,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
 
     Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
-    Map<String, TSDataType> checker = plan.getMeasurementDataTypeMap();
+    Map<String, TSDataType> measurementDataTypeMap = plan.getMeasurementDataTypeMap();
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
@@ -770,7 +770,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSDataType type = null;
       switch (measurementTypeMap.get(measurement)) {
         case Exist:
-          type = checker.get(measurement);
+          type = measurementDataTypeMap.get(measurement);
           break;
         case NonExist:
         case Constant:
