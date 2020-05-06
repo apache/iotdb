@@ -130,7 +130,7 @@ public class HDFSFile extends File {
 
   @Override
   public File getParentFile() {
-    return new HDFSFile(hdfsPath.getParent().getName());
+    return new HDFSFile(hdfsPath.getParent().toUri().toString());
   }
 
   @Override
@@ -151,10 +151,7 @@ public class HDFSFile extends File {
   @Override
   public boolean mkdirs() {
     try {
-      if (exists()) {
-        return false;
-      }
-      return fs.mkdirs(hdfsPath);
+      return !exists() && fs.mkdirs(hdfsPath);
     } catch (IOException e) {
       logger.error("Fail to create directory {}. ", hdfsPath.toUri().toString(), e);
       return false;
@@ -208,10 +205,7 @@ public class HDFSFile extends File {
 
   @Override
   public boolean equals(Object obj) {
-    if ((obj != null) && (obj instanceof HDFSFile)) {
-      return compareTo((HDFSFile) obj) == 0;
-    }
-    return false;
+    return obj instanceof HDFSFile && compareTo((HDFSFile) obj) == 0;
   }
 
   @Override
@@ -235,7 +229,7 @@ public class HDFSFile extends File {
 
   public BufferedWriter getBufferedWriter(String filePath, boolean append) {
     try {
-        return new BufferedWriter(new OutputStreamWriter(fs.create(new Path(filePath))));
+      return new BufferedWriter(new OutputStreamWriter(fs.create(new Path(filePath))));
     } catch (IOException e) {
       logger.error("Failed to get buffered writer for {}. ", filePath, e);
       return null;
@@ -290,6 +284,11 @@ public class HDFSFile extends File {
   }
 
   @Override
+  public File getAbsoluteFile() {
+    return new HDFSFile(getAbsolutePath());
+  }
+
+  @Override
   public String getParent() {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
@@ -301,11 +300,6 @@ public class HDFSFile extends File {
 
   @Override
   public File[] listFiles(FileFilter filter) {
-    throw new UnsupportedOperationException("Unsupported operation.");
-  }
-
-  @Override
-  public File getAbsoluteFile() {
     throw new UnsupportedOperationException("Unsupported operation.");
   }
 
