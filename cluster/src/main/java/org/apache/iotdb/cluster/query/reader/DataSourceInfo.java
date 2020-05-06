@@ -43,7 +43,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
 /**
- * provide client which could connect to all nodes of the partitionGroup
+ * provide client which could connect to all nodes of the partitionGroup.
+ * Notice: methods like getter should be called only after nextDataClient() has been called
  */
 public class DataSourceInfo {
   private static final Logger logger = LoggerFactory.getLogger(DataSourceInfo.class);
@@ -56,9 +57,9 @@ public class DataSourceInfo {
   private RemoteQueryContext context;
   private MetaGroupMember metaGroupMember;
   private List<Node> nodes;
-  private DataClient curClient;
   private boolean isNoData;
   private int curPos;
+  private boolean noClient = false;
 
   public DataSourceInfo(PartitionGroup group, TSDataType dataType,
                         SingleSeriesQueryRequest request, RemoteQueryContext context,
@@ -71,14 +72,14 @@ public class DataSourceInfo {
     this.metaGroupMember = metaGroupMember;
     this.nodes = nodes;
     this.isNoData = false;
-    this.curPos = -1;
-    this.curSource = null;
+    // set to the last node so after nextDataClient() is called it will scan from the first node
+    this.curPos = nodes.size() - 1;
+    this.curSource = nodes.get(curPos);
   }
 
   public DataClient nextDataClient(boolean byTimestamp, long timestamp) {
     if (this.nodes.isEmpty()) {
       this.isNoData = false;
-      this.curClient = null;
       return null;
     }
 
@@ -97,7 +98,7 @@ public class DataSourceInfo {
             client.querySingleSeriesByTimestamp(request, handler);
           } else {
             // add timestamp to as a timeFilter to skip the data which has been read
-            Filter newFilter = null;
+            Filter newFilter;
             if (request.isSetTimeFilterBytes()) {
               Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
               newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
@@ -119,12 +120,11 @@ public class DataSourceInfo {
             this.readerId = readerId;
             this.curSource = node;
             this.curPos = nextNodePos;
-            this.curClient = client;
             return client;
           } else {
             // the id being -1 means there is no satisfying data on the remote node, create an
             // empty reader to reduce further communication
-            this.curClient = null;
+            this.noClient = true;
             this.isNoData = true;
             return null;
           }
@@ -133,14 +133,14 @@ public class DataSourceInfo {
         logger.error("Cannot query {} from {}", this.request.path, node, e);
       }
       nextNodePos = (nextNodePos + 1) % this.nodes.size();
-      if ((this.curPos != -1 && nextNodePos == this.curPos) || (this.curPos == -1 && nextNodePos == 0)) {
+      if (nextNodePos == this.curPos) {
         // has iterate over all nodes
+        noClient = true;
         break;
       }
     }
     // all nodes are failed
     this.isNoData = false;
-    this.curClient = null;
     return null;
   }
 
@@ -160,8 +160,8 @@ public class DataSourceInfo {
     return this.curSource;
   }
 
-  public DataClient getCurClient() {
-    return this.curClient;
+  public DataClient getCurClient() throws IOException {
+    return noClient ? null : metaGroupMember.getDataClient(this.curSource);
   }
 
   public boolean isNoData() {

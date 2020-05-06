@@ -39,6 +39,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
@@ -126,12 +127,12 @@ public class DataGroupMemberTest extends MemberTest {
       fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestSchema(1, i)));
       snapshotMap.put(i, fileSnapshot);
     }
-    pulledSnapshots = new HashSet<>();
+    pulledSnapshots = new ConcurrentSkipListSet<>();
   }
 
   @After
   public void tearDown() throws Exception {
-    dataGroupMember.closeLogManager();
+    dataGroupMember.stop();
     super.tearDown();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
   }
@@ -215,11 +216,13 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetHeader() {
+    System.out.println("Start testGetHeader()");
     assertEquals(TestUtils.getNode(0), dataGroupMember.getHeader());
   }
 
   @Test
   public void testAddNode() {
+    System.out.println("Start testAddNode()");
     PartitionGroup partitionGroup = new PartitionGroup(TestUtils.getNode(0),
         TestUtils.getNode(50), TestUtils.getNode(90));
     DataGroupMember firstMember = getDataGroupMember(TestUtils.getNode(0),
@@ -252,6 +255,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testStartElection() {
+    System.out.println("Start testStartElection()");
     class TestHandler implements AsyncMethodCallback<Long> {
 
       private long response;
@@ -344,6 +348,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testSendSnapshot() {
+    System.out.println("Start testSendSnapshot()");
     PartitionedSnapshot<FileSnapshot> partitionedSnapshot =
         new PartitionedSnapshot<>(FileSnapshot::new);
     partitionedSnapshot.setLastLogIndex(100);
@@ -379,6 +384,7 @@ public class DataGroupMemberTest extends MemberTest {
   @Test
   public void testApplySnapshot()
       throws StorageEngineException, IOException, WriteProcessException, SnapshotApplicationException {
+    System.out.println("Start testStartElection()");
     FileSnapshot snapshot = new FileSnapshot();
     List<MeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
@@ -430,6 +436,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testForwardPullSnapshot() {
+    System.out.println("Start testForwardPullSnapshot()");
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
     PullSnapshotRequest request = new PullSnapshotRequest();
@@ -446,7 +453,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testPullSnapshot() throws InterruptedException {
+  public void testPullSnapshot() {
+    System.out.println("Start testPullSnapshot()");
     hasInitialSnapshots = true;
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     PullSnapshotRequest request = new PullSnapshotRequest();
@@ -465,6 +473,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testFollowerExecuteNonQuery() {
+    System.out.println("Start testFollowerExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
     MeasurementSchema measurementSchema = TestUtils.getTestSchema(20, 0);
@@ -479,6 +488,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testLeaderExecuteNonQuery() {
+    System.out.println("Start testLeaderExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
     MeasurementSchema measurementSchema = TestUtils.getTestSchema(2, 0);
@@ -492,7 +502,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testPullTimeseries() throws InterruptedException {
+  public void testPullTimeseries() {
+    System.out.println("Start testPullTimeseries()");
     int prevTimeOut = RaftServer.connectionTimeoutInMS;
     int prevMaxWait = RaftServer.syncLeaderMaxWaitMs;
     RaftServer.connectionTimeoutInMS = 20;
@@ -529,7 +540,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testQuerySingleSeries() throws QueryProcessException, InterruptedException {
+  public void testQuerySingleSeries() throws QueryProcessException {
+    System.out.println("Start testQuerySingleSeries()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
@@ -581,8 +593,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testQuerySingleSeriesWithValueFilter() throws QueryProcessException,
-      InterruptedException {
+  public void testQuerySingleSeriesWithValueFilter() throws QueryProcessException {
+    System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
@@ -635,7 +647,8 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testQuerySingleSeriesByTimestamp()
-      throws QueryProcessException, InterruptedException {
+      throws QueryProcessException {
+    System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
@@ -685,6 +698,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testQuerySingleSeriesByTimestampWithValueFilter() throws QueryProcessException {
+    System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
@@ -733,6 +747,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetPaths() {
+    System.out.println("Start testGetPaths()");
     String path = TestUtils.getTestSg(0);
     AtomicReference<List<String>> pathResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
@@ -746,6 +761,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testFetchWithoutQuery() {
+    System.out.println("Start testFetchWithoutQuery()");
     AtomicReference<Exception> result = new AtomicReference<>();
     dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), 0, 0,
         new AsyncMethodCallback<ByteBuffer>() {
@@ -800,6 +816,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveLeader() throws TTransportException {
+    System.out.println("Start testRemoveLeader()");
     Node nodeToRemove = TestUtils.getNode(10);
     NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
         .removeNode(nodeToRemove);
@@ -827,6 +844,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveNonLeader() throws TTransportException {
+    System.out.println("Start testRemoveNonLeader()");
     Node nodeToRemove = TestUtils.getNode(10);
     NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
         .removeNode(nodeToRemove);
@@ -853,6 +871,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testGroupBy() throws QueryProcessException {
+    System.out.println("Start testGroupBy()");
     TestUtils.prepareData();
 
     GroupByRequest request = new GroupByRequest();

@@ -63,6 +63,7 @@ public class ChunkMetadataCache {
 
 
   private ChunkMetadataCache(long memoryThreshold) {
+    logger.info("ChunkMetadataCache size = " + memoryThreshold);
     lruCache = new LRULinkedHashMap<String, List<ChunkMetadata>>(memoryThreshold, true) {
       int count = 0;
       long averageChunkMetadataSize = 0;

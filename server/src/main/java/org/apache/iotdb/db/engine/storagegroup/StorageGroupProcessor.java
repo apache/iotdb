@@ -574,8 +574,7 @@ public class StorageGroupProcessor {
    * @param timePartitionId time partition id
    */
   private void insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
-      int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
-      throws WriteProcessException {
+      int start, int end, boolean sequence, TSStatus[] results, long timePartitionId) {
     // return when start >= end
     if (start >= end) {
       return;
@@ -964,7 +963,7 @@ public class StorageGroupProcessor {
       }
 
       // ensure that the file is not used by any queries
-      if (resource.getWriteQueryLock().writeLock().tryLock()) {
+      if (resource.tryWriteLock()) {
         try {
           // physical removal
           resource.remove();
@@ -978,7 +977,7 @@ public class StorageGroupProcessor {
             unSequenceFileList.remove(resource);
           }
         } finally {
-          resource.getWriteQueryLock().writeLock().unlock();
+          resource.writeUnlock();
         }
       }
     } finally {
@@ -1423,18 +1422,17 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.getWriteQueryLock().writeLock().lock();
+      unseqFile.writeLock();
       try {
         unseqFile.remove();
       } finally {
-        unseqFile.getWriteQueryLock().writeLock().unlock();
+        unseqFile.writeUnlock();
       }
     }
   }
 
   @SuppressWarnings("squid:S1141")
   private void updateMergeModification(TsFileResource seqFile) {
-    seqFile.getWriteQueryLock().writeLock().lock();
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -1452,8 +1450,6 @@ public class StorageGroupProcessor {
     } catch (IOException e) {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
-    } finally {
-      seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
 
@@ -1483,7 +1479,25 @@ public class StorageGroupProcessor {
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
-      mergeLock.writeLock().lock();
+      // get both seqFile lock and merge lock
+      boolean fileLockGot;
+      boolean mergeLockGot;
+      while (true) {
+        fileLockGot = seqFile.tryWriteLock();
+        mergeLockGot = mergeLock.writeLock().tryLock();
+
+        if (fileLockGot && mergeLockGot) {
+          break;
+        } else {
+          // did not get all of them, release the gotten one and retry
+          if (fileLockGot) {
+            seqFile.writeUnlock();
+          }
+          if(mergeLockGot) {
+            mergeLock.writeLock().unlock();
+          }
+        }
+      }
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
@@ -1494,6 +1508,7 @@ public class StorageGroupProcessor {
         }
       } finally {
         mergeLock.writeLock().unlock();
+        seqFile.writeUnlock();
       }
     }
     logger.info("{} a merge task ends", storageGroupName);
@@ -1721,7 +1736,7 @@ public class StorageGroupProcessor {
       TsFileResource seqFile = iterator.next();
       if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())
           && !resource.getHistoricalVersions().equals(seqFile.getHistoricalVersions())
-          && seqFile.getWriteQueryLock().writeLock().tryLock()) {
+          && seqFile.tryWriteLock()) {
         try {
           if (!seqFile.isClosed()) {
             // also remove the TsFileProcessor if the overlapped file is not closed
@@ -1740,7 +1755,7 @@ public class StorageGroupProcessor {
           logger.error("Something gets wrong while removing FullyOverlapFiles ", e);
           throw e;
         } finally {
-          seqFile.getWriteQueryLock().writeLock().unlock();
+          seqFile.writeUnlock();
         }
       }
     }
@@ -1955,12 +1970,12 @@ public class StorageGroupProcessor {
     if (tsFileResourceToBeDeleted == null) {
       return false;
     }
-    tsFileResourceToBeDeleted.getWriteQueryLock().writeLock().lock();
+    tsFileResourceToBeDeleted.writeLock();
     try {
       tsFileResourceToBeDeleted.remove();
       logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getFile());
     } finally {
-      tsFileResourceToBeDeleted.getWriteQueryLock().writeLock().unlock();
+      tsFileResourceToBeDeleted.writeUnlock();
     }
     return true;
   }
@@ -2013,14 +2028,14 @@ public class StorageGroupProcessor {
     if (tsFileResourceToBeMoved == null) {
       return false;
     }
-    tsFileResourceToBeMoved.getWriteQueryLock().writeLock().lock();
+    tsFileResourceToBeMoved.writeLock();
     try {
       tsFileResourceToBeMoved.moveTo(targetDir);
       logger
           .info("Move tsfile {} to target dir {} successfully.", tsFileResourceToBeMoved.getFile(),
               targetDir.getPath());
     } finally {
-      tsFileResourceToBeMoved.getWriteQueryLock().writeLock().unlock();
+      tsFileResourceToBeMoved.writeUnlock();
     }
     return true;
   }

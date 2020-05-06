@@ -77,6 +77,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void stop() {
     closeLogManagers();
+    for (DataGroupMember member : headerGroupMap.values()) {
+      member.stop();
+    }
     super.stop();
   }
 

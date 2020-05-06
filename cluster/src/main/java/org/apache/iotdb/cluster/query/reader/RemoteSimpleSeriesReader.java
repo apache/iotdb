@@ -45,7 +45,6 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
   private DataSourceInfo sourceInfo;
   private long lastTimestamp;
-  private DataClient client;
 
   BatchData cachedBatch;
 
@@ -56,7 +55,6 @@ public class RemoteSimpleSeriesReader implements IPointReader {
     this.sourceInfo = sourceInfo;
     handler = new GenericHandler<>(sourceInfo.getCurrentNode(), fetchResult);
     lastTimestamp = Long.MIN_VALUE;
-    this.client = sourceInfo.getCurClient();
   }
 
   @Override
@@ -95,7 +93,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   }
 
   void fetchBatch() throws IOException {
-    if (client == null) {
+    if (sourceInfo.getCurClient() == null) {
       if (!sourceInfo.isNoData()) {
         throw new IOException("no available client.");
       } else {
@@ -108,15 +106,16 @@ public class RemoteSimpleSeriesReader implements IPointReader {
     while (true) {
       synchronized (fetchResult) {
         fetchResult.set(null);
+        DataClient currClient = null;
         try {
-          client.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
+          currClient = sourceInfo.getCurClient();
+          currClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
           fetchResult.wait(connectionTimeoutInMS);
         } catch (TException | InterruptedException e) {
           // try other nodes
           DataClient newClient = sourceInfo.nextDataClient(false, this.lastTimestamp);
-          logger.info("Client failed, changed from {} to {}", client, newClient);
-          this.client = newClient;
-          if (client == null) {
+          logger.info("Client failed, changed from {} to {}", currClient, newClient);
+          if (newClient == null) {
             if (!sourceInfo.isNoData()) {
               throw new IOException("no available client.");
             } else {
@@ -135,10 +134,6 @@ public class RemoteSimpleSeriesReader implements IPointReader {
       }
       return;
     }
-  }
-
-  public void setClientForTest(DataClient client) {
-    this.client = client;
   }
 
   public void clearCurDataForTest() {

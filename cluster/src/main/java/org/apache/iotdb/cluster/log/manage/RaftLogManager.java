@@ -221,6 +221,33 @@ public class RaftLogManager {
   }
 
   /**
+   * Used by follower node to support leader's complicated log replication rpc parameters and try to
+   * commit entry.
+   *
+   * @param lastIndex    leader's matchIndex for this follower node
+   * @param lastTerm     the entry's term which index is leader's matchIndex for this follower node
+   * @param leaderCommit leader's commitIndex
+   * @param entry        entry sent from the leader node
+   * @return -1 if the entries cannot be appended, otherwise the last index of new entries
+   */
+  public long maybeAppend(long lastIndex, long lastTerm, long leaderCommit, Log entry) {
+    if (matchTerm(lastTerm, lastIndex)) {
+      long newLastIndex = lastIndex + 1;
+      if (entry.getCurrLogIndex() <= commitIndex) {
+        logger
+            .error("entry {} conflict with committed entry [commitIndex({})]",
+                entry.getCurrLogIndex(),
+                commitIndex);
+      } else {
+        append(entry);
+      }
+      commitTo(Math.min(leaderCommit, newLastIndex));
+      return newLastIndex;
+    }
+    return -1;
+  }
+
+  /**
    * Used by leader node or MaybeAppend to directly append to unCommittedEntryManager. Note that the
    * caller should ensure entries[0].index > committed.
    *

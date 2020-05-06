@@ -69,7 +69,7 @@ public class HeartbeatThread implements Runnable {
       logger.info("{}: Sleep {}ms before first election", memberName, electionWait);
       Thread.sleep(electionWait);
     } catch (InterruptedException e) {
-      logger.error("Heartbeat thread first sleep failed...", e);
+      Thread.currentThread().interrupt();
     }
     while (!Thread.interrupted()) {
       try {
@@ -87,7 +87,6 @@ public class HeartbeatThread implements Runnable {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
-              localMember.setLeader(null);
             } else {
               logger.debug("{}: Heartbeat is still valid", memberName);
               Thread.sleep(connectionTimeoutInMS);
@@ -95,6 +94,7 @@ public class HeartbeatThread implements Runnable {
             break;
           case ELECTOR:
           default:
+            localMember.setLeader(null);
             logger.info("{}: Start elections", memberName);
             startElections();
             break;

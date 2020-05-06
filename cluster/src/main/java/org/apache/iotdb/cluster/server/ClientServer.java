@@ -268,7 +268,7 @@ public class ClientServer extends TSServiceImpl {
     // release resources locally
     super.releaseQueryResource(queryId);
     // release resources remotely
-    RemoteQueryContext context = queryContextMap.get(queryId);
+    RemoteQueryContext context = queryContextMap.remove(queryId);
     if (context != null) {
       // release the resources in every queried node
       for (Entry<Node, Set<Node>> headerEntry : context.getQueriedNodesMap().entrySet()) {
