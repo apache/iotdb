@@ -38,7 +38,7 @@ Examples:
     * `load /Users/Desktop/data/1575028885956-101-0.tsfile`
     * `load /Users/Desktop/data/1575028885956-101-0.tsfile false`
     * `load /Users/Desktop/data/1575028885956-101-0.tsfile true`
-    * `load /Users/Desktop/data/1575028885956-101-0.tsfile true 2`
+    * `load /Users/Desktop/data/1575028885956-101-0.tsfile true 1`
 
 2. Load a batch of files by specifying a folder path (absolute path). 
 The second parameter indicates the path of the tsfile to be loaded and the name of the tsfiles need to conform to the tsfile naming convention, that is, `{systemTime}-{versionNum}-{mergeNum} .tsfile`. The third and fourth parameters are optional. When the metadata corresponding to the time series in the tsfile to be loaded does not exist, you can choose whether to create the schema automatically. If the third parameter is true, the schema will be created automatically. If the third parameter is false, the schema will not be created. By default, the schema will be created. When the storage group corresponding to tsfile does not exist, the user can set the level of storage group through the fourth parameter. By default, it'll use the storage group level which is set in `iotdb-engine.properties`.
@@ -47,7 +47,7 @@ Examples:
     * `load /Users/Desktop/data`
     * `load /Users/Desktop/data false`
     * `load /Users/Desktop/data true`
-    * `load /Users/Desktop/data true 2`
+    * `load /Users/Desktop/data true 1`
 
 ## remove a tsfile
 The command to delete a tsfile is: `remove <path>`.

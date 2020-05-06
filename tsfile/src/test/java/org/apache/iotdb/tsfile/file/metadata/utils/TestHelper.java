@@ -19,13 +19,14 @@
 package org.apache.iotdb.tsfile.file.metadata.utils;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeaderTest;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -36,23 +37,24 @@ public class TestHelper {
 
   public static TsFileMetadata createSimpleFileMetaData() {
     TsFileMetadata metaData = new TsFileMetadata();
-    metaData.setDeviceMetadataIndex(generateDeviceMetaDataIndex());
+    metaData.setMetadataIndex(generateMetaDataIndex());
     metaData.setVersionInfo(generateVersionInfo());
     return metaData;
   }
 
-  private static Map<String, Pair<Long, Integer>> generateDeviceMetaDataIndex() {
-    Map<String, Pair<Long, Integer>> deviceMetaDataIndex = new HashMap<>();
+  private static MetadataIndexNode generateMetaDataIndex() {
+    MetadataIndexNode metaDataIndex = new MetadataIndexNode();
     for (int i = 0; i < 5; i++) {
-      deviceMetaDataIndex.put("d" + i, new Pair<Long, Integer>((long) i * 5, 5));
+      metaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5,
+          MetadataIndexNodeType.LEAF_MEASUREMENT));
     }
-    return deviceMetaDataIndex;
+    return metaDataIndex;
   }
 
   private static List<Pair<Long, Long>> generateVersionInfo() {
     List<Pair<Long, Long>> versionInfo = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      versionInfo.add(new Pair<Long, Long>((long) i * 5, 0L));
+      versionInfo.add(new Pair<>((long) i * 5, 0L));
     }
     return versionInfo;
   }
@@ -60,7 +62,7 @@ public class TestHelper {
   public static MeasurementSchema createSimpleMeasurementSchema(String measurementuid) {
     return new MeasurementSchema(measurementuid, TSDataType.INT64, TSEncoding.RLE);
   }
-  
+
   public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {
     Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);

@@ -1433,7 +1433,6 @@ public class StorageGroupProcessor {
 
   @SuppressWarnings("squid:S1141")
   private void updateMergeModification(TsFileResource seqFile) {
-    seqFile.getWriteQueryLock().writeLock().lock();
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -1451,8 +1450,6 @@ public class StorageGroupProcessor {
     } catch (IOException e) {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
-    } finally {
-      seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
 
@@ -1482,7 +1479,15 @@ public class StorageGroupProcessor {
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
-      mergeLock.writeLock().lock();
+      while (!seqFile.getWriteQueryLock().writeLock().tryLock() || !mergeLock.writeLock()
+          .tryLock()) {
+        if (seqFile.getWriteQueryLock().writeLock().isHeldByCurrentThread()) {
+          seqFile.getWriteQueryLock().writeLock().unlock();
+        }
+        if(mergeLock.writeLock().isHeldByCurrentThread()) {
+          mergeLock.writeLock().unlock();
+        }
+      }
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
@@ -1493,6 +1498,7 @@ public class StorageGroupProcessor {
         }
       } finally {
         mergeLock.writeLock().unlock();
+        seqFile.getWriteQueryLock().writeLock().unlock();
       }
     }
     logger.info("{} a merge task ends", storageGroupName);
