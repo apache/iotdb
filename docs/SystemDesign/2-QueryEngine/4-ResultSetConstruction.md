@@ -117,6 +117,8 @@ The deduplication logic is relatively simple: first, get the path not deduplicat
 It is worth noting that the timeseries paths of the query are sorted by device before the RawDataQuery and AggregateQuery are deduplicated, in order to reduce I/O and deserialization operations and speed up the query.
 Here an additional data structure `pathToIndex` is calculated to record the position of each path in the query.
 
+Because only one set of data needs to be calculated for the LastQuery, there is no need to sort the paths. Its `pathToIndex` will be null.
+
 The deduplication logic of **AlignByDeviceQuery** is in the  `hasNextWithoutConstraint()` method of its result set.
 
 - org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet.hasNextWithoutConstraint()
@@ -162,7 +164,7 @@ The complete header in example is：
 
 Then calculating `columnordinalmap`, judge whether to print a timestamp first. If so, record the timestamp as the first column.
 
-Then traverse the column name list in the header and then check whether `columnnameindex` is initialized. This field comes from `pathtoindex` calculated during deduplication, which records the location of each timeseries path in the query. If it is initialized, record the position + 2 as its position in the result set. If not, record the positions in order.
+Then traverse the column name list in the header and then check whether `columnnameindex` is initialized. This field comes from `pathtoindex` calculated during deduplication, which records the location of each timeseries path in the query. If it is initialized, record the position + 2 as its position in the result set. If not, record the positions in traversal order, which is consistent with the query order in server side.
 
 The `columnOrdinalMap` in example is：
 
