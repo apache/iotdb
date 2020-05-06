@@ -866,7 +866,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // ask a vote from every node
       for (int i = 0; i < nodeSize; i++) {
         Node node = nodeRing.get(i);
-        if (node == thisNode) {
+        if (node.equals(thisNode)) {
           // node equals this node, decrease counters of all groups the local node is in
           for (int j = 0; j < REPLICATION_NUM; j++) {
             int nodeIndex = i - j;
