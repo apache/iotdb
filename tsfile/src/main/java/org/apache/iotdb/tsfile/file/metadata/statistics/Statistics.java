@@ -417,7 +417,7 @@ public abstract class Statistics<T> {
   /**
    * For upgrading 0.9.x -> 0.10.x
    */
-  public static Statistics<?> upgradeOldStatistics(OldStatistics<?> oldstatistics, 
+  public static Statistics upgradeOldStatistics(OldStatistics<?> oldstatistics, 
       TSDataType dataType, int numOfValues, long maxTimestamp, long minTimestamp) {
     Statistics<?> statistics = Statistics.getStatsByType(dataType);
     statistics.setStartTime(minTimestamp);
@@ -477,7 +477,7 @@ public abstract class Statistics<T> {
   /**
    * For upgrading 0.9.x -> 0.10.x
    */
-  public static Statistics<?> constructStatisticsFromOldChunkMetadata(OldChunkMetadata oldChunkMetadata) {
+  public static Statistics constructStatisticsFromOldChunkMetadata(OldChunkMetadata oldChunkMetadata) {
     Statistics<?> statistics;
     statistics = Statistics.getStatsByType(oldChunkMetadata.getTsDataType());
     statistics.setStartTime(oldChunkMetadata.getStartTime());
