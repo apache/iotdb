@@ -35,11 +35,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 public abstract class OldStatistics<T> {
 
   /**
-   * isEmpty being false means this statistic has been initialized and the max and min is not null;
-   */
-  protected boolean isEmpty = true;
-
-  /**
    * static method providing statistic instance for respective data type.
    *
    * @param type - data type
@@ -63,19 +58,17 @@ public abstract class OldStatistics<T> {
         throw new UnknownColumnTypeException(type.toString());
     }
   }
-  
+
   public static OldStatistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
     OldStatistics<?> statistics = getStatsByType(dataType);
     statistics.deserialize(inputStream);
-    statistics.isEmpty = false;
     return statistics;
   }
 
   public static OldStatistics deserialize(ByteBuffer buffer, TSDataType dataType) throws IOException {
     OldStatistics<?> statistics = getStatsByType(dataType);
     statistics.deserialize(buffer);
-    statistics.isEmpty = false;
     return statistics;
   }
 
@@ -88,15 +81,6 @@ public abstract class OldStatistics<T> {
   public abstract T getLast();
 
   public abstract double getSum();
-
-
-  public boolean isEmpty() {
-    return isEmpty;
-  }
-
-  public void setEmpty(boolean empty) {
-    isEmpty = empty;
-  }
 
   /**
    * read data from the inputStream.
