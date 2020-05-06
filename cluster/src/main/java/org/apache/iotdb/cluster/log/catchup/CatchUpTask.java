@@ -152,13 +152,14 @@ public class CatchUpTask implements Runnable {
         LogCatchUpTask task = new LogCatchUpTask(logs, node, raftMember);
         task.run();
       }
+      // there must be at least one log if catchUp is called.
+      peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
+      peer.setCatchUp(true);
+      logger.debug("Catch up {} finished, update it's matchIndex to {}", node,
+          logs.get(logs.size() - 1).getCurrLogIndex());
     } catch (Exception e) {
       logger.error("Catch up {} errored", node, e);
     }
-    // there must be at least one log if catchUp is called.
-    peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
-    logger.debug("Catch up {} finished, update it's matchIndex to {}", node,
-        logs.get(logs.size() - 1).getCurrLogIndex());
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);
   }

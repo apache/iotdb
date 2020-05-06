@@ -855,6 +855,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * is lost.
    *
    * @param log
+   * @param commitIndex
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
   protected boolean appendLogInGroup(Log log) {

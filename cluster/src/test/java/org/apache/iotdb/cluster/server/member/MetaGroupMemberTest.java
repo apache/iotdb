@@ -250,9 +250,6 @@ public class MetaGroupMemberTest extends MemberTest {
 
       @Override
       public AsyncClient connectNode(Node node) {
-        if (node.equals(thisNode)) {
-          return null;
-        }
         try {
           return new TestMetaClient(null, null, node, null) {
             @Override
