@@ -100,7 +100,7 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
     task.run();
 
     assertEquals(logList, receivedLogs);
@@ -113,7 +113,8 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
+    task.setUseBatch(false);
     task.run();
 
     assertEquals(logList.subList(0, 5), receivedLogs);

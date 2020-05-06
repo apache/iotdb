@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -33,6 +34,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpInBatchHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +49,7 @@ public class LogCatchUpTask implements Runnable {
   Node node;
   RaftMember raftMember;
   private List<Log> logs;
-  private boolean useBatch = false;
+  private boolean useBatch = ClusterDescriptor.getInstance().getConfig().isUseBatchInLogCatchUp();
 
   public LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember) {
     this.logs = logs;
@@ -55,10 +57,16 @@ public class LogCatchUpTask implements Runnable {
     this.raftMember = raftMember;
   }
 
+  @TestOnly
   public LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember, boolean useBatch) {
     this.logs = logs;
     this.node = node;
     this.raftMember = raftMember;
+    this.useBatch = useBatch;
+  }
+
+  @TestOnly
+  public void setUseBatch(boolean useBatch) {
     this.useBatch = useBatch;
   }
 
@@ -151,10 +159,9 @@ public class LogCatchUpTask implements Runnable {
 
   public void run() {
     try {
-      if(useBatch){
+      if (useBatch) {
         doLogCatchUpInBatch();
-      }
-      else{
+      } else {
         doLogCatchUp();
       }
     } catch (Exception e) {
