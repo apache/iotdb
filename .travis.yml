@@ -174,8 +174,9 @@ script:
     - mvn -B apache-rat:check
     # Output something every 10 minutes or Travis kills the job
     - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-    - mvn -B clean test integration-test -pl '!site' -am
+    - mvn -B -e clean test integration-test -pl '!site' -am
     # Killing background sleep loop
     - kill %1
 
 after_success:
+

@@ -25,11 +25,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
@@ -429,6 +431,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public LogManagerMeta recoverMeta() {
     if (meta == null) {
       if (metaFile.exists() && metaFile.length() > 0) {
+        if (logger.isInfoEnabled()) {
+          SimpleDateFormat format = new SimpleDateFormat();
+          logger.info("MetaFile {} exists, last modified: {}", metaFile.getPath(),
+              format.format(new Date(metaFile.lastModified())));
+        }
         try (FileInputStream metaReader = new FileInputStream(metaFile)) {
           firstLogPosition = ReadWriteIOUtils.readLong(metaReader);
           removedLogSize = ReadWriteIOUtils.readLong(metaReader);
@@ -440,6 +447,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
               ByteBuffer.wrap(ReadWriteIOUtils.readBytesWithSelfDescriptionLength(metaReader)));
         } catch (IOException e) {
           logger.error("Error in log serialization: ", e);
+          meta = new LogManagerMeta();
+          state = new HardState();
         }
       } else {
         meta = new LogManagerMeta();
@@ -455,6 +464,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   public void serializeMeta(LogManagerMeta meta) {
     File tempMetaFile = SystemFileFactory.INSTANCE.getFile(logDir + "logMeta.tmp");
     tempMetaFile.getParentFile().mkdirs();
+    logger.debug("Serializing log meta into {}", tempMetaFile.getPath());
     try (FileOutputStream tempMetaFileOutputStream = new FileOutputStream(tempMetaFile)) {
 
       ReadWriteIOUtils.write(firstLogPosition, tempMetaFileOutputStream);
@@ -472,6 +482,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       // rebuild meta stream
 
       this.meta = meta;
+      logger.debug("Serialized log meta into {}", tempMetaFile.getPath());
     } catch (IOException e) {
       logger.error("Error in log serialization: ", e);
     }

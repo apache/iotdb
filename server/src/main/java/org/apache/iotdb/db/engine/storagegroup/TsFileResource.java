@@ -18,9 +18,24 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -40,14 +55,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileResource {
 
@@ -89,6 +96,8 @@ public class TsFileResource {
   // same file generation policy but have their own merge policies.
   private Set<Long> historicalVersions;
 
+  private TsFileLock tsFileLock = new TsFileLock();
+
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
@@ -104,8 +113,6 @@ public class TsFileResource {
    * used for unsealed file to get TimeseriesMetadata
    */
   private TimeseriesMetadata timeSeriesMetadata;
-
-  private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -124,7 +131,7 @@ public class TsFileResource {
     this.chunkMetadataList = other.chunkMetadataList;
     this.readOnlyMemChunk = other.readOnlyMemChunk;
     generateTimeSeriesMetadata();
-    this.writeQueryLock = other.writeQueryLock;
+    this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
     this.historicalVersions = other.historicalVersions;
   }
@@ -352,8 +359,29 @@ public class TsFileResource {
     return processor;
   }
 
-  public ReentrantReadWriteLock getWriteQueryLock() {
-    return writeQueryLock;
+
+  public void writeLock() {
+    tsFileLock.writeLock();
+  }
+
+  public void writeUnlock() {
+    tsFileLock.writUnlock();
+  }
+
+  public void readLock() {
+    tsFileLock.readLock();
+  }
+
+  public void readUnlock() {
+    tsFileLock.readUnlock();
+  }
+
+  public boolean tryReadLock() {
+    return tsFileLock.tryReadLock();
+  }
+
+  public boolean tryWriteLock() {
+    return tsFileLock.tryWriteLock();
   }
 
   void doUpgrade() {

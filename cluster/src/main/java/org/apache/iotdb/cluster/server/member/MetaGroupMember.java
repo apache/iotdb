@@ -225,7 +225,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
     LogApplier metaLogApplier = new MetaLogApplier(this);
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
-    this.term.set(logManager.getHardState().getCurrentTerm());
+    term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
 
     setThisNode(thisNode);
@@ -287,10 +287,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     super.stop();
     if (getDataClusterServer() != null) {
       getDataClusterServer().stop();
+    }
+    if (clientServer != null) {
       clientServer.stop();
     }
     if (reportThread != null) {
       reportThread.shutdownNow();
+      try {
+        reportThread.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.error("Unexpected interruption when waiting for reportThread to end", e);
+      }
     }
   }
 
@@ -385,6 +392,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     while (retry > 0) {
       // randomly pick up a node to try
       Node node = allNodes.get(random.nextInt(allNodes.size()));
+      logger.info("start joining the cluster with the help of {}", node);
       try {
         if (joinCluster(node, startUpStatus, response, handler)) {
           logger.info("Joined a cluster, starting the heartbeat thread");
@@ -813,6 +821,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     AppendEntryRequest request = new AppendEntryRequest();
     request.setTerm(term.get());
     request.setEntry(log.serialize());
+    request.setLeader(getThisNode());
+    request.setLeaderCommit(logManager.getCommitLogIndex());
+    request.setPrevLogIndex(log.getCurrLogIndex() - 1);
+    try {
+      request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
+    } catch (Exception e) {
+      logger.error("getTerm failed for newly append entries", e);
+    }
 
     // ask for votes from each node
     askGroupVotes(groupRemainings, nodeRing, request, leaderShipStale, log, newLeaderTerm);
@@ -850,15 +866,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // ask a vote from every node
       for (int i = 0; i < nodeSize; i++) {
         Node node = nodeRing.get(i);
-        AsyncClient client = (AsyncClient) connectNode(node);
-        if (client != null) {
-          try {
-            client.appendEntry(request, new AppendGroupEntryHandler(groupRemainings, i, node,
-                leaderShipStale, log, newLeaderTerm));
-          } catch (TException e) {
-            logger.error("Cannot send log to node {}", node, e);
-          }
-        } else {
+        if (node == thisNode) {
           // node equals this node, decrease counters of all groups the local node is in
           for (int j = 0; j < REPLICATION_NUM; j++) {
             int nodeIndex = i - j;
@@ -866,6 +874,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               nodeIndex += groupRemainings.length;
             }
             groupRemainings[nodeIndex]--;
+          }
+        } else {
+          AsyncClient client = (AsyncClient) connectNode(node);
+          if (client != null) {
+            try {
+              client.appendEntry(request, new AppendGroupEntryHandler(groupRemainings, i, node,
+                  leaderShipStale, log, newLeaderTerm));
+            } catch (TException e) {
+              logger.error("Cannot send log to node {}", node, e);
+            }
           }
         }
       }

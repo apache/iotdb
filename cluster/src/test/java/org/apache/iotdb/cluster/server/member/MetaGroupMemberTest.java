@@ -110,7 +110,6 @@ import org.junit.Test;
 
 public class MetaGroupMemberTest extends MemberTest {
 
-  private MetaGroupMember metaGroupMember;
   private DataClusterServer dataClusterServer;
 
   private boolean mockDataClusterServer;
@@ -121,8 +120,7 @@ public class MetaGroupMemberTest extends MemberTest {
   @Override
   @After
   public void tearDown() throws Exception {
-    metaGroupMember.closeLogManager();
-    dataClusterServer.closeLogManagers();
+    dataClusterServer.stop();
     super.tearDown();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
   }
@@ -133,27 +131,26 @@ public class MetaGroupMemberTest extends MemberTest {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
     super.setUp();
     dummyResponse.set(Response.RESPONSE_AGREE);
-    metaGroupMember = getMetaGroupMember(TestUtils.getNode(0));
-    metaGroupMember.setAllNodes(allNodes);
+    testMetaMember.setAllNodes(allNodes);
 
     dataClusterServer = new DataClusterServer(TestUtils.getNode(0),
-        new DataGroupMember.Factory(null, metaGroupMember) {
+        new DataGroupMember.Factory(null, testMetaMember) {
           @Override
           public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
             return getDataGroupMember(partitionGroup, thisNode);
           }
         });
     buildDataGroups(dataClusterServer);
-    metaGroupMember.setPartitionTable(partitionTable);
-    metaGroupMember.getThisNode().setNodeIdentifier(0);
+    testMetaMember.getThisNode().setNodeIdentifier(0);
     mockDataClusterServer = false;
-    QueryCoordinator.getINSTANCE().setMetaGroupMember(metaGroupMember);
+    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaMember);
     exiledNode = null;
+    System.out.println("Init term of metaGroupMember: " + testMetaMember.getTerm().get());
   }
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
     DataGroupMember dataGroupMember = new DataGroupMember(null, group, node,
-        metaGroupMember) {
+        testMetaMember) {
       @Override
       public boolean syncLeader() {
         return true;
@@ -336,7 +333,7 @@ public class MetaGroupMemberTest extends MemberTest {
             @Override
             public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
               new Thread(() -> {
-                metaGroupMember.applyRemoveNode(node);
+                testMetaMember.applyRemoveNode(node);
                 resultHandler.onComplete(Response.RESPONSE_AGREE);
               }).start();
             }
@@ -373,7 +370,7 @@ public class MetaGroupMemberTest extends MemberTest {
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
-    metaGroupMember.closePartition(TestUtils.getTestSg(0), 0, true);
+    testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
 
     StorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
@@ -399,7 +396,7 @@ public class MetaGroupMemberTest extends MemberTest {
           // ignore
         }
       }).start();
-      metaGroupMember.closePartition(TestUtils.getTestSg(0), 0, true);
+      testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
       for (int i = 30; i < 40; i++) {
@@ -410,7 +407,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       // indicating the leader is stale
       dummyResponse.set(100);
-      metaGroupMember.closePartition(TestUtils.getTestSg(0), 0, true);
+      testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
     } finally {
       RaftServer.connectionTimeoutInMS = prevTimeout;
@@ -420,27 +417,27 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testAddNode() {
     Node newNode = TestUtils.getNode(10);
-    metaGroupMember.onElectionWins();
-    metaGroupMember.applyAddNode(newNode);
+    testMetaMember.onElectionWins();
+    testMetaMember.applyAddNode(newNode);
     assertTrue(partitionTable.getAllNodes().contains(newNode));
   }
 
   @Test
   public void testBuildCluster() throws TTransportException {
-    metaGroupMember.start();
+    testMetaMember.start();
     try {
-      metaGroupMember.buildCluster();
+      testMetaMember.buildCluster();
       long startTime = System.currentTimeMillis();
       long timeConsumption = 0;
-      while (timeConsumption < 5000 && metaGroupMember.getCharacter() != LEADER) {
+      while (timeConsumption < 5000 && testMetaMember.getCharacter() != LEADER) {
         timeConsumption = System.currentTimeMillis() - startTime;
       }
       if (timeConsumption >= 5000) {
         fail("The member takes too long to be the leader");
       }
-      assertEquals(LEADER, metaGroupMember.getCharacter());
+      assertEquals(LEADER, testMetaMember.getCharacter());
     } finally {
-      metaGroupMember.stop();
+      testMetaMember.stop();
     }
   }
 
@@ -518,7 +515,7 @@ public class MetaGroupMemberTest extends MemberTest {
         userWaterMarkStatus);
     request.setSnapshotBytes(snapshot.serialize());
     AtomicReference<Void> reference = new AtomicReference<>();
-    metaGroupMember.sendSnapshot(request, new GenericHandler(TestUtils.getNode(0), reference));
+    testMetaMember.sendSnapshot(request, new GenericHandler(TestUtils.getNode(0), reference));
 
     for (int i = 0; i < 10; i++) {
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(10, i)));
@@ -549,12 +546,12 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testProcessNonQuery() {
     mockDataClusterServer = true;
     // as a leader
-    metaGroupMember.setCharacter(LEADER);
+    testMetaMember.setCharacter(LEADER);
     for (int i = 10; i < 20; i++) {
       // process a non partitioned plan
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new Path(TestUtils.getTestSg(i)));
-      TSStatus status = metaGroupMember.executeNonQuery(setStorageGroupPlan);
+      TSStatus status = testMetaMember.executeNonQuery(setStorageGroupPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSg(i)));
 
@@ -564,7 +561,7 @@ public class MetaGroupMemberTest extends MemberTest {
           new Path(schema.getMeasurementId()), schema.getType(),
           schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
           Collections.emptyMap(), Collections.emptyMap(), null);
-      status = metaGroupMember.executeNonQuery(createTimeSeriesPlan);
+      status = testMetaMember.executeNonQuery(createTimeSeriesPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(i, 0)));
     }
@@ -575,7 +572,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     for (int i = 0; i < 10; i++) {
       List<MeasurementSchema> schemas =
-          metaGroupMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)));
+          testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)));
       assertEquals(20, schemas.size());
       for (int j = 0; j < 10; j++) {
         assertEquals(TestUtils.getTestSchema(i, j), schemas.get(j));
@@ -587,25 +584,25 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testGetSeriesType() throws MetadataException {
     // a local series
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
-        metaGroupMember
+        testMetaMember
             .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(0, 0)),
                 null));
     // a remote series that can be fetched
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
-        metaGroupMember
+        testMetaMember
             .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(9, 0)),
                 null));
     // a non-existent series
     MManager.getInstance().setStorageGroup(TestUtils.getTestSg(10));
     try {
-      metaGroupMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(10
+      testMetaMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(10
           , 100)), null);
     } catch (PathNotExistException e) {
       assertEquals("Path [root.test10.s100] does not exist", e.getMessage());
     }
     // a non-existent group
     try {
-      metaGroupMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(11
+      testMetaMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(11
           , 100)), null);
     } catch (StorageGroupNotSetException e) {
       assertEquals("Storage group is not set for current seriesPath: [root.test11.s100]",
@@ -642,7 +639,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     try {
       for (int i = 0; i < 10; i++) {
-        IReaderByTimestamp readerByTimestamp = metaGroupMember
+        IReaderByTimestamp readerByTimestamp = testMetaMember
             .getReaderByTimestamp(new Path(TestUtils.getTestSeries(i, 0)),
                 Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 context);
@@ -682,7 +679,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     try {
       for (int i = 0; i < 10; i++) {
-        ManagedSeriesReader reader = metaGroupMember
+        ManagedSeriesReader reader = testMetaMember
             .getSeriesReader(new Path(TestUtils.getTestSeries(i, 0)),
                 Collections.singleton(TestUtils.getTestMeasurement(0)), TSDataType.DOUBLE,
                 TimeFilter.gtEq(5),
@@ -705,38 +702,37 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetMatchedPaths() throws MetadataException {
-    List<String> matchedPaths = metaGroupMember
+    List<String> matchedPaths = testMetaMember
         .getMatchedPaths(TestUtils.getTestSg(0) + ".*");
     assertEquals(20, matchedPaths.size());
     for (int j = 0; j < 10; j++) {
       assertEquals(TestUtils.getTestSeries(0, j), matchedPaths.get(j));
     }
-    matchedPaths = metaGroupMember
+    matchedPaths = testMetaMember
         .getMatchedPaths(TestUtils.getTestSg(10) + ".*");
     assertTrue(matchedPaths.isEmpty());
   }
 
   @Test
   public void testProcessValidHeartbeatReq() throws QueryProcessException {
-    MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
+    MetaGroupMember testMetaMember = getMetaGroupMember(TestUtils.getNode(10));
     try {
       HeartBeatRequest request = new HeartBeatRequest();
       request.setRequireIdentifier(true);
       HeartBeatResponse response = new HeartBeatResponse();
-      metaGroupMember.processValidHeartbeatReq(request, response);
+      testMetaMember.processValidHeartbeatReq(request, response);
       assertEquals(10, response.getFollowerIdentifier());
 
       request.setRegenerateIdentifier(true);
-      metaGroupMember.processValidHeartbeatReq(request, response);
+      testMetaMember.processValidHeartbeatReq(request, response);
       assertNotEquals(10, response.getFollowerIdentifier());
       assertTrue(response.isRequirePartitionTable());
 
       request.setPartitionTableBytes(partitionTable.serialize());
-      metaGroupMember.processValidHeartbeatReq(request, response);
-      assertEquals(partitionTable, metaGroupMember.getPartitionTable());
+      testMetaMember.processValidHeartbeatReq(request, response);
+      assertEquals(partitionTable, testMetaMember.getPartitionTable());
     } finally {
-      metaGroupMember.closeLogManager();
-      metaGroupMember.stop();
+      testMetaMember.stop();
     }
   }
 
@@ -756,14 +752,16 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       assertNotNull(metaGroupMember.getPartitionTable());
     } finally {
-      metaGroupMember.closeLogManager();
       metaGroupMember.stop();
     }
   }
 
   @Test
   public void testAppendEntry() {
-    metaGroupMember.setPartitionTable(null);
+    System.out.println("Start testAppendEntry()");
+    System.out.println("Term before append: " + testMetaMember.getTerm().get());
+
+    testMetaMember.setPartitionTable(null);
     CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
     log.setCurrLogIndex(0);
     log.setCurrLogTerm(0);
@@ -771,13 +769,20 @@ public class MetaGroupMemberTest extends MemberTest {
     log.setPreviousLogTerm(-1);
     AppendEntryRequest request = new AppendEntryRequest();
     request.setEntry(log.serialize());
+    request.setTerm(0);
+    request.setLeaderCommit(0);
+    request.setPrevLogIndex(-1);
+    request.setPrevLogTerm(-1);
+    request.setLeader(new Node("127.0.0.1", 30000, 0, 40000));
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    metaGroupMember.appendEntry(request, handler);
+    testMetaMember.appendEntry(request, handler);
     assertEquals(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE, (long) result.get());
+    System.out.println("Term after first append: " + testMetaMember.getTerm().get());
 
-    metaGroupMember.setPartitionTable(partitionTable);
-    metaGroupMember.appendEntry(request, handler);
+    testMetaMember.setPartitionTable(partitionTable);
+    testMetaMember.appendEntry(request, handler);
+    System.out.println("Term after second append: " + testMetaMember.getTerm().get());
     assertEquals(Response.RESPONSE_AGREE, (long) result.get());
   }
 
@@ -787,44 +792,44 @@ public class MetaGroupMemberTest extends MemberTest {
     RaftServer.connectionTimeoutInMS = 100;
     try {
       // cannot add node when partition table is not built
-      metaGroupMember.setPartitionTable(null);
+      testMetaMember.setPartitionTable(null);
       AtomicReference<AddNodeResponse> result = new AtomicReference<>();
       GenericHandler<AddNodeResponse> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-      metaGroupMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
+      testMetaMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
       AddNodeResponse response = result.get();
       assertEquals(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE, response.getRespNum());
 
       // cannot add itself
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
-      metaGroupMember.addNode(TestUtils.getNode(0), TestUtils.getStartUpStatus(), handler);
+      testMetaMember.setPartitionTable(partitionTable);
+      testMetaMember.addNode(TestUtils.getNode(0), TestUtils.getStartUpStatus(), handler);
       assertNull(result.get());
 
       // process the request as a leader
-      metaGroupMember.setCharacter(LEADER);
-      metaGroupMember.onElectionWins();
+      testMetaMember.setCharacter(LEADER);
+      testMetaMember.onElectionWins();
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
-      metaGroupMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
+      testMetaMember.setPartitionTable(partitionTable);
+      testMetaMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertEquals(Response.RESPONSE_AGREE, response.getRespNum());
       assertEquals(partitionTable.serialize(), response.partitionTableBytes);
 
       // adding an existing node is ok
-      metaGroupMember.setCharacter(LEADER);
+      testMetaMember.setCharacter(LEADER);
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
-      metaGroupMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
+      testMetaMember.setPartitionTable(partitionTable);
+      testMetaMember.addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertEquals(Response.RESPONSE_AGREE, response.getRespNum());
       assertEquals(partitionTable.serialize(), response.partitionTableBytes);
 
       // process the request as a follower
-      metaGroupMember.setCharacter(FOLLOWER);
-      metaGroupMember.setLeader(TestUtils.getNode(1));
+      testMetaMember.setCharacter(FOLLOWER);
+      testMetaMember.setLeader(TestUtils.getNode(1));
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
-      metaGroupMember.addNode(TestUtils.getNode(11), TestUtils.getStartUpStatus(), handler);
+      testMetaMember.setPartitionTable(partitionTable);
+      testMetaMember.addNode(TestUtils.getNode(11), TestUtils.getStartUpStatus(), handler);
       while (result.get() == null) {
 
       }
@@ -833,22 +838,22 @@ public class MetaGroupMemberTest extends MemberTest {
       assertEquals(partitionTable.serialize(), response.partitionTableBytes);
 
       // cannot add a node with conflict id
-      metaGroupMember.setCharacter(LEADER);
+      testMetaMember.setCharacter(LEADER);
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
+      testMetaMember.setPartitionTable(partitionTable);
       Node node = TestUtils.getNode(12).setNodeIdentifier(10);
-      metaGroupMember.addNode(node, TestUtils.getStartUpStatus(), handler);
+      testMetaMember.addNode(node, TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertEquals(Response.RESPONSE_IDENTIFIER_CONFLICT, response.getRespNum());
 
       //  cannot add a node due to configuration conflict, partition interval
-      metaGroupMember.setCharacter(LEADER);
+      testMetaMember.setCharacter(LEADER);
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
+      testMetaMember.setPartitionTable(partitionTable);
       node = TestUtils.getNode(13);
       StartUpStatus startUpStatus = TestUtils.getStartUpStatus();
       startUpStatus.setPartitionInterval(-1);
-      metaGroupMember.addNode(node, startUpStatus, handler);
+      testMetaMember.addNode(node, startUpStatus, handler);
       response = result.get();
       assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
       assertFalse(response.getCheckStatusResponse().isPartitionalIntervalEquals());
@@ -856,13 +861,13 @@ public class MetaGroupMemberTest extends MemberTest {
       assertTrue(response.getCheckStatusResponse().isReplicationNumEquals());
 
       // cannot add a node due to configuration conflict, hash salt
-      metaGroupMember.setCharacter(LEADER);
+      testMetaMember.setCharacter(LEADER);
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
+      testMetaMember.setPartitionTable(partitionTable);
       node = TestUtils.getNode(12);
       startUpStatus = TestUtils.getStartUpStatus();
       startUpStatus.setHashSalt(0);
-      metaGroupMember.addNode(node, startUpStatus, handler);
+      testMetaMember.addNode(node, startUpStatus, handler);
       response = result.get();
       assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
       assertTrue(response.getCheckStatusResponse().isPartitionalIntervalEquals());
@@ -870,13 +875,13 @@ public class MetaGroupMemberTest extends MemberTest {
       assertTrue(response.getCheckStatusResponse().isReplicationNumEquals());
 
       // cannot add a node due to configuration conflict, replication number
-      metaGroupMember.setCharacter(LEADER);
+      testMetaMember.setCharacter(LEADER);
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
+      testMetaMember.setPartitionTable(partitionTable);
       node = TestUtils.getNode(12);
       startUpStatus = TestUtils.getStartUpStatus();
       startUpStatus.setReplicationNumber(0);
-      metaGroupMember.addNode(node, startUpStatus, handler);
+      testMetaMember.addNode(node, startUpStatus, handler);
       response = result.get();
       assertEquals(Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT, response.getRespNum());
       assertTrue(response.getCheckStatusResponse().isPartitionalIntervalEquals());
@@ -885,9 +890,9 @@ public class MetaGroupMemberTest extends MemberTest {
 
       // cannot add a node due to network failure
       dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
-      metaGroupMember.setCharacter(LEADER);
+      testMetaMember.setCharacter(LEADER);
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
+      testMetaMember.setPartitionTable(partitionTable);
       new Thread(() -> {
         try {
           Thread.sleep(200);
@@ -897,21 +902,21 @@ public class MetaGroupMemberTest extends MemberTest {
           //ignore
         }
       }).start();
-      metaGroupMember.addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
+      testMetaMember.addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertEquals(Response.RESPONSE_AGREE, response.getRespNum());
 
       // cannot add a node due to leadership lost
       dummyResponse.set(100);
-      metaGroupMember.setCharacter(LEADER);
+      testMetaMember.setCharacter(LEADER);
       result.set(null);
-      metaGroupMember.setPartitionTable(partitionTable);
-      metaGroupMember.addNode(TestUtils.getNode(13), TestUtils.getStartUpStatus(), handler);
+      testMetaMember.setPartitionTable(partitionTable);
+      testMetaMember.addNode(TestUtils.getNode(13), TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertNull(response);
 
     } finally {
-      metaGroupMember.stop();
+      testMetaMember.stop();
       RaftServer.connectionTimeoutInMS = prevTimeout;
     }
   }
@@ -929,9 +934,9 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveNodeWithoutPartitionTable() {
-    metaGroupMember.setPartitionTable(null);
+    testMetaMember.setPartitionTable(null);
     AtomicBoolean passed = new AtomicBoolean(false);
-    metaGroupMember.removeNode(TestUtils.getNode(0), new AsyncMethodCallback<Long>() {
+    testMetaMember.removeNode(TestUtils.getNode(0), new AsyncMethodCallback<Long>() {
       @Override
       public void onComplete(Long aLong) {
 
@@ -949,44 +954,44 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testRemoveThisNode() {
     AtomicReference<Long> resultRef = new AtomicReference<>();
-    metaGroupMember.setLeader(metaGroupMember.getThisNode());
-    metaGroupMember.setCharacter(LEADER);
-    doRemoveNode(resultRef, metaGroupMember.getThisNode());
+    testMetaMember.setLeader(testMetaMember.getThisNode());
+    testMetaMember.setCharacter(LEADER);
+    doRemoveNode(resultRef, testMetaMember.getThisNode());
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
-    assertFalse(metaGroupMember.getAllNodes().contains(metaGroupMember.getThisNode()));
+    assertFalse(testMetaMember.getAllNodes().contains(testMetaMember.getThisNode()));
   }
 
   @Test
   public void testRemoveLeader() {
     AtomicReference<Long> resultRef = new AtomicReference<>();
-    metaGroupMember.setLeader(TestUtils.getNode(40));
-    metaGroupMember.setCharacter(FOLLOWER);
+    testMetaMember.setLeader(TestUtils.getNode(40));
+    testMetaMember.setCharacter(FOLLOWER);
     doRemoveNode(resultRef, TestUtils.getNode(40));
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
-    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(40)));
-    assertEquals(ELECTOR, metaGroupMember.getCharacter());
-    assertEquals(Long.MIN_VALUE, metaGroupMember.getLastHeartbeatReceivedTime());
+    assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(40)));
+    assertEquals(ELECTOR, testMetaMember.getCharacter());
+    assertEquals(Long.MIN_VALUE, testMetaMember.getLastHeartbeatReceivedTime());
   }
 
   @Test
   public void testRemoveNonLeader() {
     AtomicReference<Long> resultRef = new AtomicReference<>();
-    metaGroupMember.setLeader(TestUtils.getNode(40));
-    metaGroupMember.setCharacter(FOLLOWER);
+    testMetaMember.setLeader(TestUtils.getNode(40));
+    testMetaMember.setCharacter(FOLLOWER);
     doRemoveNode(resultRef, TestUtils.getNode(20));
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
-    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
-    assertEquals(0, metaGroupMember.getLastHeartbeatReceivedTime());
+    assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(20)));
+    assertEquals(0, testMetaMember.getLastHeartbeatReceivedTime());
   }
 
   @Test
   public void testRemoveNodeAsLeader() {
     AtomicReference<Long> resultRef = new AtomicReference<>();
-    metaGroupMember.setLeader(metaGroupMember.getThisNode());
-    metaGroupMember.setCharacter(LEADER);
+    testMetaMember.setLeader(testMetaMember.getThisNode());
+    testMetaMember.setCharacter(LEADER);
     doRemoveNode(resultRef, TestUtils.getNode(20));
     assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
-    assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(20)));
+    assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(20)));
     System.out.println("Checking exiled node in testRemoveNodeAsLeader()");
     assertEquals(TestUtils.getNode(20), exiledNode);
   }
@@ -994,9 +999,9 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testRemoveNonExistNode() {
     AtomicBoolean passed = new AtomicBoolean(false);
-    metaGroupMember.setCharacter(LEADER);
-    metaGroupMember.setLeader(metaGroupMember.getThisNode());
-    metaGroupMember.removeNode(TestUtils.getNode(120), new AsyncMethodCallback<Long>() {
+    testMetaMember.setCharacter(LEADER);
+    testMetaMember.setLeader(testMetaMember.getThisNode());
+    testMetaMember.removeNode(TestUtils.getNode(120), new AsyncMethodCallback<Long>() {
       @Override
       public void onComplete(Long aLong) {
         passed.set(aLong.equals(Response.RESPONSE_REJECT));
@@ -1015,20 +1020,20 @@ public class MetaGroupMemberTest extends MemberTest {
   public void testRemoveTooManyNodes() {
     for (int i = 0; i < 8; i++) {
       AtomicReference<Long> resultRef = new AtomicReference<>();
-      metaGroupMember.setCharacter(LEADER);
+      testMetaMember.setCharacter(LEADER);
       doRemoveNode(resultRef, TestUtils.getNode(90 - i * 10));
       assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
-      assertFalse(metaGroupMember.getAllNodes().contains(TestUtils.getNode(90 - i * 10)));
+      assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(90 - i * 10)));
     }
     AtomicReference<Long> resultRef = new AtomicReference<>();
-    metaGroupMember.setCharacter(LEADER);
+    testMetaMember.setCharacter(LEADER);
     doRemoveNode(resultRef, TestUtils.getNode(10));
     assertEquals(Response.RESPONSE_CLUSTER_TOO_SMALL, (long) resultRef.get());
-    assertTrue(metaGroupMember.getAllNodes().contains(TestUtils.getNode(10)));
+    assertTrue(testMetaMember.getAllNodes().contains(TestUtils.getNode(10)));
   }
 
   private void doRemoveNode(AtomicReference<Long> resultRef, Node nodeToRemove) {
-    metaGroupMember.removeNode(nodeToRemove, new AsyncMethodCallback<Long>() {
+    testMetaMember.removeNode(nodeToRemove, new AsyncMethodCallback<Long>() {
       @Override
       public void onComplete(Long o) {
         resultRef.set(o);

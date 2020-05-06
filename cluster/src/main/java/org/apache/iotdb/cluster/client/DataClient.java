@@ -27,8 +27,16 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+/**
+ * Notice: Because a client will be returned to a pool immediately after a successful request,
+ * you should not cache it anywhere else or there may be conflicts.
+ */
 public class DataClient extends AsyncClient {
+
+  private static final Logger logger = LoggerFactory.getLogger(DataClient.class);
 
   private Node node;
   private ClientPool pool;
@@ -45,7 +53,6 @@ public class DataClient extends AsyncClient {
   @Override
   public void onComplete() {
     super.onComplete();
-    // return itself to the pool if the job is done
     pool.putClient(node, this);
   }
 

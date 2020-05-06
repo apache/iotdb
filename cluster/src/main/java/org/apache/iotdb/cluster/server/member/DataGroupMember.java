@@ -40,6 +40,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.ClientPool;
@@ -212,8 +213,16 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void stop() {
     super.stop();
-    pullSnapshotService.shutdownNow();
-    pullSnapshotService = null;
+    if (pullSnapshotService != null) {
+      pullSnapshotService.shutdownNow();
+      try {
+        pullSnapshotService.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.error("Unexpected interruption when waiting for pullSnapshotService to end", e);
+      }
+      pullSnapshotService = null;
+    }
+
     try {
       getQueryManager().endAllQueries();
     } catch (StorageEngineException e) {
@@ -914,6 +923,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return false;
     }
     CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
+    long commitIndex;
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setPreviousLogIndex(logManager.getLastLogIndex());
@@ -921,10 +931,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       logManager.append(log);
+      commitIndex = logManager.getCommitLogIndex();
 
       logger.info("Send the close file request of {} to other nodes", log);
     }
-    return appendLogInGroup(log);
+    return appendLogInGroup(log, commitIndex);
   }
 
   /**
