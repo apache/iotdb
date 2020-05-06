@@ -18,11 +18,17 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
-import java.util.*;
 
 public class RawDataQueryPlan extends QueryPlan {
 
@@ -52,7 +58,8 @@ public class RawDataQueryPlan extends QueryPlan {
   }
 
   public void addDeduplicatedPaths(Path path) {
-    deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>()).add(path.getMeasurement());
+    deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+        .add(path.getMeasurement());
     this.deduplicatedPaths.add(path);
   }
 
@@ -83,6 +90,11 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public Set<String> getAllMeasurementsInDevice(String device) {
     return deviceToMeasurements.getOrDefault(device, Collections.emptySet());
+  }
+
+  public void addFilterPathInDeviceToMeasurements(Path path) {
+    deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+        .add(path.getMeasurement());
   }
 
 }
