@@ -1,3 +1,7 @@
+package org.apache.iotdb.db.qp.logical.sys;
+
+import org.apache.iotdb.db.qp.logical.RootOperator;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,15 +20,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical;
+public class MergeOperator extends RootOperator {
 
-/**
- * RootOperator indicates the operator that could be executed as a entire command. RootOperator
- * consists of SFWOperator, like INSERT/UPDATE/DELETE, and other Operators.
- */
-public abstract class RootOperator extends Operator {
-
-  public RootOperator(int tokenIntType) {
+  public MergeOperator(int tokenIntType) {
     super(tokenIntType);
+    operatorType = OperatorType.MERGE;
   }
 }

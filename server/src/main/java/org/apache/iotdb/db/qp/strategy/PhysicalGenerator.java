@@ -126,6 +126,15 @@ public class PhysicalGenerator {
             insert.getTime(),
             insert.getMeasurementList(),
             insert.getValueList());
+      case MERGE:
+        if(operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
+          return new MergePlan(OperatorType.FULL_MERGE);
+        } else {
+          return new MergePlan();
+        }
+      case FLUSH:
+        FlushOperator flushOperator = (FlushOperator) operator;
+        return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);
