@@ -18,6 +18,10 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -27,11 +31,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 public class SeriesRawDataBatchReader implements ManagedSeriesReader {
 
@@ -58,7 +57,9 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   public SeriesRawDataBatchReader(Path seriesPath, TSDataType dataType, QueryContext context,
       List<TsFileResource> seqFileResource, List<TsFileResource> unseqFileResource,
       Filter timeFilter, Filter valueFilter) {
-    this.seriesReader = new SeriesReader(seriesPath, new HashSet<>(), dataType, context, seqFileResource,
+    Set<String> allSensors = new HashSet<>();
+    allSensors.add(seriesPath.getMeasurement());
+    this.seriesReader = new SeriesReader(seriesPath, allSensors, dataType, context, seqFileResource,
         unseqFileResource, timeFilter, valueFilter);
   }
 

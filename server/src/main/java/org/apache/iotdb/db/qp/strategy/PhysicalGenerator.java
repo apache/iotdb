@@ -419,6 +419,7 @@ public class PhysicalGenerator {
 
       if (filterOperator != null) {
         List<Path> filterPaths = new ArrayList<>(filterOperator.getPathSet());
+        paths.addAll(filterPaths);
         try {
           List<TSDataType> seriesTypes = getSeriesTypes(filterPaths);
           HashMap<Path, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
