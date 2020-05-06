@@ -445,50 +445,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws QueryProcessException {
-    List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
-    try {
-      deleteDataOfTimeSeries(deletePathList);
-      Set<String> emptyStorageGroups = new HashSet<>();
-      List<String> failedNames = new LinkedList<>();
-      for (Path path : deletePathList) {
-        Pair<Set<String>, String> pair = deleteTimeseries(path.toString());
-        emptyStorageGroups.addAll(pair.left);
-        if (!pair.right.isEmpty()) {
-          failedNames.add(pair.right);
-        }
-      }
-      for (String deleteStorageGroup : emptyStorageGroups) {
-        StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
-      }
-      if (!failedNames.isEmpty()) {
-        throw new DeleteFailedException(String.join(",", failedNames));
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-    return true;
-  }
-
-  @Override
-  public void delete(DeletePlan deletePlan) throws QueryProcessException {
-    try {
-      Set<String> existingPaths = new HashSet<>();
-      for (Path p : deletePlan.getPaths()) {
-        existingPaths.addAll(getPaths(p.getFullPath()));
-      }
-      if (existingPaths.isEmpty()) {
-        throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
-      }
-      for (String path : existingPaths) {
-        delete(new Path(path), deletePlan.getDeleteTime());
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-  }
-
-  @Override
   public void delete(Path path, long timestamp) throws QueryProcessException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
