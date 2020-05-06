@@ -148,7 +148,7 @@ SQL: `SELECT s2, s1, s2 FROM root.sg.d1;`
 
 然后遍历表头中的列名列表，并检查 `columnNameIndex` 是否被初始化，该字段来源于去重时计算的 `pathToIndex`，记录了每个时间序列路径在查询中的位置。如果被初始化，则其中的位置 + 2 即为在结果集中的位置；未被初始化则按顺序记录位置即可。
 
-示例中 `columnNameIndex` 应为：
+示例中 `columnOrdinalMap` 应为：
 
 `Time -> 1, root.sg.d1.s2 -> 3, root.sg.d1.s1 -> 2`
 

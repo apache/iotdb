@@ -150,7 +150,7 @@ When calculating `columnordinalmap`, we need to judge whether to print a timesta
 
 Then traverse the column name list in the header and then check whether `columnnameindex` is initialized. This field comes from `pathtoindex` calculated during deduplication, which records the location of each timeseries path in the query. If it is initialized, record the position + 2 as its position in the result set. If not, record the positions in order.
 
-The `columnNameIndex` in example is：
+The `columnOrdinalMap` in example is：
 
 `Time -> 1, root.sg.d1.s2 -> 3, root.sg.d1.s1 -> 2`
 
