@@ -32,7 +32,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
@@ -102,8 +101,8 @@ public class ChunkMetadataCache {
       throws IOException {
     if (!cacheEnable) {
       // bloom filter part
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
-      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
+      BloomFilter bloomFilter = tsFileReader.readBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         if (logger.isDebugEnabled()) {
           logger.debug(String
@@ -112,7 +111,6 @@ public class ChunkMetadataCache {
         return new ArrayList<>();
       }
       // If timeseries isn't included in the tsfile, empty list is returned.
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
       return tsFileReader.getChunkMetadataList(seriesPath);
     }
 
@@ -141,8 +139,8 @@ public class ChunkMetadataCache {
       }
       printCacheLog(false);
       // bloom filter part
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
-      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
+      BloomFilter bloomFilter = tsFileReader.readBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         return new ArrayList<>();
       }
