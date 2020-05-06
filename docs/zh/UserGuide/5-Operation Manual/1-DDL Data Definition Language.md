@@ -288,6 +288,7 @@ IoTDB> unset ttl to root.ln
 
 ## FLUSH
 
+将所有内存缓存区Memory Table的数据持久化到磁盘上，并将数据文件封口。
 ```
 IoTDB> FLUSH 
 IoTDB> FLUSH root.ln
@@ -296,6 +297,9 @@ IoTDB> FLUSH root.sg1,root.sg2
 
 ## MERGE
 
+当前IoTDB支持使用如下两种SQL手动触发数据文件的合并：
+* `MERGE` 合并重复的数据块，整理速度快，最终磁盘会存在多余数据。
+* `FULL MERGE` 将所有数据过一遍，整理速度慢，最终磁盘将不存在多余数据。
 ```
 IoTDB> MERGE
 IoTDB> FULL MERGE

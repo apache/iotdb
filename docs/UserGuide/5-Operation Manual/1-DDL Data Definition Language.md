@@ -289,6 +289,7 @@ After unset TTL, all data will be accepted in `root.ln`
 
 ## FLUSH
 
+Persist all the data points in the memory table to the disk, and seal the data file.
 ```
 IoTDB> FLUSH 
 IoTDB> FLUSH root.ln
@@ -297,6 +298,10 @@ IoTDB> FLUSH root.sg1,root.sg2
 
 ## MERGE
 
+
+Currently IoTDB supports the following two types of SQL to manually trigger the merge process of data files:
+* `MERGE` the process will merge duplicate data blocks, the merge speed is quick, while there will be redundant data on the disk eventually.
+* `FULL MERGE` the process will go through all the data, the merge speed is slow, and there will be no redundant data on the disk eventually.
 ```
 IoTDB> MERGE
 IoTDB> FULL MERGE
