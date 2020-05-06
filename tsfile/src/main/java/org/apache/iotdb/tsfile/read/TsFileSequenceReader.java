@@ -338,7 +338,8 @@ public class TsFileSequenceReader implements AutoCloseable {
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
         deviceMetadataIndexNode, device, MetadataIndexNodeType.INTERNAL_DEVICE);
     List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
-    if (measurements.size() > config.getMaxDegreeOfIndexNode()) {
+    int maxDegreeOfIndexNode = config.getMaxDegreeOfIndexNode();
+    if (measurements.size() > maxDegreeOfIndexNode / Math.log(maxDegreeOfIndexNode)) {
       traverseAndReadTimeseriesMetadataInOneDevice(resultTimeseriesMetadataList, metadataIndexPair,
           measurements);
       return resultTimeseriesMetadataList;
@@ -584,6 +585,18 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceTimeseriesMetadata;
   }
 
+  /**
+   * Get target MetadataIndexEntry and its end offset
+   *
+   * @param metadataIndex given MetadataIndexNode
+   * @param name target device / measurement name
+   * @param type target MetadataIndexNodeType, either INTERNAL_DEVICE or INTERNAL_MEASUREMENT. When
+   * searching for a device node,  return when it is not INTERNAL_DEVICE. Likewise, when searching
+   * for a measurement node, return when it is not INTERNAL_MEASUREMENT. This works for the
+   * situation when the index tree does NOT have the device level and ONLY has the measurement
+   * level.
+   * @return target MetadataIndexEntry, endOffset pair
+   */
   private Pair<MetadataIndexEntry, Long> getMetadataAndEndOffset(MetadataIndexNode metadataIndex,
       String name, MetadataIndexNodeType type) throws IOException {
     Pair<MetadataIndexEntry, Long> childIndexEntry = metadataIndex.getChildIndexEntry(name);
