@@ -146,3 +146,14 @@ public TimeValuePair getFillResult() throws IOException {
     return lastPointResult;
 }
 ```
+
+# Linear 填充
+
+对于T时间的 Linear Fill 线性填充值是由该时间序列的两个相关值做线性拟合得到的：T之前的最近时间戳对应的值，T之后的最近时间戳对应的值。
+基于这种特点，线性填充只能被应用于数字类型如：int, double, float。
+
+## 计算前时间值
+前时间值使用与 Previous Fill 中相同方式计算.
+
+## 计算后时间值
+后时间值使用聚合运算中的"MIN_TIME"和"FIRST_VALUE"，分别计算出T时间之后最近的时间戳和对应的值，并组成time-value对返回。
