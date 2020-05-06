@@ -311,7 +311,7 @@ public class SessionExample {
     SessionDataSet dataSet;
     dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     System.out.println(dataSet.getColumnNames());
-    dataSet.setBatchSize(1024); // default is 512
+    dataSet.setFetchSize(1024); // default is 512
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
     }
@@ -325,7 +325,7 @@ public class SessionExample {
     dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     DataIterator iterator = dataSet.iterator();
     System.out.println(dataSet.getColumnNames());
-    dataSet.setBatchSize(1024); // default is 512
+    dataSet.setFetchSize(1024); // default is 512
     while (iterator.next()) {
       System.out.println(String.format("%s,%s,%s,%s,%s", iterator.getLong(1), iterator.getLong(2),
           iterator.getLong("root.sg1.d1.s2"), iterator.getLong(4),

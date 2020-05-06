@@ -50,24 +50,23 @@ public class SessionDataSet {
   private static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
 
   private boolean hasCachedRecord = false;
+  // indicate that there is no more data
+  private boolean emptyResultSet = false;
   private String sql;
   private long queryId;
   private long sessionId;
   private TSIService.Iface client;
-  private int batchSize = 1024;
+  private int fetchSize = 1024;
   private List<String> columnNameList;
   protected List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   // column name -> column location
   private Map<String, Integer> columnOrdinalMap;
-  // duplicated column index -> origin index
-  private Map<Integer, Integer> duplicateLocation;
   // column size
-  int columnSize = 0;
+  int columnSize;
 
 
   private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
   private TSQueryDataSet tsQueryDataSet;
-  private RowRecord rowRecord = null;
   private byte[] currentBitmap; // used to cache the current bitmap for every column
   private static final int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
 
@@ -92,9 +91,6 @@ public class SessionDataSet {
     this.columnOrdinalMap = new HashMap<>();
     this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
 
-    // duplicated column index -> origin index
-    duplicateLocation = new HashMap<>();
-
     // deduplicated column name -> column location
     Map<String, Integer> columnMap = new HashMap<>();
 
@@ -112,8 +108,6 @@ public class SessionDataSet {
           columnMap.put(name, i);
           columnOrdinalMap.put(name, index + START_INDEX);
           columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
-        } else {
-          duplicateLocation.put(i, columnMap.get(name));
         }
       }
     } else {
@@ -126,8 +120,6 @@ public class SessionDataSet {
           columnMap.put(name, i);
           columnOrdinalMap.put(name, index++);
           columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
-        } else {
-          duplicateLocation.put(i, columnMap.put(name, i));
         }
       }
     }
@@ -137,105 +129,166 @@ public class SessionDataSet {
     this.tsQueryDataSet = queryDataSet;
   }
 
-  public int getBatchSize() {
-    return batchSize;
+  public int getFetchSize() {
+    return fetchSize;
   }
 
-  public void setBatchSize(int batchSize) {
-    this.batchSize = batchSize;
+  public void setFetchSize(int fetchSize) {
+    this.fetchSize = fetchSize;
   }
 
   public List<String> getColumnNames() {
     return columnNameList;
   }
 
-  public boolean hasNext() throws IoTDBConnectionException, StatementExecutionException {
+
+  private boolean fetchResults() throws IoTDBConnectionException, StatementExecutionException {
+    rowsIndex = 0;
+    TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
+    try {
+      TSFetchResultsResp resp = client.fetchResults(req);
+
+      RpcUtils.verifySuccess(resp.getStatus());
+      if (!resp.hasResultSet) {
+        emptyResultSet = true;
+      } else {
+        tsQueryDataSet = resp.getQueryDataSet();
+      }
+      return resp.hasResultSet;
+    } catch (TException e) {
+      throw new IoTDBConnectionException(
+          "Cannot fetch result from server, because of network connection: {} ", e);
+    }
+  }
+
+  private boolean hasCachedResults() {
+    return (tsQueryDataSet != null && tsQueryDataSet.time.hasRemaining());
+  }
+
+  public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
+
     if (hasCachedRecord) {
       return true;
     }
-    if (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId, true);
-      try {
-        TSFetchResultsResp resp = client.fetchResults(req);
-        RpcUtils.verifySuccess(resp.getStatus());
 
-        if (!resp.hasResultSet) {
-          return false;
-        } else {
-          tsQueryDataSet = resp.getQueryDataSet();
-          rowsIndex = 0;
-        }
-      } catch (TException e) {
-        throw new IoTDBConnectionException(
-            "Cannot fetch result from server, because of network connection: {} ", e);
-      }
-
+    if (hasCachedResults()) {
+      constructOneRow();
+      return true;
     }
+    if (emptyResultSet) {
+      return false;
+    }
+    if (fetchResults()) {
+      constructOneRow();
+      return true;
+    }
+    return false;
+  }
 
-    constructOneRow();
+  private void constructOneRow() {
+    tsQueryDataSet.time.get(time);
+    for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
+      ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
+      // another new 8 row, should move the bitmap buffer position to next byte
+      if (rowsIndex % 8 == 0) {
+        currentBitmap[i] = bitmapBuffer.get();
+      }
+      values[i] = null;
+      if (!isNull(i, rowsIndex)) {
+        ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
+        TSDataType dataType = columnTypeDeduplicatedList.get(i);
+        switch (dataType) {
+          case BOOLEAN:
+            if (values[i] == null) {
+              values[i] = new byte[1];
+            }
+            valueBuffer.get(values[i]);
+            break;
+          case INT32:
+            if (values[i] == null) {
+              values[i] = new byte[Integer.BYTES];
+            }
+            valueBuffer.get(values[i]);
+            break;
+          case INT64:
+            if (values[i] == null) {
+              values[i] = new byte[Long.BYTES];
+            }
+            valueBuffer.get(values[i]);
+            break;
+          case FLOAT:
+            if (values[i] == null) {
+              values[i] = new byte[Float.BYTES];
+            }
+            valueBuffer.get(values[i]);
+            break;
+          case DOUBLE:
+            if (values[i] == null) {
+              values[i] = new byte[Double.BYTES];
+            }
+            valueBuffer.get(values[i]);
+            break;
+          case TEXT:
+            int length = valueBuffer.getInt();
+            values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
+            break;
+          default:
+            throw new UnSupportedDataTypeException(
+                String
+                    .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+        }
+      }
+    }
+    rowsIndex++;
     hasCachedRecord = true;
-    return true;
   }
 
 
-  private void constructOneRow() {
+  private RowRecord constructRowRecordFromValueArray() {
     List<Field> outFields = new ArrayList<>();
     for (int i = 0; i < columnSize; i++) {
       Field field;
-      if (duplicateLocation.containsKey(i)) {
-        field = Field.copy(outFields.get(duplicateLocation.get(i)));
-      } else {
-        int loc = columnOrdinalMap.get(columnNameList.get(i + 1)) - START_INDEX;
-        ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(loc);
-        // another new 8 row, should move the bitmap buffer position to next byte
-        if (rowsIndex % 8 == 0) {
-          currentBitmap[i] = bitmapBuffer.get();
-        }
 
-        if (!isNull(i, rowsIndex)) {
-          ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(loc);
-          TSDataType dataType = columnTypeDeduplicatedList.get(loc);
-          field = new Field(dataType);
-          switch (dataType) {
-            case BOOLEAN:
-              boolean booleanValue = BytesUtils.byteToBool(valueBuffer.get());
-              field.setBoolV(booleanValue);
-              break;
-            case INT32:
-              int intValue = valueBuffer.getInt();
-              field.setIntV(intValue);
-              break;
-            case INT64:
-              long longValue = valueBuffer.getLong();
-              field.setLongV(longValue);
-              break;
-            case FLOAT:
-              float floatValue = valueBuffer.getFloat();
-              field.setFloatV(floatValue);
-              break;
-            case DOUBLE:
-              double doubleValue = valueBuffer.getDouble();
-              field.setDoubleV(doubleValue);
-              break;
-            case TEXT:
-              int binarySize = valueBuffer.getInt();
-              byte[] binaryValue = new byte[binarySize];
-              valueBuffer.get(binaryValue);
-              field.setBinaryV(new Binary(binaryValue));
-              break;
-            default:
-              throw new UnSupportedDataTypeException(String
-                  .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
-          }
-        } else {
-          field = new Field(null);
+      int loc = columnOrdinalMap.get(columnNameList.get(i + 1)) - START_INDEX;
+      byte[] valueBytes = values[loc];
+
+      if (valueBytes != null) {
+        TSDataType dataType = columnTypeDeduplicatedList.get(loc);
+        field = new Field(dataType);
+        switch (dataType) {
+          case BOOLEAN:
+            boolean booleanValue = BytesUtils.bytesToBool(valueBytes);
+            field.setBoolV(booleanValue);
+            break;
+          case INT32:
+            int intValue = BytesUtils.bytesToInt(valueBytes);
+            field.setIntV(intValue);
+            break;
+          case INT64:
+            long longValue = BytesUtils.bytesToLong(valueBytes);
+            field.setLongV(longValue);
+            break;
+          case FLOAT:
+            float floatValue = BytesUtils.bytesToFloat(valueBytes);
+            field.setFloatV(floatValue);
+            break;
+          case DOUBLE:
+            double doubleValue = BytesUtils.bytesToDouble(valueBytes);
+            field.setDoubleV(doubleValue);
+            break;
+          case TEXT:
+            field.setBinaryV(new Binary(valueBytes));
+            break;
+          default:
+            throw new UnSupportedDataTypeException(String
+                .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
         }
+      } else {
+        field = new Field(null);
       }
       outFields.add(field);
     }
-
-    rowRecord = new RowRecord(tsQueryDataSet.time.getLong(), outFields);
-    rowsIndex++;
+    return new RowRecord(BytesUtils.bytesToLong(time), outFields);
   }
 
   /**
@@ -255,9 +308,9 @@ public class SessionDataSet {
         return null;
       }
     }
-
     hasCachedRecord = false;
-    return rowRecord;
+
+    return constructRowRecordFromValueArray();
   }
 
   public void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException {
@@ -278,9 +331,7 @@ public class SessionDataSet {
 
   public class DataIterator {
 
-    private boolean emptyResultSet = false;
-
-    public boolean next() throws StatementExecutionException {
+    public boolean next() throws StatementExecutionException, IoTDBConnectionException {
       if (hasCachedResults()) {
         constructOneRow();
         return true;
@@ -293,86 +344,6 @@ public class SessionDataSet {
         return true;
       }
       return false;
-    }
-
-    private boolean fetchResults() throws StatementExecutionException {
-      rowsIndex = 0;
-      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId, true);
-      try {
-        TSFetchResultsResp resp = client.fetchResults(req);
-
-        RpcUtils.verifySuccess(resp.getStatus());
-        if (!resp.hasResultSet) {
-          emptyResultSet = true;
-        } else {
-          tsQueryDataSet = resp.getQueryDataSet();
-        }
-        return resp.hasResultSet;
-      } catch (TException e) {
-        throw new StatementExecutionException(
-            "Cannot fetch result from server, because of network connection: {} ", e);
-      }
-    }
-
-    private void constructOneRow() {
-      tsQueryDataSet.time.get(time);
-      for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
-        ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
-        // another new 8 row, should move the bitmap buffer position to next byte
-        if (rowsIndex % 8 == 0) {
-          currentBitmap[i] = bitmapBuffer.get();
-        }
-        values[i] = null;
-        if (!isNull(i, rowsIndex)) {
-          ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
-          TSDataType dataType = columnTypeDeduplicatedList.get(i);
-          switch (dataType) {
-            case BOOLEAN:
-              if (values[i] == null) {
-                values[i] = new byte[1];
-              }
-              valueBuffer.get(values[i]);
-              break;
-            case INT32:
-              if (values[i] == null) {
-                values[i] = new byte[Integer.BYTES];
-              }
-              valueBuffer.get(values[i]);
-              break;
-            case INT64:
-              if (values[i] == null) {
-                values[i] = new byte[Long.BYTES];
-              }
-              valueBuffer.get(values[i]);
-              break;
-            case FLOAT:
-              if (values[i] == null) {
-                values[i] = new byte[Float.BYTES];
-              }
-              valueBuffer.get(values[i]);
-              break;
-            case DOUBLE:
-              if (values[i] == null) {
-                values[i] = new byte[Double.BYTES];
-              }
-              valueBuffer.get(values[i]);
-              break;
-            case TEXT:
-              int length = valueBuffer.getInt();
-              values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String
-                      .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
-          }
-        }
-      }
-      rowsIndex++;
-    }
-
-    private boolean hasCachedResults() {
-      return (tsQueryDataSet != null && tsQueryDataSet.time.hasRemaining());
     }
 
     public boolean getBoolean(int columnIndex) throws StatementExecutionException {

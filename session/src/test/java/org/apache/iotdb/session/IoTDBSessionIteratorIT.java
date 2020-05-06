@@ -70,7 +70,7 @@ public class IoTDBSessionIteratorIT {
 
     try {
       SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1");
-      sessionDataSet.setBatchSize(1024);
+      sessionDataSet.setFetchSize(1024);
       DataIterator iterator = sessionDataSet.iterator();
       int count = 0;
       while (iterator.next()) {
