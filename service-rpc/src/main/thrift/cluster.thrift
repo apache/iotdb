@@ -207,6 +207,11 @@ struct GroupByRequest {
   8: required set<string> deviceMeasurements
 }
 
+struct DeleteTimeseriesRespPair{
+  1: required set<string> left
+  2: required string right
+}
+
 service RaftService {
   /**
   * Leader will call this method to all followers to ensure its authority.
@@ -320,6 +325,7 @@ service TSDataService extends RaftService {
 
   binary getAllMeasurementSchema(1: Node header, 2: binary planBinary)
 
+  DeleteTimeseriesRespPair deleteTimeseries(1: Node header, 2: string path)
 
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 

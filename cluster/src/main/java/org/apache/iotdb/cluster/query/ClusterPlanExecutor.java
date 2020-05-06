@@ -25,26 +25,26 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
+import org.apache.iotdb.cluster.rpc.thrift.DeleteTimeseriesRespPair;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.handlers.caller.DeleteTimeseriesHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -55,17 +55,17 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -88,8 +88,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      MetadataException {
+          throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
+          MetadataException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -115,9 +115,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected List<String> getNodesList(String schemaPattern, int level)
-      throws MetadataException {
+          throws MetadataException {
     ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>(
-        MManager.getInstance().getNodesList(schemaPattern, level));
+            MManager.getInstance().getNodesList(schemaPattern, level));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
@@ -168,9 +168,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected Set<String> getPathNextChildren(String path)
-      throws MetadataException {
+          throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>(
-        MManager.getInstance().getChildNodePathInNextLevel(path));
+            MManager.getInstance().getChildNodePathInNextLevel(path));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
@@ -221,13 +221,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+          throws MetadataException {
     return showTimeseries(plan);
   }
 
   @Override
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+          throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
     if (plan.getKey() != null && plan.getValue() != null) {
       resultSet.addAll(MManager.getInstance().getAllTimeseriesSchema(plan));
@@ -257,8 +257,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
                 plan.serialize(dataOutputStream);
                 client.getAllMeasurementSchema(node,
-                    ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
-                    handler);
+                        ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+                        handler);
                 response.wait(connectionTimeoutInMS);
               }
             }
@@ -295,7 +295,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected MeasurementSchema[] getSeriesSchemas(String[] measurementList, String deviceId,
-      String[] strValues) throws MetadataException {
+                                                 String[] strValues) throws MetadataException {
 
     MNode node = null;
     boolean allSeriesExists = true;
@@ -356,7 +356,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
-      QueryContext context, IQueryRouter router) {
+                                                         QueryContext context, IQueryRouter router) {
     return new ClusterAlignByDeviceDataSet(plan, context, router, metaGroupMember);
   }
 
@@ -373,8 +373,129 @@ public class ClusterPlanExecutor extends PlanExecutor {
         break;
       default:
         throw new QueryProcessException(String
-            .format("Unrecognized load configuration plan type: %s",
-                plan.getLoadConfigurationPlanType()));
+                .format("Unrecognized load configuration plan type: %s",
+                        plan.getLoadConfigurationPlanType()));
+    }
+  }
+
+  @Override
+  protected Pair<Set<String>, String> deleteTimeseries(String path) throws MetadataException {
+    ConcurrentHashMap<String, Set<String>> resultPair = new ConcurrentHashMap<>();
+    Pair<Set<String>, String> localPair = MManager.getInstance().deleteTimeseries(path);
+    resultPair.put(localPair.right, localPair.left);
+
+    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
+
+    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
+      Node header = group.getHeader();
+      if (header.equals(metaGroupMember.getThisNode())) {
+        continue;
+      }
+      pool.submit(() -> {
+        DeleteTimeseriesHandler handler = new DeleteTimeseriesHandler();
+        AtomicReference<DeleteTimeseriesRespPair> response = new AtomicReference<>(null);
+        handler.setResponse(response);
+
+        for (Node node : group) {
+          try {
+            DataClient client = metaGroupMember.getDataClient(node);
+            handler.setContact(node);
+            synchronized (response) {
+              if (client != null) {
+                client.deleteTimeseries(node, path, handler);
+                response.wait(connectionTimeoutInMS);
+              }
+            }
+            DeleteTimeseriesRespPair currentResult = response.get();
+            if (currentResult != null) {
+              if (resultPair.size() == 0) {
+                resultPair.put(currentResult.right, currentResult.left);
+              } else {
+                if (resultPair.keySet().contains(currentResult.right)) {
+                  resultPair.get(currentResult.right).addAll(currentResult.left);
+                } else {
+                  throw new TException("Failed to delete timeseries in node: " + node
+                          + " because string conflict, the string in local is "
+                          + resultPair.keySet().toArray(new String[0])[0]
+                          + ", but the remote is " + currentResult.right);
+                }
+              }
+            }
+          } catch (IOException e) {
+            logger.error("Failed to delete timeseries in node: {}", node, e);
+          } catch (TException e) {
+            logger.error("Error occurs when deleting timeseries in node {}.", node, e);
+          } catch (InterruptedException e) {
+            logger.error("Interrupted when deleting timeseries in node {}.", node, e);
+            Thread.currentThread().interrupt();
+          }
+        }
+      });
+    }
+    pool.shutdown();
+    try {
+      pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+    } catch (InterruptedException e) {
+      logger.warn("Unexpected interruption when waiting for deleteTimeseries to finish", e);
+    }
+
+    String pairRight = resultPair.keySet().toArray(new String[0])[0];
+    Set<String> pairLeft = resultPair.get(pairRight);
+    return new Pair<>(pairLeft, pairRight);
+  }
+
+  @Override
+  protected boolean deleteTimeSeries(DeleteTimeSeriesPlan deleteTimeSeriesPlan) throws QueryProcessException {
+    List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
+    try {
+      deleteDataOfTimeSeries(deletePathList);
+      Set<String> emptyStorageGroups = new HashSet<>();
+      List<String> failedNames = new LinkedList<>();
+      for (Path path : deletePathList) {
+        Pair<Set<String>, String> pair = deleteTimeseries(path.toString());
+        emptyStorageGroups.addAll(pair.left);
+        if (!pair.right.isEmpty()) {
+          failedNames.add(pair.right);
+        }
+      }
+      for (String deleteStorageGroup : emptyStorageGroups) {
+        StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
+      }
+      if (!failedNames.isEmpty()) {
+        throw new DeleteFailedException(String.join(",", failedNames));
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+    return true;
+  }
+
+  @Override
+  public void delete(DeletePlan deletePlan) throws QueryProcessException {
+    try {
+      Set<String> existingPaths = new HashSet<>();
+      for (Path p : deletePlan.getPaths()) {
+        existingPaths.addAll(getPaths(p.getFullPath()));
+      }
+      if (existingPaths.isEmpty()) {
+        throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
+      }
+      for (String path : existingPaths) {
+        delete(new Path(path), deletePlan.getDeleteTime());
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  @Override
+  public void delete(Path path, long timestamp) throws QueryProcessException {
+    String deviceId = path.getDevice();
+    String measurementId = path.getMeasurement();
+    try {
+      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
+    } catch (StorageEngineException e) {
+      throw new QueryProcessException(e);
     }
   }
 }
