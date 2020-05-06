@@ -128,25 +128,39 @@ After the deduplication paths in the query plan are completed, the query executo
 
 ## Restore the complete result set
 
-The construction of headers and the generation of non-repeating result set above are done on the server side and then returned to the client side. After the client restores the non-repeating result set based on the original header, it is presented to the user.
+The construction of headers and the generation of non-repeating result set above are done on the server side and then returned to the client side. After the client restores the non-repeating result set based on the original header, the complete result set is presented to the user. To distinguish two result sets, they are called **query result set** and **final result set** respectively.
 
 To explain simply, an example is given first：
 
 SQL: `SELECT s2, s1, s2 FROM root.sg.d1;`
 
-The list of column names `columnNameList` in the header which has been calculated using the steps above is：
+The list of column names `columnNameList` in the header which has been calculated using the steps above is (Timestamp will be contained later if need be)：
 
 `[root.sg.d1.s2, root.sg.d1.s1, root.sg.d1.s2].`
 
-The position of the timeseries path in the query `pathToIndex` is：
+The position of the timeseries path in the query `pathToIndex` is(sorted by device)：
 
 `root.sg.d1.s1 -> 0, root.sg.d1.s2 -> 1;`
 
-To restore the result set, we need to construct a mapping set `columnOrdinalMap` with the column name to its position in the query result set, which is aimed at fetching the corresponding result of a column from the result set. This part of logic is completed in the constructor of the new result set `IoTDBQueryResultSet`.
+Then query result set is：
+
+| Time | root.sg.d1.s1 | root.sg.d1.s2 |
+| ---- | ------------- | ------------- |
+|      |               |               |
+
+To restore the final result set, we need to construct a mapping set `columnOrdinalMap` with the column name to its position in the query result set, which is aimed at fetching the corresponding result of a column from the query result set. This part of logic is completed in the constructor of the new result set `IoTDBQueryResultSet`.
 
 - org.apache.iotdb.jdbc.AbstractIoTDBResultSet.AbstractIoTDBResultSet()
 
-When calculating `columnordinalmap`, we need to judge whether to print a timestamp first. If so, record the timestamp as the first column.
+In order to construct metadata information in final result set, a complete column name list is needed. The `columnnamelist` given above does not contain a timestamp. Therefore, it's necessary to determine whether a timestamp needs to be printed. If so, add the `Time` column to the header to form a complete header.
+
+The complete header in example is：
+
+| Time | root.sg.d1.s2 | root.sg.d1.s1 | root.sg.d1.s2 |
+| ---- | ------------- | ------------- | ------------- |
+|      |               |               |               |
+
+Then calculating `columnordinalmap`, judge whether to print a timestamp first. If so, record the timestamp as the first column.
 
 Then traverse the column name list in the header and then check whether `columnnameindex` is initialized. This field comes from `pathtoindex` calculated during deduplication, which records the location of each timeseries path in the query. If it is initialized, record the position + 2 as its position in the result set. If not, record the positions in order.
 
@@ -154,8 +168,8 @@ The `columnOrdinalMap` in example is：
 
 `Time -> 1, root.sg.d1.s2 -> 3, root.sg.d1.s1 -> 2`
 
-Next, traverse the column names in the header, and then fill in the complete result set according to the mapping set. Its logic is in the `cacheresult()` method.
+Next, traverse the column names in the header, and then fill in the complete result set according to the mapping set. Its logic is in the `cacheResult()` method.
 
 - org.apache.iotdb.cli.AbstractCli.cacheResult()
 
-For example, the second column in the example is `root.sg.d2`, therefore the result of the third column will be taken as its value from the result set. Repeat the process to fill the results of each row until there is no next result in the result set or the maximum number of output rows is reached.
+For example, the second column in the final result set is `root.sg.d1.s2`, therefore the result of the third column will be taken as its value from the result set. Repeat the process to fill the results of each row until there is no next result in the query result set or the maximum number of output rows is reached.
