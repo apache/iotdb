@@ -574,8 +574,7 @@ public class StorageGroupProcessor {
    * @param timePartitionId time partition id
    */
   private void insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
-      int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
-      throws WriteProcessException {
+      int start, int end, boolean sequence, TSStatus[] results, long timePartitionId) {
     // return when start >= end
     if (start >= end) {
       return;
@@ -1434,7 +1433,6 @@ public class StorageGroupProcessor {
 
   @SuppressWarnings("squid:S1141")
   private void updateMergeModification(TsFileResource seqFile) {
-    seqFile.writeLock();
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -1452,8 +1450,6 @@ public class StorageGroupProcessor {
     } catch (IOException e) {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
-    } finally {
-      seqFile.writeUnlock();
     }
   }
 
@@ -1483,7 +1479,25 @@ public class StorageGroupProcessor {
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
-      mergeLock.writeLock().lock();
+      // get both seqFile lock and merge lock
+      boolean fileLockGot;
+      boolean mergeLockGot;
+      while (true) {
+        fileLockGot = seqFile.tryWriteLock();
+        mergeLockGot = mergeLock.writeLock().tryLock();
+
+        if (fileLockGot && mergeLockGot) {
+          break;
+        } else {
+          // did not get all of them, release the gotten one and retry
+          if (fileLockGot) {
+            seqFile.writeUnlock();
+          }
+          if(mergeLockGot) {
+            mergeLock.writeLock().unlock();
+          }
+        }
+      }
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
@@ -1494,6 +1508,7 @@ public class StorageGroupProcessor {
         }
       } finally {
         mergeLock.writeLock().unlock();
+        seqFile.writeUnlock();
       }
     }
     logger.info("{} a merge task ends", storageGroupName);

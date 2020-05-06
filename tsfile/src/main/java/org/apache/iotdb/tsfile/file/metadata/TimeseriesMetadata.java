@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class TimeseriesMetadata {
 
@@ -36,9 +35,10 @@ public class TimeseriesMetadata {
 
   private String measurementId;
   private TSDataType tsDataType;
-  
+
   private Statistics<?> statistics;
-// modified is true when there are modifications of the series, or from unseq file
+
+  // modified is true when there are modifications of the series, or from unseq file
   private boolean modified;
 
   private IChunkMetadataLoader chunkMetadataLoader;

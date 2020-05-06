@@ -165,6 +165,38 @@ The results are shown below respectly:
   
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
+## Show Child Paths
+
+```
+SHOW CHILD PATHS prefixPath
+```
+
+Return all child paths of the prefixPath, the prefixPath could contains *.
+
+Example：
+
+* return the child paths of root.ln：show child paths root.ln
+
+```
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+```
+
+* get all paths in form of root.xx.xx.xx：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
+```
+
 ## Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
