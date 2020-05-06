@@ -121,6 +121,8 @@ public class CatchUpTask implements Runnable {
         isMatch.wait(RaftServer.connectionTimeoutInMS);
       }
       if (isMatch.get()) {
+        // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from this emptyContentLog's index.
+        // which means the log which index is matchIndex will be send twice, but at the first time it sent an empty log.
         logs.subList(0, index).clear();
         if (logger.isDebugEnabled()) {
           logger.debug("{} makes {} catch up with {} cached logs", raftMember.getName(), node,
@@ -154,6 +156,7 @@ public class CatchUpTask implements Runnable {
       }
       // there must be at least one log if catchUp is called.
       peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
+      // update peer's status so raftMember can send logs in main thread.
       peer.setCatchUp(true);
       logger.debug("Catch up {} finished, update it's matchIndex to {}", node,
           logs.get(logs.size() - 1).getCurrLogIndex());
