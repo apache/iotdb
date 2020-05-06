@@ -433,6 +433,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 
 </center>
 
+需要注意的是一旦时间序列在查询时间戳T时刻存在有效值，线性填充就回使用这个值作为结果返回。
+除此之外，如果在[T-before_range，T]或[T, T + after_range]两个范围中任意一个范围内不存在有效填充值，则线性填充返回null值。
+
 在这里，我们举一个使用线性方法填充空值的示例。 SQL语句如下：
 
 ```

@@ -122,7 +122,7 @@ public class LinearFill extends IFill {
         new LastPointReader(seriesPath, dataType, allSensors, context, dataSource, queryTime, beforeFilter);
 
     TimeValuePair beforePair = lastReader.readLastPoint();
-    TimeValuePair afterPair = calculatFirstPointAfterQueryTime();
+    TimeValuePair afterPair = calculateFirstPointAfterQueryTime();
 
     // no before data or has data on the query timestamp
     if (beforePair.getValue() == null || beforePair.getTimestamp() == queryTime) {
@@ -138,29 +138,27 @@ public class LinearFill extends IFill {
     return average(beforePair, afterPair);
   }
 
-  private TimeValuePair calculatFirstPointAfterQueryTime()
+  private TimeValuePair calculateFirstPointAfterQueryTime()
       throws IOException, StorageEngineException, QueryProcessException {
     TimeValuePair result = new TimeValuePair(0, null);
-    List<String> aggregations = new ArrayList<>();
-    aggregations.add(AggregationType.MIN_TIME.toString());
-    aggregations.add(AggregationType.FIRST_VALUE.toString());
 
     List<AggregateResult> aggregateResultList = new ArrayList<>();
-    for (String agg : aggregations) {
-      AggregateResult aggregateResult = AggregateResultFactory.getAggrResultByName(agg, dataType);
-      aggregateResultList.add(aggregateResult);
-    }
+    AggregateResult minTimeResult =
+        AggregateResultFactory.getAggrResultByName(AggregationType.MIN_TIME.toString(), dataType);
+    AggregateResult firstValueResult =
+        AggregateResultFactory.getAggrResultByName(
+            AggregationType.FIRST_VALUE.toString(), dataType);
+    aggregateResultList.add(minTimeResult);
+    aggregateResultList.add(firstValueResult);
     AggregationExecutor.aggregateOneSeries(
         seriesPath, allSensors, context, afterFilter, dataType, aggregateResultList, null);
 
-    AggregateResult timeResult = aggregateResultList.get(0);
-    if (timeResult.getResult() != null) {
-      long timestamp = (long)(timeResult.getResult());
+    if (minTimeResult.getResult() != null) {
+      long timestamp = (long)(minTimeResult.getResult());
       result.setTimestamp(timestamp);
     }
-    AggregateResult valueResult = aggregateResultList.get(1);
-    if (valueResult.getResult() != null) {
-      Object value = valueResult.getResult();
+    if (firstValueResult.getResult() != null) {
+      Object value = firstValueResult.getResult();
       result.setValue(TsPrimitiveType.getByType(dataType, value));
     }
     return result;
