@@ -28,6 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -129,7 +130,7 @@ public class IoTDBTest {
       planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()),
           schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
           Collections.emptyMap(), Collections.emptyMap(), null));
-    } catch (QueryProcessException e) {
+    } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
       // ignore
     }
   }
