@@ -89,8 +89,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof ShowPlan) {
+      metaGroupMember.syncLeader();
       return processShowQuery((ShowPlan) queryPlan);
     } else if (queryPlan instanceof AuthorPlan) {
+      metaGroupMember.syncLeader();
       return processAuthorQuery((AuthorPlan) queryPlan);
     } else {
       //TODO-Cluster: support more queries
