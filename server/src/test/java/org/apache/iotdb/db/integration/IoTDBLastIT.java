@@ -247,6 +247,8 @@ public class IoTDBLastIT {
 
       statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
       statement.execute("flush");
+      statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(400, false, 11)");
+      statement.execute("flush");
       boolean hasResultSet = statement.execute(
           "select last temperature from root.ln.wf01.wt03");
 
