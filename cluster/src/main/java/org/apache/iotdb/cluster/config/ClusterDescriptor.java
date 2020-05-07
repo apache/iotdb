@@ -26,7 +26,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -183,6 +182,10 @@ public class ClusterDescriptor {
     config
         .setMaxRemovedLogSize(Long.parseLong(properties.getProperty("MAX_REMOVED_LOG_SIZE",
             String.valueOf(config.getMaxRemovedLogSize()))));
+
+    config.setUseBatchInLogCatchUp(Boolean.parseBoolean(properties.getProperty(
+        "USE_BATCH_IN_CATCH_UP", String.valueOf(config.isUseBatchInLogCatchUp()))));
+
 
     String seedUrls = properties.getProperty("SEED_NODES");
     if (seedUrls != null) {
