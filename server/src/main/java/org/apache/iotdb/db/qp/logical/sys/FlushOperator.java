@@ -16,15 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical;
+package org.apache.iotdb.db.qp.logical.sys;
 
-/**
- * RootOperator indicates the operator that could be executed as a entire command. RootOperator
- * consists of SFWOperator, like INSERT/UPDATE/DELETE, and other Operators.
- */
-public abstract class RootOperator extends Operator {
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  public RootOperator(int tokenIntType) {
+public class FlushOperator extends RootOperator {
+
+  public List<Path> getStorageGroupList() {
+    return storageGroupList;
+  }
+
+  public void setStorageGroupList(
+      List<Path> storageGroupList) {
+    this.storageGroupList = storageGroupList;
+  }
+
+  private List<Path> storageGroupList;
+
+  public Boolean isSeq() {
+    return isSeq;
+  }
+
+  public void setSeq(boolean seq) {
+    isSeq = seq;
+  }
+
+  private Boolean isSeq;
+
+  public FlushOperator(int tokenIntType) {
     super(tokenIntType);
+    operatorType = OperatorType.FLUSH;
   }
 }
