@@ -27,11 +27,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.aggregation.AggregationType;
+import org.apache.iotdb.db.query.aggregation.impl.FirstValueAggrResult;
+import org.apache.iotdb.db.query.aggregation.impl.MinTimeAggrResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
-import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -141,7 +141,7 @@ public class LinearFill extends IFill {
     TimeValuePair result = new TimeValuePair(0, null);
 
     List<AggregateResult> aggregateResultList = new ArrayList<>();
-    AggregateResult minTimeResult = new MinTimeAggrResult(dataType);
+    AggregateResult minTimeResult = new MinTimeAggrResult();
     AggregateResult firstValueResult = new FirstValueAggrResult(dataType);
     aggregateResultList.add(minTimeResult);
     aggregateResultList.add(firstValueResult);
