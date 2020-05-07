@@ -1185,32 +1185,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
-    if (character == NodeCharacter.LEADER) {
-      TSStatus status;
-      Map<Node, DataGroupMember> headerGroupMap = dataClusterServer.getHeaderGroupMap();
-      // the error codes from the DataGroups that cannot execute the plan
-      List<String> errorCodeDataGroups = new ArrayList<>();
-      for (Map.Entry<Node, DataGroupMember> entry : headerGroupMap.entrySet()) {
-        TSStatus subStatus;
-        subStatus = entry.getValue().executeNonQuery(plan);
-        if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          // execution failed, record the error message
-          errorCodeDataGroups.add(String.format("[%s@%s:%s]",
-              subStatus.getCode(), entry.getValue().getHeader(),
-              subStatus.getMessage()));
-        }
+    if (syncLeader()) {
+      List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
+      Map<PhysicalPlan, PartitionGroup> planGroupMap = new HashMap<>();
+      for (PartitionGroup globalGroup : globalGroups) {
+        planGroupMap.put(plan, globalGroup);
       }
-
-      if (errorCodeDataGroups.isEmpty()) {
-        // no error occurs, the plan is successfully executed
-        status = StatusUtils.OK;
-      } else {
-        status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-        status.setMessage("The following errors occurred when executing the query, "
-            + "please retry or contact the DBA: " + errorCodeDataGroups.toString());
-        //TODO-Cluster: abort the succeeded ones if necessary.
-      }
-      return status;
+      return forwardPlan(planGroupMap);
     }
     return forwardPlan(plan, leader, null);
   }
@@ -1252,6 +1233,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
 
+    return forwardPlan(planGroupMap);
+  }
+
+  /**
+   * Forward plans to the DataGroupMember of one node in the corresponding group. Only when all
+   * nodes time out, will a TIME_OUT be returned.
+   * @param planGroupMap
+   * @return
+   */
+  TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
     TSStatus status;
     // those data groups that successfully executed the plan
     List<Entry<PhysicalPlan, PartitionGroup>> succeededEntries = new ArrayList<>();
@@ -1289,7 +1280,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   /**
-   * For ward a plan to the DataGroupMember of one node in the group. Only when all nodes time out,
+   * Forward a plan to the DataGroupMember of one node in the group. Only when all nodes time out,
    * will a TIME_OUT be returned.
    *
    * @param plan
