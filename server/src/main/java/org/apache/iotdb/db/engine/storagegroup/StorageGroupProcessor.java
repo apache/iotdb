@@ -18,27 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -61,19 +40,15 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.MergeException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -94,6 +69,17 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 /**
  * For sequence data, a StorageGroupProcessor has some TsFileProcessors, in which there is only one
@@ -489,17 +475,17 @@ public class StorageGroupProcessor {
     }
   }
 
-  public TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws WriteProcessException {
+  public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws WriteProcessException {
     writeLock();
     try {
-      TSStatus[] results = new TSStatus[batchInsertPlan.getRowCount()];
+      TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
 
       /*
        * assume that batch has been sorted by client
        */
       int loc = 0;
-      while (loc < batchInsertPlan.getRowCount()) {
-        long currTime = batchInsertPlan.getTimes()[loc];
+      while (loc < insertTabletPlan.getRowCount()) {
+        long currTime = insertTabletPlan.getTimes()[loc];
         // skip points that do not satisfy TTL
         if (!checkTTL(currTime)) {
           results[loc] = RpcUtils.getStatus(TSStatusCode.OUT_OF_TTL_ERROR,
@@ -510,34 +496,34 @@ public class StorageGroupProcessor {
         }
       }
       // loc pointing at first legal position
-      if (loc == batchInsertPlan.getRowCount()) {
+      if (loc == insertTabletPlan.getRowCount()) {
         return results;
       }
       // before is first start point
       int before = loc;
       // before time partition
-      long beforeTimePartition = StorageEngine.getTimePartition(batchInsertPlan.getTimes()[before]);
+      long beforeTimePartition = StorageEngine.getTimePartition(insertTabletPlan.getTimes()[before]);
       // init map
       long lastFlushTime = partitionLatestFlushedTimeForEachDevice.
           computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
-          computeIfAbsent(batchInsertPlan.getDeviceId(), id -> Long.MIN_VALUE);
+          computeIfAbsent(insertTabletPlan.getDeviceId(), id -> Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
-      while (loc < batchInsertPlan.getRowCount()) {
-        long time = batchInsertPlan.getTimes()[loc];
+      while (loc < insertTabletPlan.getRowCount()) {
+        long time = insertTabletPlan.getTimes()[loc];
         long curTimePartition = StorageEngine.getTimePartition(time);
         results[loc] = RpcUtils.SUCCESS_STATUS;
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
-          insertBatchToTsFileProcessor(batchInsertPlan, before, loc, isSequence, results,
+          insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence, results,
               beforeTimePartition);
           // re initialize
           before = loc;
           beforeTimePartition = curTimePartition;
           lastFlushTime = partitionLatestFlushedTimeForEachDevice.
               computeIfAbsent(beforeTimePartition, id -> new HashMap<>()).
-              computeIfAbsent(batchInsertPlan.getDeviceId(), id -> Long.MIN_VALUE);
+              computeIfAbsent(insertTabletPlan.getDeviceId(), id -> Long.MIN_VALUE);
           isSequence = false;
         }
         // still in this partition
@@ -545,7 +531,7 @@ public class StorageGroupProcessor {
           // judge if we should insert sequence
           if (!isSequence && time > lastFlushTime) {
             // insert into unsequence and then start sequence
-            insertBatchToTsFileProcessor(batchInsertPlan, before, loc, false, results,
+            insertTabletToTsFileProcessor(insertTabletPlan, before, loc, false, results,
                 beforeTimePartition);
             before = loc;
             isSequence = true;
@@ -556,9 +542,12 @@ public class StorageGroupProcessor {
 
       // do not forget last part
       if (before < loc) {
-        insertBatchToTsFileProcessor(batchInsertPlan, before, loc, isSequence, results,
+        insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence, results,
             beforeTimePartition);
       }
+      long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
+          insertTabletPlan.getDeviceId(), Long.MIN_VALUE);
+      tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       return results;
     } finally {
@@ -575,13 +564,16 @@ public class StorageGroupProcessor {
 
   /**
    * insert batch to tsfile processor thread-safety that the caller need to guarantee
+   * The rows to be inserted are in the range [start, end)
    *
-   * @param batchInsertPlan batch insert plan
+   * @param insertTabletPlan insert a tablet of a device
    * @param sequence whether is sequence
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
    * @param results result array
    * @param timePartitionId time partition id
    */
-  private void insertBatchToTsFileProcessor(BatchInsertPlan batchInsertPlan,
+  private void insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
       int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
       throws WriteProcessException {
     // return when start >= end
@@ -599,7 +591,7 @@ public class StorageGroupProcessor {
     }
 
     try {
-      tsFileProcessor.insertBatch(batchInsertPlan, start, end, results);
+      tsFileProcessor.insertTablet(insertTabletPlan, start, end, results);
     } catch (WriteProcessException e) {
       logger.error("insert to TsFileProcessor error ", e);
       return;
@@ -608,14 +600,11 @@ public class StorageGroupProcessor {
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>());
     // try to update the latest time of the device of this tsRecord
     if (sequence && latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(batchInsertPlan.getDeviceId(), Long.MIN_VALUE)
-        < batchInsertPlan.getTimes()[end - 1]) {
+        .getOrDefault(insertTabletPlan.getDeviceId(), Long.MIN_VALUE)
+        < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice.get(timePartitionId)
-          .put(batchInsertPlan.getDeviceId(), batchInsertPlan.getTimes()[end - 1]);
+          .put(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
     }
-    long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
-        batchInsertPlan.getDeviceId(), Long.MIN_VALUE);
-    tryToUpdateBatchInsertLastCache(batchInsertPlan, globalLatestFlushedTime);
 
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -623,11 +612,11 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateBatchInsertLastCache(BatchInsertPlan plan, Long latestFlushedTime)
+  public void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
+    MNode node = null;
     try {
-      MNode node =
-          MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
@@ -637,6 +626,10 @@ public class StorageGroupProcessor {
       }
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
+    } finally {
+      if (node != null) {
+        ((InternalMNode) node).readUnlock();
+      }
     }
   }
 
@@ -673,18 +666,23 @@ public class StorageGroupProcessor {
 
   public void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
+    MNode node = null;
     try {
-      MNode node =
-          MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(plan.getDeviceId());
+      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
         MNode measurementNode = node.getChild(measurementList[i]);
+
         ((LeafMNode) measurementNode)
             .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException | QueryProcessException e) {
       throw new WriteProcessException(e);
+    } finally {
+      if (node != null) {
+        ((InternalMNode) node).readUnlock();
+      }
     }
   }
 
@@ -1435,7 +1433,6 @@ public class StorageGroupProcessor {
 
   @SuppressWarnings("squid:S1141")
   private void updateMergeModification(TsFileResource seqFile) {
-    seqFile.getWriteQueryLock().writeLock().lock();
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -1453,8 +1450,6 @@ public class StorageGroupProcessor {
     } catch (IOException e) {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
-    } finally {
-      seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
 
@@ -1484,7 +1479,15 @@ public class StorageGroupProcessor {
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
-      mergeLock.writeLock().lock();
+      while (!seqFile.getWriteQueryLock().writeLock().tryLock() || !mergeLock.writeLock()
+          .tryLock()) {
+        if (seqFile.getWriteQueryLock().writeLock().isHeldByCurrentThread()) {
+          seqFile.getWriteQueryLock().writeLock().unlock();
+        }
+        if(mergeLock.writeLock().isHeldByCurrentThread()) {
+          mergeLock.writeLock().unlock();
+        }
+      }
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
@@ -1495,6 +1498,7 @@ public class StorageGroupProcessor {
         }
       } finally {
         mergeLock.writeLock().unlock();
+        seqFile.getWriteQueryLock().writeLock().unlock();
       }
     }
     logger.info("{} a merge task ends", storageGroupName);

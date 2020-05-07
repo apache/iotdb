@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -44,7 +44,7 @@ public interface IMemTable {
   void write(String deviceId, String measurement, MeasurementSchema schema,
       long insertTime, Object objectValue);
 
-  void write(BatchInsertPlan batchInsertPlan, int start, int end);
+  void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /**
    * @return the number of points
@@ -61,7 +61,7 @@ public interface IMemTable {
   /**
    * [start, end)
    */
-  void insertBatch(BatchInsertPlan batchInsertPlan, int start, int end)
+  void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,

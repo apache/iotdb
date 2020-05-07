@@ -27,7 +27,7 @@ public class ShowTimeSeriesOperator extends ShowOperator {
   private boolean isContains;
   private String key;
   private String value;
-  private int limit = Integer.MAX_VALUE;
+  private int limit = 0;
   private int offset = 0;
 
   public ShowTimeSeriesOperator(int tokeIntType, Path path) {

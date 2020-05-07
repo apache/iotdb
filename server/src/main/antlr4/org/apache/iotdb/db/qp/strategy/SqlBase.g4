@@ -26,6 +26,7 @@ singleStatement
 statement
     : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
+    | ALTER TIMESERIES fullPath alterClause #alterTimeseries
     | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
@@ -35,7 +36,9 @@ statement
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
     | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
-    | MERGE #merge //not support yet
+    | MERGE #merge
+    | FLUSH prefixPath? (COMMA prefixPath)* (ID)?#flush //ID is true or false
+    | FULL MERGE #fullMerge
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
@@ -118,6 +121,15 @@ lastClause
 
 alias
     : LR_BRACKET ID RR_BRACKET
+    ;
+
+alterClause
+    : RENAME beforeName=ID TO currentName=ID
+    | SET property (COMMA property)*
+    | DROP ID (COMMA ID)*
+    | ADD TAGS property (COMMA property)*
+    | ADD ATTRIBUTES property (COMMA property)*
+    | UPSERT tagClause attributeClause
     ;
 
 attributeClauses
@@ -599,6 +611,10 @@ ADD
     : A D D
     ;
 
+UPSERT
+    : U P S E R T
+    ;
+
 VALUES
     : V A L U E S
     ;
@@ -797,6 +813,14 @@ ATTRIBUTES
 
 TAGS
     : T A G S
+    ;
+
+RENAME
+    : R E N A M E
+    ;
+
+FULL
+    : F U L L
     ;
 //============================
 // End of the keywords list

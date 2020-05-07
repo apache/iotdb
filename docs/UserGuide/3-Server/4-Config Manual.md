@@ -186,6 +186,18 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
 |Effective|Trigger|
 
+
+* bloomFilterErrorRate
+
+|Name| bloomFilterErrorRate |
+|:---:|:---|
+|Description| The false positive rate of bloom filter in each TsFile. Bloom filter checks whether a given time series is in the tsfile before loading metadata. This can improve the performance of loading metadata and skip the tsfile that doesn't contain specified time series. If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).|
+|Type|float, (0, 1)|
+|Default| 0.05 |
+|Effective|After restart system|
+
+
+
 ### Engine Layer
 
 * rpc\_address

@@ -149,9 +149,12 @@ timestamp_precision=ms
 isDownSampling=true
 # 默认采样interval
 interval=1m
-# 用于对数据进行降采样的聚合函数
+# 用于对连续数据(int, long, float, double)进行降采样的聚合函数
 # COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MAX_VALUE, AVG, MIN_TIME, MIN_VALUE, NOW, SUM
-function=avg
+continuous_data_function=AVG
+# 用于对离散数据(boolean, string)进行降采样的聚合函数
+# COUNT, FIRST_VALUE, LAST_VALUE, MAX_TIME, MIN_TIME, NOW
+discrete_data_function=LAST_VALUE
 ```
 
 其中interval具体配置信息如下
