@@ -383,53 +383,45 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ConcurrentHashMap<String, Set<String>> resultPair = new ConcurrentHashMap<>();
     Pair<Set<String>, String> localPair = MManager.getInstance().deleteTimeseries(path);
     resultPair.put(localPair.right, localPair.left);
-
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
-
-    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
-      Node header = group.getHeader();
-      if (header.equals(metaGroupMember.getThisNode())) {
-        continue;
-      }
+    for (Node node : metaGroupMember.getPartitionTable().getAllNodes()) {
       pool.submit(() -> {
         DeleteTimeseriesHandler handler = new DeleteTimeseriesHandler();
         AtomicReference<DeleteTimeseriesRespPair> response = new AtomicReference<>(null);
         handler.setResponse(response);
-
-        for (Node node : group) {
-          try {
-            DataClient client = metaGroupMember.getDataClient(node);
-            handler.setContact(node);
-            synchronized (response) {
-              if (client != null) {
-                client.deleteTimeseries(node, path, handler);
-                response.wait(connectionTimeoutInMS);
-              }
+        try {
+          DataClient client = metaGroupMember.getDataClient(node);
+          handler.setContact(node);
+          synchronized (response) {
+            if (client != null) {
+              client.deleteTimeseries(node, path, handler);
+              response.wait(connectionTimeoutInMS);
             }
-            DeleteTimeseriesRespPair currentResult = response.get();
-            if (currentResult != null) {
-              if (resultPair.size() == 0) {
-                resultPair.put(currentResult.right, currentResult.left);
-              } else {
-                if (resultPair.keySet().contains(currentResult.right)) {
-                  resultPair.get(currentResult.right).addAll(currentResult.left);
-                } else {
-                  throw new TException("Failed to delete timeseries in node: " + node
-                          + " because string conflict, the string in local is "
-                          + resultPair.keySet().toArray(new String[0])[0]
-                          + ", but the remote is " + currentResult.right);
-                }
-              }
-            }
-          } catch (IOException e) {
-            logger.error("Failed to delete timeseries in node: {}", node, e);
-          } catch (TException e) {
-            logger.error("Error occurs when deleting timeseries in node {}.", node, e);
-          } catch (InterruptedException e) {
-            logger.error("Interrupted when deleting timeseries in node {}.", node, e);
-            Thread.currentThread().interrupt();
           }
+          DeleteTimeseriesRespPair currentResult = response.get();
+          if (currentResult != null) {
+            if (resultPair.size() == 0) {
+              resultPair.put(currentResult.right, currentResult.left);
+            } else {
+              if (resultPair.keySet().contains(currentResult.right)) {
+                resultPair.get(currentResult.right).addAll(currentResult.left);
+              } else {
+                throw new TException("Failed to delete timeseries in node: " + node
+                        + " because string conflict, the string in local is "
+                        + resultPair.keySet().toArray(new String[0])[0]
+                        + ", but the remote is " + currentResult.right);
+              }
+            }
+          }
+        } catch (IOException e) {
+          logger.error("Failed to delete timeseries in node: {}", node, e);
+        } catch (TException e) {
+          logger.error("Error occurs when deleting timeseries in node {}.", node, e);
+        } catch (InterruptedException e) {
+          logger.error("Interrupted when deleting timeseries in node {}.", node, e);
+          Thread.currentThread().interrupt();
         }
+
       });
     }
     pool.shutdown();
