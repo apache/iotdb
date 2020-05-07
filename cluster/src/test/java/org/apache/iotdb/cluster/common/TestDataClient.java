@@ -38,6 +38,8 @@ import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MemberTest;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -104,7 +106,7 @@ public class TestDataClient extends DataClient {
         PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
         planExecutor.processNonQuery(plan);
         resultHandler.onComplete(StatusUtils.OK);
-      } catch (IOException | QueryProcessException e) {
+      } catch (IOException | QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
         resultHandler.onError(e);
       }
     }).start();

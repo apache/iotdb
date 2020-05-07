@@ -81,6 +81,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -540,7 +541,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testQuerySingleSeries() throws QueryProcessException {
+  public void testQuerySingleSeries()
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testQuerySingleSeries()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
@@ -593,7 +595,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testQuerySingleSeriesWithValueFilter() throws QueryProcessException {
+  public void testQuerySingleSeriesWithValueFilter()
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
@@ -647,7 +650,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testQuerySingleSeriesByTimestamp()
-      throws QueryProcessException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
@@ -697,7 +700,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testQuerySingleSeriesByTimestampWithValueFilter() throws QueryProcessException {
+  public void testQuerySingleSeriesByTimestampWithValueFilter()
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
@@ -870,7 +874,8 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testGroupBy() throws QueryProcessException {
+  public void testGroupBy()
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testGroupBy()");
     TestUtils.prepareData();
 

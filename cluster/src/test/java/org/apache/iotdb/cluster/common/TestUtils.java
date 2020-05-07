@@ -32,6 +32,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -219,7 +221,7 @@ public class TestUtils {
   }
 
   public static void prepareData()
-      throws QueryProcessException {
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     InsertPlan insertPlan = new InsertPlan();
     // data for raw data query and aggregation
     // 10 devices (storage groups)

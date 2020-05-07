@@ -163,7 +163,7 @@ public class MetaGroupMemberTest extends MemberTest {
         try {
           planExecutor.processNonQuery(plan);
           return StatusUtils.OK;
-        } catch (QueryProcessException e) {
+        } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
           TSStatus status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
           status.setMessage(e.getMessage());
           return status;
@@ -312,7 +312,7 @@ public class MetaGroupMemberTest extends MemberTest {
                   PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
                   planExecutor.processNonQuery(plan);
                   resultHandler.onComplete(StatusUtils.OK);
-                } catch (IOException | QueryProcessException e) {
+                } catch (IOException | QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
                   resultHandler.onError(e);
                 }
               }).start();
@@ -356,7 +356,8 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testClosePartition() throws QueryProcessException, StorageEngineException {
+  public void testClosePartition()
+      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertPlan insertPlan = new InsertPlan();
@@ -632,7 +633,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetReaderByTimestamp()
-      throws QueryProcessException, StorageEngineException, IOException {
+      throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
@@ -672,7 +673,8 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testGetReader() throws QueryProcessException, StorageEngineException, IOException {
+  public void testGetReader()
+      throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});

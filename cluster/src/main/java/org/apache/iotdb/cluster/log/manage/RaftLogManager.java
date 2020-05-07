@@ -31,7 +31,9 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.StableEntryManager;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
@@ -429,7 +431,7 @@ public class RaftLogManager {
     for (Log entry : entries) {
       try {
         logApplier.apply(entry);
-      } catch (QueryProcessException e) {
+      } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
         if (!(e.getCause() instanceof PathAlreadyExistException)) {
           logger.error("Cannot apply a log {} in snapshot, ignored", entry, e);
         }

@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -51,7 +52,8 @@ public class DataLogApplier extends BaseApplier {
   }
 
   @Override
-  public void apply(Log log) throws QueryProcessException {
+  public void apply(Log log)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();
@@ -81,7 +83,7 @@ public class DataLogApplier extends BaseApplier {
   }
 
   private void applyInsert(PhysicalPlan plan)
-      throws StorageGroupNotSetException, QueryProcessException {
+      throws StorageGroupNotSetException, QueryProcessException, StorageEngineException {
     // check if the corresponding slot is being pulled
     String sg;
     long time;
