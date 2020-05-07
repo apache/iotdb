@@ -19,19 +19,16 @@
 
 package org.apache.iotdb.cluster.log.manage;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.cluster.exception.EntryCompactedException;
-import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
-import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
-import org.apache.iotdb.cluster.log.snapshot.SimpleSnapshot;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.entity.Role;
+import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.metadata.MManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,44 +39,36 @@ import org.slf4j.LoggerFactory;
 public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaSingleSnapshotLogManager.class);
-  private List<Log> snapshot = new ArrayList<>();
-  private List<String> storageGroups;
-  private Map<String, Long> storageGroupTTL;
-  private Map<String, Boolean> userWaterMarkStatus;
+  private Map<String, Long> storageGroupTTLMap;
+  private Map<String, User> userMap;
+  private Map<String, Role> roleMap;
+  private MetaGroupMember metaGroupMember;
 
-  public MetaSingleSnapshotLogManager(LogApplier logApplier) {
+  public MetaSingleSnapshotLogManager(LogApplier logApplier, MetaGroupMember metaGroupMember) {
     super(new SyncLogDequeSerializer(0), logApplier);
+    this.metaGroupMember = metaGroupMember;
   }
 
   public void takeSnapshot() {
-    //TODO remove useless logs which have been compacted
-    try {
-      List<Log> entries = committedEntryManager
-          .getEntries(committedEntryManager.getFirstIndex(), Long.MAX_VALUE);
-      snapshot.addAll(entries);
-    } catch (EntryCompactedException e) {
-      logger.error("Unexpected error: {}", e.getMessage());
-    }
-    storageGroups = MManager.getInstance().getAllStorageGroupNames();
-    storageGroupTTL = MManager.getInstance().getStorageGroupsTTL();
+    storageGroupTTLMap = MManager.getInstance().getStorageGroupsTTL();
     try {
       LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
-      userWaterMarkStatus = authorizer.getAllUserWaterMarkStatus();
+      userMap = authorizer.getAllUsers();
+      roleMap = authorizer.getAllRoles();
+
     } catch (AuthException e) {
-      logger.error("get all user water mark status failed", e);
+      logger.error("get user or role info failed", e);
     }
   }
 
   @Override
   public Snapshot getSnapshot() {
-    return new MetaSimpleSnapshot(new ArrayList<>(this.snapshot), storageGroups, storageGroupTTL,
-        userWaterMarkStatus);
-  }
+    takeSnapshot();
+    MetaSimpleSnapshot snapshot = new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap,
+        metaGroupMember.getPartitionTable().serialize());
 
-  @Override
-  public void applyingSnapshot(Snapshot snapshot) {
-    super.applyingSnapshot(snapshot);
-    MetaSimpleSnapshot metaSimpleSnapshot = (MetaSimpleSnapshot) snapshot;
-    this.snapshot = metaSimpleSnapshot.getSnapshot();
+    snapshot.setLastLogIndex(getCommitLogIndex());
+    snapshot.setLastLogTerm(getCommitLogTerm());
+    return snapshot;
   }
 }
