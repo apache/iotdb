@@ -16,13 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.cache;
+package org.apache.iotdb.db.qp.logical.sys;
 
-public interface CacheHitRatioMonitorMXBean {
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  double getChunkMetaDataHitRatio();
+public class FlushOperator extends RootOperator {
 
-  double getChunkHitRatio();
+  public List<Path> getStorageGroupList() {
+    return storageGroupList;
+  }
 
-  double getTimeSeriesMetadataHitRatio();
+  public void setStorageGroupList(
+      List<Path> storageGroupList) {
+    this.storageGroupList = storageGroupList;
+  }
+
+  private List<Path> storageGroupList;
+
+  public Boolean isSeq() {
+    return isSeq;
+  }
+
+  public void setSeq(boolean seq) {
+    isSeq = seq;
+  }
+
+  private Boolean isSeq;
+
+  public FlushOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.FLUSH;
+  }
 }

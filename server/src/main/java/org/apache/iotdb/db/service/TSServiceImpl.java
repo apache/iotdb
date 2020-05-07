@@ -28,7 +28,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -322,60 +321,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return MManager.getInstance().getAllTimeseriesName(path);
   }
 
-  /**
-   * Judge whether the statement is ADMIN COMMAND and if true, execute it.
-   *
-   * @param statement command
-   * @return true if the statement is ADMIN COMMAND
-   */
-  private boolean execAdminCommand(String statement, long sessionId) throws StorageEngineException {
-    if (!"root".equals(sessionIdUsernameMap.get(sessionId))) {
-      return false;
-    }
-    if (statement == null) {
-      return false;
-    }
-    statement = statement.toLowerCase();
-    if (statement.startsWith("flush")) {
-      try {
-        execFlush(statement);
-      } catch (StorageGroupNotSetException e) {
-        throw new StorageEngineException(e);
-      }
-      return true;
-    }
-    switch (statement) {
-      case "merge":
-        StorageEngine.getInstance()
-            .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-        return true;
-      case "full merge":
-        StorageEngine.getInstance().mergeAll(true);
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  private void execFlush(String statement) throws StorageGroupNotSetException {
-    String[] args = statement.split("\\s+");
-    if (args.length == 1) {
-      StorageEngine.getInstance().syncCloseAllProcessor();
-    } else if (args.length == 2) {
-      String[] storageGroups = args[1].split(",");
-      for (String storageGroup : storageGroups) {
-        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
-        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, false);
-      }
-    } else {
-      String[] storageGroups = args[1].split(",");
-      boolean isSeq = Boolean.parseBoolean(args[2]);
-      for (String storageGroup : storageGroups) {
-        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, isSeq);
-      }
-    }
-  }
-
   @Override
   public TSExecuteBatchStatementResp executeBatchStatement(TSExecuteBatchStatementReq req) {
     long t1 = System.currentTimeMillis();
@@ -465,10 +410,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       String statement = req.getStatement();
 
-      if (execAdminCommand(statement, req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(
-            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS"));
-      }
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
@@ -489,10 +430,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR,
               "Meet error in query process: " + e.getMessage()));
-    } catch (StorageEngineException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
-      return RpcUtils.getTSExecuteStatementResp(
-          RpcUtils.getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR, e.getMessage()));
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -761,7 +698,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
 
     Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
-    Map<String, TSDataType> checker = plan.getMeasurementDataTypeMap();
+    Map<String, TSDataType> measurementDataTypeMap = plan.getMeasurementDataTypeMap();
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
@@ -770,7 +707,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSDataType type = null;
       switch (measurementTypeMap.get(measurement)) {
         case Exist:
-          type = checker.get(measurement);
+          type = measurementDataTypeMap.get(measurement);
           break;
         case NonExist:
         case Constant:
@@ -960,7 +897,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {
+  private boolean executeNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");

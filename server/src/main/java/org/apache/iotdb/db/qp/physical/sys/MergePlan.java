@@ -16,13 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.cache;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public interface CacheHitRatioMonitorMXBean {
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  double getChunkMetaDataHitRatio();
+public class MergePlan extends PhysicalPlan {
 
-  double getChunkHitRatio();
+  public MergePlan(OperatorType operatorType) {
+    super(false, operatorType);
+  }
 
-  double getTimeSeriesMetadataHitRatio();
+  public MergePlan() {
+    super(false, OperatorType.MERGE);
+  }
+
+  @Override
+  public List<Path> getPaths() {
+    return new ArrayList<>();
+  }
 }
