@@ -1075,6 +1075,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       Filter timeFilter,
       Filter valueFilter, QueryContext context)
       throws StorageEngineException, QueryProcessException {
+    if (!MManager.getInstance().isPathExist(path.getFullPath())) {
+      try {
+        List<MeasurementSchema> schemas = metaGroupMember
+            .pullTimeSeriesSchemas(Collections.singletonList(path.getFullPath()));
+        for (MeasurementSchema schema : schemas) {
+          MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
+        }
+      } catch (MetadataException e) {
+        throw new QueryProcessException(e);
+      }
+    }
     List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
