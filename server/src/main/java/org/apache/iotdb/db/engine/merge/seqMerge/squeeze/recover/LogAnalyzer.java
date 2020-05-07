@@ -54,7 +54,7 @@ public class LogAnalyzer {
 
   private String currLine;
 
-  private List<TsFileResource> newResources;
+  private List<TsFileResource> newResource;
   private Status status;
 
   public LogAnalyzer(MergeResource resource, String taskName, File logFile) {
@@ -150,9 +150,9 @@ public class LogAnalyzer {
     if (currLine != null) {
       status = Status.ALL_TS_MERGED;
       File newFile = FSFactoryProducer.getFSFactory().getFile(currLine);
-      TsFileResource newResource = new TsFileResource(newFile);
-      newResource.serialize();
-      newResources.add(newResource);
+      TsFileResource resource = new TsFileResource(newFile);
+      resource.serialize();
+      newResource.add(resource);
 
       if (logger.isDebugEnabled()) {
         logger.debug("{} found files have already been merged into {}", taskName,
@@ -162,7 +162,7 @@ public class LogAnalyzer {
   }
 
   public List<TsFileResource> getNewResource() {
-    return newResources;
+    return newResource;
   }
 
   public enum Status {

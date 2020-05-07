@@ -122,6 +122,20 @@ public class MergeResource {
   }
 
   /**
+   * Query all ChunkMetadata of a file
+   */
+  public List<ChunkMetadata> queryChunkMetadata(TsFileResource seqFile)
+      throws IOException {
+    TsFileSequenceReader sequenceReader = getFileReader(seqFile);
+    List<Path> paths = sequenceReader.getAllPaths();
+    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+    for (Path path : paths) {
+      chunkMetadataList.addAll(sequenceReader.getChunkMetadataList(path));
+    }
+    return chunkMetadataList;
+  }
+
+  /**
    * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
    *
    * @return a TsFileSequenceReader
@@ -239,6 +253,10 @@ public class MergeResource {
 
   public void setChunkWriterCache(Map<Path, IChunkWriter> chunkWriterCache) {
     this.chunkWriterCache = chunkWriterCache;
+  }
+
+  public void putChunkWriter(Path path, IChunkWriter chunkWriter) {
+    this.chunkWriterCache.put(path, chunkWriter);
   }
 
   public void flushChunks(TsFileIOWriter writer) throws IOException {

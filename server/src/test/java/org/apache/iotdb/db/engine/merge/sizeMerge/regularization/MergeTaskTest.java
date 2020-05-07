@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -52,6 +53,7 @@ public class MergeTaskTest extends MergeTest {
   public void setUp()
       throws IOException, WriteProcessException, MetadataException, MetadataException {
     super.setUp();
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(100);
     tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
   }
@@ -112,7 +114,7 @@ public class MergeTaskTest extends MergeTest {
     newResource[0].close();
 
     QueryContext context = new QueryContext();
-    Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
+    Path path = new Path(deviceIds[1], measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(newResource[0]);
     IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path, measurementSchemas[0].getType(),

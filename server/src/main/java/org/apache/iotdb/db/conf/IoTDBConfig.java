@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.seqMerge.SeqMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
 import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -447,6 +448,8 @@ public class IoTDBConfig {
 
   private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.INDEPENDENCE;
 
+  private MergeSizeSelectorStrategy mergeSizeSelectorStrategy = MergeSizeSelectorStrategy.POINT_RANGE;
+
   /**
    * Default system file storage is in local file system (unsupported)
    */
@@ -537,7 +540,7 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric =50;
+  private int queryCacheSizeInMetric = 50;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1096,9 +1099,19 @@ public class IoTDBConfig {
     this.seqMergeFileStrategy = seqMergeFileStrategy;
   }
 
+
   public void setSizeMergeFileStrategy(
       SizeMergeFileStrategy sizeMergeFileStrategy) {
     this.sizeMergeFileStrategy = sizeMergeFileStrategy;
+  }
+
+  public MergeSizeSelectorStrategy getMergeSizeSelectorStrategy() {
+    return mergeSizeSelectorStrategy;
+  }
+
+  public void setMergeSizeSelectorStrategy(
+      MergeSizeSelectorStrategy mergeSizeSelectorStrategy) {
+    this.mergeSizeSelectorStrategy = mergeSizeSelectorStrategy;
   }
 
   public int getMergeChunkSubThreadNum() {
@@ -1153,7 +1166,8 @@ public class IoTDBConfig {
     return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 

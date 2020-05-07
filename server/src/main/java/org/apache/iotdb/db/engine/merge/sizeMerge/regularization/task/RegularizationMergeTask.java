@@ -68,7 +68,7 @@ public class RegularizationMergeTask implements Callable<Void> {
   MergeCallback callback;
   String taskName;
 
-  List<TsFileResource> newResources;
+  TsFileResource newResource;
 
   public RegularizationMergeTask(
       MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
@@ -129,9 +129,9 @@ public class RegularizationMergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger,
+    RegularizationMergeSeriesTask mergeChunkTask = new RegularizationMergeSeriesTask(mergeContext, taskName, mergeLogger,
         resource, unmergedSeries);
-    newResources = mergeChunkTask.mergeSeries();
+    newResource = mergeChunkTask.mergeSeries();
 
     cleanUp(true);
     if (logger.isInfoEnabled()) {
@@ -167,6 +167,8 @@ public class RegularizationMergeTask implements Callable<Void> {
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again
+      List<TsFileResource> newResources = new ArrayList<>();
+      newResources.add(newResource);
       callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile, newResources);
     } else {
       logFile.delete();

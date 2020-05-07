@@ -49,11 +49,10 @@ public class LogAnalyzer {
 
   private String currLine;
 
-  private List<TsFileResource> newResources;
+  private TsFileResource newResource;
   private Status status;
 
   public LogAnalyzer(String taskName, File logFile) {
-    this.newResources = new ArrayList<>();
     this.taskName = taskName;
     this.logFile = logFile;
   }
@@ -86,16 +85,16 @@ public class LogAnalyzer {
         status = Status.ALL_TS_MERGED;
         return;
       }
-      newResources.add(new TsFileResource(new File(currLine)));
+      newResource = new TsFileResource(new File(currLine));
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} merge files after {}ms", taskName, newResources.size(),
+      logger.debug("{} found {} size merge file after {}ms", taskName, newResource.getFileSize(),
           (System.currentTimeMillis() - startTime));
     }
   }
 
-  public List<TsFileResource> getNewResource() {
-    return newResources;
+  public TsFileResource getNewResource() {
+    return newResource;
   }
 
   public enum Status {

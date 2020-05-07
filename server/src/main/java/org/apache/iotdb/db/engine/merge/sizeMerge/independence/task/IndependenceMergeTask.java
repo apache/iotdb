@@ -130,7 +130,7 @@ public class IndependenceMergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger,
+    IndependenceMergeSeriesTask mergeChunkTask = new IndependenceMergeSeriesTask(mergeContext, taskName, mergeLogger,
         resource, unmergedSeries);
     newResources = mergeChunkTask.mergeSeries();
 
