@@ -149,7 +149,7 @@ public TimeValuePair getFillResult() throws IOException {
 
 # Linear 填充
 
-对于T时间的 Linear Fill 线性填充值是由该时间序列的两个相关值做线性拟合得到的：T之前的最近时间戳对应的值，T之后的最近时间戳对应的值。
+对于T时间的 Linear Fill 线性填充值是由该时间序列的两个相关值做线性拟合得到的：T之前的最近时间戳对应的值，T之后的最早时间戳对应的值。
 基于这种特点，线性填充只能被应用于数字类型如：int, double, float。
 
 ## 计算前时间值

@@ -123,6 +123,7 @@ public class LinearFill extends IFill {
 
     // no before data or has data on the query timestamp
     if (beforePair.getValue() == null || beforePair.getTimestamp() == queryTime) {
+      beforePair.setTimestamp(queryTime);
       return beforePair;
     }
 
