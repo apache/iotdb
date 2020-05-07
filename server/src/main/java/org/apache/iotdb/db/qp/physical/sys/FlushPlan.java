@@ -16,13 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.cache;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public interface CacheHitRatioMonitorMXBean {
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-  double getChunkMetaDataHitRatio();
+public class FlushPlan extends PhysicalPlan {
+  private List<Path> storeGroups;
 
-  double getChunkHitRatio();
+  public Boolean isSeq() {
+    return isSeq;
+  }
 
-  double getTimeSeriesMetadataHitRatio();
+  private Boolean isSeq;
+
+  public FlushPlan(Boolean isSeq, List<Path> storeGroups) {
+    super(false, OperatorType.FLUSH);
+    this.storeGroups = storeGroups;
+    this.isSeq = isSeq;
+  }
+
+  @Override
+  public List<Path> getPaths() {
+    return storeGroups;
+  }
 }

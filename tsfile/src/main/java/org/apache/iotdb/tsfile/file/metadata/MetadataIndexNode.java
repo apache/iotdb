@@ -120,6 +120,6 @@ public class MetadataIndexNode {
         return mid; // key found
       }
     }
-    return low - 1;  // key not found
+    return low == 0 ? low : low - 1;  // key not found
   }
 }

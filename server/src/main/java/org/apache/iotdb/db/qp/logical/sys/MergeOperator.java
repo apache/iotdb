@@ -1,3 +1,7 @@
+package org.apache.iotdb.db.qp.logical.sys;
+
+import org.apache.iotdb.db.qp.logical.RootOperator;
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -16,13 +20,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.cache;
+public class MergeOperator extends RootOperator {
 
-public interface CacheHitRatioMonitorMXBean {
-
-  double getChunkMetaDataHitRatio();
-
-  double getChunkHitRatio();
-
-  double getTimeSeriesMetadataHitRatio();
+  public MergeOperator(int tokenIntType) {
+    super(tokenIntType);
+    operatorType = OperatorType.MERGE;
+  }
 }
