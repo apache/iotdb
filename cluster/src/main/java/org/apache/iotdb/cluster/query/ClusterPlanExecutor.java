@@ -25,14 +25,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicReference;
+
 import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -44,6 +40,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandle
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -56,15 +53,13 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -88,8 +83,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      MetadataException {
+          throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
+          MetadataException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -115,9 +110,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected List<String> getNodesList(String schemaPattern, int level)
-      throws MetadataException {
+          throws MetadataException {
     ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>(
-        MManager.getInstance().getNodesList(schemaPattern, level));
+            MManager.getInstance().getNodesList(schemaPattern, level));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
@@ -168,9 +163,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected Set<String> getPathNextChildren(String path)
-      throws MetadataException {
+          throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>(
-        MManager.getInstance().getChildNodePathInNextLevel(path));
+            MManager.getInstance().getChildNodePathInNextLevel(path));
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
@@ -221,13 +216,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+          throws MetadataException {
     return showTimeseries(plan);
   }
 
   @Override
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
-      throws MetadataException {
+          throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
     if (plan.getKey() != null && plan.getValue() != null) {
       resultSet.addAll(MManager.getInstance().getAllTimeseriesSchema(plan));
@@ -257,8 +252,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
                 plan.serialize(dataOutputStream);
                 client.getAllMeasurementSchema(node,
-                    ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
-                    handler);
+                        ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
+                        handler);
                 response.wait(connectionTimeoutInMS);
               }
             }
@@ -295,7 +290,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected MeasurementSchema[] getSeriesSchemas(String[] measurementList, String deviceId,
-      String[] strValues) throws MetadataException {
+                                                 String[] strValues) throws MetadataException {
 
     MNode node = null;
     boolean allSeriesExists = true;
@@ -356,7 +351,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
-      QueryContext context, IQueryRouter router) {
+                                                         QueryContext context, IQueryRouter router) {
     return new ClusterAlignByDeviceDataSet(plan, context, router, metaGroupMember);
   }
 
@@ -373,8 +368,21 @@ public class ClusterPlanExecutor extends PlanExecutor {
         break;
       default:
         throw new QueryProcessException(String
-            .format("Unrecognized load configuration plan type: %s",
-                plan.getLoadConfigurationPlanType()));
+                .format("Unrecognized load configuration plan type: %s",
+                        plan.getLoadConfigurationPlanType()));
     }
   }
+
+  @Override
+  public void delete(Path path, long timestamp) throws QueryProcessException {
+    String deviceId = path.getDevice();
+    String measurementId = path.getMeasurement();
+    try {
+      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
+    } catch (StorageEngineException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+
 }
