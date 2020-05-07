@@ -44,6 +44,9 @@ public class DeleteTimeseriesHandler implements AsyncMethodCallback<DeleteTimese
   @Override
   public void onError(Exception exception) {
     logger.warn("Cannot delete timeseries from {}, because ", contact, exception);
+    synchronized (result) {
+      result.notifyAll();
+    }
   }
 
   public void setResponse(AtomicReference response) {
