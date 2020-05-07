@@ -339,14 +339,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void deleteTimeseries(Node header, String path, AsyncMethodCallback<DeleteTimeseriesRespPair> resultHandler) throws TException {
-    DataGroupMember dataMember = getDataMember(header, resultHandler,
-            "delete timeseries");
-    dataMember.deleteTimeseries(header, path, resultHandler);
-  }
-
-
-  @Override
   public void getAggrResult(GetAggrResultRequest request,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
     DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, request);

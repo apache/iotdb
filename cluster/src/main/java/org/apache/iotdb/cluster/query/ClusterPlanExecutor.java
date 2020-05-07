@@ -33,9 +33,7 @@ import org.apache.iotdb.cluster.client.DataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
-import org.apache.iotdb.cluster.rpc.thrift.DeleteTimeseriesRespPair;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.handlers.caller.DeleteTimeseriesHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
@@ -44,7 +42,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -55,7 +52,6 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -65,7 +61,6 @@ import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -379,64 +374,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Pair<Set<String>, String> deleteTimeseries(String path) throws MetadataException {
-    ConcurrentHashMap<String, Set<String>> resultPair = new ConcurrentHashMap<>();
-    Pair<Set<String>, String> localPair = MManager.getInstance().deleteTimeseries(path);
-    resultPair.put(localPair.right, localPair.left);
-    ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
-    for (Node node : metaGroupMember.getPartitionTable().getAllNodes()) {
-      pool.submit(() -> {
-        DeleteTimeseriesHandler handler = new DeleteTimeseriesHandler();
-        AtomicReference<DeleteTimeseriesRespPair> response = new AtomicReference<>(null);
-        handler.setResponse(response);
-        try {
-          DataClient client = metaGroupMember.getDataClient(node);
-          handler.setContact(node);
-          synchronized (response) {
-            if (client != null) {
-              client.deleteTimeseries(node, path, handler);
-              response.wait(connectionTimeoutInMS);
-            }
-          }
-          DeleteTimeseriesRespPair currentResult = response.get();
-          if (currentResult != null) {
-            if (resultPair.size() == 0) {
-              resultPair.put(currentResult.right, currentResult.left);
-            } else {
-              if (resultPair.keySet().contains(currentResult.right)) {
-                resultPair.get(currentResult.right).addAll(currentResult.left);
-              } else {
-                throw new TException("Failed to delete timeseries in node: " + node
-                        + " because string conflict, the string in local is "
-                        + resultPair.keySet().toArray(new String[0])[0]
-                        + ", but the remote is " + currentResult.right);
-              }
-            }
-          }
-        } catch (IOException e) {
-          logger.error("Failed to delete timeseries in node: {}", node, e);
-        } catch (TException e) {
-          logger.error("Error occurs when deleting timeseries in node {}.", node, e);
-        } catch (InterruptedException e) {
-          logger.error("Interrupted when deleting timeseries in node {}.", node, e);
-          Thread.currentThread().interrupt();
-        }
-
-      });
-    }
-    pool.shutdown();
-    try {
-      pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
-    } catch (InterruptedException e) {
-      logger.warn("Unexpected interruption when waiting for deleteTimeseries to finish", e);
-    }
-
-    String pairRight = resultPair.keySet().toArray(new String[0])[0];
-    Set<String> pairLeft = resultPair.get(pairRight);
-    return new Pair<>(pairLeft, pairRight);
-  }
-
-  @Override
   public void delete(Path path, long timestamp) throws QueryProcessException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
@@ -446,4 +383,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throw new QueryProcessException(e);
     }
   }
+
+
 }
