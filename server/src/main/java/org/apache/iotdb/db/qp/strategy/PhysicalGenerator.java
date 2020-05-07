@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -50,6 +49,7 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
+import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
@@ -82,6 +82,8 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -96,7 +98,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 
 /**
  * Used to convert logical operator to physical plan
@@ -184,6 +185,15 @@ public class PhysicalGenerator {
             insert.getTime(),
             insert.getMeasurementList(),
             insert.getValueList());
+      case MERGE:
+        if(operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
+          return new MergePlan(OperatorType.FULL_MERGE);
+        } else {
+          return new MergePlan();
+        }
+      case FLUSH:
+        FlushOperator flushOperator = (FlushOperator) operator;
+        return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);
@@ -448,7 +458,7 @@ public class PhysicalGenerator {
           } catch (MetadataException e) {
             throw new LogicalOptimizeException(
                 String.format(
-                        "Error when getting all paths of a full path: %s", fullPath.getFullPath())
+                    "Error when getting all paths of a full path: %s", fullPath.getFullPath())
                     + e.getMessage());
           }
         }
@@ -498,6 +508,7 @@ public class PhysicalGenerator {
           List<TSDataType> seriesTypes = getSeriesTypes(filterPaths);
           HashMap<Path, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
           for (int i = 0; i < filterPaths.size(); i++) {
+            ((RawDataQueryPlan) queryPlan).addFilterPathInDeviceToMeasurements(filterPaths.get(i));
             pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
           }
           IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
@@ -590,35 +601,11 @@ public class PhysicalGenerator {
     List<TSDataType> dataTypes = getSeriesTypes(paths);
     queryPlan.setDataTypes(dataTypes);
 
-    List<Pair<Path, Integer>> indexedPaths = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      indexedPaths.add(new Pair<>(paths.get(i), i));
-    }
-    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
-
     // deduplicate from here
     if (queryPlan instanceof AlignByDevicePlan) {
       return;
     }
-    if (queryPlan instanceof AggregationPlan) {
-      AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
-      List<String> aggregations = aggregationPlan.getAggregations();
-      Set<String> columnSet = new HashSet<>();
-      int index = 0;
-      for (Pair<Path, Integer> indexedPath : indexedPaths) {
-        String column =
-            aggregations.get(indexedPath.right) + "(" + indexedPath.left.toString() + ")";
-        if (!columnSet.contains(column)) {
-          aggregationPlan.addDeduplicatedPaths(indexedPath.left);
-          TSDataType seriesType = dataTypes.get(indexedPath.right);
-          aggregationPlan.addDeduplicatedDataTypes(seriesType);
-          aggregationPlan.addDeduplicatedAggregations(aggregations.get(indexedPath.right));
-          columnSet.add(column);
-          aggregationPlan.addColumn(column, index++);
-        }
-      }
-      return;
-    }
+
     RawDataQueryPlan rawDataQueryPlan = (RawDataQueryPlan) queryPlan;
     Set<String> columnSet = new HashSet<>();
     // if it's a last query, no need to sort by device
@@ -636,16 +623,31 @@ public class PhysicalGenerator {
       return;
     }
 
+    // sort path by device
+    List<Pair<Path, Integer>> indexedPaths = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      indexedPaths.add(new Pair<>(paths.get(i), i));
+    }
+    indexedPaths.sort(Comparator.comparing(pair -> pair.left));
+
     int index = 0;
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
-      Path path = indexedPath.left;
-      String column = path.toString();
+      String column;
+      if (queryPlan instanceof AggregationPlan) {
+        column = queryPlan.getAggregations().get(indexedPath.right) + "(" + indexedPath.left.toString() + ")";
+      } else {
+        column = indexedPath.left.toString();
+      }
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypes.get(indexedPath.right);
-        rawDataQueryPlan.addDeduplicatedPaths(path);
+        rawDataQueryPlan.addDeduplicatedPaths(indexedPath.left);
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
-        rawDataQueryPlan.addColumn(column, index++);
+        rawDataQueryPlan.addPathToIndex(column, index++);
+        if (queryPlan instanceof AggregationPlan){
+          ((AggregationPlan) queryPlan)
+              .addDeduplicatedAggregations(queryPlan.getAggregations().get(indexedPath.right));
+        }
       }
     }
   }

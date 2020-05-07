@@ -32,7 +32,7 @@ public class TestMetaGroupMember extends MetaGroupMember {
     for (int i = 0; i < 10; i++) {
       allNodes.add(TestUtils.getNode(i));
     }
-    MetaSingleSnapshotLogManager manager = new MetaSingleSnapshotLogManager(new TestLogApplier());
+    MetaSingleSnapshotLogManager manager = new MetaSingleSnapshotLogManager(new TestLogApplier(), this);
     setLogManager(manager);
   }
 

@@ -23,7 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import javax.activation.UnsupportedDataTypeException;
-import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;

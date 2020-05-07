@@ -22,6 +22,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -99,6 +100,7 @@ public class MManager {
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
+  private ByteBuffer partitionTableBuffer;
 
   private static class MManagerHolder {
 
@@ -852,7 +854,7 @@ public class MManager {
         return ((LeafMNode) leaf).getSchema();
       } else {
         try {
-         return mRemoteSchemaCache
+          return mRemoteSchemaCache
               .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
         } catch (IOException e) {
           throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
@@ -1027,13 +1029,14 @@ public class MManager {
 
   /**
    * get all storageGroups ttl
+   *
    * @return key-> storageGroupName, value->ttl
    */
   public Map<String, Long> getStorageGroupsTTL() {
-    Map<String, Long> storageGroupsTTL  = new HashMap<>();
+    Map<String, Long> storageGroupsTTL = new HashMap<>();
     try {
       List<String> storageGroups = this.getAllStorageGroupNames();
-      for(String storageGroup : storageGroups){
+      for (String storageGroup : storageGroups) {
         long ttl = getStorageGroupNode(storageGroup).getDataTTL();
         storageGroupsTTL.put(storageGroup, ttl);
       }
@@ -1044,8 +1047,8 @@ public class MManager {
   }
 
   /**
-   * Check whether the given path contains a storage group
-   * change or set the new offset of a timeseries
+   * Check whether the given path contains a storage group change or set the new offset of a
+   * timeseries
    *
    * @param path   timeseries
    * @param offset offset in the tag file
@@ -1436,6 +1439,7 @@ public class MManager {
   /**
    * Collect the timeseries schemas under "startingPath". Notice the measurements in the collected
    * MeasurementSchemas are the full path here.
+   *
    * @param startingPath
    * @param timeseriesSchemas
    */

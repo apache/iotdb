@@ -159,7 +159,8 @@ public class LogCatchUpTask implements Runnable {
       request.setPrevLogIndex(logs.get(i).getCurrLogIndex() - 1);
       if (i == 0) {
         try {
-          request.setPrevLogTerm(raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1));
+          request.setPrevLogTerm(
+              raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1));
         } catch (Exception e) {
           logger.error("getTerm failed for newly append entries", e);
         }

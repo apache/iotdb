@@ -65,6 +65,8 @@ public class SessionUT {
         sensor[2] = 2;
         tablet.rowSize = 3;
 
+        session.sortTablet(tablet);
+        
         /*
         After sorting, if the tablet data is sorted according to the timestamps,
         data in tablet will be

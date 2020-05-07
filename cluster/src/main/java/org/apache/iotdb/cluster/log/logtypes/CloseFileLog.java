@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 public class CloseFileLog extends Log {
 

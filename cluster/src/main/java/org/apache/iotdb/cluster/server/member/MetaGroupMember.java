@@ -121,7 +121,6 @@ import org.apache.iotdb.cluster.server.heartbeat.MetaHeartbeatThread;
 import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
-import org.apache.iotdb.cluster.utils.SerializeUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -131,7 +130,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -145,6 +143,7 @@ import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -225,7 +224,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     dataClientPool = new ClientPool(new DataClient.Factory(factory));
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
     LogApplier metaLogApplier = new MetaLogApplier(this);
-    logManager = new MetaSingleSnapshotLogManager(metaLogApplier);
+    logManager = new MetaSingleSnapshotLogManager(metaLogApplier, this);
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
 
@@ -528,6 +527,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private void acceptPartitionTable(ByteBuffer partitionTableBuffer) {
     partitionTable = new SlotPartitionTable(thisNode);
     partitionTable.deserialize(partitionTableBuffer);
+
     savePartitionTable();
     router = new ClusterPlanRouter(partitionTable);
 
@@ -1072,49 +1072,61 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private void applySnapshot(MetaSimpleSnapshot snapshot) {
     synchronized (logManager) {
-      // register all storage groups in the snapshot
-      for (String storageGroup : snapshot.getStorageGroups()) {
-        try {
-          MManager.getInstance().setStorageGroup(storageGroup);
-        } catch (StorageGroupAlreadySetException ignored) {
-          // ignore duplicated storage group
-        } catch (MetadataException e) {
-          logger.error("{}: Cannot add storage group {} in snapshot", name, storageGroup);
-        }
+      // 0. first delete all storage groups
+      try {
+        MManager.getInstance()
+            .deleteStorageGroups(MManager.getInstance().getAllStorageGroupNames());
+      } catch (MetadataException e) {
+        logger.error("{}: first delete all local storage groups failed, errMessage:{}",
+            name,
+            e.getMessage());
       }
 
-      for (Map.Entry<String, Long> entry : snapshot.getStorageGroupTTL().entrySet()) {
+      // 2.  register all storage groups
+      for (Map.Entry<String, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
+        try {
+          MManager.getInstance().setStorageGroup(entry.getKey());
+        } catch (MetadataException e) {
+          logger.error("{}: Cannot add storage group {} in snapshot, errMessage:{}", name,
+              entry.getKey(),
+              e.getMessage());
+        }
+
+        // 3. register ttl in the snapshot
         try {
           MManager.getInstance().setTTL(entry.getKey(), entry.getValue());
           StorageEngine.getInstance().setTTL(entry.getKey(), entry.getValue());
         } catch (MetadataException | StorageEngineException | IOException e) {
           logger
-              .error("{}: Cannot set ttl in storage group {} , error is: {}", name, entry.getKey(),
-                  e);
+              .error("{}: Cannot set ttl in storage group {} , errMessage: {}", name,
+                  entry.getKey(),
+                  e.getMessage());
         }
       }
 
+      // 4. replace all users and roles
       try {
         LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
-        for (Map.Entry<String, Boolean> entry : snapshot.getUserWaterMarkStatus().entrySet()) {
-          try {
-            authorizer.setUserUseWaterMark(entry.getKey(), entry.getValue());
-          } catch (AuthException e) {
-            logger.error("{}: Cannot set user {}, error is: {}", name, entry.getKey(), e);
-          }
+
+        try {
+          authorizer.replaceAllUsers(snapshot.getUserMap());
+        } catch (AuthException e) {
+          logger.error("{}:replace users failed", name, e);
         }
+
+        try {
+          authorizer.replaceAllRoles(snapshot.getRoleMap());
+        } catch (AuthException e) {
+          logger.error("{}:replace roles failed", name, e);
+        }
+
       } catch (AuthException e) {
         logger.error("{}: Cannot get authorizer instance, error is: {}", name, e);
       }
 
-      // apply other logs like node removal and addition
-      for (Log log : snapshot.getSnapshot()) {
-        try {
-          logManager.getApplier().apply(log);
-        } catch (QueryProcessException e) {
-          logger.error("{}: Cannot apply a log {} in snapshot, ignored", name, log, e);
-        }
-      }
+      // 5. accept partition table
+      acceptPartitionTable(snapshot.getPartitionTableBuffer());
+
       logManager.applyingSnapshot(snapshot);
     }
   }

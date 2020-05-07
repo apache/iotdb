@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.utils;
+package org.apache.iotdb.db.utils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -27,6 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -61,6 +62,26 @@ public class SerializeUtils {
     return new String(strBytes);
   }
 
+  public static void serializeStringList(List<String> strs, DataOutputStream dataOutputStream) {
+    try {
+      dataOutputStream.writeInt(strs.size());
+    } catch (IOException e) {
+      // unreachable
+    }
+    for (String str : strs) {
+      serialize(str, dataOutputStream);
+    }
+  }
+
+  public static List<String> deserializeStringList(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    List<String> result = new ArrayList<>(length);
+    for (int i = 0; i < length; i++) {
+      result.add(deserializeString(buffer));
+    }
+    return result;
+  }
+
   public static void serialize(List<Integer> ints, DataOutputStream dataOutputStream) {
     try {
       dataOutputStream.writeInt(ints.size());
@@ -73,6 +94,24 @@ public class SerializeUtils {
   }
 
   public static void deserialize(List<Integer> ints, ByteBuffer buffer) {
+    int length = buffer.getInt();
+    for (int i = 0; i < length; i++) {
+      ints.add(buffer.getInt());
+    }
+  }
+
+  public static void serialize(Set<Integer> ints, DataOutputStream dataOutputStream) {
+    try {
+      dataOutputStream.writeInt(ints.size());
+      for (Integer anInt : ints) {
+        dataOutputStream.writeInt(anInt);
+      }
+    } catch (IOException e) {
+      // unreachable
+    }
+  }
+
+  public static void deserialize(Set<Integer> ints, ByteBuffer buffer) {
     int length = buffer.getInt();
     for (int i = 0; i < length; i++) {
       ints.add(buffer.getInt());
@@ -257,7 +296,8 @@ public class SerializeUtils {
     }
   }
 
-  public static void serializeTVPair(TimeValuePair timeValuePair, DataOutputStream dataOutputStream) {
+  public static void serializeTVPair(TimeValuePair timeValuePair,
+      DataOutputStream dataOutputStream) {
     if (timeValuePair.getValue() == null) {
       return;
     }
