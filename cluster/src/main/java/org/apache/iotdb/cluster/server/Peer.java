@@ -23,6 +23,8 @@ public class Peer {
 
   private long nextIndex;
   private long matchIndex;
+  // only this field will be updated in different thread, as it's value is true or false,
+  // so just adding a volatile is enough to face the concurrency problem
   private volatile boolean isCatchUp;
 
   public Peer(long nextIndex) {

@@ -96,11 +96,10 @@ public class CatchUpTask implements Runnable {
         }
         request.setTerm(raftMember.getTerm().get());
       }
+      request.setPrevLogIndex(log.getCurrLogIndex() - 1);
       if (index > 0) {
-        request.setPrevLogIndex(logs.get(index - 1).getCurrLogIndex());
         request.setPrevLogTerm(logs.get(index - 1).getCurrLogTerm());
       } else {
-        request.setPrevLogIndex(log.getCurrLogIndex() - 1);
         try {
           request.setPrevLogTerm(raftMember.getLogManager().getTerm(log.getCurrLogIndex() - 1));
         } catch (Exception e) {

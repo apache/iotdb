@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -82,14 +83,14 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class RaftMember implements RaftService.AsyncIface {
 
-  ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
+  ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the name of the member, to distinguish several members from the logs
   String name;
-
   // to choose nodes to join cluster request randomly
   Random random = new Random();
+
   protected Node thisNode;
   // the nodes known by this node
   protected volatile List<Node> allNodes;
@@ -108,27 +109,22 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   // the single thread pool that runs the heartbeat thread
   ExecutorService heartBeatService;
-
-  // the thread pool that runs catch-up tasks
-  private ExecutorService catchUpService;
-
-  // lastCatchUpResponseTime records when is the latest response of each node's catch-up. There
-  // should be only one catch-up task for each node to avoid duplication, but the task may
-  // time out and in that case, the next catch up should be enabled.
-  private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
-
-  // the pool that provides reusable clients to connect to other RaftMembers. It will be initialized
-  // according to the implementation of the subclasses
-  private ClientPool clientPool;
-
-  // when the commit progress is updated by a heart beat, this object is notified so that we may
-  // know if this node is synchronized with the leader
-  private Object syncLock = new Object();
-
   // when the header of the group is removed from the cluster, the members of the group should no
   // longer accept writes, but they still can be read candidates for weak consistency reads and
   // provide snapshots for the new holders
   volatile boolean readOnly = false;
+  // the thread pool that runs catch-up tasks
+  private ExecutorService catchUpService;
+  // lastCatchUpResponseTime records when is the latest response of each node's catch-up. There
+  // should be only one catch-up task for each node to avoid duplication, but the task may
+  // time out and in that case, the next catch up should be enabled.
+  private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
+  // the pool that provides reusable clients to connect to other RaftMembers. It will be initialized
+  // according to the implementation of the subclasses
+  private ClientPool clientPool;
+  // when the commit progress is updated by a heart beat, this object is notified so that we may
+  // know if this node is synchronized with the leader
+  private Object syncLock = new Object();
 
   public RaftMember() {
   }
@@ -398,7 +394,96 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
-    //TODO-Cluster#354: implement
+    logger.debug("{} received an AppendEntriesRequest", name);
+
+    // the term checked here is that of the leader, not that of the log
+    if (!checkRequestTerm(request, resultHandler)) {
+      return;
+    }
+
+    try {
+      long response = 0;
+      List<Log> logs = new ArrayList<>();
+      for (ByteBuffer buffer : request.getEntries()) {
+        Log log = LogParser.getINSTANCE().parse(buffer);
+        logs.add(log);
+      }
+
+      response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
+      resultHandler.onComplete(response);
+      logger.debug("{} AppendEntriesRequest of log size {} completed", name,
+          request.getEntries().size());
+    } catch (UnknownLogTypeException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  /**
+   * Find the local previous log of "log". If such log is found, discard all local logs behind it
+   * and append "log" to it. Otherwise report a log mismatch.
+   *
+   * @param logs append logs
+   * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
+   * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
+   */
+  private long appendEntries(long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
+    if (logs.isEmpty()) {
+      return Response.RESPONSE_AGREE;
+    }
+
+    long resp;
+    synchronized (logManager) {
+      resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
+      if (resp != -1) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} append a new log list {}", name, logs);
+        }
+        resp = Response.RESPONSE_AGREE;
+      } else {
+        // the incoming log points to an illegal position, reject it
+        resp = Response.RESPONSE_LOG_MISMATCH;
+      }
+    }
+    return resp;
+  }
+
+  /**
+   * Check the term of the AppendEntryRequest. The term checked is the term of the leader, not the
+   * term of the log. A new leader can still send logs of old leaders.
+   *
+   * @param request
+   * @param resultHandler if the term is illegal, the "resultHandler" will be invoked so the caller
+   *                      does not need to invoke it again
+   * @return true if the term is legal, false otherwise
+   */
+  private boolean checkRequestTerm(AppendEntriesRequest request,
+      AsyncMethodCallback resultHandler) {
+    long leaderTerm = request.getTerm();
+    long localTerm;
+
+    synchronized (term) {
+      // if the request comes before the heartbeat arrives, the local term may be smaller than the
+      // leader term
+      localTerm = term.get();
+      if (leaderTerm < localTerm) {
+        logger.debug("{} rejected the AppendEntriesRequest for term: {}/{}", name, leaderTerm,
+            localTerm);
+        resultHandler.onComplete(localTerm);
+        return false;
+      } else {
+        if (leaderTerm > localTerm) {
+          stepDown(leaderTerm);
+        } else {
+          lastHeartbeatReceivedTime = System.currentTimeMillis();
+        }
+        setLeader(request.getLeader());
+        if (character != NodeCharacter.FOLLOWER) {
+          term.notifyAll();
+        }
+      }
+    }
+    logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
+    return true;
   }
 
   /**
@@ -513,10 +598,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return AppendLogResult.OK;
   }
 
-  enum AppendLogResult {
-    OK, TIME_OUT, LEADERSHIP_STALE
-  }
-
   /**
    * Get an asynchronous thrift client to the given node.
    *
@@ -537,9 +618,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return client;
   }
 
-  public void setThisNode(Node thisNode) {
-    this.thisNode = thisNode;
-    allNodes.add(thisNode);
+  public NodeCharacter getCharacter() {
+    return character;
   }
 
   public void setCharacter(NodeCharacter character) {
@@ -549,32 +629,24 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-  public NodeCharacter getCharacter() {
-    return character;
-  }
-
   public AtomicLong getTerm() {
     return term;
-  }
-
-  public long getLastHeartbeatReceivedTime() {
-    return lastHeartbeatReceivedTime;
-  }
-
-  public Node getLeader() {
-    return leader;
-  }
-
-  public Node getVoteFor() {
-    return voteFor;
   }
 
   public void setTerm(AtomicLong term) {
     this.term = term;
   }
 
+  public long getLastHeartbeatReceivedTime() {
+    return lastHeartbeatReceivedTime;
+  }
+
   public void setLastHeartbeatReceivedTime(long lastHeartbeatReceivedTime) {
     this.lastHeartbeatReceivedTime = lastHeartbeatReceivedTime;
+  }
+
+  public Node getLeader() {
+    return leader;
   }
 
   public void setLeader(Node leader) {
@@ -588,6 +660,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
+  public Node getVoteFor() {
+    return voteFor;
+  }
+
   public void setVoteFor(Node voteFor) {
     if (!Objects.equals(voteFor, this.voteFor)) {
       logger.info("{} has update it's voteFor to {}", getName(), voteFor);
@@ -599,6 +675,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return thisNode;
   }
 
+  public void setThisNode(Node thisNode) {
+    this.thisNode = thisNode;
+    allNodes.add(thisNode);
+  }
+
   public Collection<Node> getAllNodes() {
     return allNodes;
   }
@@ -606,7 +687,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   public Map<Node, Long> getLastCatchUpResponseTime() {
     return lastCatchUpResponseTime;
   }
-
 
   /**
    * Sub-classes will add their own process of HeartBeatResponse in this method.
@@ -624,7 +704,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   public void onElectionWins() {
 
   }
-
 
   /**
    * Sub-classes will add their own process of HeartBeatRequest in this method.
@@ -849,13 +928,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return null;
   }
 
-
   /**
    * Append a log to all followers in the group until half of them accept the log or the leadership
    * is lost.
    *
    * @param log
-   * @param commitIndex
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
   protected boolean appendLogInGroup(Log log) {
@@ -1060,10 +1137,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-  public boolean isReadOnly() {
-    return readOnly;
-  }
-
   public void setAllNodes(List<Node> allNodes) {
     this.allNodes = allNodes;
   }
@@ -1091,5 +1164,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     if (logManager != null) {
       logManager.close();
     }
+  }
+
+  enum AppendLogResult {
+    OK, TIME_OUT, LEADERSHIP_STALE
   }
 }

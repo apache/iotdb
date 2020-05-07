@@ -21,19 +21,21 @@ package org.apache.iotdb.cluster.log.catchup;
 
 import static org.junit.Assert.assertEquals;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestClient;
+import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
-import org.apache.iotdb.cluster.common.TestSnapshot;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
@@ -46,6 +48,7 @@ public class CatchUpTaskTest {
 
   private List<Log> receivedLogs = new ArrayList<>();
   private Snapshot receivedSnapshot;
+  private long leaderCommit;
   private Node header = new Node();
   private boolean testLeadershipFlag;
 
@@ -64,11 +67,13 @@ public class CatchUpTaskTest {
             } catch (Exception e) {
             }
             if (testLog.getCurrLogIndex() == log.getCurrLogIndex() + 1) {
+              leaderCommit = Math.max(request.leaderCommit, leaderCommit);
               receivedLogs.add(testLog);
               resultHandler.onComplete(Response.RESPONSE_AGREE);
               return;
             }
             if (testLog.getCurrLogIndex() == log.getCurrLogIndex()) {
+              leaderCommit = Math.max(request.leaderCommit, leaderCommit);
               resultHandler.onComplete(Response.RESPONSE_AGREE);
               return;
             }
@@ -77,14 +82,17 @@ public class CatchUpTaskTest {
         }
 
         @Override
-        public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+        public void appendEntries(AppendEntriesRequest request,
+            AsyncMethodCallback<Long> resultHandler) {
           new Thread(() -> {
-            receivedSnapshot = new TestSnapshot();
-            receivedSnapshot.deserialize(request.snapshotBytes);
-            if (testLeadershipFlag) {
-              sender.setCharacter(NodeCharacter.ELECTOR);
+            TestLog testLog;
+            for (ByteBuffer byteBuffer : request.getEntries()) {
+              testLog = new TestLog();
+              testLog.deserialize(byteBuffer);
+              receivedLogs.add(testLog);
             }
-            resultHandler.onComplete(null);
+            leaderCommit = Math.max(request.leaderCommit, leaderCommit);
+            resultHandler.onComplete(Response.RESPONSE_AGREE);
           }).start();
         }
       };
@@ -108,7 +116,30 @@ public class CatchUpTaskTest {
   }
 
   @Test
-  public void testCatchUp() {
+  public void testCatchUpSingle() {
+    List<Log> logList = new ArrayList<>();
+    for (int i = 0; i < 10; i++) {
+      Log log = new EmptyContentLog();
+      log.setCurrLogIndex(i);
+      log.setCurrLogTerm(i);
+      logList.add(log);
+    }
+    sender.getLogManager().append(logList);
+    sender.getLogManager().commitTo(9);
+    Node receiver = new Node();
+    sender.setCharacter(NodeCharacter.LEADER);
+    Peer peer = new Peer(10);
+    peer.setCatchUp(false);
+    CatchUpTask task = new CatchUpTask(receiver, peer, sender);
+    ClusterDescriptor.getInstance().getConfig().setUseBatchInLogCatchUp(false);
+    task.run();
+
+    assertEquals(logList, receivedLogs);
+    assertEquals(9, leaderCommit);
+  }
+
+  @Test
+  public void testCatchUpBatch() {
     List<Log> logList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Log log = new EmptyContentLog();
@@ -126,5 +157,6 @@ public class CatchUpTaskTest {
     task.run();
 
     assertEquals(logList, receivedLogs);
+    assertEquals(9, leaderCommit);
   }
 }
