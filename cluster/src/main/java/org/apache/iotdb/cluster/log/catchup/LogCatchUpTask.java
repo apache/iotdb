@@ -84,11 +84,7 @@ public class LogCatchUpTask implements Runnable {
       request.setHeader(raftMember.getHeader());
     }
     request.setLeader(raftMember.getThisNode());
-    long commitIndex;
-    synchronized (raftMember.getLogManager()) {
-      commitIndex = raftMember.getLogManager().getCommitLogIndex();
-    }
-    request.setLeaderCommit(commitIndex);
+    request.setLeaderCommit(raftMember.getLogManager().getCommitLogIndex());
 
     for (int i = 0; i < logs.size() && !abort; i++) {
       Log log = logs.get(i);
@@ -101,10 +97,14 @@ public class LogCatchUpTask implements Runnable {
         request.setTerm(raftMember.getTerm().get());
       }
       request.setPrevLogIndex(log.getCurrLogIndex() - 1);
-      try {
-        request.setPrevLogTerm(raftMember.getLogManager().getTerm(log.getCurrLogIndex() - 1));
-      } catch (Exception e) {
-        logger.error("getTerm failed for newly append entries", e);
+      if (i == 0) {
+        try {
+          request.setPrevLogTerm(raftMember.getLogManager().getTerm(log.getCurrLogIndex() - 1));
+        } catch (Exception e) {
+          logger.error("getTerm failed for newly append entries", e);
+        }
+      } else {
+        request.setPrevLogTerm(logs.get(i - 1).getCurrLogTerm());
       }
 
       handler.setLog(log);
@@ -136,6 +136,8 @@ public class LogCatchUpTask implements Runnable {
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
+    request.setLeader(raftMember.getThisNode());
+    request.setLeaderCommit(raftMember.getLogManager().getCommitLogIndex());
 
     for (int i = 0; i < logs.size() && !abort; i += LOG_NUM_IN_BATCH) {
       List<ByteBuffer> logList = new ArrayList<>();
@@ -154,18 +156,16 @@ public class LogCatchUpTask implements Runnable {
       handler.setLogs(logList);
       request.setEntries(logList);
       // set index for raft
-      request.setLeader(raftMember.getThisNode());
       request.setPrevLogIndex(logs.get(i).getCurrLogIndex() - 1);
-      long commitIndex;
-      synchronized (raftMember.getLogManager()) {
-        commitIndex = raftMember.getLogManager().getCommitLogIndex();
-      }
-      request.setLeaderCommit(commitIndex);
-      try {
-        request
-            .setPrevLogTerm(raftMember.getLogManager().getTerm(logs.get(i).getCurrLogIndex() - 1));
-      } catch (Exception e) {
-        logger.error("getTerm failed for newly append entries", e);
+      if (i == 0) {
+        try {
+          request.setPrevLogTerm(
+              raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1));
+        } catch (Exception e) {
+          logger.error("getTerm failed for newly append entries", e);
+        }
+      } else {
+        request.setPrevLogTerm(logs.get(i - 1).getCurrLogTerm());
       }
       logger.debug("Catching up {} with log {}", node, logList);
 

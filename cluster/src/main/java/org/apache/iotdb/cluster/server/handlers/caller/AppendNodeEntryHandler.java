@@ -26,15 +26,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.Peer;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * AppendNodeEntryHandler checks if the log is successfully appended by the quorum or some node has
- * rejected it for some reason when one node has finished the AppendEntryRequest.
- * The target of the log is the single nodes, it requires the agreement from the quorum of the nodes
- * to reach consistency.
+ * rejected it for some reason when one node has finished the AppendEntryRequest. The target of the
+ * log is the single nodes, it requires the agreement from the quorum of the nodes to reach
+ * consistency.
  */
 public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
@@ -45,6 +46,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   private AtomicInteger voteCounter;
   private AtomicBoolean leaderShipStale;
   private Node receiver;
+  private Peer peer;
 
   @Override
   public void onComplete(Long response) {
@@ -73,11 +75,12 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
           receiverTerm.set(resp);
         }
         leaderShipStale.set(true);
+        setPeerNotCatchUp();
         voteCounter.notifyAll();
       } else {
         //e.g., Response.RESPONSE_LOG_MISMATCH
-        //But it is impossible that more than quorum nodes return RESPONSE_LOG_MISMATCH.
         logger.debug("The log {} is rejected because: {}", log, resp);
+        setPeerNotCatchUp();
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
       // wait for the heartbeat to handle
@@ -86,6 +89,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception exception) {
+    setPeerNotCatchUp();
     if (exception instanceof ConnectException) {
       logger.debug("Cannot connect to {}: {}", receiver, exception.getMessage());
     } else {
@@ -103,6 +107,14 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   public void setLeaderShipStale(AtomicBoolean leaderShipStale) {
     this.leaderShipStale = leaderShipStale;
+  }
+
+  public void setPeer(Peer peer) {
+    this.peer = peer;
+  }
+
+  private void setPeerNotCatchUp() {
+    peer.setCatchUp(false);
   }
 
   public void setReceiver(Node follower) {

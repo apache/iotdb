@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
 import org.junit.Test;
 
@@ -41,6 +42,7 @@ public class AppendNodeEntryHandlerTest {
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     AtomicInteger quorum = new AtomicInteger(5);
+    Peer peer = new Peer(1);
     synchronized (quorum) {
       for (int i = 0; i < 10; i++) {
         AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
@@ -49,6 +51,7 @@ public class AppendNodeEntryHandlerTest {
         handler.setLog(log);
         handler.setReceiverTerm(receiverTerm);
         handler.setReceiver(TestUtils.getNode(i));
+        handler.setPeer(peer);
         long resp = i < 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
         new Thread(() -> handler.onComplete(resp)).start();
       }
@@ -57,6 +60,7 @@ public class AppendNodeEntryHandlerTest {
     assertEquals(-1, receiverTerm.get());
     assertFalse(leadershipStale.get());
     assertEquals(0, quorum.get());
+    assertFalse(peer.isCatchUp());
   }
 
   @Test
@@ -65,6 +69,7 @@ public class AppendNodeEntryHandlerTest {
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     AtomicInteger quorum = new AtomicInteger(5);
+    Peer peer = new Peer(1);
 
     for (int i = 0; i < 3; i++) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
@@ -73,6 +78,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setLog(log);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(i));
+      handler.setPeer(peer);
       handler.onComplete(Response.RESPONSE_AGREE);
     }
 
@@ -87,6 +93,8 @@ public class AppendNodeEntryHandlerTest {
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     AtomicInteger quorum = new AtomicInteger(5);
+    Peer peer = new Peer(1);
+
     synchronized (quorum) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setLeaderShipStale(leadershipStale);
@@ -94,12 +102,14 @@ public class AppendNodeEntryHandlerTest {
       handler.setLog(log);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));
+      handler.setPeer(peer);
       new Thread(() -> handler.onComplete(100L)).start();
       quorum.wait();
     }
     assertEquals(100, receiverTerm.get());
     assertTrue(leadershipStale.get());
     assertEquals(5, quorum.get());
+    assertFalse(peer.isCatchUp());
   }
 
   @Test
@@ -108,6 +118,7 @@ public class AppendNodeEntryHandlerTest {
     AtomicBoolean leadershipStale = new AtomicBoolean(false);
     Log log = new TestLog();
     AtomicInteger quorum = new AtomicInteger(5);
+    Peer peer = new Peer(1);
 
     AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
     handler.setLeaderShipStale(leadershipStale);
@@ -115,10 +126,12 @@ public class AppendNodeEntryHandlerTest {
     handler.setLog(log);
     handler.setReceiverTerm(receiverTerm);
     handler.setReceiver(TestUtils.getNode(0));
+    handler.setPeer(peer);
     handler.onError(new TestException());
 
     assertEquals(-1, receiverTerm.get());
     assertFalse(leadershipStale.get());
     assertEquals(5, quorum.get());
+    assertFalse(peer.isCatchUp());
   }
 }
