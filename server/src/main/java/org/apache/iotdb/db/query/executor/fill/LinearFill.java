@@ -141,8 +141,7 @@ public class LinearFill extends IFill {
     TimeValuePair result = new TimeValuePair(0, null);
 
     List<AggregateResult> aggregateResultList = new ArrayList<>();
-    AggregateResult minTimeResult =
-        AggregateResultFactory.getAggrResultByName(AggregationType.MIN_TIME.toString(), dataType);
+    AggregateResult minTimeResult = new MinTimeAggrResult(dataType);
     AggregateResult firstValueResult =
         AggregateResultFactory.getAggrResultByName(
             AggregationType.FIRST_VALUE.toString(), dataType);
