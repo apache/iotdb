@@ -23,15 +23,15 @@
 
 ## Bug Fixes
 - IOTDB-531 Fix that JDBC URL does not support domain issue
+- IOTDB-563 Fix pentaho cannot be downloaded because of spring.io address
 - IOTDB-608 Skip error Mlog
 - IOTDB-634 Fix merge caused errors for TsFile storage in HDFS
 - IOTDB-636 Fix Grafana connector does not use correct time unit
-- Fix pentaho cannot be downloaded because of spring.io address
 
 ## Miscellaneous changes
 - IOTDB-528 Modify grafana group by
+- IOTDB-635 Add workaround when doing Aggregation over boolean Series
 - Remove docs of Load External Tsfile
-- Add workaround when doing Aggregation over boolean Series
 - Add Grafana IoTDB Bridge Artifact to distribution in tools/grafana folder
 
 
