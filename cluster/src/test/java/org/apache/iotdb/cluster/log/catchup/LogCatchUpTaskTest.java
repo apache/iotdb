@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.catchup;
 
 import static org.junit.Assert.assertEquals;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.common.TestClient;
@@ -28,6 +29,7 @@ import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -61,6 +63,24 @@ public class LogCatchUpTaskTest {
             resultHandler.onComplete(Response.RESPONSE_AGREE);
           }).start();
         }
+
+        @Override
+        public void appendEntries(AppendEntriesRequest request,
+            AsyncMethodCallback<Long> resultHandler) {
+          new Thread(() -> {
+            TestLog testLog = new TestLog();
+            for (ByteBuffer byteBuffer : request.getEntries()) {
+              testLog = new TestLog();
+              testLog.deserialize(byteBuffer);
+              receivedLogs.add(testLog);
+            }
+
+            if (testLeadershipFlag && testLog.getCurrLogIndex() == 255) {
+              sender.setCharacter(NodeCharacter.ELECTOR);
+            }
+            resultHandler.onComplete(Response.RESPONSE_AGREE);
+          }).start();
+        }
       };
     }
 
@@ -80,7 +100,7 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
     task.run();
 
     assertEquals(logList, receivedLogs);
@@ -93,9 +113,45 @@ public class LogCatchUpTaskTest {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
-    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
+    task.setUseBatch(false);
     task.run();
 
     assertEquals(logList.subList(0, 5), receivedLogs);
+  }
+
+  @Test
+  public void testCatchUpInBatch() {
+    List<Log> logList = TestUtils.prepareTestLogs(10);
+    Node receiver = new Node();
+    sender.setCharacter(NodeCharacter.LEADER);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+    task.run();
+
+    assertEquals(logList, receivedLogs);
+  }
+
+  @Test
+  public void testCatchUpInBatch2() {
+    List<Log> logList = TestUtils.prepareTestLogs(500);
+    Node receiver = new Node();
+    sender.setCharacter(NodeCharacter.LEADER);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+    task.run();
+
+    assertEquals(logList, receivedLogs);
+  }
+
+  @Test
+  public void testLeadershipLostInBatch() {
+    testLeadershipFlag = true;
+    // the leadership will be lost after sending 256 logs
+    List<Log> logList = TestUtils.prepareTestLogs(300);
+    Node receiver = new Node();
+    sender.setCharacter(NodeCharacter.LEADER);
+    LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
+    task.run();
+
+    assertEquals(logList.subList(0, 256), receivedLogs);
   }
 }

@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -52,7 +53,8 @@ abstract class BaseApplier implements LogApplier {
     this.metaGroupMember = metaGroupMember;
   }
 
-  void applyPhysicalPlan(PhysicalPlan plan) throws QueryProcessException {
+  void applyPhysicalPlan(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (plan instanceof InsertPlan) {
       processInsertPlan((InsertPlan) plan);
     } else if (!plan.isQuery()) {
@@ -69,10 +71,11 @@ abstract class BaseApplier implements LogApplier {
     }
   }
 
-  private void processInsertPlan(InsertPlan plan) throws QueryProcessException {
+  private void processInsertPlan(InsertPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     try {
       getQueryExecutor().processNonQuery(plan);
-    } catch (QueryProcessException e) {
+    } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
       if (e.getCause() instanceof PathNotExistException) {
         logger.debug("Timeseries is not found locally, try pulling it from another group: {}",
             e.getCause().getMessage());
@@ -86,7 +89,7 @@ abstract class BaseApplier implements LogApplier {
           throw new QueryProcessException(e1);
         }
         getQueryExecutor().processNonQuery(plan);
-      } else if (e.getCause() instanceof StorageGroupNotSetException) {
+      } else if (e.getCause() instanceof StorageGroupNotSetException || e instanceof StorageGroupNotSetException) {
         metaGroupMember.syncLeader();
         getQueryExecutor().processNonQuery(plan);
       } else {

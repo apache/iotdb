@@ -36,7 +36,9 @@ statement
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
     | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
-    | MERGE #merge //not support yet
+    | MERGE #merge
+    | FLUSH prefixPath? (COMMA prefixPath)* (ID)?#flush //ID is true or false
+    | FULL MERGE #fullMerge
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
@@ -822,6 +824,9 @@ GLOBAL
   | G
   ;
 
+FULL
+    : F U L L
+    ;
 //============================
 // End of the keywords list
 //============================

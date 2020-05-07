@@ -88,11 +88,15 @@ struct AppendEntryRequest {
 // leader -> follower
 struct AppendEntriesRequest {
   1: required long term // leader's
-  2: required list<binary> entries // data
+  2: required Node leader
+  3: required list<binary> entries // data
+  4: required long prevLogIndex
+  5: required long prevLogTerm
+  6: required long leaderCommit
 
   // because a data server may play many data groups members, this is used to identify which
   // member should process the request or response. Only used in data group communication.
-  3: optional Node header
+  7: optional Node header
 }
 
 struct AddNodeResponse {

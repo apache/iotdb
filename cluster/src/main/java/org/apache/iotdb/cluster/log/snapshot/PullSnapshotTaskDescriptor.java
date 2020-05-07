@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.utils.SerializeUtils;
+import org.apache.iotdb.db.utils.SerializeUtils;
 
 /**
  * PullSnapshotTaskDescriptor describes a pull-snapshot-task with the slots to pull, the previous

@@ -51,6 +51,16 @@ public class ClusterConfig {
 
   private int queryTimeoutInSec = 30;
 
+  private boolean useBatchInLogCatchUp = true;
+
+  public boolean isUseBatchInLogCatchUp() {
+    return useBatchInLogCatchUp;
+  }
+
+  public void setUseBatchInLogCatchUp(boolean useBatchInLogCatchUp) {
+    this.useBatchInLogCatchUp = useBatchInLogCatchUp;
+  }
+
   public long getMaxRemovedLogSize() {
     return maxRemovedLogSize;
   }

@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -66,7 +67,8 @@ public class MetaLogApplierTest extends IoTDBTest {
   }
 
   @Test
-  public void testApplyAddNode() throws QueryProcessException {
+  public void testApplyAddNode()
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     nodes.clear();
 
     Node node = new Node("localhost", 1111, 0, 2222);
@@ -78,7 +80,8 @@ public class MetaLogApplierTest extends IoTDBTest {
   }
 
   @Test
-  public void testApplyMetadataCreation() throws QueryProcessException, MetadataException {
+  public void testApplyMetadataCreation()
+      throws QueryProcessException, MetadataException, StorageEngineException {
     PhysicalPlanLog physicalPlanLog = new PhysicalPlanLog();
     SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(new Path("root.applyMeta"));
     physicalPlanLog.setPlan(setStorageGroupPlan);

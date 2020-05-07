@@ -21,12 +21,17 @@ package org.apache.iotdb.cluster.log.manage;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestLogApplier;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
+import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.junit.After;
@@ -41,8 +46,10 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
   @Before
   public void setUp() throws QueryProcessException, StartupException {
     super.setUp();
+    MetaGroupMember metaGroupMember = new MetaGroupMember();
+    metaGroupMember.setPartitionTable(new SlotPartitionTable(new Node()));
     logManager =
-        new MetaSingleSnapshotLogManager(new TestLogApplier());
+        new MetaSingleSnapshotLogManager(new TestLogApplier(), metaGroupMember);
   }
 
   @Override
@@ -61,12 +68,15 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
 
     logManager.takeSnapshot();
     MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();
-    List<String> storageGroups = snapshot.getStorageGroups();
-    assertEquals(10, storageGroups.size());
+    Map<String, Long> storageGroupTTLMap = snapshot.getStorageGroupTTLMap();
+    String[] storageGroups = storageGroupTTLMap.keySet()
+        .toArray(new String[storageGroupTTLMap.size()]);
+    Arrays.sort(storageGroups);
+
+    assertEquals(10, storageGroups.length);
     for (int i = 0; i < 10; i++) {
-      assertEquals(TestUtils.getTestSg(i), storageGroups.get(i));
+      assertEquals(TestUtils.getTestSg(i), storageGroups[i]);
     }
-    assertEquals(testLogs.subList(0, 5), snapshot.getSnapshot());
     assertEquals(4, snapshot.getLastLogIndex());
     assertEquals(4, snapshot.getLastLogTerm());
   }
