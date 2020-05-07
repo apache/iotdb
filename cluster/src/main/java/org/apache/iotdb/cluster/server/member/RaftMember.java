@@ -48,9 +48,7 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
-import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.catchup.LogCatchUpTask;
-import org.apache.iotdb.cluster.log.catchup.SnapshotCatchUpTask;
+import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
@@ -63,6 +61,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
@@ -85,14 +84,18 @@ import org.slf4j.LoggerFactory;
 public abstract class RaftMember implements RaftService.AsyncIface {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
-  protected Node thisNode;
-  // the nodes known by this node
-  protected volatile List<Node> allNodes;
+
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the name of the member, to distinguish several members from the logs
   String name;
   // to choose nodes to join cluster request randomly
   Random random = new Random();
+
+  protected Node thisNode;
+  // the nodes known by this node
+  protected volatile List<Node> allNodes;
+  protected volatile Map<Node, Peer> peerMap;
+
   // the current term of the node, this object also works as lock of some transactions of the
   // member like elections
   AtomicLong term = new AtomicLong(0);
@@ -151,14 +154,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   public RaftLogManager getLogManager() {
     return logManager;
-  }
-
-  @TestOnly
-  public void setLogManager(RaftLogManager logManager) {
-    if (this.logManager != null) {
-      this.logManager.close();
-    }
-    this.logManager = logManager;
   }
 
   /**
@@ -500,11 +495,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    *                       0, half of the cluster size will be used.
    * @return an AppendLogResult
    */
-  protected AppendLogResult sendLogToFollowers(Log log, long commitIndex, int requiredQuorum) {
+  protected AppendLogResult sendLogToFollowers(Log log, int requiredQuorum) {
     if (requiredQuorum <= 0) {
-      return sendLogToFollowers(log, commitIndex, new AtomicInteger(allNodes.size() / 2));
+      return sendLogToFollowers(log, new AtomicInteger(allNodes.size() / 2));
     } else {
-      return sendLogToFollowers(log, commitIndex, new AtomicInteger(requiredQuorum));
+      return sendLogToFollowers(log, new AtomicInteger(requiredQuorum));
     }
   }
 
@@ -518,7 +513,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param voteCounter a decreasing vote counter
    * @return an AppendLogResult indicating a success or a failure and why
    */
-  private AppendLogResult sendLogToFollowers(Log log, long commitIndex, AtomicInteger voteCounter) {
+  private AppendLogResult sendLogToFollowers(Log log, AtomicInteger voteCounter) {
     if (allNodes.size() == 1) {
       // single node group, does not need the agreement of others
       return AppendLogResult.OK;
@@ -533,7 +528,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     request.setTerm(term.get());
     request.setEntry(log.serialize());
     request.setLeader(getThisNode());
-    request.setLeaderCommit(commitIndex);
+    // don't need lock because even it's larger than the commitIndex when appending this log to logManager,
+    // the follower can handle the larger commitIndex with no effect
+    request.setLeaderCommit(logManager.getCommitLogIndex());
     request.setPrevLogIndex(log.getCurrLogIndex() - 1);
     try {
       request.setPrevLogTerm(logManager.getTerm(log.getCurrLogIndex() - 1));
@@ -550,6 +547,15 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       synchronized (allNodes) {
         for (Node node : allNodes) {
           if (node.equals(thisNode)) {
+            continue;
+          }
+          if (!peerMap.containsKey(node)) {
+            logger.warn("{}'s peerMap lost the info of node {}, created a new peer for using", name,
+                node);
+            peerMap.put(node, new Peer(logManager.getLastLogIndex()));
+          }
+          if (!peerMap.get(node).isCatchUp()) {
+            logger.warn("{} can't append log to node {} because it needs catchUp", name, node);
             continue;
           }
           AsyncClient client = connectNode(node);
@@ -678,10 +684,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return allNodes;
   }
 
-  public void setAllNodes(List<Node> allNodes) {
-    this.allNodes = allNodes;
-  }
-
   public Map<Node, Long> getLastCatchUpResponseTime() {
     return lastCatchUpResponseTime;
   }
@@ -800,7 +802,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param followerLastLogIndex
    */
   public void catchUp(Node follower, long followerLastLogIndex) {
-    // TODO-Cluster: use lastMatchLogIndex instead of lastLogIndex
     // for one follower, there is at most one ongoing catch-up
     synchronized (follower) {
       // check if the last catch-up is still ongoing
@@ -814,46 +815,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         lastCatchUpResponseTime.put(follower, System.currentTimeMillis());
       }
     }
-    if (followerLastLogIndex == -1) {
-      // if the follower does not have any logs, send from the first one
-      followerLastLogIndex = 0;
-    }
 
     AsyncClient client = connectNode(follower);
     if (client != null) {
-      List<Log> logs = null;
-      boolean allLogsValid;
-      Snapshot snapshot = null;
-      synchronized (logManager) {
-        // check if the very first log has been snapshot
-        allLogsValid = logManager.logValid(followerLastLogIndex);
-        if (!allLogsValid) {
-          // if the first log has been snapshot, the snapshot should also be sent to the
-          // follower, otherwise some data will be missing
-          snapshot = logManager.getSnapshot();
-          try {
-            logs = logManager.getEntries(logManager.getFirstIndex(), Long.MAX_VALUE);
-          } catch (Exception e) {
-            logger.error("Unexpected error: ", e);
-          }
-        } else {
-          try {
-            logs = logManager.getEntries(followerLastLogIndex, Long.MAX_VALUE);
-          } catch (Exception e) {
-            logger.error("Unexpected error: ", e);
-          }
-        }
-      }
-
-      if (allLogsValid) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} makes {} catch up with {} cached logs", name, follower, logs.size());
-        }
-        catchUpService.submit(new LogCatchUpTask(logs, follower, this));
-      } else {
-        logger.debug("{}: Logs in {} are too old, catch up with snapshot", name, follower);
-        catchUpService.submit(new SnapshotCatchUpTask(logs, snapshot, follower, this));
-      }
+      catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this));
     } else {
       lastCatchUpResponseTime.remove(follower);
       logger.warn("{}: Catch-up failed: node {} is currently unavailable", name, follower);
@@ -947,7 +912,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
-    long commitIndex;
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setPreviousLogIndex(logManager.getLastLogIndex());
@@ -956,11 +920,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
       log.setPlan(plan);
       logManager.append(log);
-
-      commitIndex = logManager.getCommitLogIndex();
     }
 
-    if (appendLogInGroup(log, commitIndex)) {
+    if (appendLogInGroup(log)) {
       return StatusUtils.OK;
     }
     return null;
@@ -971,15 +933,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * is lost.
    *
    * @param log
-   * @param commitIndex
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
-  protected boolean appendLogInGroup(Log log, long commitIndex) {
+  protected boolean appendLogInGroup(Log log) {
     int retryTime = 0;
     retry:
     while (true) {
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
-      AppendLogResult result = sendLogToFollowers(log, commitIndex, allNodes.size() / 2);
+      AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
       switch (result) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
@@ -1176,8 +1137,27 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-  public boolean isReadOnly() {
-    return readOnly;
+  public void setAllNodes(List<Node> allNodes) {
+    this.allNodes = allNodes;
+  }
+
+  public void initPeerMap() {
+    peerMap = new ConcurrentHashMap<>();
+    for (Node entry : allNodes) {
+      peerMap.computeIfAbsent(entry, k -> new Peer(logManager.getLastLogIndex()));
+    }
+  }
+
+  public Map<Node, Peer> getPeerMap() {
+    return peerMap;
+  }
+
+  @TestOnly
+  public void setLogManager(RaftLogManager logManager) {
+    if (this.logManager != null) {
+      this.logManager.close();
+    }
+    this.logManager = logManager;
   }
 
   public void closeLogManager() {
