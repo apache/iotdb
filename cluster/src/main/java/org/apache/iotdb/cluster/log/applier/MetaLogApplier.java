@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
@@ -46,7 +47,8 @@ public class MetaLogApplier extends BaseApplier {
   }
 
   @Override
-  public void apply(Log log) throws QueryProcessException {
+  public void apply(Log log)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     logger.debug("Applying {}", log);
     if (log instanceof AddNodeLog) {
       AddNodeLog addNodeLog = (AddNodeLog) log;

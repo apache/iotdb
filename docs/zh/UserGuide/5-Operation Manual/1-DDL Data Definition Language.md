@@ -281,9 +281,33 @@ IoTDB> set ttl to root.ln 3600000
 ## 取消 TTL
 
 取消TTL的SQL语句如下所示：
+
 ```
 IoTDB> unset ttl to root.ln
 ```
+
 取消设置TTL后，存储组`root.ln`中所有的数据都会被保存。
+
+## FLUSH
+
+将指定存储组的内存缓存区Memory Table的数据持久化到磁盘上，并将数据文件封口。
+
+```
+IoTDB> FLUSH 
+IoTDB> FLUSH root.ln
+IoTDB> FLUSH root.sg1,root.sg2
+```
+
+## MERGE
+
+合并顺序和乱序数据。当前IoTDB支持使用如下两种SQL手动触发数据文件的合并：
+
+* `MERGE` 仅重写重复的Chunk，整理速度快，但是最终磁盘会存在多余数据。
+* `FULL MERGE` 将需要合并的顺序和乱序文件的所有数据都重新写一份，整理速度慢，最终磁盘将不存在无用的数据。
+
+```
+IoTDB> MERGE
+IoTDB> FULL MERGE
+```
 
 

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.log;
 
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
 /**
@@ -26,5 +28,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
  */
 public interface LogApplier {
 
-  void apply(Log log) throws QueryProcessException;
+  void apply(Log log)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
 }

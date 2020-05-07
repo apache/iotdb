@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -33,7 +34,8 @@ public class TestLogApplier implements LogApplier {
   private PlanExecutor planExecutor;
 
   @Override
-  public void apply(Log log) throws QueryProcessException {
+  public void apply(Log log)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       getPlanExecutor().processNonQuery(physicalPlanLog.getPlan());

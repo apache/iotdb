@@ -156,7 +156,8 @@ public class DataLogApplierTest extends IoTDBTest {
   }
 
   @Test
-  public void testApplyCloseFile() throws StorageEngineException, QueryProcessException {
+  public void testApplyCloseFile()
+      throws StorageEngineException, QueryProcessException, StorageGroupNotSetException {
     StorageGroupProcessor storageGroupProcessor =
         StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
     TestCase.assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());

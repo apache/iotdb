@@ -689,7 +689,7 @@ public class Session {
     return true;
   }
 
-  private void sortTablet(Tablet tablet) {
+  public void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
