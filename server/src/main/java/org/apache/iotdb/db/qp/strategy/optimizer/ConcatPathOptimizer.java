@@ -105,7 +105,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
                             + " For more details please refer to the SQL document.");
           }
         }
-        // GROUP_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
+        // ALIGN_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
         // i.e., PhysicalGenerator.transformQuery
       }
     }
