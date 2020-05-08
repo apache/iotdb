@@ -603,7 +603,7 @@ public class IoTDBSessionIT {
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = session
         .executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
-    sessionDataSet.setBatchSize(1024);
+    sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
       count++;
@@ -622,7 +622,7 @@ public class IoTDBSessionIT {
       throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement(
         "select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
-    sessionDataSet.setBatchSize(1024);
+    sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
       count++;
@@ -705,7 +705,7 @@ public class IoTDBSessionIT {
 
   private void query4() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d2");
-    sessionDataSet.setBatchSize(1024);
+    sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
       long index = 1;
@@ -722,7 +722,7 @@ public class IoTDBSessionIT {
 
   private void query3() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d1");
-    sessionDataSet.setBatchSize(1024);
+    sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
       long index = 1;
