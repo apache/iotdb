@@ -390,83 +390,229 @@ For Linux or MacOs:
 
 - Note that if `<path of the file for saving the output result>` is not set, the default path "TsFile_sketch_view.txt" will be used. 
 
-An example on Windows:
+An example on macOS:
 
 ```$xslt
-D:\incubator-iotdb\server\target\iotdb-server-0.10.0\tools\tsfileToolSet>.\print-tsfile-sketch.bat D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
+/incubator-iotdb/server/target/iotdb-server-0.10.0/tools/tsfileToolSet$ ./print-tsfile-sketch.sh test.tsfile
 ​````````````````````````
 Starting Printing the TsFile Sketch
 ​````````````````````````
-TsFile path:D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
-Sketch save path:TsFile_sketch_view.txt
+TsFile path:test.tsfile
 -------------------------------- TsFile Sketch --------------------------------
-file path: D:\data\data\sequence\root.vehicle\1572496142067-101-0.tsfile
-file length: 187382
+file path: test.tsfile
+file length: 33436
 
-            POSITION|   CONTENT
-            --------    -------
-                   0|   [magic head] TsFile
-                   6|   [version number] 000001
-|||||||||||||||||||||   [Chunk Group] of root.vehicle.d0 begins at pos 12, ends at pos 186469, version:102, num of Chunks:6
-                  12|   [Chunk] of s3, numOfPoints:10600, time range:[3000,13599], tsDataType:TEXT,
-                        TsDigest:[min_value:A,max_value:E,first_value:A,last_value:E,sum_value:0.0]
-                    |           [marker] 1
-                    |           [ChunkHeader]
-                    |           11 pages
-               55718|   [Chunk] of s4, numOfPoints:10600, time range:[3000,13599], tsDataType:BOOLEAN,
-                        TsDigest:[min_value:false,max_value:true,first_value:true,last_value:false,sum_value:0.0]
-                    |           [marker] 1
-                    |           [ChunkHeader]
-                    |           11 pages
-               68848|   [Chunk] of s5, numOfPoints:10600, time range:[3000,13599], tsDataType:DOUBLE,
-                        TsDigest:[min_value:3000.0,max_value:13599.0,first_value:3000.0,last_value:13599.0,sum_value:8.79747E7]
-                    |           [marker] 1
-                    |           [ChunkHeader]
-                    |           11 pages
-               98474|   [Chunk] of s0, numOfPoints:21900, time range:[3000,100999], tsDataType:INT32,
-                        TsDigest:[min_value:0,max_value:99,first_value:0,last_value:19,sum_value:889750.0]
-                    |           [marker] 1
-                    |           [ChunkHeader]
-                    |           22 pages
-              123369|   [Chunk] of s1, numOfPoints:21900, time range:[3000,100999], tsDataType:INT64,
-                        TsDigest:[min_value:0,max_value:39,first_value:8,last_value:19,sum_value:300386.0]
-                    |           [marker] 1
-                    |           [ChunkHeader]
-                    |           22 pages
-              144741|   [Chunk] of s2, numOfPoints:21900, time range:[3000,100999], tsDataType:FLOAT,
-                        TsDigest:[min_value:0.0,max_value:122.0,first_value:8.0,last_value:52.0,sum_value:778581.0]
-                    |           [marker] 1
-                    |           [ChunkHeader]
-                    |           22 pages
-              186437|   [Chunk Group Footer]
-                    |           [marker] 0
-                    |           [deviceID] root.vehicle.d0
-                    |           [dataSize] 186425
-                    |           [num of chunks] 6
-|||||||||||||||||||||   [Chunk Group] of root.vehicle.d0 ends
-              186469|   [marker] 2
-              186470|   [TsDeviceMetadata] of root.vehicle.d0, startTime:3000, endTime:100999
-                    |           [startTime] 3000tfi
-                    |           [endTime] 100999
-                    |           [num of ChunkGroupMetaData] 1
-                    |           1 ChunkGroupMetaData
-              187133|   [TsFileMetaData]
-                    |           [num of devices] 1
-                    |           1 key&TsDeviceMetadataIndex
-                    |           [num of measurements] 6
-                    |           6 key&measurementSchema
-                    |           [createBy isNotNull] false
-                    |           [totalChunkNum] 6
-                    |           [invalidChunkNum] 0
-                    |           [bloom filter bit vector byte array length] 31
-                    |           [bloom filter bit vector byte array]
-                    |           [bloom filter number of bits] 256
-                    |           [bloom filter number of hash functions] 5
-              187372|   [TsFileMetaDataSize] 239
-              187376|   [magic tail] TsFile
-              187382|   END of TsFile
+            POSITION|	CONTENT
+            -------- 	-------
+                   0|	[magic head] TsFile
+                   6|	[version number] 000002
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d2, num of Chunks:3
+                  12|	[Chunk] of s_INT64e_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:INT64, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		2 pages
+                 677|	[Chunk] of s_INT64e_TS_2DIFF, numOfPoints:10000, time range:[1,10000], tsDataType:INT64, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+                1349|	[Chunk] of s_INT64e_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:INT64, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		2 pages
+                5766|	[Chunk Group Footer]
+                    |		[marker] 0
+                    |		[deviceID] root.group_12.d2
+                    |		[dataSize] 5754
+                    |		[num of chunks] 3
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d2 ends
+                5799|	[Version Info pair]
+                    |		[marker] 3
+                    |		[offset] 5808
+                    |		[version] 102
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d1, num of Chunks:3
+                5808|	[Chunk] of s_INT32e_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:INT32, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+                8231|	[Chunk] of s_INT32e_TS_2DIFF, numOfPoints:10000, time range:[1,10000], tsDataType:INT32, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+                8852|	[Chunk] of s_INT32e_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:INT32, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+                9399|	[Chunk Group Footer]
+                    |		[marker] 0
+                    |		[deviceID] root.group_12.d1
+                    |		[dataSize] 3591
+                    |		[num of chunks] 3
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d1 ends
+                9432|	[Version Info pair]
+                    |		[marker] 3
+                    |		[offset] 9441
+                    |		[version] 102
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d0, num of Chunks:2
+                9441|	[Chunk] of s_BOOLEANe_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:BOOLEAN, 
+                     	startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+                9968|	[Chunk] of s_BOOLEANe_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:BOOLEAN, 
+                     	startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+               10961|	[Chunk Group Footer]
+                    |		[marker] 0
+                    |		[deviceID] root.group_12.d0
+                    |		[dataSize] 1520
+                    |		[num of chunks] 2
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d0 ends
+               10994|	[Version Info pair]
+                    |		[marker] 3
+                    |		[offset] 11003
+                    |		[version] 102
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d5, num of Chunks:1
+               11003|	[Chunk] of s_TEXTe_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:TEXT, 
+                     	startTime: 1 endTime: 10000 count: 10000 [firstValue:version_test,lastValue:version_test]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		3 pages
+               19278|	[Chunk Group Footer]
+                    |		[marker] 0
+                    |		[deviceID] root.group_12.d5
+                    |		[dataSize] 8275
+                    |		[num of chunks] 1
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d5 ends
+               19311|	[Version Info pair]
+                    |		[marker] 3
+                    |		[offset] 19320
+                    |		[version] 102
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d4, num of Chunks:4
+               19320|	[Chunk] of s_DOUBLEe_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:DOUBLE, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00000000123]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		2 pages
+               23740|	[Chunk] of s_DOUBLEe_TS_2DIFF, numOfPoints:10000, time range:[1,10000], tsDataType:DOUBLE, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+               24414|	[Chunk] of s_DOUBLEe_GORILLA, numOfPoints:10000, time range:[1,10000], tsDataType:DOUBLE, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+               25054|	[Chunk] of s_DOUBLEe_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:DOUBLE, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000001224]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		2 pages
+               25717|	[Chunk Group Footer]
+                    |		[marker] 0
+                    |		[deviceID] root.group_12.d4
+                    |		[dataSize] 6397
+                    |		[num of chunks] 4
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d4 ends
+               25750|	[Version Info pair]
+                    |		[marker] 3
+                    |		[offset] 25759
+                    |		[version] 102
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d3, num of Chunks:4
+               25759|	[Chunk] of s_FLOATe_GORILLA, numOfPoints:10000, time range:[1,10000], tsDataType:FLOAT, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+               26375|	[Chunk] of s_FLOATe_PLAIN, numOfPoints:10000, time range:[1,10000], tsDataType:FLOAT, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+               28796|	[Chunk] of s_FLOATe_RLE, numOfPoints:10000, time range:[1,10000], tsDataType:FLOAT, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+               29343|	[Chunk] of s_FLOATe_TS_2DIFF, numOfPoints:10000, time range:[1,10000], tsDataType:FLOAT, 
+                     	startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]
+                    |		[marker] 1
+                    |		[ChunkHeader]
+                    |		1 pages
+               29967|	[Chunk Group Footer]
+                    |		[marker] 0
+                    |		[deviceID] root.group_12.d3
+                    |		[dataSize] 4208
+                    |		[num of chunks] 4
+|||||||||||||||||||||	[Chunk Group] of root.group_12.d3 ends
+               30000|	[Version Info pair]
+                    |		[marker] 3
+                    |		[offset] 30009
+                    |		[version] 102
+               30009|	[marker] 2
+               30010|	[ChunkMetadataList] of root.group_12.d0.s_BOOLEANe_PLAIN, tsDataType:BOOLEAN
+                    |	[startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]] 
+               30066|	[ChunkMetadataList] of root.group_12.d0.s_BOOLEANe_RLE, tsDataType:BOOLEAN
+                    |	[startTime: 1 endTime: 10000 count: 10000 [firstValue:true,lastValue:true]] 
+               30120|	[ChunkMetadataList] of root.group_12.d1.s_INT32e_PLAIN, tsDataType:INT32
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
+               30196|	[ChunkMetadataList] of root.group_12.d1.s_INT32e_RLE, tsDataType:INT32
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
+               30270|	[ChunkMetadataList] of root.group_12.d1.s_INT32e_TS_2DIFF, tsDataType:INT32
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
+               30349|	[ChunkMetadataList] of root.group_12.d2.s_INT64e_PLAIN, tsDataType:INT64
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
+               30441|	[ChunkMetadataList] of root.group_12.d2.s_INT64e_RLE, tsDataType:INT64
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
+               30531|	[ChunkMetadataList] of root.group_12.d2.s_INT64e_TS_2DIFF, tsDataType:INT64
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1,maxValue:1,firstValue:1,lastValue:1,sumValue:10000.0]] 
+               30626|	[ChunkMetadataList] of root.group_12.d3.s_FLOATe_GORILLA, tsDataType:FLOAT
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
+               30704|	[ChunkMetadataList] of root.group_12.d3.s_FLOATe_PLAIN, tsDataType:FLOAT
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
+               30780|	[ChunkMetadataList] of root.group_12.d3.s_FLOATe_RLE, tsDataType:FLOAT
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
+               30854|	[ChunkMetadataList] of root.group_12.d3.s_FLOATe_TS_2DIFF, tsDataType:FLOAT
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00023841858]] 
+               30933|	[ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_GORILLA, tsDataType:DOUBLE
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]] 
+               31028|	[ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_PLAIN, tsDataType:DOUBLE
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.00000000123]] 
+               31121|	[ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_RLE, tsDataType:DOUBLE
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000001224]] 
+               31212|	[ChunkMetadataList] of root.group_12.d4.s_DOUBLEe_TS_2DIFF, tsDataType:DOUBLE
+                    |	[startTime: 1 endTime: 10000 count: 10000 [minValue:1.1,maxValue:1.1,firstValue:1.1,lastValue:1.1,sumValue:11000.000000002045]] 
+               31308|	[ChunkMetadataList] of root.group_12.d5.s_TEXTe_PLAIN, tsDataType:TEXT
+                    |	[startTime: 1 endTime: 10000 count: 10000 [firstValue:version_test,lastValue:version_test]] 
+               32840|	[MetadataIndex] of root.group_12.d0
+               32881|	[MetadataIndex] of root.group_12.d1
+               32920|	[MetadataIndex] of root.group_12.d2
+               32959|	[MetadataIndex] of root.group_12.d3
+               33000|	[MetadataIndex] of root.group_12.d4
+               33042|	[MetadataIndex] of root.group_12.d5
+               33080|	[TsFileMetadata]
+                    |		[num of devices] 6
+                    |		6 key&TsMetadataIndex
+                    |		[totalChunkNum] 17
+                    |		[invalidChunkNum] 0
+                    |		[bloom filter bit vector byte array length] 32
+                    |		[bloom filter bit vector byte array] 
+                    |		[bloom filter number of bits] 256
+                    |		[bloom filter number of hash functions] 5
+               33426|	[TsFileMetadataSize] 346
+               33430|	[magic tail] TsFile
+               33436|	END of TsFile
 
 ---------------------------------- TsFile Sketch End ----------------------------------
+
 ````````````````````````
 
 #### 1.3.4 TsFileSequenceRead
