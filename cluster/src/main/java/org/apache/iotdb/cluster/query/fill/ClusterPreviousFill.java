@@ -19,20 +19,20 @@
 
 package org.apache.iotdb.cluster.query.fill;
 
-import java.io.IOException;
 import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClusterPreviousFill extends PreviousFill {
 
+  private static final Logger logger = LoggerFactory.getLogger(ClusterPreviousFill.class);
   private MetaGroupMember metaGroupMember;
   private TimeValuePair fillResult;
 
@@ -43,11 +43,13 @@ public class ClusterPreviousFill extends PreviousFill {
 
   @Override
   public void configureFill(Path path, TSDataType dataType, long queryTime, Set<String> deviceMeasurements,
-      QueryContext context) throws StorageEngineException, QueryProcessException {
-    super.configureFill(path, dataType, queryTime, deviceMeasurements, context);
-    Filter timeFilter = constructFilter();
-    fillResult = metaGroupMember.performPreviousFill(path, dataType, queryTime, getBeforeRange(),
-        deviceMeasurements, context, timeFilter);
+      QueryContext context)  {
+    try {
+      fillResult = metaGroupMember.performPreviousFill(path, dataType, queryTime, getBeforeRange(),
+          deviceMeasurements, context);
+    } catch (StorageEngineException e) {
+      logger.error("Failed to configure previous fill for Path {}", path, e);
+    }
   }
 
   @Override

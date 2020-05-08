@@ -19,14 +19,15 @@
 
 package org.apache.iotdb.cluster.query.fill;
 
-import java.util.Set;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.fill.LinearFill;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 /**
  * ClusterLinearFill overrides the dataReader in LinearFill so that it can read data from the
@@ -35,6 +36,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 public class ClusterLinearFill extends LinearFill {
 
   private MetaGroupMember metaGroupMember;
+  private static final List<String> AGGREGATION_NAMES = Arrays.asList(SQLConstant.MIN_TIME,
+      SQLConstant.FIRST_VALUE);
 
   public ClusterLinearFill(LinearFill fill, MetaGroupMember metaGroupMember) {
     super(fill.getDataType(), fill.getQueryTime(), fill.getBeforeRange(), fill.getAfterRange());
@@ -42,12 +45,32 @@ public class ClusterLinearFill extends LinearFill {
   }
 
   @Override
-  public void configureFill(Path path, TSDataType dataType, long queryTime, Set<String> deviceMeasurements,
-      QueryContext context) throws StorageEngineException {
-    this.dataType = dataType;
-    this.queryTime = queryTime;
-    Filter timeFilter = constructFilter();
-    dataReader = metaGroupMember.getSeriesReader(path, deviceMeasurements, dataType, timeFilter,
-        null, context);
+  protected TimeValuePair calculatePrecedingPoint()
+      throws StorageEngineException {
+    // calculate the preceding point can be viewed as a previous fill
+    return metaGroupMember.performPreviousFill(seriesPath, dataType, queryTime, beforeRange,
+        deviceMeasurements, context);
+  }
+
+  @Override
+  protected TimeValuePair calculateSucceedingPoint()
+      throws StorageEngineException {
+    TimeValuePair result = new TimeValuePair(0, null);
+
+    List<AggregateResult> aggregateResult = metaGroupMember
+        .getAggregateResult(seriesPath, deviceMeasurements, AGGREGATION_NAMES,
+            dataType, afterFilter, context);
+    AggregateResult minTimeResult = aggregateResult.get(0);
+    AggregateResult firstValueResult = aggregateResult.get(1);
+
+    if (minTimeResult.getResult() != null) {
+      long timestamp = (long)(minTimeResult.getResult());
+      result.setTimestamp(timestamp);
+    }
+    if (firstValueResult.getResult() != null) {
+      Object value = firstValueResult.getResult();
+      result.setValue(TsPrimitiveType.getByType(dataType, value));
+    }
+    return result;
   }
 }

@@ -401,6 +401,9 @@ Detailed descriptions of all parameters are given in Table 3-5.
 |before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
 </center>
 
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the linear fill value.
+Otherwise, if there is no valid fill value in either range [T-before_range，T] or [T, T + after_range], linear fill method will return null.
+
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
 
 ```

@@ -208,6 +208,9 @@ public class PartitionUtils {
     return Intervals.ALL_INTERVAL;
   }
 
+  /**
+   * All intervals are closed.
+   */
   public static class Intervals extends ArrayList<Long> {
 
     public static final Intervals ALL_INTERVAL = new Intervals(Long.MIN_VALUE,

@@ -37,6 +37,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1790,8 +1791,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private List<PartitionGroup> routeFilter(Filter filter, Path path) throws
       StorageEngineException {
-    List<PartitionGroup> partitionGroups = new ArrayList<>();
     Intervals intervals = PartitionUtils.extractTimeInterval(filter);
+    return routeIntervals(intervals, path);
+  }
+
+  private List<PartitionGroup> routeIntervals(Intervals intervals, Path path)
+      throws StorageEngineException {
+    List<PartitionGroup> partitionGroups = new ArrayList<>();
     long firstLB = intervals.getLowerBound(0);
     long lastUB = intervals.getUpperBound(intervals.getIntervalSize() - 1);
 
@@ -2569,13 +2575,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
 
   public TimeValuePair performPreviousFill(Path path, TSDataType dataType, long queryTime,
-      long beforeRange,
-      Set<String> deviceMeasurements, QueryContext context, Filter timeFilter)
+      long beforeRange, Set<String> deviceMeasurements, QueryContext context)
       throws StorageEngineException {
     // make sure the partition table is new
     syncLeader();
-    // find the groups that should be queried using the timeFilter
-    List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
+    // find the groups that should be queried using the time range
+    Intervals intervals = new Intervals();
+    long lowerBound = beforeRange == -1 ? Long.MIN_VALUE : queryTime - beforeRange;
+    intervals.addInterval(lowerBound, queryTime);
+    List<PartitionGroup> partitionGroups = routeIntervals(intervals, path);
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Sending data query of {} to {} groups", name, path,
           partitionGroups.size());

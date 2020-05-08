@@ -56,6 +56,7 @@ import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.VersionUtils;
@@ -260,6 +261,16 @@ public class TsFileSequenceReader implements AutoCloseable {
       tsFileMetaData = TsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
     }
     return tsFileMetaData;
+  }
+
+  /**
+   * this function does not modify the position of the file reader.
+   *
+   * @throws IOException io error
+   */
+  public BloomFilter readBloomFilter() throws IOException {
+    readFileMetadata();
+    return tsFileMetaData.getBloomFilter();
   }
 
   /**
