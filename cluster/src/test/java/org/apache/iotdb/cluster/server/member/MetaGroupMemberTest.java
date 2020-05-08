@@ -70,6 +70,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.DataClusterServer;
+import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -392,10 +393,19 @@ public class MetaGroupMemberTest extends MemberTest {
         try {
           Thread.sleep(100);
           dummyResponse.set(Response.RESPONSE_AGREE);
+          DataGroupMember member = testMetaMember.getLocalDataMember(
+              testMetaMember.getPartitionTable().routeToHeaderByTime(TestUtils.getTestSg(0), 0));
+          for (Peer peer : member.getPeerMap().values()) {
+            peer.setCatchUp(true);
+          }
+          for (Peer peer : testMetaMember.getPeerMap().values()) {
+            peer.setCatchUp(true);
+          }
         } catch (InterruptedException e) {
           // ignore
         }
       }).start();
+
       testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 

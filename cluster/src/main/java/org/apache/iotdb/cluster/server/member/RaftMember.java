@@ -231,7 +231,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           // safety, otherwise it may come from an invalid leader and is not committed
           if (logManager.getCommitLogIndex() < request.getCommitLogIndex() &&
               logManager.matchTerm(request.getCommitLogTerm(), request.getCommitLogIndex())) {
-            logger.info("{}: Committing to {}-{}, local: {}-{}, last: {}-{}", name,
+            logger.info("{}: Committing to {}-{}, localCommit: {}-{}, localLast: {}-{}", name,
                 request.getCommitLogIndex(),
                 request.getCommitLogTerm(), logManager.getCommitLogIndex(),
                 logManager.getCommitLogTerm(), logManager.getLastLogIndex(),
@@ -409,7 +409,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         logs.add(log);
       }
 
-      response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
+      response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
+          logs);
       resultHandler.onComplete(response);
       logger.debug("{} AppendEntriesRequest of log size {} completed", name,
           request.getEntries().size());
@@ -426,7 +427,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
    * .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
    */
-  private long appendEntries(long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
+  private long appendEntries(long prevLogIndex, long prevLogTerm, long leaderCommit,
+      List<Log> logs) {
     if (logs.isEmpty()) {
       return Response.RESPONSE_AGREE;
     }
@@ -549,12 +551,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           if (node.equals(thisNode)) {
             continue;
           }
-          if (!peerMap.containsKey(node)) {
-            logger.warn("{}'s peerMap lost the info of node {}, created a new peer for using", name,
-                node);
-            peerMap.put(node, new Peer(logManager.getLastLogIndex()));
-          }
-          if (!peerMap.get(node).isCatchUp()) {
+          Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
+          if (!peer.isCatchUp()) {
             logger.warn("{} can't append log to node {} because it needs catchUp", name, node);
             continue;
           }
@@ -565,6 +563,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             handler.setVoteCounter(voteCounter);
             handler.setLeaderShipStale(leaderShipStale);
             handler.setLog(log);
+            handler.setPeer(peer);
             handler.setReceiverTerm(newLeaderTerm);
             try {
               client.appendEntry(request, handler);

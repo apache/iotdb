@@ -23,13 +23,19 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.HashMap;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.Test;
@@ -57,6 +63,15 @@ public class SerializeLogTest {
     assertEquals(log, logPrime);
 
     log = new PhysicalPlanLog(new SetStorageGroupPlan(new Path("root.sg1")));
+    byteBuffer = log.serialize();
+    logPrime = LogParser.getINSTANCE().parse(byteBuffer);
+    assertEquals(log, logPrime);
+
+    log = new PhysicalPlanLog(new CreateTimeSeriesPlan(new Path("root.applyMeta"
+        + ".s1"), TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.SNAPPY,
+        new HashMap<String, String>() {{
+          put("MAX_POINT_NUMBER", "100");
+        }}, Collections.emptyMap(), Collections.emptyMap(), null));
     byteBuffer = log.serialize();
     logPrime = LogParser.getINSTANCE().parse(byteBuffer);
     assertEquals(log, logPrime);
