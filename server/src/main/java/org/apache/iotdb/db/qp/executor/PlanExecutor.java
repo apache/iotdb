@@ -871,8 +871,12 @@ public class PlanExecutor implements IPlanExecutor {
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
+        if (measurement != measurementNode.getName()) {
+          measurementList[i] = measurementNode.getName();
+        }
       }
 
+      insertPlan.setMeasurements(measurementList);
       insertPlan.setSchemas(schemas);
       StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
