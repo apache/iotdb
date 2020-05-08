@@ -871,9 +871,8 @@ public class PlanExecutor implements IPlanExecutor {
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
-        if (measurement != measurementNode.getName()) {
-          measurementList[i] = measurementNode.getName();
-        }
+        // reset measurement to common name instead of alias
+        measurementList[i] = measurementNode.getName();
       }
 
       insertPlan.setMeasurements(measurementList);
