@@ -59,6 +59,9 @@ public class HTTPTest {
   private static final String VERSION_URL
       = "http://localhost:8181/rest/version";
 
+  private static final String SQL_URL
+      = "http://localhost:8181/rest/sql";
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
@@ -129,6 +132,12 @@ public class HTTPTest {
         (int) serverInfo.get("max_memory") < 0) {
       Assert.fail();
     }
+
+    String json5 = "{\"sql\" : \"select * from root\"}";
+    Response response7 = client.target(SQL_URL).request().header("Authorization", "Basic " + encodedUserPassword)
+        .post(Entity.entity(JSONObject.parse(json5), MediaType.APPLICATION_JSON));
+    String result7 = response7.readEntity(String.class);
+    System.out.println(result7);
   }
 
   @Test

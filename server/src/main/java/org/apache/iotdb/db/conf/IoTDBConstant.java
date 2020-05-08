@@ -52,10 +52,10 @@ public class IoTDBConstant {
   public static final int MIN_SUPPORTED_JDK_VERSION = 8;
 
   // show info
-  public static final String COLUMN_ITEM = "                             item";
-  public static final String COLUMN_PARAMETER = "                                          parameter";
+  public static final String COLUMN_ITEM = "item";
+  public static final String COLUMN_PARAMETER = "parameter";
   public static final String COLUMN_VALUE = "value";
-  public static final String COLUMN_VERSION = "        version";
+  public static final String COLUMN_VERSION = "version";
   public static final String COLUMN_TIMESERIES = "timeseries";
   public static final String COLUMN_TIMESERIES_ALIAS = "alias";
   public static final String COLUMN_TIMESERIES_DATATYPE = "dataType";
@@ -65,6 +65,7 @@ public class IoTDBConstant {
   public static final String COLUMN_DEVICES = "devices";
   public static final String COLUMN_COLUMN = "column";
   public static final String COLUMN_COUNT = "count";
+  public static final String COLUMN_TIME = "time";
 
   public static final String COLUMN_ROLE = "role";
   public static final String COLUMN_USER = "user";

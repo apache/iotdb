@@ -33,12 +33,13 @@ import static org.apache.iotdb.db.rest.constant.RestConstant.QUERY;
 import static org.apache.iotdb.db.rest.constant.RestConstant.RANGE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.REQUEST_BODY_JSON_FAILED;
 import static org.apache.iotdb.db.rest.constant.RestConstant.SET_STORAGE_GROUP;
+import static org.apache.iotdb.db.rest.constant.RestConstant.SQL;
 import static org.apache.iotdb.db.rest.constant.RestConstant.SUCCESS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TABLE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TARGET;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TARGETS;
-import static org.apache.iotdb.db.rest.constant.RestConstant.TIMESTAMPS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TIMESERIE;
+import static org.apache.iotdb.db.rest.constant.RestConstant.TIMESTAMPS;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TO;
 import static org.apache.iotdb.db.rest.constant.RestConstant.TYPE;
 import static org.apache.iotdb.db.rest.constant.RestConstant.UNCOMPRESSED;
@@ -264,6 +265,27 @@ public class RestController {
     } else {
       return Response.status(Response.Status.OK).entity(result).build();
     }
+  }
+
+  @Path("/sql")
+  @POST
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response excuteSQL(@Context HttpServletRequest request) {
+    JSONArray jsonArray;
+    JSONObject jsonObject;
+    try {
+      jsonObject = getRequestBodyJson(request);
+    } catch (IOException e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(REQUEST_BODY_JSON_FAILED).build();
+    }
+    String sql = (String)jsonObject.get(SQL);
+    try {
+      jsonArray = restService.executeStatement(sql, 100);
+    } catch (Exception e) {
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
+    }
+    return Response.status(Response.Status.OK).entity(jsonArray).build();
   }
 
   /**
