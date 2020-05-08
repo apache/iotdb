@@ -175,8 +175,12 @@ public class AggregationExecutor {
           seriesReader.skipCurrentChunk();
           continue;
         }
-        remainingToCalculate = aggregateOverlappedPages(seriesReader, aggregateResultList,
+
+        remainingToCalculate = aggregatePages(seriesReader, aggregateResultList,
                 isCalculatedArray, remainingToCalculate);
+        if (remainingToCalculate == 0) {
+          return;
+        }
       }
     }
 
@@ -211,12 +215,21 @@ public class AggregationExecutor {
     return newRemainingToCalculate;
   }
 
-  private static int aggregateOverlappedPages(IAggregateReader seriesReader,
+  private static int aggregatePages(IAggregateReader seriesReader,
       List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray, int remainingToCalculate)
-      throws IOException {
-    // cal by page data
-    int newRemainingToCalculate = remainingToCalculate;
+      throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
+      //cal by page statistics
+      if (seriesReader.canUseCurrentPageStatistics()) {
+        Statistics pageStatistic = seriesReader.currentPageStatistics();
+        remainingToCalculate = aggregateStatistics(aggregateResultList, isCalculatedArray,
+            remainingToCalculate, pageStatistic);
+        if (remainingToCalculate == 0) {
+          return 0;
+        }
+        seriesReader.skipCurrentChunk();
+        continue;
+      }
       BatchData nextOverlappedPageData = seriesReader.nextPage();
       for (int i = 0; i < aggregateResultList.size(); i++) {
         if (!isCalculatedArray[i]) {
@@ -225,15 +238,15 @@ public class AggregationExecutor {
           nextOverlappedPageData.resetBatchData();
           if (aggregateResult.isCalculatedAggregationResult()) {
             isCalculatedArray[i] = true;
-            newRemainingToCalculate--;
-            if (newRemainingToCalculate == 0) {
-              return newRemainingToCalculate;
+            remainingToCalculate--;
+            if (remainingToCalculate == 0) {
+              return 0;
             }
           }
         }
       }
     }
-    return newRemainingToCalculate;
+    return remainingToCalculate;
   }
 
   /**
