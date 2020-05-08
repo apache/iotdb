@@ -394,7 +394,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
-      return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      return RpcUtils
+          .getTSBatchExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     }
@@ -436,12 +437,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (QueryInBatchStatementException e) {
       logger.info("Error occurred when executing {}, query statement not allowed: ", statement, e);
       result.add(
-          RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED, "query statement not allowed: " + statement));
+          RpcUtils.getStatus(TSStatusCode.QUERY_NOT_ALLOWED,
+              "query statement not allowed: " + statement));
       return false;
-    }  catch (Exception e) {
+    } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       result.add(RpcUtils.getStatus(
-              TSStatusCode.INTERNAL_SERVER_ERROR, "server Internal Error: " + e.getMessage()));
+          TSStatusCode.INTERNAL_SERVER_ERROR, "server Internal Error: " + e.getMessage()));
     }
     return true;
   }
@@ -458,8 +460,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
-        return internalExecuteQueryStatement(statement, req.statementId, physicalPlan, req.fetchSize,
-                sessionIdUsernameMap.get(req.getSessionId()));
+        return internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
+            req.fetchSize,
+            sessionIdUsernameMap.get(req.getSessionId()));
       } else {
         return executeUpdateStatement(physicalPlan, req.getSessionId());
       }
@@ -518,7 +521,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getTSExecuteStatementResp(
-              RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
+          RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage()));
     }
   }
 
@@ -556,13 +559,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       // create and cache dataset
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan);
-      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime() && newDataSet instanceof NonAlignEngineDataSet) {
+      if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()
+          && newDataSet instanceof NonAlignEngineDataSet) {
         TSQueryNonAlignDataSet result = fillRpcNonAlignReturnData(fetchSize, newDataSet, username);
         resp.setNonAlignQueryDataSet(result);
       } else {
         if (plan instanceof ShowPlan && ((ShowPlan) plan).getShowContentType() == TIMESERIES) {
-          resp.setColumns(newDataSet.getPaths().stream().map(Path::getFullPath).collect(Collectors.toList()));
-          resp.setDataTypeList(newDataSet.getDataTypes().stream().map(Enum::toString).collect(Collectors.toList()));
+          resp.setColumns(
+              newDataSet.getPaths().stream().map(Path::getFullPath).collect(Collectors.toList()));
+          resp.setDataTypeList(
+              newDataSet.getDataTypes().stream().map(Enum::toString).collect(Collectors.toList()));
         }
         TSQueryDataSet result = fillRpcReturnData(fetchSize, newDataSet, username);
         resp.setQueryDataSet(result);
@@ -1198,7 +1204,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             QueryDataSetUtils.readTimesFromBuffer(req.timestampsList.get(i), req.sizeList.get(i)));
         insertTabletPlan.setColumns(
             QueryDataSetUtils.readValuesFromBuffer(
-                req.valuesList.get(i), req.typesList.get(i), req.measurementsList.get(i).size(), req.sizeList.get(i)));
+                req.valuesList.get(i), req.typesList.get(i), req.measurementsList.get(i).size(),
+                req.sizeList.get(i)));
         insertTabletPlan.setRowCount(req.sizeList.get(i));
         insertTabletPlan.setDataTypes(req.typesList.get(i));
 
@@ -1385,7 +1392,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (AuthException e) {
       logger.error("meet error while checking authorization.", e);
       return RpcUtils.getStatus(TSStatusCode.UNINITIALIZED_AUTH_ERROR, e.getMessage());
-    }  catch (Exception e) {
+    } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
@@ -1399,7 +1406,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (QueryProcessException e) {
       logger.debug("meet error while processing non-query. ", e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
-    }  catch (Exception e) {
+    } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
     }
