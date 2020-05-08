@@ -156,7 +156,7 @@ public class TsFileRecoverPerformer {
 
   private void recoverResourceFromReader() throws IOException {
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(resource.getFile().getAbsolutePath(), false)) {
+        new TsFileSequenceReader(resource.getFile().getAbsolutePath(), true)) {
       for (Entry<String, List<TimeseriesMetadata>> entry : reader.getAllTimeseriesMetadata()
           .entrySet()) {
         for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {

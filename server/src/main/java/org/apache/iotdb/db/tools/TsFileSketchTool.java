@@ -23,20 +23,23 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
+import java.util.TreeMap;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class TsFileSketchTool {
 
@@ -62,7 +65,8 @@ public class TsFileSketchTool {
       TsFileSequenceReader reader = new TsFileSequenceReader(filename);
       TsFileMetadata tsFileMetaData = reader.readFileMetadata();
       List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
-      reader.selfCheck(null, allChunkGroupMetadata, new ArrayList<>(), false);
+      List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+      reader.selfCheck(null, allChunkGroupMetadata, versionInfo, false);
 
       // begin print
       StringBuilder str1 = new StringBuilder();
@@ -79,8 +83,9 @@ public class TsFileSketchTool {
               + "|\t[version number] "
               + reader.readVersionNumber());
       // ChunkGroup begins
-      for (ChunkGroupMetadata chunkGroupMetadata : allChunkGroupMetadata) {
-        printlnBoth(pw, str1.toString() + "\t[ChunkGroup] of " + chunkGroupMetadata.getDevice() +
+      for (int i = 0; i < allChunkGroupMetadata.size(); i++) {
+        ChunkGroupMetadata chunkGroupMetadata = allChunkGroupMetadata.get(i);
+        printlnBoth(pw, str1.toString() + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() +
             ", num of Chunks:" + chunkGroupMetadata.getChunkMetadataList().size());
         // chunk begins
         long chunkEndPos = 0;
@@ -110,8 +115,18 @@ public class TsFileSketchTool {
             String.format("%20s", "") + "|\t\t[dataSize] " + chunkGroupFooter.getDataSize());
         printlnBoth(pw, String.format("%20s", "") + "|\t\t[num of chunks] " + chunkGroupFooter
             .getNumberOfChunks());
-        printlnBoth(pw, str1.toString() + "\t[ChunkGroup] of "
+        printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
             + chunkGroupMetadata.getDevice() + " ends");
+        // versionInfo pair begins
+        printlnBoth(pw, 
+            String.format("%20s", chunkEndPos + chunkGroupFooter.getSerializedSize()) 
+            + "|\t[Version Info pair]");
+        printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 3");
+        printlnBoth(pw,
+            String.format("%20s", "") + "|\t\t[offset] " + versionInfo.get(i).left);
+        printlnBoth(pw,
+            String.format("%20s", "") + "|\t\t[version] " + versionInfo.get(i).right);
+        
       }
 
       // metadata begins
@@ -121,6 +136,28 @@ public class TsFileSketchTool {
         printlnBoth(pw,
             String.format("%20s", reader.readFileMetadata().getMetaOffset()) + "|\t[marker] 2");
       }
+
+      Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata = reader.getAllTimeseriesMetadata();
+      Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
+
+      for (Map.Entry<String, List<TimeseriesMetadata>> entry : allTimeseriesMetadata.entrySet()) {
+        String device = entry.getKey();
+        List<TimeseriesMetadata> seriesMetadataList = entry.getValue();
+        for (TimeseriesMetadata seriesMetadata : seriesMetadataList) {
+          timeseriesMetadataMap.put(seriesMetadata.getOffsetOfChunkMetaDataList(), 
+              new Pair<>(new Path(device, seriesMetadata.getMeasurementId()), seriesMetadata));
+          
+        }
+      }
+      for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
+        printlnBoth(
+            pw, String.format("%20s", entry.getKey())
+            + "|\t[ChunkMetadataList] of " + entry.getValue().left 
+            + ", tsDataType:" + entry.getValue().right.getTSDataType());
+        printlnBoth(pw,
+            String.format("%20s", "") + "|\t[" + entry.getValue().right.getStatistics() + "] ");
+      }
+      
       for (MetadataIndexEntry metadataIndex : tsFileMetaData.getMetadataIndex().getChildren()) {
         printlnBoth(pw, String.format("%20s", metadataIndex.getOffset())
             + "|\t[MetadataIndex] of " + metadataIndex.getName());
