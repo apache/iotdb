@@ -413,7 +413,8 @@ var config = {
 						children: [
 							['2-QueryEngine/1-QueryEngine','QueryEngine'],
 							['2-QueryEngine/2-Planner','Planner'],
-							['2-QueryEngine/3-PlanExecutor','PlanExecutor']
+							['2-QueryEngine/3-PlanExecutor','PlanExecutor'],
+							['2-QueryEngine/4-ResultSetConstruction','ResultSetConstruction']
 						]
 					},
 					{
@@ -827,7 +828,8 @@ var config = {
 						children: [
 							['2-QueryEngine/1-QueryEngine','查询引擎'],
 							['2-QueryEngine/2-Planner','执行计划生成器'],
-							['2-QueryEngine/3-PlanExecutor','计划执行器']
+							['2-QueryEngine/3-PlanExecutor','计划执行器'],
+							['2-QueryEngine/4-ResultSetConstruction','结果集构造']
 						]
 					},
 					{

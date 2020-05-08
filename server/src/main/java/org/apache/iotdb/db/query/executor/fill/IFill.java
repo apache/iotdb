@@ -17,16 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.fill;
+package org.apache.iotdb.db.query.executor.fill;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
 import java.util.Set;
@@ -47,14 +45,10 @@ public abstract class IFill {
   public abstract IFill copy();
 
   public abstract void configureFill(Path path, TSDataType dataType, long queryTime,
-      Set<String> sensors, QueryContext context)
-      throws StorageEngineException, QueryProcessException;
+      Set<String> sensors, QueryContext context);
 
-  public Filter getFilter() {
-    return constructFilter();
-  }
-
-  public abstract TimeValuePair getFillResult() throws IOException, UnSupportedFillTypeException;
+  public abstract TimeValuePair getFillResult()
+      throws IOException, QueryProcessException, StorageEngineException;
 
   public TSDataType getDataType() {
     return this.dataType;
@@ -68,5 +62,5 @@ public abstract class IFill {
     this.queryTime = queryTime;
   }
 
-  abstract Filter constructFilter();
+  abstract void constructFilter();
 }

@@ -18,7 +18,21 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.commons.io.FileUtils;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -37,14 +51,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TsFileResource {
 
@@ -361,10 +367,10 @@ public class TsFileResource {
     fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
-  void moveTo(File targetDir) throws IOException {
-    FileUtils.moveFile(file, new File(targetDir, file.getName()));
-    FileUtils.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
-        new File(targetDir, file.getName() + RESOURCE_SUFFIX));
+  void moveTo(File targetDir) {
+    fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
+    fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
+        fsFactory.getFile(targetDir, file.getName() + RESOURCE_SUFFIX));
     fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
@@ -412,8 +418,6 @@ public class TsFileResource {
 
   /**
    * check if any of the device lives over the given time bound
-   *
-   * @param timeLowerBound
    */
   public boolean stillLives(long timeLowerBound) {
     if (timeLowerBound == Long.MAX_VALUE) {
@@ -442,7 +446,9 @@ public class TsFileResource {
    */
   void setCloseFlag() {
     try {
-      new File(file.getAbsoluteFile() + CLOSING_SUFFIX).createNewFile();
+      if (!fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).createNewFile()) {
+        logger.error("Cannot create close flag for {}", file);
+      }
     } catch (IOException e) {
       logger.error("Cannot create close flag for {}", file, e);
     }
@@ -452,11 +458,13 @@ public class TsFileResource {
    * clean the close flag (if existed) when the file is successfully closed.
    */
   public void cleanCloseFlag() {
-    new File(file.getAbsoluteFile() + CLOSING_SUFFIX).delete();
+    if (!fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).delete()) {
+      logger.error("Cannot clean close flag for {}", file);
+    }
   }
 
   public boolean isCloseFlagSet() {
-    return new File(file.getAbsoluteFile() + CLOSING_SUFFIX).exists();
+    return fsFactory.getFile(file.getAbsoluteFile() + CLOSING_SUFFIX).exists();
   }
 
   public Set<Long> getHistoricalVersions() {
