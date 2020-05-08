@@ -45,7 +45,10 @@ public class LastPointReader {
   long queryTime;
   TSDataType dataType;
   private QueryContext context;
-  private Set<String> allSensors;
+
+  // measurements of the same device as "seriesPath"
+  private Set<String> deviceMeasurements;
+
   private Filter timeFilter;
 
   private QueryDataSource dataSource;
@@ -56,14 +59,14 @@ public class LastPointReader {
 
   }
 
-  public LastPointReader(Path seriesPath, TSDataType dataType, Set<String> sensors,
+  public LastPointReader(Path seriesPath, TSDataType dataType, Set<String> deviceMeasurements,
       QueryContext context, QueryDataSource dataSource, long queryTime, Filter timeFilter) {
     this.seriesPath = seriesPath;
     this.dataType = dataType;
     this.dataSource = dataSource;
     this.context = context;
     this.queryTime = queryTime;
-    this.allSensors = sensors;
+    this.deviceMeasurements = deviceMeasurements;
     this.timeFilter = timeFilter;
   }
 
@@ -94,7 +97,7 @@ public class LastPointReader {
       TsFileResource resource = seqFileResource.get(index);
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              resource, seriesPath, context, timeFilter, allSensors);
+              resource, seriesPath, context, timeFilter, deviceMeasurements);
       if (timeseriesMetadata != null) {
         if (endtimeContainedByTimeFilter(timeseriesMetadata.getStatistics())) {
           return constructLastPair(
@@ -129,7 +132,7 @@ public class LastPointReader {
         && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
-              unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
+              unseqFileResource.poll(), seriesPath, context, timeFilter, deviceMeasurements);
 
       if (timeseriesMetadata == null || (!timeseriesMetadata.isModified()
           && timeseriesMetadata.getStatistics().getEndTime() < lBoundTime)) {
@@ -209,7 +212,9 @@ public class LastPointReader {
               return Long.compare(o2.getVersion(), o1.getVersion());
             });
     for (TimeseriesMetadata timeseriesMetadata : unseqTimeseriesMetadataList) {
-      chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+      if (timeseriesMetadata != null) {
+        chunkMetadataList.addAll(timeseriesMetadata.loadChunkMetadataList());
+      }
     }
     return chunkMetadataList;
   }

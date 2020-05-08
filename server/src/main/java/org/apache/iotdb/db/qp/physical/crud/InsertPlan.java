@@ -49,7 +49,7 @@ public class InsertPlan extends PhysicalPlan {
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   @TestOnly
@@ -59,7 +59,7 @@ public class InsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurements = new String[] {measurement};
     this.values = new String[] {insertValue};
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   public InsertPlan(TSRecord tsRecord) {
@@ -74,7 +74,7 @@ public class InsertPlan extends PhysicalPlan {
       schemas[i] = new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(), TSEncoding.PLAIN);
       values[i] = tsRecord.dataPointList.get(i).getValue().toString();
     }
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   public InsertPlan(String deviceId, long insertTime, String[] measurementList,
@@ -84,7 +84,7 @@ public class InsertPlan extends PhysicalPlan {
     this.deviceId = deviceId;
     this.measurements = measurementList;
     this.values = insertValues;
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   public long getTime() {
@@ -157,7 +157,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.INSERT.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(time);
@@ -170,17 +170,13 @@ public class InsertPlan extends PhysicalPlan {
       putString(stream, m);
     }
 
-    for (MeasurementSchema schema : schemas) {
-      schema.serializeTo(stream);
-    }
-
     for (String m : values) {
       putString(stream, m);
     }
   }
 
   @Override
-  public void serializeTo(ByteBuffer buffer) {
+  public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
     buffer.putLong(time);
@@ -199,7 +195,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFrom(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     this.time = buffer.getLong();
     this.deviceId = readString(buffer);
 

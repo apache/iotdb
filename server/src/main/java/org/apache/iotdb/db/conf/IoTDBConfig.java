@@ -96,7 +96,7 @@ public class IoTDBConfig {
   /**
    * whether to use thrift compression.
    */
-  private boolean rpcThriftCompressionEnable = false;
+  private boolean rpcThriftCompressionEnable = true;
 
   /**
    * Port which the JDBC server listens to.
@@ -278,6 +278,11 @@ public class IoTDBConfig {
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
   private int mManagerCacheSize = 400000;
+
+  /**
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   */
+  private int mRemoteSchemaCacheSize = 100000;
 
   /**
    * Is external sort enable.
@@ -887,11 +892,19 @@ public class IoTDBConfig {
     this.mManagerCacheSize = mManagerCacheSize;
   }
 
+  public int getmRemoteSchemaCacheSize() {
+    return mRemoteSchemaCacheSize;
+  }
+
+  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
+    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
+  }
+
   public boolean isSyncEnable() {
     return isSyncEnable;
   }
 
-  void setSyncEnable(boolean syncEnable) {
+  public void setSyncEnable(boolean syncEnable) {
     isSyncEnable = syncEnable;
   }
 

@@ -41,7 +41,7 @@ import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-class SeriesReader {
+public class SeriesReader {
 
   private final Path seriesPath;
 
@@ -100,7 +100,7 @@ class SeriesReader {
   private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
-  SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+  public SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
@@ -125,6 +125,10 @@ class SeriesReader {
     this.unseqFileResource = sortUnSeqFileResources(unseqFileResource);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
+  }
+
+  public boolean isEmpty() {
+    return seqFileResource.isEmpty() && unseqFileResource.isEmpty();
   }
 
   boolean hasNextFile() throws IOException {

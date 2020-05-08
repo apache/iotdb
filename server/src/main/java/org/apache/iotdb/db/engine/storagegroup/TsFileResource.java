@@ -22,6 +22,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,9 +33,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -92,6 +96,8 @@ public class TsFileResource {
   // same file generation policy but have their own merge policies.
   private Set<Long> historicalVersions;
 
+  private TsFileLock tsFileLock = new TsFileLock();
+
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
@@ -107,8 +113,6 @@ public class TsFileResource {
    * used for unsealed file to get TimeseriesMetadata
    */
   private TimeseriesMetadata timeSeriesMetadata;
-
-  private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
@@ -127,7 +131,7 @@ public class TsFileResource {
     this.chunkMetadataList = other.chunkMetadataList;
     this.readOnlyMemChunk = other.readOnlyMemChunk;
     generateTimeSeriesMetadata();
-    this.writeQueryLock = other.writeQueryLock;
+    this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
     this.historicalVersions = other.historicalVersions;
   }
@@ -168,18 +172,19 @@ public class TsFileResource {
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
-    if (chunkMetadataList.isEmpty() && readOnlyMemChunk.isEmpty()) {
+    if ((chunkMetadataList == null ||chunkMetadataList.isEmpty())
+        && (readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
       timeSeriesMetadata = null;
     }
     timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
-    if (!chunkMetadataList.isEmpty()) {
+    if (!(chunkMetadataList == null ||chunkMetadataList.isEmpty())) {
       timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
       TSDataType dataType = chunkMetadataList.get(0).getDataType();
       timeSeriesMetadata.setTSDataType(dataType);
-    } else if (!readOnlyMemChunk.isEmpty()) {
+    } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
       timeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
       TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
       timeSeriesMetadata.setTSDataType(dataType);
@@ -222,6 +227,10 @@ public class TsFileResource {
           ReadWriteIOUtils.write(historicalVersion, outputStream);
         }
       }
+
+      if (modFile != null && modFile.exists()) {
+        ReadWriteIOUtils.write(modFile.getFilePath(), outputStream);
+      }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
     File dest = fsFactory.getFile(file + RESOURCE_SUFFIX);
@@ -259,6 +268,10 @@ public class TsFileResource {
         // use the version in file name as the historical version for files of old versions
         long version = Long.parseLong(file.getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
         historicalVersions = Collections.singleton(version);
+      }
+
+      if (inputStream.available() > 0) {
+        modFile = new ModificationFile(ReadWriteIOUtils.readString(inputStream));
       }
     }
   }
@@ -346,8 +359,29 @@ public class TsFileResource {
     return processor;
   }
 
-  public ReentrantReadWriteLock getWriteQueryLock() {
-    return writeQueryLock;
+
+  public void writeLock() {
+    tsFileLock.writeLock();
+  }
+
+  public void writeUnlock() {
+    tsFileLock.writUnlock();
+  }
+
+  public void readLock() {
+    tsFileLock.readLock();
+  }
+
+  public void readUnlock() {
+    tsFileLock.readUnlock();
+  }
+
+  public boolean tryReadLock() {
+    return tsFileLock.tryReadLock();
+  }
+
+  public boolean tryWriteLock() {
+    return tsFileLock.tryWriteLock();
   }
 
   void doUpgrade() {
@@ -527,5 +561,58 @@ public class TsFileResource {
       throw new PartitionViolationException(this);
     }
     return partitionId;
+  }
+
+  /**
+   * Create a hardlink for the TsFile and modification file (if exists)
+   * The hardlink with have a suffix like ".{sysTime}_{randomLong}"
+   * @return a new TsFileResource with its file changed to the hardlink or null the hardlink
+   * cannot be created.
+   */
+  public TsFileResource createHardlink() {
+    if (!file.exists()) {
+      return null;
+    }
+
+    TsFileResource newResource;
+    try {
+      newResource = new TsFileResource(this);
+    } catch (IOException e) {
+      logger.error("Cannot create hardlink for {}", file, e);
+      return null;
+    }
+
+    Random random = new Random();
+    while (true) {
+      String hardlinkSuffix = "." + System.currentTimeMillis() + "_" + random.nextLong();
+      File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
+
+      try {
+        Files.createLink(Paths.get(hardlink.getAbsolutePath()), Paths.get(file.getAbsolutePath()));
+        newResource.setFile(hardlink);
+        if (modFile != null && modFile.exists()) {
+          newResource.setModFile(modFile.createHardlink());
+        }
+        break;
+      } catch (FileAlreadyExistsException e) {
+        // retry a different name if the file is already created
+      } catch (IOException e) {
+        logger.error("Cannot create hardlink for {}", file, e);
+        return null;
+      }
+    }
+    return newResource;
+  }
+
+  public void setModFile(ModificationFile modFile) {
+    this.modFile = modFile;
+  }
+
+  public long getMaxVersion() {
+    long maxVersion = 0;
+    if (historicalVersions != null) {
+      maxVersion = Collections.max(historicalVersions);
+    }
+    return maxVersion;
   }
 }

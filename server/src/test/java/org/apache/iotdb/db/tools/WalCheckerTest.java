@@ -78,7 +78,7 @@ public class WalCheckerTest {
         String[] measurements = new String[]{"s1", "s2", "s3"};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          new InsertPlan(deviceId, j, measurements, values).serializeTo(binaryPlans);
+          new InsertPlan(deviceId, j, measurements, values).serialize(binaryPlans);
         }
         binaryPlans.flip();
         logWriter.write(binaryPlans);
@@ -111,7 +111,7 @@ public class WalCheckerTest {
         String[] measurements = new String[]{"s1", "s2", "s3"};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          new InsertPlan(deviceId, j, measurements, values).serializeTo(binaryPlans);
+          new InsertPlan(deviceId, j, measurements, values).serialize(binaryPlans);
         }
         if (i > 2) {
           binaryPlans.put("not a wal".getBytes());
