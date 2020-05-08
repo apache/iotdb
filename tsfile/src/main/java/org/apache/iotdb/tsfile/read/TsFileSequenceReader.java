@@ -816,8 +816,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param newSchema the schema on each time series in the file
    * @param chunkGroupMetadataList ChunkGroupMetadata List
-   * @param fastFinish if true and the file is complete, then newSchema and newMetaData parameter
-   * will be not modified.
+   * @param versionInfo version pair List
+   * @param fastFinish if true and the file is complete, then newSchema and chunkGroupMetadataList
+   * parameter will be not modified.
    * @return the position of the file that is fine. All data after the position in the file should
    * be truncated.
    */
