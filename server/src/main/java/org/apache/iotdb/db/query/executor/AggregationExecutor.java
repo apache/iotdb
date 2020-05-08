@@ -227,7 +227,7 @@ public class AggregationExecutor {
         if (remainingToCalculate == 0) {
           return 0;
         }
-        seriesReader.skipCurrentChunk();
+        seriesReader.skipCurrentPage();
         continue;
       }
       BatchData nextOverlappedPageData = seriesReader.nextPage();
