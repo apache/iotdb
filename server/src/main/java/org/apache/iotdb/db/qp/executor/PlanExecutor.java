@@ -918,9 +918,11 @@ public class PlanExecutor implements IPlanExecutor {
           internalCreateTimeseries(path.toString(), dataType);
           LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
           schemas[i] = measurementNode.getSchema();
+          measurementList[i] = measurementNode.getName();
         } else if (node != null) {
           LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
           schemas[i] = measurementNode.getSchema();
+          measurementList[i] = measurementNode.getName();
         } else {
           schemas[i] = MManager.getInstance().getSeriesSchema(deviceId, measurement);
         }
