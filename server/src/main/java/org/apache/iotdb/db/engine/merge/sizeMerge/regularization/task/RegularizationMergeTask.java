@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -40,6 +42,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -129,7 +132,8 @@ public class RegularizationMergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    RegularizationMergeSeriesTask mergeChunkTask = new RegularizationMergeSeriesTask(mergeContext, taskName, mergeLogger,
+    RegularizationMergeSeriesTask mergeChunkTask = new RegularizationMergeSeriesTask(mergeContext,
+        taskName, mergeLogger,
         resource, unmergedSeries);
     newResource = mergeChunkTask.mergeSeries();
 
@@ -158,6 +162,10 @@ public class RegularizationMergeTask implements Callable<Void> {
     resource.clear();
     mergeContext.clear();
 
+    for (TsFileResource seqFile : resource.getSeqFiles()) {
+      deleteFile(seqFile);
+    }
+
     if (mergeLogger != null) {
       mergeLogger.close();
     }
@@ -172,6 +180,22 @@ public class RegularizationMergeTask implements Callable<Void> {
       callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile, newResources);
     } else {
       logFile.delete();
+    }
+  }
+
+  private void deleteFile(TsFileResource seqFile) {
+    seqFile.getWriteQueryLock().writeLock().lock();
+    try {
+      resource.removeFileReader(seqFile);
+      TsFileMetaDataCache.getInstance().remove(seqFile);
+      ChunkMetadataCache.getInstance().remove(seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
+      seqFile.getFile().delete();
+      seqFile.setDeleted(true);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+    } finally {
+      seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
 }

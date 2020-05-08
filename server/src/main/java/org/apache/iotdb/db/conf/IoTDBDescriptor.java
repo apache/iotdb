@@ -25,6 +25,9 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.merge.seqMerge.SeqMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
+import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -57,7 +60,8 @@ public class IoTDBDescriptor {
 
   public void replaceProps(String[] params) {
     Options options = new Options();
-    Option rpcPort = new Option("rpc_port", "rpc_port", true, "The jdbc service listens on the port");
+    Option rpcPort = new Option("rpc_port", "rpc_port", true,
+        "The jdbc service listens on the port");
     rpcPort.setRequired(false);
     options.addOption(rpcPort);
 
@@ -295,12 +299,21 @@ public class IoTDBDescriptor {
       conf.setMergeFileSelectionTimeBudget(Long.parseLong(properties.getProperty
           ("merge_fileSelection_time_budget",
               Long.toString(conf.getMergeFileSelectionTimeBudget()))));
+      conf.setMergeFileTimeBlock(Long.parseLong(properties.getProperty
+          ("merge_file_time_block",
+              Long.toString(conf.getMergeFileSelectionTimeBudget()))));
       conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
           Long.toString(conf.getMergeIntervalSec()))));
       conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
           Boolean.toString(conf.isForceFullMerge()))));
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
+      conf.setSeqMergeFileStrategy(SeqMergeFileStrategy.valueOf(properties.getProperty(
+          "seq_merge_file_strategy", conf.getSeqMergeFileStrategy().toString())));
+      conf.setSizeMergeFileStrategy(SizeMergeFileStrategy.valueOf(properties.getProperty(
+          "size_merge_file_strategy", conf.getSizeMergeFileStrategy().toString())));
+      conf.setMergeSizeSelectorStrategy(MergeSizeSelectorStrategy.valueOf(properties.getProperty(
+          "merge_size_selector_strategy", conf.getMergeSizeSelectorStrategy().toString())));
 
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
@@ -383,15 +396,18 @@ public class IoTDBDescriptor {
         conf.setMqttPort(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_PORT_NAME)));
       }
       if (properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME) != null) {
-        conf.setMqttHandlerPoolSize(Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
+        conf.setMqttHandlerPoolSize(
+            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_HANDLER_POOL_SIZE_NAME)));
       }
       if (properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME) != null) {
-        conf.setMqttPayloadFormatter(properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
+        conf.setMqttPayloadFormatter(
+            properties.getProperty(IoTDBConstant.MQTT_PAYLOAD_FORMATTER_NAME));
       }
       if (properties.getProperty(IoTDBConstant.ENABLE_MQTT) != null) {
-        conf.setEnableMQTTService(Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
+        conf.setEnableMQTTService(
+            Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
       }
-      
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(FSType.valueOf(

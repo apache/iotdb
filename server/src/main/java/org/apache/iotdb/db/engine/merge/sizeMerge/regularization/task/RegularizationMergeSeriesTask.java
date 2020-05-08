@@ -50,12 +50,16 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
 
   public TsFileResource mergeSeries() throws IOException {
     if (logger.isInfoEnabled()) {
+      long totalChunkPoint = 0;
+      long chunkNum = 0;
       for (TsFileResource seqFile : resource.getSeqFiles()) {
         List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(seqFile);
         for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-          logger.info("merge before seqFile chunk large = {}", chunkMetadata.getNumOfPoints());
+          chunkNum++;
+          totalChunkPoint += chunkMetadata.getNumOfPoints();
         }
       }
+      logger.info("merge before seqFile chunk large = {}", totalChunkPoint * 1.0 / chunkNum);
     }
     if (logger.isInfoEnabled()) {
       logger.info("{} starts to merge series", taskName);
@@ -81,10 +85,14 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
           System.currentTimeMillis() - startTime);
     }
     if (logger.isInfoEnabled()) {
+      long totalChunkPoint = 0;
+      long chunkNum = 0;
       List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(newResource);
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        logger.info("merge after seqFile chunk large = {}", chunkMetadata.getNumOfPoints());
+        chunkNum++;
+        totalChunkPoint += chunkMetadata.getNumOfPoints();
       }
+      logger.info("merge after seqFile chunk large = {}", totalChunkPoint * 1.0 / chunkNum);
     }
 
     return newResource;

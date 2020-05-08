@@ -446,7 +446,7 @@ public class IoTDBConfig {
 
   private SeqMergeFileStrategy seqMergeFileStrategy = SeqMergeFileStrategy.SQUEEZE;
 
-  private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.INDEPENDENCE;
+  private SizeMergeFileStrategy sizeMergeFileStrategy = SizeMergeFileStrategy.REGULARIZATION;
 
   private MergeSizeSelectorStrategy mergeSizeSelectorStrategy = MergeSizeSelectorStrategy.POINT_RANGE;
 

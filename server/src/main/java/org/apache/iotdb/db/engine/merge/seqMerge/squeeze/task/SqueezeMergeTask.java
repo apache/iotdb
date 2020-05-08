@@ -28,6 +28,9 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -39,6 +42,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -151,6 +155,13 @@ public class SqueezeMergeTask implements Callable<Void> {
       mergeLogger.close();
     }
 
+    for (TsFileResource seqFile : resource.getSeqFiles()) {
+      deleteFile(seqFile);
+    }
+    for (TsFileResource unseqFile : resource.getUnseqFiles()) {
+      deleteFile(unseqFile);
+    }
+
     File logFile = FSFactoryProducer.getFSFactory().getFile(storageGroupSysDir,
         SqueezeMergeLogger.MERGE_LOG_NAME);
     if (executeCallback) {
@@ -159,6 +170,25 @@ public class SqueezeMergeTask implements Callable<Void> {
       callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile, newResources);
     } else {
       logFile.delete();
+    }
+  }
+
+  private void deleteFile(TsFileResource seqFile) {
+    seqFile.getWriteQueryLock().writeLock().lock();
+    try {
+      resource.removeFileReader(seqFile);
+      TsFileMetaDataCache.getInstance().remove(seqFile);
+      ChunkMetadataCache.getInstance().remove(seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
+      seqFile.getFile().delete();
+      File resourceFile = new File(seqFile.getPath() + MERGE_SUFFIX);
+      resourceFile.delete();
+      seqFile.setMerging(false);
+      seqFile.setDeleted(true);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+    } finally {
+      seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
 }

@@ -1343,7 +1343,6 @@ public class StorageGroupProcessor {
       try {
         Pair<MergeResource, SelectorContext> selectRes = fileSelector.selectMergedFiles();
         MergeResource mergeResource = selectRes.left;
-        SelectorContext selectorContext = selectRes.right;
         if (mergeResource.getSeqFiles().size() == 0 && mergeResource.getUnseqFiles().size() == 0) {
           logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
               budget);
@@ -1502,8 +1501,9 @@ public class StorageGroupProcessor {
       File mergeLog, List<TsFileResource> newFile) {
     logger.info("{} a merge task is ending...", storageGroupName);
 
-    if (seqFiles.isEmpty() && unseqFiles.isEmpty()) {
-      // merge runtime exception arose, just end this merge
+    if (newFile == null) {
+      handleInplaceMerge(seqFiles, unseqFiles, mergeLog);
+    } else {
       mergeLock.writeLock().lock();
       try {
         if (mergingModification != null) {
@@ -1519,13 +1519,6 @@ public class StorageGroupProcessor {
         logger.debug("{} a merge task abnormally ends", storageGroupName);
         mergeLock.writeLock().unlock();
       }
-      return;
-    }
-
-    if (newFile == null) {
-      handleInplaceMerge(seqFiles, unseqFiles, mergeLog);
-    } else {
-
     }
   }
 
