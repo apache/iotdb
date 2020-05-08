@@ -871,7 +871,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
-        if (measurement != measurementNode.getName()){
+        if (measurement != measurementNode.getName()) {
           measurementList[i] = measurementNode.getName();
         }
       }
