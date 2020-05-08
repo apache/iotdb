@@ -398,6 +398,7 @@ An example on macOS:
 Starting Printing the TsFile Sketch
 ​````````````````````````
 TsFile path:test.tsfile
+Sketch save path:TsFile_sketch_view.txt
 -------------------------------- TsFile Sketch --------------------------------
 file path: test.tsfile
 file length: 33436
