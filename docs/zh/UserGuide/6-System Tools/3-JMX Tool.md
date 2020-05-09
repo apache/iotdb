@@ -49,7 +49,7 @@ JMX_IP="the_real_iotdb_server_ip"  # 填写实际IoTDB的IP地址
 1. 确保安装jdk
 2. 打开jvisualvm
 3. 在左侧导航栏空白处右键 -> 添加JMX连接
-<img style="width:100%; max-width:400px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81462914-5738c580-91e8-11ea-94d1-4ff6607e7e2c.png">
+<img style="width:100%; max-width:300px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81462914-5738c580-91e8-11ea-94d1-4ff6607e7e2c.png">
 
 4. 填写信息进行登录，按下图分别填写连接 -> 安全凭证 -> 勾选”不要求SSL连接” -> 确定
-<img style="width:100%; max-width:400px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81462914-5738c580-91e8-11ea-94d1-4ff6607e7e2c.png">
+<img style="width:100%; max-width:300px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81462909-53a53e80-91e8-11ea-98df-0012380da0b2.png">
