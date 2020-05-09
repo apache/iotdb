@@ -248,7 +248,7 @@ public class AbstractIoTDBDataSet {
   private boolean isNull(int index, int rowNum) {
     byte bitmap = currentBitmap[index];
     int shift = rowNum % 8;
-    return ((FLAG >>> shift) & bitmap) == 0;
+    return ((FLAG >>> shift) & (bitmap & 0xff)) == 0;
   }
 
   public boolean getBoolean(int columnIndex) throws StatementExecutionException {
