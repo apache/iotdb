@@ -42,6 +42,7 @@ import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -678,7 +679,12 @@ public class StorageGroupProcessor {
         }
       }
     } catch (MetadataException | QueryProcessException e) {
-      throw new WriteProcessException(e);
+      if (!(e instanceof PathNotExistException)) {
+        // ignore PathNotExistException which means the schema is stored on a different node, so
+        // there is no Last cache locally
+        // TODO-Cluster: enable Last cache for such series
+        throw new WriteProcessException(e);
+      }
     } finally {
       if (node != null) {
         ((InternalMNode) node).readUnlock();
