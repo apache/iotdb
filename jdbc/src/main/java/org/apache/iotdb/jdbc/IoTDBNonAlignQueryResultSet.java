@@ -212,9 +212,13 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
       return String.valueOf(BytesUtils.bytesToLong(times[index]));
     }
     int index = abstractIoTDBDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= abstractIoTDBDataSet.values.length || abstractIoTDBDataSet.values[index] == null || abstractIoTDBDataSet.values[index].length < 1) {
+    if (index < 0 || index >= abstractIoTDBDataSet.values.length
+        || abstractIoTDBDataSet.values[index] == null
+        || abstractIoTDBDataSet.values[index].length < 1) {
       return null;
     }
-    return getString(index, columnTypeDeduplicatedList.get(index), values);
+    return abstractIoTDBDataSet
+        .getString(index, abstractIoTDBDataSet.columnTypeDeduplicatedList.get(index),
+            abstractIoTDBDataSet.values);
   }
 }

@@ -301,7 +301,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   }
 
   @Override
-  public int getFetchDirection() throws SQLException {
+  public int getFetchDirection() {
     return ResultSet.FETCH_FORWARD;
   }
 
@@ -627,11 +627,18 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    try {
-      return abstractIoTDBDataSet.next();
-    } catch (StatementExecutionException e) {
-      throw new SQLException(e.getMessage());
+    if (hasCachedResults()) {
+      constructOneRow();
+      return true;
     }
+    if (abstractIoTDBDataSet.emptyResultSet) {
+      return false;
+    }
+    if (fetchResults()) {
+      constructOneRow();
+      return true;
+    }
+    return false;
   }
 
 

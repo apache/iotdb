@@ -147,7 +147,7 @@ public class AbstractIoTDBDataSet {
     isClosed = true;
   }
 
-  public boolean next() throws StatementExecutionException {
+  public boolean next() throws StatementExecutionException, IoTDBConnectionException {
     if (hasCachedResults()) {
       constructOneRow();
       return true;
@@ -162,7 +162,7 @@ public class AbstractIoTDBDataSet {
     return false;
   }
 
-  public boolean fetchResults() throws StatementExecutionException {
+  public boolean fetchResults() throws StatementExecutionException, IoTDBConnectionException {
     rowsIndex = 0;
     TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, fetchSize, queryId, true);
     try {
@@ -176,7 +176,7 @@ public class AbstractIoTDBDataSet {
       }
       return resp.hasResultSet;
     } catch (TException e) {
-      throw new StatementExecutionException(
+      throw new IoTDBConnectionException(
           "Cannot fetch result from server, because of network connection: {} ", e);
     }
   }
@@ -362,7 +362,7 @@ public class AbstractIoTDBDataSet {
     return getString(index, columnTypeDeduplicatedList.get(index), values);
   }
 
-  protected String getString(int index, TSDataType tsDataType, byte[][] values) {
+  public String getString(int index, TSDataType tsDataType, byte[][] values) {
     switch (tsDataType) {
       case BOOLEAN:
         return String.valueOf(BytesUtils.bytesToBool(values[index]));
