@@ -583,7 +583,7 @@ public abstract class AbstractCli {
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
     List<List<String>> lists = new ArrayList<>(columnCount);
-    if( resultSet instanceof  IoTDBQueryResultSet) {
+    if (resultSet instanceof IoTDBQueryResultSet) {
       for (int i = 1; i <= columnCount; i++) {
         List<String> list = new ArrayList<>(maxPrintRowCount + 1);
         list.add(resultSetMetaData.getColumnLabel(i));
@@ -607,7 +607,7 @@ public abstract class AbstractCli {
       isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
-    if(resultSet instanceof IoTDBQueryResultSet) {
+    if (resultSet instanceof IoTDBQueryResultSet) {
       boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
