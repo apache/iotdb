@@ -44,7 +44,8 @@ public class SessionDataSet {
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet) {
-    this.abstractIoTDBDataSet = new AbstractIoTDBDataSet(sql, columnNameList, columnTypeList, columnNameIndex, false, queryId, client, sessionId, queryDataSet, 1024);
+    this.abstractIoTDBDataSet = new AbstractIoTDBDataSet(sql, columnNameList, columnTypeList,
+        columnNameIndex, false, queryId, client, sessionId, queryDataSet, 1024);
   }
 
   public int getFetchSize() {
@@ -70,7 +71,9 @@ public class SessionDataSet {
     for (int i = 0; i < abstractIoTDBDataSet.columnSize; i++) {
       Field field;
 
-      int loc = abstractIoTDBDataSet.columnOrdinalMap.get(abstractIoTDBDataSet.columnNameList.get(i + 1)) - START_INDEX;
+      int loc =
+          abstractIoTDBDataSet.columnOrdinalMap.get(abstractIoTDBDataSet.columnNameList.get(i + 1))
+              - START_INDEX;
       byte[] valueBytes = abstractIoTDBDataSet.values[loc];
 
       if (valueBytes != null) {
@@ -102,7 +105,8 @@ public class SessionDataSet {
             break;
           default:
             throw new UnSupportedDataTypeException(String
-                .format("Data type %s is not supported.", abstractIoTDBDataSet.columnTypeDeduplicatedList.get(i)));
+                .format("Data type %s is not supported.",
+                    abstractIoTDBDataSet.columnTypeDeduplicatedList.get(i)));
         }
       } else {
         field = new Field(null);

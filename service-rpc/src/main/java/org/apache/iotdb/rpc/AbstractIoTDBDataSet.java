@@ -72,7 +72,8 @@ public class AbstractIoTDBDataSet {
 
   public AbstractIoTDBDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet, int fetchSize) {
+      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
+      int fetchSize) {
     this.sessionId = sessionId;
     this.ignoreTimeStamp = ignoreTimeStamp;
     this.sql = sql;
@@ -138,7 +139,8 @@ public class AbstractIoTDBDataSet {
         TSStatus closeResp = client.closeOperation(closeReq);
         RpcUtils.verifySuccess(closeResp);
       } catch (StatementExecutionException e) {
-        throw new StatementExecutionException("Error occurs for close operation in server side because ", e);
+        throw new StatementExecutionException(
+            "Error occurs for close operation in server side because ", e);
       } catch (TException e) {
         throw new TException("Error occurs when connecting to server for close operation ", e);
       }

@@ -31,10 +31,12 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
 
   public IoTDBQueryResultSet(Statement statement, List<String> columnNameList,
-                             List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp, TSIService.Iface client,
-                             String sql, long queryId, long sessionId, TSQueryDataSet dataset)
-          throws SQLException {
-    super(statement, columnNameList, columnTypeList, columnNameIndex, ignoreTimeStamp, client, sql, queryId, sessionId);
+      List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
+      TSIService.Iface client,
+      String sql, long queryId, long sessionId, TSQueryDataSet dataset)
+      throws SQLException {
+    super(statement, columnNameList, columnTypeList, columnNameIndex, ignoreTimeStamp, client, sql,
+        queryId, sessionId);
     abstractIoTDBDataSet.setTsQueryDataSet(dataset);
   }
 
