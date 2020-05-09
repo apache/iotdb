@@ -195,7 +195,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public String readTailMagic() throws IOException {
     long totalSize = tsFileInput.size();
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
+    ByteBuffer magicStringBytes = ByteBuffer
+        .allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
     tsFileInput.read(magicStringBytes, totalSize - TSFileConfig.MAGIC_STRING.getBytes().length);
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
@@ -215,23 +216,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * this function does not modify the position of the file reader.
    */
   public String readHeadMagic() throws IOException {
-    return readHeadMagic(false);
-  }
-
-  /**
-   * this function does not modify the position of the file reader.
-   *
-   * @param movePosition whether move the position of the file reader after reading the magic header
-   * to the end of the magic head string.
-   */
-  public String readHeadMagic(boolean movePosition) throws IOException {
-    ByteBuffer magicStringBytes = ByteBuffer.allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
-    if (movePosition) {
-      tsFileInput.position(0);
-      tsFileInput.read(magicStringBytes);
-    } else {
-      tsFileInput.read(magicStringBytes, 0);
-    }
+    ByteBuffer magicStringBytes = ByteBuffer
+        .allocate(TSFileConfig.MAGIC_STRING.getBytes().length);
+    tsFileInput.read(magicStringBytes, 0);
     magicStringBytes.flip();
     return new String(magicStringBytes.array());
   }
@@ -849,7 +836,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (fileSize < headerLength) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
-    String magic = readHeadMagic(true);
+    String magic = readHeadMagic();
     tsFileInput.position(headerLength);
     if (!magic.equals(TSFileConfig.MAGIC_STRING)) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;

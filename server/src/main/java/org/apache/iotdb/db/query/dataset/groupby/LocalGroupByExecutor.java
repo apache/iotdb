@@ -98,7 +98,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       // lazy reset batch data for calculation
       batchData.resetBatchData();
       // skip points that cannot be calculated
-      while (batchData.currentTime() < curStartTime && batchData.hasCurrent()) {
+      while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
         batchData.next();
       }
       if (batchData.hasCurrent()) {
@@ -222,7 +222,9 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       }
 
       calcFromBatch(batchData, curStartTime, curEndTime);
-      if (isEndCalc() || batchData.currentTime() >= curEndTime) {
+
+      // judge whether the calculation finished
+      if (isEndCalc() || (batchData.hasCurrent() && batchData.currentTime() >= curEndTime)) {
         return true;
       }
     }
