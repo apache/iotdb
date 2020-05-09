@@ -91,8 +91,6 @@ public class SessionDataSet {
     this.columnOrdinalMap = new HashMap<>();
     this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
 
-    // deduplicated column name -> column location
-    Map<String, Integer> columnMap = new HashMap<>();
 
     // deduplicate and map
     if (columnNameIndex != null) {
@@ -105,7 +103,6 @@ public class SessionDataSet {
         this.columnNameList.add(name);
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
-          columnMap.put(name, i);
           columnOrdinalMap.put(name, index + START_INDEX);
           columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
         }
@@ -117,7 +114,6 @@ public class SessionDataSet {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
         if (!columnOrdinalMap.containsKey(name)) {
-          columnMap.put(name, i);
           columnOrdinalMap.put(name, index++);
           columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
         }

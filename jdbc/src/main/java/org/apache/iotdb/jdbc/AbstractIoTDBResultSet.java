@@ -19,100 +19,52 @@
 
 package org.apache.iotdb.jdbc;
 
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.thrift.TException;
-
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.net.URL;
+import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Date;
-import java.sql.*;
-import java.util.*;
+import java.sql.NClob;
+import java.sql.Ref;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.RowId;
+import java.sql.SQLException;
+import java.sql.SQLWarning;
+import java.sql.SQLXML;
+import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import org.apache.iotdb.rpc.AbstractIoTDBDataSet;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.thrift.TException;
 
 public abstract class AbstractIoTDBResultSet implements ResultSet {
 
-  protected static final String TIMESTAMP_STR = "Time";
-  protected static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
-  protected static final int START_INDEX = 2;
   protected Statement statement;
-  protected String sql;
   protected SQLWarning warningChain = null;
-  protected boolean isClosed = false;
-  protected TSIService.Iface client;
-  protected List<String> columnNameList; // no deduplication
-  protected List<String> columnTypeList; // no deduplication
-  protected Map<String, Integer> columnOrdinalMap; // used because the server returns deduplicated columns
-  protected List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
-  protected int fetchSize;
-  protected boolean emptyResultSet = false;
-
-
-  protected byte[][] values; // used to cache the current row record value
-
-
-  protected long sessionId;
-  protected long queryId;
-  protected boolean ignoreTimeStamp;
-
-
+  protected List<String> columnTypeList;
+  protected AbstractIoTDBDataSet abstractIoTDBDataSet;
 
   public AbstractIoTDBResultSet(Statement statement, List<String> columnNameList,
-                                List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp, TSIService.Iface client,
-                                String sql, long queryId, long sessionId)
-          throws SQLException {
+      List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
+      TSIService.Iface client,
+      String sql, long queryId, long sessionId)
+      throws SQLException {
+    this.abstractIoTDBDataSet = new AbstractIoTDBDataSet(sql, columnNameList, columnTypeList,
+        columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, null,
+        statement.getFetchSize());
     this.statement = statement;
-    this.fetchSize = statement.getFetchSize();
     this.columnTypeList = columnTypeList;
-    values = new byte[columnNameList.size()][];
-
-    this.columnNameList = new ArrayList<>();
-    if(!ignoreTimeStamp) {
-      this.columnNameList.add(TIMESTAMP_STR);
-    }
-    // deduplicate and map
-    this.columnOrdinalMap = new HashMap<>();
-    if(!ignoreTimeStamp) {
-      this.columnOrdinalMap.put(TIMESTAMP_STR, 1);
-    }
-    if (columnNameIndex != null) {
-      this.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
-      for (int i = 0; i < columnNameIndex.size(); i++) {
-        columnTypeDeduplicatedList.add(null);
-      }
-      for (int i = 0; i < columnNameList.size(); i++) {
-        String name = columnNameList.get(i);
-        this.columnNameList.add(name);
-        if (!columnOrdinalMap.containsKey(name)) {
-          int index = columnNameIndex.get(name);
-          columnOrdinalMap.put(name, index+START_INDEX);
-          columnTypeDeduplicatedList.set(index, TSDataType.valueOf(columnTypeList.get(i)));
-        }
-      }
-    } else {
-      this.columnTypeDeduplicatedList = new ArrayList<>();
-      int index = START_INDEX;
-      for (int i = 0; i < columnNameList.size(); i++) {
-        String name = columnNameList.get(i);
-        this.columnNameList.add(name);
-        if (!columnOrdinalMap.containsKey(name)) {
-          columnOrdinalMap.put(name, index++);
-          columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
-        }
-      }
-    }
-    this.ignoreTimeStamp = ignoreTimeStamp;
-    this.client = client;
-    this.sql = sql;
-    this.queryId = queryId;
-    this.sessionId = sessionId;
   }
 
   @Override
@@ -152,23 +104,13 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public void close() throws SQLException {
-    if (isClosed) {
-      return;
+    try {
+      abstractIoTDBDataSet.close();
+    } catch (StatementExecutionException e) {
+      throw new SQLException("Error occurs for close operation in server side because ", e);
+    } catch (TException e) {
+      throw new SQLException("Error occurs when connecting to server for close operation ", e);
     }
-    if (client != null) {
-      try {
-        TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
-        closeReq.setQueryId(queryId);
-        TSStatus closeResp = client.closeOperation(closeReq);
-        RpcUtils.verifySuccess(closeResp);
-      } catch (StatementExecutionException e) {
-        throw new SQLException("Error occurs for close operation in server side because ", e);
-      } catch (TException e) {
-        throw new SQLException("Error occurs when connecting to server for close operation ", e);
-      }
-    }
-    client = null;
-    isClosed = true;
   }
 
 
@@ -179,7 +121,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public int findColumn(String columnName) {
-    return columnOrdinalMap.get(columnName);
+    return abstractIoTDBDataSet.findColumn(columnName);
   }
 
   @Override
@@ -209,7 +151,11 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
-    return getBigDecimal(findColumnNameByIndex(columnIndex));
+    try {
+      return getBigDecimal(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
@@ -250,18 +196,19 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public boolean getBoolean(int columnIndex) throws SQLException {
-    return getBoolean(findColumnNameByIndex(columnIndex));
+    try {
+      return getBoolean(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public boolean getBoolean(String columnName) throws SQLException {
-    checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
-      return BytesUtils.bytesToBool(values[index]);
-    }
-    else {
-      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
+    try {
+      return abstractIoTDBDataSet.getBoolean(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
     }
   }
 
@@ -337,17 +284,19 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public double getDouble(int columnIndex) throws SQLException {
-    return getDouble(findColumnNameByIndex(columnIndex));
+    try {
+      return getDouble(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public double getDouble(String columnName) throws SQLException {
-    checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
-      return BytesUtils.bytesToDouble(values[index]);
-    } else {
-      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
+    try {
+      return abstractIoTDBDataSet.getDouble(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
     }
   }
 
@@ -373,17 +322,19 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public float getFloat(int columnIndex) throws SQLException {
-    return getFloat(findColumnNameByIndex(columnIndex));
+    try {
+      return getInt(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public float getFloat(String columnName) throws SQLException {
-    checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
-      return BytesUtils.bytesToFloat(values[index]);
-    } else {
-      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
+    try {
+      return abstractIoTDBDataSet.getFloat(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
     }
   }
 
@@ -394,23 +345,29 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public int getInt(int columnIndex) throws SQLException {
-    return getInt(findColumnNameByIndex(columnIndex));
+    try {
+      return getInt(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
   public int getInt(String columnName) throws SQLException {
-    checkRecord();
-    int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
-      return BytesUtils.bytesToInt(values[index]);
-    } else {
-      throw new SQLException(String.format(VALUE_IS_NULL, columnName));
+    try {
+      return abstractIoTDBDataSet.getInt(columnName);
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
     }
   }
 
   @Override
   public long getLong(int columnIndex) throws SQLException {
-    return getLong(findColumnNameByIndex(columnIndex));
+    try {
+      return getLong(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
@@ -418,7 +375,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
-    return new IoTDBResultMetadata(columnNameList, columnTypeList, ignoreTimeStamp);
+    return new IoTDBResultMetadata(abstractIoTDBDataSet.columnNameList, columnTypeList, abstractIoTDBDataSet.ignoreTimeStamp);
   }
 
   @Override
@@ -453,7 +410,11 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public Object getObject(int columnIndex) throws SQLException {
-    return getObject(findColumnNameByIndex(columnIndex));
+    try {
+      return getObject(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
@@ -518,7 +479,11 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public short getShort(int columnIndex) throws SQLException {
-    return getShort(findColumnNameByIndex(columnIndex));
+    try {
+      return getShort(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
@@ -533,7 +498,11 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public String getString(int columnIndex) throws SQLException {
-    return getString(findColumnNameByIndex(columnIndex));
+    try {
+      return getString(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
+    }
   }
 
   @Override
@@ -628,7 +597,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public boolean isClosed() {
-    return isClosed;
+    return abstractIoTDBDataSet.isClosed;
   }
 
   @Override
@@ -658,18 +627,11 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public boolean next() throws SQLException {
-    if (hasCachedResults()) {
-      constructOneRow();
-      return true;
+    try {
+      return abstractIoTDBDataSet.next();
+    } catch (StatementExecutionException e) {
+      throw new SQLException(e.getMessage());
     }
-    if (emptyResultSet) {
-      return false;
-    }
-    if (fetchResults()) {
-      constructOneRow();
-      return true;
-    }
-    return false;
   }
 
 
@@ -1135,35 +1097,6 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   abstract void checkRecord() throws SQLException;
 
-  private String findColumnNameByIndex(int columnIndex) throws SQLException {
-    if (columnIndex <= 0) {
-      throw new SQLException("column index should start from 1");
-    }
-    if (columnIndex > columnNameList.size()) {
-      throw new SQLException(
-              String.format("column index %d out of range %d", columnIndex, columnNameList.size()));
-    }
-    return columnNameList.get(columnIndex - 1);
-  }
-
   abstract String getValueByName(String columnName) throws SQLException;
 
-  protected String getString(int index, TSDataType tsDataType, byte[][] values) {
-    switch (tsDataType) {
-      case BOOLEAN:
-        return String.valueOf(BytesUtils.bytesToBool(values[index]));
-      case INT32:
-        return String.valueOf(BytesUtils.bytesToInt(values[index]));
-      case INT64:
-        return String.valueOf(BytesUtils.bytesToLong(values[index]));
-      case FLOAT:
-        return String.valueOf(BytesUtils.bytesToFloat(values[index]));
-      case DOUBLE:
-        return String.valueOf(BytesUtils.bytesToDouble(values[index]));
-      case TEXT:
-        return new String(values[index]);
-      default:
-        return null;
-    }
-  }
 }
