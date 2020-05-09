@@ -27,9 +27,9 @@ import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class IoTDBAliasIT {
@@ -56,18 +56,19 @@ public class IoTDBAliasIT {
   private static final String TIMESEIRES_STR = "timeseries";
   private static final String VALUE_STR = "value";
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
 
     insertData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
+
 
   private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -177,7 +178,8 @@ public class IoTDBAliasIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,root.sg.d1.speed,root.sg.d1.speed,root.sg.d1.s2,", header.toString());
+        Assert.assertEquals("Time,root.sg.d1.speed,root.sg.d1.speed,root.sg.d1.s2,",
+            header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -200,7 +202,7 @@ public class IoTDBAliasIT {
   public void lastSelectDuplicatedPathsWithAliasTest() throws ClassNotFoundException {
     String[] retArray = new String[]{
         "400,root.sg.d1.speed,50.4",
-        "400,root.sg.d1.speed,50.4",
+        "400,root.sg.d1.s1,50.4",
         "400,root.sg.d1.s2,28.3"
     };
 
@@ -208,7 +210,7 @@ public class IoTDBAliasIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select last speed, speed, s2 from root.sg.d1");
+      boolean hasResultSet = statement.execute("select last speed, s1, speed, s2 from root.sg.d1");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -228,5 +230,44 @@ public class IoTDBAliasIT {
     }
   }
 
+  @Test
+  public void selectAggregationWithAliasTest() throws ClassNotFoundException {
+    String[] retArray = new String[]{
+        "4,4,28.3,26.3,"
+    };
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement
+          .execute("select count(speed), max_value(temperature) from root.sg.*");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        StringBuilder header = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          header.append(resultSetMetaData.getColumnName(i)).append(",");
+        }
+        Assert.assertEquals("count(root.sg.d1.speed),count(root.sg.d2.speed),"
+            + "max_value(root.sg.d1.temperature),max_value(root.sg.d2.temperature),", header.toString());
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          StringBuilder builder = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            builder.append(resultSet.getString(i)).append(",");
+          }
+          Assert.assertEquals(retArray[cnt], builder.toString());
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
 }
