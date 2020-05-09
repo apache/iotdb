@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
@@ -32,6 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
@@ -58,70 +60,55 @@ public class CatchUpTask implements Runnable {
   }
 
   boolean checkMatchIndex() throws TException, InterruptedException {
-    AppendEntryRequest request = new AppendEntryRequest();
-    AtomicBoolean isMatch = new AtomicBoolean(false);
 
-    LogCatchUpHandler handler = new LogCatchUpHandler();
-    handler.setAppendSucceed(isMatch);
-    handler.setRaftMember(raftMember);
-    handler.setFollower(node);
-    if (raftMember.getHeader() != null) {
-      request.setHeader(raftMember.getHeader());
-    }
-    request.setLeader(raftMember.getThisNode());
-    // not update follower's commitIndex in order to append the log which index is matchIndex twice
-    request.setLeaderCommit(-1);
+    AtomicReference<Boolean> resultRef = new AtomicReference<>();
+    GenericHandler matchTermHandler = new GenericHandler(node, resultRef);
+
     synchronized (raftMember.getLogManager()) {
       peer.setNextIndex(raftMember.getLogManager().getLastLogIndex());
       try {
-        logs = raftMember.getLogManager().getEntries(
-            Math.max(raftMember.getLogManager().getFirstIndex(), peer.getMatchIndex() + 1),
-            peer.getNextIndex() + 1);
+        long lo = Math.max(raftMember.getLogManager().getFirstIndex(), peer.getMatchIndex() + 1);
+        long hi = peer.getNextIndex() + 1;
+        logs = raftMember.getLogManager().getEntries(lo, hi);
+        logger.debug("Get {} logs of [{}, {}]to check match index", logs.size(), lo, hi);
       } catch (Exception e) {
         logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
       }
     }
 
     int index = logs.size() - 1;
-    EmptyContentLog emptyLog = new EmptyContentLog();
     while (index >= 0) {
       Log log = logs.get(index);
-      emptyLog.setCurrLogIndex(log.getCurrLogIndex());
-      emptyLog.setCurrLogTerm(log.getCurrLogTerm());
       synchronized (raftMember.getTerm()) {
         // make sure this node is still a leader
         if (raftMember.getCharacter() != NodeCharacter.LEADER) {
           logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
           break;
         }
-        request.setTerm(raftMember.getTerm().get());
       }
-      request.setPrevLogIndex(log.getCurrLogIndex() - 1);
+      long prevLogIndex = log.getCurrLogIndex() - 1;
+      long prevLogTerm = -1;
       if (index > 0) {
-        request.setPrevLogTerm(logs.get(index - 1).getCurrLogTerm());
+        prevLogTerm = logs.get(index - 1).getCurrLogTerm();
       } else {
         try {
-          request.setPrevLogTerm(raftMember.getLogManager().getTerm(log.getCurrLogIndex() - 1));
+          prevLogTerm = raftMember.getLogManager().getTerm(log.getCurrLogIndex() - 1);
         } catch (Exception e) {
           logger.error("getTerm failed for newly append entries", e);
         }
       }
 
-      handler.setLog(log);
-      request.setEntry(emptyLog.serialize());
-
-      synchronized (isMatch) {
+      synchronized (resultRef) {
         AsyncClient client = raftMember.connectNode(node);
         if (client == null) {
           break;
         }
-        client.appendEntry(request, handler);
+        client.matchTerm(prevLogIndex, prevLogTerm, raftMember.getHeader(), matchTermHandler);
         raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        isMatch.wait(RaftServer.connectionTimeoutInMS);
+        resultRef.wait(RaftServer.connectionTimeoutInMS);
       }
-      if (isMatch.get()) {
-        // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from this emptyContentLog's index.
-        // which means the log which index is matchIndex will be send twice, but at the first time it sent an empty log.
+      if (resultRef.get()) {
+        // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
         logs.subList(0, index).clear();
         if (logger.isDebugEnabled()) {
           logger.debug("{} makes {} catch up with {} cached logs", raftMember.getName(), node,

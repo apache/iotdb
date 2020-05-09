@@ -40,6 +40,7 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,6 +95,25 @@ public class CatchUpTaskTest {
             leaderCommit = Math.max(request.leaderCommit, leaderCommit);
             resultHandler.onComplete(Response.RESPONSE_AGREE);
           }).start();
+        }
+
+        @Override
+        public void matchTerm(long index, long term, Node header,
+            AsyncMethodCallback<Boolean> resultHandler) {
+         new Thread(() -> {
+            if (receivedLogs.isEmpty()) {
+              resultHandler.onComplete(true);
+              return;
+            } else {
+              for (Log receivedLog : receivedLogs) {
+                if (receivedLog.getCurrLogTerm() == term && receivedLog.getCurrLogIndex() == index) {
+                  resultHandler.onComplete(true);
+                  return;
+                }
+              }
+            }
+            resultHandler.onComplete(false);
+         }).start();
         }
       };
     }

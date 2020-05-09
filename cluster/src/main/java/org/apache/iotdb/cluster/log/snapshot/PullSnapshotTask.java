@@ -79,7 +79,8 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
   private boolean pullSnapshot(AtomicReference<Map<Integer, T>> snapshotRef, int nodeIndex)
       throws InterruptedException, TException {
     Node node = descriptor.getPreviousHolders().get(nodeIndex);
-    logger.debug("Pulling {} snapshots from {}", descriptor.getSlots().size(), node);
+    logger.debug("Pulling {} snapshots from {} of {}", descriptor.getSlots().size(), node,
+        descriptor.getPreviousHolders().getHeader());
 
     DataClient client =
         (DataClient) newMember.connectNode(node);

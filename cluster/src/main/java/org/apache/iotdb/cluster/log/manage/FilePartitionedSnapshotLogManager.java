@@ -101,6 +101,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
               continue startCollect;
             }
             createdHardlinks.add(hardlink);
+            logger.debug("File {} is put into snapshot #{}", tsFileResource, slotNum);
             snapshot.addFile(hardlink, thisNode);
           }
         }

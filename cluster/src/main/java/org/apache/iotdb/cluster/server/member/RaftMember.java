@@ -83,6 +83,11 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class RaftMember implements RaftService.AsyncIface {
 
+  /**
+   * The maximum time to wait if there is no leader in the group, after which a
+   * LeadNotFoundException will be thrown.
+   */
+  private static final long WAIT_LEADER_TIME_MS = 60 * 1000L;
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
@@ -101,6 +106,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   AtomicLong term = new AtomicLong(0);
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   volatile Node leader;
+  final Object waitLeaderCondition = new Object();
   volatile Node voteFor;
   volatile long lastHeartbeatReceivedTime;
 
@@ -438,7 +444,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
       if (resp != -1) {
         if (logger.isDebugEnabled()) {
-          logger.debug("{} append a new log list {}", name, logs);
+          logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);
         }
         resp = Response.RESPONSE_AGREE;
       } else {
@@ -655,7 +661,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       } else if (!Objects.equals(leader, this.thisNode)) {
         logger.info("{} has become a follower of {} in term {}", getName(), leader, term.get());
       }
-      this.leader = leader;
+      synchronized (waitLeaderCondition) {
+        this.leader = leader;
+        if (leader != null) {
+          waitLeaderCondition.notifyAll();
+        }
+      }
     }
   }
 
@@ -1005,6 +1016,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     if (character == NodeCharacter.LEADER) {
       return true;
     }
+    waitLeader();
     if (leader == null) {
       // the leader has not been elected, we must assume the node falls behind
       return false;
@@ -1073,6 +1085,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       resultHandler.onComplete(logManager.getCommitLogIndex());
       return;
     }
+    waitLeader();
     AsyncClient client = connectNode(leader);
     if (client == null) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
@@ -1167,5 +1180,28 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   enum AppendLogResult {
     OK, TIME_OUT, LEADERSHIP_STALE
+  }
+
+  @Override
+  public void matchTerm(long index, long term, Node header,
+      AsyncMethodCallback<Boolean> resultHandler) {
+    resultHandler.onComplete(logManager.matchTerm(term, index));
+  }
+
+  void waitLeader() {
+    long startTime = System.currentTimeMillis();
+    while (leader == null) {
+      synchronized (waitLeaderCondition) {
+        try {
+          waitLeaderCondition.wait(10);
+        } catch (InterruptedException e) {
+          logger.error("Unexpected interruption when waiting for a leader to be elected", e);
+        }
+      }
+      long consumedTime = System.currentTimeMillis() - startTime;
+      if (consumedTime >= WAIT_LEADER_TIME_MS) {
+        break;
+      }
+    }
   }
 }

@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -34,7 +35,9 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +86,8 @@ abstract class BaseApplier implements LogApplier {
           List<MeasurementSchema> schemas = metaGroupMember
               .pullTimeSeriesSchemas(Collections.singletonList(plan.getDeviceId()));
           for (MeasurementSchema schema : schemas) {
-            registerMeasurement(schema);
+            registerMeasurement(plan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
+                schema);
           }
         } catch (MetadataException e1) {
           throw new QueryProcessException(e1);
@@ -98,8 +102,8 @@ abstract class BaseApplier implements LogApplier {
     }
   }
 
-  protected void registerMeasurement(MeasurementSchema schema) {
-    MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
+  protected void registerMeasurement(String path, MeasurementSchema schema) {
+    MManager.getInstance().cacheSchema(path, schema);
   }
 
   protected PlanExecutor getQueryExecutor() throws QueryProcessException {

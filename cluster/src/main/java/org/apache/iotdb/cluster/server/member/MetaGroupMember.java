@@ -402,8 +402,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           heartBeatService.submit(new MetaHeartbeatThread(this));
           return true;
         }
-        // wait a heartbeat to start the next try
-        Thread.sleep(RaftServer.heartBeatIntervalMs);
+        // wait 5s to start the next try
+        Thread.sleep(5000);
       } catch (TException e) {
         logger.warn("Cannot join the cluster from {}, because:", node, e);
       } catch (InterruptedException e) {
@@ -447,7 +447,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
       synchronized (response) {
         client.addNode(thisNode, startUpStatus, handler);
-        response.wait(connectionTimeoutInMS);
+        response.wait(60 * 1000);
       }
       AddNodeResponse resp = response.get();
       if (resp == null) {
@@ -681,6 +681,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return;
     }
 
+    waitLeader();
     // try to process the request locally, if it cannot be processed locally, forward it
     if (processAddNodeLocally(node, startUpStatus, response, resultHandler)) {
       return;
@@ -1858,11 +1859,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader(),
           null, String.format("Query: %s, time filter: %s, queryId: %d", path, timeFilter,
               context.getQueryId()));
-      logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(),
-          context.getQueryId());
-      return dataGroupMember
+      IPointReader seriesPointReader = dataGroupMember
           .getSeriesPointReader(path, deviceMeasurements, dataType, timeFilter, valueFilter,
               context);
+      logger.debug("{}: creating a local reader for {}#{} of {}, empty: {}", name,
+          path.getFullPath(),
+          context.getQueryId(), partitionGroup.getHeader(),
+          !seriesPointReader.hasNextTimeValuePair());
+      return seriesPointReader;
     } else {
       return getRemoteSeriesPointReader(timeFilter, valueFilter, dataType, path,
           deviceMeasurements, partitionGroup, context);
@@ -2189,6 +2193,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return;
     }
 
+    waitLeader();
     // try to process the request locally, if it cannot be processed locally, forward it
     if (processRemoveNodeLocally(node, resultHandler)) {
       return;

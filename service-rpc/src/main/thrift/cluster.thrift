@@ -269,6 +269,11 @@ service RaftService {
   long requestCommitIndex(1:Node header)
 
   binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
+
+  /**
+  * Test if a log of "index" and "term" exists.
+  **/
+  bool matchTerm(1:long index, 2:long term, 3:Node header)
 }
 
 

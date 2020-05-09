@@ -206,5 +206,9 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
     member.exile(resultHandler);
   }
 
-
+  @Override
+  public void matchTerm(long index, long term, Node header,
+      AsyncMethodCallback<Boolean> resultHandler) {
+    member.matchTerm(index, term, header, resultHandler);
+  }
 }

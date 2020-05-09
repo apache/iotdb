@@ -60,7 +60,7 @@ public class MetaLogApplier extends BaseApplier {
       RemoveNodeLog removeNodeLog = ((RemoveNodeLog) log);
       member.applyRemoveNode(removeNodeLog.getRemovedNode());
     } else {
-      logger.error("Unsupported log: {}", log);
+      logger.error("Unsupported log: {} {}", log.getClass().getName(), log);
     }
   }
 }

@@ -34,13 +34,25 @@ import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.rpc.thrift.*;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -51,8 +63,13 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   private static final Logger logger = LoggerFactory.getLogger(DataClusterServer.class);
 
-  // key: the header of a data group, the member representing this node in this group
+  // key: the header of a data group, value: the member representing this node in this group and
+  // it is currently at service
   private Map<Node, DataGroupMember> headerGroupMap = new ConcurrentHashMap<>();
+  // key: the header of a data group, value: the member representing this node in this group but
+  // it is out of service because another node has joined the group and expelled this node, or
+  // the node itself is removed, but it is still stored to provide snapshot for other nodes
+  private Map<Node, DataGroupMember> stoppedMemberMap = new ConcurrentHashMap<>();
   private PartitionTable partitionTable;
   private DataGroupMember.Factory dataMemberFactory;
 
@@ -78,6 +95,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    */
   public void addDataGroupMember(DataGroupMember dataGroupMember) {
     DataGroupMember removedMember = headerGroupMap.remove(dataGroupMember.getHeader());
+    stoppedMemberMap.remove(dataGroupMember.getHeader());
     if (removedMember != null) {
       removedMember.stop();
     }
@@ -206,7 +224,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = getDataMember(header, resultHandler, request);
+    DataGroupMember member = stoppedMemberMap.get(header);
+    if (member == null) {
+      member = getDataMember(header, resultHandler, request);
+    }
     if (member != null) {
       member.pullSnapshot(request, resultHandler);
     }
@@ -224,7 +245,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler, "Request commit index");
+    DataGroupMember member = stoppedMemberMap.get(header);
+    if (member == null) {
+      member = getDataMember(header, resultHandler, "Request commit index");
+    }
     if (member != null) {
       member.requestCommitIndex(header, resultHandler);
     }
@@ -270,8 +294,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void endQuery(Node header, Node thisNode, long queryId,
       AsyncMethodCallback<Void> resultHandler) {
-    DataGroupMember member = getDataMember(header, resultHandler,
-        "End query:" + thisNode + "#" + queryId);
+    DataGroupMember member = stoppedMemberMap.get(header);
+    if (member == null) {
+      member = getDataMember(header, resultHandler, "End query");
+    }
     if (member != null) {
       member.endQuery(header, thisNode, queryId, resultHandler);
     }
@@ -398,7 +424,10 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         if (shouldLeave) {
           logger.info("This node does not belong to {} any more", dataGroupMember.getAllNodes());
           entryIterator.remove();
+          dataGroupMember.syncLeader();
           dataGroupMember.stop();
+          dataGroupMember.setReadOnly();
+          stoppedMemberMap.put(entry.getKey(), entry.getValue());
         }
       }
 
@@ -463,7 +492,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           // the group is removed as the node is removed, so new writes should be rejected as
           // they belong to the new holder, but the member is kept alive for other nodes to pull
           // snapshots
+          entryIterator.remove();
+          dataGroupMember.syncLeader();
+          dataGroupMember.stop();
           dataGroupMember.setReadOnly();
+          stoppedMemberMap.put(entry.getKey(), entry.getValue());
           //TODO-Cluster: when to call removeLocalData?
         } else {
           if (node.equals(thisNode)) {
@@ -530,5 +563,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     for (DataGroupMember member : headerGroupMap.values()) {
       member.closeLogManager();
     }
+  }
+
+  @Override
+  public void matchTerm(long index, long term, Node header,
+      AsyncMethodCallback<Boolean> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "Match term");
+    dataMember.matchTerm(index, term, header, resultHandler);
   }
 }

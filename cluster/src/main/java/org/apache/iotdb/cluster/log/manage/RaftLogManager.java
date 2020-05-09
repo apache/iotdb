@@ -208,7 +208,7 @@ public class RaftLogManager {
     if (matchTerm(lastTerm, lastIndex)) {
       long newLastIndex = lastIndex + entries.size();
       long ci = findConflict(entries);
-      if (ci == 0 || ci <= commitIndex) {
+      if (ci <= commitIndex) {
         logger
             .error("entry {} conflict with committed entry [commitIndex({})]", ci,
                 commitIndex);
@@ -464,14 +464,14 @@ public class RaftLogManager {
   /**
    * findConflict finds the index of the conflict. It returns the first pair of conflicting entries
    * between the existing entries and the given entries, if there are any. If there is no
-   * conflicting entries, and the existing entries contains all the given entries, zero will be
+   * conflicting entries, and the existing entries contains all the given entries, -1 will be
    * returned. If there is no conflicting entries, but the given entries contains new entries, the
    * index of the first new entry will be returned. An entry is considered to be conflicting if it
    * has the same index but a different term. The index of the given entries MUST be continuously
    * increasing.
    *
    * @param entries request entries
-   * @return 0 or conflictIndex
+   * @return -1 or conflictIndex
    */
   protected long findConflict(List<Log> entries) {
     for (Log entry : entries) {
@@ -483,7 +483,7 @@ public class RaftLogManager {
         return entry.getCurrLogIndex();
       }
     }
-    return 0;
+    return -1;
   }
 
   @TestOnly

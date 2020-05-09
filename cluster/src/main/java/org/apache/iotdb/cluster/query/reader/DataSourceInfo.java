@@ -88,7 +88,7 @@ public class DataSourceInfo {
     int nextNodePos = (this.curPos + 1) % this.nodes.size();
     while (true) {
       Node node = nodes.get(nextNodePos);
-      logger.debug("querying {} from {}", request.path, node);
+      logger.debug("querying {} from {} of {}", request.path, node, partitionGroup.getHeader());
       GenericHandler<Long> handler = new GenericHandler<>(node, result);
       try {
         DataClient client = this.metaGroupMember.getDataClient(node);

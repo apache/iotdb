@@ -746,10 +746,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         } catch (TException e) {
           resultHandler.onError(e);
         }
+        return;
       } else {
-        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+        waitLeader();
+        if (leader == null) {
+          resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+          return;
+        }
       }
-      return;
     }
     // if the requester pulls the snapshots because the header of the group is removed, then the
     // member should no longer receive new data
@@ -762,7 +766,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // wait if the data of the slot is in another node
       slotManager.waitSlot(requiredSlot);
     }
-    logger.debug("{}: {} slots are requested", name, requiredSlots.size());
+    logger.debug("{}: {} slots are requested, first:{}, last: {}", name, requiredSlots.size(),
+        requiredSlots.get(0), requiredSlots.get(requiredSlots.size() - 1));
 
     // If the logs between [currCommitLogIndex, currLastLogIndex] are committed after the
     // snapshot is generated, they will be invisible to the new slot owner and thus lost forever
@@ -974,6 +979,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (!syncLeader()) {
       // if this node cannot synchronize with the leader with in a given time, forward the
       // request to the leader
+      waitLeader();
       DataClient client = (DataClient) connectNode(leader);
       if (client == null) {
         resultHandler.onError(new LeaderUnknownException(getAllNodes()));
@@ -1090,7 +1096,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         List<MeasurementSchema> schemas = metaGroupMember
             .pullTimeSeriesSchemas(Collections.singletonList(path.getFullPath()));
         for (MeasurementSchema schema : schemas) {
-          MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
+          MManager.getInstance().cacheSchema(path.getFullPath(), schema);
         }
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
@@ -1570,7 +1576,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         List<MeasurementSchema> schemas = metaGroupMember
             .pullTimeSeriesSchemas(Collections.singletonList(path));
         for (MeasurementSchema schema : schemas) {
-          MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
+          MManager.getInstance().cacheSchema(path, schema);
         }
       } catch (MetadataException e) {
         throw new QueryProcessException(e);

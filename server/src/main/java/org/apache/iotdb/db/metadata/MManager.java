@@ -1428,7 +1428,7 @@ public class MManager {
       MNode node = nodeDeque.removeFirst();
       if (node instanceof LeafMNode) {
         MeasurementSchema nodeSchema = ((LeafMNode) node).getSchema();
-        timeseriesSchemas.add(new MeasurementSchema(node.getFullPath(), nodeSchema.getType(),
+        timeseriesSchemas.add(new MeasurementSchema(node.getName(), nodeSchema.getType(),
             nodeSchema.getEncodingType(), nodeSchema.getCompressor()));
       } else if (!node.getChildren().isEmpty()) {
         nodeDeque.addAll(node.getChildren().values());
@@ -1437,8 +1437,7 @@ public class MManager {
   }
 
   /**
-   * Collect the timeseries schemas under "startingPath". Notice the measurements in the collected
-   * MeasurementSchemas are the full path here.
+   * Collect the timeseries schemas under "startingPath".
    *
    * @param startingPath
    * @param timeseriesSchemas
