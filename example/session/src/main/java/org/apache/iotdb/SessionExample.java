@@ -51,17 +51,17 @@ public class SessionExample {
       }
     }
 
-//    createTimeseries();
-//    createMultiTimeseries();
-//    insertRecord();
-//    insertTablet();
-//    insertTablets();
-//    insertRecords();
-//    nonQuery();
+    createTimeseries();
+    createMultiTimeseries();
+    insertRecord();
+    insertTablet();
+    insertTablets();
+    insertRecords();
+    nonQuery();
     query();
-//    queryByIterator();
-//    deleteData();
-//    deleteTimeseries();
+    queryByIterator();
+    deleteData();
+    deleteTimeseries();
     session.close();
   }
 
