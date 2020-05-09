@@ -43,24 +43,24 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import org.apache.iotdb.rpc.AbstractIoTDBDataSet;
+import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.thrift.TException;
 
-public abstract class AbstractIoTDBResultSet implements ResultSet {
+public abstract class AbstractIoTDBJDBCResultSet implements ResultSet {
 
   protected Statement statement;
   protected SQLWarning warningChain = null;
   protected List<String> columnTypeList;
-  protected AbstractIoTDBDataSet abstractIoTDBDataSet;
+  protected IoTDBRpcDataSet ioTDBRpcDataSet;
 
-  public AbstractIoTDBResultSet(Statement statement, List<String> columnNameList,
+  public AbstractIoTDBJDBCResultSet(Statement statement, List<String> columnNameList,
       List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
       TSIService.Iface client,
       String sql, long queryId, long sessionId)
       throws SQLException {
-    this.abstractIoTDBDataSet = new AbstractIoTDBDataSet(sql, columnNameList, columnTypeList,
+    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
         columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, null,
         statement.getFetchSize());
     this.statement = statement;
@@ -105,7 +105,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public void close() throws SQLException {
     try {
-      abstractIoTDBDataSet.close();
+      ioTDBRpcDataSet.close();
     } catch (StatementExecutionException e) {
       throw new SQLException("Error occurs for close operation in server side because ", e);
     } catch (TException e) {
@@ -121,7 +121,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public int findColumn(String columnName) {
-    return abstractIoTDBDataSet.findColumn(columnName);
+    return ioTDBRpcDataSet.findColumn(columnName);
   }
 
   @Override
@@ -152,7 +152,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
     try {
-      return getBigDecimal(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getBigDecimal(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -197,7 +197,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public boolean getBoolean(int columnIndex) throws SQLException {
     try {
-      return getBoolean(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getBoolean(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -206,7 +206,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public boolean getBoolean(String columnName) throws SQLException {
     try {
-      return abstractIoTDBDataSet.getBoolean(columnName);
+      return ioTDBRpcDataSet.getBoolean(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -285,7 +285,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public double getDouble(int columnIndex) throws SQLException {
     try {
-      return getDouble(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getDouble(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -294,7 +294,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public double getDouble(String columnName) throws SQLException {
     try {
-      return abstractIoTDBDataSet.getDouble(columnName);
+      return ioTDBRpcDataSet.getDouble(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -323,7 +323,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public float getFloat(int columnIndex) throws SQLException {
     try {
-      return getInt(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getInt(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -332,7 +332,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public float getFloat(String columnName) throws SQLException {
     try {
-      return abstractIoTDBDataSet.getFloat(columnName);
+      return ioTDBRpcDataSet.getFloat(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -346,7 +346,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public int getInt(int columnIndex) throws SQLException {
     try {
-      return getInt(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getInt(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -355,7 +355,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public int getInt(String columnName) throws SQLException {
     try {
-      return abstractIoTDBDataSet.getInt(columnName);
+      return ioTDBRpcDataSet.getInt(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -364,7 +364,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public long getLong(int columnIndex) throws SQLException {
     try {
-      return getLong(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getLong(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -375,8 +375,8 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public ResultSetMetaData getMetaData() {
-    return new IoTDBResultMetadata(abstractIoTDBDataSet.columnNameList, columnTypeList,
-        abstractIoTDBDataSet.ignoreTimeStamp);
+    return new IoTDBResultMetadata(ioTDBRpcDataSet.columnNameList, columnTypeList,
+        ioTDBRpcDataSet.ignoreTimeStamp);
   }
 
   @Override
@@ -412,7 +412,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public Object getObject(int columnIndex) throws SQLException {
     try {
-      return getObject(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getObject(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -481,7 +481,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public short getShort(int columnIndex) throws SQLException {
     try {
-      return getShort(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getShort(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -500,7 +500,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
   @Override
   public String getString(int columnIndex) throws SQLException {
     try {
-      return getString(abstractIoTDBDataSet.findColumnNameByIndex(columnIndex));
+      return getString(ioTDBRpcDataSet.findColumnNameByIndex(columnIndex));
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -598,7 +598,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
 
   @Override
   public boolean isClosed() {
-    return abstractIoTDBDataSet.isClosed;
+    return ioTDBRpcDataSet.isClosed;
   }
 
   @Override
@@ -632,7 +632,7 @@ public abstract class AbstractIoTDBResultSet implements ResultSet {
       constructOneRow();
       return true;
     }
-    if (abstractIoTDBDataSet.emptyResultSet) {
+    if (ioTDBRpcDataSet.emptyResultSet) {
       return false;
     }
     if (fetchResults()) {

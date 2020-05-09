@@ -18,13 +18,13 @@
  */
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.rpc.AbstractIoTDBDataSet.START_INDEX;
+import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.rpc.AbstractIoTDBDataSet;
+import org.apache.iotdb.rpc.IoTDBRpcDataSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -39,45 +39,45 @@ import org.apache.thrift.TException;
 
 public class SessionDataSet {
 
-  private final AbstractIoTDBDataSet abstractIoTDBDataSet;
+  private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
       long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet) {
-    this.abstractIoTDBDataSet = new AbstractIoTDBDataSet(sql, columnNameList, columnTypeList,
+    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
         columnNameIndex, false, queryId, client, sessionId, queryDataSet, 1024);
   }
 
   public int getFetchSize() {
-    return abstractIoTDBDataSet.fetchSize;
+    return ioTDBRpcDataSet.fetchSize;
   }
 
   public void setFetchSize(int fetchSize) {
-    abstractIoTDBDataSet.fetchSize = fetchSize;
+    ioTDBRpcDataSet.fetchSize = fetchSize;
   }
 
   public List<String> getColumnNames() {
-    return abstractIoTDBDataSet.columnNameList;
+    return ioTDBRpcDataSet.columnNameList;
   }
 
 
   public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
-    return abstractIoTDBDataSet.next();
+    return ioTDBRpcDataSet.next();
   }
 
 
   private RowRecord constructRowRecordFromValueArray() {
     List<Field> outFields = new ArrayList<>();
-    for (int i = 0; i < abstractIoTDBDataSet.columnSize; i++) {
+    for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
       Field field;
 
       int loc =
-          abstractIoTDBDataSet.columnOrdinalMap.get(abstractIoTDBDataSet.columnNameList.get(i + 1))
+          ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(i + 1))
               - START_INDEX;
-      byte[] valueBytes = abstractIoTDBDataSet.values[loc];
+      byte[] valueBytes = ioTDBRpcDataSet.values[loc];
 
       if (valueBytes != null) {
-        TSDataType dataType = abstractIoTDBDataSet.columnTypeDeduplicatedList.get(loc);
+        TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(loc);
         field = new Field(dataType);
         switch (dataType) {
           case BOOLEAN:
@@ -106,31 +106,31 @@ public class SessionDataSet {
           default:
             throw new UnSupportedDataTypeException(String
                 .format("Data type %s is not supported.",
-                    abstractIoTDBDataSet.columnTypeDeduplicatedList.get(i)));
+                    ioTDBRpcDataSet.columnTypeDeduplicatedList.get(i)));
         }
       } else {
         field = new Field(null);
       }
       outFields.add(field);
     }
-    return new RowRecord(BytesUtils.bytesToLong(abstractIoTDBDataSet.time), outFields);
+    return new RowRecord(BytesUtils.bytesToLong(ioTDBRpcDataSet.time), outFields);
   }
 
 
   public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
-    if (!abstractIoTDBDataSet.hasCachedRecord) {
+    if (!ioTDBRpcDataSet.hasCachedRecord) {
       if (!hasNext()) {
         return null;
       }
     }
-    abstractIoTDBDataSet.hasCachedRecord = false;
+    ioTDBRpcDataSet.hasCachedRecord = false;
 
     return constructRowRecordFromValueArray();
   }
 
   public void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException {
     try {
-      abstractIoTDBDataSet.close();
+      ioTDBRpcDataSet.close();
     } catch (TException e) {
       throw new IoTDBConnectionException(e.getMessage());
     }
@@ -143,75 +143,75 @@ public class SessionDataSet {
   public class DataIterator {
 
     public boolean next() throws StatementExecutionException, IoTDBConnectionException {
-      return abstractIoTDBDataSet.next();
+      return ioTDBRpcDataSet.next();
     }
 
     public boolean getBoolean(int columnIndex) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getBoolean(columnIndex);
+      return ioTDBRpcDataSet.getBoolean(columnIndex);
     }
 
     public boolean getBoolean(String columnName) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getBoolean(columnName);
+      return ioTDBRpcDataSet.getBoolean(columnName);
     }
 
     public double getDouble(int columnIndex) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getDouble(columnIndex);
+      return ioTDBRpcDataSet.getDouble(columnIndex);
     }
 
     public double getDouble(String columnName) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getDouble(columnName);
+      return ioTDBRpcDataSet.getDouble(columnName);
     }
 
     public float getFloat(int columnIndex) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getFloat(columnIndex);
+      return ioTDBRpcDataSet.getFloat(columnIndex);
     }
 
     public float getFloat(String columnName) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getFloat(columnName);
+      return ioTDBRpcDataSet.getFloat(columnName);
     }
 
     public int getInt(int columnIndex) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getInt(columnIndex);
+      return ioTDBRpcDataSet.getInt(columnIndex);
     }
 
     public int getInt(String columnName) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getInt(columnName);
+      return ioTDBRpcDataSet.getInt(columnName);
     }
 
     public long getLong(int columnIndex) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getLong(columnIndex);
+      return ioTDBRpcDataSet.getLong(columnIndex);
     }
 
     public long getLong(String columnName) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getLong(columnName);
+      return ioTDBRpcDataSet.getLong(columnName);
     }
 
     public Object getObject(int columnIndex) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getObject(columnIndex);
+      return ioTDBRpcDataSet.getObject(columnIndex);
     }
 
     public Object getObject(String columnName) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getObject(columnName);
+      return ioTDBRpcDataSet.getObject(columnName);
     }
 
     public String getString(int columnIndex) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getString(columnIndex);
+      return ioTDBRpcDataSet.getString(columnIndex);
     }
 
     public String getString(String columnName) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getString(columnName);
+      return ioTDBRpcDataSet.getString(columnName);
     }
 
     public Timestamp getTimestamp(int columnIndex) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getTimestamp(columnIndex);
+      return ioTDBRpcDataSet.getTimestamp(columnIndex);
     }
 
     public Timestamp getTimestamp(String columnName) throws StatementExecutionException {
-      return abstractIoTDBDataSet.getTimestamp(columnName);
+      return ioTDBRpcDataSet.getTimestamp(columnName);
     }
 
     public int findColumn(String columnName) {
-      return abstractIoTDBDataSet.findColumn(columnName);
+      return ioTDBRpcDataSet.findColumn(columnName);
     }
   }
 }

@@ -19,9 +19,9 @@
 
 package org.apache.iotdb.jdbc;
 
-import static org.apache.iotdb.rpc.AbstractIoTDBDataSet.START_INDEX;
-import static org.apache.iotdb.rpc.AbstractIoTDBDataSet.TIMESTAMP_STR;
-import static org.apache.iotdb.rpc.AbstractIoTDBDataSet.VALUE_IS_NULL;
+import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
+import static org.apache.iotdb.rpc.IoTDBRpcDataSet.TIMESTAMP_STR;
+import static org.apache.iotdb.rpc.IoTDBRpcDataSet.VALUE_IS_NULL;
 
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -40,7 +40,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.*;
 
-public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
+public class IoTDBNonAlignJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
   private static final int TIMESTAMP_STR_LENGTH = 4;
   private static final String EMPTY_STR = "";
@@ -49,7 +49,7 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
   private byte[][] times; // used for disable align
 
   // for disable align clause
-  IoTDBNonAlignQueryResultSet(Statement statement, List<String> columnNameList,
+  IoTDBNonAlignJDBCResultSet(Statement statement, List<String> columnNameList,
       List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
       TSIService.Iface client,
       String sql, long queryId, long sessionId, TSQueryNonAlignDataSet dataset)
@@ -59,23 +59,23 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
 
     times = new byte[columnNameList.size()][Long.BYTES];
 
-    abstractIoTDBDataSet.columnNameList = new ArrayList<>();
+    ioTDBRpcDataSet.columnNameList = new ArrayList<>();
     // deduplicate and map
-    abstractIoTDBDataSet.columnOrdinalMap = new HashMap<>();
-    abstractIoTDBDataSet.columnOrdinalMap.put(TIMESTAMP_STR, 1);
-    abstractIoTDBDataSet.columnTypeDeduplicatedList = new ArrayList<>();
-    abstractIoTDBDataSet.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
+    ioTDBRpcDataSet.columnOrdinalMap = new HashMap<>();
+    ioTDBRpcDataSet.columnOrdinalMap.put(TIMESTAMP_STR, 1);
+    ioTDBRpcDataSet.columnTypeDeduplicatedList = new ArrayList<>();
+    ioTDBRpcDataSet.columnTypeDeduplicatedList = new ArrayList<>(columnNameIndex.size());
     for (int i = 0; i < columnNameIndex.size(); i++) {
-      abstractIoTDBDataSet.columnTypeDeduplicatedList.add(null);
+      ioTDBRpcDataSet.columnTypeDeduplicatedList.add(null);
     }
     for (int i = 0; i < columnNameList.size(); i++) {
       String name = columnNameList.get(i);
-      abstractIoTDBDataSet.columnNameList.add(TIMESTAMP_STR + name);
-      abstractIoTDBDataSet.columnNameList.add(name);
-      if (!abstractIoTDBDataSet.columnOrdinalMap.containsKey(name)) {
+      ioTDBRpcDataSet.columnNameList.add(TIMESTAMP_STR + name);
+      ioTDBRpcDataSet.columnNameList.add(name);
+      if (!ioTDBRpcDataSet.columnOrdinalMap.containsKey(name)) {
         int index = columnNameIndex.get(name);
-        abstractIoTDBDataSet.columnOrdinalMap.put(name, index + START_INDEX);
-        abstractIoTDBDataSet.columnTypeDeduplicatedList
+        ioTDBRpcDataSet.columnOrdinalMap.put(name, index + START_INDEX);
+        ioTDBRpcDataSet.columnTypeDeduplicatedList
             .set(index, TSDataType.valueOf(columnTypeList.get(i)));
       }
     }
@@ -87,16 +87,16 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
     checkRecord();
     if (columnName.startsWith(TIMESTAMP_STR)) {
       String column = columnName.substring(TIMESTAMP_STR_LENGTH);
-      int index = abstractIoTDBDataSet.columnOrdinalMap.get(column) - START_INDEX;
+      int index = ioTDBRpcDataSet.columnOrdinalMap.get(column) - START_INDEX;
       if (times[index] != null) {
         return BytesUtils.bytesToLong(times[index]);
       } else {
         throw new SQLException(String.format(VALUE_IS_NULL, columnName));
       }
     }
-    int index = abstractIoTDBDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
-    if (abstractIoTDBDataSet.values[index] != null) {
-      return BytesUtils.bytesToLong(abstractIoTDBDataSet.values[index]);
+    int index = ioTDBRpcDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
+    if (ioTDBRpcDataSet.values[index] != null) {
+      return BytesUtils.bytesToLong(ioTDBRpcDataSet.values[index]);
     } else {
       throw new SQLException(String.format(VALUE_IS_NULL, columnName));
     }
@@ -104,11 +104,11 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
 
   @Override
   protected boolean fetchResults() throws SQLException {
-    TSFetchResultsReq req = new TSFetchResultsReq(abstractIoTDBDataSet.sessionId,
-        abstractIoTDBDataSet.sql, abstractIoTDBDataSet.fetchSize, abstractIoTDBDataSet.queryId,
+    TSFetchResultsReq req = new TSFetchResultsReq(ioTDBRpcDataSet.sessionId,
+        ioTDBRpcDataSet.sql, ioTDBRpcDataSet.fetchSize, ioTDBRpcDataSet.queryId,
         false);
     try {
-      TSFetchResultsResp resp = abstractIoTDBDataSet.client.fetchResults(req);
+      TSFetchResultsResp resp = ioTDBRpcDataSet.client.fetchResults(req);
 
       try {
         RpcUtils.verifySuccess(resp.getStatus());
@@ -116,7 +116,7 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
         throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
       }
       if (!resp.hasResultSet) {
-        abstractIoTDBDataSet.emptyResultSet = true;
+        ioTDBRpcDataSet.emptyResultSet = true;
       } else {
         tsQueryNonAlignDataSet = resp.getNonAlignQueryDataSet();
         if (tsQueryNonAlignDataSet == null) {
@@ -149,46 +149,46 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
   protected void constructOneRow() {
     for (int i = 0; i < tsQueryNonAlignDataSet.timeList.size(); i++) {
       times[i] = null;
-      abstractIoTDBDataSet.values[i] = null;
+      ioTDBRpcDataSet.values[i] = null;
       if (tsQueryNonAlignDataSet.timeList.get(i).remaining() >= Long.BYTES) {
 
         times[i] = new byte[Long.BYTES];
 
         tsQueryNonAlignDataSet.timeList.get(i).get(times[i]);
         ByteBuffer valueBuffer = tsQueryNonAlignDataSet.valueList.get(i);
-        TSDataType dataType = abstractIoTDBDataSet.columnTypeDeduplicatedList.get(i);
+        TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(i);
         switch (dataType) {
           case BOOLEAN:
-            abstractIoTDBDataSet.values[i] = new byte[1];
-            valueBuffer.get(abstractIoTDBDataSet.values[i]);
+            ioTDBRpcDataSet.values[i] = new byte[1];
+            valueBuffer.get(ioTDBRpcDataSet.values[i]);
             break;
           case INT32:
-            abstractIoTDBDataSet.values[i] = new byte[Integer.BYTES];
-            valueBuffer.get(abstractIoTDBDataSet.values[i]);
+            ioTDBRpcDataSet.values[i] = new byte[Integer.BYTES];
+            valueBuffer.get(ioTDBRpcDataSet.values[i]);
             break;
           case INT64:
-            abstractIoTDBDataSet.values[i] = new byte[Long.BYTES];
-            valueBuffer.get(abstractIoTDBDataSet.values[i]);
+            ioTDBRpcDataSet.values[i] = new byte[Long.BYTES];
+            valueBuffer.get(ioTDBRpcDataSet.values[i]);
             break;
           case FLOAT:
-            abstractIoTDBDataSet.values[i] = new byte[Float.BYTES];
-            valueBuffer.get(abstractIoTDBDataSet.values[i]);
+            ioTDBRpcDataSet.values[i] = new byte[Float.BYTES];
+            valueBuffer.get(ioTDBRpcDataSet.values[i]);
             break;
           case DOUBLE:
-            abstractIoTDBDataSet.values[i] = new byte[Double.BYTES];
-            valueBuffer.get(abstractIoTDBDataSet.values[i]);
+            ioTDBRpcDataSet.values[i] = new byte[Double.BYTES];
+            valueBuffer.get(ioTDBRpcDataSet.values[i]);
             break;
           case TEXT:
             int length = valueBuffer.getInt();
-            abstractIoTDBDataSet.values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
+            ioTDBRpcDataSet.values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
             break;
           default:
             throw new UnSupportedDataTypeException(
                 String.format("Data type %s is not supported.",
-                    abstractIoTDBDataSet.columnTypeDeduplicatedList.get(i)));
+                    ioTDBRpcDataSet.columnTypeDeduplicatedList.get(i)));
         }
       } else {
-        abstractIoTDBDataSet.values[i] = EMPTY_STR.getBytes();
+        ioTDBRpcDataSet.values[i] = EMPTY_STR.getBytes();
       }
     }
   }
@@ -205,20 +205,20 @@ public class IoTDBNonAlignQueryResultSet extends AbstractIoTDBResultSet {
     checkRecord();
     if (columnName.startsWith(TIMESTAMP_STR)) {
       String column = columnName.substring(TIMESTAMP_STR_LENGTH);
-      int index = abstractIoTDBDataSet.columnOrdinalMap.get(column) - START_INDEX;
+      int index = ioTDBRpcDataSet.columnOrdinalMap.get(column) - START_INDEX;
       if (times[index] == null || times[index].length == 0) {
         return null;
       }
       return String.valueOf(BytesUtils.bytesToLong(times[index]));
     }
-    int index = abstractIoTDBDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= abstractIoTDBDataSet.values.length
-        || abstractIoTDBDataSet.values[index] == null
-        || abstractIoTDBDataSet.values[index].length < 1) {
+    int index = ioTDBRpcDataSet.columnOrdinalMap.get(columnName) - START_INDEX;
+    if (index < 0 || index >= ioTDBRpcDataSet.values.length
+        || ioTDBRpcDataSet.values[index] == null
+        || ioTDBRpcDataSet.values[index].length < 1) {
       return null;
     }
-    return abstractIoTDBDataSet
-        .getString(index, abstractIoTDBDataSet.columnTypeDeduplicatedList.get(index),
-            abstractIoTDBDataSet.values);
+    return ioTDBRpcDataSet
+        .getString(index, ioTDBRpcDataSet.columnTypeDeduplicatedList.get(index),
+            ioTDBRpcDataSet.values);
   }
 }

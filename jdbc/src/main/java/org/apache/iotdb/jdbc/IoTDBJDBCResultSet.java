@@ -28,22 +28,22 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 
-public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
+public class IoTDBJDBCResultSet extends AbstractIoTDBJDBCResultSet {
 
-  public IoTDBQueryResultSet(Statement statement, List<String> columnNameList,
+  public IoTDBJDBCResultSet(Statement statement, List<String> columnNameList,
       List<String> columnTypeList, Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
       TSIService.Iface client,
       String sql, long queryId, long sessionId, TSQueryDataSet dataset)
       throws SQLException {
     super(statement, columnNameList, columnTypeList, columnNameIndex, ignoreTimeStamp, client, sql,
         queryId, sessionId);
-    abstractIoTDBDataSet.setTsQueryDataSet(dataset);
+    ioTDBRpcDataSet.setTsQueryDataSet(dataset);
   }
 
   @Override
   public long getLong(String columnName) throws SQLException {
     try {
-      return abstractIoTDBDataSet.getLong(columnName);
+      return ioTDBRpcDataSet.getLong(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -52,7 +52,7 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
   @Override
   protected boolean fetchResults() throws SQLException {
     try {
-      return abstractIoTDBDataSet.fetchResults();
+      return ioTDBRpcDataSet.fetchResults();
     } catch (StatementExecutionException | IoTDBConnectionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -60,19 +60,19 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
 
   @Override
   protected boolean hasCachedResults() {
-    return abstractIoTDBDataSet.hasCachedResults();
+    return ioTDBRpcDataSet.hasCachedResults();
   }
 
   @Override
   protected void constructOneRow() {
-    abstractIoTDBDataSet.constructOneRow();
+    ioTDBRpcDataSet.constructOneRow();
   }
 
 
   @Override
   protected void checkRecord() throws SQLException {
     try {
-      abstractIoTDBDataSet.checkRecord();
+      ioTDBRpcDataSet.checkRecord();
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
@@ -81,13 +81,13 @@ public class IoTDBQueryResultSet extends AbstractIoTDBResultSet {
   @Override
   protected String getValueByName(String columnName) throws SQLException {
     try {
-      return abstractIoTDBDataSet.getValueByName(columnName);
+      return ioTDBRpcDataSet.getValueByName(columnName);
     } catch (StatementExecutionException e) {
       throw new SQLException(e.getMessage());
     }
   }
 
   public boolean isIgnoreTimeStamp() {
-    return abstractIoTDBDataSet.ignoreTimeStamp;
+    return ioTDBRpcDataSet.ignoreTimeStamp;
   }
 }

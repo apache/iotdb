@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
 
 
-public class AbstractIoTDBDataSet {
+public class IoTDBRpcDataSet {
 
   public static final String TIMESTAMP_STR = "Time";
   public static final String VALUE_IS_NULL = "The value got by %s (column name) is NULL.";
@@ -70,7 +70,7 @@ public class AbstractIoTDBDataSet {
   public byte[] currentBitmap; // used to cache the current bitmap for every column
   public static final int FLAG = 0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
-  public AbstractIoTDBDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
+  public IoTDBRpcDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex, boolean ignoreTimeStamp,
       long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
       int fetchSize) {
