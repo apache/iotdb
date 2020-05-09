@@ -28,5 +28,6 @@ The example is to show how to send data to IoTDB from a mqtt client.
 ## Usage
 
 * Launch the IoTDB server.
-* setup storage group `SET STORAGE GROUP TO root.sg` and create time timeseries `CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN`.
+* Enable MQTT service. update `enable_mqtt_service=true` in iotdb-engine.properties.
+* Setup storage group `SET STORAGE GROUP TO root.sg` and create time timeseries `CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=DOUBLE, ENCODING=PLAIN`.
 * Run `org.apache.iotdb.mqtt.MQTTClient` to run the mqtt client and send events to server.
