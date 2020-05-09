@@ -19,6 +19,15 @@
 
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.first_value;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -26,15 +35,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
-
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -102,6 +102,24 @@ public class IoTDBMultiOverlappedPageIT {
     }
   }
 
+  @Test
+  public void selectOverlappedPageTest2() {
+
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String sql = "select first_value(s0) from root.vehicle.d0 where time > 18";
+      ResultSet resultSet = statement.executeQuery(sql);
+      while (resultSet.next()) {
+        String ans = resultSet.getString(first_value("root.vehicle.d0.s0"));
+        assertEquals("219", ans);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   private static void insertData() {
     try (Connection connection = DriverManager
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -117,6 +135,12 @@ public class IoTDBMultiOverlappedPageIT {
       for (long time = 11; time <= 20; time++) {
         String sql = String
                 .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 100+time);
+        statement.execute(sql);
+      }
+
+      for (long time = 21; time <= 30; time++) {
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time);
         statement.execute(sql);
       }
       statement.execute("flush");

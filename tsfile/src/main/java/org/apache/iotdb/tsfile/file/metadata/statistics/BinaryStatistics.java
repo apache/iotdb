@@ -202,7 +202,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   @Override
   public String toString() {
-    return super.toString() + " [fistValue:" + firstValue + ",lastValue:" + lastValue + "]";
+    return super.toString() + " [firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
   }
 
 }

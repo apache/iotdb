@@ -16,14 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.fill;
+package org.apache.iotdb.db.query.executor.fill;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -32,87 +35,39 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-import java.io.IOException;
-import java.util.*;
-
-public class PreviousFill extends IFill {
+public class LastPointReader {
 
   private Path seriesPath;
+  long queryTime;
+  TSDataType dataType;
   private QueryContext context;
-  private long beforeRange;
   private Set<String> allSensors;
   private Filter timeFilter;
 
   private QueryDataSource dataSource;
 
-  private List<TimeseriesMetadata> unseqTimeseriesMetadataList;
+  private List<TimeseriesMetadata> unseqTimeseriesMetadataList = new ArrayList<>();;
 
-  private boolean untilLast;
+  public LastPointReader() {
 
-  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange) {
-    this(dataType, queryTime, beforeRange, false);
   }
 
-  public PreviousFill(long beforeRange) {
-    this(beforeRange, false);
-  }
-
-
-  public PreviousFill(long beforeRange, boolean untilLast) {
-    this.beforeRange = beforeRange;
-    this.untilLast = untilLast;
-  }
-
-
-  public PreviousFill(TSDataType dataType, long queryTime, long beforeRange, boolean untilLast) {
-    super(dataType, queryTime);
-    this.beforeRange = beforeRange;
-    this.unseqTimeseriesMetadataList = new ArrayList<>();
-    this.untilLast = untilLast;
-  }
-
-
-
-  @Override
-  public IFill copy() {
-    return new PreviousFill(dataType,  queryTime, beforeRange, untilLast);
-  }
-
-  @Override
-  Filter constructFilter() {
-    Filter lowerBound = beforeRange == -1 ? TimeFilter.gtEq(Long.MIN_VALUE)
-        : TimeFilter.gtEq(queryTime - beforeRange);
-    // time in [queryTime - beforeRange, queryTime]
-    return FilterFactory.and(lowerBound, TimeFilter.ltEq(queryTime));
-  }
-
-  public long getBeforeRange() {
-    return beforeRange;
-  }
-
-  @Override
-  public void configureFill(Path path, TSDataType dataType, long queryTime,
-      Set<String> sensors, QueryContext context)
-      throws StorageEngineException, QueryProcessException {
-    this.seriesPath = path;
+  public LastPointReader(Path seriesPath, TSDataType dataType, Set<String> sensors,
+      QueryContext context, QueryDataSource dataSource, long queryTime, Filter timeFilter) {
+    this.seriesPath = seriesPath;
     this.dataType = dataType;
+    this.dataSource = dataSource;
     this.context = context;
     this.queryTime = queryTime;
     this.allSensors = sensors;
-    this.timeFilter = constructFilter();
-    this.dataSource = QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
-    // update filter by TTL
-    timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
+    this.timeFilter = timeFilter;
   }
 
-  @Override
-  public TimeValuePair getFillResult() throws IOException {
+  public TimeValuePair readLastPoint() throws IOException {
     TimeValuePair lastPointResult = retrieveValidLastPointFromSeqFiles();
     UnpackOverlappedUnseqFiles(lastPointResult.getTimestamp());
 
@@ -265,13 +220,5 @@ public class PreviousFill extends IFill {
 
   private TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
     return new TimeValuePair(timestamp, TsPrimitiveType.getByType(dataType, value));
-  }
-
-  public boolean isUntilLast() {
-    return untilLast;
-  }
-
-  public void setUntilLast(boolean untilLast) {
-    this.untilLast = untilLast;
   }
 }
