@@ -70,9 +70,12 @@ public class MemberTest {
   PlanExecutor planExecutor;
 
   private List<String> prevUrls;
+  private long prevLeaderWait;
 
   @Before
   public void setUp() throws Exception {
+    prevLeaderWait = RaftMember.WAIT_LEADER_TIME_MS;
+    RaftMember.WAIT_LEADER_TIME_MS = 10;
     EnvironmentUtils.envSetUp();
     prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
     List<String> testUrls = new ArrayList<>();
@@ -102,7 +105,7 @@ public class MemberTest {
       try {
         MManager.getInstance().setStorageGroup(TestUtils.getTestSg(i));
         for (int j = 0; j < 20; j++) {
-          SchemaUtils.registerTimeseries(TestUtils.getTestSchema(i, j));
+          SchemaUtils.registerTimeseries(TestUtils.getTestTimeSeriesSchema(i, j));
         }
       } catch (MetadataException e) {
         // ignore
@@ -126,6 +129,7 @@ public class MemberTest {
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
     new File(MetaGroupMember.PARTITION_FILE_NAME).delete();
     new File(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME).delete();
+    RaftMember.WAIT_LEADER_TIME_MS = prevLeaderWait;
   }
 
   DataGroupMember getDataGroupMember(Node node) {
@@ -218,6 +222,8 @@ public class MemberTest {
     ret.setPartitionTable(partitionTable);
     ret.setAllNodes(allNodes);
     ret.setLogManager(metaLogManager);
+    ret.setLeader(node);
+    ret.setCharacter(NodeCharacter.LEADER);
     return ret;
   }
 }

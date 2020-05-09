@@ -100,6 +100,7 @@ import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
@@ -125,7 +126,8 @@ public class DataGroupMemberTest extends MemberTest {
     snapshotMap = new HashMap<>();
     for (int i = 0; i < ClusterConstant.SLOT_NUM; i++) {
       FileSnapshot fileSnapshot = new FileSnapshot();
-      fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestSchema(1, i)));
+      fileSnapshot.setTimeseriesSchemas(Collections.singleton(TestUtils.getTestTimeSeriesSchema(0
+          ,i)));
       snapshotMap.put(i, fileSnapshot);
     }
     pulledSnapshots = new ConcurrentSkipListSet<>();
@@ -212,6 +214,8 @@ public class DataGroupMemberTest extends MemberTest {
       }
     };
     dataGroupMember.setLogManager(getLogManager(nodes));
+    dataGroupMember.setLeader(node);
+    dataGroupMember.setCharacter(NodeCharacter.LEADER);
     return dataGroupMember;
   }
 
@@ -387,9 +391,9 @@ public class DataGroupMemberTest extends MemberTest {
       throws StorageEngineException, IOException, WriteProcessException, SnapshotApplicationException {
     System.out.println("Start testStartElection()");
     FileSnapshot snapshot = new FileSnapshot();
-    List<MeasurementSchema> schemaList = new ArrayList<>();
+    List<TimeseriesSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      schemaList.add(TestUtils.getTestSchema(0, i));
+      schemaList.add(TestUtils.getTestTimeSeriesSchema(0, i));
     }
     snapshot.setTimeseriesSchemas(schemaList);
 
@@ -418,7 +422,7 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[]{"s0"});
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     insertPlan.setValues(new String[]{"1.0"});
     processor.insert(insertPlan);
     processor.syncCloseAllWorkingTsFileProcessors();
@@ -477,14 +481,14 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testFollowerExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
-    MeasurementSchema measurementSchema = TestUtils.getTestSchema(20, 0);
+    TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(10, 0);
     CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(new Path(measurementSchema.getMeasurementId()),
-            measurementSchema.getType(), measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(), measurementSchema.getProps(),
+        new CreateTimeSeriesPlan(new Path(timeseriesSchema.getFullPath()),
+            timeseriesSchema.getType(), timeseriesSchema.getEncodingType(),
+            timeseriesSchema.getCompressor(), timeseriesSchema.getProps(),
             Collections.emptyMap(), Collections.emptyMap(), null);
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
-    assertTrue(MManager.getInstance().isPathExist(measurementSchema.getMeasurementId()));
+    assertTrue(MManager.getInstance().isPathExist(timeseriesSchema.getFullPath()));
   }
 
   @Test
@@ -492,14 +496,14 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testLeaderExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
-    MeasurementSchema measurementSchema = TestUtils.getTestSchema(2, 0);
+    TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(10, 0);
     CreateTimeSeriesPlan createTimeSeriesPlan =
-        new CreateTimeSeriesPlan(new Path(measurementSchema.getMeasurementId()),
-            measurementSchema.getType(), measurementSchema.getEncodingType(),
-            measurementSchema.getCompressor(), measurementSchema.getProps(),
+        new CreateTimeSeriesPlan(new Path(timeseriesSchema.getFullPath()),
+            timeseriesSchema.getType(), timeseriesSchema.getEncodingType(),
+            timeseriesSchema.getCompressor(), timeseriesSchema.getProps(),
             Collections.emptyMap(), Collections.emptyMap(), null);
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
-    assertTrue(MManager.getInstance().isPathExist(measurementSchema.getMeasurementId()));
+    assertTrue(MManager.getInstance().isPathExist(timeseriesSchema.getFullPath()));
   }
 
   @Test
@@ -522,7 +526,7 @@ public class DataGroupMemberTest extends MemberTest {
           request.getPrefixPaths(), result);
       dataGroupMember.pullTimeSeriesSchema(request, handler);
       for (int i = 0; i < 10; i++) {
-        assertEquals(TestUtils.getTestSchema(0, i), result.get().get(i));
+        assertEquals(TestUtils.getTestMeasurementSchema(i), result.get().get(i));
       }
 
       // the member is a leader itself
@@ -532,7 +536,7 @@ public class DataGroupMemberTest extends MemberTest {
           request.getPrefixPaths(), result);
       dataGroupMember.pullTimeSeriesSchema(request, handler);
       for (int i = 0; i < 10; i++) {
-        assertEquals(TestUtils.getTestSchema(0, i), result.get().get(i));
+        assertEquals(TestUtils.getTestMeasurementSchema(i), result.get().get(i));
       }
     } finally {
       RaftServer.connectionTimeoutInMS = prevTimeOut;
@@ -546,7 +550,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeries()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -600,7 +604,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -654,7 +658,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -705,7 +709,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);

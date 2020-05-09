@@ -52,8 +52,8 @@ public class SerializeLogTest {
     InsertPlan plan = new InsertPlan();
     plan.setDeviceId("root.d1");
     plan.setMeasurements(new String[]{"s1", "s2", "s3"});
-    plan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 1),
-        TestUtils.getTestSchema(0, 2), TestUtils.getTestSchema(0, 3)});
+    plan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(1),
+        TestUtils.getTestMeasurementSchema(2), TestUtils.getTestMeasurementSchema(3)});
     plan.setValues(new String[]{"0.1", "1", "\"dd\""});
     plan.setTime(1);
     log.setPlan(plan);

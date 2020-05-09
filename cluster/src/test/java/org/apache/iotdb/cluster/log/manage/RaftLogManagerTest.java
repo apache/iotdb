@@ -905,20 +905,20 @@ public class RaftLogManagerTest {
       instance.append(previousEntries);
       List<RaftLogManagerTester> tests = new ArrayList<RaftLogManagerTester>() {{
         // no conflict, empty ent
-        add(new RaftLogManagerTester(new ArrayList<>(), 0));
+        add(new RaftLogManagerTester(new ArrayList<>(), -1));
         // no conflict
         add(new RaftLogManagerTester(new ArrayList<Log>() {{
           add(new EmptyContentLog(0, 0));
           add(new EmptyContentLog(1, 1));
           add(new EmptyContentLog(2, 2));
-        }}, 0));
+        }}, -1));
         add(new RaftLogManagerTester(new ArrayList<Log>() {{
           add(new EmptyContentLog(1, 1));
           add(new EmptyContentLog(2, 2));
-        }}, 0));
+        }}, -1));
         add(new RaftLogManagerTester(new ArrayList<Log>() {{
           add(new EmptyContentLog(2, 2));
-        }}, 0));
+        }}, -1));
         // no conflict, but has new entries
         add(new RaftLogManagerTester(new ArrayList<Log>() {{
           add(new EmptyContentLog(0, 0));

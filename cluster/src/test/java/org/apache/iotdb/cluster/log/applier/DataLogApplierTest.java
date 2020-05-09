@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -51,11 +52,17 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 public class DataLogApplierTest extends IoTDBTest {
 
   private TestMetaGroupMember testMetaGroupMember = new TestMetaGroupMember() {
+    @Override
+    public boolean syncLeader() {
+      return true;
+    }
+
     @Override
     public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths)
         throws StorageGroupNotSetException {
@@ -63,7 +70,7 @@ public class DataLogApplierTest extends IoTDBTest {
       for (String prefixPath : prefixPaths) {
         if (prefixPath.startsWith(TestUtils.getTestSg(4))) {
           for (int i = 0; i < 10; i++) {
-            ret.add(TestUtils.getTestSchema(4, i));
+            ret.add(TestUtils.getTestMeasurementSchema(i));
           }
         } else if (!prefixPath.startsWith(TestUtils.getTestSg(5))) {
           throw new StorageGroupNotSetException(prefixPath);
@@ -76,6 +83,16 @@ public class DataLogApplierTest extends IoTDBTest {
   private TestDataGroupMember testDataGroupMember = new TestDataGroupMember();
 
   private LogApplier applier = new DataLogApplier(testMetaGroupMember, testDataGroupMember);
+
+  @Override
+  @Before
+  public void setUp() throws org.apache.iotdb.db.exception.StartupException, QueryProcessException {
+    super.setUp();
+    testMetaGroupMember.setLeader(testMetaGroupMember.getThisNode());
+    testDataGroupMember.setLeader(testDataGroupMember.getThisNode());
+    testDataGroupMember.setCharacter(NodeCharacter.LEADER);
+    testMetaGroupMember.setCharacter(NodeCharacter.LEADER);
+  }
 
   @Override
   @After
@@ -95,7 +112,7 @@ public class DataLogApplierTest extends IoTDBTest {
     // this series is already created
     insertPlan.setDeviceId(TestUtils.getTestSg(1));
     insertPlan.setTime(1);
-    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestSchema(1, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestMeasurementSchema(0)});
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setValues(new String[] {"1.0"});
     applier.apply(log);

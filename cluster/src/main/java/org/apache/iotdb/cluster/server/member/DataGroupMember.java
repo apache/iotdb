@@ -128,6 +128,7 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TProtocolFactory;
@@ -456,7 +457,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   private void applyFileSnapshotSchema(FileSnapshot snapshot) {
     // load metadata in the snapshot
-    for (MeasurementSchema schema : snapshot.getTimeseriesSchemas()) {
+    for (TimeseriesSchema schema : snapshot.getTimeseriesSchemas()) {
       // notice: the measurement in the schema is the full path here
       SchemaUtils.registerTimeseries(schema);
     }

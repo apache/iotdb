@@ -87,7 +87,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * The maximum time to wait if there is no leader in the group, after which a
    * LeadNotFoundException will be thrown.
    */
-  private static final long WAIT_LEADER_TIME_MS = 60 * 1000L;
+  public static long WAIT_LEADER_TIME_MS = 60 * 1000L;
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();

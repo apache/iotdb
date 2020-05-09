@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 public class TestUtils {
 
@@ -155,11 +156,19 @@ public class TestUtils {
     return "s" + seriesNum;
   }
 
-  public static MeasurementSchema getTestSchema(int sgNum, int seriesNum) {
-    String path = getTestSeries(sgNum, seriesNum);
+  public static MeasurementSchema getTestMeasurementSchema(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
-    return new MeasurementSchema(path, dataType, encoding, CompressionType.UNCOMPRESSED,
+    return new MeasurementSchema(TestUtils.getTestMeasurement(seriesNum), dataType, encoding,
+        CompressionType.UNCOMPRESSED,
+        Collections.emptyMap());
+  }
+
+  public static TimeseriesSchema getTestTimeSeriesSchema(int sgNum, int seriesNum) {
+    TSDataType dataType = TSDataType.DOUBLE;
+    TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
+    return new TimeseriesSchema(TestUtils.getTestSeries(sgNum, seriesNum), dataType, encoding,
+        CompressionType.UNCOMPRESSED,
         Collections.emptyMap());
   }
 
@@ -232,7 +241,7 @@ public class TestUtils {
       // 10 series each device, all double
       for (int i = 0; i < 10; i++) {
         measurements[i] = getTestMeasurement(i);
-        schemas[i] = TestUtils.getTestSchema(j, i);
+        schemas[i] = TestUtils.getTestMeasurementSchema(i);
       }
       insertPlan.setMeasurements(measurements);
       insertPlan.setSchemas(schemas);
@@ -277,7 +286,7 @@ public class TestUtils {
     // data for fill
     insertPlan.setDeviceId(getTestSg(0));
     String[] measurements = new String[]{getTestMeasurement(10)};
-    MeasurementSchema[] schemas = new MeasurementSchema[]{TestUtils.getTestSchema(0, 10)};
+    MeasurementSchema[] schemas = new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(10)};
     insertPlan.setMeasurements(measurements);
     insertPlan.setSchemas(schemas);
     for (int i : new int[]{0, 10}) {

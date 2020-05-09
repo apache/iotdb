@@ -32,7 +32,7 @@ import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 /**
  * FileSnapshot records the data files in a slot and their md5 (or other verification).
@@ -46,7 +46,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
  */
 public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
-  private Collection<MeasurementSchema> timeseriesSchemas;
+  private Collection<TimeseriesSchema> timeseriesSchemas;
   private List<RemoteTsFileResource> dataFiles;
 
   public FileSnapshot() {
@@ -65,7 +65,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
 
     try {
       dataOutputStream.writeInt(timeseriesSchemas.size());
-      for (MeasurementSchema measurementSchema : timeseriesSchemas) {
+      for (TimeseriesSchema measurementSchema : timeseriesSchemas) {
         measurementSchema.serializeTo(dataOutputStream);
       }
       dataOutputStream.writeInt(dataFiles.size());
@@ -83,7 +83,7 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   public void deserialize(ByteBuffer buffer) {
     int timeseriesNum = buffer.getInt();
     for (int i = 0; i < timeseriesNum; i++) {
-      timeseriesSchemas.add(MeasurementSchema.deserializeFrom(buffer));
+      timeseriesSchemas.add(TimeseriesSchema.deserializeFrom(buffer));
     }
     int fileNum = buffer.getInt();
     for (int i = 0; i < fileNum; i++) {
@@ -98,13 +98,13 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
   }
 
   @Override
-  public Collection<MeasurementSchema> getTimeseriesSchemas() {
+  public Collection<TimeseriesSchema> getTimeseriesSchemas() {
     return timeseriesSchemas;
   }
 
   @Override
   public void setTimeseriesSchemas(
-      Collection<MeasurementSchema> timeseriesSchemas) {
+      Collection<TimeseriesSchema> timeseriesSchemas) {
     this.timeseriesSchemas = timeseriesSchemas;
   }
 

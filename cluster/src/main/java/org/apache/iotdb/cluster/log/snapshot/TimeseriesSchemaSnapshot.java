@@ -21,10 +21,11 @@ package org.apache.iotdb.cluster.log.snapshot;
 
 import java.util.Collection;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 public interface TimeseriesSchemaSnapshot {
 
-  Collection<MeasurementSchema> getTimeseriesSchemas();
+  Collection<TimeseriesSchema> getTimeseriesSchemas();
 
-  void setTimeseriesSchemas(Collection<MeasurementSchema> schemas);
+  void setTimeseriesSchemas(Collection<TimeseriesSchema> schemas);
 }

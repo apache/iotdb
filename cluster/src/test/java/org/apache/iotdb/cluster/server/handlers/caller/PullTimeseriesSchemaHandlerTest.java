@@ -45,7 +45,7 @@ public class PullTimeseriesSchemaHandlerTest {
     AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
     List<MeasurementSchema> measurementSchemas = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      measurementSchemas.add(TestUtils.getTestSchema(0, i));
+      measurementSchemas.add(TestUtils.getTestMeasurementSchema(i));
     }
 
     PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(owner,

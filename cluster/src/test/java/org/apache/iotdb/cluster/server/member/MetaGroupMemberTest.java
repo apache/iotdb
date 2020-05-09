@@ -70,6 +70,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.DataClusterServer;
+import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
@@ -104,6 +105,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.apache.thrift.transport.TTransportException;
@@ -189,6 +191,8 @@ public class MetaGroupMemberTest extends MemberTest {
     };
     dataGroupMember.setLogManager(new TestPartitionedLogManager(null,
         partitionTable, group.getHeader(), TestSnapshot::new));
+    dataGroupMember.setLeader(node);
+    dataGroupMember.setCharacter(NodeCharacter.LEADER);
     return dataGroupMember;
   }
 
@@ -209,7 +213,7 @@ public class MetaGroupMemberTest extends MemberTest {
             }
           } else {
             dataOutputStream.writeInt(1);
-            TestUtils.getTestSchema(10, 0).serializeTo(dataOutputStream);
+            TestUtils.getTestMeasurementSchema( 0).serializeTo(dataOutputStream);
           }
         }
         PullSchemaResp resp = new PullSchemaResp();
@@ -223,7 +227,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
 
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
-    return new MetaGroupMember(new Factory(), node) {
+    MetaGroupMember metaGroupMember = new MetaGroupMember(new Factory(), node) {
 
       @Override
       public DataClusterServer getDataClusterServer() {
@@ -343,6 +347,9 @@ public class MetaGroupMemberTest extends MemberTest {
         }
       }
     };
+    metaGroupMember.setLeader(node);
+    metaGroupMember.setCharacter(NodeCharacter.LEADER);
+    return metaGroupMember;
   }
 
   private void buildDataGroups(DataClusterServer dataClusterServer) throws TTransportException {
@@ -363,7 +370,7 @@ public class MetaGroupMemberTest extends MemberTest {
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
@@ -586,9 +593,9 @@ public class MetaGroupMemberTest extends MemberTest {
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSg(i)));
 
       // process a partitioned plan
-      MeasurementSchema schema = TestUtils.getTestSchema(i, 0);
+      TimeseriesSchema schema = TestUtils.getTestTimeSeriesSchema(i, 0);
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(
-          new Path(schema.getMeasurementId()), schema.getType(),
+          new Path(schema.getFullPath()), schema.getType(),
           schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
           Collections.emptyMap(), Collections.emptyMap(), null);
       status = testMetaMember.executeNonQuery(createTimeSeriesPlan);
@@ -605,7 +612,7 @@ public class MetaGroupMemberTest extends MemberTest {
           testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)));
       assertEquals(20, schemas.size());
       for (int j = 0; j < 10; j++) {
-        assertEquals(TestUtils.getTestSchema(i, j), schemas.get(j));
+        assertEquals(TestUtils.getTestMeasurementSchema(j), schemas.get(j));
       }
     }
   }
@@ -646,11 +653,11 @@ public class MetaGroupMemberTest extends MemberTest {
       throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema( 0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
-      MeasurementSchema schema = TestUtils.getTestSchema(i, 0);
+      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType()
             , schema.getEncodingType(), schema.getCompressor(), schema.getProps());
@@ -687,11 +694,11 @@ public class MetaGroupMemberTest extends MemberTest {
       throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestSchema(0, 0)});
+    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
-      MeasurementSchema schema = TestUtils.getTestSchema(i, 0);
+      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
         MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType()
             , schema.getEncodingType(), schema.getCompressor(), schema.getProps());
@@ -1052,6 +1059,7 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 0; i < 8; i++) {
       AtomicReference<Long> resultRef = new AtomicReference<>();
       testMetaMember.setCharacter(LEADER);
+      testMetaMember.setLeader(testMetaMember.getThisNode());
       doRemoveNode(resultRef, TestUtils.getNode(90 - i * 10));
       assertEquals(Response.RESPONSE_AGREE, (long) resultRef.get());
       assertFalse(testMetaMember.getAllNodes().contains(TestUtils.getNode(90 - i * 10)));

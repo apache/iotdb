@@ -102,7 +102,7 @@ public class IoTDBTest {
     }
     MeasurementSchema[] schemas = new MeasurementSchema[10];
     for (int i = 0; i < measurements.length; i++) {
-      schemas[i] = TestUtils.getTestSchema(sgNum, i);
+      schemas[i] = TestUtils.getTestMeasurementSchema(i);
     }
     insertPlan.setMeasurements(measurements);
     insertPlan.setSchemas(schemas);
@@ -126,8 +126,9 @@ public class IoTDBTest {
 
   private void createTimeSeries(int sgNum, int seriesNum) {
     try {
-      MeasurementSchema schema = TestUtils.getTestSchema(sgNum, seriesNum);
-      planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(schema.getMeasurementId()),
+      MeasurementSchema schema = TestUtils.getTestMeasurementSchema(seriesNum);
+      planExecutor.processNonQuery(new CreateTimeSeriesPlan(new Path(TestUtils.getTestSg(sgNum),
+          schema.getMeasurementId()),
           schema.getType(), schema.getEncodingType(), schema.getCompressor(), schema.getProps(),
           Collections.emptyMap(), Collections.emptyMap(), null));
     } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
