@@ -285,7 +285,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         for (Path subPath : all) {
           if (!pathSet.contains(subPath.getFullPath())) {
             pathSet.add(subPath.getFullPath());
-            retPaths.add(path);
+            retPaths.add(subPath);
           }
         }
       }
