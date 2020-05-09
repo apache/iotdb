@@ -157,6 +157,19 @@
 |默认值| 默认为2位。注意：32位浮点数的十进制精度为7位，64位浮点数的十进制精度为15位。如果设置超过机器精度将没有实际意义。|
 |改后生效方式|触发生效|
 
+
+* bloomFilterErrorRate
+
+|名字| bloomFilterErrorRate |
+|:---:|:---|
+|描述| bloom过滤器的误报率. 在加载元数据之前 Bloom filter 可以检查给定的时间序列是否在 TsFile 中。这可以优化加载元数据的性能，并跳过不包含指定时间序列的 TsFile。如果你想了解更多关于它的细节，你可以参考: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).|
+|类型|浮点数, 范围为(0, 1)|
+|默认值| 0.05 |
+|改后生效方式|重启生效|
+
+
+
+
 ### 引擎层配置
 
 * back\_loop\_period\_in\_second
@@ -177,18 +190,27 @@
 |默认值| data |
 |改后生效方式|触发生效|
 
-* enable_wal
+* enable\_wal
 
-|名字| enable_wal |
+|名字| enable\_wal |
 |:---:|:---|
 |描述| 是否开启写前日志，默认值为true表示开启，配置成false表示关闭 |
 |类型|Bool|
 |默认值| true |
 |改后生效方式|触发生效|
 
-* fetch_size
+* tag\_attribute\_total\_size
 
-|名字| fetch_size |
+|名字| tag\_attribute\_total\_size |
+|:---:|:---|
+|描述| 每个时间序列标签和属性的最大持久化字节数|
+|类型| Int32 |
+|默认值| 700 |
+|改后生效方式|重启服务器生效|
+
+* fetch\_size
+
+|名字| fetch\_size |
 |:---:|:---|
 |描述| 批量读取数据的时候，每一次读取数据的数量。单位为数据条数，即不同时间戳的个数。某次会话中，用户可以在使用时自己设定，此时仅在该次会话中生效。|
 |类型|Int32|

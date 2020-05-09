@@ -72,28 +72,135 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 Please refer to [Encoding](../2-Concept/3-Encoding.html) for correspondence between data type and encoding.
 
+### Tag and attribute management
+
+We can also add an alias, extra tag and attribute information while creating one timeseries.
+The SQL statements for creating timeseries with extra tag and attribute information are extended as follows:
+
+```
+create timeseries root.turbine.d1.s1(temprature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)
+```
+
+The `temprature` in the brackets is an alias for the sensor `s1`. So we can use `temprature` to replace `s1` anywhere.
+
+> Notice that the size of the extra tag and attribute information shouldn't exceed the `tag_attribute_total_size`.
+
+The only difference between tag and attribute is that we will maintain an inverted index on the tag, so we can use tag property in the show timeseries where clause which you can see in the following `Show Timeseries` section.
+
+
+## UPDATE TAG OPERATION
+We can update the tag information after creating it as following:
+
+* Rename the tag/attribute key
+```
+ALTER timeseries root.turbine.d1.s1 RENAME tag1 TO newTag1
+```
+* reset the tag/attribute value
+```
+ALTER timeseries root.turbine.d1.s1 SET tag1=newV1, attr1=newV1
+```
+* delete the existing tag/attribute
+```
+ALTER timeseries root.turbine.d1.s1 DROP tag1, tag2
+```
+* add new tags
+```
+ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
+```
+* add new attributes
+```
+ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
+```
+* upsert tags and attributes
+> add new key-value if the key doesn't exist, otherwise, update the old one with new value.
+```
+ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag3=v3, tag4=v4) ATTRIBUTES(attr3=v3, attr4=v4)
+```
+
 ## Show Timeseries
 
-Currently, IoTDB supports two ways of viewing timeseries:
+* SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
 
-* SHOW TIMESERIES statement presents all timeseries information in JSON form 
-* SHOW TIMESERIES <`Path`> statement returns all timeseries information and the total number of timeseries under the given <`Path`>  in tabular form. timeseries information includes: timeseries path, storage group it belongs to, data type, encoding type.  <`Path`> needs to be a prefix path or a path with star or a timeseries path. SQL statements are as follows:
+  There are three optional clauses could be added behind SHOW TIMESERIES, return information of time series 
+  
+Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
+ 
+Examples:
+
+* SHOW TIMESERIES
+
+  presents all timeseries information in JSON form
+ 
+* SHOW TIMESERIES <`Path`> 
+  
+  returns all timeseries information under the given <`Path`>.  <`Path`> needs to be a prefix path or a path with star or a timeseries path. SQL statements are as follows:
 
 ```
 IoTDB> show timeseries root
 IoTDB> show timeseries root.ln
 ```
 
-The results are shown below respectly:
+The results are shown below respectively:
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577347-8db7d780-1ef4-11e9-91d6-764e58c10e94.jpg"></center>
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577359-97413f80-1ef4-11e9-8c10-53b291fc10a5.jpg"></center>
 
+* SHOW TIMESERIES (<`PrefixPath`>)? WhereClause
+ 
+  returns all the timeseries information that satisfy the where condition and start with the prefixPath SQL statements are as follows:
+
+```
+show timeseries root.ln where unit=c
+show timeseries root.ln where description contains 'test1'
+```
+
+The results are shown below respectly:
+<center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/79682385-61544d80-8254-11ea-8c23-9e93e7152fda.png"></center>
+
+> Notice that, we only support one condition in the where clause. Either it's an equal filter or it is an `contains` filter. In both case, the property in the where condition must be a tag.
+
+* SHOW TIMESERIES LIMIT INT OFFSET INT
+
+  returns all the timeseries information start from the offset and limit the number of series returned
+  
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
+
+## Show Child Paths
+
+```
+SHOW CHILD PATHS prefixPath
+```
+
+Return all child paths of the prefixPath, the prefixPath could contains *.
+
+Example：
+
+* return the child paths of root.ln：show child paths root.ln
+
+```
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+```
+
+* get all paths in form of root.xx.xx.xx：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
+```
 
 ## Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
+
 ```
 IoTDB > COUNT TIMESERIES root
 IoTDB > COUNT TIMESERIES root.ln
@@ -126,6 +233,7 @@ You will get following results:
 ## Count Nodes
 
 IoTDB is able to use `COUNT NODES <Path> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
+
 ```
 IoTDB > COUNT NODES root LEVEL=2
 IoTDB > COUNT NODES root.ln LEVEL=2
@@ -143,6 +251,7 @@ As for the above mentioned example and Metadata tree, you can get following resu
 To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
 
 The usage are as follows:
+
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
@@ -155,7 +264,9 @@ Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
 * `SHOW DEVICES` statement presents all devices information, which is equal to `SHOW DEVICES root`.
 * `SHOW DEVICES <PrefixPath>` statement specifies the `PrefixPath` and returns the devices information under the given level.
+
 SQL statement is as follows:
+
 ```
 IoTDB> show devices
 IoTDB> show devices root.ln
@@ -168,17 +279,43 @@ IoTDB supports storage-level TTL settings, which means it is able to delete old 
 ## Set TTL
 
 The SQL Statement for setting TTL is as follow:
+
 ```
 IoTDB> set ttl to root.ln 3600000
 ```
+
 This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
 
 ## Unset TTL
 
 To unset TTL, we can use follwing SQL statement:
+
 ```
 IoTDB> unset ttl to root.ln
 ```
+
 After unset TTL, all data will be accepted in `root.ln`
+
+## FLUSH
+
+Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
+
+```
+IoTDB> FLUSH 
+IoTDB> FLUSH root.ln
+IoTDB> FLUSH root.sg1,root.sg2
+```
+
+## MERGE
+
+Merge sequence and unsequence data. Currently IoTDB supports the following two types of SQL to manually trigger the merge process of data files:
+
+* `MERGE` Only rewrite overlapped Chunks, the merge speed is quick, while there will be redundant data on the disk eventually.
+* `FULL MERGE` Rewrite all data in overlapped files, the merge speed is slow, but there will be no redundant data on the disk eventually.
+
+```
+IoTDB> MERGE
+IoTDB> FULL MERGE
+```
 
 

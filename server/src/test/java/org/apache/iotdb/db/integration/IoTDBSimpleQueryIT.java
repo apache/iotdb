@@ -102,6 +102,33 @@ public class IoTDBSimpleQueryIT {
 
 
   @Test
+  public void testShowTimeseriesWithLimitOffset() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()){
+
+      String[] exps = new String[]{"root.sg1.d0.s2", "root.sg1.d0.s3"};
+
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s1) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s2) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s3) VALUES (5, 5)");
+      statement.execute("INSERT INTO root.sg1.d0(timestamp, s4) VALUES (5, 5)");
+
+      ResultSet resultSet = statement.executeQuery("show timeseries limit 2 offset 1");
+
+      int count = 0;
+
+      while(resultSet.next()) {
+        Assert.assertEquals(exps[count++], resultSet.getString(1));
+      }
+
+      Assert.assertEquals(exps.length, count);
+      resultSet.close();
+    }
+  }
+
+  @Test
   public void testFirstOverlappedPageFiltered() throws SQLException, ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try(Connection connection = DriverManager

@@ -53,6 +53,7 @@ public class ChunkCache {
 
 
   private ChunkCache() {
+    logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
     lruCache = new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE, true) {
 
       int count = 0;
@@ -64,7 +65,7 @@ public class ChunkCache {
           long currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
           averageSize = (averageSize * count) + currentSize / (++count);
           return currentSize;
-        } else if (count < 10000) {
+        } else if (count < 100000) {
           count++;
           return averageSize;
         } else {

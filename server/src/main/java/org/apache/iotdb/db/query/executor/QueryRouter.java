@@ -23,9 +23,11 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
-import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -172,10 +174,18 @@ public class QueryRouter implements IQueryRouter {
   }
 
   @Override
+  public QueryDataSet groupByFill(GroupByFillPlan groupByFillPlan, QueryContext context)
+          throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
+    GroupByEngineDataSet groupByEngineDataSet = (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
+    return new GroupByFillDataSet(groupByFillPlan.getDeduplicatedPaths(), groupByFillPlan.getDeduplicatedDataTypes(),
+            groupByEngineDataSet, groupByFillPlan.getFillType(), context, groupByFillPlan);
+  }
+
+  @Override
   public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
           throws StorageEngineException, QueryProcessException, IOException {
     LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
-    return lastQueryExecutor.execute(context);
+    return lastQueryExecutor.execute(context, lastQueryPlan);
   }
 
 }

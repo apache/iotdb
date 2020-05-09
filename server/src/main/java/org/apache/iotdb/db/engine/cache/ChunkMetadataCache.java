@@ -27,11 +27,11 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
@@ -60,19 +60,32 @@ public class ChunkMetadataCache {
   private AtomicLong cacheHitNum = new AtomicLong();
   private AtomicLong cacheRequestNum = new AtomicLong();
 
-  /**
-   * approximate estimation of chunkMetaData size
-   */
-  private long chunkMetaDataSize = 0;
 
   private ChunkMetadataCache(long memoryThreshold) {
+    logger.info("ChunkMetadataCache size = " + memoryThreshold);
     lruCache = new LRULinkedHashMap<String, List<ChunkMetadata>>(memoryThreshold, true) {
+      int count = 0;
+      long averageChunkMetadataSize = 0;
+
       @Override
       protected long calEntrySize(String key, List<ChunkMetadata> value) {
-        if (chunkMetaDataSize == 0 && !value.isEmpty()) {
-          chunkMetaDataSize = RamUsageEstimator.sizeOf(value.get(0));
+        if (value.isEmpty()) {
+          return key.getBytes().length + averageChunkMetadataSize * value.size();
         }
-        return value.size() * chunkMetaDataSize + key.length() * 2;
+
+        if (count < 10) {
+          long currentSize = RamUsageEstimator.sizeOf(value.get(0));
+          averageChunkMetadataSize = ((averageChunkMetadataSize * count) + currentSize) / (++count);
+          IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageChunkMetadataSize);
+          return key.getBytes().length + currentSize * value.size();
+        } else if (count < 100000) {
+          count++;
+          return key.getBytes().length + averageChunkMetadataSize * value.size();
+        } else {
+          averageChunkMetadataSize = RamUsageEstimator.sizeOf(value.get(0));
+          count = 1;
+          return key.getBytes().length + averageChunkMetadataSize * value.size();
+        }
       }
     };
   }
@@ -88,8 +101,8 @@ public class ChunkMetadataCache {
       throws IOException {
     if (!cacheEnable) {
       // bloom filter part
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
-      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
+      BloomFilter bloomFilter = tsFileReader.readBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         if (logger.isDebugEnabled()) {
           logger.debug(String
@@ -98,7 +111,6 @@ public class ChunkMetadataCache {
         return new ArrayList<>();
       }
       // If timeseries isn't included in the tsfile, empty list is returned.
-      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
       return tsFileReader.getChunkMetadataList(seriesPath);
     }
 
@@ -127,8 +139,8 @@ public class ChunkMetadataCache {
       }
       printCacheLog(false);
       // bloom filter part
-      TsFileMetadata fileMetaData = TsFileMetaDataCache.getInstance().get(filePath);
-      BloomFilter bloomFilter = fileMetaData.getBloomFilter();
+      TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
+      BloomFilter bloomFilter = tsFileReader.readBloomFilter();
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         return new ArrayList<>();
       }

@@ -177,13 +177,13 @@ and value filtering conditions specified.
 The SQL statement is:
 
 ```
-select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00],1d);
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d);
 ```
 which means:
 
 Since the user does not specify the sliding step length, the GROUP BY statement will by default set the sliding step same as the time interval which is `1d`.
 
-The fist parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
+The fist parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00).
 
 The second parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (1d) as time interval and startTime of the display window as the dividing origin, the time axis is divided into several continuous intervals, which are [0,1d), [1d, 2d), [2d, 3d), etc.
 
@@ -198,7 +198,7 @@ Since there is data for each time period in the result range to be displayed, th
 The SQL statement is:
 
 ```
-select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00], 3h, 1d);
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d);
 ```
 
 which means:
@@ -207,7 +207,7 @@ Since the user specifies the sliding step parameter as 1d, the GROUP BY statemen
 
 That means we want to fetch all the data of 00:00:00 to 02:59:59 every day from 2017-11-01 to 2017-11-07.
 
-The first parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
+The first parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00).
 
 The second parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (3h) as time interval and the startTime of the display window as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-11-01T00:00:00, 2017-11-01T03:00:00), [2017-11-02T00:00:00, 2017-11-02T03:00:00), [2017-11-03T00:00:00, 2017-11-03T03:00:00), etc.
 
@@ -224,13 +224,13 @@ Since there is data for each time period in the result range to be displayed, th
 The SQL statement is:
 
 ```
-select count(status), max_value(temperature) from root.ln.wf01.wt01 where time > 2017-11-01T01:00:00 and temperature > 20 group by([2017-11-01T00:00:00, 2017-11-07T23:00:00], 3h, 1d);
+select count(status), max_value(temperature) from root.ln.wf01.wt01 where time > 2017-11-01T01:00:00 and temperature > 20 group by([2017-11-01T00:00:00, 2017-11-07T23:00:00), 3h, 1d);
 ```
 which means:
 
 Since the user specifies the sliding step parameter as 1d, the GROUP BY statement will move the time interval `1 day` long instead of `3 hours` as default.
 
-The first parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00].
+The first parameter of the GROUP BY statement above is the display window parameter, which determines the final display range is [2017-11-01T00:00:00, 2017-11-07T23:00:00).
 
 The second parameter of the GROUP BY statement above is the time interval for dividing the time axis. Taking this parameter (3h) as time interval and the startTime of the display window as the dividing origin, the time axis is divided into several continuous intervals, which are [2017-11-01T00:00:00, 2017-11-01T03:00:00), [2017-11-02T00:00:00, 2017-11-02T03:00:00), [2017-11-03T00:00:00, 2017-11-03T03:00:00), etc.
 
@@ -239,6 +239,56 @@ The third parameter of the GROUP BY statement above is the sliding step for each
 Then the system will use the time and value filtering condition in the WHERE clause and the first parameter of the GROUP BY statement as the data filtering condition to obtain the data satisfying the filtering condition (which in this case is the data in the range of (2017-11-01T01:00:00, 2017-11-07T23:00:00] and satisfying root.ln.wf01.wt01.temperature > 20), and map these data to the previously segmented time axis (in this case there are mapped data in every 3-hour period for each day from 2017-11-01T00:00:00 to 2017-11-07T23:00:00).
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69116088-001e2780-0ac6-11ea-9a01-dc45271d1dad.png"></center>
+
+#### Left Open And Right Close Range
+
+The SQL statement is:
+
+```
+select count(status) from root.ln.wf01.wt01 group by((5, 40], 5ms);
+```
+
+In this sql, the time interval is left open and right close, so we won't include the value of timestamp 5 and instead we will include the value of timestamp 40.
+
+We will get the result like following:
+
+| Time   | count(root.ln.wf01.wt01.status) |
+| ------ | ------------------------------- |
+| 10     | 1                               |
+| 15     | 2                               |
+| 20     | 3                               |
+| 25     | 4                               |
+| 30     | 4                               |
+| 35     | 3                               |
+| 40     | 5                               |
+
+
+#### Down-Frequency Aggregate Query with Fill Clause
+
+In group by fill, sliding step is not supported in group by clause
+
+Now, only last_value aggregation function is supported in group by fill.
+
+There is no limit about time in group by fill.
+
+Linear fill is not supported in group by fill.
+
+
+##### Difference Between PREVIOUSUNTILLAST And PREVIOUS
+
+* PREVIOUS will fill any null value as long as there exist value is not null before it.
+* PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
+
+The SQL statement is:
+
+```
+SELECT last_value(temperature) as last_temperature FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+```
+which means:
+
+using PREVIOUSUNTILLAST Fill way to fill the origin down-frequency aggregate query result.
+
+
 
 The path after SELECT in GROUP BY statement must be aggregate function, otherwise the system will give the corresponding error prompt, as shown below:
 
@@ -351,6 +401,9 @@ Detailed descriptions of all parameters are given in Table 3-5.
 |before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
 </center>
 
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the linear fill value.
+Otherwise, if there is no valid fill value in either range [T-before_range，T] or [T, T + after_range], linear fill method will return null.
+
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
 
 ```
@@ -390,10 +443,10 @@ When the fill method is not specified, each data type bears its own default fill
 |Data Type|Default Fill Methods and Parameters|
 |:---|:---|
 |boolean|previous, 600000|
-|int32|linear, 600000, 600000|
-|int64|linear, 600000, 600000|
-|float|linear, 600000, 600000|
-|double|linear, 600000, 600000|
+|int32|previous, 600000|
+|int64|previous, 600000|
+|float|previous, 600000|
+|double|previous, 600000|
 |text|previous, 600000|
 </center>
 

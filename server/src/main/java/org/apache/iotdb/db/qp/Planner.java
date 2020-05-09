@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.qp;
 
-import java.time.ZoneId;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
@@ -37,6 +35,9 @@ import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.time.ZoneId;
+import java.util.Set;
 
 /**
  * provide a integration method for other user.
@@ -81,6 +82,7 @@ public class Planner {
       case DELETE_STORAGE_GROUP:
       case CREATE_TIMESERIES:
       case DELETE_TIMESERIES:
+      case ALTER_TIMESERIES:
       case LOADDATA:
       case INSERT:
       case INDEX:
@@ -93,6 +95,8 @@ public class Planner {
       case LOAD_FILES:
       case REMOVE_FILE:
       case MOVE_FILE:
+      case FLUSH:
+      case MERGE:
         return operator;
       case QUERY:
       case UPDATE:

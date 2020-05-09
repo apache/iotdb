@@ -49,15 +49,15 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private List<AggregateResult> results = new ArrayList<>();
   private TimeRange timeRange;
 
-  public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType, QueryContext context, Filter timeFilter,
-                              TsFileFilter fileFilter)
+  public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
+      QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-    QueryDataSource queryDataSource = QueryResourceManager.getInstance()
-        .getQueryDataSource(path, context, timeFilter);
+    QueryDataSource queryDataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-    this.reader = new SeriesAggregateReader(path, allSensors, dataType, context, queryDataSource, timeFilter,
-        null, fileFilter);
+    this.reader = new SeriesAggregateReader(path, allSensors, dataType, context, queryDataSource,
+        timeFilter, null, fileFilter);
     this.preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
   }
@@ -79,27 +79,25 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   private boolean calcFromCacheData(long curStartTime, long curEndTime) throws IOException {
     calcFromBatch(preCachedData, curStartTime, curEndTime);
     // The result is calculated from the cache
-    return (preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime)
-        || isEndCalc();
+    return (preCachedData != null && preCachedData.getMaxTimestamp() >= curEndTime) || isEndCalc();
   }
 
-  private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime) throws IOException {
+  private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
+      throws IOException {
     // is error data
-    if (batchData == null
-        || !batchData.hasCurrent()
-        || batchData.getMaxTimestamp() < curStartTime
+    if (batchData == null || !batchData.hasCurrent() || batchData.getMaxTimestamp() < curStartTime
         || batchData.currentTime() >= curEndTime) {
       return;
     }
 
     for (AggregateResult result : results) {
-      //current agg method has been calculated
+      // current agg method has been calculated
       if (result.isCalculatedAggregationResult()) {
         continue;
       }
-      //lazy reset batch data for calculation
+      // lazy reset batch data for calculation
       batchData.resetBatchData();
-      //skip points that cannot be calculated
+      // skip points that cannot be calculated
       while (batchData.currentTime() < curStartTime && batchData.hasCurrent()) {
         batchData.next();
       }
@@ -107,16 +105,15 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         result.updateResultFromPageData(batchData, curEndTime);
       }
     }
-    //can calc for next interval
+    // can calc for next interval
     if (batchData.getMaxTimestamp() >= curEndTime) {
       preCachedData = batchData;
     }
   }
 
-  private void calcFromStatistics(Statistics pageStatistics)
-      throws QueryProcessException {
+  private void calcFromStatistics(Statistics pageStatistics) throws QueryProcessException {
     for (AggregateResult result : results) {
-      //cacl is compile
+      // cacl is compile
       if (result.isCalculatedAggregationResult()) {
         continue;
       }
@@ -138,8 +135,13 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       return results;
     }
 
-    //read page data firstly
+    // read page data firstly
     if (readAndCalcFromPage(curStartTime, curEndTime)) {
+      return results;
+    }
+
+    // read chunk data secondly
+    if (readAndCalcFromChunk(curStartTime, curEndTime)) {
       return results;
     }
 
@@ -157,39 +159,47 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         continue;
       }
 
-      //read chunk
-      while (reader.hasNextChunk()) {
-        Statistics chunkStatistics = reader.currentChunkStatistics();
-        if (chunkStatistics.getStartTime() >= curEndTime) {
-          return results;
-        }
-        //calc from chunkMetaData
-        if (reader.canUseCurrentChunkStatistics()
-                && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-          calcFromStatistics(chunkStatistics);
-          reader.skipCurrentChunk();
-          continue;
-        }
-        if (readAndCalcFromPage(curStartTime, curEndTime)) {
-          return results;
-        }
+      // read chunk
+      if (readAndCalcFromChunk(curStartTime, curEndTime)) {
+        return results;
       }
     }
 
     return results;
   }
 
-  private boolean readAndCalcFromPage(long curStartTime, long curEndTime) throws IOException,
-      QueryProcessException {
+  private boolean readAndCalcFromChunk(long curStartTime, long curEndTime)
+      throws IOException, QueryProcessException {
+    while (reader.hasNextChunk()) {
+      Statistics chunkStatistics = reader.currentChunkStatistics();
+      if (chunkStatistics.getStartTime() >= curEndTime) {
+        return true;
+      }
+      // calc from chunkMetaData
+      if (reader.canUseCurrentChunkStatistics()
+          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+        calcFromStatistics(chunkStatistics);
+        reader.skipCurrentChunk();
+        continue;
+      }
+      if (readAndCalcFromPage(curStartTime, curEndTime)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private boolean readAndCalcFromPage(long curStartTime, long curEndTime)
+      throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {
       Statistics pageStatistics = reader.currentPageStatistics();
-      //must be non overlapped page
+      // must be non overlapped page
       if (pageStatistics != null) {
-        //current page max than time range
+        // current page max than time range
         if (pageStatistics.getStartTime() >= curEndTime) {
           return true;
         }
-        //can use pageHeader
+        // can use pageHeader
         if (reader.canUseCurrentPageStatistics()
             && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
           calcFromStatistics(pageStatistics);

@@ -18,25 +18,20 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.sql.*;
+
+import static org.junit.Assert.fail;
 
 public class IoTDBLastIT {
 
@@ -102,15 +97,15 @@ public class IoTDBLastIT {
   }
 
   @Test
-  public void lastCacheTest() throws SQLException {
-    String[] retArray1 =
+  public void lastCacheUpdateTest() throws SQLException, MetadataException {
+    String[] retArray =
         new String[] {
           "500,root.ln.wf01.wt01.temperature,22.1",
           "500,root.ln.wf01.wt01.status,false",
-          "500,root.ln.wf01.wt01.id,5"
-        };
-    String[] retArray2 =
-        new String[] {
+          "500,root.ln.wf01.wt01.id,5",
+          "700,root.ln.wf01.wt01.temperature,33.1",
+          "700,root.ln.wf01.wt01.status,false",
+          "700,root.ln.wf01.wt01.id,3",
           "700,root.ln.wf01.wt01.temperature,33.1",
           "700,root.ln.wf01.wt01.status,false",
           "700,root.ln.wf01.wt01.id,3"
@@ -130,16 +125,17 @@ public class IoTDBLastIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
                   + resultSet.getString(TIMESEIRES_STR) + ","
                   + resultSet.getString(VALUE_STR);
-          Assert.assertEquals(retArray1[cnt], ans);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
 
-      LeafMNode node = (LeafMNode) MManager.getInstance().getNodeByPath("root.ln.wf01.wt01.temperature");
+      LeafMNode node =
+          (LeafMNode) MManager.getInstance().getNodeByPath("root.ln.wf01.wt01.temperature");
       node.resetCache();
 
       statement.execute(
-              "insert into root.ln.wf01.wt01(time, temperature, status, id) values(700, 33.1, false, 3)");
+          "insert into root.ln.wf01.wt01(time, temperature, status, id) values(700, 33.1, false, 3)");
 
       // Last cache is updated with above insert sql
       long time = node.getCachedLast().getTimestamp();
@@ -147,13 +143,12 @@ public class IoTDBLastIT {
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
       Assert.assertTrue(hasResultSet);
-      cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
                   + resultSet.getString(TIMESEIRES_STR) + ","
                   + resultSet.getString(VALUE_STR);
-          Assert.assertEquals(retArray2[cnt], ans);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
@@ -167,33 +162,26 @@ public class IoTDBLastIT {
 
       hasResultSet = statement.execute("select last temperature,status,id from root.ln.wf01.wt01");
       Assert.assertTrue(hasResultSet);
-      cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
               + resultSet.getString(TIMESEIRES_STR) + ","
               + resultSet.getString(VALUE_STR);
-          Assert.assertEquals(retArray2[cnt], ans);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      Assert.assertEquals(cnt, retArray.length);
     }
   }
 
   @Test
-  public void lastWithUnSeqFilesTest() {
-    String[] retArray1 =
+  public void lastWithUnSeqFilesTest() throws SQLException, MetadataException {
+    String[] retArray =
         new String[] {
             "500,root.ln.wf01.wt02.temperature,15.7",
             "500,root.ln.wf01.wt02.status,false",
-            "500,root.ln.wf01.wt02.id,9"
-        };
-
-    String[] retArray2 =
-        new String[] {
+            "500,root.ln.wf01.wt02.id,9",
             "600,root.ln.wf01.wt02.temperature,10.2",
             "600,root.ln.wf01.wt02.status,false",
             "600,root.ln.wf01.wt02.id,6"
@@ -203,8 +191,7 @@ public class IoTDBLastIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node = MManager.getInstance()
-          .getDeviceNodeWithAutoCreateStorageGroup("root.ln.wf01.wt02.temperature");
+      MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt02.temperature");
       ((LeafMNode) node).resetCache();
       boolean hasResultSet =
           statement.execute(
@@ -218,7 +205,7 @@ public class IoTDBLastIT {
               resultSet.getString(TIMESTAMP_STR) + ","
                   + resultSet.getString(TIMESEIRES_STR) + ","
                   + resultSet.getString(VALUE_STR);
-          Assert.assertEquals(retArray1[cnt], ans);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
@@ -230,24 +217,21 @@ public class IoTDBLastIT {
       statement.execute("flush");
       hasResultSet = statement.execute(
               "select last temperature,status,id from root.ln.wf01.wt02");
-      cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
                   + resultSet.getString(TIMESEIRES_STR) + ","
                   + resultSet.getString(VALUE_STR);
-          Assert.assertEquals(retArray2[cnt], ans);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
+      Assert.assertEquals(cnt, retArray.length);
     }
   }
 
   @Test
-  public void lastWithEmptyChunkMetadataTest() throws SQLException {
+  public void lastWithEmptyChunkMetadataTest() throws SQLException, MetadataException {
     String[] retArray =
         new String[] {
             "300,root.ln.wf01.wt03.temperature,23.1",
@@ -258,11 +242,12 @@ public class IoTDBLastIT {
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      MNode node = MManager.getInstance()
-          .getDeviceNodeWithAutoCreateStorageGroup("root.ln.wf01.wt03.temperature");
+      MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt03.temperature");
       ((LeafMNode) node).resetCache();
 
       statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
+      statement.execute("flush");
+      statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(400, false, 11)");
       statement.execute("flush");
       boolean hasResultSet = statement.execute(
           "select last temperature from root.ln.wf01.wt03");
@@ -280,10 +265,6 @@ public class IoTDBLastIT {
         }
         Assert.assertEquals(cnt, 1);
       }
-
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
     }
   }
 

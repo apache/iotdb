@@ -68,7 +68,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
    */
   public static final String READ_MEASUREMENTID = "tsfile.read.measurement";
   private static final Logger logger = LoggerFactory.getLogger(TSFInputFormat.class);
-  private static final String SPERATOR = ",";
+  private static final String SEPARATOR = ",";
 
   /**
    * Set the deltaObjectIds which want to be read
@@ -83,7 +83,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     } else {
       StringBuilder deltaObjectIdsBuilder = new StringBuilder();
       for (String deltaObjectId : value) {
-        deltaObjectIdsBuilder.append(deltaObjectId).append(SPERATOR);
+        deltaObjectIdsBuilder.append(deltaObjectId).append(SEPARATOR);
       }
       String deltaObjectIds = deltaObjectIdsBuilder.toString();
       job.getConfiguration().set(READ_DELTAOBJECTS,
@@ -104,7 +104,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
       return new LinkedList<>();
     } else {
 
-      return Arrays.stream(deviceIds.split(SPERATOR)).collect(Collectors.toList());
+      return Arrays.stream(deviceIds.split(SEPARATOR)).collect(Collectors.toList());
     }
   }
 
@@ -121,7 +121,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     } else {
       StringBuilder measurementIdsBuilder = new StringBuilder();
       for (String measurementId : value) {
-        measurementIdsBuilder.append(measurementId).append(SPERATOR);
+        measurementIdsBuilder.append(measurementId).append(SEPARATOR);
       }
       String measurementIds = measurementIdsBuilder.toString();
       // Get conf type
@@ -141,7 +141,7 @@ TSFInputFormat extends FileInputFormat<NullWritable, MapWritable> {
     if (measurementIds == null || measurementIds.length() < 1) {
       return new LinkedList<>();
     } else {
-      return Arrays.stream(measurementIds.split(SPERATOR)).collect(Collectors.toList());
+      return Arrays.stream(measurementIds.split(SEPARATOR)).collect(Collectors.toList());
     }
   }
 

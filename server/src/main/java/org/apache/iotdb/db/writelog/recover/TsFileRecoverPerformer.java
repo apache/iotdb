@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -40,10 +41,8 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.tsfile.exception.NotCompatibleTsFileException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -76,8 +75,9 @@ public class TsFileRecoverPerformer {
   /**
    * 1. recover the TsFile by RestorableTsFileIOWriter and truncate the file to remaining corrected
    * data 2. redo the WALs to recover unpersisted data 3. flush and close the file 4. clean WALs
-   * @return a RestorableTsFileIOWriter if the file is not closed before crush, so this writer
-   * can be used to continue writing
+   *
+   * @return a RestorableTsFileIOWriter if the file is not closed before crush, so this writer can
+   * be used to continue writing
    */
   public RestorableTsFileIOWriter recover() throws StorageGroupProcessorException {
 
@@ -108,12 +108,12 @@ public class TsFileRecoverPerformer {
           // .resource file does not exist, read file metadata and recover tsfile resource
           try (TsFileSequenceReader reader = new TsFileSequenceReader(
               resource.getFile().getAbsolutePath())) {
-            TsFileMetadata metaData = reader.readFileMetadata();
-            FileLoaderUtils.updateTsFileResource(metaData, reader, resource);
+            FileLoaderUtils.updateTsFileResource(reader, resource);
           }
           // write .resource file
           long fileVersion =
-              Long.parseLong(resource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+              Long.parseLong(
+                  resource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
           resource.setHistoricalVersions(Collections.singleton(fileVersion));
           resource.serialize();
         }
@@ -156,15 +156,13 @@ public class TsFileRecoverPerformer {
 
   private void recoverResourceFromReader() throws IOException {
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(resource.getFile().getAbsolutePath(), false)) {
-      TsFileMetadata fileMetadata = reader.readFileMetadata();
-      
-      Map<String, Pair<Long, Integer>> deviceMetaDataMap = fileMetadata.getDeviceMetadataIndex();
-      for (Map.Entry<String, Pair<Long, Integer>>  entry: deviceMetaDataMap.entrySet()) {
-        String deviceId = entry.getKey();
-        for (TimeseriesMetadata timeseriesMetadata : reader.readDeviceMetadata(deviceId).values()) {
-          resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getStartTime());
-          resource.updateStartTime(deviceId, timeseriesMetadata.getStatistics().getEndTime());
+        new TsFileSequenceReader(resource.getFile().getAbsolutePath(), true)) {
+      for (Entry<String, List<TimeseriesMetadata>> entry : reader.getAllTimeseriesMetadata()
+          .entrySet()) {
+        for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
+          resource
+              .updateStartTime(entry.getKey(), timeseriesMetaData.getStatistics().getStartTime());
+          resource.updateEndTime(entry.getKey(), timeseriesMetaData.getStatistics().getEndTime());
         }
       }
     }

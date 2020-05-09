@@ -37,11 +37,21 @@ Mailing list address：dev@iotdb.apache.org
 
 Follow method: Send an email to dev-subscribe@iotdb.apache.org with the email you want to receive the email, the subject content is not limited, after receiving the reply, send a confirmation email to the confirmation address again (the confirmation address is longer, it is recommended  gmail mailbox).
 
+
+Other mailing list:
+* notifications@iotdb.apache.org (for JIRA information notification.)
+  * If you just want to pay attention to some issues, you do not need to subscribe this mailing list.
+  Instead, you just need to click "start-watching this issue" on the jira issue webpage. 
+* commits@iotdb.apache.org (for code changes notification. Take care because this mailing list may have many emails)
+* reviews@iotdb.apache.org (for code reviews notification on Github.  Take care because this mailing list may have many emails)
+
+
+
 ## New features, bug feedback, improvements, and more
 
 All features or bugs that you want IoTDB to do can be raised on Jira：https://issues.apache.org/jira/projects/IOTDB/issues
 
-You can choose issue types: bug, improvement, new feature, etc.  New issues will be automatically synchronized to the mailing list, and subsequent discussions can be left on jira or on the mailing list.  When the issue is resolved, close the issue.
+You can choose issue types: bug, improvement, new feature, etc.  New issues will be automatically synchronized to the mailing list (notifications@), and subsequent discussions can be left on jira or on the mailing list.  When the issue is resolved, close the issue.
 
 ## Email discussion content (English)
 
@@ -53,12 +63,14 @@ You can choose issue types: bug, improvement, new feature, etc.  New issues will
 
 The content of all IoTDB official websites is in the docs of the project root directory:
 
-* docs/Documentation/SystemDesign: System Design Document-English Version
-* docs/Documentation-CHN/SystemDesign: System Design Document-Chinese Version
-* docs/Documentation/UserGuide: User Guide English Version
-* docs/Documentation-CHN/UserGuide: User Guide Chinese Version
-* docs/Community: community
-* docs/Development: Development Guide
+* docs/SystemDesign: System Design Document-English Version
+* docs/zh/SystemDesign: System Design Document-Chinese Version
+* docs/UserGuide: User Guide English Version
+* docs/zh/UserGuide: User Guide Chinese Version
+* docs/Community: community English Version
+* docs/zh/Community: community Chinese Version
+* docs/Development: Development Guide English Version
+* docs/zh/Development: Development Guide Chinese Version
 
 Correspondence between versions and branches on the official website:
 
@@ -91,11 +103,8 @@ Recommended Use Intellij idea。```mvn clean package -DskipTests``` After puttin
 * Client：```client/src/main/java/org/apache/iotdb/client/```，Use Clinet for linux and WinClint for windows, you can start directly, need the parameter "-h 127.0.0.1 -p 6667 -u root -pw root"
 * Server rpc implementation (mainly used for client and server communication, generally start interruption point here):```server/src/main/java/org/apache/iotdb/db/service/TSServiceImpl```
   * all jdbc statements：executeStatement(TSExecuteStatementReq req)
-  * jdbc query：executeQueryStatement(TSExecuteStatementReq req)	* native Write interface：insert(TSInsertReq req)
+  * jdbc query：executeQueryStatement(TSExecuteStatementReq req)	
+  * native Write interface：insertRecord(TSInsertRecordReq req)
 
 * Storage engine org.apache.iotdb.db.engine.StorageEngine
 * Query engine org.apache.iotdb.db.qp.QueryProcessor
-
-
-
-<FooterFixed/>

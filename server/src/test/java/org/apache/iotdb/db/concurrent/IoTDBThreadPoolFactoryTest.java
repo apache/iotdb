@@ -51,12 +51,12 @@ public class IoTDBThreadPoolFactoryTest {
 
   @Test
   public void testNewFixedThreadPool() throws InterruptedException, ExecutionException {
-    String reason = "NewFixedThreadPool";
+    String reason = "(can be ignored in Tests) NewFixedThreadPool";
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
-    int threadCount = 5;
+    int threadCount = 4;
     latch = new CountDownLatch(threadCount);
     ExecutorService exec = IoTDBThreadPoolFactory
-        .newFixedThreadPool(threadCount, POOL_NAME, handler);
+        .newFixedThreadPool(threadCount / 2, POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
       exec.execute(task);
@@ -71,9 +71,9 @@ public class IoTDBThreadPoolFactoryTest {
 
   @Test
   public void testNewSingleThreadExecutor() throws InterruptedException {
-    String reason = "NewSingleThreadExecutor";
+    String reason = "(can be ignored in Tests)NewSingleThreadExecutor";
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
-    int threadCount = 1;
+    int threadCount = 2;
     latch = new CountDownLatch(threadCount);
     ExecutorService exec = IoTDBThreadPoolFactory.newSingleThreadExecutor(POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
@@ -90,9 +90,9 @@ public class IoTDBThreadPoolFactoryTest {
 
   @Test
   public void testNewCachedThreadPool() throws InterruptedException {
-    String reason = "NewCachedThreadPool";
+    String reason = "(can be ignored in Tests) NewCachedThreadPool";
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
-    int threadCount = 10;
+    int threadCount = 4;
     latch = new CountDownLatch(threadCount);
     ExecutorService exec = IoTDBThreadPoolFactory.newCachedThreadPool(POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
@@ -109,9 +109,9 @@ public class IoTDBThreadPoolFactoryTest {
 
   @Test
   public void testNewSingleThreadScheduledExecutor() throws InterruptedException {
-    String reason = "NewSingleThreadScheduledExecutor";
+    String reason = "(can be ignored in Tests) NewSingleThreadScheduledExecutor";
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
-    int threadCount = 1;
+    int threadCount = 2;
     latch = new CountDownLatch(threadCount);
     ScheduledExecutorService exec = IoTDBThreadPoolFactory
         .newSingleThreadScheduledExecutor(POOL_NAME, handler);
@@ -136,12 +136,12 @@ public class IoTDBThreadPoolFactoryTest {
 
   @Test
   public void testNewScheduledThreadPool() throws InterruptedException {
-    String reason = "NewScheduledThreadPool";
+    String reason = "(can be ignored in Tests) NewScheduledThreadPool";
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
-    int threadCount = 10;
+    int threadCount = 4;
     latch = new CountDownLatch(threadCount);
     ScheduledExecutorService exec = IoTDBThreadPoolFactory
-        .newScheduledThreadPool(threadCount, POOL_NAME, handler);
+        .newScheduledThreadPool(threadCount / 2, POOL_NAME, handler);
     for (int i = 0; i < threadCount; i++) {
       Runnable task = new TestThread(reason);
       ScheduledFuture<?> future = exec.scheduleAtFixedRate(task, 0, 1, TimeUnit.SECONDS);
@@ -163,14 +163,14 @@ public class IoTDBThreadPoolFactoryTest {
 
   @Test
   public void testCreateJDBCClientThreadPool() throws InterruptedException {
-    String reason = "CreateJDBCClientThreadPool";
+    String reason = "(can be ignored in Tests) CreateJDBCClientThreadPool";
     TThreadPoolServer.Args args = new Args(null);
-    args.maxWorkerThreads = 100;
-    args.minWorkerThreads = 10;
+    args.maxWorkerThreads = 4;
+    args.minWorkerThreads = 2;
     args.stopTimeoutVal = 10;
     args.stopTimeoutUnit = TimeUnit.SECONDS;
     Thread.UncaughtExceptionHandler handler = new TestExceptionHandler(reason);
-    int threadCount = 50;
+    int threadCount = 4;
     latch = new CountDownLatch(threadCount);
     ExecutorService exec = IoTDBThreadPoolFactory
         .createThriftRpcClientThreadPool(args, POOL_NAME, handler);

@@ -22,9 +22,10 @@ import java.io.IOException;
 import java.sql.SQLException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -51,7 +52,8 @@ public interface IPlanExecutor {
    *
    * @param plan Physical Non-Query Plan
    */
-  boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException;
+  boolean processNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
 
   /**
    * execute update command and return whether the operator is successful.
@@ -91,5 +93,5 @@ public interface IPlanExecutor {
    *
    * @return result of each row
    */
-  TSStatus[] insertBatch(BatchInsertPlan batchInsertPlan) throws QueryProcessException;
+  TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException;
 }
