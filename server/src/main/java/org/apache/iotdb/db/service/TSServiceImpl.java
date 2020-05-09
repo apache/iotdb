@@ -662,7 +662,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case QUERY:
       case FILL:
         for (Path p : paths) {
-          respColumns.add(p.getFullPath());
+          if (p.getAlias() != null) {
+            respColumns.add(p.getFullPathWithAlias());
+          } else {
+            respColumns.add(p.getFullPath());
+          }
         }
         seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
@@ -676,7 +680,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
         for (int i = 0; i < paths.size(); i++) {
-          respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          if (paths.get(i).getAlias() != null) {
+            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")");
+          } else {
+            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          }
         }
         seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;
