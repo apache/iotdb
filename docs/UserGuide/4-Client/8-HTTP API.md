@@ -32,7 +32,7 @@ Note: "root:root" should be encoded by Base64.
 The query language is JSON over HTTP, The Content-Type/Accept Headers can also take 'text/plain'.
 
 ```
-curl -X POST '<queryable_host>:<port>/druid/v2/?pretty' -H 'Content-Type:application/json' -H 'Accept:text/plain' -H 'Authorization:Basic root:root' -d @<query_json_file>
+curl -X POST '<host>:<port>/rest/?' -H 'Content-Type:application/json' -H 'Accept:text/plain' -H 'Authorization:Basic root:root' -d @<query_json_file>
 ```
 
 Note: If Accept header is not provided, it defaults to value of 'Content-Type' header.
