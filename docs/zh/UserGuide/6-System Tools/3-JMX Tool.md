@@ -23,32 +23,33 @@
 
 Java VisualVM提供了一个可视化的界面，用于查看Java应用程序在Java虚拟机（JVM）上运行的详细信息，并对这些应用程序进行故障排除和分析。
 
-## 配置
-
-JMX 访问权限认证设置默认打开，因此你需要编辑`iotdb-engine.properties`中的 JMX 用户名和密码。相关配置项包括：
-
-* jmx\_user
-
-|名字| jmx\_user |
-|:---:|:---|
-|描述| JMX配置中的用户名 |
-|类型| String |
-|默认值| admin |
-|改后生效方式|重启服务器生效|
-
-* jmx\_password
-
-|名字| jmx\_password |
-|:---:|:---|
-|描述| JMX配置中的密码 |
-|类型| String |
-|默认值| password |
-|改后生效方式|重启服务器生效|
-
 ## 使用
 
-第一步：启动IoTDB server。
+第一步：获得IoTDB-server。
 
-第二步：建立连接。对于本地的监控，不需要手动配置连接。对于远程的监控，可以添加远程的ip地址，并将端口配置为`31999`。
+第二步：编辑配置文件
 
-第三步：开始监控。双击你所建立的ip地址，就可以看到执行应用的详细信息。
+* IoTDB在本地
+查看`$IOTDB_HOME/conf/jmx.password`，使用默认用户或者在此添加新用户
+若新增用户，编辑`$IOTDB_HOME/conf/jmx.access`，添加新增用户权限
+
+* IoTDB不在本地
+编辑`$IOTDB_HOME/conf/iotdb-env.sh`
+修改以下参数：
+```
+JMX_LOCAL="false"
+JMX_IP="the_real_iotdb_server_ip"  # 填写实际IoTDB的IP地址
+```
+查看`$IOTDB_HOME/conf/jmx.password`，使用默认用户或者在此添加新用户
+若新增用户，编辑`$IOTDB_HOME/conf/jmx.access`，添加新增用户权限
+
+第三步：启动IoTDB-server。
+
+第四步：使用jvisualvm
+1. 确保安装jdk
+2. 打开jvisualvm
+3. 在左侧导航栏空白处右键 -> 添加JMX连接
+<img style="width:100%; max-width:400px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81462914-5738c580-91e8-11ea-94d1-4ff6607e7e2c.png">
+
+4. 填写信息进行登录，按下图分别填写连接 -> 安全凭证 -> 勾选”不要求SSL连接” -> 确定
+<img style="width:100%; max-width:400px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81462914-5738c580-91e8-11ea-94d1-4ff6607e7e2c.png">
