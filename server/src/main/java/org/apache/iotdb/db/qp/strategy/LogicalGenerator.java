@@ -696,6 +696,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         parseTypeClause(typeClause, fillTypes);
       }
     }
+
+
     queryOp.setFill(true);
     queryOp.setFillTypes(fillTypes);
   }

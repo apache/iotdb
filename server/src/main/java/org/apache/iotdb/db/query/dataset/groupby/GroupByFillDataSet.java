@@ -105,7 +105,8 @@ public class GroupByFillDataSet extends QueryDataSet {
         // the previous value is not null and
         // (fill type is not previous until last or now time is before last time)
         if (previousValue[i] != null
-            && (!((PreviousFill) fillTypes.get(dataTypes.get(i))).isUntilLast()
+            && ((fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
+            .get(dataTypes.get(i))).isUntilLast())
             || rowRecord.getTimestamp() <= lastTimeArray[i])) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         }
