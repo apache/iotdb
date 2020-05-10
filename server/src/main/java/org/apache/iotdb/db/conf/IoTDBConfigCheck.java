@@ -18,11 +18,11 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MLogWriter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,7 +106,7 @@ public class IoTDBConfigCheck {
       }
       else if (!file.exists() && tmpPropertiesFile.exists()) {
         // rename upgraded system.properties.tmp to system.properties
-        FSFactoryProducer.getFSFactory().moveFile(tmpPropertiesFile, file);
+        FileUtils.moveFile(tmpPropertiesFile, file);
         logger.info(" {} has been upgraded.", file.getAbsolutePath());
         checkProperties();
         return;
@@ -160,7 +160,7 @@ public class IoTDBConfigCheck {
         Files.delete(file.toPath());
       }
       // rename system.properties.tmp to system.properties
-      FSFactoryProducer.getFSFactory().moveFile(tmpPropertiesFile, file);
+      FileUtils.moveFile(tmpPropertiesFile, file);
     }  catch (IOException e) {
       logger.error("Something went wrong while upgrading teh system.properties. The file is {}.", file.getAbsolutePath(), e);
     }
