@@ -48,6 +48,11 @@ public class AuthenticationFilter implements ContainerRequestFilter, ContainerRe
   @Override
   public void filter(ContainerRequestContext containerRequestContext) {
     Method method = resourceInfo.getResourceMethod();
+
+    if(isPreflightRequest(containerRequestContext)) {
+      containerRequestContext.abortWith(Response.ok().build());
+      return;
+    }
     //Access allowed for all
     if(!method.isAnnotationPresent(PermitAll.class)) {
       //Access denied for all

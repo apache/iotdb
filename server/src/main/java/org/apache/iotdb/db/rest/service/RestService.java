@@ -36,6 +36,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
+import static org.apache.iotdb.db.rest.constant.RestConstant.NULL;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
@@ -354,14 +355,20 @@ public class RestService {
           JSONArray rowJson = new JSONArray();
           if (newDataSet.hasNext()) {
             RowRecord rowRecord = newDataSet.next();
-            rowJson.add(parseLongToDateWithPrecision(
-                rowRecord.getTimestamp(), config.getZoneID()));
+            if(!ignoreTimeStamp) {
+              rowJson.add(parseLongToDateWithPrecision(
+                  rowRecord.getTimestamp(), config.getZoneID()));
+            }
             if (encoder != null) {
               rowRecord = encoder.encodeRecord(rowRecord);
             }
             List<Field> fields = rowRecord.getFields();
             for (Field field : fields) {
-              rowJson.add(field.getStringValue());
+              if(field == null) {
+                rowJson.add(NULL);
+              } else {
+                rowJson.add(field.getStringValue());
+              }
             }
           } else {
             break;

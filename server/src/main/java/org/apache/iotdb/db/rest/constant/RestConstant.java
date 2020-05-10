@@ -75,4 +75,6 @@ public class RestConstant {
   public static final String TIMESERIE = "timeserie";
 
   public static final String SQL = "sql";
+
+  public static final String NULL = "null";
 }
