@@ -20,111 +20,43 @@ import React from 'react'
 import './Table.css'
 
 class Table extends React.Component {
-    constructor(props) {
-        super(props);
-        this.state = {
-          lists: [],
-          active: false
-        };
-        this.getMachineAction = this.getMachineAction.bind(this);
-        this.toggleClass = this.toggleClass.bind(this);
-        this.toggleContent = this.toggleContent.bind(this);
+  constructor(props) {
+    super(props);
+    this.state = {
+      json : []
     }
+  }
+  componentDidMount() {
+    this.getMachineAction().catch(e => console.log(e))
+  }
 
-    async getMachineAction() {
-        try {
-            await fetch( 'http://localhost:8181/rest/sql_arguments', {
-                method:'GET',
-                headers:{
-                    Accept: 'application/json',
-                    'Content-Type':'application/json;charset=UTF-8'
-                },
-                cache:'default'
-            }).then(
-                response => {
-                    const json = response.json();
-                    json.then(json => {
-                        console.log(json);
-                        this.setState({lists : json})
-                    })
-                }
-            );
-        } catch (err) {
-            // catches errors both in fetch and response.json
-            console.log(err);
-        }
-    };
+   async getMachineAction() {
+     let data = {"sql": "show timeseries"};
+     try {
+       await fetch('http://localhost:8181/rest/sql', {
+         method: 'POST',
+         headers: {
+           Accept: 'application/json',
+           'Content-Type': 'application/json;charset=UTF-8',
+           Authorization: 'Basic cm9vdDpyb290'
+         },
+         cache: 'default',
+         body: JSON.stringify(data)
+       }).then(
+           response => {
+             const json = response.json();
+             console.log(json);
+             this.setState({json : json})
+           });
+     } catch (err) {
+       // catches errors both in fetch and response.json
+       console.log(err);
+     }
+   };
 
-    componentDidMount(){
-        this.getMachineAction();
-        this.timerID = setInterval(this.getMachineAction, 5000);
-    }
-
-    componentWillUnmount() {
-        clearInterval(this.timerID);
-    }
-
-    toggleClass() {
-      const currentState = this.state.active;
-      this.setState({ active: !currentState });
-    };
-
-    toggleContent(json) {
-      return(
-          <div className="dropdown-content">
-            <p>Physical Plan: {json.physicalPlan}</p>
-            <p>OperatorType: {json.operatorType}</p>
-            <p>Path: {json.path}</p>
-          </div>
-      )
-    }
-
-    render() {
-        const rows = [];
-        for (let i = 0; i < this.state.lists.length; i++) {
-            // note: we add a key prop here to allow react to uniquely identify each
-            // element in this array. see: https://reactjs.org/docs/lists-and-keys.html
-            let json = this.state.lists[i];
-            let detail = json.errMsg;
-            if(detail === "") {
-                detail = "== Parsed Physical Plan =="
-            }
-            rows.push(
-                <tr className="tableHeader">
-                    <td>{json.operatorType}</td>
-                    <td>{json.startTime}</td>
-                    <td>{json.endTime}</td>
-                    <td>{json.time}</td>
-                    <td>{json.sql}</td>
-                    <td>{json.status}</td>
-                  <td>=={" "}Parsed Physical Plan{" "}==
-                    <span className="detail" onClick={this.toggleClass}> +detail
-                      {this.state.active ? this.toggleContent(json) : null}
-                    </span>
-                  </td>
-                </tr>
-            );
-        }
-        return (
-            <div className="sql">
-                <p className="word">Execute sql</p>
-                <table>
-                <tbody>
-                    <tr className="tableHeader">
-                        <td>Operation Type</td>
-                        <td>Start Time</td>
-                        <td>Finish Time</td>
-                        <td>Duration</td>
-                        <td>Statement</td>
-                        <td>State</td>
-                        <td>Detail</td>
-                    </tr>
-                    {rows}
-                </tbody>
-                </table>
-            </div>
-        )
-    }
+  render() {
+    return <div>{this.state.json}</div>
+  }
 
 }
 
