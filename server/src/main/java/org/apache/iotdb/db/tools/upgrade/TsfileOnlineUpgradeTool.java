@@ -444,8 +444,10 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
           Object value = batchData.currentValue();
           long partition = StorageEngine.getTimePartition(time);
           
-          Map<MeasurementSchema, IChunkWriter> chunkWriters = chunkWritersInChunkGroup.getOrDefault(partition, new HashMap<>());
-          IChunkWriter chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
+          Map<MeasurementSchema, IChunkWriter> chunkWriters = chunkWritersInChunkGroup
+              .getOrDefault(partition, new HashMap<>());
+          IChunkWriter chunkWriter = chunkWriters
+              .getOrDefault(schema, new ChunkWriterImpl(schema));
           getOrDefaultTsFileIOWriter(oldTsFile, partition);
           switch (schema.getType()) {
             case INT32:
@@ -469,7 +471,9 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
             default:
               throw new UnSupportedDataTypeException(
                   String.format("Data type %s is not supported.", schema.getType()));
-            }
+          }
+          chunkWriters.put(schema, chunkWriter);
+          chunkWritersInChunkGroup.put(partition, chunkWriters);
           batchData.next();
         }
       }
