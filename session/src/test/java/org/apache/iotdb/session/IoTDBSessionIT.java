@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.BatchExecutionException;
@@ -129,13 +130,10 @@ public class IoTDBSessionIT {
 
     insertTabletTest2("root.sg1.d1");
     // flush
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("FLUSH");
-    }
-    //
+    session.executeNonQueryStatement("FLUSH");
+    session.executeNonQueryStatement("FLUSH root.sg1");
+    session.executeNonQueryStatement("MERGE");
+    session.executeNonQueryStatement("FULL MERGE");
     insertTabletTest3("root.sg1.d1");
 
     queryForBatchSeqAndUnseq();
@@ -351,6 +349,59 @@ public class IoTDBSessionIT {
     session.close();
   }
 
+  @Test
+  public void TestSessionInterfacesWithDisabledWAL()
+      throws StatementExecutionException, IoTDBConnectionException,
+          BatchExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    try {
+      session.open();
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
+
+    session.setStorageGroup("root.sg1");
+    String deviceId = "root.sg1.d1";
+
+    boolean isEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+    createTimeseries();
+
+    // test insert record
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    for (long time = 0; time < 100; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+      session.insertRecord(deviceId, time, measurements, values);
+    }
+
+    // test insert tablet
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+
+    Tablet tablet = new Tablet(deviceId, schemaList, 100);
+    long[] timestamps = tablet.timestamps;
+    Object[] values = tablet.values;
+    for (int time = 1; time <= 100; time++) {
+      timestamps[time - 1] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor = (long[]) values[i];
+        sensor[time - 1] = i;
+      }
+      tablet.rowSize++;
+    }
+
+    session.insertTablet(tablet);
+    IoTDBDescriptor.getInstance().getConfig().setEnableWal(isEnableWAL);
+    session.close();
+  }
 
   private void createTimeseriesForTime()
       throws StatementExecutionException, IoTDBConnectionException {
@@ -552,7 +603,7 @@ public class IoTDBSessionIT {
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = session
         .executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
-    sessionDataSet.setBatchSize(1024);
+    sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
       count++;
@@ -571,7 +622,7 @@ public class IoTDBSessionIT {
       throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement(
         "select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
-    sessionDataSet.setBatchSize(1024);
+    sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
       count++;
@@ -654,7 +705,7 @@ public class IoTDBSessionIT {
 
   private void query4() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d2");
-    sessionDataSet.setBatchSize(1024);
+    sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
       long index = 1;
@@ -671,7 +722,7 @@ public class IoTDBSessionIT {
 
   private void query3() throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement("select * from root.sg1.d1");
-    sessionDataSet.setBatchSize(1024);
+    sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
       long index = 1;

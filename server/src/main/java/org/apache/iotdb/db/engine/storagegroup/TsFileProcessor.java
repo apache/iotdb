@@ -177,6 +177,15 @@ public class TsFileProcessor {
     }
   }
 
+  /**
+   * insert batch data of insertTabletPlan into the workingMemtable
+   * The rows to be inserted are in the range [start, end)
+   *
+   * @param insertTabletPlan insert a tablet of a device
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
+   */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
 
@@ -573,7 +582,7 @@ public class TsFileProcessor {
                 writer.getFile().getAbsolutePath(), compressionRatio, totalMemTableSize,
                 writer.getPos());
           }
-          if (compressionRatio == 0) {
+          if (compressionRatio == 0 && !memTableToFlush.isSignalMemTable()) {
             logger.error(
                 "{} The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}",
                 storageGroupName, writer.getFile().getAbsolutePath(), totalMemTableSize, writer.getPos());

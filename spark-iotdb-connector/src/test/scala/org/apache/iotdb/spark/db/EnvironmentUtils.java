@@ -35,7 +35,6 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
-import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -121,7 +120,6 @@ public class EnvironmentUtils {
     MultiFileLogNodeManager.getInstance().stop();
     // clean cache
     if (config.isMetaDataCacheEnable()) {
-      TsFileMetaDataCache.getInstance().clear();
       ChunkMetadataCache.getInstance().clear();
     }
     // close metadata

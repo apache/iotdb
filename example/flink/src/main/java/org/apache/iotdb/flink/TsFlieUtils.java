@@ -20,6 +20,12 @@ package org.apache.iotdb.flink;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.QueryExpression;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -28,6 +34,10 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Utils used to prepare source TsFiles for the examples.
@@ -68,5 +78,21 @@ public class TsFlieUtils {
 			e.printStackTrace();
 			System.out.println(e.getMessage());
 		}
+	}
+
+	public static String[] readTsFile(String tsFilePath, List<Path> paths) throws IOException {
+		QueryExpression expression = QueryExpression.create(paths, null);
+		TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
+		ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
+		QueryDataSet queryDataSet = readTsFile.query(expression);
+		List<String> result = new ArrayList<>();
+		while (queryDataSet.hasNext()) {
+			RowRecord rowRecord = queryDataSet.next();
+			String row = rowRecord.getFields().stream()
+				.map(f -> f == null ? "null" : f.getStringValue())
+				.collect(Collectors.joining(","));
+			result.add(rowRecord.getTimestamp() + "," + row);
+		}
+		return result.toArray(new String[0]);
 	}
 }

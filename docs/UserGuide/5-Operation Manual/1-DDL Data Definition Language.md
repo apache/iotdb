@@ -165,9 +165,42 @@ The results are shown below respectly:
   
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
+## Show Child Paths
+
+```
+SHOW CHILD PATHS prefixPath
+```
+
+Return all child paths of the prefixPath, the prefixPath could contains *.
+
+Example：
+
+* return the child paths of root.ln：show child paths root.ln
+
+```
++------------+
+| child paths|
++------------+
+|root.ln.wf01|
+|root.ln.wf02|
++------------+
+```
+
+* get all paths in form of root.xx.xx.xx：show child paths root.\*.\*
+
+```
++---------------+
+|    child paths|
++---------------+
+|root.ln.wf01.s1|
+|root.ln.wf02.s2|
++---------------+
+```
+
 ## Count Timeseries
 
 IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
+
 ```
 IoTDB > COUNT TIMESERIES root
 IoTDB > COUNT TIMESERIES root.ln
@@ -200,6 +233,7 @@ You will get following results:
 ## Count Nodes
 
 IoTDB is able to use `COUNT NODES <Path> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
+
 ```
 IoTDB > COUNT NODES root LEVEL=2
 IoTDB > COUNT NODES root.ln LEVEL=2
@@ -217,6 +251,7 @@ As for the above mentioned example and Metadata tree, you can get following resu
 To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
 
 The usage are as follows:
+
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
@@ -229,7 +264,9 @@ Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
 * `SHOW DEVICES` statement presents all devices information, which is equal to `SHOW DEVICES root`.
 * `SHOW DEVICES <PrefixPath>` statement specifies the `PrefixPath` and returns the devices information under the given level.
+
 SQL statement is as follows:
+
 ```
 IoTDB> show devices
 IoTDB> show devices root.ln
@@ -242,17 +279,43 @@ IoTDB supports storage-level TTL settings, which means it is able to delete old 
 ## Set TTL
 
 The SQL Statement for setting TTL is as follow:
+
 ```
 IoTDB> set ttl to root.ln 3600000
 ```
+
 This example means that for data in `root.ln`, only that of the latest 1 hour will remain, the older one is removed or made invisible.
 
 ## Unset TTL
 
 To unset TTL, we can use follwing SQL statement:
+
 ```
 IoTDB> unset ttl to root.ln
 ```
+
 After unset TTL, all data will be accepted in `root.ln`
+
+## FLUSH
+
+Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
+
+```
+IoTDB> FLUSH 
+IoTDB> FLUSH root.ln
+IoTDB> FLUSH root.sg1,root.sg2
+```
+
+## MERGE
+
+Merge sequence and unsequence data. Currently IoTDB supports the following two types of SQL to manually trigger the merge process of data files:
+
+* `MERGE` Only rewrite overlapped Chunks, the merge speed is quick, while there will be redundant data on the disk eventually.
+* `FULL MERGE` Rewrite all data in overlapped files, the merge speed is slow, but there will be no redundant data on the disk eventually.
+
+```
+IoTDB> MERGE
+IoTDB> FULL MERGE
+```
 
 

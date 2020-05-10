@@ -45,7 +45,7 @@ IoTDB为用户提供了权限管理操作，从而为用户提供对于数据的
 
 ## 权限操作示例 
 
-根据本文中描述的[样例数据](../5-Operation%20Manual/1-DDL%20Data%20Definition%20Language.html)内容，IoTDB的样例数据可能同时属于ln, sgcc等不同发电集团，不同的发电集团不希望其他发电集团获取自己的数据库数据，因此我们需要将不同的数据在集团层进行权限隔离。
+根据本文中描述的[样例数据](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt)内容，IoTDB的样例数据可能同时属于ln, sgcc等不同发电集团，不同的发电集团不希望其他发电集团获取自己的数据库数据，因此我们需要将不同的数据在集团层进行权限隔离。
 
 ### 创建用户
 

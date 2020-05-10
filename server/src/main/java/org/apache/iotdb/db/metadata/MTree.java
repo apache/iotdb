@@ -30,9 +30,11 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
@@ -209,7 +211,7 @@ public class MTree implements Serializable {
   }
 
   /** Delete a storage group */
-  void deleteStorageGroup(String path) throws MetadataException {
+  List<LeafMNode> deleteStorageGroup(String path) throws MetadataException {
     MNode cur = getNodeByPath(path);
     if (!(cur instanceof StorageGroupMNode)) {
       throw new StorageGroupNotSetException(path);
@@ -217,12 +219,29 @@ public class MTree implements Serializable {
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
     cur.getParent().deleteChild(cur.getName());
+
+    // collect all the LeafMNode in this storage group
+    List<LeafMNode> leafMNodes = new LinkedList<>();
+    Queue<MNode> queue = new LinkedList<>();
+    queue.add(cur);
+    while (!queue.isEmpty()) {
+      MNode node = queue.poll();
+      for (MNode child : node.getChildren().values()) {
+        if (child instanceof LeafMNode) {
+          leafMNodes.add((LeafMNode) child);
+        } else {
+          queue.add(child);
+        }
+      }
+    }
+
     cur = cur.getParent();
     // delete node b while retain root.a.sg2
     while (!IoTDBConstant.PATH_ROOT.equals(cur.getName()) && cur.getChildren().size() == 0) {
       cur.getParent().deleteChild(cur.getName());
       cur = cur.getParent();
     }
+    return leafMNodes;
   }
 
   /**
@@ -490,6 +509,26 @@ public class MTree implements Serializable {
     List<String> paths = new ArrayList<>();
     for (String[] p : res) {
       paths.add(p[0]);
+    }
+    return paths;
+  }
+
+  /**
+   * Get all timeseries paths under the given path
+   *
+   * @param prefixPath a prefix path or a full path, may contain '*'.
+   */
+  List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {
+    Path prePath = new Path(prefixPath);
+    ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prePath);
+    List<String[]> res = getAllMeasurementSchema(plan);
+    List<Path> paths = new ArrayList<>();
+    for (String[] p : res) {
+      Path path = new Path(p[0]);
+      if (prePath.getMeasurement().equals(p[1])){
+        path.setAlias(p[1]);
+      }
+      paths.add(path);
     }
     return paths;
   }

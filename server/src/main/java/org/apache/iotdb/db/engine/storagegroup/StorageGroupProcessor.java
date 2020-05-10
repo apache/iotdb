@@ -545,6 +545,9 @@ public class StorageGroupProcessor {
         insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence, results,
             beforeTimePartition);
       }
+      long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
+          insertTabletPlan.getDeviceId(), Long.MIN_VALUE);
+      tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       return results;
     } finally {
@@ -561,9 +564,12 @@ public class StorageGroupProcessor {
 
   /**
    * insert batch to tsfile processor thread-safety that the caller need to guarantee
+   * The rows to be inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
    * @param sequence whether is sequence
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
    * @param results result array
    * @param timePartitionId time partition id
    */
@@ -599,9 +605,6 @@ public class StorageGroupProcessor {
       latestTimeForEachDevice.get(timePartitionId)
           .put(insertTabletPlan.getDeviceId(), insertTabletPlan.getTimes()[end - 1]);
     }
-    long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
-        insertTabletPlan.getDeviceId(), Long.MIN_VALUE);
-    tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
     // check memtable size and may async try to flush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -1430,7 +1433,6 @@ public class StorageGroupProcessor {
 
   @SuppressWarnings("squid:S1141")
   private void updateMergeModification(TsFileResource seqFile) {
-    seqFile.getWriteQueryLock().writeLock().lock();
     try {
       // remove old modifications and write modifications generated during merge
       seqFile.removeModFile();
@@ -1448,8 +1450,6 @@ public class StorageGroupProcessor {
     } catch (IOException e) {
       logger.error("{} cannot clean the ModificationFile of {} after merge", storageGroupName,
           seqFile.getFile(), e);
-    } finally {
-      seqFile.getWriteQueryLock().writeLock().unlock();
     }
   }
 
@@ -1479,7 +1479,15 @@ public class StorageGroupProcessor {
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
-      mergeLock.writeLock().lock();
+      while (!seqFile.getWriteQueryLock().writeLock().tryLock() || !mergeLock.writeLock()
+          .tryLock()) {
+        if (seqFile.getWriteQueryLock().writeLock().isHeldByCurrentThread()) {
+          seqFile.getWriteQueryLock().writeLock().unlock();
+        }
+        if(mergeLock.writeLock().isHeldByCurrentThread()) {
+          mergeLock.writeLock().unlock();
+        }
+      }
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
@@ -1490,6 +1498,7 @@ public class StorageGroupProcessor {
         }
       } finally {
         mergeLock.writeLock().unlock();
+        seqFile.getWriteQueryLock().writeLock().unlock();
       }
     }
     logger.info("{} a merge task ends", storageGroupName);

@@ -18,6 +18,18 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -37,15 +49,6 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
-
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.junit.Assert.*;
 
 /**
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
@@ -129,7 +132,7 @@ public class IoTDBEngineTimeGeneratorIT {
         }
       }
 
-      statement.execute("flush");
+      statement.execute("FLUSH");
 
       // insert data (time from 1200-1499)
       for (long time = 1200; time < 1500; time++) {
@@ -210,8 +213,13 @@ public class IoTDBEngineTimeGeneratorIT {
     ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
 
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    List<Path> paths = new ArrayList<>();
+    paths.add(pd1s0);
+    queryPlan.setDeduplicatedPaths(paths);
+
     ServerTimeGenerator timeGenerator = new ServerTimeGenerator(singleSeriesExpression,
-        TEST_QUERY_CONTEXT, new RawDataQueryPlan());
+        TEST_QUERY_CONTEXT, queryPlan);
 
     int cnt = 0;
     while (timeGenerator.hasNext()) {
@@ -243,8 +251,13 @@ public class IoTDBEngineTimeGeneratorIT {
     IExpression andExpression = BinaryExpression
         .and(singleSeriesExpression1, singleSeriesExpression2);
 
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    List<Path> paths = new ArrayList<>();
+    paths.add(pd0s0);
+    paths.add(pd0s2);
+    queryPlan.setDeduplicatedPaths(paths);
     ServerTimeGenerator timeGenerator = new ServerTimeGenerator(andExpression,
-        TEST_QUERY_CONTEXT, new RawDataQueryPlan());
+        TEST_QUERY_CONTEXT, queryPlan);
     int cnt = 0;
     while (timeGenerator.hasNext()) {
       long time = timeGenerator.next();

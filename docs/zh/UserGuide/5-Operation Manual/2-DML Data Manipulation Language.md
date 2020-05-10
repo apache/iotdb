@@ -404,7 +404,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 由于时间根目录root.sgcc.wf03.wt01.temperature在2017-11-01T16：37：50.000为空，因此系统使用以前的时间戳2017-11-01T16：37：00.000（且时间戳位于[2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000]范围）进行填充和显示。
 
-在[样例数据中](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), 该语句的执行结果如下所示：
+在[样例数据中](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), 该语句的执行结果如下所示：
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577616-67df0280-1ef5-11e9-9dff-2eb8342074eb.jpg"></center>
 
@@ -433,6 +433,9 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <befor
 
 </center>
 
+需要注意的是一旦时间序列在查询时间戳T时刻存在有效值，线性填充就回使用这个值作为结果返回。
+除此之外，如果在[T-before_range，T]或[T, T + after_range]两个范围中任意一个范围内不存在有效填充值，则线性填充返回null值。
+
 在这里，我们举一个使用线性方法填充空值的示例。 SQL语句如下：
 
 ```
@@ -445,7 +448,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 21.927326 +（25.311783-21.927326）/ 60s * 50s = 24.747707
 
-在 [样例数据](https://raw.githubusercontent.com/apache/incubator-iotdb/master/docs/Documentation/OtherMaterial-Sample%20Data.txt), 该语句的执行结果如下所示：
+在 [样例数据](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), 该语句的执行结果如下所示：
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577727-d4f29800-1ef5-11e9-8ff3-3bb519da3993.jpg"></center>
 

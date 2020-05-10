@@ -421,6 +421,12 @@ public class MManager {
     if (tagMap != null) {
       for (Entry<String, String> entry : tagMap.entrySet()) {
         tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
+        if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
+          tagIndex.get(entry.getKey()).remove(entry.getValue());
+          if (tagIndex.get(entry.getKey()).isEmpty()) {
+            tagIndex.remove(entry.getKey());
+          }
+        }
       }
     }
   }
@@ -502,7 +508,10 @@ public class MManager {
     try {
       for (String storageGroup : storageGroups) {
         // try to delete storage group
-        mtree.deleteStorageGroup(storageGroup);
+        List<LeafMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
+        for (LeafMNode leafMNode : leafMNodes) {
+          removeFromTagInvertedIndex(leafMNode);
+        }
         mNodeCache.clear();
 
         if (config.isEnableParameterAdapter()) {
@@ -665,6 +674,20 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesName(prefixPath);
+    } catch (MetadataException e) {
+      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include alias.
+   */
+  public List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesPath(prefixPath);
     } catch (MetadataException e) {
       throw new MetadataException(e);
     } finally {

@@ -89,3 +89,6 @@ partitions.tmp
 partitions
 node_identifier
 
+# gitpod
+.theia/
+

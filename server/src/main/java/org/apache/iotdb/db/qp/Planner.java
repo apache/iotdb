@@ -101,6 +101,8 @@ public class Planner {
       case LOAD_FILES:
       case REMOVE_FILE:
       case MOVE_FILE:
+      case FLUSH:
+      case MERGE:
         return operator;
       case QUERY:
       case UPDATE:
