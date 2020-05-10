@@ -76,6 +76,14 @@ public class UpgradeUtils {
     return false;
   }
 
+  /**
+   * Since one old TsFile may be upgraded to multiple upgraded files, 
+   * this method is for getting the name of one of the upgraded file. 
+   * 
+   * @param old TsFile resource to be upgraded
+   * @return name of upgraded file
+   * 
+   */
   public static String getOneUpgradedFileName(TsFileResource upgradeResource)
       throws IOException {
     upgradeResource.deserialize();

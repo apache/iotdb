@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.upgrade;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.tools.upgrade.UpgradeTool;
+import org.apache.iotdb.db.tools.upgrade.TsfileOnlineUpgradeTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
@@ -56,7 +56,7 @@ public class UpgradeTask extends WrappedRunnable {
         // move upgraded TsFiles to their own partition directories
         for (TsFileResource upgradedResource : upgradedResources) {
           File upgradedFile = upgradedResource.getFile();
-          long partition = upgradedResource.getTimePartitionWithCheck();
+          long partition = upgradedResource.getTimePartition();
           String storageGroupPath = upgradedFile.getParentFile().getParentFile().getParent();
           File partitionDir = FSFactoryProducer.getFSFactory().getFile(storageGroupPath, partition + "");
           if (!partitionDir.exists()) {
@@ -101,7 +101,7 @@ public class UpgradeTask extends WrappedRunnable {
     UpgradeLog.writeUpgradeLogFile(
         oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
     try {
-      UpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedResources);
+      TsfileOnlineUpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedResources);
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } catch (IOException e) {

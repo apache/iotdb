@@ -112,6 +112,20 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
   }
 
   /**
+   * upgrade a single tsfile
+   *
+   * @param tsfileName old version tsFile's absolute path
+   * @param upgradedResources new version tsFiles' resources
+   * @throws WriteProcessException 
+   */
+  public static void upgradeOneTsfile(String tsFileName, List<TsFileResource> upgradedResources) 
+      throws IOException, WriteProcessException {
+    try (TsfileOnlineUpgradeTool updater = new TsfileOnlineUpgradeTool(tsFileName)) {
+      updater.upgradeFile(upgradedResources);
+    }
+  }
+
+  /**
    * 
    */
   public void loadMetadataSize() throws IOException {
@@ -302,16 +316,16 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
   }
 
   /**
-   * upgrade file and resource, return the boolean value whether upgrade task completes
+   * upgrade file and resource
    * @throws IOException, WriteProcessException 
    */
-  public boolean upgradeFile(List<TsFileResource> upgradedResources) 
+  public void upgradeFile(List<TsFileResource> upgradedResources) 
       throws IOException, WriteProcessException {
     File oldTsFile = FSFactoryProducer.getFSFactory().getFile(this.file);
 
     // check if the old TsFile has correct header 
     if (!fileCheck(oldTsFile)) {
-      return false;
+      return;
     }
 
     // ChunkGroupOffset -> version
@@ -384,18 +398,16 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
           default:
             // the disk file is corrupted, using this file may be dangerous
             logger.error("Unrecognized marker detected, this file may be corrupted");
-            return false;
+            return;
         }
       }
       // close upgraded tsFiles and generate resources for them
       for (TsFileIOWriter tsFileIOWriter : partitionWriterMap.values()) {
         upgradedResources.add(endFileAndGenerateResource(tsFileIOWriter));
       }
-      return true;
     } catch (IOException e2) {
       logger.info("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
           + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
-      return false;
     } finally {
       if (tsFileInput != null) {
         tsFileInput.close();
@@ -404,9 +416,10 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
   }
 
   /**
-   *  Rewrite the chunk group to new TsFile.
-   *  If data of this chunk group are in different time partitions,
-   *  create multiple new TsFiles and rewrite data in each partition.
+   *  This method is for rewriting the ChunkGroup which data is in the different time partitions. 
+   *  In this case, we have to decode the data to points, 
+   *  and then rewrite the data points to different chunkWriters,
+   *  finally write chunks to their own upgraded TsFiles
    */
   private void rewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas, 
       List<List<ByteBuffer>> dataInChunkGroup, long versionOfChunkGroup) 
@@ -433,8 +446,7 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
           
           Map<MeasurementSchema, IChunkWriter> chunkWriters = chunkWritersInChunkGroup.getOrDefault(partition, new HashMap<>());
           IChunkWriter chunkWriter = chunkWriters.getOrDefault(schema, new ChunkWriterImpl(schema));
-          TsFileIOWriter tsFileIOWriter = getOrDefaultTsFileIOWriter(oldTsFile, partition);
-          partitionWriterMap.put(partition, tsFileIOWriter);
+          getOrDefaultTsFileIOWriter(oldTsFile, partition);
           switch (schema.getType()) {
             case INT32:
               chunkWriter.write(time, (int) value);
@@ -458,8 +470,6 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
               throw new UnSupportedDataTypeException(
                   String.format("Data type %s is not supported.", schema.getType()));
             }
-          chunkWriters.put(schema, chunkWriter);
-          chunkWritersInChunkGroup.put(partition, chunkWriters);
           batchData.next();
         }
       }
@@ -469,6 +479,7 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
       long partition = entry.getKey();
       TsFileIOWriter tsFileIOWriter = partitionWriterMap.get(partition);
       tsFileIOWriter.startChunkGroup(deviceId);
+      // write chunks to their own upgraded tsFiles
       for (IChunkWriter chunkWriter : entry.getValue().values()) {
         chunkWriter.writeToFileWriter(tsFileIOWriter);
       }
@@ -478,16 +489,9 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
   }
 
   /**
-   * 
-   * @param oldTsFile
-   * @param deviceId
-   * @param schemas
-   * @param pageHeadersInChunkGroup
-   * @param dataInChunkGroup
-   * @param versionOfChunkGroup
-   * @param partition
-   * @throws IOException
-   * @throws PageException
+   * This method is for rewrite the ChunkGroup which is in the same time partition. 
+   * In this case, we don't need to decode the Chunk data to points, 
+   * just upgrade the headers of chunks and pages and then write to file.
    */
   private void quickRewrite(File oldTsFile, String deviceId, List<MeasurementSchema> schemas, 
       List<List<PageHeader>> pageHeadersInChunkGroup, List<List<ByteBuffer>> dataInChunkGroup, 
@@ -550,7 +554,7 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
       logger.error("the file's MAGIC STRING is incorrect, file path: {}", oldTsFile.getPath());
       return false;
     }
-    
+
     String versionNumber = readVersionNumber();
     if (!versionNumber.equals(TSFileConfig.OLD_VERSION)) {
       logger.error("the file's Version Number is incorrect, file path: {}", oldTsFile.getPath());
@@ -580,9 +584,9 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
       for (OldChunkGroupMetaData oldChunkGroupMetadata : oldTsDeviceMetadata
           .getChunkGroupMetaDataList()) {
         long version = oldChunkGroupMetadata.getVersion();
-        long offsetOfChunkGroupMetaData = oldChunkGroupMetadata.getStartOffsetOfChunkGroup();
+        long offsetOfChunkGroup = oldChunkGroupMetadata.getStartOffsetOfChunkGroup();
         // get version informations
-        oldVersionInfo.put(offsetOfChunkGroupMetaData, version);
+        oldVersionInfo.put(offsetOfChunkGroup, version);
 
         long chunkGroupPartition = -1;
         boolean chunkGroupInSamePartition = true;
@@ -599,7 +603,7 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
           }
         }
         if (chunkGroupInSamePartition) {
-          chunkGroupTimePartitionInfo.put(offsetOfChunkGroupMetaData, chunkGroupPartition);
+          chunkGroupTimePartitionInfo.put(offsetOfChunkGroup, chunkGroupPartition);
         }
       }
     }

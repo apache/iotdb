@@ -1449,18 +1449,7 @@ public class StorageGroupProcessor {
    * @return total num of the tsfiles which need to be upgraded in the storage group
    */
   public int countUpgradeFiles() {
-    int cntUpgradeFileNum = 0;
-    for (TsFileResource seqTsFileResource : upgradeSeqFileList) {
-      if (UpgradeUtils.isNeedUpgrade(seqTsFileResource)) {
-        cntUpgradeFileNum += 1;
-      }
-    }
-    for (TsFileResource unseqTsFileResource : upgradeUnseqFileList) {
-      if (UpgradeUtils.isNeedUpgrade(unseqTsFileResource)) {
-        cntUpgradeFileNum += 1;
-      }
-    }
-    return cntUpgradeFileNum;
+    return upgradeSeqFileList.size() + upgradeUnseqFileList.size();
   }
 
   public void upgrade() {

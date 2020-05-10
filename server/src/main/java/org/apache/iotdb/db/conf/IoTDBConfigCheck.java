@@ -101,7 +101,6 @@ public class IoTDBConfigCheck {
           properties.setProperty("iotdb_version", iotdbVersion);
           properties.store(outputStream, "System properties:");
         }
-        checkProperties();
         return;
       }
       else if (!file.exists() && tmpPropertiesFile.exists()) {

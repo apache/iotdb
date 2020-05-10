@@ -118,8 +118,9 @@ public class TimeseriesMetadata {
     this.chunkMetadataLoader = chunkMetadataLoader;
   }
 
-
   public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
+    // for old version TsFile, chunkMetadataList is not null
+    // for new version TsFile, chunkMetadataList is always null
     if (chunkMetadataList != null) {
       chunkMetadataLoader.setDiskChunkLoader(chunkMetadataList);
       return chunkMetadataList;
@@ -127,7 +128,9 @@ public class TimeseriesMetadata {
     return chunkMetadataLoader.loadChunkMetadataList();
   }
 
-  // this function is for old TsFile only
+  /**
+   *  this method is for old version TsFile only
+   */
   public void addChunkMetadata(ChunkMetadata chunkMetadata) {
     if (chunkMetadataList == null) {
       chunkMetadataList = new ArrayList<>();
