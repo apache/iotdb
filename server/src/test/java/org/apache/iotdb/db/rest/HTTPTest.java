@@ -133,11 +133,22 @@ public class HTTPTest {
       Assert.fail();
     }
 
-    String json5 = "{\"sql\" : \"select * from root\"}";
+    String file5 = HTTPTest.class.getClassLoader().getResource("SQL1.json").getFile();
+    String json5 = readToString(file5);
+    String sql1 = "{\"sql\" : \"select * from root\"}";
+    json5 = json5.replaceAll("[\r\n\t \u00A0]", "");
     Response response7 = client.target(SQL_URL).request().header("Authorization", "Basic " + encodedUserPassword)
-        .post(Entity.entity(JSONObject.parse(json5), MediaType.APPLICATION_JSON));
+        .post(Entity.entity(JSONObject.parse(sql1), MediaType.APPLICATION_JSON));
     String result7 = response7.readEntity(String.class);
-    System.out.println(result7);
+    Assert.assertEquals(json5, result7);
+
+    String file6 = HTTPTest.class.getClassLoader().getResource("SQL2.json").getFile();
+    String json6 = readToString(file6);
+    String sql2 = "{\"sql\" : \"show timeseries\"}";
+    Response response8 = client.target(SQL_URL).request().header("Authorization", "Basic " + encodedUserPassword)
+        .post(Entity.entity(JSONObject.parse(sql2), MediaType.APPLICATION_JSON));
+    String result8 = response8.readEntity(String.class);
+    Assert.assertEquals(json6, result8);
   }
 
   @Test

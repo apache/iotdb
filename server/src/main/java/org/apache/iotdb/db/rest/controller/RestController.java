@@ -168,7 +168,7 @@ public class RestController {
             result.add(deviceID + COLON + FAIL);
             hasError = true;
           }
-        } catch (QueryProcessException e) {
+        } catch (Exception e) {
           result.add(deviceID + COLON + e.getMessage());
           hasError = true;
         }
@@ -217,7 +217,7 @@ public class RestController {
           result.add(timeseries + COLON + FAIL);
           hasError = true;
         }
-      } catch (QueryProcessException e) {
+      } catch (Exception e) {
         result.add(timeseries + COLON + e.getMessage());
         hasError = true;
       }
@@ -255,7 +255,7 @@ public class RestController {
           result.add(timeseries + COLON + FAIL);
           hasError = true;
         }
-      } catch (QueryProcessException e) {
+      } catch (Exception e) {
         result.add(timeseries + COLON + e.getMessage());
         hasError = true;
       }

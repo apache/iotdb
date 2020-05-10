@@ -29,6 +29,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -83,6 +85,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.rest.model.TimeValue;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
@@ -247,7 +250,8 @@ public class RestService {
     obj.put("datapoints", dataPoints);
   }
 
-  public boolean setStorageGroup(String storageGroup) throws QueryProcessException {
+  public boolean setStorageGroup(String storageGroup)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if(checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return false;
@@ -257,7 +261,8 @@ public class RestService {
   }
 
   public boolean createTimeSeries(String path, String dataType,
-      String encoding, String compressor) throws QueryProcessException {
+      String encoding, String compressor)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if(checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return false;
@@ -273,7 +278,8 @@ public class RestService {
   }
 
   public boolean insert(String deviceId, long time, List<String> measurements,
-      List<String> values) throws QueryProcessException {
+      List<String> values)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if(checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return false;
@@ -286,7 +292,8 @@ public class RestService {
     return executeNonQuery(plan);
   }
 
-  private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {
+  private boolean executeNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
 
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
@@ -335,7 +342,11 @@ public class RestService {
       if(!ignoreTimeStamp) {
         header.add(0, COLUMN_TIME);
       }
-      headerJson.addAll(header);
+      if(newDataSet instanceof ListDataSet) {
+        headerJson.addAll(listPathToListString(newDataSet.getPaths()));
+      } else {
+        headerJson.addAll(header);
+      }
       jsonArray.add(headerJson);
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       WatermarkEncoder encoder = null;
@@ -384,6 +395,14 @@ public class RestService {
     return jsonArray;
   }
 
+  private List<String> listPathToListString(List<Path> pathList) {
+    List<String> stringList = new ArrayList<>();
+    for(Path path : pathList) {
+      stringList.add(path.toString());
+    }
+    return stringList;
+  }
+
   private List<String> getQueryHeaders(PhysicalPlan plan, String username)
       throws QueryProcessException, AuthException {
     if (plan instanceof AuthorPlan) {
@@ -409,7 +428,7 @@ public class RestService {
       case VERSION:
         return Collections.singletonList(COLUMN_VERSION);
       case TIMESERIES:
-        return Arrays.asList(COLUMN_TIMESERIES, COLUMN_STORAGE_GROUP, COLUMN_TIMESERIES_DATATYPE,
+        return Arrays.asList(COLUMN_TIMESERIES, COLUMN_TIMESERIES_ALIAS,COLUMN_STORAGE_GROUP, COLUMN_TIMESERIES_DATATYPE,
             COLUMN_TIMESERIES_ENCODING, COLUMN_TIMESERIES_COMPRESSION);
       case STORAGE_GROUP:
         return Collections.singletonList(COLUMN_STORAGE_GROUP);
