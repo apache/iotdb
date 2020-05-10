@@ -26,16 +26,19 @@ import javax.annotation.security.DenyAll;
 import javax.annotation.security.PermitAll;
 import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.container.ContainerRequestFilter;
+import javax.ws.rs.container.ContainerResponseContext;
+import javax.ws.rs.container.ContainerResponseFilter;
 import javax.ws.rs.container.ResourceInfo;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.rest.service.RestService;
 
-public class AuthenticationFilter implements ContainerRequestFilter {
+public class AuthenticationFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
   @Context
   private ResourceInfo resourceInfo;
@@ -95,8 +98,40 @@ public class AuthenticationFilter implements ContainerRequestFilter {
     }
   }
 
+  private static boolean isPreflightRequest(ContainerRequestContext request) {
+    return request.getHeaderString("Origin") != null &&
+    request.getMethod().equalsIgnoreCase("OPTIONS");
+  }
+
+
+
+
   private boolean isUserAllowed(String username, String password) throws AuthException {
     IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
     return authorizer.login(username, password);
+  }
+
+  /**
+   * Method for ContainerResponseFilter.
+   */
+  @Override
+  public void filter(ContainerRequestContext containerRequestContext,
+      ContainerResponseContext containerResponseContext) {
+    // if there is no Origin header, then it is not a
+    // cross origin request. We don't do anything.
+
+    if (isPreflightRequest(containerRequestContext)) {
+      // If it is a preflight request, then we add all
+      // the CORS headers here.
+      containerResponseContext.getHeaders().add("Access-Control-Allow-Credentials", "true");
+      containerResponseContext.getHeaders().add("Access-Control-Allow-Methods",
+          "GET, POST, PUT, DELETE, OPTIONS, HEAD");
+      containerResponseContext.getHeaders().add("Access-Control-Allow-Headers",
+          "X-Requested-With, Authorization, " +
+              "Accept-Version, Content-MD5, CSRF-Token, Content-Type");
+      containerResponseContext.setStatus(200);
+    }
+
+    containerResponseContext.getHeaders().add("Access-Control-Allow-Origin", "*");
   }
 }

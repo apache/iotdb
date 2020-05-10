@@ -20,7 +20,6 @@ package org.apache.iotdb.db.rest.util;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.rest.filter.AuthenticationFilter;
-import org.apache.iotdb.db.rest.filter.CORSFilter;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -36,13 +35,12 @@ public class RestUtil {
   public static ServletContextHandler getRestContextHandler() {
     ServletContextHandler ctx =
         new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
-    ResourceConfig resourceConfig = new ResourceConfig();
-    resourceConfig.register(CORSFilter.class);
-    resourceConfig.register(AuthenticationFilter.class);
+    ResourceConfig jerseyConfig = new ResourceConfig();
+    jerseyConfig.register(AuthenticationFilter.class);
     ctx.setContextPath("/");
-    resourceConfig.packages("org.apache.iotdb.db.rest.controller");
-    ServletHolder servletHolder = new ServletHolder(new ServletContainer(resourceConfig));
-    ctx.addServlet(servletHolder, "/rest/*");
+    jerseyConfig.packages("org.apache.iotdb.db.rest.controller");
+    ServletHolder jerseyServletHolder = new ServletHolder(new ServletContainer(jerseyConfig));
+    ctx.addServlet(jerseyServletHolder, "/rest/*");
     ctx.setWelcomeFiles(new String[]{"index.html"});
     ServletHolder staticHolder = new ServletHolder("default", DefaultServlet.class);
     String webPath = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
