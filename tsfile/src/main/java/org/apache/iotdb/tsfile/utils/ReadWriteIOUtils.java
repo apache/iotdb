@@ -73,6 +73,13 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * read a byte from byteBuffer.
+   */
+  public static byte readByte(ByteBuffer buffer) {
+    return buffer.get();
+  }
+
+  /**
    * read bytes array in given size
    *
    * @param buffer buffer

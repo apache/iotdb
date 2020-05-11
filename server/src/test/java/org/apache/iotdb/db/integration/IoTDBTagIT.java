@@ -887,4 +887,36 @@ public class IoTDBTagIT {
       assertTrue(e.getMessage().contains("The key tag1 is not a tag"));
     }
   }
+
+  @Test
+  public void insertWithAliasTest() throws ClassNotFoundException {
+    String[] ret = {"1,36.5,36.5"};
+    String[] sqls = {
+        "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY",
+        "insert into root.turbine.d1(timestamp, temperature) values(1,36.5)"
+    };
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (String sql : sqls) {
+        statement.execute(sql);
+      }
+      boolean hasResult = statement.execute("select s1, temperature from root.turbine.d1");
+      assertTrue(hasResult);
+      ResultSet resultSet = statement.getResultSet();
+      int count = 0;
+      while (resultSet.next()) {
+        String ans = resultSet.getString("Time")
+            + "," + resultSet.getString("root.turbine.d1.s1")
+            + "," + resultSet.getString("root.turbine.d1.s1");
+        assertEquals(ret[count], ans);
+        count++;
+      }
+      assertEquals(ret.length, count);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
 }

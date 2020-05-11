@@ -20,6 +20,8 @@ package org.apache.iotdb.tsfile.write.schema;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -28,7 +30,7 @@ import java.util.Map;
  * The schema of timeseries that exist in this file. The deviceTemplates is a simplified manner to
  * batch create schema of timeseries.
  */
-public class Schema {
+public class Schema implements Serializable {
 
   /**
    * Path (device + measurement) -> measurementSchema By default, use the LinkedHashMap to store the

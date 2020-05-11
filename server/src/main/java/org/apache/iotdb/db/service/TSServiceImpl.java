@@ -18,6 +18,24 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
+import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.sql.SQLException;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -28,7 +46,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -43,9 +60,19 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
@@ -56,7 +83,34 @@ import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -71,18 +125,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
-import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
 
 /**
@@ -234,7 +276,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
+    }
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
@@ -323,60 +367,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   protected List<String> getPaths(String path) throws MetadataException {
     return MManager.getInstance().getAllTimeseriesName(path);
-  }
-
-  /**
-   * Judge whether the statement is ADMIN COMMAND and if true, execute it.
-   *
-   * @param statement command
-   * @return true if the statement is ADMIN COMMAND
-   */
-  private boolean execAdminCommand(String statement, long sessionId) throws StorageEngineException {
-    if (!"root".equals(sessionIdUsernameMap.get(sessionId))) {
-      return false;
-    }
-    if (statement == null) {
-      return false;
-    }
-    statement = statement.toLowerCase();
-    if (statement.startsWith("flush")) {
-      try {
-        execFlush(statement);
-      } catch (StorageGroupNotSetException e) {
-        throw new StorageEngineException(e);
-      }
-      return true;
-    }
-    switch (statement) {
-      case "merge":
-        StorageEngine.getInstance()
-            .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
-        return true;
-      case "full merge":
-        StorageEngine.getInstance().mergeAll(true);
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  private void execFlush(String statement) throws StorageGroupNotSetException {
-    String[] args = statement.split("\\s+");
-    if (args.length == 1) {
-      StorageEngine.getInstance().syncCloseAllProcessor();
-    } else if (args.length == 2) {
-      String[] storageGroups = args[1].split(",");
-      for (String storageGroup : storageGroups) {
-        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, true);
-        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, false);
-      }
-    } else {
-      String[] storageGroups = args[1].split(",");
-      boolean isSeq = Boolean.parseBoolean(args[2]);
-      for (String storageGroup : storageGroups) {
-        StorageEngine.getInstance().asyncCloseProcessor(storageGroup, isSeq);
-      }
-    }
   }
 
   @Override
@@ -470,10 +460,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       String statement = req.getStatement();
 
-      if (execAdminCommand(statement, req.getSessionId())) {
-        return RpcUtils.getTSExecuteStatementResp(
-            RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "ADMIN_COMMAND_SUCCESS"));
-      }
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
@@ -495,10 +481,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(TSStatusCode.QUERY_PROCESS_ERROR,
               "Meet error in query process: " + e.getMessage()));
-    } catch (StorageEngineException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
-      return RpcUtils.getTSExecuteStatementResp(
-          RpcUtils.getStatus(TSStatusCode.READ_ONLY_SYSTEM_ERROR, e.getMessage()));
     } catch (Exception e) {
       logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
@@ -710,7 +692,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (plan instanceof AlignByDevicePlan) {
       getAlignByDeviceQueryHeaders((AlignByDevicePlan) plan, respColumns, columnsTypes);
     } else if (plan instanceof LastQueryPlan) {
-      return StaticResps.LAST_RESP;
+      // Last Query should return different respond instead of the static one
+      // because the query dataset and query id is different although the header of last query is same.
+      return StaticResps.LAST_RESP.deepCopy();
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
       resp.setColumnNameIndexMap(plan.getPathToIndex());
@@ -732,7 +716,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       case QUERY:
       case FILL:
         for (Path p : paths) {
-          respColumns.add(p.getFullPath());
+          if (p.getAlias() != null) {
+            respColumns.add(p.getFullPathWithAlias());
+          } else {
+            respColumns.add(p.getFullPath());
+          }
         }
         seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
@@ -746,7 +734,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           }
         }
         for (int i = 0; i < paths.size(); i++) {
-          respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          if (paths.get(i).getAlias() != null) {
+            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPathWithAlias() + ")");
+          } else {
+            respColumns.add(aggregations.get(i) + "(" + paths.get(i).getFullPath() + ")");
+          }
         }
         seriesTypes = getSeriesTypesByPath(paths, aggregations);
         break;
@@ -770,7 +762,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
 
     Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
-    Map<String, TSDataType> checker = plan.getMeasurementDataTypeMap();
+    Map<String, TSDataType> measurementDataTypeMap = plan.getMeasurementDataTypeMap();
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
@@ -779,7 +771,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       TSDataType type = null;
       switch (measurementTypeMap.get(measurement)) {
         case Exist:
-          type = checker.get(measurement);
+          type = measurementDataTypeMap.get(measurement);
           break;
         case NonExist:
         case Constant:
@@ -969,7 +961,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return resp;
   }
 
-  private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {
+  private boolean executeNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
       throw new QueryProcessException(
           "Current system mode is read-only, does not support non-query operation");

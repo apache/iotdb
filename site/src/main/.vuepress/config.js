@@ -271,8 +271,7 @@ var config = {
 							['6-System Tools/4-Watermark Tool','Watermark Tool'],
 							['6-System Tools/5-Log Visualizer','Log Visualizer'],
 							['6-System Tools/6-Query History Visualization Tool','Query History Visualization Tool'],
-							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools'],
-							['6-System Tools/8-Load External Tsfile','Load External Tsfile']
+							['6-System Tools/7-Monitor and Log Tools','Monitor and Log Tools']
 						]
 					},
 					{
@@ -414,7 +413,8 @@ var config = {
 						children: [
 							['2-QueryEngine/1-QueryEngine','QueryEngine'],
 							['2-QueryEngine/2-Planner','Planner'],
-							['2-QueryEngine/3-PlanExecutor','PlanExecutor']
+							['2-QueryEngine/3-PlanExecutor','PlanExecutor'],
+							['2-QueryEngine/4-ResultSetConstruction','ResultSetConstruction']
 						]
 					},
 					{
@@ -686,8 +686,7 @@ var config = {
 							['6-System Tools/4-Watermark Tool','水印工具'],
 							['6-System Tools/5-Log Visualizer','日志可视化工具'],
 							['6-System Tools/6-Query History Visualization Tool','查询历史可视化工具'],
-							['6-System Tools/7-Monitor and Log Tools','监控与日志工具'],
-							['6-System Tools/8-Load External Tsfile','加载外部tsfile文件']
+							['6-System Tools/7-Monitor and Log Tools','监控与日志工具']
 						]
 					},
 					{
@@ -829,7 +828,8 @@ var config = {
 						children: [
 							['2-QueryEngine/1-QueryEngine','查询引擎'],
 							['2-QueryEngine/2-Planner','执行计划生成器'],
-							['2-QueryEngine/3-PlanExecutor','计划执行器']
+							['2-QueryEngine/3-PlanExecutor','计划执行器'],
+							['2-QueryEngine/4-ResultSetConstruction','结果集构造']
 						]
 					},
 					{

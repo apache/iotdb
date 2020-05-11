@@ -668,7 +668,7 @@ public class Session {
     }
 
     RpcUtils.verifySuccess(execResp.getStatus());
-    return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(),
+    return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(), execResp.columnNameIndexMap,
         execResp.getQueryId(), client, sessionId, execResp.queryDataSet);
   }
 
@@ -703,7 +703,7 @@ public class Session {
     return true;
   }
 
-  private void sortTablet(Tablet tablet) {
+  public void sortTablet(Tablet tablet) {
     /*
      * following part of code sort the batch data by time,
      * so we can insert continuous data in value list to get a better performance
@@ -735,42 +735,42 @@ public class Session {
         boolean[] boolValues = (boolean[]) valueList;
         boolean[] sortedValues = new boolean[boolValues.length];
         for (int i = 0; i < index.length; i++) {
-          sortedValues[index[i]] = boolValues[i];
+          sortedValues[i] = boolValues[index[i]];
         }
         return sortedValues;
       case INT32:
         int[] intValues = (int[]) valueList;
         int[] sortedIntValues = new int[intValues.length];
         for (int i = 0; i < index.length; i++) {
-          sortedIntValues[index[i]] = intValues[i];
+          sortedIntValues[i] = intValues[index[i]];
         }
         return sortedIntValues;
       case INT64:
         long[] longValues = (long[]) valueList;
         long[] sortedLongValues = new long[longValues.length];
         for (int i = 0; i < index.length; i++) {
-          sortedLongValues[index[i]] = longValues[i];
+          sortedLongValues[i] = longValues[index[i]];
         }
         return sortedLongValues;
       case FLOAT:
         float[] floatValues = (float[]) valueList;
         float[] sortedFloatValues = new float[floatValues.length];
         for (int i = 0; i < index.length; i++) {
-          sortedFloatValues[index[i]] = floatValues[i];
+          sortedFloatValues[i] = floatValues[index[i]];
         }
         return sortedFloatValues;
       case DOUBLE:
         double[] doubleValues = (double[]) valueList;
         double[] sortedDoubleValues = new double[doubleValues.length];
         for (int i = 0; i < index.length; i++) {
-          sortedDoubleValues[index[i]] = doubleValues[i];
+          sortedDoubleValues[i] = doubleValues[index[i]];
         }
         return sortedDoubleValues;
       case TEXT:
         Binary[] binaryValues = (Binary[]) valueList;
         Binary[] sortedBinaryValues = new Binary[binaryValues.length];
         for (int i = 0; i < index.length; i++) {
-          sortedBinaryValues[index[i]] = binaryValues[i];
+          sortedBinaryValues[i] = binaryValues[index[i]];
         }
         return sortedBinaryValues;
       default:
