@@ -23,6 +23,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -67,6 +68,10 @@ public class TsFileSketchTool {
       List<ChunkGroupMetadata> allChunkGroupMetadata = new ArrayList<>();
       List<Pair<Long, Long>> versionInfo = new ArrayList<>();
       reader.selfCheck(null, allChunkGroupMetadata, versionInfo, false);
+      Map<Long, Long> versionMap = new HashMap<>();
+      for (Pair<Long, Long> versionPair : versionInfo) {
+        versionMap.put(versionPair.right - Long.BYTES, versionPair.left);
+      }
 
       // begin print
       StringBuilder str1 = new StringBuilder();
@@ -83,8 +88,7 @@ public class TsFileSketchTool {
               + "|\t[version number] "
               + reader.readVersionNumber());
       // ChunkGroup begins
-      for (int i = 0; i < allChunkGroupMetadata.size(); i++) {
-        ChunkGroupMetadata chunkGroupMetadata = allChunkGroupMetadata.get(i);
+      for (ChunkGroupMetadata chunkGroupMetadata : allChunkGroupMetadata) {
         printlnBoth(pw, str1.toString() + "\t[Chunk Group] of " + chunkGroupMetadata.getDevice() +
             ", num of Chunks:" + chunkGroupMetadata.getChunkMetadataList().size());
         // chunk begins
@@ -117,15 +121,16 @@ public class TsFileSketchTool {
             .getNumberOfChunks());
         printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
             + chunkGroupMetadata.getDevice() + " ends");
-        // versionInfo pair begins
-        printlnBoth(pw, 
-            String.format("%20s", chunkEndPos + chunkGroupFooter.getSerializedSize()) 
-            + "|\t[Version Info pair]");
-        printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 3");
-        printlnBoth(pw,
-            String.format("%20s", "") + "|\t\t[offset] " + versionInfo.get(i).left);
-        printlnBoth(pw,
-            String.format("%20s", "") + "|\t\t[version] " + versionInfo.get(i).right);
+        // versionInfo pair begins if there is a versionInfo pair
+        if (versionMap.containsKey(chunkEndPos + chunkGroupFooter.getSerializedSize())) {
+          printlnBoth(pw, 
+              String.format("%20s", chunkEndPos + chunkGroupFooter.getSerializedSize()) 
+              + "|\t[Version Info pair]");
+          printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 3");
+          printlnBoth(pw,
+              String.format("%20s", "") + "|\t\t[version] " 
+              + versionMap.get(chunkEndPos + chunkGroupFooter.getSerializedSize()));
+        }
         
       }
 
@@ -146,7 +151,6 @@ public class TsFileSketchTool {
         for (TimeseriesMetadata seriesMetadata : seriesMetadataList) {
           timeseriesMetadataMap.put(seriesMetadata.getOffsetOfChunkMetaDataList(), 
               new Pair<>(new Path(device, seriesMetadata.getMeasurementId()), seriesMetadata));
-          
         }
       }
       for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
