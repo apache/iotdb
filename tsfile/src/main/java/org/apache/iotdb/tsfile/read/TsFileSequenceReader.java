@@ -303,7 +303,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
-
   private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device) 
       throws IOException {
     readFileMetadata();
@@ -428,7 +427,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     return -1;  // key not found
   }
-  
+
   public List<String> getAllDevices() throws IOException {
     if (tsFileMetaData == null) {
       readFileMetadata();

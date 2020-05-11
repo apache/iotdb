@@ -90,9 +90,7 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(inputStream);
     CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
-    ChunkHeader chunkHeader = new ChunkHeader(measurementID, dataSize, dataType, type, encoding,
-        numOfPages);
-    return chunkHeader;
+    return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
   }
 
   /**
@@ -105,7 +103,7 @@ public class ChunkHeader {
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static ChunkHeader deserializeFrom(TsFileInput input, long offset,
+  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, 
       int chunkHeaderSize, boolean markerRead) throws IOException {
     long offsetVar = offset;
     if (!markerRead) {
@@ -125,10 +123,8 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
-    ChunkHeader chunkHeader = new ChunkHeader(measurementID, dataSize, 
-        chunkHeaderSize, dataType, type, encoding,
-        numOfPages);
-    return chunkHeader;
+    return new ChunkHeader(measurementID, dataSize, 
+        chunkHeaderSize, dataType, type, encoding, numOfPages);
   }
 
   public int getSerializedSize() {
