@@ -70,7 +70,7 @@ public class TsFileSketchTool {
       reader.selfCheck(null, allChunkGroupMetadata, versionInfo, false);
       Map<Long, Long> versionMap = new HashMap<>();
       for (Pair<Long, Long> versionPair : versionInfo) {
-        versionMap.put(versionPair.right - Long.BYTES, versionPair.left);
+        versionMap.put(versionPair.left - Long.BYTES - 1, versionPair.right);
       }
 
       // begin print
@@ -121,11 +121,11 @@ public class TsFileSketchTool {
             .getNumberOfChunks());
         printlnBoth(pw, str1.toString() + "\t[Chunk Group] of "
             + chunkGroupMetadata.getDevice() + " ends");
-        // versionInfo pair begins if there is a versionInfo pair
+        // versionInfo begins if there is a versionInfo
         if (versionMap.containsKey(chunkEndPos + chunkGroupFooter.getSerializedSize())) {
           printlnBoth(pw, 
               String.format("%20s", chunkEndPos + chunkGroupFooter.getSerializedSize()) 
-              + "|\t[Version Info pair]");
+              + "|\t[Version Info]");
           printlnBoth(pw, String.format("%20s", "") + "|\t\t[marker] 3");
           printlnBoth(pw,
               String.format("%20s", "") + "|\t\t[version] " 
