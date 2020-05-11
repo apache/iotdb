@@ -74,7 +74,8 @@ public class ChunkMetadataCache {
         }
 
         if (count < 10) {
-          long currentSize = RamUsageEstimator.sizeOf(value.get(0));
+          long currentSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
+              .shallowSizeOf(value.get(0).getStatistics());
           averageChunkMetadataSize = ((averageChunkMetadataSize * count) + currentSize) / (++count);
           IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageChunkMetadataSize);
           return key.getBytes().length + currentSize * value.size();
@@ -82,7 +83,8 @@ public class ChunkMetadataCache {
           count++;
           return key.getBytes().length + averageChunkMetadataSize * value.size();
         } else {
-          averageChunkMetadataSize = RamUsageEstimator.sizeOf(value.get(0));
+          averageChunkMetadataSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
+              .shallowSizeOf(value.get(0).getStatistics());
           count = 1;
           return key.getBytes().length + averageChunkMetadataSize * value.size();
         }
@@ -106,7 +108,8 @@ public class ChunkMetadataCache {
       if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
         if (logger.isDebugEnabled()) {
           logger.debug(String
-              .format("path not found by bloom filter, file is: %s, path is: %s", filePath, seriesPath));
+              .format("path not found by bloom filter, file is: %s, path is: %s", filePath,
+                  seriesPath));
         }
         return new ArrayList<>();
       }
