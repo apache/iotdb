@@ -101,7 +101,7 @@ import org.mockito.MockitoAnnotations;
     "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
  */
 
-public class IoTDBQueryResultSetTest {
+public class IoTDBJDBCResultSetTest {
 
   @Mock
   TSExecuteStatementResp execResp;

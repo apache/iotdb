@@ -25,7 +25,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.jdbc.IoTDBQueryResultSet;
+import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
 import org.apache.thrift.TException;
@@ -583,7 +583,7 @@ public abstract class AbstractCli {
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
     List<List<String>> lists = new ArrayList<>(columnCount);
-    if( resultSet instanceof  IoTDBQueryResultSet) {
+    if( resultSet instanceof IoTDBJDBCResultSet) {
       for (int i = 1; i <= columnCount; i++) {
         List<String> list = new ArrayList<>(maxPrintRowCount + 1);
         list.add(resultSetMetaData.getColumnLabel(i));
@@ -607,8 +607,8 @@ public abstract class AbstractCli {
       isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
-    if(resultSet instanceof IoTDBQueryResultSet) {
-      boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
+    if(resultSet instanceof IoTDBJDBCResultSet) {
+      boolean printTimestamp = !((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp();
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
           String tmp;
