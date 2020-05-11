@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -124,5 +125,17 @@ public class HeaderUtils {
     // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
     ReadWriteIOUtils.readLong(buffer);
     return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
+  }
+
+  public static int getSerializedSize(String measurementID) {
+    return Byte.BYTES // marker
+        + Integer.BYTES // measurementID length
+        + measurementID.getBytes(TSFileConfig.STRING_CHARSET).length // measurementID
+        + Integer.BYTES // dataSize
+        + TSDataType.getSerializedSize() // dataType
+        + CompressionType.getSerializedSize() // compressionType
+        + TSEncoding.getSerializedSize() // encodingType
+        + Integer.BYTES // numOfPages
+        + Long.BYTES;  // maxTombstoneTime
   }
 }

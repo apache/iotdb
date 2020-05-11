@@ -91,8 +91,10 @@ public class OldChunkMetadata {
   public ChunkMetadata upgradeToChunkMetadata() {
     Statistics<?> statistics = OldStatistics
         .constructStatisticsFromOldChunkMetadata(this);
-    return new ChunkMetadata(this.measurementUid, this.tsDataType,
+    ChunkMetadata chunkMetadata = new ChunkMetadata(this.measurementUid, this.tsDataType,
         this.offsetOfChunkHeader, statistics);
+    chunkMetadata.setFromOldTsFile(true);
+    return chunkMetadata;
   }
 
   /**

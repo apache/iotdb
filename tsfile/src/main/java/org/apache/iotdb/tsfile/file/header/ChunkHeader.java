@@ -75,8 +75,7 @@ public class ChunkHeader {
    *
    * @param markerRead Whether the marker of the CHUNK_HEADER has been read
    */
-  public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead) 
-      throws IOException {
+  public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead) throws IOException {
     if (!markerRead) {
       byte marker = (byte) inputStream.read();
       if (marker != MetaMarker.CHUNK_HEADER) {
@@ -103,8 +102,8 @@ public class ChunkHeader {
    * @return CHUNK_HEADER object
    * @throws IOException IOException
    */
-  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, 
-      int chunkHeaderSize, boolean markerRead) throws IOException {
+  public static ChunkHeader deserializeFrom(TsFileInput input, long offset, int chunkHeaderSize, boolean markerRead)
+      throws IOException {
     long offsetVar = offset;
     if (!markerRead) {
       offsetVar++;
@@ -123,8 +122,7 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
-    return new ChunkHeader(measurementID, dataSize, 
-        chunkHeaderSize, dataType, type, encoding, numOfPages);
+    return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding, numOfPages);
   }
 
   public int getSerializedSize() {

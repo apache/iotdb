@@ -43,9 +43,9 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
@@ -303,7 +303,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
-  private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device) 
+  private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device)
       throws IOException {
     readFileMetadata();
     List<TimeseriesMetadata> timeseriesMetadataList = getDeviceTimeseriesMetadata(device);

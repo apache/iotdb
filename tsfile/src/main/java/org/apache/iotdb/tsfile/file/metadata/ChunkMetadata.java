@@ -61,6 +61,8 @@ public class ChunkMetadata {
   private IChunkLoader chunkLoader;
 
   private Statistics statistics;
+  
+  private boolean isFromOldTsFile = false;
 
   private ChunkMetadata() {
   }
@@ -208,5 +210,13 @@ public class ChunkMetadata {
 
   public void setModified(boolean modified) {
     this.modified = modified;
+  }
+
+  public boolean isFromOldTsFile() {
+    return isFromOldTsFile;
+  }
+
+  public void setFromOldTsFile(boolean isFromOldTsFile) {
+    this.isFromOldTsFile = isFromOldTsFile;
   }
 }

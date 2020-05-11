@@ -58,7 +58,7 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
   private int fileMetadataSize;
   private OldTsFileMetadata oldTsFileMetaData;
   // device -> measurement -> TimeseriesMetadata
-  private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
+  private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadataFromOldFile = new ConcurrentHashMap<>();
   private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
   private boolean cacheDeviceMetadata;
 
@@ -170,8 +170,8 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
 
     cacheLock.readLock().lock();
     try {
-      if (cachedDeviceMetadata.containsKey(device)) {
-        return cachedDeviceMetadata.get(device);
+      if (cachedDeviceMetadataFromOldFile.containsKey(device)) {
+        return cachedDeviceMetadataFromOldFile.get(device);
       }
     } finally {
       cacheLock.readLock().unlock();
@@ -179,15 +179,15 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
 
     cacheLock.writeLock().lock();
     try {
-      if (cachedDeviceMetadata.containsKey(device)) {
-        return cachedDeviceMetadata.get(device);
+      if (cachedDeviceMetadataFromOldFile.containsKey(device)) {
+        return cachedDeviceMetadataFromOldFile.get(device);
       }
       readOldFileMetadata();
       if (!oldTsFileMetaData.containsDevice(device)) {
         return new HashMap<>();
       }
       Map<String, TimeseriesMetadata> deviceMetadata = constructDeviceMetadataFromOldFile(device);
-      cachedDeviceMetadata.put(device, deviceMetadata);
+      cachedDeviceMetadataFromOldFile.put(device, deviceMetadata);
       return deviceMetadata;
     } finally {
       cacheLock.writeLock().unlock();
@@ -315,10 +315,9 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
    */
   @Override
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
-    int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
-    chunkHeadSize += Long.BYTES; // maxTombstoneTime
+    int chunkHeadSize = HeaderUtils.getSerializedSize(metaData.getMeasurementUid());
     ChunkHeader header = readChunkHeaderFromOldFile(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
-    ByteBuffer buffer = readChunkFromOldFile(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
+    ByteBuffer buffer = readChunkFromOldFile(metaData.getOffsetOfChunkHeader() + chunkHeadSize,
         header.getDataSize());
     return new Chunk(header, buffer, metaData.getDeletedAt());
   }
