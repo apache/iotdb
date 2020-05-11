@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.last_value;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -25,15 +35,6 @@ import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
-
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.constant.TestConstant.last_value;
-import static org.junit.Assert.*;
 
 public class IoTDBGroupByFillIT {
 
@@ -443,6 +444,47 @@ public class IoTDBGroupByFillIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void previousUntilLastTest5() {
+    String[] retArray = new String[] {
+        "17,25",
+        "22,25",
+        "27,26",
+        "32,29",
+        "37,40",
+        "42,null",
+        "47,null",
+    };
+
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select last_value(temperature) from "
+              + "root.ln.wf01.wt01 "
+              + "GROUP BY ([17, 48), 5ms) FILL(float[previousUntilLast])");
+
+      assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
+              .getString(last_value("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+
+  }
+
 
   @Test
   public void leftORightCPreviousUntilLastTest() {

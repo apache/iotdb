@@ -20,9 +20,11 @@
 package org.apache.iotdb.cluster.query;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
 
@@ -34,8 +36,8 @@ public class ClusterConcatPathOptimizer extends ConcatPathOptimizer {
   }
 
   @Override
-  protected List<String> removeWildcard(String path) throws MetadataException {
-    return metaGroupMember.getMatchedPaths(path);
+  protected List<Path> removeWildcard(String path) throws MetadataException {
+    return metaGroupMember.getMatchedPaths(path).stream().map(Path::new).collect(Collectors.toList());
   }
 
 

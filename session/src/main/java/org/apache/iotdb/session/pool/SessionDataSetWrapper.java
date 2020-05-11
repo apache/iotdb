@@ -43,11 +43,11 @@ public class SessionDataSetWrapper {
   }
 
   public int getBatchSize() {
-    return sessionDataSet.getBatchSize();
+    return sessionDataSet.getFetchSize();
   }
 
   public void setBatchSize(int batchSize) {
-    sessionDataSet.setBatchSize(batchSize);
+    sessionDataSet.setFetchSize(batchSize);
   }
 
   /**
