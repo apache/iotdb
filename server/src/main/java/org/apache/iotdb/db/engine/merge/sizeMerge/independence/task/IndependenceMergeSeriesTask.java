@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.merge.sizeMerge.independence.task;
 
 import static org.apache.iotdb.db.engine.merge.sizeMerge.independence.task.IndependenceMergeTask.MERGE_SUFFIX;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +29,7 @@ import org.apache.iotdb.db.engine.merge.BaseMergeSeriesTask;
 import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -101,6 +103,14 @@ public class IndependenceMergeSeriesTask extends BaseMergeSeriesTask {
       logger.info("merge after seqFile chunk large = {}", totalChunkPoint * 1.0 / chunkNum);
     }
 
+    for (TsFileResource tsFileResource : newResources) {
+      File oldTsFile = tsFileResource.getFile();
+      File newTsFile = new File(oldTsFile.getParent(),
+          oldTsFile.getName().replace(MERGE_SUFFIX, ""));
+      oldTsFile.renameTo(newTsFile);
+      tsFileResource.setFile(newTsFile);
+      tsFileResource.serialize();
+    }
     return newResources;
   }
 }

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task;
 
 import static org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask.MERGE_SUFFIX;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.db.engine.merge.BaseMergeSeriesTask;
@@ -94,6 +95,12 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
       logger.info("merge after seqFile chunk large = {}", totalChunkPoint * 1.0 / chunkNum);
     }
 
+    File oldTsFile = newResource.getFile();
+    File newTsFile = new File(oldTsFile.getParent(),
+        oldTsFile.getName().replace(RegularizationMergeTask.MERGE_SUFFIX, ""));
+    oldTsFile.renameTo(newTsFile);
+    newResource.setFile(newTsFile);
+    newResource.serialize();
     return newResource;
   }
 }
