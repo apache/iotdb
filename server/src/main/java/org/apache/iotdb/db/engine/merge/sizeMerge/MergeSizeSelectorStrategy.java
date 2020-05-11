@@ -11,7 +11,7 @@ public enum MergeSizeSelectorStrategy {
       long maxTime, long timeBlock) {
     switch (this) {
       case TIME_RANGE:
-        return maxTime - minTime >= timeBlock;
+        return maxTime > 0 && maxTime - minTime >= timeBlock;
       case POINT_RANGE:
       default:
         return chunkWriter.getPtNum() >= minChunkPointNum;

@@ -169,7 +169,9 @@ public abstract class BaseMergeSeriesTask {
             .isChunkEnoughLarge(chunkWriter, minChunkPointNum, currMinTime, currMaxTime,
                 timeBlock)) {
           mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
-          chunkWriter.writeToFileWriter(newFileWriter);
+          synchronized (newFileWriter) {
+            chunkWriter.writeToFileWriter(newFileWriter);
+          }
           chunkWriter = new ChunkWriterImpl(chunkWriter.getMeasurementSchema());
           resource.putChunkWriter(path, chunkWriter);
         }

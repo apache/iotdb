@@ -129,9 +129,6 @@ public class ChunkCache {
   }
 
   private void printCacheLog(boolean isHit) {
-    if (!logger.isDebugEnabled()) {
-      return;
-    }
     logger.debug(
             "[ChunkMetaData cache {}hit] The number of requests for cache is {}, hit rate is {}.",
             isHit ? "" : "didn't ", cacheRequestNum.get(),

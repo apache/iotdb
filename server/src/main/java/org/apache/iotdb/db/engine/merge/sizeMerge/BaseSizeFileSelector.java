@@ -63,10 +63,7 @@ public abstract class BaseSizeFileSelector implements IMergeFileSelector {
     this.selectorContext.clearTimeConsumption();
     try {
       logger.info("Selecting merge candidates from {} seqFile", seqFiles.size());
-      List<TsFileResource> selectedSeqFiles = select(false);
-      if (selectedSeqFiles.isEmpty()) {
-        selectedSeqFiles = select(true);
-      }
+      List<TsFileResource> selectedSeqFiles = select();
       resource.setSeqFiles(selectedSeqFiles);
       resource.removeOutdatedSeqReaders();
       if (resource.getSeqFiles().isEmpty()) {
@@ -84,7 +81,7 @@ public abstract class BaseSizeFileSelector implements IMergeFileSelector {
     return new Pair<>(resource, selectorContext);
   }
 
-  public List<TsFileResource> select(boolean useTightBound) throws IOException {
+  public List<TsFileResource> select() throws IOException {
     this.selectorContext.setStartTime(System.currentTimeMillis());
     this.selectorContext.clearTimeConsumption();
     this.selectorContext.clearTotalCost();
@@ -104,15 +101,9 @@ public abstract class BaseSizeFileSelector implements IMergeFileSelector {
           }
         }
       }
-      long newCost = useTightBound ? this.memCalculator.calculateTightSeqMemoryCost(seqFile)
-          : seqFile.getFileSize();
-      if (this.selectorContext.getTotalCost() + newCost < memoryBudget) {
-        startIdx = tmpStartIdx;
-        endIdx = tmpEndIdx;
-        this.selectorContext.incTotalCost(newCost);
-        logger.debug("Adding a new {} seqFile as candidates, new cost {}, total"
-            + " cost {}", seqFile, newCost, this.selectorContext.getTotalCost());
-      }
+      startIdx = tmpStartIdx;
+      endIdx = tmpEndIdx;
+      logger.debug("Adding a new {} seqFile as candidates", seqFile);
       seqIndex++;
       this.selectorContext.updateTimeConsumption();
     }

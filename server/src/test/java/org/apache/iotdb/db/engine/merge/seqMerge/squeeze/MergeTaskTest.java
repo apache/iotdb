@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.task.SqueezeMergeTask;
+import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -51,6 +52,8 @@ public class MergeTaskTest extends MergeTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
+    IoTDBDescriptor.getInstance().getConfig().setMergeSizeSelectorStrategy(
+        MergeSizeSelectorStrategy.TIME_RANGE);
     tempSGDir = new File("tempSG");
     tempSGDir.mkdirs();
   }

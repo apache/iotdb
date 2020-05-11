@@ -1329,7 +1329,7 @@ public class StorageGroupProcessor {
       logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
           fullMerge);
       syncCloseAllWorkingTsFileProcessors();
-      if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
+      if (unSequenceFileList.isEmpty() && sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;
       }
@@ -1510,6 +1510,7 @@ public class StorageGroupProcessor {
           logger.debug("{} is updating the merged file's modification file", storageGroupName);
           mergingModification.remove();
           mergingModification = null;
+          mergeLog.delete();
         }
       } catch (IOException e) {
         logger.error("{} cannot remove merge modifications after merge abnormally ends",

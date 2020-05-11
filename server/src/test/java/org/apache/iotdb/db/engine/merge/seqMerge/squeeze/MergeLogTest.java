@@ -78,7 +78,7 @@ public class MergeLogTest extends MergeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertEquals(17, lineCnt);
+    assertEquals(6, lineCnt);
     try {
       for (TsFileResource fileResource : newFile) {
         fileResource.close();

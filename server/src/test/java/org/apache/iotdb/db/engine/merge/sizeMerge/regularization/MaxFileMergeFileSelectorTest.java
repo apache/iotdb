@@ -42,14 +42,4 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
     assertEquals(new ArrayList<>(), unseqSelected);
     mergeResource.clear();
   }
-
-  @Test
-  public void testNonSelection() throws MergeException, IOException {
-    IMergeFileSelector mergeFileSelector = new RegularizationMaxFileSelector(seqResources, 1);
-    Pair<MergeResource, SelectorContext> selectRes = mergeFileSelector.selectMergedFiles();
-    MergeResource mergeResource = selectRes.left;
-    assertEquals(0, mergeResource.getUnseqFiles().size());
-    assertEquals(0, mergeResource.getSeqFiles().size());
-    mergeResource.clear();
-  }
 }

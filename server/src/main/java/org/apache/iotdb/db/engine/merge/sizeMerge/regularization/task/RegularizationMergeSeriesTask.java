@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.merge.BaseMergeSeriesTask;
 import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.recover.RegularizationMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;

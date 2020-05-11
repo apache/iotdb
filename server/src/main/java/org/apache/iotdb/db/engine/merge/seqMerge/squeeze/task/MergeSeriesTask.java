@@ -54,12 +54,14 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
             taskName, mergeLogger,
             resource, unmergedSeries);
         newResources = independenceMergeSeriesTask.mergeSeries();
+        break;
       case REGULARIZATION:
       default:
         RegularizationMergeSeriesTask regularizationMergeSeriesTask = new RegularizationMergeSeriesTask(
             mergeContext, taskName, mergeLogger,
             resource, unmergedSeries);
         newResources.add(regularizationMergeSeriesTask.mergeSeries());
+        break;
     }
     return newResources;
   }
