@@ -66,7 +66,7 @@ public class IoTDBConfigDynamicAdapterTest {
     for (int i = 1; i < 1000000; i++) {
       try {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-        memTableNum += IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition();
+        memTableNum += IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * 4 + 1;
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
             CONFIG.getMemtableSizeThreshold());
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);
