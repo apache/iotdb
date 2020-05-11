@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.file.metadata;
+package org.apache.iotdb.tsfile.v1.file.metadata;
 
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.nio.ByteBuffer;

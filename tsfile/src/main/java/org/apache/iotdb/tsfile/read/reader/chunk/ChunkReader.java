@@ -79,7 +79,7 @@ public class ChunkReader implements IChunkReader {
     while (chunkDataBuffer.remaining() > 0) {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader pageHeader = PageHeader.deserializeFrom(chunkDataBuffer, 
-          chunkHeader.getDataType(), chunkHeader.isOldVersion());
+          chunkHeader.getDataType());
       // if the current page satisfies
       if (pageSatisfied(pageHeader)) {
         pageReaderList.add(constructPageReaderForNextPage(pageHeader));

@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.v1.file.metadata.OldChunkMetadata;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -63,14 +64,6 @@ public class ChunkMetadata {
   private Statistics statistics;
 
   private ChunkMetadata() {
-  }
-
-  public ChunkMetadata(OldChunkMetadata oldChunkMetadata) {
-    this.measurementUid = oldChunkMetadata.getMeasurementUid();
-    this.tsDataType = oldChunkMetadata.getTsDataType();
-    this.offsetOfChunkHeader = oldChunkMetadata.getOffsetOfChunkHeader();
-    this.version = oldChunkMetadata.getVersion();
-    this.statistics = Statistics.constructStatisticsFromOldChunkMetadata(oldChunkMetadata);
   }
 
   /**

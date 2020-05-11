@@ -25,7 +25,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.oldstatistics.OldStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -46,37 +45,18 @@ public class PageHeader {
     return 2 * Integer.BYTES; // uncompressedSize, compressedSize
   }
 
-  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType,
-      boolean isOldVersion)
+  public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
       throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
     int compressedSize = ReadWriteIOUtils.readInt(inputStream);
-    if (isOldVersion) {
-      int numOfValues = ReadWriteIOUtils.readInt(inputStream);
-      long maxTimestamp = ReadWriteIOUtils.readLong(inputStream);
-      long minTimestamp = ReadWriteIOUtils.readLong(inputStream);
-      OldStatistics<?> oldstatistics = OldStatistics.deserialize(inputStream, dataType);
-      Statistics<?> statistics = Statistics.upgradeOldStatistics(oldstatistics, dataType, 
-          numOfValues, maxTimestamp, minTimestamp);
-      return new PageHeader(uncompressedSize, compressedSize, statistics);
-    }
     Statistics statistics = Statistics.deserialize(inputStream, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
-  public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType, 
-      boolean isOldVersion) throws IOException {
+  public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType)
+      throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
     int compressedSize = ReadWriteIOUtils.readInt(buffer);
-    if (isOldVersion) {
-      int numOfValues = ReadWriteIOUtils.readInt(buffer);
-      long maxTimestamp = ReadWriteIOUtils.readLong(buffer);
-      long minTimestamp = ReadWriteIOUtils.readLong(buffer);
-      OldStatistics<?> oldstatistics = OldStatistics.deserialize(buffer, dataType);
-      Statistics<?> statistics = Statistics.upgradeOldStatistics(oldstatistics, dataType, 
-          numOfValues, maxTimestamp, minTimestamp);
-      return new PageHeader(uncompressedSize, compressedSize, statistics);
-    }
     Statistics statistics = Statistics.deserialize(buffer, dataType);
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }

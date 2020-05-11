@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.file.metadata.oldstatistics;
+package org.apache.iotdb.tsfile.v1.file.metadata.statistics;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,33 +24,33 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
- * Statistics for int type.
+ * Statistics for float type.
  */
-public class OldIntegerStatistics extends OldStatistics<Integer> {
+public class OldFloatStatistics extends OldStatistics<Float> {
 
-  private int min;
-  private int max;
-  private int first;
-  private int last;
+  private float min;
+  private float max;
+  private float first;
   private double sum;
+  private float last;
 
   @Override
-  public Integer getMin() {
+  public Float getMin() {
     return min;
   }
 
   @Override
-  public Integer getMax() {
+  public Float getMax() {
     return max;
   }
 
   @Override
-  public Integer getFirst() {
+  public Float getFirst() {
     return first;
   }
 
   @Override
-  public Integer getLast() {
+  public Float getLast() {
     return last;
   }
 
@@ -61,19 +61,19 @@ public class OldIntegerStatistics extends OldStatistics<Integer> {
 
   @Override
   void deserialize(ByteBuffer byteBuffer) throws IOException {
-    this.min = ReadWriteIOUtils.readInt(byteBuffer);
-    this.max = ReadWriteIOUtils.readInt(byteBuffer);
-    this.first = ReadWriteIOUtils.readInt(byteBuffer);
-    this.last = ReadWriteIOUtils.readInt(byteBuffer);
+    this.min = ReadWriteIOUtils.readFloat(byteBuffer);
+    this.max = ReadWriteIOUtils.readFloat(byteBuffer);
+    this.first = ReadWriteIOUtils.readFloat(byteBuffer);
+    this.last = ReadWriteIOUtils.readFloat(byteBuffer);
     this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 
   @Override
   void deserialize(InputStream inputStream) throws IOException {
-    this.min = ReadWriteIOUtils.readInt(inputStream);
-    this.max = ReadWriteIOUtils.readInt(inputStream);
-    this.first = ReadWriteIOUtils.readInt(inputStream);
-    this.last = ReadWriteIOUtils.readInt(inputStream);
+    this.min = ReadWriteIOUtils.readFloat(inputStream);
+    this.max = ReadWriteIOUtils.readFloat(inputStream);
+    this.first = ReadWriteIOUtils.readFloat(inputStream);
+    this.last = ReadWriteIOUtils.readFloat(inputStream);
     this.sum = ReadWriteIOUtils.readDouble(inputStream);
   }
 }

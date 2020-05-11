@@ -43,8 +43,6 @@ public class ChunkHeader {
   // this field does not need to be serialized.
   private int serializedSize;
 
-  private boolean isOldVersion = false;
-
   public ChunkHeader(String measurementID, int dataSize, TSDataType dataType, CompressionType compressionType,
       TSEncoding encoding, int numOfPages) {
     this(measurementID, dataSize, getSerializedSize(measurementID), dataType, compressionType, encoding, numOfPages);
@@ -77,8 +75,8 @@ public class ChunkHeader {
    *
    * @param markerRead Whether the marker of the CHUNK_HEADER has been read
    */
-  public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead, 
-      boolean isOldVersion) throws IOException {
+  public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead) 
+      throws IOException {
     if (!markerRead) {
       byte marker = (byte) inputStream.read();
       if (marker != MetaMarker.CHUNK_HEADER) {
@@ -92,13 +90,8 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(inputStream);
     CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
-    if (isOldVersion) {
-      // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
-      ReadWriteIOUtils.readLong(inputStream);
-    }
     ChunkHeader chunkHeader = new ChunkHeader(measurementID, dataSize, dataType, type, encoding,
         numOfPages);
-    chunkHeader.setAsOldVersion(isOldVersion);
     return chunkHeader;
   }
 
@@ -113,8 +106,7 @@ public class ChunkHeader {
    * @throws IOException IOException
    */
   public static ChunkHeader deserializeFrom(TsFileInput input, long offset,
-      int chunkHeaderSize, boolean markerRead, boolean isOldVersion)
-      throws IOException {
+      int chunkHeaderSize, boolean markerRead) throws IOException {
     long offsetVar = offset;
     if (!markerRead) {
       offsetVar++;
@@ -133,14 +125,9 @@ public class ChunkHeader {
     int numOfPages = ReadWriteIOUtils.readInt(buffer);
     CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
-    if (isOldVersion) {
-      // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
-      ReadWriteIOUtils.readLong(buffer);
-    }
     ChunkHeader chunkHeader = new ChunkHeader(measurementID, dataSize, 
         chunkHeaderSize, dataType, type, encoding,
         numOfPages);
-    chunkHeader.setAsOldVersion(isOldVersion);
     return chunkHeader;
   }
 
@@ -207,14 +194,6 @@ public class ChunkHeader {
 
   public TSEncoding getEncodingType() {
     return encodingType;
-  }
-
-  public void setAsOldVersion(boolean isOldVersion) {
-    this.isOldVersion = isOldVersion;
-  }
-
-  public boolean isOldVersion() {
-    return isOldVersion;
   }
 
   @Override

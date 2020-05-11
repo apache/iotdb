@@ -33,6 +33,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
@@ -42,11 +43,6 @@ import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.OldChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.OldChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.OldTsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
@@ -74,14 +70,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   protected String file;
-  private TsFileInput tsFileInput;
-  private boolean isOldVersion;
+  protected TsFileInput tsFileInput;
   private long fileMetadataPos;
   private int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   private int totalChunkNum;
   private TsFileMetadata tsFileMetaData;
-  private OldTsFileMetadata oldTsFileMetaData;
   // device -> measurement -> TimeseriesMetadata
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
   private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
@@ -116,7 +110,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (loadMetadataSize) {
         loadMetadataSize();
       }
-      this.isOldVersion = readVersionNumber().equals(TSFileConfig.OLD_VERSION);
     } catch (Throwable e) {
       tsFileInput.close();
       throw e;
@@ -151,7 +144,6 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
     this.tsFileInput = input;
     try {
-      this.isOldVersion = readVersionNumber().equals(TSFileConfig.OLD_VERSION);
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
       }
@@ -265,13 +257,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     return tsFileMetaData;
   }
-  
-  public OldTsFileMetadata readOldFileMetadata() throws IOException {
-    if (oldTsFileMetaData == null) {
-      oldTsFileMetaData = OldTsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
-    }
-    return oldTsFileMetaData;
-  }
 
   /**
    * this function does not modify the position of the file reader.
@@ -279,14 +264,8 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @throws IOException io error
    */
   public BloomFilter readBloomFilter() throws IOException {
-    if (isOldVersion) {
-      readOldFileMetadata();
-      return oldTsFileMetaData.getBloomFilter();
-    }
-    else {
-      readFileMetadata();
-      return tsFileMetaData.getBloomFilter();
-    }
+    readFileMetadata();
+    return tsFileMetaData.getBloomFilter();
   }
 
   /**
@@ -315,15 +294,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       if (cachedDeviceMetadata.containsKey(device)) {
         return cachedDeviceMetadata.get(device);
       }
-      if (isOldVersion) {
-        readOldFileMetadata();
-        if (!oldTsFileMetaData.containsDevice(device)) {
-          return new HashMap<>();
-        }
-      }
-      else {
-        readFileMetadata();
-      }
+      readFileMetadata();
       Map<String, TimeseriesMetadata> deviceMetadata = readDeviceMetadataFromDisk(device);
       cachedDeviceMetadata.put(device, deviceMetadata);
       return deviceMetadata;
@@ -335,9 +306,6 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   private Map<String, TimeseriesMetadata> readDeviceMetadataFromDisk(String device) 
       throws IOException {
-    if (isOldVersion) {
-      return constructDeviceMetadataFromOldFile(device);
-    }
     readFileMetadata();
     List<TimeseriesMetadata> timeseriesMetadataList = getDeviceTimeseriesMetadata(device);
     Map<String, TimeseriesMetadata> deviceMetadata = new HashMap<>();
@@ -347,50 +315,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return deviceMetadata;
   }
 
-  /**
-   * for old TsFile
-   * this function does not modify the position of the file reader.
-   */
-  private Map<String, TimeseriesMetadata> constructDeviceMetadataFromOldFile(String device)
-      throws IOException {
-    Map<String, TimeseriesMetadata> newDeviceMetadata = new HashMap<>();
-    readOldFileMetadata();
-    OldTsDeviceMetadataIndex index = oldTsFileMetaData.getDeviceMetadataIndex(device);
-    // read TsDeviceMetadata from file
-    OldTsDeviceMetadata tsDeviceMetadata = readOldTsDeviceMetaData(index);
-    if (tsDeviceMetadata == null) {
-      return newDeviceMetadata;
-    }
-
-    // get all ChunkMetaData of this path included in all ChunkGroups of this device
-    for (OldChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      List<OldChunkMetadata> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
-      for (OldChunkMetadata oldChunkMetadata : chunkMetaDataListInOneChunkGroup) {
-        oldChunkMetadata.setVersion(chunkGroupMetaData.getVersion());
-        newDeviceMetadata.computeIfAbsent(oldChunkMetadata.getMeasurementUid(), key -> new TimeseriesMetadata())
-        .addChunkMetadata(new ChunkMetadata(oldChunkMetadata));
-      }
-    }
-    return newDeviceMetadata;
-  }
-
-  /**
-   * for old TsFile
-   * this function does not modify the position of the file reader.
-   */
-  private OldTsDeviceMetadata readOldTsDeviceMetaData(OldTsDeviceMetadataIndex index) 
-      throws IOException {
-    if (index == null) {
-      return null;
-    }
-    return OldTsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
-  }
-
   public TimeseriesMetadata readTimeseriesMetadata(Path path) throws IOException {
-    if (isOldVersion) {
-      return getTimeseriesMetadataFromOldFile(path);
-    }
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
@@ -415,9 +340,6 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public List<TimeseriesMetadata> readTimeseriesMetadata(String device, Set<String> measurements)
       throws IOException {
-    if (isOldVersion) {
-      return getTimeseriesMetadataFromOldFile(device, measurements);
-    }
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getMetadataAndEndOffset(
@@ -505,31 +427,6 @@ public class TsFileSequenceReader implements AutoCloseable {
       }
     }
     return -1;  // key not found
-  }
-
-  /*
-   *  for 0.9.x TsFile
-   */
-  private TimeseriesMetadata getTimeseriesMetadataFromOldFile(Path path) throws IOException {
-    Map<String, TimeseriesMetadata> deviceMetadata = 
-        constructDeviceMetadataFromOldFile(path.getDevice());
-    return deviceMetadata.get(path.getMeasurement());
-  }
-
-  /*
-   *  for 0.9.x TsFile
-   */
-  private List<TimeseriesMetadata> getTimeseriesMetadataFromOldFile(String device, Set<String> measurements)
-      throws IOException {
-    Map<String, TimeseriesMetadata> deviceMetadata = 
-        constructDeviceMetadataFromOldFile(device);
-    List<TimeseriesMetadata> resultTimeseriesMetadataList = new ArrayList<>();
-    for (Entry<String, TimeseriesMetadata> entry : deviceMetadata.entrySet()) {
-      if (measurements.contains(entry.getKey())) {
-        resultTimeseriesMetadataList.add(entry.getValue());
-      }
-    }
-    return resultTimeseriesMetadataList;
   }
   
   public List<String> getAllDevices() throws IOException {
@@ -759,7 +656,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @throws IOException io error
    */
   public ChunkHeader readChunkHeader() throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true, false);
+    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true);
   }
 
   /**
@@ -771,8 +668,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
       throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead, 
-        isOldVersion);
+    return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize, markerRead);
   }
 
   /**
@@ -794,9 +690,6 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
     int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
-    if (isOldVersion) {
-      chunkHeadSize += Long.BYTES; // maxTombstoneTime
-    }
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
@@ -809,7 +702,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param type given tsfile data type
    */
   public PageHeader readPageHeader(TSDataType type) throws IOException {
-    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, isOldVersion);
+    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type);
   }
 
   public long position() throws IOException {
@@ -1056,53 +949,12 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return List of ChunkMetaData
    */
   public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
-    if (this.isOldVersion) {
-      return getChunkMetadataListFromOldFile(path);
-    }
     TimeseriesMetadata timeseriesMetaData = readTimeseriesMetadata(path);
     if (timeseriesMetaData == null) {
       return new ArrayList<>();
     }
     List<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetaData);
     chunkMetadataList.sort(Comparator.comparingLong(ChunkMetadata::getStartTime));
-    return chunkMetadataList;
-  }
-
-  /*
-   *  For old TsFile
-   */
-  private List<ChunkMetadata> getChunkMetadataListFromOldFile(Path path) throws IOException {
-    readOldFileMetadata();
-    if (!oldTsFileMetaData.containsDevice(path.getDevice())) {
-      return new ArrayList<>();
-    }
-
-    // get the index information of TsDeviceMetadata
-    OldTsDeviceMetadataIndex index = oldTsFileMetaData.getDeviceMetadataIndex(path.getDevice());
-
-    // read TsDeviceMetadata from file
-    OldTsDeviceMetadata tsDeviceMetadata = readOldTsDeviceMetaData(index);
-    if (tsDeviceMetadata == null) {
-      return new ArrayList<>();
-    }
-
-    // get all ChunkMetaData of this path included in all ChunkGroups of this device
-    List<OldChunkMetadata> oldChunkMetaDataList = new ArrayList<>();
-    for (OldChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      List<OldChunkMetadata> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
-      for (OldChunkMetadata chunkMetaData : chunkMetaDataListInOneChunkGroup) {
-        if (path.getMeasurement().equals(chunkMetaData.getMeasurementUid())) {
-          chunkMetaData.setVersion(chunkGroupMetaData.getVersion());
-          oldChunkMetaDataList.add(chunkMetaData);
-        }
-      }
-    }
-    oldChunkMetaDataList.sort(Comparator.comparingLong(OldChunkMetadata::getStartTime));
-    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-    for (OldChunkMetadata oldChunkMetaData : oldChunkMetaDataList) {
-      chunkMetadataList.add(new ChunkMetadata(oldChunkMetaData));
-    }
     return chunkMetadataList;
   }
 

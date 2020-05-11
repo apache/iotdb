@@ -17,10 +17,13 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.file.metadata;
+package org.apache.iotdb.tsfile.v1.file.metadata;
 
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.v1.file.metadata.statistics.OldStatistics;
 
 import java.nio.ByteBuffer;
 /**
@@ -83,6 +86,13 @@ public class OldChunkMetadata {
 
   public long getNumOfPoints() {
     return numOfPoints;
+  }
+  
+  public ChunkMetadata upgradeToChunkMetadata() {
+    Statistics<?> statistics = OldStatistics
+        .constructStatisticsFromOldChunkMetadata(this);
+    return new ChunkMetadata(this.measurementUid, this.tsDataType,
+        this.offsetOfChunkHeader, statistics);
   }
 
   /**

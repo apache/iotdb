@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.db.tools.upgrade;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -32,11 +42,6 @@ import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
-import org.apache.iotdb.tsfile.file.metadata.OldChunkGroupMetaData;
-import org.apache.iotdb.tsfile.file.metadata.OldChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadata;
-import org.apache.iotdb.tsfile.file.metadata.OldTsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.file.metadata.OldTsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,22 +53,18 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.apache.iotdb.tsfile.v1.file.header.HeaderUtils;
+import org.apache.iotdb.tsfile.v1.file.metadata.OldChunkGroupMetaData;
+import org.apache.iotdb.tsfile.v1.file.metadata.OldChunkMetadata;
+import org.apache.iotdb.tsfile.v1.file.metadata.OldTsDeviceMetadata;
+import org.apache.iotdb.tsfile.v1.file.metadata.OldTsDeviceMetadataIndex;
+import org.apache.iotdb.tsfile.v1.file.metadata.OldTsFileMetadata;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 
 public class TsfileOnlineUpgradeTool implements AutoCloseable {
 
@@ -227,7 +228,7 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
    * @throws IOException io error
    */
   public ChunkHeader readChunkHeader() throws IOException {
-    return ChunkHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), true, true);
+    return HeaderUtils.deserializeOldChunkHeader(tsFileInput.wrapAsInputStream(), true);
   }
 
   /**
@@ -236,7 +237,7 @@ public class TsfileOnlineUpgradeTool implements AutoCloseable {
    * @param type given tsfile data type
    */
   public PageHeader readPageHeader(TSDataType type) throws IOException {
-    return PageHeader.deserializeFrom(tsFileInput.wrapAsInputStream(), type, true);
+    return HeaderUtils.deserializeOldPageHeader(tsFileInput.wrapAsInputStream(), type);
   }
 
   public ByteBuffer readPage(PageHeader header, CompressionType type)

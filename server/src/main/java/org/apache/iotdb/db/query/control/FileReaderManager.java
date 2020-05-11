@@ -23,8 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
+import org.apache.iotdb.tsfile.v1.read.TsFileSequenceReaderForOldFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,6 +163,9 @@ public class FileReaderManager implements IService {
       TsFileSequenceReader tsFileReader = !isClosed ? new UnClosedTsFileReader(filePath)
           : new TsFileSequenceReader(filePath);
 
+      if (tsFileReader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
+        return new TsFileSequenceReaderForOldFile(filePath);
+      }
       readerMap.put(filePath, tsFileReader);
       return tsFileReader;
     }

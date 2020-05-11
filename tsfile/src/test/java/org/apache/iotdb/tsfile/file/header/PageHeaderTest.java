@@ -70,7 +70,7 @@ public class PageHeaderTest {
     PageHeader header = null;
     try {
       fis = new FileInputStream(new File(PATH));
-      header = PageHeader.deserializeFrom(fis, DATA_TYPE, false);
+      header = PageHeader.deserializeFrom(fis, DATA_TYPE);
       return header;
     } catch (IOException e) {
       e.printStackTrace();
