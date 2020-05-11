@@ -514,6 +514,26 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get all timeseries paths under the given path
+   *
+   * @param prefixPath a prefix path or a full path, may contain '*'.
+   */
+  List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {
+    Path prePath = new Path(prefixPath);
+    ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prePath);
+    List<String[]> res = getAllMeasurementSchema(plan);
+    List<Path> paths = new ArrayList<>();
+    for (String[] p : res) {
+      Path path = new Path(p[0]);
+      if (prePath.getMeasurement().equals(p[1])){
+        path.setAlias(p[1]);
+      }
+      paths.add(path);
+    }
+    return paths;
+  }
+
+  /**
    * Get all time series schema under the given path
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]

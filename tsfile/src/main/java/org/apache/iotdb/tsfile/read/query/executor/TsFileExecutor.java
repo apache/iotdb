@@ -41,12 +41,9 @@ import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TsFileExecutor implements QueryExecutor {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileExecutor.class);
   private IMetadataQuerier metadataQuerier;
   private IChunkLoader chunkLoader;
 

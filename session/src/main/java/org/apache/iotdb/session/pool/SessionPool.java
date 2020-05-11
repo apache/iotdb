@@ -140,7 +140,7 @@ public class SessionPool {
         }
       }
       if (logger.isDebugEnabled()) {
-        logger.error("Create a new Session {}, {}, {}, {}", ip, port, user, password);
+        logger.debug("Create a new Session {}, {}, {}, {}", ip, port, user, password);
       }
       session = new Session(ip, port, user, password, fetchSize);
       session.open(enableCompression);
@@ -206,7 +206,7 @@ public class SessionPool {
 
   private synchronized void removeSession() {
     if (logger.isDebugEnabled()) {
-      logger.error("Remove a broken Session {}, {}, {}, {}", ip, port, user, password);
+      logger.debug("Remove a broken Session {}, {}, {}, {}", ip, port, user, password);
     }
     size--;
   }

@@ -47,7 +47,7 @@
     * `load /Users/Desktop/data/1575028885956-101-0.tsfile`
     * `load /Users/Desktop/data/1575028885956-101-0.tsfile false`
     * `load /Users/Desktop/data/1575028885956-101-0.tsfile true`
-    * `load /Users/Desktop/data/1575028885956-101-0.tsfile true 2`
+    * `load /Users/Desktop/data/1575028885956-101-0.tsfile true 1`
 
 
 2. 通过指定文件夹路径(绝对路径)批量加载文件。
@@ -56,7 +56,7 @@
     * `load /Users/Desktop/data`
     * `load /Users/Desktop/data false`
     * `load /Users/Desktop/data true`
-    * `load /Users/Desktop/data true 2`
+    * `load /Users/Desktop/data true 1`
 
 ## 删除tsfile文件
 删除tsfile文件的指令为：`remove <path>`

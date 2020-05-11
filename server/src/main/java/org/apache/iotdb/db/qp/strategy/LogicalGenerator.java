@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -29,9 +30,9 @@ import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
-import org.apache.iotdb.db.query.fill.IFill;
-import org.apache.iotdb.db.query.fill.LinearFill;
-import org.apache.iotdb.db.query.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
+import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -78,6 +79,41 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()));
     }
+  }
+
+  @Override
+  public void enterFlush(FlushContext ctx) {
+    super.enterFlush(ctx);
+    FlushOperator flushOperator = new FlushOperator(SQLConstant.TOK_FLUSH);
+    if(ctx.ID() != null) {
+      if(ctx.ID().getText().equalsIgnoreCase("true")
+          || ctx.ID().getText().equalsIgnoreCase("false")) {
+        flushOperator.setSeq(Boolean.parseBoolean(ctx.ID().getText()));
+      } else {
+        throw new ParseCancellationException("Should be true or false");
+      }
+    }
+    if(ctx.prefixPath(0) != null) {
+      List<Path> storageGroups = new ArrayList<>();
+      for(PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext));
+      }
+      flushOperator.setStorageGroupList(storageGroups);
+    }
+
+    initializedOperator = flushOperator;
+  }
+
+  @Override
+  public void enterMerge(MergeContext ctx) {
+    super.enterMerge(ctx);
+    initializedOperator = new MergeOperator(SQLConstant.TOK_MERGE);
+  }
+
+  @Override
+  public void enterFullMerge(FullMergeContext ctx) {
+    super.enterFullMerge(ctx);
+    initializedOperator = new MergeOperator(SQLConstant.TOK_FULL_MERGE);
   }
 
   @Override
