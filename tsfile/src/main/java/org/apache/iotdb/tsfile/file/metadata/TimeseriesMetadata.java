@@ -22,7 +22,6 @@ package org.apache.iotdb.tsfile.file.metadata;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -39,13 +38,10 @@ public class TimeseriesMetadata {
 
   private Statistics<?> statistics;
 
-  // for old TsFile
-  private List<ChunkMetadata> chunkMetadataList;
-
   // modified is true when there are modifications of the series, or from unseq file
   private boolean modified;
 
-  private IChunkMetadataLoader chunkMetadataLoader;
+  protected IChunkMetadataLoader chunkMetadataLoader;
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
@@ -119,28 +115,9 @@ public class TimeseriesMetadata {
   }
 
   public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
-    // for old version TsFile, chunkMetadataList is not null
-    // for new version TsFile, chunkMetadataList is always null
-    if (chunkMetadataList != null) {
-      chunkMetadataLoader.setDiskChunkLoader(chunkMetadataList);
-      return chunkMetadataList;
-    }
     return chunkMetadataLoader.loadChunkMetadataList();
   }
 
-  /**
-   *  this method is for old version TsFile only
-   */
-  public void addChunkMetadata(ChunkMetadata chunkMetadata) {
-    if (chunkMetadataList == null) {
-      chunkMetadataList = new ArrayList<>();
-      measurementId = chunkMetadata.getMeasurementUid();
-      tsDataType = chunkMetadata.getDataType();
-      statistics = Statistics.getStatsByType(tsDataType);
-    }
-    chunkMetadataList.add(chunkMetadata);
-    statistics.mergeStatistics(chunkMetadata.getStatistics());
-  }
   public boolean isModified() {
     return modified;
   }

@@ -37,18 +37,20 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.v1.file.header.HeaderUtils;
 import org.apache.iotdb.tsfile.v1.file.metadata.OldChunkGroupMetaData;
 import org.apache.iotdb.tsfile.v1.file.metadata.OldChunkMetadata;
 import org.apache.iotdb.tsfile.v1.file.metadata.OldTsDeviceMetadata;
 import org.apache.iotdb.tsfile.v1.file.metadata.OldTsDeviceMetadataIndex;
 import org.apache.iotdb.tsfile.v1.file.metadata.OldTsFileMetadata;
+import org.apache.iotdb.tsfile.v1.file.metadata.TimeseriesMetadataForOldFile;
+import org.apache.iotdb.tsfile.v1.file.utils.HeaderUtils;
 
 public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
 
@@ -206,16 +208,30 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
       return newDeviceMetadata;
     }
 
+    Map<String, List<ChunkMetadata>> measurementChunkMetaMap = new HashMap<>();
     // get all ChunkMetaData of this path included in all ChunkGroups of this device
     for (OldChunkGroupMetaData chunkGroupMetaData : tsDeviceMetadata.getChunkGroupMetaDataList()) {
-      List<OldChunkMetadata> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData
-          .getChunkMetaDataList();
+      List<OldChunkMetadata> chunkMetaDataListInOneChunkGroup = chunkGroupMetaData.getChunkMetaDataList();
       for (OldChunkMetadata oldChunkMetadata : chunkMetaDataListInOneChunkGroup) {
         oldChunkMetadata.setVersion(chunkGroupMetaData.getVersion());
-        newDeviceMetadata.computeIfAbsent(oldChunkMetadata.getMeasurementUid(), key -> new TimeseriesMetadata())
-        .addChunkMetadata(oldChunkMetadata.upgradeToChunkMetadata());
+        measurementChunkMetaMap.computeIfAbsent(oldChunkMetadata.getMeasurementUid(), key -> new ArrayList<>())
+          .add(oldChunkMetadata.upgradeToChunkMetadata());
       }
     }
+    measurementChunkMetaMap.forEach((measurementId, chunkMetadataList) -> {
+      if (!chunkMetadataList.isEmpty()) {
+        TimeseriesMetadataForOldFile timeseiresMetadata = new TimeseriesMetadataForOldFile();
+        timeseiresMetadata.setMeasurementId(measurementId);
+        timeseiresMetadata.setTSDataType(chunkMetadataList.get(0).getDataType());
+        Statistics<?> statistics = Statistics.getStatsByType(chunkMetadataList.get(0).getDataType());
+        for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+          statistics.mergeStatistics(chunkMetadata.getStatistics());
+        }
+        timeseiresMetadata.setStatistics(statistics);
+        timeseiresMetadata.setChunkMetadataList(chunkMetadataList);
+        newDeviceMetadata.put(measurementId, timeseiresMetadata);
+      }
+    });
     return newDeviceMetadata;
   }
 

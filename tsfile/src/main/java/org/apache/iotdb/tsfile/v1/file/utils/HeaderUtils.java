@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.v1.file.header;
+package org.apache.iotdb.tsfile.v1.file.utils;
 
 import java.io.IOException;
 import java.io.InputStream;
