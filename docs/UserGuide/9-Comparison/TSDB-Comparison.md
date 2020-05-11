@@ -71,7 +71,7 @@ Legend:
 
 | TSDB                        | IoTDB                       | InfluxDB   | OpenTSDB   | KairosDB   | TimescaleDB |   
 |-----------------------------|-----------------------------|------------|------------|------------|-------------|  
-| OpenSource                  | **O**                       | o          | o          | **o**      | o           |   
+| OpenSource                  | **o**                       | o          | o          | **o**      | o           |   
 | SQL\-like                   | o                           | o          | x          | x          | **O**       |   
 | Schema                      | "Tree\-based, tag\-based\"  | tag\-based | tag\-based | tag\-based | Relational  |   
 | Writing out\-of\-order data | o                           | o          | o          | o          | o           |   
@@ -90,7 +90,7 @@ Legend:
 
 * OpenSOurce:  
  
-  * IoTDB is in Apache incubator. 
+  * IoTDB uses Apache License 2.0 and it is in Apache incubator. 
   * InfluxDB uses MIT license. However, **the cluster version is not open sourced**.
   * OpenTSDB uses LGPL2.1, which **is not compatible with Apache License**.
   * KairosDB uses Apache License 2.0.
