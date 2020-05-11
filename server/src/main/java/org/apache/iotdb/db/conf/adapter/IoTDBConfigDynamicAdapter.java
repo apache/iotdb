@@ -53,12 +53,21 @@ import org.slf4j.LoggerFactory;
  * <p>
  * The following equation is used to adjust the dynamic parameters of the data:
  * <p>
- * Abbreviation of parameters: 1 memtableSize: m 2 maxMemTableNum: Nm 3
- * maxSeriesNumberAmongStorageGroup: Ns 4 tsFileSizeThreshold: Sf 5 CompressionRatio: c 6 chunk
- * metadata size: a 7 static memory: b 8 allocate memory for write: S
- * <p>
- * The equation: m * Nm + Nm * Ns * Sf * a * c / m + b = S Namely: MemTable data memory size + chunk
- * metadata memory size + static memory size = memory size for write
+ * *
+ *
+ * Abbreviation of parameters:
+ * 1 memtableSize: m
+ * 2 maxMemTableNum: Nm
+ * 3 maxSeriesNumberAmongStorageGroup: Ns
+ * 4 tsFileSizeThreshold: Sf
+ * 5 CompressionRatio: c
+ * 6 chunk metadata size: a
+ * 7 static memory: b
+ * 8 allocate memory for write: S
+ *
+ * The equation: m * Nm + Nm * Ns * Sf * a * c / m + b = S
+ * Namely: MemTable data memory size + chunk metadata memory size + static memory size = memory size for write
+ *
  */
 public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
 
