@@ -199,9 +199,9 @@ public class IoTDBStatement implements Statement {
   }
 
   /**
-   * There are four kinds of sql here: (1) show timeseries path/show timeseries (2) show storage
-   * group (3) query sql (4) update sql . <p></p> (1) and (2) return new TsfileMetadataResultSet (3)
-   * return new TsfileQueryResultSet (4) simply get executed
+   * There are two kinds of sql here: (1) query sql (2) update sql.
+   * (1) return IoTDBJDBCResultSet or IoTDBNonAlignJDBCResultSet
+   * (2) simply get executed
    */
   private boolean executeSQL(String sql) throws TException, SQLException {
     isCancelled = false;
@@ -216,12 +216,12 @@ public class IoTDBStatement implements Statement {
     if (execResp.isSetColumns()) {
       queryId = execResp.getQueryId();
       if (execResp.queryDataSet == null) {
-        this.resultSet = new IoTDBNonAlignQueryResultSet(this, execResp.getColumns(),
+        this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
             execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
             sessionId, execResp.nonAlignQueryDataSet);
       }
       else {
-        this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+        this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
             execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
             sessionId, execResp.queryDataSet);
       }
@@ -305,12 +305,12 @@ public class IoTDBStatement implements Statement {
       throw new IoTDBSQLException(e.getMessage(), execResp.getStatus());
     }
     if (execResp.queryDataSet == null) {
-      this.resultSet = new IoTDBNonAlignQueryResultSet(this, execResp.getColumns(),
+      this.resultSet = new IoTDBNonAlignJDBCResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
           sessionId, execResp.nonAlignQueryDataSet);
     }
     else {
-      this.resultSet = new IoTDBQueryResultSet(this, execResp.getColumns(),
+      this.resultSet = new IoTDBJDBCResultSet(this, execResp.getColumns(),
           execResp.getDataTypeList(), execResp.columnNameIndexMap, execResp.ignoreTimeStamp, client, sql, queryId,
           sessionId, execResp.queryDataSet);
     }
