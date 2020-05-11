@@ -138,7 +138,8 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
   
   public OldTsFileMetadata readOldFileMetadata() throws IOException {
     if (oldTsFileMetaData == null) {
-      oldTsFileMetaData = OldTsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+      oldTsFileMetaData = OldTsFileMetadata
+          .deserializeFrom(readDataFromOldFile(fileMetadataPos, fileMetadataSize));
     }
     return oldTsFileMetaData;
   }
@@ -244,13 +245,15 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
     if (index == null) {
       return null;
     }
-    return OldTsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
+    return OldTsDeviceMetadata.deserializeFrom(readDataFromOldFile(index.getOffset(), index.getLen()));
   }
 
+  @Override
   public TimeseriesMetadata readTimeseriesMetadata(Path path) throws IOException {
     return getTimeseriesMetadataFromOldFile(path);
   }
 
+  @Override
   public List<TimeseriesMetadata> readTimeseriesMetadata(String device, Set<String> measurements)
       throws IOException {
     return getTimeseriesMetadataFromOldFile(device, measurements);
@@ -282,25 +285,13 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
   }
 
   /**
-   * read data from current position of the input, and deserialize it to a CHUNK_HEADER. <br> This
-   * method is not threadsafe.
-   *
-   * @return a CHUNK_HEADER
-   * @throws IOException io error
-   */
-  @Override
-  public ChunkHeader readChunkHeader() throws IOException {
-    return HeaderUtils.deserializeOldChunkHeader(tsFileInput.wrapAsInputStream(), true);
-  }
-
-  /**
    * read the chunk's header.
    *
    * @param position the file offset of this chunk's header
    * @param chunkHeaderSize the size of chunk's header
    * @param markerRead true if the offset does not contains the marker , otherwise false
    */
-  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize, boolean markerRead)
+  private ChunkHeader readChunkHeaderFromOldFile(long position, int chunkHeaderSize, boolean markerRead)
       throws IOException {
     return HeaderUtils.deserializeOldChunkHeader(tsFileInput, position, chunkHeaderSize, markerRead);
   }
@@ -312,8 +303,8 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
    * @param position the offset of the chunk data
    * @return the pages of this chunk
    */
-  private ByteBuffer readChunk(long position, int dataSize) throws IOException {
-    return readData(position, dataSize);
+  private ByteBuffer readChunkFromOldFile(long position, int dataSize) throws IOException {
+    return readDataFromOldFile(position, dataSize);
   }
 
   /**
@@ -326,8 +317,8 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
   public Chunk readMemChunk(ChunkMetadata metaData) throws IOException {
     int chunkHeadSize = ChunkHeader.getSerializedSize(metaData.getMeasurementUid());
     chunkHeadSize += Long.BYTES; // maxTombstoneTime
-    ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
-    ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
+    ChunkHeader header = readChunkHeaderFromOldFile(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
+    ByteBuffer buffer = readChunkFromOldFile(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
     return new Chunk(header, buffer, metaData.getDeletedAt());
   }
@@ -353,7 +344,7 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
    * @param size the size of data that want to read
    * @return data that been read.
    */
-  private ByteBuffer readData(long position, int size) throws IOException {
+  private ByteBuffer readDataFromOldFile(long position, int size) throws IOException {
     ByteBuffer buffer = ByteBuffer.allocate(size);
     if (position < 0) {
       if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) != size) {

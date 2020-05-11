@@ -164,7 +164,7 @@ public class FileReaderManager implements IService {
           : new TsFileSequenceReader(filePath);
 
       if (tsFileReader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
-        return new TsFileSequenceReaderForOldFile(filePath);
+        tsFileReader = new TsFileSequenceReaderForOldFile(filePath);
       }
       readerMap.put(filePath, tsFileReader);
       return tsFileReader;

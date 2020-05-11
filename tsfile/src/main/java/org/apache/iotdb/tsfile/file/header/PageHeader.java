@@ -53,8 +53,7 @@ public class PageHeader {
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
-  public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType)
-      throws IOException {
+  public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
     int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
     int compressedSize = ReadWriteIOUtils.readInt(buffer);
     Statistics statistics = Statistics.deserialize(buffer, dataType);

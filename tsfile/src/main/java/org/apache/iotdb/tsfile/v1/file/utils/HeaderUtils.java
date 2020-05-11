@@ -36,8 +36,11 @@ import org.apache.iotdb.tsfile.v1.file.metadata.statistics.OldStatistics;
 
 public class HeaderUtils {
   
-  public static PageHeader deserializeOldPageHeader(InputStream inputStream, 
-      TSDataType dataType) throws IOException {
+  private HeaderUtils() {
+  }
+  
+  public static PageHeader deserializeOldPageHeader(InputStream inputStream, TSDataType dataType)
+      throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
     int compressedSize = ReadWriteIOUtils.readInt(inputStream);
     int numOfValues = ReadWriteIOUtils.readInt(inputStream);
@@ -49,8 +52,8 @@ public class HeaderUtils {
     return new PageHeader(uncompressedSize, compressedSize, statistics);
   }
 
-  public static PageHeader deserializeOldPageHeader(ByteBuffer buffer, TSDataType dataType, 
-      boolean isOldVersion) throws IOException {
+  public static PageHeader deserializeOldPageHeader(ByteBuffer buffer, TSDataType dataType)
+      throws IOException {
     int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
     int compressedSize = ReadWriteIOUtils.readInt(buffer);
     int numOfValues = ReadWriteIOUtils.readInt(buffer);
@@ -84,9 +87,8 @@ public class HeaderUtils {
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
     // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
     ReadWriteIOUtils.readLong(inputStream);
-    ChunkHeader chunkHeader = new ChunkHeader(measurementID, dataSize, dataType, type, encoding,
+    return new ChunkHeader(measurementID, dataSize, dataType, type, encoding,
         numOfPages);
-    return chunkHeader;
   }
 
   /**
@@ -121,8 +123,6 @@ public class HeaderUtils {
     TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
     // read maxTombstoneTime from old TsFile, has been removed in newer versions of TsFile
     ReadWriteIOUtils.readLong(buffer);
-    ChunkHeader chunkHeader = new ChunkHeader(measurementID, dataSize, dataType, type, encoding,
-        numOfPages);
-    return chunkHeader;
+    return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
   }
 }
