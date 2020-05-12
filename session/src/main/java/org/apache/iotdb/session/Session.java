@@ -200,10 +200,13 @@ public class Session {
         }
         isClosed = true;
         open(enableRPCCompression, connectionTimeoutInMs);
+        flag = true;
+        break;
       } catch (Exception e) {
         try {
           Thread.sleep(RETRY_INTERVAL);
         } catch (InterruptedException e1) {
+          Thread.currentThread().interrupt();
           logger.error("reconnect is interrupted.", e1);
         }
       }
