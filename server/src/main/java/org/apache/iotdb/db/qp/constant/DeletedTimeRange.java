@@ -2,7 +2,6 @@ package org.apache.iotdb.db.qp.constant;
 
 import java.io.DataOutputStream;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -59,16 +58,8 @@ public class DeletedTimeRange {
     return minTime;
   }
 
-  public void setMinTime(long minTime) {
-    this.minTime = minTime;
-  }
-
   public long getMaxTime() {
     return maxTime;
-  }
-
-  public void setMaxTime(long maxTime) {
-    this.maxTime = maxTime;
   }
 
   public Filter getFilter() {
