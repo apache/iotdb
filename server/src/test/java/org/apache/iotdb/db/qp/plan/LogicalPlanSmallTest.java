@@ -295,6 +295,17 @@ public class LogicalPlanSmallTest {
         "For delete command, where clause must be like : time > XXX and time <= XXX",
         errorMsg);
 
+    sql = "delete from root.d1.s1 where time>=1 or time < 3";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(
+        "For delete command, where clause must be like : time > XXX and time <= XXX",
+        errorMsg);
+
     sql = "delete from root.d1.s1 where time<=1 and time > 3";
     errorMsg = null;
     try {
