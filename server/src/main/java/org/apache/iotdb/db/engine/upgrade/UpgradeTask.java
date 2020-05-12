@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.upgrade;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.tools.upgrade.TsfileOnlineUpgradeTool;
@@ -50,10 +51,12 @@ public class UpgradeTask extends WrappedRunnable {
       List<TsFileResource> upgradedResources = generateUpgradedFiles();
       upgradeResource.getWriteQueryLock().writeLock().lock();
       String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
+      String oldModificationFilePath = oldTsfilePath + ModificationFile.FILE_SUFFIX;
       try {
         // delete old TsFile
         upgradeResource.remove();
-        // move upgraded TsFiles to their own partition directories
+        File modificationFile = FSFactoryProducer.getFSFactory().getFile(oldModificationFilePath);
+        // move upgraded TsFiles and modificationFile to their own partition directories
         for (TsFileResource upgradedResource : upgradedResources) {
           File upgradedFile = upgradedResource.getFile();
           long partition = upgradedResource.getTimePartition();
@@ -66,12 +69,22 @@ public class UpgradeTask extends WrappedRunnable {
               FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()));
           upgradedResource.setFile(
               FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()));
+          // copy mods file to partition directories
+          if (modificationFile.exists()) {
+            Files.copy(modificationFile.toPath(), 
+                FSFactoryProducer.getFSFactory().getFile(partitionDir, upgradedFile.getName()
+                    + ModificationFile.FILE_SUFFIX).toPath());
+          }
           upgradedResource.serialize();
           // delete tmp partition folder when it is empty
           if (upgradedFile.getParentFile().isDirectory() 
               && upgradedFile.getParentFile().listFiles().length == 0) {
             Files.delete(upgradedFile.getParentFile().toPath());
           }
+        }
+        // delete old modificationFile 
+        if (modificationFile.exists()) {
+          Files.delete(modificationFile.toPath());
         }
         // delete upgrade folder when it is empty
         if (upgradeResource.getFile().getParentFile().isDirectory()

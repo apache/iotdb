@@ -294,7 +294,7 @@ public class StorageGroupProcessor {
         mergingMods.delete();
       }
 
-      doUpdate();
+      updateLastestFlushedTime();
     } catch (IOException | MetadataException e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -323,7 +323,7 @@ public class StorageGroupProcessor {
    * partitionLatestFlushedTimeForEachDevice and timePartitionIdVersionControllerMap
    *
    */
-  private void doUpdate() throws IOException {
+  private void updateLastestFlushedTime() throws IOException {
 
     VersionController versionController = new SimpleFileVersionController(storageGroupSysDir.getPath());
     long currentVersion = versionController.currVersion();
@@ -396,6 +396,7 @@ public class StorageGroupProcessor {
 
       File[] oldTsfileArray = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TSFILE_SUFFIX);
       File[] oldResourceFileArray = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), TsFileResource.RESOURCE_SUFFIX);
+      File[] oldModificationFileArray = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), ModificationFile.FILE_SUFFIX);
       File upgradeFolder = fsFactory.getFile(fileFolder, IoTDBConstant.UPGRADE_FOLDER_NAME);
       // move the old files to upgrade folder if exists
       if (oldTsfileArray.length != 0 || oldResourceFileArray.length != 0) {
@@ -415,6 +416,12 @@ public class StorageGroupProcessor {
         }
         // move .resource to upgrade folder
         for (File file : oldResourceFileArray) {
+          if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
+            logger.error("Failed to move {} to upgrade folder", file);
+          }
+        }
+        // move .mods to upgrade folder
+        for (File file : oldModificationFileArray) {
           if (!file.renameTo(fsFactory.getFile(upgradeFolder, file.getName()))) {
             logger.error("Failed to move {} to upgrade folder", file);
           }
