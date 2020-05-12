@@ -18,18 +18,6 @@
  */
 package org.apache.iotdb.cli;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.iotdb.exception.ArgsErrorException;
-import org.apache.iotdb.jdbc.IoTDBConnection;
-import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
-import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.tool.ImportCsv;
-import org.apache.thrift.TException;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -43,7 +31,22 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.jdbc.IoTDBConnection;
+import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.tool.ImportCsv;
+import org.apache.thrift.TException;
 
 public abstract class AbstractCli {
 
@@ -577,13 +580,13 @@ public abstract class AbstractCli {
    * @param columnCount       the number of column
    * @param resultSetMetaData jdbc resultSetMetaData
    * @param zoneId            your time zone
-   * @return List<List < String>> result
+   * @return List<List<String>> result
    * @throws SQLException throw exception
    */
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
     List<List<String>> lists = new ArrayList<>(columnCount);
-    if( resultSet instanceof IoTDBJDBCResultSet) {
+    if (resultSet instanceof IoTDBJDBCResultSet) {
       for (int i = 1; i <= columnCount; i++) {
         List<String> list = new ArrayList<>(maxPrintRowCount + 1);
         list.add(resultSetMetaData.getColumnLabel(i));
@@ -591,23 +594,23 @@ public abstract class AbstractCli {
         maxSizeList.add(resultSetMetaData.getColumnLabel(i).length());
       }
     } else {
-      for (int i = 1; i <= columnCount; i+=2) {
+      for (int i = 1; i <= columnCount; i += 2) {
         List<String> timeList = new ArrayList<>(maxPrintRowCount + 1);
         timeList.add(resultSetMetaData.getColumnLabel(i).substring(0, TIMESTAMP_STR.length()));
         lists.add(timeList);
         List<String> valueList = new ArrayList<>(maxPrintRowCount + 1);
-        valueList.add(resultSetMetaData.getColumnLabel(i+1));
+        valueList.add(resultSetMetaData.getColumnLabel(i + 1));
         lists.add(valueList);
         maxSizeList.add(TIMESTAMP_STR.length());
-        maxSizeList.add(resultSetMetaData.getColumnLabel(i+1).length());
+        maxSizeList.add(resultSetMetaData.getColumnLabel(i + 1).length());
       }
     }
     int j = 0;
+    isReachEnd = !resultSet.next();
     if (cursorBeforeFirst) {
-      isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
-    if(resultSet instanceof IoTDBJDBCResultSet) {
+    if (resultSet instanceof IoTDBJDBCResultSet) {
       boolean printTimestamp = !((IoTDBJDBCResultSet) resultSet).isIgnoreTimeStamp();
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
