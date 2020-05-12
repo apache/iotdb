@@ -207,7 +207,7 @@ public class Session {
           Thread.sleep(RETRY_INTERVAL);
         } catch (InterruptedException e1) {
           Thread.currentThread().interrupt();
-          logger.error("reconnect is interrupted.", e1);
+          logger.error("reconnection is interrupted.", e1);
         }
       }
     }
