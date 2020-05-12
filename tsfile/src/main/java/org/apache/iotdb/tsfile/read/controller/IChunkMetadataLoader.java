@@ -29,8 +29,12 @@ public interface IChunkMetadataLoader {
    * read all chunk metadata of one time series in one file.
    */
   List<ChunkMetadata> loadChunkMetadataList() throws IOException;
-  
-  void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList)
-      throws IOException;
+
+  /**
+   * For query v0.9 tsfile only
+   * @param chunkMetadataList
+   * @throws IOException
+   */
+  void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException;
 
 }

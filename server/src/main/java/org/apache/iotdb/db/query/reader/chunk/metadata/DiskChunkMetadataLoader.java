@@ -63,7 +63,15 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
             || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
     return chunkMetadataList;
   }
-  
+
+  /**
+   * For query v0.9 tsfile only
+   * When generate temporary timeseriesMetadata
+   * set DiskChunkLoader to each chunkMetadata in chunkMetadataList
+   * @param chunkMetadataList
+   * @throws IOException
+   */
+  @Override
   public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException {
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
   }
