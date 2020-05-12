@@ -344,14 +344,14 @@ public class SessionExample {
         builder.append("null").append(",");
       }
 
-      // get fifth column
+      // get forth column
       if (!iterator.isNull(4)) {
         builder.append(iterator.getLong(4)).append(",");
       } else {
         builder.append("null").append(",");
       }
 
-      // get sixth column
+      // get fifth column
       if (!iterator.isNull("root.sg1.d1.s4")) {
         builder.append(iterator.getObject("root.sg1.d1.s4"));
       } else {
