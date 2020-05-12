@@ -26,7 +26,6 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
-import org.apache.iotdb.tsfile.v1.read.TsFileSequenceReaderForOldFile;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,23 +159,12 @@ public class FileReaderManager implements IService {
         logger.warn("Query has opened {} files !", readerMap.size());
       }
 
-      TsFileSequenceReader tsFileReader;
-      if (!isClosed) {
-        tsFileReader = new UnClosedTsFileReader(filePath);
-      }
-      else {
-        try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
-          if (reader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
-            tsFileReader = new TsFileSequenceReaderForOldFile(filePath);
-          }
-          else {
-            tsFileReader = new TsFileSequenceReader(filePath);
-          }
+      TsFileSequenceReader tsFileReader = !isClosed ? new UnClosedTsFileReader(filePath)
+          : new TsFileSequenceReader(filePath);
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
+        if (reader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
+          tsFileReader = new TsFileSequenceReader(filePath);
         }
-      }
-
-      if (tsFileReader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
-        tsFileReader = new TsFileSequenceReaderForOldFile(filePath);
       }
       readerMap.put(filePath, tsFileReader);
       return tsFileReader;
