@@ -85,4 +85,9 @@ partitions.tmp
 partitions
 node_identifier
 
+### temporary file of the distributed version ###
 remote/
+
+# gitpod
+.theia/
+

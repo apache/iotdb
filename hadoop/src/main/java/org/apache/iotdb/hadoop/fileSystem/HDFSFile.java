@@ -141,7 +141,7 @@ public class HDFSFile extends File {
   @Override
   public boolean delete() {
     try {
-      return fs.delete(hdfsPath, true);
+      return !fs.exists(hdfsPath) || fs.delete(hdfsPath, true);
     } catch (IOException e) {
       logger.error("Fail to delete file {}. ", hdfsPath.toUri().toString(), e);
       return false;
