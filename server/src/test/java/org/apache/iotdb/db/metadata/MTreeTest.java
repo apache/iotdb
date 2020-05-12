@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -196,6 +197,19 @@ public class MTreeTest {
       assertEquals(2, result.size());
       assertEquals("root.a.d0.s0", result.get(0));
       assertEquals("root.a.d1.s0", result.get(1));
+
+
+      List<Path> result2 = root.getAllTimeseriesPath("root.a.*.s0");
+      assertEquals(2, result2.size());
+      assertEquals("root.a.d0.s0", result2.get(0).getFullPath());
+      assertEquals(null, result2.get(0).getAlias());
+      assertEquals("root.a.d1.s0", result2.get(1).getFullPath());
+      assertEquals(null, result2.get(1).getAlias());
+
+      result2 = root.getAllTimeseriesPath("root.a.*.temperature");
+      assertEquals(2, result2.size());
+      assertEquals("root.a.d0.temperature", result2.get(0).getFullPathWithAlias());
+      assertEquals("root.a.d1.temperature", result2.get(1).getFullPathWithAlias());
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());

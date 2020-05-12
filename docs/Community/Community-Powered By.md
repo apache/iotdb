@@ -31,5 +31,22 @@ A common practice you can take is to create software identifiers (Maven coordina
 ### Companies and Organizations
 To add yourself to the list, please email dev@iotdb.apache.org with your organization name, URL, a list of IoTDB components you are using, and a short description of your use case.
 
+You can also leave the info on [Github](https://github.com/apache/incubator-iotdb/issues/748).
+
 - School of Software (Tsinghua University), and National Engineering Laboratery for Big Data Software  that initially launched IoTDB  
   - We have both graduate students and a team of professional software engineers working on the stack
+  - We use Apache IoTDB in Shanghai Metro and two other cities in China to replace KairosDB.
+  - We use Apache IoTDB in CMA (China Meteorological Administration) for storing 10-years station data. There are about 100 thousand stations.
+
+- Lenovo developed TsFile Go version, and uses it in YOFC (Yangtze Optical Fiber and Cable Company). The system collects data from more than 90 thousand data points, stores them to the TsFile (with Go) as the edge storage and then reads them later to send to the cloud. 
+
+- Goldwind uses Apache IoTDB to manage the wind turbine data. They consume the SCADA data from Kafka, write to IoTDB and use IoTDB to support queries.
+
+- DaTangXianYi deployed IoTDB in many power stations in China.
+ 
+- Beijing ZhiChuangXinKe uses IoTDB to store the battery data of signal towers for China Tower company. There are about 3 million towers.
+
+- Beijing QingZhiWuLian uses IoTDB for electric generator's monitoring. Currently they look forward to the cluster mode of IoTDB.
+
+- JianLongGangTie is testing IoTDB for using it in their applications.
+ 
