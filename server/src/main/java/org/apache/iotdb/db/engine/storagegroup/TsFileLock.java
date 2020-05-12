@@ -44,6 +44,7 @@ public class TsFileLock {
         try {
           this.wait(1);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           // ignore
         }
       }
@@ -67,6 +68,7 @@ public class TsFileLock {
         try {
           this.wait(1);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           // ignore
         }
       }

@@ -144,7 +144,12 @@ public class SerializeUtils {
   public static void deserialize(Node node, DataInputStream stream) throws IOException {
     int ipLength = stream.readInt();
     byte[] ipBytes = new byte[ipLength];
-    stream.read(ipBytes);
+    int readSize = stream.read(ipBytes);
+    if (readSize != ipLength) {
+      throw new IOException(String.format("No sufficient bytes read when deserializing the ip of "
+          + "a "
+          + "node: %d/%d", readSize, ipLength));
+    }
     node.setIp(new String(ipBytes));
     node.setMetaPort(stream.readInt());
     node.setNodeIdentifier(stream.readInt());

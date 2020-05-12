@@ -98,6 +98,8 @@ public class TsFileResource {
 
   private TsFileLock tsFileLock = new TsFileLock();
 
+  private Random random = new Random();
+
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
@@ -582,7 +584,6 @@ public class TsFileResource {
       return null;
     }
 
-    Random random = new Random();
     while (true) {
       String hardlinkSuffix = "." + System.currentTimeMillis() + "_" + random.nextLong();
       File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
