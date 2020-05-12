@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 /**
  * Utils used to prepare source TsFiles for the examples.
  */
-public class TsFlieUtils {
+public class TsFileUtils {
 
 	private static final String DEFAULT_TEMPLATE = "template";
 

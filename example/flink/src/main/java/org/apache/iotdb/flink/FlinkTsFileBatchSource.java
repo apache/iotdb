@@ -41,7 +41,7 @@ public class FlinkTsFileBatchSource {
 
 	public static void main(String[] args) throws Exception {
 		String path = "test.tsfile";
-		TsFlieUtils.writeTsFile(path);
+		TsFileUtils.writeTsFile(path);
 		new File(path).deleteOnExit();
 		String[] filedNames = {
 			QueryConstant.RESERVED_TIME,
