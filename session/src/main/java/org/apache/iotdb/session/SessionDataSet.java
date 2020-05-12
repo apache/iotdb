@@ -66,7 +66,7 @@ public class SessionDataSet {
   }
 
 
-  private RowRecord constructRowRecordFromValueArray() {
+  private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
     List<Field> outFields = new ArrayList<>();
     for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
       Field field;
@@ -74,9 +74,9 @@ public class SessionDataSet {
       int loc =
           ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(i + 1))
               - START_INDEX;
-      byte[] valueBytes = ioTDBRpcDataSet.values[loc];
 
-      if (valueBytes != null) {
+      if (!ioTDBRpcDataSet.isNull(i + START_INDEX)) {
+        byte[] valueBytes = ioTDBRpcDataSet.values[loc];
         TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(loc);
         field = new Field(dataType);
         switch (dataType) {
@@ -144,6 +144,14 @@ public class SessionDataSet {
 
     public boolean next() throws StatementExecutionException, IoTDBConnectionException {
       return ioTDBRpcDataSet.next();
+    }
+
+    public boolean isNull(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.isNull(columnIndex);
+    }
+
+    public boolean isNull(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.isNull(columnName);
     }
 
     public boolean getBoolean(int columnIndex) throws StatementExecutionException {
