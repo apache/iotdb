@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -279,18 +278,16 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    */
   private List<Path> removeStarsInPathWithUnique(List<Path> paths) throws LogicalOptimizeException {
     List<Path> retPaths = new ArrayList<>();
-    LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
+    HashSet<String> pathSet = new HashSet<>();
     try {
       for (Path path : paths) {
-        List<String> all = removeWildcard(path.getFullPath());
-        for (String subPath : all) {
-          if (!pathMap.containsKey(subPath)) {
-            pathMap.put(subPath, 1);
+        List<Path> all = removeWildcard(path.getFullPath());
+        for (Path subPath : all) {
+          if (!pathSet.contains(subPath.getFullPath())) {
+            pathSet.add(subPath.getFullPath());
+            retPaths.add(subPath);
           }
         }
-      }
-      for (String pathStr : pathMap.keySet()) {
-        retPaths.add(new Path(pathStr));
       }
     } catch (MetadataException e) {
       throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
@@ -304,9 +301,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<String> actualPaths = removeWildcard(paths.get(i).getFullPath());
-        for (String actualPath : actualPaths) {
-          retPaths.add(new Path(actualPath));
+        List<Path> actualPaths = removeWildcard(paths.get(i).getFullPath());
+        for (Path actualPath : actualPaths) {
+          retPaths.add(actualPath);
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
             newAggregations.add(afterConcatAggregations.get(i));
           }
@@ -319,7 +316,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     selectOperator.setAggregations(newAggregations);
   }
 
-  protected List<String> removeWildcard(String path) throws MetadataException {
-    return MManager.getInstance().getAllTimeseriesName(path);
+  protected List<Path> removeWildcard(String path) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesPath(path);
   }
 }

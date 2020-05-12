@@ -681,6 +681,20 @@ public class MManager {
     }
   }
 
+  /**
+   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include alias.
+   */
+  public List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesPath(prefixPath);
+    } catch (MetadataException e) {
+      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public List<ShowTimeSeriesResult> getAllTimeseriesSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();

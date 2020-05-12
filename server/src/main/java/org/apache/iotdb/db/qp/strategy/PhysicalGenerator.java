@@ -183,7 +183,7 @@ public class PhysicalGenerator {
             insert.getMeasurementList(),
             insert.getValueList());
       case MERGE:
-        if(operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
+        if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
           return new MergePlan(OperatorType.FULL_MERGE);
         } else {
           return new MergePlan();
@@ -398,16 +398,14 @@ public class PhysicalGenerator {
 
             String aggregation =
                 originAggregations != null && !originAggregations.isEmpty()
-                    ? originAggregations.get(i)
-                    : null;
+                    ? originAggregations.get(i) : null;
             List<TSDataType> dataTypes = getSeriesTypes(actualPaths, aggregation);
             for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
               Path path = new Path(actualPaths.get(pathIdx));
 
               // check datatype consistency
-              // a example of inconsistency: select s0 from root.sg1.d1, root.sg2.d3 align by
-              // device,
-              // while root.sg1.d1.s0 is INT32 and root.sg2.d3.s0 is FLOAT.
+              // a example of inconsistency: select s0 from root.sg1.d1, root.sg1.d2 align by device,
+              // while root.sg1.d1.s0 is INT32 and root.sg1.d2.s0 is FLOAT.
               String measurementChecked;
               if (originAggregations != null && !originAggregations.isEmpty()) {
                 measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
@@ -592,7 +590,12 @@ public class PhysicalGenerator {
     if (queryPlan instanceof LastQueryPlan) {
       for (int i = 0; i < paths.size(); i++) {
         Path path = paths.get(i);
-        String column = path.toString();
+        String column;
+        if (path.getAlias() != null) {
+          column = path.getFullPathWithAlias();
+        } else {
+          column = path.toString();
+        }
         if (!columnSet.contains(column)) {
           TSDataType seriesType = dataTypes.get(i);
           rawDataQueryPlan.addDeduplicatedPaths(path);
@@ -613,10 +616,13 @@ public class PhysicalGenerator {
     int index = 0;
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
       String column;
-      if (queryPlan instanceof AggregationPlan) {
-        column = queryPlan.getAggregations().get(indexedPath.right) + "(" + indexedPath.left.toString() + ")";
+      if (indexedPath.left.getAlias() != null) {
+        column = indexedPath.left.getFullPathWithAlias();
       } else {
         column = indexedPath.left.toString();
+      }
+      if (queryPlan instanceof AggregationPlan) {
+        column = queryPlan.getAggregations().get(indexedPath.right) + "(" + column + ")";
       }
       if (!columnSet.contains(column)) {
         TSDataType seriesType = dataTypes.get(indexedPath.right);
@@ -624,7 +630,7 @@ public class PhysicalGenerator {
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
         columnSet.add(column);
         rawDataQueryPlan.addPathToIndex(column, index++);
-        if (queryPlan instanceof AggregationPlan){
+        if (queryPlan instanceof AggregationPlan) {
           ((AggregationPlan) queryPlan)
               .addDeduplicatedAggregations(queryPlan.getAggregations().get(indexedPath.right));
         }
