@@ -843,7 +843,7 @@ public class PlanExecutor implements IPlanExecutor {
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getStorageGroupName(path.getFullPath());
-      StorageEngine.getInstance().delete(deviceId, measurementId, plan);
+      StorageEngine.getInstance().delete(deviceId, measurementId, plan.getTimeFilter());
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
@@ -1165,7 +1165,7 @@ public class PlanExecutor implements IPlanExecutor {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);
-      deletePlan.setTimeFilter(null);
+      deletePlan.setDeletedTimeRange(null);
       processNonQuery(deletePlan);
     }
   }

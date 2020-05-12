@@ -55,6 +55,7 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.constant.DeletedTimeRange;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -117,9 +118,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.thrift.TException;
 import org.apache.thrift.server.ServerContext;
@@ -1135,13 +1133,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     DeletePlan plan = new DeletePlan();
-    Filter timeFilter;
+    long minTime = Long.MIN_VALUE;
     if (req.isSetMinTime()) {
-      timeFilter = new AndFilter(TimeFilter.gtEq(req.minTime), TimeFilter.ltEq(req.maxTime));
-    } else {
-      timeFilter = TimeFilter.ltEq(req.maxTime);
+      minTime = req.minTime;
     }
-    plan.setTimeFilter(timeFilter);
+    DeletedTimeRange deletedTimeRange = new DeletedTimeRange(minTime, req.maxTime);
+    plan.setDeletedTimeRange(deletedTimeRange);
     List<Path> paths = new ArrayList<>();
     for (String path : req.getPaths()) {
       paths.add(new Path(path));

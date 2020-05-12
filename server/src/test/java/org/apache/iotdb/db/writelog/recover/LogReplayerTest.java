@@ -110,8 +110,8 @@ public class LogReplayerTest {
       for (int i = 1; i < 5; i++) {
         node.write(new InsertPlan("root.sg.device" + i, i, "sensor" + i, String.valueOf(i)));
       }
-      DeletePlan deletePlan = new DeletePlan(200, new Path("root.sg.device0", "sensor0"));
-      node.write(deletePlan);
+//      DeletePlan deletePlan = new DeletePlan(200, new Path("root.sg.device0", "sensor0"));
+//      node.write(deletePlan);
       node.close();
 
       replayer.replayLogs();

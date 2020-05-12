@@ -358,21 +358,21 @@ public class StatMonitor implements IService {
 
     public void cleanOutDated() {
       long currentTimeMillis = System.currentTimeMillis();
-      try {
-        StorageEngine fManager = StorageEngine.getInstance();
-        for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
-          for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
-            if (temporaryStatList.contains(statParamName)) {
-              fManager.delete(entry.getKey(), statParamName,
-                  currentTimeMillis - statMonitorRetainIntervalSec * 1000);
-            }
-          }
-        }
-      } catch (StorageEngineException e) {
-        logger
-            .error("Error occurred when deleting statistics information periodically, because",
-                e);
-      }
+//      try {
+//        StorageEngine fManager = StorageEngine.getInstance();
+//        for (Map.Entry<String, IStatistic> entry : statisticMap.entrySet()) {
+//          for (String statParamName : entry.getValue().getStatParamsHashMap().keySet()) {
+//            if (temporaryStatList.contains(statParamName)) {
+//              fManager.delete(entry.getKey(), statParamName,
+//                  currentTimeMillis - statMonitorRetainIntervalSec * 1000);
+//            }
+//          }
+//        }
+//      } catch (StorageEngineException e) {
+//        logger
+//            .error("Error occurred when deleting statistics information periodically, because",
+//                e);
+//      }
     }
 
     public void insert(Map<String, TSRecord> tsRecordHashMap) {

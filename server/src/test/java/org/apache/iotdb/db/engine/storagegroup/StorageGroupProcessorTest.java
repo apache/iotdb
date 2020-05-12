@@ -107,7 +107,7 @@ public class StorageGroupProcessorTest {
       processor.insert(new InsertPlan(record));
     }
 
-    processor.delete(deviceId, measurementId, 15L);
+//    processor.delete(deviceId, measurementId, 15L);
 
     Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {

@@ -91,12 +91,12 @@ public class PerformanceTest {
               new String[]{"1.0", "15", "str", "false"});
           UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
               new Path("root.logTestDevice.s1"));
-          DeletePlan deletePlan = new DeletePlan(50,
-              new Path("root.logTestDevice.s1"));
+//          DeletePlan deletePlan = new DeletePlan(50,
+//              new Path("root.logTestDevice.s1"));
 
           logNode.write(bwInsertPlan);
           logNode.write(updatePlan);
-          logNode.write(deletePlan);
+//          logNode.write(deletePlan);
         }
         logNode.forceSync();
 
@@ -150,11 +150,11 @@ public class PerformanceTest {
           new String[]{"s1", "s2", "s3", "s4"}, new String[]{"1.0", "15", "str", "false"});
       UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
           new Path("root.logTestDevice.s1"));
-      DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+//      DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
       logNode.write(bwInsertPlan);
       logNode.write(updatePlan);
-      logNode.write(deletePlan);
+//      logNode.write(deletePlan);
     }
     try {
       logNode.forceSync();

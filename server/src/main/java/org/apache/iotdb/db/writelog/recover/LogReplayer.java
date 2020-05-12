@@ -117,9 +117,9 @@ public class LogReplayer {
   private void replayDelete(DeletePlan deletePlan) throws IOException {
     List<Path> paths = deletePlan.getPaths();
     for (Path path : paths) {
-      recoverMemTable.delete(path.getDevice(), path.getMeasurement(), deletePlan.getTimeFilter());
-      modFile
-          .write(new Deletion(path, versionController.nextVersion(), deletePlan.getTimeFilter()));
+//      recoverMemTable.delete(path.getDevice(), path.getMeasurement(), deletePlan.getTimeFilter());
+//      modFile
+//          .write(new Deletion(path, versionController.nextVersion(), deletePlan.getTimeFilter()));
     }
   }
 

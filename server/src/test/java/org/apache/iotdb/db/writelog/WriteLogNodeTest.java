@@ -67,10 +67,10 @@ public class WriteLogNodeTest {
     InsertPlan bwInsertPlan = new InsertPlan(identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
+//    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
-    logNode.write(deletePlan);
+//    logNode.write(deletePlan);
 
     logNode.close();
 
@@ -80,7 +80,7 @@ public class WriteLogNodeTest {
 
     ILogReader reader = logNode.getLogReader();
     assertEquals(bwInsertPlan, reader.next());
-    assertEquals(deletePlan, reader.next());
+//    assertEquals(deletePlan, reader.next());
     reader.close();
 
     logNode.delete();
@@ -97,21 +97,21 @@ public class WriteLogNodeTest {
     InsertPlan bwInsertPlan = new InsertPlan(identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
+//    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
     logNode.notifyStartFlush();
-    logNode.write(deletePlan);
+//    logNode.write(deletePlan);
     logNode.notifyStartFlush();
 
     ILogReader logReader = logNode.getLogReader();
     assertEquals(bwInsertPlan, logReader.next());
-    assertEquals(deletePlan, logReader.next());
+//    assertEquals(deletePlan, logReader.next());
     logReader.close();
 
     logNode.notifyEndFlush();
     logReader = logNode.getLogReader();
-    assertEquals(deletePlan, logReader.next());
+//    assertEquals(deletePlan, logReader.next());
     logReader.close();
 
     logNode.notifyEndFlush();
@@ -133,7 +133,7 @@ public class WriteLogNodeTest {
     InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+//    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
 
@@ -141,7 +141,7 @@ public class WriteLogNodeTest {
         config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertTrue(!walFile.exists());
 
-    logNode.write(deletePlan);
+//    logNode.write(deletePlan);
     assertTrue(walFile.exists());
 
     logNode.delete();
@@ -158,10 +158,10 @@ public class WriteLogNodeTest {
     InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+//    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
-    logNode.write(deletePlan);
+//    logNode.write(deletePlan);
 
     logNode.forceSync();
 

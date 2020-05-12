@@ -25,12 +25,14 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.constant.DeletedTimeRange;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -239,4 +241,67 @@ public class LogicalPlanSmallTest {
   }
 
 
+  @Test
+  public void testRangeDelete() {
+    String sql = "delete from root.d1.s1 where time>=1 and time < 3";
+    Operator op = parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(DeleteDataOperator.class, op.getClass());
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("root.d1.s1"));
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    DeletedTimeRange deletedTimeRange = new DeletedTimeRange(1, 2);
+    Assert.assertEquals(deletedTimeRange.getFilter(),
+        ((DeleteDataOperator) op).getDeletedTimeRange().getFilter());
+
+    String sql1 = "delete from root.d1.s1 where time>=1";
+    op = parseDriver.parse(sql1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    deletedTimeRange = new DeletedTimeRange(1, Long.MAX_VALUE);
+    Assert.assertEquals(deletedTimeRange.getFilter(),
+        ((DeleteDataOperator) op).getDeletedTimeRange().getFilter());
+
+    String sql2 = "delete from root.d1.s1 where time>1";
+    op = parseDriver.parse(sql2, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    deletedTimeRange = new DeletedTimeRange(2, Long.MAX_VALUE);
+    Assert.assertEquals(deletedTimeRange.getFilter(),
+        ((DeleteDataOperator) op).getDeletedTimeRange().getFilter());
+
+    String sql3 = "delete from root.d1.s1 where time <= 1";
+    op = parseDriver.parse(sql3, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    deletedTimeRange = new DeletedTimeRange(Long.MIN_VALUE, 1);
+    Assert.assertEquals("[time <= 1] error", deletedTimeRange.getFilter(),
+        ((DeleteDataOperator) op).getDeletedTimeRange().getFilter());
+
+    String sql4 = "delete from root.d1.s1 where time<1";
+    op = parseDriver.parse(sql4, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    deletedTimeRange = new DeletedTimeRange(Long.MIN_VALUE, 0);
+    Assert.assertEquals(deletedTimeRange.getFilter(),
+        ((DeleteDataOperator) op).getDeletedTimeRange().getFilter());
+  }
+
+  @Test
+  public void testErrorDeleteRange() {
+    String sql = "delete from root.d1.s1 where time>=1 and time < 3 or time >1";
+    String errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(
+        "For delete command, where clause must be like : time > XXX and time <= XXX",
+        errorMsg);
+
+    sql = "delete from root.d1.s1 where time<=1 and time > 3";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals("Unreachable deleted time interval", errorMsg);
+  }
 }

@@ -63,14 +63,18 @@ public class PhysicalPlanTest {
   public void before() throws MetadataException {
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup("root.vehicle");
-    MManager.getInstance().createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance()
+        .createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance()
+        .createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance()
+        .createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    MManager.getInstance()
+        .createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
   }
 
   @After
@@ -84,7 +88,9 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+    assertEquals(
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        plan.toString());
   }
 
   @Test
@@ -92,7 +98,9 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+    assertEquals(
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        plan.toString());
   }
 
   @Test
@@ -101,7 +109,9 @@ public class PhysicalPlanTest {
     System.out.println(metadata.length());
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+    assertEquals(
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        plan.toString());
   }
 
   @Test
@@ -232,8 +242,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill1() {
     String sqlStr =
-            "select last_value(s1) " + " from root.vehicle.d1 "
-                    + "group by([8,737), 3ms) fill(int32[previous])";
+        "select last_value(s1) " + " from root.vehicle.d1 "
+            + "group by([8,737), 3ms) fill(int32[previous])";
     try {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
       if (!plan.isQuery()) {
@@ -250,7 +260,8 @@ public class PhysicalPlanTest {
       assertEquals(1, groupByFillPlan.getFillType().size());
       assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT32));
       assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT32) instanceof PreviousFill);
-      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
+      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType()
+          .get(TSDataType.INT32);
       assertFalse(previousFill.isUntilLast());
     } catch (Exception e) {
       e.printStackTrace();
@@ -261,8 +272,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill2() {
     String sqlStr =
-            "select last_value(s1) " + " from root.vehicle.d1 "
-                    + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
+        "select last_value(s1) " + " from root.vehicle.d1 "
+            + "group by([8,737), 3ms) fill(ALL[previousuntillast])";
     try {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
       if (!plan.isQuery()) {
@@ -292,8 +303,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill3() {
     String sqlStr =
-            "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
-                    + "group by([8,737), 3ms) fill(int32[previousuntillast], int64[previous])";
+        "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+            + "group by([8,737), 3ms) fill(int32[previousuntillast], int64[previous])";
     try {
       PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
       if (!plan.isQuery()) {
@@ -312,7 +323,8 @@ public class PhysicalPlanTest {
 
       assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT32));
       assertTrue(groupByFillPlan.getFillType().get(TSDataType.INT32) instanceof PreviousFill);
-      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType().get(TSDataType.INT32);
+      PreviousFill previousFill = (PreviousFill) groupByFillPlan.getFillType()
+          .get(TSDataType.INT32);
       assertTrue(previousFill.isUntilLast());
 
       assertTrue(groupByFillPlan.getFillType().containsKey(TSDataType.INT64));
@@ -328,8 +340,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill4() {
     String sqlStr =
-            "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
-                    + "group by([8,737), 3ms) fill(int32[linear])";
+        "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+            + "group by([8,737), 3ms) fill(int32[linear])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
@@ -344,8 +356,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill5() {
     String sqlStr =
-            "select last_value(d1.s1), count(d2.s1)" + " from root.vehicle "
-                    + "group by([8,737), 3ms) fill(int32[previous])";
+        "select last_value(d1.s1), count(d2.s1)" + " from root.vehicle "
+            + "group by([8,737), 3ms) fill(int32[previous])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
@@ -360,8 +372,8 @@ public class PhysicalPlanTest {
   @Test
   public void testGroupByFill6() {
     String sqlStr =
-            "select count(s1)" + "from root.vehicle.d1 "
-                    + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
+        "select count(s1)" + "from root.vehicle.d1 "
+            + "group by([8,737), 3ms, 5ms) fill(int32[previous])";
     try {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
@@ -795,5 +807,10 @@ public class PhysicalPlanTest {
     for (TSDataType dt : ((LastQueryPlan) plan2).getDataTypes()) {
       assertEquals(TSDataType.FLOAT, dt);
     }
+  }
+
+  @Test
+  public void testTimeRangeDelete() {
+    
   }
 }

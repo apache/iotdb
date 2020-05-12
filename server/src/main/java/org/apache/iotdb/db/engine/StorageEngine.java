@@ -56,6 +56,7 @@ import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.qp.constant.DeletedTimeRange;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -334,11 +335,11 @@ public class StorageEngine implements IService {
   /**
    * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
-  public void delete(String deviceId, String measurementId, DeletePlan plan)
+  public void delete(String deviceId, String measurementId, DeletedTimeRange dtr)
       throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
-      storageGroupProcessor.delete(deviceId, measurementId, plan);
+      storageGroupProcessor.delete(deviceId, measurementId, dtr);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }

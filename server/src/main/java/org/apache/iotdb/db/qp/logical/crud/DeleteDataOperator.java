@@ -18,44 +18,26 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.qp.constant.DeletedTimeRange;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 /**
  * this class extends {@code RootOperator} and process delete statement.
  */
 public class DeleteDataOperator extends SFWOperator {
 
-  private Filter timeFilter;
-  private long minTime = Long.MIN_VALUE;
-  private long maxTime = Long.MAX_VALUE;
+  private DeletedTimeRange deletedTimeRange;
 
   public DeleteDataOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.DELETE;
   }
 
-  public Filter getTimeFilter() {
-    return timeFilter;
+  public DeletedTimeRange getDeletedTimeRange() {
+    return deletedTimeRange;
   }
 
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
-  }
-
-  public long getMinTime() {
-    return minTime;
-  }
-
-  public void setMinTime(long minTime) {
-    this.minTime = minTime;
-  }
-
-  public long getMaxTime() {
-    return maxTime;
-  }
-
-  public void setMaxTime(long maxTime) {
-    this.maxTime = maxTime;
+  public void setDeletedTimeRange(DeletedTimeRange deletedTimeRange) {
+    this.deletedTimeRange = deletedTimeRange;
   }
 }

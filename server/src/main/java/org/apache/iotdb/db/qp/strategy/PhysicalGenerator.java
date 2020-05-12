@@ -169,7 +169,7 @@ public class PhysicalGenerator {
       case DELETE:
         DeleteDataOperator delete = (DeleteDataOperator) operator;
         paths = delete.getSelectedPaths();
-        return new DeletePlan(delete.getTimeFilter(), paths);
+        return new DeletePlan(delete.getDeletedTimeRange(), paths);
       case INSERT:
         InsertOperator insert = (InsertOperator) operator;
         paths = insert.getSelectedPaths();

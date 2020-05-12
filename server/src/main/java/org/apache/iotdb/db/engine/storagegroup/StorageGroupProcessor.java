@@ -48,6 +48,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.qp.constant.DeletedTimeRange;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -1141,7 +1142,7 @@ public class StorageGroupProcessor {
    * @param measurementId the measurementId of the timeseries to be deleted.
    * @param timestamp     the delete range is (0, timestamp].
    */
-  public void delete(String deviceId, String measurementId, DeletePlan plan) throws IOException {
+  public void delete(String deviceId, String measurementId, DeletedTimeRange dtr) throws IOException {
     // TODO: how to avoid partial deletion?
     //FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1167,24 +1168,25 @@ public class StorageGroupProcessor {
       }
 
       // time partition to divide storage group
-      long maxTP = StorageEngine.getTimePartition(plan.getMaxTime());
-      long minTP = plan.getMinTime() == Long.MIN_VALUE ? 0
-          : StorageEngine.getTimePartition(plan.getMinTime());
-
-      Path fullPath = new Path(deviceId, measurementId);
-
-      for (long timePartitionId = minTP; timePartitionId < maxTP; timePartitionId++) {
-        // write log to impacted working TsFileProcessors
-        logDeletion(plan.getTimeFilter(), deviceId, measurementId, timePartitionId);
-        Deletion deletion = new Deletion(fullPath,
-            getVersionControllerByTimePartitionId(timePartitionId).nextVersion(), timePartitionId);
-        if (mergingModification != null) {
-          mergingModification.write(deletion);
-          updatedModFiles.add(mergingModification);
-        }
-        deleteDataInFiles(sequenceFileTreeSet, deletion, updatedModFiles);
-        deleteDataInFiles(unSequenceFileList, deletion, updatedModFiles);
-      }
+//      DeletedTimeRange timeFilter = plan.getTimeFilter();
+//      long maxTP = StorageEngine.getTimePartition(timeFilter.getMaxTime());
+//      long minTP = timeFilter.getMinTime() == Long.MIN_VALUE ? 0
+//          : StorageEngine.getTimePartition(timeFilter.getMinTime());
+//
+//      Path fullPath = new Path(deviceId, measurementId);
+//
+//      for (long timePartitionId = minTP; timePartitionId < maxTP; timePartitionId++) {
+//        // write log to impacted working TsFileProcessors
+////        logDeletion(plan.getTimeFilter(), deviceId, measurementId, timePartitionId);
+//        Deletion deletion = new Deletion(fullPath,
+//            getVersionControllerByTimePartitionId(timePartitionId).nextVersion(), timePartitionId);
+//        if (mergingModification != null) {
+//          mergingModification.write(deletion);
+//          updatedModFiles.add(mergingModification);
+//        }
+//        deleteDataInFiles(sequenceFileTreeSet, deletion, updatedModFiles);
+//        deleteDataInFiles(unSequenceFileList, deletion, updatedModFiles);
+//      }
     } catch (Exception e) {
       // roll back
       for (ModificationFile modFile : updatedModFiles) {
@@ -1201,16 +1203,16 @@ public class StorageGroupProcessor {
       long timePartitionId)
       throws IOException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      DeletePlan deletionPlan = new DeletePlan(timeFilter, new Path(deviceId, measurementId));
+//      DeletePlan deletionPlan = new DeletePlan(timeFilter, new Path(deviceId, measurementId));
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
         if (entry.getKey() <= timePartitionId) {
-          entry.getValue().getLogNode().write(deletionPlan);
+//          entry.getValue().getLogNode().write(deletionPlan);
         }
       }
 
       for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
         if (entry.getKey() <= timePartitionId) {
-          entry.getValue().getLogNode().write(deletionPlan);
+//          entry.getValue().getLogNode().write(deletionPlan);
         }
       }
     }

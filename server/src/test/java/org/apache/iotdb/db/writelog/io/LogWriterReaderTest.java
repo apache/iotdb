@@ -48,10 +48,10 @@ public class LogWriterReaderTest {
         new String[]{"1", "2"});
     InsertPlan insertPlan2 = new InsertPlan("d1", 10L, new String[]{"s1", "s2"},
         new String[]{"1", "2"});
-    DeletePlan deletePlan = new DeletePlan(10L, new Path("root.d1.s1"));
+//    DeletePlan deletePlan = new DeletePlan(10L, new Path("root.d1.s1"));
     plans.add(insertPlan1);
     plans.add(insertPlan2);
-    plans.add(deletePlan);
+//    plans.add(deletePlan);
     for (PhysicalPlan plan : plans) {
       plan.serializeTo(logsBuffer);
     }

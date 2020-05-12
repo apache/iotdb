@@ -24,17 +24,14 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.qp.constant.DeletedTimeRange;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 
 public class DeletePlan extends PhysicalPlan {
 
-  private Filter timeFilter;
-  private long minTime = Long.MIN_VALUE;
-  private long maxTime = Long.MAX_VALUE;
+  private DeletedTimeRange deletedTimeRange;
   private List<Path> paths = new ArrayList<>();
 
   public DeletePlan() {
@@ -44,13 +41,13 @@ public class DeletePlan extends PhysicalPlan {
   /**
    * constructor of DeletePlan with single path.
    *
-   * @param timeFilter delete time (data range to be deleted in the timeseries whose time is <=
+   * @param timeRange delete time (data range to be deleted in the timeseries whose time is <=
    *                   deleteTime and time is >= deleteTime</=>)
    * @param path       time series path
    */
-  public DeletePlan(Filter timeFilter, Path path) {
+  public DeletePlan(DeletedTimeRange timeRange, Path path) {
     super(false, Operator.OperatorType.DELETE);
-    this.timeFilter = timeFilter;
+    this.deletedTimeRange = timeRange;
     this.paths.add(path);
   }
 
@@ -61,18 +58,18 @@ public class DeletePlan extends PhysicalPlan {
    *                   deleteTime)
    * @param paths      time series paths in List structure
    */
-  public DeletePlan(Filter deleteTime, List<Path> paths) {
+  public DeletePlan(DeletedTimeRange deleteTime, List<Path> paths) {
     super(false, Operator.OperatorType.DELETE);
-    this.timeFilter = deleteTime;
+    this.deletedTimeRange = deleteTime;
     this.paths = paths;
   }
 
-  public Filter getTimeFilter() {
-    return timeFilter;
+  public DeletedTimeRange getTimeFilter() {
+    return deletedTimeRange;
   }
 
-  public void setTimeFilter(Filter timeFilter) {
-    this.timeFilter = timeFilter;
+  public void setDeletedTimeRange(DeletedTimeRange timeFilter) {
+    this.deletedTimeRange = timeFilter;
   }
 
   public void addPath(Path path) {
@@ -94,7 +91,7 @@ public class DeletePlan extends PhysicalPlan {
 
   @Override
   public int hashCode() {
-    return Objects.hash(timeFilter, paths);
+    return Objects.hash(deletedTimeRange, paths);
   }
 
   @Override
@@ -106,14 +103,14 @@ public class DeletePlan extends PhysicalPlan {
       return false;
     }
     DeletePlan that = (DeletePlan) o;
-    return timeFilter == that.timeFilter && Objects.equals(paths, that.paths);
+    return deletedTimeRange == that.deletedTimeRange && Objects.equals(paths, that.paths);
   }
 
   @Override
   public void serializeTo(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.DELETE.ordinal();
     stream.writeByte((byte) type);
-    timeFilter.serialize(stream);
+    deletedTimeRange.serialize(stream);
     putString(stream, paths.get(0).getFullPath());
   }
 
@@ -121,30 +118,14 @@ public class DeletePlan extends PhysicalPlan {
   public void serializeTo(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE.ordinal();
     buffer.put((byte) type);
-    timeFilter.serialize(buffer);
+    deletedTimeRange.serialize(buffer);
     putString(buffer, paths.get(0).getFullPath());
   }
 
   @Override
   public void deserializeFrom(ByteBuffer buffer) {
-    this.timeFilter = FilterFactory.deserialize(buffer);
+    this.deletedTimeRange = DeletedTimeRange.deserialize(buffer);
     this.paths = new ArrayList();
     this.paths.add(new Path(readString(buffer)));
-  }
-
-  public long getMinTime() {
-    return minTime;
-  }
-
-  public void setMinTime(long minTime) {
-    this.minTime = minTime;
-  }
-
-  public long getMaxTime() {
-    return maxTime;
-  }
-
-  public void setMaxTime(long maxTime) {
-    this.maxTime = maxTime;
   }
 }
