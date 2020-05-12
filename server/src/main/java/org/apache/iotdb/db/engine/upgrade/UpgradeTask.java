@@ -22,7 +22,7 @@ import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.UpgradeSevice;
-import org.apache.iotdb.db.tools.upgrade.TsfileOnlineUpgradeTool;
+import org.apache.iotdb.db.tools.upgrade.TsFileOnlineUpgradeTool;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
@@ -116,7 +116,7 @@ public class UpgradeTask extends WrappedRunnable {
     UpgradeLog.writeUpgradeLogFile(
         oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.BEGIN_UPGRADE_FILE);
     try {
-      TsfileOnlineUpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedResources);
+      TsFileOnlineUpgradeTool.upgradeOneTsfile(oldTsfilePath, upgradedResources);
       UpgradeLog.writeUpgradeLogFile(
           oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.AFTER_UPGRADE_FILE);
     } catch (IOException e) {
