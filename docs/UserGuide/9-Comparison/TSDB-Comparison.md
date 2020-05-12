@@ -88,7 +88,7 @@ Legend:
 
 **Details**
 
-* OpenSOurce:  
+* OpenSource:  
  
   * IoTDB uses Apache License 2.0 and it is in Apache incubator. 
   * InfluxDB uses MIT license. However, **the cluster version is not open sourced**.
@@ -154,8 +154,8 @@ Legend:
     |    2      | generated energy  |    13.3    |
     |    3      | generated energy  |    13.1    |      
   
- Though the second table format does not algin data by the time dimension, but it is easy to be implemented in the client-side,
- by justing scanning data row by row.
+ Though the second table format does not align data by the time dimension, but it is easy to be implemented in the client-side,
+ by just scanning data row by row.
  
  IoTDB supports the first table format (called align by time), InfluxDB supports the second table format.
 
@@ -176,7 +176,7 @@ Legend:
 * Fill:
 
   Sometimes we thought the data is collected in some fixed frequency, e.g., 1Hz (1 point per second). 
-  But usually, we may lost some data points, because the network is unstalbe, the machine is busy, or the machine is down for several minutes.
+  But usually, we may lost some data points, because the network is unstable, the machine is busy, or the machine is down for several minutes.
   
   In this case, filling these holes is important. Data scientists can avoid to many so called dirty work, e.g., data clean.
   
@@ -195,7 +195,7 @@ Legend:
   Therefore, a query to return the latest value of a time series is very important.
   IoTDB and OpenTSDB support that with a special SQL or API,
   while InfluxDB supports that using an aggregation function.
-  (the reason why IoTDB porvides a special SQL is IoTDB optimizes the query expressly.)
+  (the reason why IoTDB provides a special SQL is IoTDB optimizes the query expressly.)
   
    
   
@@ -222,6 +222,7 @@ I listed some interesting features that these systems may differ.
 | Spark integration           | **O**                           | x          | x          | x          | x           | 
 | Hive integration            | **O**                           | x          | x          | x          | x           |
 | Writing data to NFS (HDFS)  | **O**                           | x          | o          | x          | x           |
+| Flink integration           | **O**                           | x          | x          | x          | x           |
 
 
 * Align by time: have been introduced. Let's skip it..
@@ -251,11 +252,11 @@ I listed some interesting features that these systems may differ.
   
 * JDBC driver:
 
-  Now only IoTDB supports a JDBC driver (though not all interfaces are implemented), and makes it possible to integrate many other JDBC drvier based softwares.
+  Now only IoTDB supports a JDBC driver (though not all interfaces are implemented), and makes it possible to integrate many other JDBC driver based softwares.
 
 * Standard SQL:
 
-  As mentioned, the integration of IoTDB and Calcite is alomost done (a PR has been submitted), which means IoTDB will support Standard SQL.
+  As mentioned, the integration of IoTDB and Calcite is almost done (a PR has been submitted), which means IoTDB will support Standard SQL.
   
 * Spark and Hive integration:
 
@@ -381,20 +382,3 @@ If you are considering to find a TSDB for your IIoT application, then Apache IoT
 
 We will update this page once we release new version and finish the experiments.
 We also welcome more contributors correct this article and contribute IoTDB and reproduce experiments.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
