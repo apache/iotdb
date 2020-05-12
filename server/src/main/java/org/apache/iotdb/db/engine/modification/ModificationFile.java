@@ -48,6 +48,7 @@ public class ModificationFile implements AutoCloseable {
   private ModificationWriter writer;
   private ModificationReader reader;
   private String filePath;
+  private Random random = new Random();
 
   /**
    * Construct a ModificationFile using a file as its storage.
@@ -147,7 +148,6 @@ public class ModificationFile implements AutoCloseable {
       return null;
     }
 
-    Random random = new Random();
     while (true) {
       String hardlinkSuffix = "." + System.currentTimeMillis() + "_" + random.nextLong();
       File hardlink = new File(filePath + hardlinkSuffix);

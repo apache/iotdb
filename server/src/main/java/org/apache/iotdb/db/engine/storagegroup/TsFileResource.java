@@ -116,6 +116,8 @@ public class TsFileResource {
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
+  private Random random = new Random();
+
   public TsFileResource() {
   }
 
@@ -582,7 +584,6 @@ public class TsFileResource {
       return null;
     }
 
-    Random random = new Random();
     while (true) {
       String hardlinkSuffix = "." + System.currentTimeMillis() + "_" + random.nextLong();
       File hardlink = new File(file.getAbsolutePath() + hardlinkSuffix);
@@ -604,7 +605,7 @@ public class TsFileResource {
     return newResource;
   }
 
-  public void setModFile(ModificationFile modFile) {
+  public synchronized void setModFile(ModificationFile modFile) {
     this.modFile = modFile;
   }
 
