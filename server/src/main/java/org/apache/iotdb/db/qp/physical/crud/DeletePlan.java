@@ -64,7 +64,7 @@ public class DeletePlan extends PhysicalPlan {
     this.paths = paths;
   }
 
-  public DeletedTimeRange getTimeFilter() {
+  public DeletedTimeRange getDeleteTimeRange() {
     return deletedTimeRange;
   }
 

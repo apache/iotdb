@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+import java.util.Arrays;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -25,6 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.constant.DeletedTimeRange;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
@@ -810,7 +812,13 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testTimeRangeDelete() {
-    
+  public void testTimeRangeDelete() throws QueryProcessException {
+    String sqlStr1 = "DELETE FROM root.vehicle.d1 where time >= 1 and time <= 2";
+
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr1);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals(plan.getPaths(), Arrays.asList(new Path("root.vehicle.d1")));
+    Assert.assertEquals(((DeletePlan) plan).getDeleteTimeRange().getFilter(),
+        new DeletedTimeRange(1, 2).getFilter());
   }
 }
