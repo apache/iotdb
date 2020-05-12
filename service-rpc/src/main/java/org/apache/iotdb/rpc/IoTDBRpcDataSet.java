@@ -247,6 +247,24 @@ public class IoTDBRpcDataSet {
     hasCachedRecord = true;
   }
 
+  public boolean isNull(int columnIndex) throws StatementExecutionException {
+    int index = columnOrdinalMap.get(findColumnNameByIndex(columnIndex)) - START_INDEX;
+    // time column will never be null
+    if (index < 0) {
+      return true;
+    }
+    return isNull(index, rowsIndex - 1);
+  }
+
+  public boolean isNull(String columnName) throws StatementExecutionException {
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    // time column will never be null
+    if (index < 0) {
+      return true;
+    }
+    return isNull(index, rowsIndex - 1);
+  }
+
   private boolean isNull(int index, int rowNum) {
     byte bitmap = currentBitmap[index];
     int shift = rowNum % 8;
@@ -260,7 +278,7 @@ public class IoTDBRpcDataSet {
   public boolean getBoolean(String columnName) throws StatementExecutionException {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1)) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToBool(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -274,7 +292,7 @@ public class IoTDBRpcDataSet {
   public double getDouble(String columnName) throws StatementExecutionException {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1)) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToDouble(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -288,7 +306,7 @@ public class IoTDBRpcDataSet {
   public float getFloat(String columnName) throws StatementExecutionException {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1)) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToFloat(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -302,7 +320,7 @@ public class IoTDBRpcDataSet {
   public int getInt(String columnName) throws StatementExecutionException {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1)) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToInt(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -319,7 +337,7 @@ public class IoTDBRpcDataSet {
       return BytesUtils.bytesToLong(time);
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (!isNull(index, rowsIndex-1)) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToLong(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -360,7 +378,7 @@ public class IoTDBRpcDataSet {
       return String.valueOf(BytesUtils.bytesToLong(time));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= values.length || isNull(index, rowsIndex-1)) {
+    if (index < 0 || index >= values.length || isNull(index, rowsIndex - 1)) {
       return null;
     }
     return getString(index, columnTypeDeduplicatedList.get(index), values);
