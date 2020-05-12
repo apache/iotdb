@@ -35,6 +35,7 @@ public class SimpleFileVersionController implements VersionController {
 
   private static final Logger logger = LoggerFactory.getLogger(SimpleFileVersionController.class);
   public static final String FILE_PREFIX = "Version-";
+  private final String UPGRADED_DIR = "upgrade";
   /**
    * Every time currVersion - prevVersion >= saveInterval, currVersion is persisted and prevVersion
    * is set to currVersion. When recovering from file, the version number is automatically increased
@@ -59,7 +60,7 @@ public class SimpleFileVersionController implements VersionController {
    * only used for upgrading
    */
   public SimpleFileVersionController(String directoryPath) throws IOException {
-    this.directoryPath = directoryPath;
+    this.directoryPath = directoryPath + File.separator + UPGRADED_DIR;
     restore();
   }
 
