@@ -64,29 +64,25 @@ public class ChunkMetadataCache {
   private ChunkMetadataCache(long memoryThreshold) {
     logger.info("ChunkMetadataCache size = " + memoryThreshold);
     lruCache = new LRULinkedHashMap<String, List<ChunkMetadata>>(memoryThreshold, true) {
-      int count = 0;
-      long averageChunkMetadataSize = 0;
-
       @Override
       protected long calEntrySize(String key, List<ChunkMetadata> value) {
         if (value.isEmpty()) {
-          return key.getBytes().length + averageChunkMetadataSize * value.size();
+          return key.getBytes().length + averageSize * value.size();
         }
-
         if (count < 10) {
           long currentSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
               .shallowSizeOf(value.get(0).getStatistics());
-          averageChunkMetadataSize = ((averageChunkMetadataSize * count) + currentSize) / (++count);
-          IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageChunkMetadataSize);
+          averageSize = ((averageSize * count) + currentSize) / (++count);
+          IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageSize);
           return key.getBytes().length + currentSize * value.size();
         } else if (count < 100000) {
           count++;
-          return key.getBytes().length + averageChunkMetadataSize * value.size();
+          return key.getBytes().length + averageSize * value.size();
         } else {
-          averageChunkMetadataSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
+          averageSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
               .shallowSizeOf(value.get(0).getStatistics());
           count = 1;
-          return key.getBytes().length + averageChunkMetadataSize * value.size();
+          return key.getBytes().length + averageSize * value.size();
         }
       }
     };
@@ -172,6 +168,22 @@ public class ChunkMetadataCache {
     } else {
       return 0;
     }
+  }
+
+  public long getUsedMemory() {
+    return lruCache.getUsedMemory();
+  }
+
+  public long getMaxMemory() {
+    return lruCache.getMaxMemory();
+  }
+
+  public double getUsedMemoryProportion() {
+    return lruCache.getUsedMemoryProportion();
+  }
+
+  public long getAverageSize() {
+    return lruCache.getAverageSize();
   }
 
   /**

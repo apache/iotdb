@@ -33,21 +33,24 @@ public abstract class LRULinkedHashMap<K, V> extends LinkedHashMap<K, V> {
   /**
    * maximum memory threshold.
    */
-  private long maxMemInB;
+  private long maxMemory;
   /**
    * current used memory.
    */
-  private long usedMemInB;
+  private long usedMemory;
 
-  public LRULinkedHashMap(long maxMemInB, boolean isLru) {
+  protected int count = 0;
+  protected long averageSize = 0;
+
+  public LRULinkedHashMap(long maxMemory, boolean isLru) {
     super(INITIAL_CAPACITY, LOAD_FACTOR_MAP, isLru);
-    this.maxMemInB = maxMemInB;
+    this.maxMemory = maxMemory;
   }
 
   @Override
   protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-    if (usedMemInB > maxMemInB) {
-      usedMemInB -= calEntrySize(eldest.getKey(), eldest.getValue());
+    if (usedMemory > maxMemory) {
+      usedMemory -= calEntrySize(eldest.getKey(), eldest.getValue());
       return true;
     } else {
       return false;
@@ -56,7 +59,7 @@ public abstract class LRULinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
   @Override
   public V put(K key, V value) {
-    usedMemInB += calEntrySize(key, value);
+    usedMemory += calEntrySize(key, value);
     return super.put(key, value);
   }
 
@@ -69,7 +72,19 @@ public abstract class LRULinkedHashMap<K, V> extends LinkedHashMap<K, V> {
    * calculate the proportion of used memory.
    */
   public double getUsedMemoryProportion() {
-    return usedMemInB * 1.0 / maxMemInB;
+    return usedMemory * 1.0 / maxMemory;
+  }
+
+  public long getUsedMemory() {
+    return usedMemory;
+  }
+
+  public long getMaxMemory() {
+    return maxMemory;
+  }
+
+  public long getAverageSize() {
+    return averageSize;
   }
 
   @Override
