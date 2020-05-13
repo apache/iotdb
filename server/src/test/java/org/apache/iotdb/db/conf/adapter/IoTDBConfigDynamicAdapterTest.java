@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf.adapter;
 
+import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -66,7 +67,7 @@ public class IoTDBConfigDynamicAdapterTest {
     for (int i = 1; i < 1000000; i++) {
       try {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
-        memTableNum += IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * 4 + 1;
+        memTableNum += IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * MEMTABLE_NUM_FOR_EACH_PARTITION + 1;
         assertEquals(IoTDBConfigDynamicAdapter.getInstance().getCurrentMemTableSize(),
             CONFIG.getMemtableSizeThreshold());
         assertEquals(CONFIG.getMaxMemtableNumber(), memTableNum);

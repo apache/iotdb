@@ -86,6 +86,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    */
   private static final long TIMESERIES_METADATA_SIZE_IN_BYTE = 2L * 1024;
   private static final double WAL_MEMORY_RATIO = 0.1;
+  public static final int MEMTABLE_NUM_FOR_EACH_PARTITION = 4;
   /**
    * Maximum amount of memory allocated for write process.
    */
@@ -229,7 +230,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
   public void addOrDeleteStorageGroup(int diff) throws ConfigAdjusterException {
     totalStorageGroup += diff;
     maxMemTableNum +=
-        4 * IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * diff
+        MEMTABLE_NUM_FOR_EACH_PARTITION * IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * diff
             + diff;
     if (!CONFIG.isEnableParameterAdapter()) {
       CONFIG.setMaxMemtableNumber(maxMemTableNum);
@@ -239,7 +240,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
     if (!tryToAdaptParameters()) {
       totalStorageGroup -= diff;
       maxMemTableNum -=
-          4 * IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * diff
+          MEMTABLE_NUM_FOR_EACH_PARTITION * IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() * diff
               + diff;
       throw new ConfigAdjusterException(CREATE_STORAGE_GROUP);
     }
