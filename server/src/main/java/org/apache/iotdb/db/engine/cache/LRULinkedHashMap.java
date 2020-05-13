@@ -19,48 +19,81 @@
 
 package org.apache.iotdb.db.engine.cache;
 
+import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import org.apache.iotdb.tsfile.common.cache.Accountable;
 
 /**
  * This class is an LRU cache. <b>Note: It's not thread safe.</b>
  */
-public abstract class LRULinkedHashMap<K, V> extends LinkedHashMap<K, V> {
+public abstract class LRULinkedHashMap<K extends Accountable, V> {
 
-  private static final long serialVersionUID = 1290160928914532649L;
   private static final float LOAD_FACTOR_MAP = 0.75f;
   private static final int INITIAL_CAPACITY = 128;
+  private static final float RETAIN_PERCENT = 0.9f;
+
+  private final LinkedHashMap<K, V> linkedHashMap;
+
   /**
    * maximum memory threshold.
    */
-  private long maxMemory;
+  private final long maxMemory;
   /**
    * current used memory.
    */
   private long usedMemory;
 
+  /**
+   *
+   */
+  private final long retainMemory;
+
   protected int count = 0;
   protected long averageSize = 0;
 
-  public LRULinkedHashMap(long maxMemory, boolean isLru) {
-    super(INITIAL_CAPACITY, LOAD_FACTOR_MAP, isLru);
+  public LRULinkedHashMap(long maxMemory) {
+    this.linkedHashMap = new LinkedHashMap<>(INITIAL_CAPACITY, LOAD_FACTOR_MAP);
     this.maxMemory = maxMemory;
+    this.retainMemory = (long) (maxMemory * RETAIN_PERCENT);
   }
 
-  @Override
-  protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
-    if (usedMemory > maxMemory) {
-      usedMemory -= calEntrySize(eldest.getKey(), eldest.getValue());
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  @Override
   public V put(K key, V value) {
-    usedMemory += calEntrySize(key, value);
-    return super.put(key, value);
+    long size = calEntrySize(key, value);
+    key.setRAMSize(size);
+    usedMemory += size;
+    V v = linkedHashMap.put(key, value);
+    if (usedMemory > maxMemory) {
+      Iterator<Entry<K, V>> iterator = linkedHashMap.entrySet().iterator();
+      while (usedMemory > retainMemory && iterator.hasNext()) {
+        Entry<K, V> entry = iterator.next();
+        usedMemory -= entry.getKey().getRAMSize();
+        iterator.remove();
+      }
+    }
+    return v;
+  }
+
+  public V get(K key) {
+    return linkedHashMap.get(key);
+  }
+
+  public boolean containsKey(K key) {
+    return linkedHashMap.containsKey(key);
+  }
+
+  public void clear() {
+    linkedHashMap.clear();
+    usedMemory = 0;
+  }
+
+  public V remove(K key) {
+    V v = linkedHashMap.remove(key);
+    if (v != null && key != null) {
+      usedMemory -= key.getRAMSize();
+    }
+    return v;
   }
 
   /**
@@ -85,6 +118,10 @@ public abstract class LRULinkedHashMap<K, V> extends LinkedHashMap<K, V> {
 
   public long getAverageSize() {
     return averageSize;
+  }
+
+  public Set<Entry<K, V>> entrySet() {
+    return linkedHashMap.entrySet();
   }
 
   @Override

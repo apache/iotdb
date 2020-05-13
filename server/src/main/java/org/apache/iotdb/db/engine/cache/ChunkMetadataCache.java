@@ -53,7 +53,7 @@ public class ChunkMetadataCache {
    * <p>
    * value: chunkMetaData list of one timeseries in the file.
    */
-  private final LRULinkedHashMap<String, List<ChunkMetadata>> lruCache;
+  private final LRULinkedHashMap<AccountableString, List<ChunkMetadata>> lruCache;
 
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -65,27 +65,30 @@ public class ChunkMetadataCache {
     if (cacheEnable) {
       logger.info("ChunkMetadataCache size = " + memoryThreshold);
     }
-    lruCache = new LRULinkedHashMap<String, List<ChunkMetadata>>(memoryThreshold, true) {
+    lruCache = new LRULinkedHashMap<AccountableString, List<ChunkMetadata>>(memoryThreshold) {
       @Override
-      protected long calEntrySize(String key, List<ChunkMetadata> value) {
+      protected long calEntrySize(AccountableString key, List<ChunkMetadata> value) {
         if (value.isEmpty()) {
-          return key.getBytes().length + averageSize * value.size();
+          return key.getString().getBytes().length;
         }
+        long entrySize;
         if (count < 10) {
-          long currentSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
-              .shallowSizeOf(value.get(0).getStatistics());
+          long currentSize = RamUsageEstimator.shallowSizeOf(value.get(0))
+              + RamUsageEstimator.shallowSizeOf(value.get(0).getStatistics());
           averageSize = ((averageSize * count) + currentSize) / (++count);
           IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageSize);
-          return key.getBytes().length + currentSize * value.size();
+          entrySize = RamUsageEstimator.sizeOf(key) + currentSize * value.size();
         } else if (count < 100000) {
           count++;
-          return key.getBytes().length + averageSize * value.size();
+          entrySize = RamUsageEstimator.sizeOf(key) + averageSize * value.size();
         } else {
           averageSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
               .shallowSizeOf(value.get(0).getStatistics());
           count = 1;
-          return key.getBytes().length + averageSize * value.size();
+          entrySize = RamUsageEstimator.sizeOf(key) + averageSize * value.size();
         }
+        key.setRAMSize(entrySize);
+        return entrySize;
       }
     };
   }
@@ -115,8 +118,8 @@ public class ChunkMetadataCache {
       return tsFileReader.getChunkMetadataList(seriesPath);
     }
 
-    String key = (filePath + IoTDBConstant.PATH_SEPARATOR
-        + seriesPath.getDevice() + seriesPath.getMeasurement()).intern();
+    AccountableString key = new AccountableString((filePath + IoTDBConstant.PATH_SEPARATOR
+        + seriesPath.getDevice() + seriesPath.getMeasurement()).intern());
 
     cacheRequestNum.incrementAndGet();
 
@@ -192,15 +195,19 @@ public class ChunkMetadataCache {
    * clear LRUCache.
    */
   public void clear() {
-    synchronized (lruCache) {
+    lock.writeLock().lock();
+    if (lruCache != null) {
       lruCache.clear();
     }
+    lock.writeLock().unlock();
   }
 
   public void remove(TsFileResource resource) {
-    synchronized (lruCache) {
-      lruCache.entrySet().removeIf(e -> e.getKey().startsWith(resource.getPath()));
+    lock.writeLock().lock();
+    if (resource != null) {
+      lruCache.entrySet().removeIf(e -> e.getKey().getString().startsWith(resource.getPath()));
     }
+    lock.writeLock().unlock();
   }
 
   /**

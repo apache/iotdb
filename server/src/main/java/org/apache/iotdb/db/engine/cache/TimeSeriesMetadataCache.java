@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -63,22 +64,24 @@ public class TimeSeriesMetadataCache {
           .info("TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
     }
     lruCache = new LRULinkedHashMap<TimeSeriesMetadataCacheKey, TimeseriesMetadata>(
-        MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE, true) {
+        MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE) {
 
       @Override
       protected long calEntrySize(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
+        long currentSize;
         if (count < 10) {
-          long currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
+          currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
           averageSize = ((averageSize * count) + currentSize) / (++count);
-          return currentSize;
         } else if (count < 100000) {
           count++;
-          return averageSize;
+          currentSize = averageSize;
         } else {
           averageSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
           count = 1;
-          return averageSize;
+          currentSize = averageSize;
         }
+        key.setRAMSize(currentSize);
+        return currentSize;
       }
     };
   }
@@ -198,11 +201,14 @@ public class TimeSeriesMetadataCache {
     lock.writeLock().unlock();
   }
 
-  public static class TimeSeriesMetadataCacheKey {
+  public static class TimeSeriesMetadataCacheKey implements Accountable {
 
     private String filePath;
     private String device;
     private String measurement;
+
+    private long RAMSize;
+
 
     public TimeSeriesMetadataCacheKey(String filePath, String device, String measurement) {
       this.filePath = filePath;
@@ -227,6 +233,15 @@ public class TimeSeriesMetadataCache {
     @Override
     public int hashCode() {
       return Objects.hash(filePath, device, measurement);
+    }
+
+    public void setRAMSize(long size) {
+      this.RAMSize = size;
+    }
+
+    @Override
+    public long getRAMSize() {
+      return 0;
     }
   }
 

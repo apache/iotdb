@@ -18,20 +18,20 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.Objects;
+import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.Objects;
-
 /**
  * Metadata of one chunk.
  */
-public class ChunkMetadata {
+public class ChunkMetadata implements Accountable {
 
   private String measurementUid;
 
@@ -61,6 +61,8 @@ public class ChunkMetadata {
   private IChunkLoader chunkLoader;
 
   private Statistics statistics;
+
+  private long RAMSize;
 
   private ChunkMetadata() {
   }
@@ -208,5 +210,14 @@ public class ChunkMetadata {
 
   public void setModified(boolean modified) {
     this.modified = modified;
+  }
+
+  public void setRAMSize(long size) {
+    this.RAMSize = size;
+  }
+
+  @Override
+  public long getRAMSize() {
+    return 0;
   }
 }

@@ -20,13 +20,14 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.nio.ByteBuffer;
 
+import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 
 /**
  * used in query.
  */
-public class Chunk {
+public class Chunk implements Accountable {
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkData;
@@ -35,6 +36,8 @@ public class Chunk {
    */
   private long deletedAt;
   private EndianType endianType;
+
+  private long RAMSize;
 
   public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt, EndianType endianType) {
     this.chunkHeader = header;
@@ -61,5 +64,15 @@ public class Chunk {
 
   public void setDeletedAt(long deletedAt) {
     this.deletedAt = deletedAt;
+  }
+
+  @Override
+  public void setRAMSize(long size) {
+    this.RAMSize = size;
+  }
+
+  @Override
+  public long getRAMSize() {
+    return RAMSize;
   }
 }

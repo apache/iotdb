@@ -56,22 +56,24 @@ public class ChunkCache {
     if (cacheEnable) {
       logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
     }
-    lruCache = new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE, true) {
+    lruCache = new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE) {
 
       @Override
       protected long calEntrySize(ChunkMetadata key, Chunk value) {
+        long currentSize;
         if (count < 10) {
-          long currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
+          currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
           averageSize = ((averageSize * count) + currentSize) / (++count);
-          return currentSize;
         } else if (count < 100000) {
           count++;
-          return averageSize;
+          currentSize = averageSize;
         } else {
           averageSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
           count = 1;
-          return averageSize;
+          currentSize = averageSize;
         }
+        key.setRAMSize(currentSize);
+        return currentSize;
       }
     };
   }
