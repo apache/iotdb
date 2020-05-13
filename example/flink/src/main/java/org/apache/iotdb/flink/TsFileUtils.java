@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -45,10 +47,11 @@ import java.util.stream.Collectors;
  */
 public class TsFileUtils {
 
+  private static final Logger logger = LoggerFactory.getLogger(TsFileUtils.class);
+  private static final String DEFAULT_TEMPLATE = "template";
+
   private TsFileUtils() {
   }
-
-	private static final String DEFAULT_TEMPLATE = "template";
 
 	public static void writeTsFile(String path) {
 		try {
@@ -77,7 +80,7 @@ public class TsFileUtils {
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+		  logger.error("Write {} failed, {}", path, e);
 		}
 	}
 
