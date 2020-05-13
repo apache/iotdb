@@ -80,7 +80,7 @@ public class TsFileUtils {
 			}
 
 		} catch (Exception e) {
-		  logger.error("Write " + path + " failed", e);
+		  logger.error("Write {} failed. ", path, e);
 		}
 	}
 
