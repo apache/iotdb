@@ -113,11 +113,20 @@ In order to avoid confusion between statements and other parameters, the current
 
 The usage of -e parameter for Cli/shell is as follows:
 
+The Linux and MacOS system commands:
+
 ```
   Shell > sbin/start-cli.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
-In order to better explain the use of -e parameter, take following as an example.
+The Windows system commands:
+```
+  Shell > sbin\start-cli.bat -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
+```
+
+In the Windows environment, the SQL statement of the -e parameter needs to use ` `` ` to replace `" "`
+
+In order to better explain the use of -e parameter, take following as an example(On linux system).
 
 Suppose you want to create a storage group root.demo to a newly launched IoTDB, create a timeseries root.demo.s1 and insert three data points into it. With -e parameter, you could write a shell like this:
 
