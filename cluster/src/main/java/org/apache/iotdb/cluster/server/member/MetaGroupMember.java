@@ -329,7 +329,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * Parse the seed nodes from the cluster configuration and add them into the node list. Each
    * seedUrl should be like "{hostName}:{metaPort}:{dataPort}" Ignore bad-formatted seedUrls.
    */
-  private void addSeedNodes() {
+  protected void addSeedNodes() {
     List<String> seedUrls = config.getSeedNodeUrls();
     // initialize allNodes
     for (String seedUrl : seedUrls) {
@@ -418,7 +418,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  private Node generateNode(String nodeUrl) {
+  protected Node generateNode(String nodeUrl) {
     Node result = new Node();
     String[] split = nodeUrl.split(":");
     if (split.length != 3) {
@@ -961,6 +961,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private boolean seedNodesContains(List<Node> seedNodeList, List<Node> subSeedNodeList) {
     // Because identifier is not compared here, List.contains() is not suitable
+    if (subSeedNodeList == null) {
+      return false;
+    }
     Node[] nodeArray = seedNodeList.toArray(new Node[0]);
     Node[] subNodeArray = subSeedNodeList.toArray(new Node[0]);
     Arrays.sort(nodeArray, this::compareSeedNode);
