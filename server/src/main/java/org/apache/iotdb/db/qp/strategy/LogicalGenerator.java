@@ -169,6 +169,7 @@ import org.apache.iotdb.tsfile.utils.StringContainer;
  * This class is a listener and you can get an operator which is a logical plan.
  */
 public class LogicalGenerator extends SqlBaseBaseListener {
+  private static Logger logger = LoggerFactory.getLogger(LogicalGenerator.class);
 
   private RootOperator initializedOperator = null;
   private ZoneId zoneId;
@@ -787,8 +788,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterGroupByFillClause(SqlBaseParser.GroupByFillClauseContext ctx) {
     super.enterGroupByFillClause(ctx);
-    queryOp.setGroupBy(true);
+    queryOp.setGroupByLevel(true);
     queryOp.setFill(true);
+    queryOp.setGroupByTime(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
 
@@ -860,23 +862,32 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
-  public void enterGroupByClause(GroupByClauseContext ctx) {
-    super.enterGroupByClause(ctx);
-    queryOp.setGroupBy(true);
-    queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
-    // parse timeUnit
-    queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
-    queryOp.setSlidingStep(queryOp.getUnit());
-    // parse sliding step
-    if (ctx.DURATION().size() == 2) {
-      queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
-      if (queryOp.getSlidingStep() < queryOp.getUnit()) {
-        throw new SQLParserException(
-                "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+  public void enterGroupByTimeClause(GroupByTimeClauseContext ctx) {
+    super.enterGroupByTimeClause(ctx);
+    queryOp.setGroupByLevel(true);
+
+    if (ctx.timeInterval() != null) {
+      queryOp.setGroupByTime(true);
+      queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+      // parse timeUnit
+      queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
+      queryOp.setSlidingStep(queryOp.getUnit());
+      // parse sliding step
+      if (ctx.DURATION().size() == 2) {
+        queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
+        if (queryOp.getSlidingStep() < queryOp.getUnit()) {
+          throw new SQLParserException(
+            "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+        }
       }
+
+      parseTimeInterval(ctx.timeInterval());
     }
 
-    parseTimeInterval(ctx.timeInterval());
+    if (ctx.INT() != null) {
+      logger.debug("group by level:" + ctx.INT().getText() );
+      queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
+    }
   }
 
   @Override

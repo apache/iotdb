@@ -263,6 +263,69 @@ We will get the result like following:
 | 40     | 5                               |
 
 
+### Down-Frequency Aggregate Query with Level Clause
+
+Level could be defined to show count the number of points of each node at the given level in current Metadata Tree.
+
+This could be used to query the number of points under each device.
+
+The SQL statement is:
+
+This means aggregate query only with path by level.
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 7              |
+
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=2;
+```
+
+| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
+| ------ | ------------------- | ------------------- |
+| 0      | 4                   | 3                   |
+
+
+We can also get down-frequency agggate query by level.
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 1              |
+| 12     | 3              |
+| 15     | 0              |
+| 18     | 0              |
+
+Down-frequency aggregate query with sliding step and by level.
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),2ms,3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 0              |
+| 12     | 2              |
+| 15     | 0              |
+| 18     | 0              |
+
 #### Down-Frequency Aggregate Query with Fill Clause
 
 In group by fill, sliding step is not supported in group by clause

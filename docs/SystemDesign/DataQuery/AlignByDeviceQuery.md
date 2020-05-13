@@ -40,7 +40,7 @@ First explain the meaning of some important fields in AlignByDevicePlan:
 - `Map<String, TSDataType> measurementDataTypeMap`：AlignByDevicePlan requires that the data type of the sensor of the same name be the same for different devices. This field is a Map structure of `measurementName-> dataType`.  For example `root.sg.d1.s1` and` root.sg.d2.s1` should be of the same data type.
 - `enum MeasurementType`：Three measurement types are recorded.  Measurements that do not exist in any device are of type `NonExist`; measurements with single or double quotes are of type` Constant`; measurements that exist are of type `Exist`.
 - `Map<String, MeasurementType> measurementTypeMap`: This field is a Map structure of `measureName-> measurementType`, which is used to record all measurement types in the query.
-- groupByPlan, fillQueryPlan, aggregationPlan：To avoid redundancy, these three execution plans are set as subclasses of RawDataQueryPlan and set as variables in AlignByDevicePlan.  If the query plan belongs to one of these three plans, the field is assigned and saved.
+- groupByTimePlan, fillQueryPlan, aggregationPlan：To avoid redundancy, these three execution plans are set as subclasses of RawDataQueryPlan and set as variables in AlignByDevicePlan.  If the query plan belongs to one of these three plans, the field is assigned and saved.
 
 Before explaining the specific implementation process, a relatively complete example is given first, and the following explanation will be used in conjunction with this example.
 
@@ -82,7 +82,7 @@ First explain the meaning of some important fields in the `transformQuery ()` me
 
 Next, introduce the calculation process of AlignByDevicePlan:
 
-1. Check whether the query type is one of three types of queries: groupByPlan, fillQueryPlan, aggregationPlan. If it is, assign the corresponding variable and change the query type of `AlignByDevicePlan`.
+1. Check whether the query type is one of three types of queries: groupByTimePlan, fillQueryPlan, aggregationPlan. If it is, assign the corresponding variable and change the query type of `AlignByDevicePlan`.
 2. Iterate through the SELECT suffix path, and set an intermediate variable for each suffix path as `measurementSetOfGivenSuffix` to record all measurements corresponding to the suffix path.  If the suffix path starts with single or double quotes, increase the value directly in `measurements` and note that its type is` Constant`.
 3. Otherwise, the device list is stitched with the suffix path to obtain a complete path. If the spliced path does not exist, you need to further determine whether the measurement exists in other devices. If none, temporarily identify it as NonExist. If the subsequent device appears,  measurement, the NonExist value is overridden.
 4. If the path exists after splicing, it is proved that the measurement is of type `Exist`, and the consistency of the data type needs to be checked. If it is not satisfied, an error message is returned. If it is met, the measurement is recorded.

@@ -295,6 +295,70 @@ SQL执行后的结果集如下所示：
 | 35     | 3                               |
 | 40     | 5                               |
 
+### 降采样后按Level聚合查询
+
+除此之外，还可以通过定义LEVEL来统计指定层级下的数据点个数。
+
+这可以用来查询不同层级下的数据点总个数
+
+语法是：
+
+这个可以用来查询某个路径下的总数据点数
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 7              |
+
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=2;
+```
+
+| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
+| ------ | ------------------- | ------------------- |
+| 0      | 4                   | 3                   |
+
+
+也可以用来统计降采样后的数据点个数
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 1              |
+| 12     | 3              |
+| 15     | 0              |
+| 18     | 0              |
+
+加上滑动Step的降采样后的结果也可以汇总
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),2ms,3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 0              |
+| 12     | 2              |
+| 15     | 0              |
+| 18     | 0              |
+
+
 #### 降频聚合查询补空值
 
 降频聚合出的各个时间段的结果，支持使用前值补空。

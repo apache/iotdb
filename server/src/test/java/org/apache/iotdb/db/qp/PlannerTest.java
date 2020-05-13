@@ -127,7 +127,7 @@ public class PlannerTest {
 
     String groupbyStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by ([100,1100), 20ms)";
     PhysicalPlan plan9 = processor.parseSQLToPhysicalPlan(groupbyStatement);
-    assertEquals(OperatorType.GROUPBY, plan9.getOperatorType());
+    assertEquals(OperatorType.GROUPBYTIME, plan9.getOperatorType());
 
     String fillStatement = "select sensor1 from root.vehicle.device1 where time = 50 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);

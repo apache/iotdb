@@ -36,6 +36,8 @@ public abstract class QueryPlan extends PhysicalPlan {
   private int rowLimit = 0;
   private int rowOffset = 0;
 
+  private int level = -1;
+
   private Map<String, Integer> pathToIndex = new HashMap<>();
 
   public QueryPlan() {
@@ -98,5 +100,13 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public Map<String, Integer> getPathToIndex() {
     return pathToIndex;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
   }
 }
