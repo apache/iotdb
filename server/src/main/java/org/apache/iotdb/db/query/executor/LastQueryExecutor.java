@@ -22,7 +22,10 @@ package org.apache.iotdb.db.query.executor;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+
+import java.sql.Time;
 import java.util.Set;
+import org.apache.iotdb.db.engine.cache.LastCacheManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -111,15 +114,10 @@ public class LastQueryExecutor {
       Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> sensors)
       throws IOException, QueryProcessException, StorageEngineException {
 
-    // Retrieve last value from MNode
-    LeafMNode node;
-    try {
-      node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-    if (node.getCachedLast() != null) {
-      return node.getCachedLast();
+    // Retrieve last value from LastCacheManager
+    TimeValuePair cachedLast = LastCacheManager.getInstance().get(seriesPath.getFullPath());
+    if (cachedLast != null) {
+      return cachedLast;
     }
 
     QueryDataSource dataSource =
@@ -179,7 +177,8 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    LastCacheManager.getInstance().put(seriesPath.getFullPath(), resultPair, false, Long.MIN_VALUE);
+    //node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
     return resultPair;
   }
 

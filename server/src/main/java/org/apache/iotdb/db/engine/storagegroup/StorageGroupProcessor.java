@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.LastCacheManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -612,24 +613,12 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
-      throws WriteProcessException {
-    MNode node = null;
-    try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
-      String[] measurementList = plan.getMeasurements();
-      for (int i = 0; i < measurementList.length; i++) {
-        // Update cached last value with high priority
-        MNode measurementNode = node.getChild(measurementList[i]);
-        ((LeafMNode) measurementNode)
-            .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
-      }
-    } catch (MetadataException e) {
-      throw new WriteProcessException(e);
-    } finally {
-      if (node != null) {
-        ((InternalMNode) node).readUnlock();
-      }
+  public void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime) {
+    String[] measurementList = plan.getMeasurements();
+    for (int i = 0; i < measurementList.length; i++) {
+      LastCacheManager.getInstance()
+          .put(plan.getPaths().get(i).getFullPath(), plan.composeLastTimeValuePair(i),
+              true, latestFlushedTime);
     }
   }
 
@@ -666,23 +655,15 @@ public class StorageGroupProcessor {
 
   public void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
-    MNode node = null;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
-        // Update cached last value with high priority
-        MNode measurementNode = node.getChild(measurementList[i]);
-
-        ((LeafMNode) measurementNode)
-            .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
+        LastCacheManager.getInstance()
+            .put(plan.getPaths().get(i).getFullPath(), plan.composeTimeValuePair(i),
+                true, latestFlushedTime);
       }
-    } catch (MetadataException | QueryProcessException e) {
+    } catch (QueryProcessException e) {
       throw new WriteProcessException(e);
-    } finally {
-      if (node != null) {
-        ((InternalMNode) node).readUnlock();
-      }
     }
   }
 
