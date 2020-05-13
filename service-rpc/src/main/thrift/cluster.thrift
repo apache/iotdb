@@ -119,6 +119,7 @@ struct StartUpStatus {
  1: required long partitionInterval
  2: required int hashSalt
  3: required int replicationNumber
+ 4: required list<Node> seedNodeList
 }
 
 // follower -> leader
@@ -126,6 +127,7 @@ struct CheckStatusResponse {
  1: required bool partitionalIntervalEquals
  2: required bool hashSaltEquals
  3: required bool replicationNumEquals
+ 4: required bool seedNodeEquals
 }
 
 struct SendSnapshotRequest {
