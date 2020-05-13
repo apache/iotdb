@@ -19,20 +19,14 @@
 package org.apache.iotdb.db.service;
 
 import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
+import static org.apache.iotdb.db.qp.logical.Operator.OperatorType.GROUPBYTIME;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -79,6 +73,7 @@ import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -549,7 +544,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (plan.getOperatorType() == OperatorType.FILL) {
           throw new QueryProcessException("Fill doesn't support disable align clause.");
         }
-        if (plan.getOperatorType() == OperatorType.GROUPBY) {
+        if (plan.getOperatorType() == GROUPBYTIME) {
           throw new QueryProcessException("Group by doesn't support disable align clause.");
         }
       }
@@ -698,6 +693,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // Last Query should return different respond instead of the static one
       // because the query dataset and query id is different although the header of last query is same.
       return StaticResps.LAST_RESP.deepCopy();
+    } else if (plan.getOperatorType() == GROUPBYTIME && plan.getLevel() >= 0) {
+      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan.getPaths(), plan.getLevel(), null);
+      for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+        respColumns.add("count(" + entry.getKey() + ")");
+        columnsTypes.add(TSDataType.INT64.toString());
+      }
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
       resp.setColumnNameIndexMap(plan.getPathToIndex());
@@ -718,17 +719,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
-        for (Path p : paths) {
-          if (p.getAlias() != null) {
-            respColumns.add(p.getFullPathWithAlias());
+        for (Path path : paths) {
+          if (path.getAlias() != null) {
+            respColumns.add(path.getFullPathWithAlias());
           } else {
-            respColumns.add(p.getFullPath());
+            respColumns.add(path.getFullPath());
           }
         }
         seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
-      case GROUPBY:
+      case GROUPBYTIME:
       case GROUP_BY_FILL:
         List<String> aggregations = plan.getAggregations();
         if (aggregations.size() != paths.size()) {

@@ -192,7 +192,7 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByClause specialLimit?
+    | groupByTimeClause specialLimit?
     | groupByFillClause
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
@@ -240,12 +240,19 @@ fillClause
     : FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
     ;
 
-groupByClause
+groupByTimeClause
     : GROUP BY LR_BRACKET
       timeInterval
       COMMA DURATION
       (COMMA DURATION)?
       RR_BRACKET
+    | GROUP BY LEVEL OPERATOR_EQ INT
+    | GROUP BY LR_BRACKET
+            timeInterval
+            COMMA DURATION
+            (COMMA DURATION)?
+            RR_BRACKET
+            COMMA LEVEL OPERATOR_EQ INT
     ;
 
 groupByFillClause
