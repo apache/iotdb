@@ -428,7 +428,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return true;
     } else if (inconsistentNum >= (totalSeedNum + 1) / 2) {
       // this node is not consistent with the cluster, shut down
-      logger.debug("The configuration of this node is inconsistent with the cluster.");
+      logger.error("The configuration of this node is inconsistent with the cluster.");
       System.exit(0);
     } else {
       // If reach the start up time threshold, shut down.
