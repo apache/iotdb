@@ -57,23 +57,23 @@ public class TsFileUtils {
 			schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
 			schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
-			TsFileWriter tsFileWriter = new TsFileWriter(f, schema);
+			try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
 
-			// construct TSRecord
-			for (int i = 0; i < 100; i++) {
-				TSRecord tsRecord = new TSRecord(i, "device_" + (i % 4));
-				DataPoint dPoint1 = new LongDataPoint("sensor_1", i);
-				DataPoint dPoint2 = new LongDataPoint("sensor_2", i);
-				DataPoint dPoint3 = new LongDataPoint("sensor_3", i);
-				tsRecord.addTuple(dPoint1);
-				tsRecord.addTuple(dPoint2);
-				tsRecord.addTuple(dPoint3);
-
-				// write TSRecord
-				tsFileWriter.write(tsRecord);
+  			// construct TSRecord
+  			for (int i = 0; i < 100; i++) {
+  				TSRecord tsRecord = new TSRecord(i, "device_" + (i % 4));
+  				DataPoint dPoint1 = new LongDataPoint("sensor_1", i);
+  				DataPoint dPoint2 = new LongDataPoint("sensor_2", i);
+  				DataPoint dPoint3 = new LongDataPoint("sensor_3", i);
+  				tsRecord.addTuple(dPoint1);
+  				tsRecord.addTuple(dPoint2);
+  				tsRecord.addTuple(dPoint3);
+  
+  				// write TSRecord
+  				tsFileWriter.write(tsRecord);
+  			}
 			}
 
-			tsFileWriter.close();
 		} catch (Throwable e) {
 			e.printStackTrace();
 			System.out.println(e.getMessage());
@@ -83,16 +83,17 @@ public class TsFileUtils {
 	public static String[] readTsFile(String tsFilePath, List<Path> paths) throws IOException {
 		QueryExpression expression = QueryExpression.create(paths, null);
 		TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-		ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader);
-		QueryDataSet queryDataSet = readTsFile.query(expression);
-		List<String> result = new ArrayList<>();
-		while (queryDataSet.hasNext()) {
-			RowRecord rowRecord = queryDataSet.next();
-			String row = rowRecord.getFields().stream()
-				.map(f -> f == null ? "null" : f.getStringValue())
-				.collect(Collectors.joining(","));
-			result.add(rowRecord.getTimestamp() + "," + row);
+		try (ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+		  QueryDataSet queryDataSet = readTsFile.query(expression);
+  		List<String> result = new ArrayList<>();
+  		while (queryDataSet.hasNext()) {
+  			RowRecord rowRecord = queryDataSet.next();
+  			String row = rowRecord.getFields().stream()
+  				.map(f -> f == null ? "null" : f.getStringValue())
+  				.collect(Collectors.joining(","));
+  			result.add(rowRecord.getTimestamp() + "," + row);
+  		}
+  		return result.toArray(new String[0]);
 		}
-		return result.toArray(new String[0]);
 	}
 }
