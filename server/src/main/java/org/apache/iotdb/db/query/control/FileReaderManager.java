@@ -160,13 +160,18 @@ public class FileReaderManager implements IService {
         logger.warn("Query has opened {} files !", readerMap.size());
       }
 
-      TsFileSequenceReader tsFileReader = !isClosed ? new UnClosedTsFileReader(filePath)
-          : new TsFileSequenceReader(filePath);
+      TsFileSequenceReader tsFileReader = null;
       // check if the file is old version
-      if (isClosed) {
+      if (!isClosed) {
+        tsFileReader = new UnClosedTsFileReader(filePath);
+      }
+      else {
         try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
           if (reader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
             tsFileReader = new TsFileSequenceReaderForOldFile(filePath);
+          }
+          else {
+            tsFileReader = new TsFileSequenceReader(filePath);
           }
         }
       }

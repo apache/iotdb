@@ -437,7 +437,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       valueDecoder = Decoder
           .getDecoderByType(schema.getEncodingType(), schema.getType());
       for (int j = 0; j < pageDataInChunk.size(); j++) {
-        if (pagePartitionInfo.get(j)) {
+        if (Boolean.TRUE.equals(pagePartitionInfo.get(j))) {
           writePageInSamePartitionToFile(oldTsFile, schema, pageHeadersInChunk.get(j), 
               pageDataInChunk.get(j), chunkWritersInChunkGroup);
         }
