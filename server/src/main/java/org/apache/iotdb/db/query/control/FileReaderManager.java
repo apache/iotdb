@@ -162,9 +162,12 @@ public class FileReaderManager implements IService {
 
       TsFileSequenceReader tsFileReader = !isClosed ? new UnClosedTsFileReader(filePath)
           : new TsFileSequenceReader(filePath);
-      try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
-        if (reader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
-          tsFileReader = new TsFileSequenceReaderForOldFile(filePath);
+      // check if the file is old version
+      if (isClosed) {
+        try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
+          if (reader.readVersionNumber().equals(TSFileConfig.OLD_VERSION)) {
+            tsFileReader = new TsFileSequenceReaderForOldFile(filePath);
+          }
         }
       }
       readerMap.put(filePath, tsFileReader);
