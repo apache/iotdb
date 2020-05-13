@@ -861,7 +861,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return StatusUtils.NO_LEADER;
     }
 
-    logger.info("{}: Forward {} to node {}", name, plan, node);
+    logger.debug("{}: Forward {} to node {}", name, plan, node);
 
     AsyncClient client = connectNode(node);
     if (client != null) {
