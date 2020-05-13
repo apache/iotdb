@@ -45,14 +45,9 @@ import org.apache.iotdb.tsfile.utils.Pair;
 public class TsFileSketchTool {
 
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
-    String outFile = "TsFile_sketch_view.txt";
-    if (args.length == 1) {
-      filename = args[0];
-    } else if (args.length == 2) {
-      filename = args[0];
-      outFile = args[1];
-    }
+    Pair<String, String> fileNames = checkArgs(args);
+    String filename = fileNames.left;
+    String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
     try (PrintWriter pw = new PrintWriter(new FileWriter(outFile))) {
@@ -215,6 +210,18 @@ public class TsFileSketchTool {
   private static void printlnBoth(PrintWriter pw, String str) {
     System.out.println(str);
     pw.println(str);
+  }
+
+  private static Pair<String, String> checkArgs(String[] args) {
+    String filename = "test.tsfile";
+    String outFile = "TsFile_sketch_view.txt";
+    if (args.length == 1) {
+      filename = args[0];
+    } else if (args.length == 2) {
+      filename = args[0];
+      outFile = args[1];
+    }
+    return new Pair<>(filename, outFile);
   }
 
 }
