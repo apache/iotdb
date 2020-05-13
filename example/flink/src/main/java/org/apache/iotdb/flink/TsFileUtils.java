@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,14 +45,15 @@ import java.util.stream.Collectors;
  */
 public class TsFileUtils {
 
+  private TsFileUtils() {
+  }
+
 	private static final String DEFAULT_TEMPLATE = "template";
 
 	public static void writeTsFile(String path) {
 		try {
 			File f = FSFactoryProducer.getFSFactory().getFile(path);
-			if (f.exists()) {
-				f.delete();
-			}
+			Files.delete(f.toPath());
 			Schema schema = new Schema();
 			schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE));
 			schema.extendTemplate(DEFAULT_TEMPLATE, new MeasurementSchema("sensor_2", TSDataType.INT32, TSEncoding.TS_2DIFF));
@@ -74,9 +76,8 @@ public class TsFileUtils {
   			}
 			}
 
-		} catch (Throwable e) {
+		} catch (Exception e) {
 			e.printStackTrace();
-			System.out.println(e.getMessage());
 		}
 	}
 
