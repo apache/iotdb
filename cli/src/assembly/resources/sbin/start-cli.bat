@@ -18,9 +18,6 @@
 @REM
 
 @echo off
-echo ````````````````````````
-echo Starting IoTDB Cli
-echo ````````````````````````
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%

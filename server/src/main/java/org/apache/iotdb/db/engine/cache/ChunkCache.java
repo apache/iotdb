@@ -53,7 +53,9 @@ public class ChunkCache {
 
 
   private ChunkCache() {
-    logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
+    if (cacheEnable) {
+      logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
+    }
     lruCache = new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE, true) {
 
       @Override

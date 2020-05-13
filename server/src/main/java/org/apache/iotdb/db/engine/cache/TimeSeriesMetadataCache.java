@@ -58,7 +58,10 @@ public class TimeSeriesMetadataCache {
 
 
   private TimeSeriesMetadataCache() {
-    logger.info("TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
+    if (cacheEnable) {
+      logger
+          .info("TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
+    }
     lruCache = new LRULinkedHashMap<TimeSeriesMetadataCacheKey, TimeseriesMetadata>(
         MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE, true) {
 

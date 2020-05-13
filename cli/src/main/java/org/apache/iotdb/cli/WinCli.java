@@ -53,6 +53,7 @@ public class WinCli extends AbstractCli {
     commandLine = null;
 
     String[] newArgs;
+    String[] newArgs2;
 
     if (args == null || args.length == 0) {
       println("Require more params input, please check the following hint.");
@@ -61,10 +62,9 @@ public class WinCli extends AbstractCli {
     }
 
     init();
-
     newArgs = removePasswordArgs(args);
-
-    boolean continues = parseCommandLine(options, newArgs, hf);
+    newArgs2 = processExecuteArgs(newArgs);
+    boolean continues = parseCommandLine(options, newArgs2, hf);
     if (!continues) {
       return;
     }
@@ -124,6 +124,18 @@ public class WinCli extends AbstractCli {
       if (password == null) {
         password = readPassword();
       }
+      if (hasExecuteSQL) {
+        try (IoTDBConnection connection = (IoTDBConnection) DriverManager
+            .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
+          properties = connection.getServerProperties();
+          AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
+          processCommand(execute, connection);
+          return;
+        } catch (SQLException e) {
+          println(IOTDB_CLI_PREFIX + "> can't execute sql because" + e.getMessage());
+        }
+      }
+
       receiveCommands(scanner);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
@@ -139,6 +151,7 @@ public class WinCli extends AbstractCli {
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       TIMESTAMP_PRECISION = properties.getTimestampPrecision();
 
+      echoStarting();
       displayLogo(properties.getVersion());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {

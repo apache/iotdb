@@ -62,7 +62,9 @@ public class ChunkMetadataCache {
 
 
   private ChunkMetadataCache(long memoryThreshold) {
-    logger.info("ChunkMetadataCache size = " + memoryThreshold);
+    if (cacheEnable) {
+      logger.info("ChunkMetadataCache size = " + memoryThreshold);
+    }
     lruCache = new LRULinkedHashMap<String, List<ChunkMetadata>>(memoryThreshold, true) {
       @Override
       protected long calEntrySize(String key, List<ChunkMetadata> value) {
