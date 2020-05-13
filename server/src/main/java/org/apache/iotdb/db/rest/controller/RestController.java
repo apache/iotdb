@@ -271,7 +271,7 @@ public class RestController {
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   @Produces(MediaType.APPLICATION_JSON)
-  public Response excuteSQL(@Context HttpServletRequest request) {
+  public Response executeSQL(@Context HttpServletRequest request) {
     JSONArray jsonArray;
     JSONObject jsonObject;
     try {
