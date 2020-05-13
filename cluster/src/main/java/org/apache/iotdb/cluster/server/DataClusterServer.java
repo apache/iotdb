@@ -166,8 +166,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       } else {
         logger.info("This node {} does not belong to the group {}, header {}", thisNode,
             partitionGroup, header);
-        throw new NotInSameGroupException(partitionTable.getHeaderGroup(header),
-            thisNode);
+        throw new NotInSameGroupException(partitionGroup, thisNode);
       }
     }
     return member;

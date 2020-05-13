@@ -65,4 +65,5 @@ public class PartitionGroup extends ArrayList<Node> {
   public void setThisNode(Node thisNode) {
     this.thisNode = thisNode;
   }
+
 }

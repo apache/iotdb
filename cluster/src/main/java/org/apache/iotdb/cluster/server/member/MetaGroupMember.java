@@ -374,6 +374,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   public void buildCluster() {
     // just establish the heartbeat thread and it will do the remaining
+    loadPartitionTable();
     heartBeatService.submit(new MetaHeartbeatThread(this));
   }
 
@@ -560,7 +561,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       registerNodeIdentifier(receiver, response.getFollowerIdentifier());
       // if all nodes' ids are known, we can build the partition table
       if (allNodesIdKnown()) {
-        if (partitionTable == null && !loadPartitionTable()) {
+        if (partitionTable == null) {
           partitionTable = new SlotPartitionTable(allNodes, thisNode);
           logger.info("Partition table is set up");
         }
@@ -603,7 +604,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private void registerNodeIdentifier(Node node, int identifier) {
     synchronized (idNodeMap) {
-      if (idNodeMap.containsKey(identifier)) {
+      Node conflictNode = idNodeMap.get(identifier);
+      if (conflictNode != null && !conflictNode.equals(node)) {
         idConflictNodes.add(node);
         return;
       }
@@ -935,15 +937,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   /**
-   * Load the partition table from a local file
+   * Load the partition table from a local file if it can be found.
    *
-   * @return true if the local file is found, false otherwise
    */
-  private boolean loadPartitionTable() {
+  private void loadPartitionTable() {
     File partitionFile = new File(PARTITION_FILE_NAME);
     if (!partitionFile.exists()) {
       logger.info("No partition table file found");
-      return false;
+      return;
     }
     initIdNodeMap();
     try (DataInputStream inputStream =
@@ -964,9 +965,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       logger.info("Load {} nodes: {}", allNodes.size(), allNodes);
     } catch (IOException e) {
       logger.error("Cannot load the partition table", e);
-      return false;
     }
-    return true;
   }
 
   /**
@@ -1004,6 +1003,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (file.exists()) {
       try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
         nodeId = Integer.parseInt(reader.readLine());
+        logger.info("Recovered node identifier {}", nodeId);
       } catch (Exception e) {
         logger.warn("Cannot read the identifier from file, generating a new one", e);
       }
