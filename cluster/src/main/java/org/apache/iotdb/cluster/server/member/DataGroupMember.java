@@ -144,7 +144,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * the "REMOTE_FILE_TEMP_DIR", and then load file functionality of IoTDB will be used to load the
    * files into the IoTDB instance.
    */
-  private static final String REMOTE_FILE_TEMP_DIR = "remote";
+  private static final String REMOTE_FILE_TEMP_DIR =
+      IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator + "remote";
 
   /**
    * The MetaGroupMember that in charge of the DataGroupMember. Mainly for providing partition table

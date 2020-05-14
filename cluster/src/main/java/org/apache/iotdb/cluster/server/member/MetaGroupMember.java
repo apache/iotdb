@@ -163,9 +163,11 @@ import org.slf4j.LoggerFactory;
 public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIface {
 
   // the file contains the identifier of the local node
-  static final String NODE_IDENTIFIER_FILE_NAME = "node_identifier";
+  static final String NODE_IDENTIFIER_FILE_NAME =
+      IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator + "node_identifier";
   // the file contains the serialized partition table
-  static final String PARTITION_FILE_NAME = "partitions";
+  static final String PARTITION_FILE_NAME =
+      IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator + "partitions";
   // in case of data loss, some file changes would be made to a temporary file first
   private static final String TEMP_SUFFIX = ".tmp";
 
@@ -948,7 +950,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     initIdNodeMap();
     try (DataInputStream inputStream =
-        new DataInputStream(new BufferedInputStream(new FileInputStream(PARTITION_FILE_NAME)))) {
+        new DataInputStream(new BufferedInputStream(new FileInputStream(partitionFile)))) {
       int size = inputStream.readInt();
       byte[] tableBuffer = new byte[size];
       inputStream.read(tableBuffer);
@@ -974,6 +976,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private synchronized void savePartitionTable() {
     File tempFile = new File(PARTITION_FILE_NAME + TEMP_SUFFIX);
+    tempFile.getParentFile().mkdirs();
     File oldFile = new File(PARTITION_FILE_NAME);
     try (DataOutputStream outputStream =
         new DataOutputStream(new BufferedOutputStream(new FileOutputStream(tempFile)))) {
@@ -1034,7 +1037,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private void setNodeIdentifier(int identifier) {
     logger.info("The identifier of this node has been set to {}", identifier);
     thisNode.setNodeIdentifier(identifier);
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(NODE_IDENTIFIER_FILE_NAME))) {
+    File idFile = new File(NODE_IDENTIFIER_FILE_NAME);
+    idFile.getParentFile().mkdirs();
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(idFile))) {
       writer.write(String.valueOf(identifier));
     } catch (IOException e) {
       logger.error("Cannot save the node identifier", e);
