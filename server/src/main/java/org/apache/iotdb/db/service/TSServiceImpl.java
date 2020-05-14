@@ -137,12 +137,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
 
-  public static List<SqlArgument> getSqlArgumentsList() {
-    return sqlArgumentsList;
-  }
-
-  private static List<SqlArgument> sqlArgumentsList = new ArrayList<>();
-
   private boolean enableHTTPService = IoTDBDescriptor.getInstance().getConfig().isEnableHTTPService();
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
 
