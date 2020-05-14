@@ -261,7 +261,7 @@ public class ClientMain {
 
     SessionDataSet dataSet = new SessionDataSet(query, resp.getColumns(),
         resp.getDataTypeList(), resp.columnNameIndexMap, queryId, client, sessionId,
-        resp.queryDataSet);
+        resp.queryDataSet, false);
 
     while (dataSet.hasNext()) {
       logger.info(dataSet.next().toString());
