@@ -26,15 +26,13 @@
         <format>zip</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
-    <dependencySets>
-        <dependencySet>
-            <outputDirectory>lib</outputDirectory>
-        </dependencySet>
-    </dependencySets>
     <fileSets>
         <fileSet>
-            <directory>web</directory>
+            <directory>src</directory>
             <outputDirectory>${file.separator}</outputDirectory>
+            <excludes>
+                <exclude>**/node_modules/**</exclude>
+            </excludes>
         </fileSet>
     </fileSets>
 </assembly>
