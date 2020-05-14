@@ -92,10 +92,10 @@
         <module>spark-iotdb-connector</module>
         <module>flink-tsfile-connector</module>
         <module>flink-iotdb-connector</module>
+        <module>web</module>
         <module>distribution</module>
         <module>hive-connector</module>
         <module>site</module>
-        <module>web</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -571,6 +571,8 @@
                             <exclude>LICENSE-binary</exclude>
                             <exclude>**/dist/**</exclude>
                             <exclude>**/node_modules/**</exclude>
+                            <exclude>**/*.lock</exclude>
+                            <exclude>**/build/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
