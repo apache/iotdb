@@ -366,6 +366,7 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testClosePartition()
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
+    System.out.println("Start testClosePartition()");
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertPlan insertPlan = new InsertPlan();
@@ -433,6 +434,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testAddNode() {
+    System.out.println("Start testAddNode()");
     Node newNode = TestUtils.getNode(10);
     testMetaMember.onElectionWins();
     testMetaMember.applyAddNode(newNode);
@@ -441,6 +443,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testBuildCluster() throws TTransportException {
+    System.out.println("Start testBuildCluster()");
     testMetaMember.start();
     try {
       testMetaMember.buildCluster();
@@ -460,6 +463,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testJoinCluster() throws TTransportException, QueryProcessException {
+    System.out.println("Start testJoinCluster()");
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
     newMember.start();
     try {
@@ -475,6 +479,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testJoinClusterFailed() throws QueryProcessException {
+    System.out.println("Start testJoinClusterFailed()");
     long prevInterval = RaftServer.heartBeatIntervalMs;
     RaftServer.heartBeatIntervalMs = 10;
     try {
@@ -489,6 +494,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testSendSnapshot() {
+    System.out.println("Start testSendSnapshot()");
     SendSnapshotRequest request = new SendSnapshotRequest();
 
     // 1. prepare storage group and its tll
@@ -581,6 +587,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testProcessNonQuery() {
+    System.out.println("Start testProcessNonQuery()");
     mockDataClusterServer = true;
     // as a leader
     testMetaMember.setCharacter(LEADER);
@@ -606,7 +613,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testPullTimeseriesSchema() throws MetadataException {
-
+    System.out.println("Start testPullTimeseriesSchema()");
     for (int i = 0; i < 10; i++) {
       List<MeasurementSchema> schemas =
           testMetaMember.pullTimeSeriesSchemas(Collections.singletonList(TestUtils.getTestSg(i)));
@@ -619,6 +626,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetSeriesType() throws MetadataException {
+    System.out.println("Start testGetSeriesType()");
     // a local series
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
         testMetaMember
@@ -651,6 +659,7 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testGetReaderByTimestamp()
       throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
+    System.out.println("Start testGetReaderByTimestamp()");
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema( 0)});
@@ -692,6 +701,7 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testGetReader()
       throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
+    System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
@@ -740,6 +750,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testGetMatchedPaths() throws MetadataException {
+    System.out.println("Start testGetMatchedPaths()");
     List<String> matchedPaths = testMetaMember
         .getMatchedPaths(TestUtils.getTestSg(0) + ".*");
     assertEquals(20, matchedPaths.size());
@@ -753,6 +764,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testProcessValidHeartbeatReq() throws QueryProcessException {
+    System.out.println("Start testProcessValidHeartbeatReq()");
     MetaGroupMember testMetaMember = getMetaGroupMember(TestUtils.getNode(10));
     try {
       HeartBeatRequest request = new HeartBeatRequest();
@@ -777,6 +789,7 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testProcessValidHeartbeatResp()
       throws TTransportException, QueryProcessException {
+    System.out.println("Start testProcessValidHeartbeatResp()");
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     metaGroupMember.start();
     metaGroupMember.onElectionWins();
@@ -826,6 +839,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoteAddNode() {
+    System.out.println("Start testRemoteAddNode()");
     int prevTimeout = RaftServer.connectionTimeoutInMS;
     RaftServer.connectionTimeoutInMS = 100;
     try {
@@ -961,6 +975,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testLoadIdentifier() throws IOException, QueryProcessException {
+    System.out.println("Start testLoadIdentifier()");
     try (RandomAccessFile raf = new RandomAccessFile(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME,
         "rw")) {
       raf.writeBytes("100");
@@ -972,6 +987,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveNodeWithoutPartitionTable() {
+    System.out.println("Start testRemoveNodeWithoutPartitionTable()");
     testMetaMember.setPartitionTable(null);
     AtomicBoolean passed = new AtomicBoolean(false);
     testMetaMember.removeNode(TestUtils.getNode(0), new AsyncMethodCallback<Long>() {
@@ -991,6 +1007,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveThisNode() {
+    System.out.println("Start testRemoveThisNode()");
     AtomicReference<Long> resultRef = new AtomicReference<>();
     testMetaMember.setLeader(testMetaMember.getThisNode());
     testMetaMember.setCharacter(LEADER);
@@ -1001,6 +1018,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveLeader() {
+    System.out.println("Start testRemoveLeader()");
     AtomicReference<Long> resultRef = new AtomicReference<>();
     testMetaMember.setLeader(TestUtils.getNode(40));
     testMetaMember.setCharacter(FOLLOWER);
@@ -1013,6 +1031,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveNonLeader() {
+    System.out.println("Start testRemoveNonLeader()");
     AtomicReference<Long> resultRef = new AtomicReference<>();
     testMetaMember.setLeader(TestUtils.getNode(40));
     testMetaMember.setCharacter(FOLLOWER);
@@ -1024,6 +1043,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveNodeAsLeader() {
+    System.out.println("Start testRemoveNodeAsLeader()");
     AtomicReference<Long> resultRef = new AtomicReference<>();
     testMetaMember.setLeader(testMetaMember.getThisNode());
     testMetaMember.setCharacter(LEADER);
@@ -1036,6 +1056,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveNonExistNode() {
+    System.out.println("Start testRemoveNonExistNode()");
     AtomicBoolean passed = new AtomicBoolean(false);
     testMetaMember.setCharacter(LEADER);
     testMetaMember.setLeader(testMetaMember.getThisNode());
@@ -1056,6 +1077,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testRemoveTooManyNodes() {
+    System.out.println("Start testRemoveTooManyNodes()");
     for (int i = 0; i < 8; i++) {
       AtomicReference<Long> resultRef = new AtomicReference<>();
       testMetaMember.setCharacter(LEADER);
