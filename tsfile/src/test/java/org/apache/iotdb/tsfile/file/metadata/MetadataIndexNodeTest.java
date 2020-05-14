@@ -30,14 +30,14 @@ public class MetadataIndexNodeTest {
   @Test
   public void testBinarySearchInChildren() {
     List<MetadataIndexEntry> list = new ArrayList<>();
-    MetadataIndexNodeType type = MetadataIndexNodeType.LEAF_MEASUREMENT;
-    list.add(new MetadataIndexEntry("s0", -1L, type));
-    list.add(new MetadataIndexEntry("s5", -1L, type));
-    list.add(new MetadataIndexEntry("s10", -1L, type));
-    list.add(new MetadataIndexEntry("s15", -1L, type));
-    list.add(new MetadataIndexEntry("s20", -1L, type));
+    list.add(new MetadataIndexEntry("s0", -1L));
+    list.add(new MetadataIndexEntry("s5", -1L));
+    list.add(new MetadataIndexEntry("s10", -1L));
+    list.add(new MetadataIndexEntry("s15", -1L));
+    list.add(new MetadataIndexEntry("s20", -1L));
 
-    MetadataIndexNode metadataIndexNode = new MetadataIndexNode(list, -1L);
+    MetadataIndexNode metadataIndexNode = new MetadataIndexNode(list, -1L,
+        MetadataIndexNodeType.LEAF_MEASUREMENT);
     Assert.assertEquals(0, metadataIndexNode.binarySearchInChildren("s0"));
     Assert.assertEquals(2, metadataIndexNode.binarySearchInChildren("s10"));
     Assert.assertEquals(2, metadataIndexNode.binarySearchInChildren("s13"));
