@@ -66,7 +66,7 @@
 
 Here is a graph about the TsFile structure.
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/7240743/78330206-05cc6380-75b6-11ea-96c7-06f6f7346f6a.png)
+![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/81935360-1e9f4e80-9623-11ea-8ebc-75951bf11a68.png)
 
 This TsFile contains two devices: d1, d2. Each device contains three measurements: s1, s2, s3. 6 timeseries in total, d1 is blue, d2 is purple. Each timeseries contains 2 Chunks.
 
@@ -78,8 +78,8 @@ There are three parts of metadata
 
 Query Process：e.g., read d1.s1
 
-* deserialize TsFileMetadata，get the position and length of all TimeseriesMetadata of d1
-* deserialize all TimeseriesMetadata of d1，get the TimeseriesMetadata of d1.s1
+* deserialize TsFileMetadata，get the position of TimeseriesMetadata of d1.s1
+* deserialize and get the TimeseriesMetadata of d1.s1
 * according to TimeseriesMetadata of d1.s1，deserialize all ChunkMetadata of d1.s1 
 * according to each ChunkMetadata of d1.s1，read its Chunk
 
@@ -112,7 +112,6 @@ A `Chunk` represents the data of a *measurement* in a time range, data points in
 |            Number of pages             |     int     |
 |            Compression Type            |    short    |
 |             Encoding Type              |    short    |
-|       Max Tombstone Time(unused)       |    long     |
 
 ##### Page
 
@@ -127,11 +126,11 @@ PageHeader Structure
 |              Number of values              |       int        |
 |             Maximum time stamp             |       long       |
 |             Minimum time stamp             |       long       |
-|         Maximum value of the page          | Type of the page |
 |         Minimum value of the page          | Type of the page |
+|         Maximum value of the page          | Type of the page |
 |          First value of the page           | Type of the page |
-|              Sum of the Page               |      double      |
 |           Last value of the page           | Type of the page |
+|              Sum of the Page               |      double      |
 
 ##### ChunkGroupFooter
 
@@ -143,136 +142,108 @@ PageHeader Structure
 
 #### 1.2.3  Metadata
 
-##### 1.2.3.1 TsDeviceMetaData
+##### 1.2.3.1 ChunkMetadata
 
-The first part of metadata is `TsDeviceMetaData` 
+The first part of metadata is `ChunkMetadata` 
 
-|     Member Description     | Member Type |
-| :------------------------: | :---------: |
-|         Start time         |    long     |
-|          End time          |    long     |
-|   Number of chunk groups   |     int     |
-| List of ChunkGroupMetaData |    list     |
+|      Member Description      |     Member Type   |
+| :--------------------------: |     :---------:   |
+|        MeasurementId         |       String      |
+| Start offset of ChunkHeader  |        long       |
+|          Data type           |        short      |
+|    Number of data points     |        long       |
+|          Start time          |        long       |
+|           End time           |        long       |
+|         Minimum value        | Type of the chunk |
+|         Maximum value        | Type of the chunk |
+|          First value         | Type of the chunk |
+|           Last value         | Type of the chunk |
+|              Sum             |      double       |
 
-###### ChunkGroupMetaData
+As for the five statistics (min, max, first, last and sum), `ChunkMetadata` of Binary and Boolean type only has two values: first and last.
 
-|       Member Description       | Member Type |
-| :----------------------------: | :---------: |
-|            DeviceId            |   String    |
-| Start offset of the ChunkGroup |    long     |
-|  End offset of the ChunkGroup  |    long     |
-|            Version             |    long     |
-|    Number of ChunkMetaData     |     int     |
-|     List of ChunkMetaData      |    list     |
+##### 1.2.3.2 TimeseriesMetadata
 
-###### ChunkMetaData
+The second part of metadata is `TimeseriesMetadata`.
 
-|      Member Description      | Member Type |
-| :--------------------------: | :---------: |
-|        MeasurementId         |   String    |
-| Start offset of ChunkHeader  |    long     |
-|    Number of data points     |    long     |
-|          Start time          |    long     |
-|           End time           |    long     |
-|          Data type           |    short    |
-| The statistics of this chunk |  TsDigest   |
+|      Member Description      |     Member Type   |
+| :--------------------------: |     :---------:   |
+|        MeasurementId         |       String      |
+|          Data type           |        short      |
+|Start offset of ChunkMetadata list  |  long       |
+|    ChunkMetadata list size   |        int        |
+|    Number of data points     |        long       |
+|          Start time          |        long       |
+|           End time           |        long       |
+|         Minimum value        | Type of the chunk |
+|         Maximum value        | Type of the chunk |
+|          First value         | Type of the chunk |
+|           Last value         | Type of the chunk |
+|              Sum             |      double       |
 
-###### TsDigest
+As for the five statistics (min, max, first, last and sum), `TimeseriesMetadata` of Binary and Boolean type only has two values: first and last.
 
-Right now there are five statistics: `min_value, max_value, first_value, last_value, sum_value`.
+##### 1.2.3.3 TsFileMetaData
 
-In v0.8.0, the storage format of statistics is a name-value pair. That is, `Map<String, ByteBuffer> statistics`. The name is a string (remember the length is before the literal). But for the value, there is also an integer byteLength acting as the self description length of the following value because the value may be of various type. For example, if the `min_value` is an integer 0, then it will be stored as [9 "min_value" 4 0] in the TsFile.
-
-The figure below shows an example of `TsDigest.deserializeFrom(buffer)`. In v0.8.0, we will get 
-
-```
-Map<String, ByteBuffer> statistics = {
-    "min_value" -> ByteBuffer of int value 0, 
-    "last" -> ByteBuffer of int value 19,
-    "sum" -> ByteBuffer of double value 1093347116,
-    "first" -> ByteBuffer of int value 0,
-    "max_value" -> ByteBuffer of int value 99
-}
-```
-
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png">
-
-In v0.9.x, the storage format is changed to an array for space and time efficiency. That is, `ByteBuffer[] statistics`. Each position of the array has a fixed association with a specific type of statistic, following the order defined in StatisticType:
-
-```
-enum StatisticType {
-    min_value, max_value, first_value, last_value, sum_value
-}
-```
-
-Therefore, in the above example, we will get 
-
-```
-ByteBuffer[] statistics = [
-    ByteBuffer of int value 0, // associated with "min_value"
-    ByteBuffer of int value 99, // associated with "max_value"
-    ByteBuffer of int value 0, // associated with "first_value"
-    ByteBuffer of int value 19, // associated with "last_value"
-    ByteBuffer of double value 1093347116 // associated with "sum_value"
-]
-```
-
-As another example in v0.9.x, when deserializing a TsDigest from buffer [3, 0,4,0, 1,4,99, 3,4,19], we get 
-
-```
-ByteBuffer[] statistics = [
-    ByteBuffer of int value 0, // associated with "min_value"
-    ByteBuffer of int value 99, // associated with "max_value"
-    null, // associated with "first_value"
-    ByteBuffer of int value 19, // associated with "last_value"
-    null // associated with "sum_value"
-]
-```
-
-##### 1.2.3.2 TsFileMetaData
-
-`TsFileMetaData` follows after `TsDeviceMetadatas`.
+The third part of metadata is `TsFileMetaData`.
 
 |              Member Description              |            Member Type             |
 | :------------------------------------------: | :--------------------------------: |
-|              Number of devices               |                int                 |
-| Pairs of device name and deviceMetadataIndex | String, TsDeviceMetadataIndex pair |
-|            Number of measurements            |                int                 |
-|     Pairs of measurement name and schema     |   String, MeasurementSchema pair   |
+|            MetadataIndexNode list            |             See below              |
 |                 Author byte                  |                byte                |
 |        Author(if author byte is 0x01)        |               String               |
-|                totalChunkNum                 |                int                 |
-|               invalidChunkNum                |                int                 |
+|                TotalChunkNum                 |                int                 |
+|               InvalidChunkNum                |                int                 |
+|             Version info map size            |                int                 |
+|                Version info map              |            Long, Long Pair         |
+|       MetaMarker.SEPARATOR offset            |                long                |
 |              Bloom filter size               |                int                 |
 |           Bloom filter bit vector            |      byte[Bloom filter size]       |
 |            Bloom filter capacity             |                int                 |
 |       Bloom filter hash functions size       |                int                 |
 
-###### TsDeviceMetadataIndex
+If size of version info map is greater than 0, there is an array of \<Long, Long\> pair as version info.
 
-|        Member Description        | Member Type |
-| :------------------------------: | :---------: |
-|             DeviceId             |   String    |
-| Start offset of TsDeviceMetaData |    long     |
-|              length              |     int     |
-|            Start time            |    long     |
-|             End time             |    long     |
+There **may** exist more than one MetadataIndexNode. Each node has members as below:
 
-###### MeasurementSchema
+|         Member Description              |Member Type|
+| :------------------------------------:  |  :----:   |
+|        MetadataIndexEntry size          |    int    |
+|       MetadataIndexEntry list           | See below |
+|   EndOffset of this MetadataIndexNode   |   long    |
+|           MetadataIndexNode type       |    byte   |
 
-| Member Description | Member Type |
-| :----------------: | :---------: |
-|   MeasurementId    |   String    |
-|     Data type      |    short    |
-|      Encoding      |    short    |
-|     Compressor     |    short    |
-|   Size of props    |     int     |
+Each MetadataIndexEntry has members as below:
+|         Member Description              |Member Type|
+| :------------------------------------:  |  :----:   |
+|  Name of related device or measurement  |  String   |
+|                   offset                |    long   |
 
-If size of props is greater than 0, there is an array of <String, String> pair as properties of this measurement.
+All MetadataIndexNode forms a **metadata index tree**, which consists of no more than two levels: device index level and measurement index level. In different situation, the tree could have different components. The MetadataIndexNodeType has four enums: `INTERNAL_DEVICE`, `LEAF_DEVICE`, `INTERNAL_MEASUREMENT`, `LEAF_MEASUREMENT`, which indicates the internal or leaf node of device index level and measurement index level respectively. Only the `LEAF_MEASUREMENT` nodes point to `TimeseriesMetadata`.
 
-Such as "max_point_number""2".
+To describe the structure of metadata index tree more clearly, we will give four examples here in details.
 
-##### 1.2.3.3 TsFileMetadataSize
+The max degree of the metadata index tree (that is, the max number of each node's children) could be configured by users, and is 1024 by default. In the examples below, we assume `max_degree_of_index_node = 10` in the following examples.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935219-de3fd080-9622-11ea-9aa1-a59bef1c0001.png">
+
+5 devices with 5 measurements each: Since the numbers of devices and measurements are both no more than `max_degree_of_index_node`, the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The root nonde is `INTERNAL_MEASUREMENT` type, and the 5 MetadataIndex entries point to MetadataIndex nodes of related devices. These nodes point to  `TimeseriesMetadata` directly, as they are `LEAF_MEASUREMENT` type.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935210-d97b1c80-9622-11ea-8a69-2c2c5f05a876.png">
+
+1 device with 150 measurements: The number of measurements exceeds `max_degree_of_index_node`, so the tree has only measurement index level by default. In this level, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. Other nodes and root node of index tree are not leaf nodes of measurement index level, so they are `INTERNAL_MEASUREMENT` type.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935182-cd8f5a80-9622-11ea-8e41-661a5219974b.png">
+
+150 device with 1 measurement each: The number of devices exceeds `max_degree_of_index_node`, so the device index level and measurement index level of the tree are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. The nodes that point to `TimeseriesMetadata` directly are `LEAF_MEASUREMENT` type. The root nodes of measurement index level are also the leaf nodes of device index level, which are `LEAF_DEVICE` type. Other nodes and root node of index tree are not leaf nodes of device index level, so they are `INTERNAL_DEVICE` type.
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935138-b6e90380-9622-11ea-94f9-c97bd2b5d050.png">
+
+150 device with 150 measurements each: The numbers of devices and measurements both exceed `max_degree_of_index_node`, so the device index level and measurement index level are both formed. In these two levels, each MetadataIndexNode is composed of no more than 10 MetadataIndex entries. As is described before, from the root node to the leaf nodes of device index level, their types are `INTERNAL_DEVICE` and `LEAF_DEVICE`; each leaf node of device index level can be seen as the root node of measurement index level, and from here to the leaf nodes of measurement index level, their types are `INTERNAL_MEASUREMENT` and `LEAF_MEASUREMENT`.
+
+The MetadataIndex is designed as tree structure so that not all the `TimeseriesMetadata` need to be read when the number of devices or measurements is too large. Only reading specific MetadataIndex nodes according to requirement and reducing I/O could speed up the query. More reading process of TsFile in details will be described in the last section of this chapter.
+
+##### 1.2.3.4 TsFileMetadataSize
 
 After the TsFileMetaData, there is an int indicating the size of the TsFileMetaData.
 
@@ -622,10 +593,14 @@ You can also use `example/tsfile/org/apache/iotdb/tsfile/TsFileSequenceRead` to 
 
 ### 1.4 A TsFile Visualization Example
 
-#### v0.8.0
+#### v0.8
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
 
-#### v0.9.x
+#### v0.9
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">
+
+#### v0.10
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81683048-270f5200-9488-11ea-85e5-c3769d4d2af3.png">
