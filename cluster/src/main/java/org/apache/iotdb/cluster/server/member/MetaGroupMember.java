@@ -964,13 +964,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (subSeedNodeList == null) {
       return false;
     }
-    Node[] nodeArray = seedNodeList.toArray(new Node[0]);
-    Node[] subNodeArray = subSeedNodeList.toArray(new Node[0]);
-    Arrays.sort(nodeArray, this::compareSeedNode);
-    Arrays.sort(subNodeArray, this::compareSeedNode);
+    seedNodeList.sort(this::compareSeedNode);
+    subSeedNodeList.sort(this::compareSeedNode);
     int i = 0, j = 0;
-    while (i < nodeArray.length && j < subNodeArray.length) {
-      int compareResult = compareSeedNode(nodeArray[i], subNodeArray[j]);
+    while (i < seedNodeList.size() && j < subSeedNodeList.size()) {
+      int compareResult = compareSeedNode(seedNodeList.get(i), subSeedNodeList.get(j));
       if (compareResult > 0) {
         return false;
       } else if (compareResult < 0) {
@@ -979,7 +977,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         j++;
       }
     }
-    return j == subNodeArray.length;
+    return j == subSeedNodeList.size();
   }
 
   private int compareSeedNode(Node thisSeedNode, Node thatSeedNode) {
