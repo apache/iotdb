@@ -53,11 +53,10 @@ public class ChunkCache {
 
 
   private ChunkCache() {
-    logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
+    if (cacheEnable) {
+      logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
+    }
     lruCache = new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE, true) {
-
-      int count = 0;
-      long averageSize = 0;
 
       @Override
       protected long calEntrySize(ChunkMetadata key, Chunk value) {
@@ -145,6 +144,22 @@ public class ChunkCache {
     } else {
       return 0;
     }
+  }
+
+  public long getUsedMemory() {
+    return lruCache.getUsedMemory();
+  }
+
+  public long getMaxMemory() {
+    return lruCache.getMaxMemory();
+  }
+
+  public double getUsedMemoryProportion() {
+    return lruCache.getUsedMemoryProportion();
+  }
+
+  public long getAverageSize() {
+    return lruCache.getAverageSize();
   }
 
 
