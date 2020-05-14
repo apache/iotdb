@@ -46,6 +46,17 @@ public class TimeseriesMetadata implements Accountable {
 
   private long RAMSize;
 
+  public TimeseriesMetadata() {
+  }
+
+  public TimeseriesMetadata(TimeseriesMetadata timeseriesMetadata) {
+    this.startOffsetOfChunkMetaDataList = timeseriesMetadata.startOffsetOfChunkMetaDataList;
+    this.chunkMetaDataListDataSize = timeseriesMetadata.chunkMetaDataListDataSize;
+    this.measurementId = timeseriesMetadata.measurementId;
+    this.tsDataType = timeseriesMetadata.tsDataType;
+    this.statistics = timeseriesMetadata.statistics;
+    this.modified = timeseriesMetadata.modified;
+  }
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
@@ -136,6 +147,6 @@ public class TimeseriesMetadata implements Accountable {
 
   @Override
   public long getRAMSize() {
-    return 0;
+    return RAMSize;
   }
 }

@@ -34,20 +34,21 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * This class is used to cache <code>Chunk</code> of <code>ChunkMetaData</code> in IoTDB. The caching
- * strategy is LRU.
+ * This class is used to cache <code>Chunk</code> of <code>ChunkMetaData</code> in IoTDB. The
+ * caching strategy is LRU.
  */
 public class ChunkCache {
 
   private static final Logger logger = LoggerFactory.getLogger(ChunkCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE = config.getAllocateMemoryForChunkCache();
-  private static boolean cacheEnable = config.isMetaDataCacheEnable();
+  private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE = config
+      .getAllocateMemoryForChunkCache();
+  private static final boolean cacheEnable = config.isMetaDataCacheEnable();
 
   private final LRULinkedHashMap<ChunkMetadata, Chunk> lruCache;
 
-  private AtomicLong cacheHitNum = new AtomicLong();
-  private AtomicLong cacheRequestNum = new AtomicLong();
+  private final AtomicLong cacheHitNum = new AtomicLong();
+  private final AtomicLong cacheRequestNum = new AtomicLong();
 
   private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -62,13 +63,14 @@ public class ChunkCache {
       protected long calEntrySize(ChunkMetadata key, Chunk value) {
         long currentSize;
         if (count < 10) {
-          currentSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
+          currentSize = RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator
+              .shallowSizeOf(key.getChunkLoader()) + RamUsageEstimator.sizeOf(value);
           averageSize = ((averageSize * count) + currentSize) / (++count);
         } else if (count < 100000) {
           count++;
           currentSize = averageSize;
         } else {
-          averageSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
+          averageSize = RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.sizeOf(value);
           count = 1;
           currentSize = averageSize;
         }
@@ -85,7 +87,8 @@ public class ChunkCache {
   public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader) throws IOException {
     if (!cacheEnable) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(),
+          reader.getEndianType());
     }
 
     cacheRequestNum.incrementAndGet();
@@ -96,7 +99,8 @@ public class ChunkCache {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
         Chunk chunk = lruCache.get(chunkMetaData);
-        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(),
+            reader.getEndianType());
       }
     } finally {
       lock.readLock().unlock();
@@ -115,12 +119,14 @@ public class ChunkCache {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
         Chunk chunk = lruCache.get(chunkMetaData);
-        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(),
+            reader.getEndianType());
       }
       printCacheLog(false);
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       lruCache.put(chunkMetaData, chunk);
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(), reader.getEndianType());
+      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(),
+          reader.getEndianType());
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", reader.getFileName());
       throw e;
@@ -135,9 +141,9 @@ public class ChunkCache {
       return;
     }
     logger.debug(
-            "[ChunkMetaData cache {}hit] The number of requests for cache is {}, hit rate is {}.",
-            isHit ? "" : "didn't ", cacheRequestNum.get(),
-            cacheHitNum.get() * 1.0 / cacheRequestNum.get());
+        "[ChunkMetaData cache {}hit] The number of requests for cache is {}, hit rate is {}.",
+        isHit ? "" : "didn't ", cacheRequestNum.get(),
+        cacheHitNum.get() * 1.0 / cacheRequestNum.get());
   }
 
   public double calculateChunkHitRatio() {

@@ -218,6 +218,6 @@ public class ChunkMetadata implements Accountable {
 
   @Override
   public long getRAMSize() {
-    return 0;
+    return RAMSize;
   }
 }

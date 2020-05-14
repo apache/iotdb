@@ -33,6 +33,7 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
   private static final float LOAD_FACTOR_MAP = 0.75f;
   private static final int INITIAL_CAPACITY = 128;
   private static final float RETAIN_PERCENT = 0.9f;
+  private static final int MAP_ENTRY_SIZE = 40;
 
   private final LinkedHashMap<K, V> linkedHashMap;
 
@@ -60,7 +61,7 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
   }
 
   public V put(K key, V value) {
-    long size = calEntrySize(key, value);
+    long size = calEntrySize(key, value) + MAP_ENTRY_SIZE;
     key.setRAMSize(size);
     usedMemory += size;
     V v = linkedHashMap.put(key, value);
