@@ -95,6 +95,7 @@
         <module>distribution</module>
         <module>hive-connector</module>
         <module>site</module>
+        <module>web</module>
     </modules>
     <!-- Properties Management -->
     <properties>
