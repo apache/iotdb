@@ -20,6 +20,7 @@ package org.apache.iotdb.cluster;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.MetaClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -66,6 +67,11 @@ public class ClusterMain {
     if (args.length > 1) {
       String[] params = Arrays.copyOfRange(args, 1, args.length);
       replaceDefaultPrams(params);
+    }
+
+    // params check
+    if (!checkConfig()) {
+      return;
     }
 
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
@@ -123,6 +129,36 @@ public class ClusterMain {
       // replace the server default conf params
       IoTDBDescriptor.getInstance().replaceProps(serverParams);
     }
+  }
+
+  /**
+   * check the configuration is legal or not
+   */
+  private static boolean checkConfig() {
+    // 0. first replace all hostname with ip
+    try {
+      ClusterDescriptor.getInstance().replaceHostnameWithIp();
+    } catch (Exception e) {
+      logger.error("replace hostname with ip failed, {}", e.getMessage());
+      return false;
+    }
+
+    // 1. check the LOCAL_IP and SEED_NODES consistent or not
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    String localIP = "127.0.0.1";
+    String configLocalIP = config.getLocalIP();
+    List<String> seedNodes = config.getSeedNodeUrls();
+    boolean isLocalIP = localIP.equals(configLocalIP);
+    for (String seedNodeIP : seedNodes) {
+      if ((isLocalIP && !seedNodeIP.contains(localIP)) ||
+          (!isLocalIP && seedNodeIP.contains(localIP))) {
+        logger.error(
+            "LOCAL_IP={} and SEED_NODES={} should be consistent, both use local ip or real ip please",
+            configLocalIP, seedNodes);
+        return false;
+      }
+    }
+    return true;
   }
 
   private static void doRemoveNode(String[] args) throws IOException {

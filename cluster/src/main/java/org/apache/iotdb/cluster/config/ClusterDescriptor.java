@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.cluster.config;
 
+import com.google.common.net.InetAddresses;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -125,6 +128,33 @@ public class ClusterDescriptor {
     }
   }
 
+  public void replaceHostnameWithIp() throws Exception {
+    boolean isInvalidLocalIp = InetAddresses.isInetAddress(config.getLocalIP());
+    if (!isInvalidLocalIp) {
+      String localIP = hostnameToIP(config.getLocalIP());
+      config.setLocalIP(localIP);
+    }
+
+    List<String> newSeedUrls = new ArrayList<>();
+    for (String seedUrl : config.getSeedNodeUrls()) {
+      String[] splits = seedUrl.split(":");
+      if (splits.length != 3) {
+        throw new Exception("seed url format error!");
+      }
+      String seedIP = splits[0];
+      boolean isInvalidSeedIp = InetAddresses.isInetAddress(seedIP);
+      if (!isInvalidSeedIp) {
+        String newSeedIP = hostnameToIP(seedIP);
+        newSeedUrls.add(newSeedIP + ":" + splits[1] + ":" + splits[2]);
+      } else {
+        newSeedUrls.add(seedUrl);
+      }
+    }
+    config.setSeedNodeUrls(newSeedUrls);
+    logger.debug("after replace, the localIP={}, seedUrls={}", config.getLocalIP(),
+        config.getSeedNodeUrls());
+  }
+
   private boolean parseCommandLine(Options options, String[] params) {
     try {
       CommandLineParser parser = new DefaultParser();
@@ -185,7 +215,6 @@ public class ClusterDescriptor {
 
     config.setUseBatchInLogCatchUp(Boolean.parseBoolean(properties.getProperty(
         "USE_BATCH_IN_CATCH_UP", String.valueOf(config.isUseBatchInLogCatchUp()))));
-
 
     String seedUrls = properties.getProperty("SEED_NODES");
     if (seedUrls != null) {
@@ -248,6 +277,11 @@ public class ClusterDescriptor {
         .getProperty("MAX_REMOVED_LOG_SIZE", String.valueOf(config.getMaxRemovedLogSize()))));
 
     logger.info("Set cluster configuration {}", properties);
+  }
+
+  public String hostnameToIP(String hostname) throws UnknownHostException {
+    InetAddress address = InetAddress.getByName(hostname);
+    return address.getHostAddress();
   }
 
 }
