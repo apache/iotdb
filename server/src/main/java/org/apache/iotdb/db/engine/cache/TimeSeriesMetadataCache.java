@@ -58,11 +58,12 @@ public class TimeSeriesMetadataCache {
 
 
   private TimeSeriesMetadataCache() {
-    logger.info("TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
+    if (cacheEnable) {
+      logger
+          .info("TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
+    }
     lruCache = new LRULinkedHashMap<TimeSeriesMetadataCacheKey, TimeseriesMetadata>(
         MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE, true) {
-      int count = 0;
-      long averageSize = 0;
 
       @Override
       protected long calEntrySize(TimeSeriesMetadataCacheKey key, TimeseriesMetadata value) {
@@ -162,6 +163,21 @@ public class TimeSeriesMetadataCache {
     }
   }
 
+  public long getUsedMemory() {
+    return lruCache.getUsedMemory();
+  }
+
+  public long getMaxMemory() {
+    return lruCache.getMaxMemory();
+  }
+
+  public double getUsedMemoryProportion() {
+    return lruCache.getUsedMemoryProportion();
+  }
+
+  public long getAverageSize() {
+    return lruCache.getAverageSize();
+  }
 
   /**
    * clear LRUCache.

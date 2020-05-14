@@ -23,14 +23,39 @@
 
 ### 使用“IoTDB”的项目和产品名称
 
-使用Apache IoTDB和相关营销材料创建产品和项目的组织应注意尊重“ Apache IoTDB”中的商标及其徽标。 请参阅[ASF商标指南]（https://www.apache.org/foundation/marks/）和相关的[FAQ]（https://www.apache.org/foundation/marks/faq/），以获得全面的信息。 正确使用ASF商标的权威指南。
-建议不要在任何名称中包含”IoTDB“，以防止IoTDB项目出现潜在的商标问题。
-例如，不应使用诸如”IoTDB BigDataProduct“之类的名称，因为该名称通常包括“IoTDB”。 但是，以上链接描述了一些例外情况，例如“由Apache IoTDB支持的BigDataProduct”或“ Apache IoTDB的BigDataProduct”之类的名称。 总而言之，任何名称都包含“ Apache IoTDB”作为整体是可以接受的。  
-您可以采取的常见做法是创建软件标识符（Maven坐标，模块名称等），例如”iotdb-tool“。 这些是允许的。 还允许在说明中名义使用商标，例如”BigDataProduct”是Apache IoTDB的子产品”。
 
-### 公司和组织
+其他组织或企业在使用Apache IoTDB建立项目或者产品时，应该应该注意尊重“Apache IoTDB”的商标。
+具体事项请参阅 [ASF Trademarks Guidance](https://www.apache.org/foundation/marks/)
+和[FAQ](https://www.apache.org/foundation/marks/faq/)。
+
+一般来说，我们建议不要仅使用"IoTDB"在任何名字中，以避免出现商标风险。
+例如，不应该给自己的产品命名为"IoTDB 大数据产品"，因为这个名字中包含IoTDB。然而，如果说是命名为"Apache IoTDB赋能的大数据产品"，
+或者"基于Apache IoTDB的大数据产品"， 这种名字就是被允许的。
+简单来说，当你想在名字中出现IoTDB时，应为"Apache IoTDB"，而不是仅"IoTDB"。
+
+在你（在Maven 或者其他模块名中）创建软件标识时，可以命名为例如"iotdb-tool"。
+
+在产品描述中明确指出Apache IoTDB也是可以的，例如"该大数据产品是Apache IoTDB的一个子产品"。
+
+### 相关贡献或应用的公司和组织
 要将自己添加到列表中，请给dev@iotdb.apache.org发送电子邮件，其中包含您的组织名称，URL，正在使用的IoTDB组件列表以及用例的简短描述。
+你也可以在[Github](https://github.com/apache/incubator-iotdb/issues/748) 留言。
 
-- 清华大学软件学院和大数据系统软件国家工程实验室最初启动了IoTDB
-	- 我们有研究生和一组专业软件工程师在堆栈上工作
+
+- 清华大学软件学院和大数据系统软件国家工程实验室最初开发了IoTDB，并捐献给Apache。
+	- 我们有很多研究生和专业软件工程师在持续开发IoTDB
+	- 我们在上海地铁和其他两个城市的地铁管理中使用IoTDB。
+	- 我们在中国气象局使用IoTDB管理超过10年的站点实况数据。
+	
+- 联想开发了TsFile的Go语言版本，并用于长飞光纤项目。该项目收集了超过9万个测点，并基于TsFile同步到云端。
+
+- 金风科技使用IoTDB管理风机数据。他们首先从Kafka消费SCADA数据，然后写入IoTDB并从IoTDB进行查询。
+
+- 大唐先一将IoTDB部署在了中国的许多电厂。
+ 
+- 北京智创新科使用IoTDB存储中国铁塔的2百万铁塔的蓄电池数据。
+
+- 北京清智物联使用IoTDB收集调相机（发电机）的监控数据。
+
+- 建龙钢铁在测试IoTDB。
 
