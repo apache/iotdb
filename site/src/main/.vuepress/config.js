@@ -352,7 +352,7 @@ var config = {
 						children: [
 							['5-Operation Manual/1-DDL Data Definition Language','DDL (Data Definition Language)'],
 							['5-Operation Manual/2-DML Data Manipulation Language','DML (Data Manipulation Language)'],
-							['5-Operation Manual/3-Right Management Statements','Right Management Statements'],
+							['5-Operation Manual/3-Administration','Administration'],
 							['5-Operation Manual/4-SQL Reference','SQL Reference']
 						]
 					},
@@ -767,7 +767,7 @@ var config = {
 						children: [
 							['5-Operation Manual/1-DDL Data Definition Language','DDL (数据定义语言)'],
 							['5-Operation Manual/2-DML Data Manipulation Language','DML (数据操作语言)'],
-							['5-Operation Manual/3-Right Management Statements','权限管理语句'],
+							['5-Operation Manual/3-Administration','权限管理语句'],
 							['5-Operation Manual/4-SQL Reference','SQL 参考文档']
 						]
 					},
