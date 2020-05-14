@@ -481,7 +481,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testFollowerExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.FOLLOWER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
-    TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(10, 0);
+    TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(0, 100);
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(new Path(timeseriesSchema.getFullPath()),
             timeseriesSchema.getType(), timeseriesSchema.getEncodingType(),
@@ -496,7 +496,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testLeaderExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
-    TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(10, 0);
+    TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(0, 100);
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(new Path(timeseriesSchema.getFullPath()),
             timeseriesSchema.getType(), timeseriesSchema.getEncodingType(),

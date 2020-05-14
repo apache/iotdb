@@ -67,6 +67,9 @@ abstract class BaseApplier implements LogApplier {
         if (e.getCause() instanceof StorageGroupNotSetException) {
           metaGroupMember.syncLeader();
           getQueryExecutor().processNonQuery(plan);
+          return;
+        } else {
+          throw e;
         }
       }
     } else {
