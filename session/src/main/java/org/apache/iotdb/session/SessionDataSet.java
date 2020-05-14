@@ -43,9 +43,10 @@ public class SessionDataSet {
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet) {
+      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
+      boolean ignoreTimeStamp) {
     this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
-        columnNameIndex, false, queryId, client, sessionId, queryDataSet, 1024);
+        columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, queryDataSet, 1024);
   }
 
   public int getFetchSize() {
@@ -57,7 +58,11 @@ public class SessionDataSet {
   }
 
   public List<String> getColumnNames() {
-    return ioTDBRpcDataSet.columnNameList;
+    return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
+  }
+
+  public List<TSDataType> getColumnTypes() {
+    return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
   }
 
 

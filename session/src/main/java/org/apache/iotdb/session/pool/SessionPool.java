@@ -189,11 +189,11 @@ public class SessionPool {
     occupied.clear();
   }
 
-  public void closeResultSet(SessionDataSetWrapper wrapper) throws StatementExecutionException {
+  public void closeResultSet(SessionDataSetWrapper wrapper) {
     boolean putback = true;
     try {
       wrapper.sessionDataSet.closeOperationHandle();
-    } catch (IoTDBConnectionException e) {
+    } catch (IoTDBConnectionException | StatementExecutionException e) {
       removeSession();
       putback = false;
     } finally {

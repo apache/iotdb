@@ -54,7 +54,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
-  public void test() {
+  public void test1() {
     String[] retArray = new String[]{
         "0,1,2.0,null",
         "1,1,2.0,null",
@@ -76,6 +76,59 @@ public class IoTDBSessionIteratorIT {
       while (iterator.next()) {
         String ans = String.format("%s,%s,%s,%s", iterator.getLong(1), iterator.getInt("root.sg1.d1.s1"),
             iterator.getFloat(3), iterator.getString("root.sg1.d2.s1"));
+        assertEquals(retArray[count], ans);
+        count++;
+      }
+      assertEquals(retArray.length, count);
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void test2() {
+    String[] retArray = new String[]{
+        "9,root.sg1.d1.s1,1",
+        "9,root.sg1.d1.s2,2.0",
+        "9,root.sg1.d2.s1,4.0"
+    };
+
+    try {
+      SessionDataSet sessionDataSet = session.executeQueryStatement("select last * from root.sg1");
+      sessionDataSet.setFetchSize(1024);
+      DataIterator iterator = sessionDataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        String ans = String.format("%s,%s,%s", iterator.getLong(1), iterator.getString(2),
+            iterator.getString(3));
+        assertEquals(retArray[count], ans);
+        count++;
+      }
+      assertEquals(retArray.length, count);
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void test3() {
+    String[] retArray = new String[]{
+        "root.sg1.d1",
+        "root.sg1.d2"
+    };
+
+    try {
+      SessionDataSet sessionDataSet = session.executeQueryStatement("show devices");
+      sessionDataSet.setFetchSize(1024);
+      assertEquals(1, sessionDataSet.getColumnNames().size());
+      DataIterator iterator = sessionDataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        String ans = iterator.getString(1);
         assertEquals(retArray[count], ans);
         count++;
       }
