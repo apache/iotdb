@@ -30,6 +30,8 @@ Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 The page will reload if you make edits.<br />
 You will also see any lint errors in the console.
 
+Note: you have to change to proxy mode.
+
 ### `yarn test`
 
 Launches the test runner in the interactive watch mode.<br />
@@ -45,8 +47,11 @@ Your app is ready to be deployed!
 
 See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
 
-## Learn More
+## How to use.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+You have to run `yarn install` and `yarn build` before in `incubator-iotdb/web/src/web`. 
+Run `mvn clean install -Dmaven.test.skip=true` in `incubator-iotdb`. Then go to
+`incubator-iotdb/distribution/target/apache-iotdb-0.10.0-SNAPSHOT-incubating-bin/apache-iotdb-0.10.0-SNAPSHOT-incubating`
+and set `IOTDB_HOME` to this path. Run `start-sever.sh` in sbin and visit `localhost:8181`.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+

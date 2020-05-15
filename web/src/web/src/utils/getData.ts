@@ -23,7 +23,7 @@ export const getData = {
 };
 
 async function getServerInformation() {
-    return await fetch('http://localhost:8181/rest/server_information',{
+    return await fetch('/rest/server_information',{
         method:'GET',
         headers:{
             Accept: 'application/json',
@@ -36,7 +36,7 @@ async function getServerInformation() {
 }
 
 async function getVersion() {
-    return await fetch('http://localhost:8181/rest/version',{
+    return await fetch('/rest/version',{
         method:'GET',
         headers:{
             Accept: 'text/plain',
@@ -49,7 +49,7 @@ async function getVersion() {
 }
 
 async function getSqlArgument() {
-    return await fetch('http://localhost:8181/rest/sql_arguments',{
+    return await fetch('/rest/sql_arguments',{
         method:'GET',
         headers:{
             Accept: 'application/json',

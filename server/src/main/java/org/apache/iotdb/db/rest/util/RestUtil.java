@@ -27,8 +27,12 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.glassfish.jersey.servlet.ServletContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RestUtil {
+
+  private static final Logger logger = LoggerFactory.getLogger(RestUtil.class);
 
   private RestUtil() {}
 
@@ -47,7 +51,8 @@ public class RestUtil {
     if(webPath == null) {
       webPath = System.getProperty("user.dir");
     }
-    staticHolder.setInitParameter("resourceBase","file://" + webPath+ "/web/");
+    logger.debug(webPath);
+    staticHolder.setInitParameter("resourceBase","file://" + webPath+ "/web/build");
     staticHolder.setInitParameter("dirAllowed","true");
     ctx.addServlet(staticHolder, "/");
     return ctx;
