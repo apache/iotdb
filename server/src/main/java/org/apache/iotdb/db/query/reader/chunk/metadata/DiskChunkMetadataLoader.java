@@ -72,10 +72,8 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
       QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
     }
 
-    TsFileSequenceReader tsFileSequenceReader =
-            FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
     for (ChunkMetadata data : chunkMetadataList) {
-      data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
+      data.setChunkLoader(new DiskChunkLoader(resource));
     }
   }
 

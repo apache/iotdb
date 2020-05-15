@@ -63,8 +63,7 @@ public class ChunkCache {
       protected long calEntrySize(ChunkMetadata key, Chunk value) {
         long currentSize;
         if (count < 10) {
-          currentSize = RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator
-              .shallowSizeOf(key.getChunkLoader()) + RamUsageEstimator.sizeOf(value);
+          currentSize = RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.sizeOf(value);
           averageSize = ((averageSize * count) + currentSize) / (++count);
         } else if (count < 100000) {
           count++;
@@ -74,7 +73,6 @@ public class ChunkCache {
           count = 1;
           currentSize = averageSize;
         }
-        key.setRAMSize(currentSize);
         return currentSize;
       }
     };

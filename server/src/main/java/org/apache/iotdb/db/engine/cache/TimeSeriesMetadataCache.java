@@ -83,7 +83,6 @@ public class TimeSeriesMetadataCache {
           count = 1;
           currentSize = averageSize;
         }
-        key.setRAMSize(currentSize);
         return currentSize;
       }
     };

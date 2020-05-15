@@ -48,6 +48,8 @@ public class ChunkMetadataCache {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChunkMetaDataCache();
   private static final boolean cacheEnable = config.isMetaDataCacheEnable();
+  private static final long CHUNK_METADATA_FIXED_RAM_SIZE = 160;
+
   /**
    * key: file path dot deviceId dot sensorId.
    * <p>
@@ -69,32 +71,30 @@ public class ChunkMetadataCache {
       @Override
       protected long calEntrySize(AccountableString key, List<ChunkMetadata> value) {
         if (value.isEmpty()) {
-          return key.getString().getBytes().length;
+          return RamUsageEstimator.sizeOf(key) + RamUsageEstimator.shallowSizeOf(value);
         }
         long entrySize;
         if (count < 10) {
-          long currentSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
-              .shallowSizeOf(value.get(0).getStatistics()) + RamUsageEstimator
-              .sizeOf(value.get(0).getMeasurementUid()) + RamUsageEstimator
-              .shallowSizeOf(value.get(0).getChunkLoader());
+          long currentSize = CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator
+              .sizeOf(value.get(0).getMeasurementUid());
           averageSize = ((averageSize * count) + currentSize) / (++count);
           IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageSize);
-          entrySize = RamUsageEstimator.sizeOf(key) + currentSize * value.size() + RamUsageEstimator
-              .shallowSizeOf(value);
+          entrySize = RamUsageEstimator.sizeOf(key)
+              + (currentSize + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.size()
+              + RamUsageEstimator.shallowSizeOf(value);
         } else if (count < 100000) {
           count++;
-          entrySize = RamUsageEstimator.sizeOf(key) + averageSize * value.size() + RamUsageEstimator
-              .shallowSizeOf(value);
+          entrySize = RamUsageEstimator.sizeOf(key)
+              + (averageSize + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.size()
+              + RamUsageEstimator.shallowSizeOf(value);
         } else {
-          averageSize = RamUsageEstimator.shallowSizeOf(value.get(0)) + RamUsageEstimator
-              .shallowSizeOf(value.get(0).getStatistics()) + RamUsageEstimator
-              .sizeOf(value.get(0).getMeasurementUid()) + RamUsageEstimator
-              .shallowSizeOf(value.get(0).getChunkLoader());
+          averageSize = CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator
+              .sizeOf(value.get(0).getMeasurementUid());
           count = 1;
-          entrySize = RamUsageEstimator.sizeOf(key) + averageSize * value.size() + RamUsageEstimator
-              .shallowSizeOf(value);
+          entrySize = RamUsageEstimator.sizeOf(key)
+              + (averageSize + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.size()
+              + RamUsageEstimator.shallowSizeOf(value);
         }
-        key.setRAMSize(entrySize);
         return entrySize;
       }
     };
