@@ -47,7 +47,7 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
   private long usedMemory;
 
   /**
-   *
+   * memory size we need to retain while the cache is full
    */
   private final long retainMemory;
 
