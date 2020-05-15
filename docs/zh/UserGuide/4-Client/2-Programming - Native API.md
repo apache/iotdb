@@ -175,3 +175,5 @@
 4. 可以调用 `SessionDataSetWrapper` 的 `getColumnNames()` 方法得到结果集列名 
 
 使用示例可以参见 ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest.java```
+
+或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`

@@ -48,6 +48,7 @@ public class IoTDBRpcDataSet {
   public boolean isClosed = false;
   public TSIService.Iface client;
   public List<String> columnNameList; // no deduplication
+  public List<TSDataType> columnTypeList; // no deduplication
   public Map<String, Integer> columnOrdinalMap; // used because the server returns deduplicated columns
   public List<TSDataType> columnTypeDeduplicatedList; // deduplicated from columnTypeList
   public int fetchSize;
@@ -80,13 +81,13 @@ public class IoTDBRpcDataSet {
     this.queryId = queryId;
     this.client = client;
     this.fetchSize = fetchSize;
-    this.columnNameList = columnNameList;
-    currentBitmap = new byte[columnNameList.size()];
     columnSize = columnNameList.size();
 
     this.columnNameList = new ArrayList<>();
+    this.columnTypeList = new ArrayList<>();
     if (!ignoreTimeStamp) {
       this.columnNameList.add(TIMESTAMP_STR);
+      this.columnTypeList.add(TSDataType.INT64);
     }
     // deduplicate and map
     this.columnOrdinalMap = new HashMap<>();
@@ -103,6 +104,7 @@ public class IoTDBRpcDataSet {
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
+        this.columnTypeList.add(TSDataType.valueOf(columnTypeList.get(i)));
         if (!columnOrdinalMap.containsKey(name)) {
           int index = columnNameIndex.get(name);
           columnOrdinalMap.put(name, index + START_INDEX);
@@ -115,6 +117,7 @@ public class IoTDBRpcDataSet {
       for (int i = 0; i < columnNameList.size(); i++) {
         String name = columnNameList.get(i);
         this.columnNameList.add(name);
+        this.columnTypeList.add(TSDataType.valueOf(columnTypeList.get(i)));
         if (!columnOrdinalMap.containsKey(name)) {
           columnOrdinalMap.put(name, index++);
           columnTypeDeduplicatedList.add(TSDataType.valueOf(columnTypeList.get(i)));
@@ -123,8 +126,35 @@ public class IoTDBRpcDataSet {
     }
 
     time = new byte[Long.BYTES];
-    currentBitmap = new byte[columnNameList.size()];
-    values = new byte[columnNameList.size()][];
+    currentBitmap = new byte[columnTypeDeduplicatedList.size()];
+    values = new byte[columnTypeDeduplicatedList.size()][];
+    for (int i = 0; i < values.length; i++) {
+      TSDataType dataType = columnTypeDeduplicatedList.get(i);
+      switch (dataType) {
+        case BOOLEAN:
+          values[i] = new byte[1];
+          break;
+        case INT32:
+          values[i] = new byte[Integer.BYTES];
+          break;
+        case INT64:
+          values[i] = new byte[Long.BYTES];
+          break;
+        case FLOAT:
+          values[i] = new byte[Float.BYTES];
+          break;
+        case DOUBLE:
+          values[i] = new byte[Double.BYTES];
+          break;
+        case TEXT:
+          values[i] = null;
+          break;
+        default:
+          throw new UnSupportedDataTypeException(
+              String
+                  .format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+      }
+    }
     this.tsQueryDataSet = queryDataSet;
   }
 
@@ -195,39 +225,15 @@ public class IoTDBRpcDataSet {
       if (rowsIndex % 8 == 0) {
         currentBitmap[i] = bitmapBuffer.get();
       }
-      values[i] = null;
       if (!isNull(i, rowsIndex)) {
         ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
         TSDataType dataType = columnTypeDeduplicatedList.get(i);
         switch (dataType) {
           case BOOLEAN:
-            if (values[i] == null) {
-              values[i] = new byte[1];
-            }
-            valueBuffer.get(values[i]);
-            break;
           case INT32:
-            if (values[i] == null) {
-              values[i] = new byte[Integer.BYTES];
-            }
-            valueBuffer.get(values[i]);
-            break;
           case INT64:
-            if (values[i] == null) {
-              values[i] = new byte[Long.BYTES];
-            }
-            valueBuffer.get(values[i]);
-            break;
           case FLOAT:
-            if (values[i] == null) {
-              values[i] = new byte[Float.BYTES];
-            }
-            valueBuffer.get(values[i]);
-            break;
           case DOUBLE:
-            if (values[i] == null) {
-              values[i] = new byte[Double.BYTES];
-            }
             valueBuffer.get(values[i]);
             break;
           case TEXT:
@@ -245,6 +251,24 @@ public class IoTDBRpcDataSet {
     hasCachedRecord = true;
   }
 
+  public boolean isNull(int columnIndex) throws StatementExecutionException {
+    int index = columnOrdinalMap.get(findColumnNameByIndex(columnIndex)) - START_INDEX;
+    // time column will never be null
+    if (index < 0) {
+      return true;
+    }
+    return isNull(index, rowsIndex - 1);
+  }
+
+  public boolean isNull(String columnName) throws StatementExecutionException {
+    int index = columnOrdinalMap.get(columnName) - START_INDEX;
+    // time column will never be null
+    if (index < 0) {
+      return true;
+    }
+    return isNull(index, rowsIndex - 1);
+  }
+
   private boolean isNull(int index, int rowNum) {
     byte bitmap = currentBitmap[index];
     int shift = rowNum % 8;
@@ -258,7 +282,7 @@ public class IoTDBRpcDataSet {
   public boolean getBoolean(String columnName) throws StatementExecutionException {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToBool(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -272,7 +296,7 @@ public class IoTDBRpcDataSet {
   public double getDouble(String columnName) throws StatementExecutionException {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToDouble(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -286,7 +310,7 @@ public class IoTDBRpcDataSet {
   public float getFloat(String columnName) throws StatementExecutionException {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToFloat(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -300,7 +324,7 @@ public class IoTDBRpcDataSet {
   public int getInt(String columnName) throws StatementExecutionException {
     checkRecord();
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToInt(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -317,7 +341,7 @@ public class IoTDBRpcDataSet {
       return BytesUtils.bytesToLong(time);
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (values[index] != null) {
+    if (!isNull(index, rowsIndex - 1)) {
       return BytesUtils.bytesToLong(values[index]);
     } else {
       throw new StatementExecutionException(String.format(VALUE_IS_NULL, columnName));
@@ -358,7 +382,7 @@ public class IoTDBRpcDataSet {
       return String.valueOf(BytesUtils.bytesToLong(time));
     }
     int index = columnOrdinalMap.get(columnName) - START_INDEX;
-    if (index < 0 || index >= values.length || values[index] == null) {
+    if (index < 0 || index >= values.length || isNull(index, rowsIndex - 1)) {
       return null;
     }
     return getString(index, columnTypeDeduplicatedList.get(index), values);

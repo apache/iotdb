@@ -372,9 +372,9 @@ public class IoTDBDescriptor {
               .getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
 
       // the num of memtables in each storage group
-      conf.setMemtableNumInEachStorageGroup(
-          Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group",
-              String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
+      conf.setConcurrentWritingTimePartition(
+          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
+              String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(
