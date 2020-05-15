@@ -436,6 +436,13 @@ public class Session {
     }
   }
 
+  /**
+   * put value in buffer
+   * @param types types list
+   * @param values values list
+   * @param buffer buffer to insert
+   * @throws IoTDBConnectionException
+   */
   private void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
       throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
