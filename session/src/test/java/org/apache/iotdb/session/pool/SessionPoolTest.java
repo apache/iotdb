@@ -193,12 +193,7 @@ public class SessionPoolTest {
         wrapper.next();
       }
     } catch (IoTDBConnectionException e) {
-      try {
-        pool.closeResultSet(wrapper);
-      } catch (StatementExecutionException ex) {
-        ex.printStackTrace();
-        fail();
-      }
+      pool.closeResultSet(wrapper);
       EnvironmentUtils.reactiveDaemon();
       correctQuery(pool);
       pool.close();

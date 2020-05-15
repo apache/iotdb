@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.session.pool.SessionDataSetWrapper;
 import org.apache.iotdb.session.pool.SessionPool;
 
@@ -32,79 +35,80 @@ public class SessionPoolExample {
   private static ExecutorService service;
 
   public static void main(String[] args)
-      throws StatementExecutionException, IoTDBConnectionException {
+      throws StatementExecutionException, IoTDBConnectionException, InterruptedException {
     pool = new SessionPool("127.0.0.1", 6667, "root", "root", 3);
+    service = Executors.newFixedThreadPool(10);
 
     insertRecord();
-    queryGettingAllData();
-    queryGettingPartData();
-    deleteData();
+    queryByRowRecord();
+    Thread.sleep(1000);
+    queryByIterator();
     pool.close();
+    service.shutdown();
   }
 
   // more insert example, see SessionExample.java
   private static void insertRecord() throws StatementExecutionException, IoTDBConnectionException {
-    for (int i = 0; i < 10; i++) {
-      pool.insertRecord("root.sg1.d1", i, Collections.singletonList("s" + i),
-          Collections.singletonList("" + i));
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    for (long time = 0; time < 10; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+      pool.insertRecord(deviceId, time, measurements, values);
     }
   }
 
-  // Query getting all data
-  private static void queryGettingAllData() {
-    service = Executors.newFixedThreadPool(10);
-    for (int i = 0; i < 10; i++) {
-      final int no = i;
+  private static void queryByRowRecord() {
+    for (int i = 0; i < 1; i++) {
       service.submit(() -> {
         SessionDataSetWrapper wrapper = null;
         try {
-          wrapper = pool
-              .executeQueryStatement("select * from root.sg1.d1 where time = " + no);
-          // if you get all data, don't calling closeResultSet() is OK.
-          // but it's suggested.
+          wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
+          System.out.println(wrapper.getColumnNames());
+          System.out.println(wrapper.getColumnTypes());
           while (wrapper.hasNext()) {
             System.out.println(wrapper.next());
           }
         } catch (IoTDBConnectionException | StatementExecutionException e) {
-          // if there is exception when you call SessionDataSetWrapper.hasNext() or next(),
-          // you have to call closeResultSet().
-          try {
-            pool.closeResultSet(wrapper);
-          } catch (StatementExecutionException ex) {
-            ex.printStackTrace();
-          }
           e.printStackTrace();
+        } finally {
+          // remember to close data set finally!
+          pool.closeResultSet(wrapper);
         }
       });
     }
-    service.shutdown();
   }
 
-  // Query getting part data
-  private static void queryGettingPartData() {
-    service = Executors.newFixedThreadPool(10);
-    for (int i = 0; i < 10; i++) {
-      final int no = i;
+  private static void queryByIterator() {
+    for (int i = 0; i < 1; i++) {
       service.submit(() -> {
+        SessionDataSetWrapper wrapper = null;
         try {
-          SessionDataSetWrapper wrapper = pool
-              .executeQueryStatement("select * from root.sg1.d1 where time = " + no);
-          wrapper.next();
-          // REMEMBER to call closeResultSet() here.
-          // otherwise the query left will be blocked.
-          pool.closeResultSet(wrapper);
+          wrapper = pool.executeQueryStatement("select * from root.sg1.d1");
+          // get DataIterator like JDBC
+          DataIterator dataIterator = wrapper.iterator();
+          System.out.println(wrapper.getColumnNames());
+          System.out.println(wrapper.getColumnTypes());
+          while (dataIterator.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (String columnName: wrapper.getColumnNames()) {
+              builder.append(dataIterator.getString(columnName) + " ");
+            }
+            System.out.println(builder.toString());
+          }
         } catch (IoTDBConnectionException | StatementExecutionException e) {
           e.printStackTrace();
+        } finally {
+          // remember to close data set finally!
+          pool.closeResultSet(wrapper);
         }
       });
     }
-    service.shutdown();
-  }
-
-  private static void deleteData() throws IoTDBConnectionException, StatementExecutionException {
-    String path = "root.sg1.d1";
-    long deleteTime = 99;
-    pool.deleteData(path, deleteTime);
   }
 
 }
