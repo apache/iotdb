@@ -320,7 +320,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param appendMessage appending message
    */
   private TSStatus getStatus(TSStatusCode statusType, String appendMessage) {
-    TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(), appendMessage);
+    TSStatusType statusCodeAndMessage = new TSStatusType(statusType.getStatusCode(),
+        appendMessage == null ? "null" : appendMessage);
     return new TSStatus(statusCodeAndMessage);
   }
 
@@ -1404,7 +1405,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       execRet = executeNonQuery(plan);
     } catch (QueryProcessException e) {
       logger.debug("meet error while processing non-query. ", e);
-      return new TSStatus(new TSStatusType(e.getErrorCode(), e.getMessage()));
+      return new TSStatus(
+          new TSStatusType(e.getErrorCode(), e.getMessage() == null ? "null" : e.getMessage()));
     }
 
     return execRet ? getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
