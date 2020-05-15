@@ -133,18 +133,6 @@ public class HTTPTest {
       Assert.fail();
     }
 
-    String sql1 = "{\"sql\" : \"select * from root\"}";
-    Response response7 = client.target(SQL_URL).request().header("Authorization", "Basic " + encodedUserPassword)
-        .post(Entity.entity(JSONObject.parse(sql1), MediaType.APPLICATION_JSON));
-    String result7 = response7.readEntity(String.class);
-    String expectedResult7 = "[[\"time\",\"root.ln.wf01.wt01.status\",\"root.ln.wf01.wt01.temperature\",\"root.ln.wf01.wt01.hardware\"],"
-        + "[\"1970-01-01T08:00:00.001+08:00\",\"11\",\"false\",\"1.1\"],"
-        + "[\"1970-01-01T08:00:00.002+08:00\",\"22\",\"true\",\"2.2\"],"
-        + "[\"1970-01-01T08:00:00.003+08:00\",\"33\",\"false\",\"3.3\"],"
-        + "[\"1970-01-01T08:00:00.004+08:00\",\"44\",\"false\",\"4.4\"],"
-        + "[\"1970-01-01T08:00:00.005+08:00\",\"55\",\"false\",\"5.5\"]]";
-    Assert.assertEquals(expectedResult7, result7);
-
     String sql2 = "{\"sql\" : \"show timeseries\"}";
     Response response8 = client.target(SQL_URL).request().header("Authorization", "Basic " + encodedUserPassword)
         .post(Entity.entity(JSONObject.parse(sql2), MediaType.APPLICATION_JSON));
