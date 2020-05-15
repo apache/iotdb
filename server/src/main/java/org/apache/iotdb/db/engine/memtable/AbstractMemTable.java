@@ -83,18 +83,14 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessException {
-    try {
-      for (int i = 0; i < insertPlan.getValues().length; i++) {
+    for (int i = 0; i < insertPlan.getValues().length; i++) {
 
-        Object value = parseValue(insertPlan.getDataTypes()[i], insertPlan.getValues()[i]);
-        write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-            insertPlan.getDataTypes()[i], insertPlan.getTime(), value);
-      }
-      long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
-      memSize += recordSizeInByte;
-    } catch (RuntimeException e) {
-      throw new QueryProcessException(e.getMessage());
+      Object value = parseValue(insertPlan.getDataTypes()[i], insertPlan.getValues()[i]);
+      write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
+          insertPlan.getDataTypes()[i], insertPlan.getTime(), value);
     }
+    long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
+    memSize += recordSizeInByte;
   }
 
   private static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
