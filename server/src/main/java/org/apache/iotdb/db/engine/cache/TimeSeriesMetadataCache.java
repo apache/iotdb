@@ -79,7 +79,10 @@ public class TimeSeriesMetadataCache {
           count++;
           currentSize = averageSize;
         } else {
-          averageSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(value);
+          averageSize = RamUsageEstimator.shallowSizeOf(key) + RamUsageEstimator.sizeOf(key.device)
+              + RamUsageEstimator.sizeOf(key.measurement) + RamUsageEstimator.shallowSizeOf(value)
+              + RamUsageEstimator.sizeOf(value.getMeasurementId()) + RamUsageEstimator
+              .shallowSizeOf(value.getStatistics());
           count = 1;
           currentSize = averageSize;
         }
