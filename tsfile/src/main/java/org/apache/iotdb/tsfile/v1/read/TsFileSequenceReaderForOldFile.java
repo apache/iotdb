@@ -259,8 +259,8 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
     return getTimeseriesMetadataFromOldFile(device, measurements);
   }
 
-  /*
-   *  for 0.9.x TsFile
+  /**
+   *  for 0.9.x/v1 TsFile
    */
   private TimeseriesMetadata getTimeseriesMetadataFromOldFile(Path path) throws IOException {
     Map<String, TimeseriesMetadata> deviceMetadata = 
@@ -268,8 +268,8 @@ public class TsFileSequenceReaderForOldFile extends TsFileSequenceReader {
     return deviceMetadata.get(path.getMeasurement());
   }
 
-  /*
-   *  for 0.9.x TsFile
+  /**
+   *  for 0.9.x/v1 TsFile
    */
   private List<TimeseriesMetadata> getTimeseriesMetadataFromOldFile(String device, Set<String> measurements)
       throws IOException {

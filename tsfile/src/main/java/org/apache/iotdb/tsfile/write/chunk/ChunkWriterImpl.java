@@ -258,7 +258,7 @@ public class ChunkWriterImpl implements IChunkWriter {
   /**
    * write the page header and data into the PageWriter's output stream.
    *
-   * @NOTE: for upgrading 0.9.x to 0.10.x
+   * @NOTE: for upgrading 0.9/v1 to 0.10/v2 TsFile
    */
   public void writePageHeaderAndDataIntoBuff(ByteBuffer data, PageHeader header)
       throws PageException {

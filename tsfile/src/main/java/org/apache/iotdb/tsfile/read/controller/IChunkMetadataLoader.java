@@ -31,7 +31,7 @@ public interface IChunkMetadataLoader {
   List<ChunkMetadata> loadChunkMetadataList() throws IOException;
 
   /**
-   * For query v0.9 tsfile only
+   * For query 0.9/v1 tsfile only
    * @param chunkMetadataList
    * @throws IOException
    */

@@ -85,7 +85,7 @@ public abstract class OldStatistics<T> {
   }
   
   /**
-   * For upgrading 0.9.x -> 0.10.x
+   * For upgrading 0.9.x/v1 -> 0.10/v2
    */
   public static Statistics upgradeOldStatistics(OldStatistics<?> oldstatistics, 
       TSDataType dataType, int numOfValues, long maxTimestamp, long minTimestamp) {
@@ -145,7 +145,7 @@ public abstract class OldStatistics<T> {
   }
 
   /**
-   * For upgrading 0.9.x -> 0.10.x
+   * For upgrading 0.9.x/v1 -> 0.10.x/v2
    */
   public static Statistics constructStatisticsFromOldChunkMetadata(OldChunkMetadata oldChunkMetadata) {
     Statistics<?> statistics;

@@ -65,7 +65,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   /**
-   * For query v0.9 tsfile only
+   * For query v0.9/v1 tsfile only
    * When generate temporary timeseriesMetadata
    * set DiskChunkLoader to each chunkMetadata in chunkMetadataList
    * @param chunkMetadataList

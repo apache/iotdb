@@ -115,19 +115,19 @@ public class TsFileResource {
 
   /**
    *  generated upgraded TsFile ResourceList
-   *  used for upgrading 0.9 -> 0.10
+   *  used for upgrading v0.9.x/v1 -> 0.10/v2
    */
   private List<TsFileResource> upgradedResources;
 
   /**
    *  load upgraded TsFile Resources to storage group processor
-   *  used for upgrading 0.9 -> 0.10
+   *  used for upgrading v0.9.x/v1 -> 0.10/v2
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
   /**
    *  indicate if this tsfile resource belongs to a sequence tsfile or not 
-   *  used for upgrading 0.9 -> 0.10
+   *  used for upgrading v0.9.x/v1 -> 0.10/v2
    */
   private boolean isSeq;
 
