@@ -516,7 +516,7 @@ public class IoTDBConfig {
   /**
    * the num of memtable in each storage group
    */
-  private int memtableNumInEachStorageGroup = 10;
+  private int concurrentWritingTimePartition = 10;
 
   /**
    * the default fill interval in LinearFill and PreviousFill, -1 means infinite past time
@@ -547,12 +547,12 @@ public class IoTDBConfig {
     // empty constructor
   }
 
-  public int getMemtableNumInEachStorageGroup() {
-    return memtableNumInEachStorageGroup;
+  public int getConcurrentWritingTimePartition() {
+    return concurrentWritingTimePartition;
   }
 
-  void setMemtableNumInEachStorageGroup(int memtableNumInEachStorageGroup) {
-    this.memtableNumInEachStorageGroup = memtableNumInEachStorageGroup;
+  void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
+    this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 
   public int getDefaultFillInterval() {
