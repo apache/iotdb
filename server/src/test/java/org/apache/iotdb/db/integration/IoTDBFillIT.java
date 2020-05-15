@@ -143,12 +143,11 @@ public class IoTDBFillIT {
   }
 
   @Test
-  public void LinearFillTest() throws SQLException {
+  public void LinearFillCommonTest() throws SQLException {
     String[] retArray1 = new String[]{
         "3,3.3,false,33",
         "70,70.34,false,374",
-        "70,null,null,null",
-        "625,null,false,null"
+        "70,70.34,false,374"
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -186,7 +185,54 @@ public class IoTDBFillIT {
       }
 
       hasResultSet = statement.execute("select temperature,status, hardware "
+          + "from root.ln.wf01.wt01 where time = 70 Fill(int32[linear], "
+          + "double[linear], boolean[previous])");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
+              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+      }
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void LinearFillWithBeforeOrAfterValueNullTest() throws SQLException {
+    String[] retArray1 = new String[]{
+        "70,null,null,null",
+        "80,null,null,null",
+        "625,null,false,null"
+    };
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+
+      boolean hasResultSet = statement.execute("select temperature,status, hardware "
           + "from root.ln.wf01.wt01 where time = 70 "
+          + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
+
+      int cnt = 0;
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(TEMPERATURE_STR_1)
+              + "," + resultSet.getString(STATUS_STR_1) + "," + resultSet.getString(HARDWARE_STR);
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+      }
+
+      hasResultSet = statement.execute("select temperature,status, hardware "
+          + "from root.ln.wf01.wt01 where time = 80 "
           + "Fill(int32[linear, 25ms, 25ms], double[linear, 25ms, 25ms], boolean[previous, 5ms])");
 
       Assert.assertTrue(hasResultSet);

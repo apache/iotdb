@@ -28,8 +28,6 @@ import org.slf4j.LoggerFactory;
 
 public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IService {
 
-  double chunkMetaDataHitRatio;
-  double tsfileMetaDataHitRatio;
 
   private static Logger logger = LoggerFactory.getLogger(CacheHitRatioMonitor.class);
   static final CacheHitRatioMonitor instance = AsyncCacheHitRatioHolder.DISPLAYER;
@@ -56,14 +54,27 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
 
   @Override
   public double getChunkMetaDataHitRatio() {
-    chunkMetaDataHitRatio = ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
-    return chunkMetaDataHitRatio;
+    return ChunkMetadataCache.getInstance().calculateChunkMetaDataHitRatio();
   }
 
   @Override
-  public double getTsfileMetaDataHitRatio() {
-    tsfileMetaDataHitRatio = TsFileMetaDataCache.getInstance().calculateTsFileMetaDataHitRatio();
-    return tsfileMetaDataHitRatio;
+  public long getChunkMetaDataCacheUsedMemory() {
+    return ChunkMetadataCache.getInstance().getUsedMemory();
+  }
+
+  @Override
+  public long getChunkMetaDataCacheMaxMemory() {
+    return ChunkMetadataCache.getInstance().getMaxMemory();
+  }
+
+  @Override
+  public double getChunkMetaDataCacheUsedMemoryProportion() {
+    return ChunkMetadataCache.getInstance().getUsedMemoryProportion();
+  }
+
+  @Override
+  public long getChunkMetaDataCacheAverageSize() {
+    return ChunkMetadataCache.getInstance().getAverageSize();
   }
 
   @Override
@@ -72,8 +83,48 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
   }
 
   @Override
+  public long getChunkCacheUsedMemory() {
+    return ChunkCache.getInstance().getUsedMemory();
+  }
+
+  @Override
+  public long getChunkCacheMaxMemory() {
+    return ChunkCache.getInstance().getMaxMemory();
+  }
+
+  @Override
+  public double getChunkCacheUsedMemoryProportion() {
+    return ChunkCache.getInstance().getUsedMemoryProportion();
+  }
+
+  @Override
+  public long getChunkCacheAverageSize() {
+    return ChunkCache.getInstance().getAverageSize();
+  }
+
+  @Override
   public double getTimeSeriesMetadataHitRatio() {
     return TimeSeriesMetadataCache.getInstance().calculateTimeSeriesMetadataHitRatio();
+  }
+
+  @Override
+  public long getTimeSeriesMetadataCacheUsedMemory() {
+    return TimeSeriesMetadataCache.getInstance().getUsedMemory();
+  }
+
+  @Override
+  public long getTimeSeriesMetadataCacheMaxMemory() {
+    return TimeSeriesMetadataCache.getInstance().getMaxMemory();
+  }
+
+  @Override
+  public double getTimeSeriesCacheUsedMemoryProportion() {
+    return TimeSeriesMetadataCache.getInstance().getUsedMemoryProportion();
+  }
+
+  @Override
+  public long getTimeSeriesMetaDataCacheAverageSize() {
+    return TimeSeriesMetadataCache.getInstance().getAverageSize();
   }
 
   public static CacheHitRatioMonitor getInstance() {

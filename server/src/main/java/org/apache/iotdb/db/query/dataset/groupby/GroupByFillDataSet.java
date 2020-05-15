@@ -23,8 +23,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
-import org.apache.iotdb.db.query.fill.IFill;
-import org.apache.iotdb.db.query.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -105,7 +105,8 @@ public class GroupByFillDataSet extends QueryDataSet {
         // the previous value is not null and
         // (fill type is not previous until last or now time is before last time)
         if (previousValue[i] != null
-            && (!((PreviousFill) fillTypes.get(dataTypes.get(i))).isUntilLast()
+            && ((fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
+            .get(dataTypes.get(i))).isUntilLast())
             || rowRecord.getTimestamp() <= lastTimeArray[i])) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         }

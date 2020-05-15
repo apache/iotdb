@@ -185,3 +185,5 @@ you have to call `SessionPool.closeResultSet(wrapper)` manually;
 4. You can call `getColumnNames()` of `SessionDataSetWrapper` to get the column names of query result;
 
 Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest.java```
+
+Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
