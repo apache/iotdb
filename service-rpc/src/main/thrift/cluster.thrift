@@ -119,6 +119,7 @@ struct StartUpStatus {
  1: required long partitionInterval
  2: required int hashSalt
  3: required int replicationNumber
+ 4: required list<Node> seedNodeList
 }
 
 // follower -> leader
@@ -126,6 +127,7 @@ struct CheckStatusResponse {
  1: required bool partitionalIntervalEquals
  2: required bool hashSaltEquals
  3: required bool replicationNumEquals
+ 4: required bool seedNodeEquals
 }
 
 struct SendSnapshotRequest {
@@ -369,6 +371,8 @@ service TSMetaService extends RaftService {
   * @param node a new node that needs to be added
   **/
   AddNodeResponse addNode(1: Node node, 2: StartUpStatus startUpStatus)
+
+  CheckStatusResponse  checkStatus(1: StartUpStatus startUpStatus)
 
   /**
   * Remove a node from the cluster. If the node is not in the cluster or the cluster size will

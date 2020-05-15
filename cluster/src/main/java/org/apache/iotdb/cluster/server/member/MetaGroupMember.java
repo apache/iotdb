@@ -51,11 +51,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.ClientPool;
 import org.apache.iotdb.cluster.client.DataClient;
@@ -112,6 +113,7 @@ import org.apache.iotdb.cluster.server.NodeReport;
 import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.CheckStartUpStatusHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -181,6 +183,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   // how many times is a data record replicated, also the number of nodes in a data group
   public final int REPLICATION_NUM =
       ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+
+  public final int STARTUP_CHECK_THREAD_POOL_SIZE = 6;
+
+  public final int WAIT_START_UP_CHECK_TIME = 5;
+
+  public final TimeUnit WAIT_START_UP_CHECK_TIME_UNIT = TimeUnit.MINUTES;
+
+  public final long START_UP_TIME_THRESHOLD = 1; // minute
+
+  public final long START_UP_CHECK_TIME_INTERVAL = 5; // second
 
   // blind nodes are nodes that do not have the partition table, and if the node is the leader,
   // the partition table should be sent to them at the next heartbeat
@@ -319,33 +331,140 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * Parse the seed nodes from the cluster configuration and add them into the node list. Each
    * seedUrl should be like "{hostName}:{metaPort}:{dataPort}" Ignore bad-formatted seedUrls.
    */
-  private void addSeedNodes() {
+  protected void addSeedNodes() {
     List<String> seedUrls = config.getSeedNodeUrls();
+    // initialize allNodes
     for (String seedUrl : seedUrls) {
-      String[] split = seedUrl.split(":");
-      if (split.length != 3) {
-        logger.warn("Bad seed url: {}", seedUrl);
-        continue;
-      }
-      String ip = split[0];
-      try {
-        int metaPort = Integer.parseInt(split[1]);
-        int dataPort = Integer.parseInt(split[2]);
-        if (!ip.equals(thisNode.ip) || metaPort != thisNode.metaPort) {
-          // do not add the local node since it is added in `setThisNode()`
-          Node seedNode = new Node();
-          seedNode.setIp(ip);
-          seedNode.setMetaPort(metaPort);
-          seedNode.setDataPort(dataPort);
-          if (!allNodes.contains(seedNode)) {
-            // avoid duplications
-            allNodes.add(seedNode);
-          }
-        }
-      } catch (NumberFormatException e) {
-        logger.warn("Bad seed url: {}", seedUrl);
+      Node node = generateNode(seedUrl);
+      if ((!node.getIp().equals(thisNode.ip) || node.getMetaPort() != thisNode.getMetaPort())
+          && !allNodes.contains(node)) {
+        // do not add the local node since it is added in `setThisNode()`
+        allNodes.add(node);
       }
     }
+    startUpStatus.setSeedNodeList(allNodes);
+    boolean canEstablishCluster = false;
+    long startTime = System.currentTimeMillis();
+    while (!canEstablishCluster) {
+      ExecutorService pool = new ScheduledThreadPoolExecutor(STARTUP_CHECK_THREAD_POOL_SIZE);
+      AtomicInteger consistentNum = new AtomicInteger(1);
+      AtomicInteger inconsistentNum = new AtomicInteger(0);
+      for (Node seedNode : allNodes) {
+        if (!seedNode.getIp().equals(thisNode.ip)
+            || seedNode.getMetaPort() != thisNode.getMetaPort()) {
+          pool.submit(() -> {
+            AsyncClient client = (AsyncClient) connectNode(seedNode);
+            AtomicReference<CheckStatusResponse> response
+                = new AtomicReference<>(null);
+            CheckStartUpStatusHandler handler = new CheckStartUpStatusHandler();
+            if (client != null) {
+              handler.setResponse(response);
+              synchronized (response) {
+                try {
+                  client.checkStatus(startUpStatus, handler);
+                  response.wait(10 * 1000);
+                } catch (TException e) {
+                  logger.warn("Error occurs when check status on node : {}", seedNode);
+                } catch (InterruptedException e) {
+                  logger.warn("Current thread is interrupted.");
+                }
+              }
+              if (response.get() != null) {
+                // check the response
+                boolean partitionIntervalEquals = response.get().partitionalIntervalEquals;
+                boolean hashSaltEquals = response.get().hashSaltEquals;
+                boolean replicationNumEquals = response.get().replicationNumEquals;
+                boolean seedNodeListEquals = response.get().seedNodeEquals;
+                if (!partitionIntervalEquals) {
+                  logger.info(
+                      "Local partition interval conflicts with the majority of seed nodes.");
+                }
+                if (!hashSaltEquals) {
+                  logger
+                      .info("Local hash salt conflicts with the majority of seed nodes.");
+                }
+                if (!replicationNumEquals) {
+                  logger.info(
+                      "Local replication number conflicts with the majority of seed nodes.");
+                }
+                if (!seedNodeListEquals) {
+                  logger.info("Local seed node list conflicts with the majority of seed nodes.");
+                }
+                if (partitionIntervalEquals
+                    && hashSaltEquals
+                    && replicationNumEquals
+                    && seedNodeListEquals) {
+                  consistentNum.set(consistentNum.get() + 1);
+                } else {
+                  inconsistentNum.set(inconsistentNum.get() + 1);
+                }
+              } else {
+                logger.warn(
+                    "Start up exception. Cannot connect to node {}. Try again in next turn.",
+                    seedNode);
+              }
+            }
+          });
+        }
+
+      }
+      pool.shutdown();
+      try {
+        pool.awaitTermination(WAIT_START_UP_CHECK_TIME, WAIT_START_UP_CHECK_TIME_UNIT);
+      } catch (InterruptedException e) {
+        logger.error("Unexpected interruption when waiting for start up checks", e);
+        continue;
+      }
+      canEstablishCluster = analyseStartUpCheckResult(consistentNum.get(), inconsistentNum.get(),
+          seedUrls.size(), System.currentTimeMillis() - startTime);
+    }
+  }
+
+  protected Node generateNode(String nodeUrl) {
+    Node result = new Node();
+    String[] split = nodeUrl.split(":");
+    if (split.length != 3) {
+      logger.warn("Bad seed url: {}", nodeUrl);
+      return null;
+    }
+    String ip = split[0];
+    try {
+      int metaPort = Integer.parseInt(split[1]);
+      int dataPort = Integer.parseInt(split[2]);
+      result.setIp(ip);
+      result.setMetaPort(metaPort);
+      result.setDataPort(dataPort);
+    } catch (NumberFormatException e) {
+      logger.warn("Bad seed url: {}", nodeUrl);
+    }
+    return result;
+  }
+
+  private boolean analyseStartUpCheckResult(int consistentNum, int inconsistentNum,
+      int totalSeedNum, long timeElapsed) {
+    if (consistentNum >= (totalSeedNum + 1) / 2) {
+      // break the loop and establsih the cluster
+      return true;
+    } else if (inconsistentNum >= (totalSeedNum + 1) / 2) {
+      // this node is not consistent with the cluster, shut down
+      logger.error("The configuration of this node is inconsistent with the cluster.");
+      System.exit(0);
+    } else {
+      // If reach the start up time threshold, shut down.
+      // Otherwise, wait for a while, start the loop again.
+      if (timeElapsed > START_UP_TIME_THRESHOLD * 60 * 1000) {
+        logger.debug(
+            "The cluster start up failed. Start up time threshold exceeded.");
+        System.exit(0);
+      } else {
+        try {
+          Thread.sleep(START_UP_CHECK_TIME_INTERVAL * 1000);
+        } catch (InterruptedException e) {
+          logger.debug("Current thread is interrupted.");
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -428,6 +547,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     startUpStatus.setHashSalt(ClusterConstant.HASH_SALT);
     startUpStatus
         .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
+    List<String> seedUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
+    List<Node> seedNodeList = new ArrayList<>();
+    for (String seedUrl : seedUrls) {
+      seedNodeList.add(generateNode(seedUrl));
+    }
+    startUpStatus.setSeedNodeList(seedNodeList);
     return startUpStatus;
   }
 
@@ -735,6 +860,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       long remotePartitionInterval = startUpStatus.getPartitionInterval();
       int remoteHashSalt = startUpStatus.getHashSalt();
       int remoteReplicationNum = startUpStatus.getReplicationNumber();
+      List<Node> remoteSeedNodeList = startUpStatus.getSeedNodeList();
       long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig()
           .getPartitionInterval();
       int localHashSalt = ClusterConstant.HASH_SALT;
@@ -742,6 +868,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       boolean partitionIntervalEquals = true;
       boolean hashSaltEquals = true;
       boolean replicationNumEquals = true;
+      boolean seedNodeEquals = true;
 
       if (localPartitionInterval != remotePartitionInterval) {
         partitionIntervalEquals = false;
@@ -758,10 +885,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         logger.info("Remote replication number conflicts with the leader's. Leader: {}, remote: {}",
             localReplicationNum, remoteReplicationNum);
       }
-      if (!(partitionIntervalEquals && hashSaltEquals && replicationNumEquals)) {
+      if (!checkSeedNodes(true, allNodes, remoteSeedNodeList)) {
+        seedNodeEquals = false;
+        logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
+            Arrays.toString(allNodes.toArray(new Node[0])), remoteReplicationNum);
+      }
+      if (!(partitionIntervalEquals && hashSaltEquals && replicationNumEquals && seedNodeEquals)) {
         response.setRespNum((int) Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT);
         response.setCheckStatusResponse(
-            new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals, replicationNumEquals));
+            new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
+                replicationNumEquals, seedNodeEquals));
         resultHandler.onComplete(response);
         return true;
       }
@@ -805,6 +938,64 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     return false;
+  }
+
+  private boolean checkSeedNodes(boolean isClusterEstablished, List<Node> localSeedNodes,
+      List<Node> remoteSeedNodes) {
+    return isClusterEstablished ? seedNodesContains(localSeedNodes, remoteSeedNodes)
+        : seedNodesEquals(localSeedNodes, remoteSeedNodes);
+  }
+
+  private boolean seedNodesEquals(List<Node> thisNodeList, List<Node> thatNodeList) {
+    Node[] thisNodeArray = thisNodeList.toArray(new Node[0]);
+    Node[] thatNodeArray = thatNodeList.toArray(new Node[0]);
+    Arrays.sort(thisNodeArray, this::compareSeedNode);
+    Arrays.sort(thatNodeArray, this::compareSeedNode);
+    if (thisNodeArray.length != thatNodeArray.length) {
+      return false;
+    } else {
+      for (int i = 0; i < thisNodeArray.length; i++) {
+        if (compareSeedNode(thisNodeArray[i], thatNodeArray[i]) != 0) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+
+  private boolean seedNodesContains(List<Node> seedNodeList, List<Node> subSeedNodeList) {
+    // Because identifier is not compared here, List.contains() is not suitable
+    if (subSeedNodeList == null) {
+      return false;
+    }
+    seedNodeList.sort(this::compareSeedNode);
+    subSeedNodeList.sort(this::compareSeedNode);
+    int i = 0, j = 0;
+    while (i < seedNodeList.size() && j < subSeedNodeList.size()) {
+      int compareResult = compareSeedNode(seedNodeList.get(i), subSeedNodeList.get(j));
+      if (compareResult > 0) {
+        return false;
+      } else if (compareResult < 0) {
+        i++;
+      } else {
+        j++;
+      }
+    }
+    return j == subSeedNodeList.size();
+  }
+
+  private int compareSeedNode(Node thisSeedNode, Node thatSeedNode) {
+    int ipCompare = thisSeedNode.getIp().compareTo(thatSeedNode.getIp());
+    if (ipCompare != 0) {
+      return ipCompare;
+    } else {
+      int metaPortCompare = thisSeedNode.getMetaPort() - thatSeedNode.getMetaPort();
+      if (metaPortCompare != 0) {
+        return metaPortCompare;
+      } else {
+        return thisSeedNode.getDataPort() - thatSeedNode.getDataPort();
+      }
+    }
   }
 
   /**
@@ -1248,6 +1439,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   /**
    * Forward plans to the DataGroupMember of one node in the corresponding group. Only when all
    * nodes time out, will a TIME_OUT be returned.
+   *
    * @param planGroupMap
    * @return
    */
@@ -2178,6 +2370,50 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (dataClusterServer != null) {
       dataClusterServer.setPartitionTable(partitionTable);
     }
+  }
+
+  @Override
+  public void checkStatus(StartUpStatus startUpStatus,
+      AsyncMethodCallback<CheckStatusResponse> resultHandler) throws TException {
+    // check status of the new node
+    long remotePartitionInterval = startUpStatus.getPartitionInterval();
+    int remoteHashSalt = startUpStatus.getHashSalt();
+    int remoteReplicationNum = startUpStatus.getReplicationNumber();
+    List<Node> remoteSeedNodeList = startUpStatus.getSeedNodeList();
+    long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig()
+        .getPartitionInterval();
+    int localHashSalt = ClusterConstant.HASH_SALT;
+    int localReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    boolean partitionIntervalEquals = true;
+    boolean hashSaltEquals = true;
+    boolean replicationNumEquals = true;
+    boolean seedNodeListEquals = true;
+
+    if (localPartitionInterval != remotePartitionInterval) {
+      partitionIntervalEquals = false;
+      logger.info("Remote partition interval conflicts with the leader's. Leader: {}, remote: {}",
+          localPartitionInterval, remotePartitionInterval);
+    }
+    if (localHashSalt != remoteHashSalt) {
+      hashSaltEquals = false;
+      logger.info("Remote hash salt conflicts with the leader's. Leader: {}, remote: {}",
+          localHashSalt, remoteHashSalt);
+    }
+    if (localReplicationNum != remoteReplicationNum) {
+      replicationNumEquals = false;
+      logger.info("Remote replication number conflicts with the leader's. Leader: {}, remote: {}",
+          localReplicationNum, remoteReplicationNum);
+    }
+    if (!checkSeedNodes(false, this.allNodes, remoteSeedNodeList)) {
+      seedNodeListEquals = false;
+      logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
+          Arrays.toString(this.allNodes.toArray(new Node[0])),
+          Arrays.toString(remoteSeedNodeList.toArray(new Node[0])));
+    }
+
+    CheckStatusResponse response = new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
+        replicationNumEquals, seedNodeListEquals);
+    resultHandler.onComplete(response);
   }
 
   /**

@@ -85,6 +85,12 @@ public class TestUtils {
     startUpStatus.setHashSalt(ClusterConstant.HASH_SALT);
     startUpStatus
         .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
+    List<String> seedUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
+    List<Node> seedNodeList = new ArrayList<>();
+    for(int i = 0; i < 100; i+= 10){
+      seedNodeList.add(getNode(i));
+    }
+    startUpStatus.setSeedNodeList(seedNodeList);
     return startUpStatus;
   }
 
