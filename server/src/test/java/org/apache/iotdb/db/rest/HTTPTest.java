@@ -133,22 +133,27 @@ public class HTTPTest {
       Assert.fail();
     }
 
-    String file5 = HTTPTest.class.getClassLoader().getResource("SQL1.json").getFile();
-    String json5 = readToString(file5);
     String sql1 = "{\"sql\" : \"select * from root\"}";
-    json5 = json5.replaceAll("[\r\n\t \u00A0]", "");
     Response response7 = client.target(SQL_URL).request().header("Authorization", "Basic " + encodedUserPassword)
         .post(Entity.entity(JSONObject.parse(sql1), MediaType.APPLICATION_JSON));
     String result7 = response7.readEntity(String.class);
-    Assert.assertEquals(json5, result7);
+    String expectedResult7 = "[[\"time\",\"root.ln.wf01.wt01.status\",\"root.ln.wf01.wt01.temperature\",\"root.ln.wf01.wt01.hardware\"],"
+        + "[\"1970-01-01T08:00:00.001+08:00\",\"11\",\"false\",\"1.1\"],"
+        + "[\"1970-01-01T08:00:00.002+08:00\",\"22\",\"true\",\"2.2\"],"
+        + "[\"1970-01-01T08:00:00.003+08:00\",\"33\",\"false\",\"3.3\"],"
+        + "[\"1970-01-01T08:00:00.004+08:00\",\"44\",\"false\",\"4.4\"],"
+        + "[\"1970-01-01T08:00:00.005+08:00\",\"55\",\"false\",\"5.5\"]]";
+    Assert.assertEquals(expectedResult7, result7);
 
-    String file6 = HTTPTest.class.getClassLoader().getResource("SQL2.json").getFile();
-    String json6 = readToString(file6);
     String sql2 = "{\"sql\" : \"show timeseries\"}";
     Response response8 = client.target(SQL_URL).request().header("Authorization", "Basic " + encodedUserPassword)
         .post(Entity.entity(JSONObject.parse(sql2), MediaType.APPLICATION_JSON));
     String result8 = response8.readEntity(String.class);
-    Assert.assertEquals(json6, result8);
+    String expectedResult8 = "[[\"timeseries\",\"alias\",\"storage group\",\"dataType\",\"encoding\",\"compression\"],"
+        + "[\"root.ln.wf01.wt01.status\",\"root.ln.wf01.wt01.status\",\"root.ln.wf01.wt01\",\"BOOLEAN\",\"PLAIN\",\"UNCOMPRESSED\"],"
+        + "[\"root.ln.wf01.wt01.temperature\",\"root.ln.wf01.wt01.temperature\",\"root.ln.wf01.wt01\",\"FLOAT\",\"PLAIN\",\"UNCOMPRESSED\"],"
+        + "[\"root.ln.wf01.wt01.hardware\",\"root.ln.wf01.wt01.hardware\",\"root.ln.wf01.wt01\",\"INT32\",\"PLAIN\",\"UNCOMPRESSED\"]]";
+    Assert.assertEquals(expectedResult8, result8);
   }
 
   @Test
