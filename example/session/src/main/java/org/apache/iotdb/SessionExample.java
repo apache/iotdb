@@ -27,6 +27,7 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -48,7 +49,6 @@ public class SessionExample {
       if (!e.getMessage().contains("StorageGroupAlreadySetException")) {
         throw e;
       }
-//       ignore duplicated set
     }
 
     createTimeseries();
@@ -59,6 +59,7 @@ public class SessionExample {
     insertRecords();
     nonQuery();
     query();
+    queryByIterator();
     deleteData();
     deleteTimeseries();
     session.close();
@@ -94,7 +95,8 @@ public class SessionExample {
   private static void createMultiTimeseries()
       throws IoTDBConnectionException, BatchExecutionException {
 
-    if (!session.checkTimeseriesExists("root.sg1.d2.s1") && !session.checkTimeseriesExists("root.sg1.d2.s2")) {
+    if (!session.checkTimeseriesExists("root.sg1.d2.s1") && !session
+        .checkTimeseriesExists("root.sg1.d2.s2")) {
       List<String> paths = new ArrayList<>();
       paths.add("root.sg1.d2.s1");
       paths.add("root.sg1.d2.s2");
@@ -125,8 +127,9 @@ public class SessionExample {
       alias.add("weight1");
       alias.add("weight2");
 
-      session.createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
-          attributesList, alias);
+      session
+          .createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, null, tagsList,
+              attributesList, alias);
     }
   }
 
@@ -270,7 +273,7 @@ public class SessionExample {
     Tablet tablet1 = new Tablet("root.sg1.d1", schemaList, 100);
     Tablet tablet2 = new Tablet("root.sg1.d2", schemaList, 100);
     Tablet tablet3 = new Tablet("root.sg1.d3", schemaList, 100);
-    
+
     Map<String, Tablet> tabletMap = new HashMap<>();
     tabletMap.put("root.sg1.d1", tablet1);
     tabletMap.put("root.sg1.d2", tablet2);
@@ -334,9 +337,54 @@ public class SessionExample {
     SessionDataSet dataSet;
     dataSet = session.executeQueryStatement("select * from root.sg1.d1");
     System.out.println(dataSet.getColumnNames());
-    dataSet.setBatchSize(1024); // default is 512
+    dataSet.setFetchSize(1024); // default is 512
     while (dataSet.hasNext()) {
       System.out.println(dataSet.next());
+    }
+
+    dataSet.closeOperationHandle();
+  }
+
+  private static void queryByIterator()
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet;
+    dataSet = session.executeQueryStatement("select * from root.sg1.d1");
+    DataIterator iterator = dataSet.iterator();
+    System.out.println(dataSet.getColumnNames());
+    dataSet.setFetchSize(1024); // default is 512
+    while (iterator.next()) {
+      StringBuilder builder = new StringBuilder();
+      // get time
+      builder.append(iterator.getLong(1)).append(",");
+      // get second column
+      if (!iterator.isNull(2)) {
+        builder.append(iterator.getLong(2)).append(",");
+      } else {
+        builder.append("null").append(",");
+      }
+
+      // get third column
+      if (!iterator.isNull("root.sg1.d1.s2")) {
+        builder.append(iterator.getLong("root.sg1.d1.s2")).append(",");
+      } else {
+        builder.append("null").append(",");
+      }
+
+      // get forth column
+      if (!iterator.isNull(4)) {
+        builder.append(iterator.getLong(4)).append(",");
+      } else {
+        builder.append("null").append(",");
+      }
+
+      // get fifth column
+      if (!iterator.isNull("root.sg1.d1.s4")) {
+        builder.append(iterator.getObject("root.sg1.d1.s4"));
+      } else {
+        builder.append("null");
+      }
+
+      System.out.println(builder.toString());
     }
 
     dataSet.closeOperationHandle();

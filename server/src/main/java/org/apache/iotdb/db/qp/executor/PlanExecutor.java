@@ -69,12 +69,14 @@ import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -97,6 +99,8 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -173,7 +177,8 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public boolean processNonQuery(PhysicalPlan plan) throws QueryProcessException {
+  public boolean processNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     switch (plan.getOperatorType()) {
       case DELETE:
         delete((DeletePlan) plan);
@@ -229,9 +234,44 @@ public class PlanExecutor implements IPlanExecutor {
       case MOVE_FILE:
         operateMoveFile((OperateFilePlan) plan);
         return true;
+      case FLUSH:
+        operateFlush((FlushPlan) plan);
+        return true;
+      case MERGE:
+        operateMerge((MergePlan) plan);
+        return true;
+      case FULL_MERGE:
+        operateMerge((MergePlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
+    }
+  }
+
+  private void operateMerge(MergePlan plan) throws StorageEngineException {
+    if(plan.getOperatorType() == OperatorType.FULL_MERGE) {
+      StorageEngine.getInstance().mergeAll(true);
+    } else {
+      StorageEngine.getInstance()
+          .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
+    }
+  }
+
+  private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
+    if(plan.getPaths() == null) {
+      StorageEngine.getInstance().syncCloseAllProcessor();
+    } else {
+      if(plan.isSeq() == null) {
+        for (Path storageGroup : plan.getPaths()) {
+          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), true);
+          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), false);
+        }
+      } else {
+        for (Path storageGroup : plan.getPaths()) {
+          StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), plan.isSeq());
+        }
+      }
     }
   }
 
@@ -830,8 +870,11 @@ public class PlanExecutor implements IPlanExecutor {
         }
         LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
         schemas[i] = measurementNode.getSchema();
+        // reset measurement to common name instead of alias
+        measurementList[i] = measurementNode.getName();
       }
 
+      insertPlan.setMeasurements(measurementList);
       insertPlan.setSchemas(schemas);
       StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
@@ -1034,7 +1077,7 @@ public class PlanExecutor implements IPlanExecutor {
       if (!failedNames.isEmpty()) {
         throw new DeleteFailedException(String.join(",", failedNames));
       }
-    } catch (MetadataException e) {
+    } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
     return true;
@@ -1112,7 +1155,8 @@ public class PlanExecutor implements IPlanExecutor {
    *
    * @param pathList deleted paths
    */
-  private void deleteDataOfTimeSeries(List<Path> pathList) throws QueryProcessException {
+  private void deleteDataOfTimeSeries(List<Path> pathList)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);

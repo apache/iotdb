@@ -352,7 +352,7 @@ var config = {
 						children: [
 							['5-Operation Manual/1-DDL Data Definition Language','DDL (Data Definition Language)'],
 							['5-Operation Manual/2-DML Data Manipulation Language','DML (Data Manipulation Language)'],
-							['5-Operation Manual/3-Account Management Statements','Account Management Statements'],
+							['5-Operation Manual/3-Administration','Administration'],
 							['5-Operation Manual/4-SQL Reference','SQL Reference']
 						]
 					},
@@ -413,7 +413,8 @@ var config = {
 						children: [
 							['2-QueryEngine/1-QueryEngine','QueryEngine'],
 							['2-QueryEngine/2-Planner','Planner'],
-							['2-QueryEngine/3-PlanExecutor','PlanExecutor']
+							['2-QueryEngine/3-PlanExecutor','PlanExecutor'],
+							['2-QueryEngine/4-ResultSetConstruction','ResultSetConstruction']
 						]
 					},
 					{
@@ -766,7 +767,7 @@ var config = {
 						children: [
 							['5-Operation Manual/1-DDL Data Definition Language','DDL (数据定义语言)'],
 							['5-Operation Manual/2-DML Data Manipulation Language','DML (数据操作语言)'],
-							['5-Operation Manual/3-Account Management Statements','账户管理语句'],
+							['5-Operation Manual/3-Administration','权限管理语句'],
 							['5-Operation Manual/4-SQL Reference','SQL 参考文档']
 						]
 					},
@@ -827,7 +828,8 @@ var config = {
 						children: [
 							['2-QueryEngine/1-QueryEngine','查询引擎'],
 							['2-QueryEngine/2-Planner','执行计划生成器'],
-							['2-QueryEngine/3-PlanExecutor','计划执行器']
+							['2-QueryEngine/3-PlanExecutor','计划执行器'],
+							['2-QueryEngine/4-ResultSetConstruction','结果集构造']
 						]
 					},
 					{

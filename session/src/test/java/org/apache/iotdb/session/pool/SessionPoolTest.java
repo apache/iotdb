@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.session.pool;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -156,7 +160,6 @@ public class SessionPoolTest {
           SessionDataSetWrapper wrapper = pool
               .executeQueryStatement("select * from root.sg1.d1 where time = " + no);
           pool.closeResultSet(wrapper);
-          pool.closeResultSet(wrapper);
         } catch (Exception e) {
           e.printStackTrace();
           fail();
@@ -195,12 +198,7 @@ public class SessionPoolTest {
         wrapper.next();
       }
     } catch (IoTDBConnectionException e) {
-      try {
-        pool.closeResultSet(wrapper);
-      } catch (StatementExecutionException ex) {
-        ex.printStackTrace();
-        fail();
-      }
+      pool.closeResultSet(wrapper);
       EnvironmentUtils.reactiveDaemon();
       correctQuery(pool);
       pool.close();
