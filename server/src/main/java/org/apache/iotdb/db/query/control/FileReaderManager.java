@@ -149,7 +149,7 @@ public class FileReaderManager implements IService {
    * @return the reader of the file specified by filePath.
    * @throws IOException when reader cannot be created.
    */
-  @SuppressWarnings("squid:S1141")
+  @SuppressWarnings("squid:S2095")
   public synchronized TsFileSequenceReader get(String filePath, boolean isClosed)
       throws IOException {
 
