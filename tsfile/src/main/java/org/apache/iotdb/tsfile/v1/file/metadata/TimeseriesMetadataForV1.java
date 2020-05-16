@@ -25,7 +25,7 @@ import java.util.List;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 
-public class TimeseriesMetadataForOldFile extends TimeseriesMetadata {
+public class TimeseriesMetadataForV1 extends TimeseriesMetadata {
   
   private List<ChunkMetadata> chunkMetadataList;
 

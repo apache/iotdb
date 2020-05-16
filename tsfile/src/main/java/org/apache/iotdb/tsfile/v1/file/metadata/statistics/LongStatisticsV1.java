@@ -24,33 +24,33 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
- * Statistics for float type.
+ * Statistics for long type.
  */
-public class OldFloatStatistics extends OldStatistics<Float> {
+public class LongStatisticsV1 extends StatisticsV1<Long> {
 
-  private float min;
-  private float max;
-  private float first;
+  private long min;
+  private long max;
+  private long first;
+  private long last;
   private double sum;
-  private float last;
 
   @Override
-  public Float getMin() {
+  public Long getMin() {
     return min;
   }
 
   @Override
-  public Float getMax() {
+  public Long getMax() {
     return max;
   }
 
   @Override
-  public Float getFirst() {
+  public Long getFirst() {
     return first;
   }
 
   @Override
-  public Float getLast() {
+  public Long getLast() {
     return last;
   }
 
@@ -61,19 +61,20 @@ public class OldFloatStatistics extends OldStatistics<Float> {
 
   @Override
   void deserialize(ByteBuffer byteBuffer) throws IOException {
-    this.min = ReadWriteIOUtils.readFloat(byteBuffer);
-    this.max = ReadWriteIOUtils.readFloat(byteBuffer);
-    this.first = ReadWriteIOUtils.readFloat(byteBuffer);
-    this.last = ReadWriteIOUtils.readFloat(byteBuffer);
+    this.min = ReadWriteIOUtils.readLong(byteBuffer);
+    this.max = ReadWriteIOUtils.readLong(byteBuffer);
+    this.first = ReadWriteIOUtils.readLong(byteBuffer);
+    this.last = ReadWriteIOUtils.readLong(byteBuffer);
     this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 
   @Override
   void deserialize(InputStream inputStream) throws IOException {
-    this.min = ReadWriteIOUtils.readFloat(inputStream);
-    this.max = ReadWriteIOUtils.readFloat(inputStream);
-    this.first = ReadWriteIOUtils.readFloat(inputStream);
-    this.last = ReadWriteIOUtils.readFloat(inputStream);
+    this.min = ReadWriteIOUtils.readLong(inputStream);
+    this.max = ReadWriteIOUtils.readLong(inputStream);
+    this.first = ReadWriteIOUtils.readLong(inputStream);
+    this.last = ReadWriteIOUtils.readLong(inputStream);
     this.sum = ReadWriteIOUtils.readDouble(inputStream);
   }
+
 }

@@ -30,9 +30,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
  */
-public class OldTsFileMetadata {
+public class TsFileMetadataV1 {
 
-  private Map<String, OldTsDeviceMetadataIndex> deviceIndexMap = new HashMap<>();
+  private Map<String, TsDeviceMetadataIndexV1> deviceIndexMap = new HashMap<>();
 
   /**
    * TSFile schema for this file. This schema contains metadata for all the measurements.
@@ -42,7 +42,7 @@ public class OldTsFileMetadata {
   // bloom filter
   private BloomFilter bloomFilter;
 
-  public OldTsFileMetadata() {
+  public TsFileMetadataV1() {
     //do nothing
   }
 
@@ -52,17 +52,17 @@ public class OldTsFileMetadata {
    * @param buffer -buffer use to deserialize
    * @return -a instance of TsFileMetaData
    */
-  public static OldTsFileMetadata deserializeFrom(ByteBuffer buffer) {
-    OldTsFileMetadata fileMetaData = new OldTsFileMetadata();
+  public static TsFileMetadataV1 deserializeFrom(ByteBuffer buffer) {
+    TsFileMetadataV1 fileMetaData = new TsFileMetadataV1();
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
-      Map<String, OldTsDeviceMetadataIndex> deviceMap = new HashMap<>();
+      Map<String, TsDeviceMetadataIndexV1> deviceMap = new HashMap<>();
       String key;
-      OldTsDeviceMetadataIndex value;
+      TsDeviceMetadataIndexV1 value;
       for (int i = 0; i < size; i++) {
         key = ReadWriteIOUtils.readString(buffer);
-        value = OldTsDeviceMetadataIndex.deserializeFrom(buffer);
+        value = TsDeviceMetadataIndexV1.deserializeFrom(buffer);
         deviceMap.put(key, value);
       }
       fileMetaData.deviceIndexMap = deviceMap;
@@ -100,7 +100,7 @@ public class OldTsFileMetadata {
     return bloomFilter;
   }
 
-  public Map<String, OldTsDeviceMetadataIndex> getDeviceMap() {
+  public Map<String, TsDeviceMetadataIndexV1> getDeviceMap() {
     return deviceIndexMap;
   }
 
@@ -108,7 +108,7 @@ public class OldTsFileMetadata {
     return this.deviceIndexMap.containsKey(deltaObjUid);
   }
 
-  public OldTsDeviceMetadataIndex getDeviceMetadataIndex(String deviceUid) {
+  public TsDeviceMetadataIndexV1 getDeviceMetadataIndex(String deviceUid) {
     return this.deviceIndexMap.get(deviceUid);
   }
 

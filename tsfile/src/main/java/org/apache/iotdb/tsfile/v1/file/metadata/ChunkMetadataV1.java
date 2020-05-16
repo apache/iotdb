@@ -23,13 +23,13 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.v1.file.metadata.statistics.OldStatistics;
+import org.apache.iotdb.tsfile.v1.file.metadata.statistics.StatisticsV1;
 
 import java.nio.ByteBuffer;
 /**
  * MetaData of one chunk.
  */
-public class OldChunkMetadata {
+public class ChunkMetadataV1 {
 
 
   private String measurementUid;
@@ -58,9 +58,9 @@ public class OldChunkMetadata {
    */
   private long deletedAt = Long.MIN_VALUE;
 
-  private TsDigest valuesStatistics;
+  private TsDigestV1 valuesStatistics;
 
-  private OldChunkMetadata() {
+  private ChunkMetadataV1() {
   }
 
   /**
@@ -69,8 +69,8 @@ public class OldChunkMetadata {
    * @param buffer ByteBuffer
    * @return ChunkMetaData object
    */
-  public static OldChunkMetadata deserializeFrom(ByteBuffer buffer) {
-    OldChunkMetadata chunkMetaData = new OldChunkMetadata();
+  public static ChunkMetadataV1 deserializeFrom(ByteBuffer buffer) {
+    ChunkMetadataV1 chunkMetaData = new ChunkMetadataV1();
 
     chunkMetaData.measurementUid = ReadWriteIOUtils.readString(buffer);
     chunkMetaData.offsetOfChunkHeader = ReadWriteIOUtils.readLong(buffer);
@@ -79,7 +79,7 @@ public class OldChunkMetadata {
     chunkMetaData.endTime = ReadWriteIOUtils.readLong(buffer);
     chunkMetaData.tsDataType = ReadWriteIOUtils.readDataType(buffer);
 
-    chunkMetaData.valuesStatistics = TsDigest.deserializeFrom(buffer);
+    chunkMetaData.valuesStatistics = TsDigestV1.deserializeFrom(buffer);
 
     return chunkMetaData;
   }
@@ -89,7 +89,7 @@ public class OldChunkMetadata {
   }
   
   public ChunkMetadata upgradeToChunkMetadata() {
-    Statistics<?> statistics = OldStatistics
+    Statistics<?> statistics = StatisticsV1
         .constructStatisticsFromOldChunkMetadata(this);
     ChunkMetadata chunkMetadata = new ChunkMetadata(this.measurementUid, this.tsDataType,
         this.offsetOfChunkHeader, statistics);
@@ -110,7 +110,7 @@ public class OldChunkMetadata {
     return measurementUid;
   }
 
-  public TsDigest getDigest() {
+  public TsDigestV1 getDigest() {
     return valuesStatistics;
   }
 

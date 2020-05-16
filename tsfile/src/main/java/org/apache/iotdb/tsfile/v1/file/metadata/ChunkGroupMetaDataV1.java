@@ -27,7 +27,7 @@ import java.util.List;
 /**
  * Metadata of ChunkGroup.
  */
-public class OldChunkGroupMetaData {
+public class ChunkGroupMetaDataV1 {
 
   /**
    * Name of device, this field is not serialized.
@@ -49,11 +49,11 @@ public class OldChunkGroupMetaData {
   /**
    * All time series chunks in this chunk group.
    */
-  private List<OldChunkMetadata> chunkMetaDataList;
+  private List<ChunkMetadataV1> chunkMetaDataList;
 
   private long version;
 
-  private OldChunkGroupMetaData() {
+  private ChunkGroupMetaDataV1() {
     chunkMetaDataList = new ArrayList<>();
   }
 
@@ -63,8 +63,8 @@ public class OldChunkGroupMetaData {
    * @param buffer ByteBuffer
    * @return ChunkGroupMetaData object
    */
-  public static OldChunkGroupMetaData deserializeFrom(ByteBuffer buffer) {
-    OldChunkGroupMetaData chunkGroupMetaData = new OldChunkGroupMetaData();
+  public static ChunkGroupMetaDataV1 deserializeFrom(ByteBuffer buffer) {
+    ChunkGroupMetaDataV1 chunkGroupMetaData = new ChunkGroupMetaDataV1();
 
     chunkGroupMetaData.deviceID = ReadWriteIOUtils.readString(buffer);
     chunkGroupMetaData.startOffsetOfChunkGroup = ReadWriteIOUtils.readLong(buffer);
@@ -73,9 +73,9 @@ public class OldChunkGroupMetaData {
 
     int size = ReadWriteIOUtils.readInt(buffer);
 
-    List<OldChunkMetadata> chunkMetaDataList = new ArrayList<>();
+    List<ChunkMetadataV1> chunkMetaDataList = new ArrayList<>();
     for (int i = 0; i < size; i++) {
-      OldChunkMetadata metaData = OldChunkMetadata.deserializeFrom(buffer);
+      ChunkMetadataV1 metaData = ChunkMetadataV1.deserializeFrom(buffer);
       chunkMetaDataList.add(metaData);
     }
     chunkGroupMetaData.chunkMetaDataList = chunkMetaDataList;
@@ -88,14 +88,14 @@ public class OldChunkGroupMetaData {
    *
    * @param metadata time series metadata to add
    */
-  public void addTimeSeriesChunkMetaData(OldChunkMetadata metadata) {
+  public void addTimeSeriesChunkMetaData(ChunkMetadataV1 metadata) {
     if (chunkMetaDataList == null) {
       chunkMetaDataList = new ArrayList<>();
     }
     chunkMetaDataList.add(metadata);
   }
 
-  public List<OldChunkMetadata> getChunkMetaDataList() {
+  public List<ChunkMetadataV1> getChunkMetaDataList() {
     return chunkMetaDataList;
   }
 

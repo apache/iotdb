@@ -22,7 +22,7 @@ package org.apache.iotdb.tsfile.v1.file.metadata;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class OldTsDeviceMetadataIndex {
+public class TsDeviceMetadataIndexV1 {
 
   /**
    * The offset of the TsDeviceMetadata.
@@ -41,7 +41,7 @@ public class OldTsDeviceMetadataIndex {
    */
   private long endTime;
 
-  public OldTsDeviceMetadataIndex() {
+  public TsDeviceMetadataIndexV1() {
     //do nothing
   }
 
@@ -51,8 +51,8 @@ public class OldTsDeviceMetadataIndex {
    * @param buffer -determine the index's source
    * @return -a TsDeviceMetadataIndex
    */
-  public static OldTsDeviceMetadataIndex deserializeFrom(ByteBuffer buffer) {
-    OldTsDeviceMetadataIndex index = new OldTsDeviceMetadataIndex();
+  public static TsDeviceMetadataIndexV1 deserializeFrom(ByteBuffer buffer) {
+    TsDeviceMetadataIndexV1 index = new TsDeviceMetadataIndexV1();
     index.offset = ReadWriteIOUtils.readLong(buffer);
     index.len = ReadWriteIOUtils.readInt(buffer);
     index.startTime = ReadWriteIOUtils.readLong(buffer);

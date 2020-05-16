@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 /**
  * Statistics for int type.
  */
-public class OldIntegerStatistics extends OldStatistics<Integer> {
+public class IntegerStatisticsV1 extends StatisticsV1<Integer> {
 
   private int min;
   private int max;

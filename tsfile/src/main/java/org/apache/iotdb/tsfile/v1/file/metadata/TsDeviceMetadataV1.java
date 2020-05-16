@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class OldTsDeviceMetadata {
+public class TsDeviceMetadataV1 {
 
   /**
    * start time for a device.
@@ -41,9 +41,9 @@ public class OldTsDeviceMetadata {
   /**
    * Row groups in this file.
    */
-  private List<OldChunkGroupMetaData> chunkGroupMetadataList = new ArrayList<>();
+  private List<ChunkGroupMetaDataV1> chunkGroupMetadataList = new ArrayList<>();
 
-  public OldTsDeviceMetadata() {
+  public TsDeviceMetadataV1() {
     // allowed to clair an empty TsDeviceMetadata whose fields will be assigned later.
   }
 
@@ -54,17 +54,17 @@ public class OldTsDeviceMetadata {
    * @param buffer -buffer to deserialize
    * @return -device meta data
    */
-  public static OldTsDeviceMetadata deserializeFrom(ByteBuffer buffer) {
-    OldTsDeviceMetadata deviceMetadata = new OldTsDeviceMetadata();
+  public static TsDeviceMetadataV1 deserializeFrom(ByteBuffer buffer) {
+    TsDeviceMetadataV1 deviceMetadata = new TsDeviceMetadataV1();
 
     deviceMetadata.startTime = ReadWriteIOUtils.readLong(buffer);
     deviceMetadata.endTime = ReadWriteIOUtils.readLong(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
-      List<OldChunkGroupMetaData> chunkGroupMetaDataList = new ArrayList<>();
+      List<ChunkGroupMetaDataV1> chunkGroupMetaDataList = new ArrayList<>();
       for (int i = 0; i < size; i++) {
-        chunkGroupMetaDataList.add(OldChunkGroupMetaData.deserializeFrom(buffer));
+        chunkGroupMetaDataList.add(ChunkGroupMetaDataV1.deserializeFrom(buffer));
       }
       deviceMetadata.chunkGroupMetadataList = chunkGroupMetaDataList;
     }
@@ -72,7 +72,7 @@ public class OldTsDeviceMetadata {
     return deviceMetadata;
   }
 
-  public List<OldChunkGroupMetaData> getChunkGroupMetaDataList() {
+  public List<ChunkGroupMetaDataV1> getChunkGroupMetaDataList() {
     return Collections.unmodifiableList(chunkGroupMetadataList);
   }
 

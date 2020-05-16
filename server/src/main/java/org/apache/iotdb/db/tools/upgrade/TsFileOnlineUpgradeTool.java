@@ -53,10 +53,10 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import org.apache.iotdb.tsfile.v1.file.metadata.OldChunkGroupMetaData;
-import org.apache.iotdb.tsfile.v1.file.metadata.OldTsDeviceMetadata;
-import org.apache.iotdb.tsfile.v1.file.metadata.OldTsDeviceMetadataIndex;
-import org.apache.iotdb.tsfile.v1.file.metadata.OldTsFileMetadata;
+import org.apache.iotdb.tsfile.v1.file.metadata.ChunkGroupMetaDataV1;
+import org.apache.iotdb.tsfile.v1.file.metadata.TsDeviceMetadataV1;
+import org.apache.iotdb.tsfile.v1.file.metadata.TsDeviceMetadataIndexV1;
+import org.apache.iotdb.tsfile.v1.file.metadata.TsFileMetadataV1;
 import org.apache.iotdb.tsfile.v1.file.utils.HeaderUtils;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -201,15 +201,15 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
   /**
    * this function does not modify the position of the file reader.
    */
-  public OldTsFileMetadata readFileMetadata() throws IOException {
-    return OldTsFileMetadata.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
+  public TsFileMetadataV1 readFileMetadata() throws IOException {
+    return TsFileMetadataV1.deserializeFrom(readData(fileMetadataPos, fileMetadataSize));
   }
 
   /**
    * this function does not modify the position of the file reader.
    */
-  public OldTsDeviceMetadata readTsDeviceMetaData(OldTsDeviceMetadataIndex index) throws IOException {
-    return OldTsDeviceMetadata.deserializeFrom(readData(index.getOffset(), index.getLen()));
+  public TsDeviceMetadataV1 readTsDeviceMetaData(TsDeviceMetadataIndexV1 index) throws IOException {
+    return TsDeviceMetadataV1.deserializeFrom(readData(index.getOffset(), index.getLen()));
   }
 
   /**
@@ -231,7 +231,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    * @throws IOException io error
    */
   public ChunkHeader readChunkHeader() throws IOException {
-    return HeaderUtils.deserializeOldChunkHeader(tsFileInput.wrapAsInputStream(), true);
+    return HeaderUtils.deserializeChunkHeaderV1(tsFileInput.wrapAsInputStream(), true);
   }
 
   /**
@@ -240,7 +240,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
    * @param type given tsfile data type
    */
   public PageHeader readPageHeader(TSDataType type) throws IOException {
-    return HeaderUtils.deserializeOldPageHeader(tsFileInput.wrapAsInputStream(), type);
+    return HeaderUtils.deserializePageHeaderV1(tsFileInput.wrapAsInputStream(), type);
   }
 
   public ByteBuffer readPage(PageHeader header, CompressionType type)
@@ -583,15 +583,15 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
 
   private Map<Long, Long> getVersionInfo() throws IOException {
     Map<Long, Long> versionInfo = new HashMap<>();
-    OldTsFileMetadata fileMetadata = readFileMetadata();
-    List<OldTsDeviceMetadata> oldDeviceMetadataList = new ArrayList<>();
-    for (OldTsDeviceMetadataIndex index : fileMetadata.getDeviceMap().values()) {
-      OldTsDeviceMetadata oldDeviceMetadata = readTsDeviceMetaData(index);
+    TsFileMetadataV1 fileMetadata = readFileMetadata();
+    List<TsDeviceMetadataV1> oldDeviceMetadataList = new ArrayList<>();
+    for (TsDeviceMetadataIndexV1 index : fileMetadata.getDeviceMap().values()) {
+      TsDeviceMetadataV1 oldDeviceMetadata = readTsDeviceMetaData(index);
       oldDeviceMetadataList.add(oldDeviceMetadata);
     }
 
-    for (OldTsDeviceMetadata oldTsDeviceMetadata : oldDeviceMetadataList) {
-      for (OldChunkGroupMetaData oldChunkGroupMetadata : oldTsDeviceMetadata
+    for (TsDeviceMetadataV1 oldTsDeviceMetadata : oldDeviceMetadataList) {
+      for (ChunkGroupMetaDataV1 oldChunkGroupMetadata : oldTsDeviceMetadata
           .getChunkGroupMetaDataList()) {
         long version = oldChunkGroupMetadata.getVersion();
         long offsetOfChunkGroup = oldChunkGroupMetadata.getStartOffsetOfChunkGroup();

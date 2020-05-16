@@ -27,11 +27,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 /**
  * Digest/statistics per chunk group and per page.
  */
-public class TsDigest {
+public class TsDigestV1 {
 
   private ByteBuffer[] statistics;
 
-  public TsDigest() {
+  public TsDigestV1() {
     // allowed to declare an empty TsDigest whose fields will be assigned later.
   }
 
@@ -41,8 +41,8 @@ public class TsDigest {
    * @param buffer -given buffer
    * @return -an instance of TsDigest
    */
-  public static TsDigest deserializeFrom(ByteBuffer buffer) {
-    TsDigest digest = new TsDigest();
+  public static TsDigestV1 deserializeFrom(ByteBuffer buffer) {
+    TsDigestV1 digest = new TsDigestV1();
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
       digest.statistics = new ByteBuffer[StatisticType.getTotalTypeNum()];

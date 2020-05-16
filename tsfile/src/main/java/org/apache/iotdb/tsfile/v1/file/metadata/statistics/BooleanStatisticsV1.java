@@ -24,33 +24,33 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
- * Statistics for double type.
+ * Boolean Statistics.
  */
-public class OldDoubleStatistics extends OldStatistics<Double> {
+public class BooleanStatisticsV1 extends StatisticsV1<Boolean> {
 
-  private double min;
-  private double max;
-  private double first;
-  private double last;
+  private boolean min;
+  private boolean max;
+  private boolean first;
+  private boolean last;
   private double sum;
 
   @Override
-  public Double getMin() {
+  public Boolean getMin() {
     return min;
   }
 
   @Override
-  public Double getMax() {
+  public Boolean getMax() {
     return max;
   }
 
   @Override
-  public Double getFirst() {
+  public Boolean getFirst() {
     return first;
   }
 
   @Override
-  public Double getLast() {
+  public Boolean getLast() {
     return last;
   }
 
@@ -61,19 +61,20 @@ public class OldDoubleStatistics extends OldStatistics<Double> {
 
   @Override
   void deserialize(ByteBuffer byteBuffer) throws IOException {
-    this.min = ReadWriteIOUtils.readDouble(byteBuffer);
-    this.max = ReadWriteIOUtils.readDouble(byteBuffer);
-    this.first = ReadWriteIOUtils.readDouble(byteBuffer);
-    this.last = ReadWriteIOUtils.readDouble(byteBuffer);
+    this.min = ReadWriteIOUtils.readBool(byteBuffer);
+    this.max = ReadWriteIOUtils.readBool(byteBuffer);
+    this.first = ReadWriteIOUtils.readBool(byteBuffer);
+    this.last = ReadWriteIOUtils.readBool(byteBuffer);
     this.sum = ReadWriteIOUtils.readDouble(byteBuffer);
   }
 
   @Override
   void deserialize(InputStream inputStream) throws IOException {
-    this.min = ReadWriteIOUtils.readDouble(inputStream);
-    this.max = ReadWriteIOUtils.readDouble(inputStream);
-    this.first = ReadWriteIOUtils.readDouble(inputStream);
-    this.last = ReadWriteIOUtils.readDouble(inputStream);
+    this.min = ReadWriteIOUtils.readBool(inputStream);
+    this.max = ReadWriteIOUtils.readBool(inputStream);
+    this.first = ReadWriteIOUtils.readBool(inputStream);
+    this.last = ReadWriteIOUtils.readBool(inputStream);
     this.sum = ReadWriteIOUtils.readDouble(inputStream);
   }
+
 }
