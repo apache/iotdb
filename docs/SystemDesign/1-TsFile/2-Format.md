@@ -66,7 +66,7 @@
 
 Here is a graph about the TsFile structure.
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/81935360-1e9f4e80-9623-11ea-8ebc-75951bf11a68.png)
+![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/82113144-29262900-9786-11ea-83c6-1c45b6c1f3a5.png)
 
 This TsFile contains two devices: d1, d2. Each device contains three measurements: s1, s2, s3. 6 timeseries in total, d1 is blue, d2 is purple. Each timeseries contains 2 Chunks.
 
@@ -103,15 +103,14 @@ The `ChunkGroup` has an array of `Chunk`, a following byte `0x00` as the marker,
 A `Chunk` represents the data of a *measurement* in a time range, data points in Chunks are in time ascending order. There is a byte `0x01` as the marker, following a `ChunkHeader` and an array of `Page`.
 
 ##### ChunkHeader
-
-|           Member Description           | Member Type |
-| :------------------------------------: | :---------: |
-| The name of this sensor(measurementID) |   String    |
-|           Size of this chunk           |     int     |
-|        Data type of this chuck         |    short    |
-|            Number of pages             |     int     |
-|            Compression Type            |    short    |
-|             Encoding Type              |    short    |
+|             Member             |  Type  | Description |
+| :--------------------------: | :----: | :----: |
+|  measurementID   | String | Name of measurement |
+|     dataSize      |  int   | Size of this chunk |
+|  dataType   | TSDataType  | Data type of this chuck |
+|  compressionType   | CompressionType  | Compression Type |
+|    encodingType    | TSEncoding  | Encoding Type |
+|  numOfPages  |  int   |  Number of pages |
 
 ##### Page
 
@@ -119,26 +118,19 @@ A `Page` represents some data in a `Chunk`. It contains a `PageHeader` and the a
 
 PageHeader Structure
 
-|             Member Description             |   Member Type    |
-| :----------------------------------------: | :--------------: |
-|        Data size before compressing        |       int        |
-| Data size after compressing(if use SNAPPY) |       int        |
-|              Number of values              |       int        |
-|             Maximum time stamp             |       long       |
-|             Minimum time stamp             |       long       |
-|         Minimum value of the page          | Type of the page |
-|         Maximum value of the page          | Type of the page |
-|          First value of the page           | Type of the page |
-|           Last value of the page           | Type of the page |
-|              Sum of the Page               |      double      |
+|             Member             |  Type  | Description |
+| :----------------------------------: | :--------------: | :----: |
+|   uncompressedSize   |       int        | Data size before compressing |
+| compressedSize |       int        | Data size after compressing(if use SNAPPY) |
+|   statistics    |       Statistics        | Statistics values |
 
 ##### ChunkGroupFooter
 
-|     Member Description      | Member Type |
-| :-------------------------: | :---------: |
-|          DeviceId           |   String    |
-| Data size of the ChunkGroup |    long     |
-|      Number of chunks       |     int     |
+|             Member             |  Type  | Description |
+| :--------------------------------: | :----: | :----: |
+|         deviceID          | String | Name of device |
+|      dataSize      |  long  | Data size of the ChunkGroup |
+| numberOfChunks |  int   | Number of chunks |
 
 #### 1.2.3  Metadata
 
@@ -146,19 +138,12 @@ PageHeader Structure
 
 The first part of metadata is `ChunkMetadata` 
 
-|      Member Description      |     Member Type   |
-| :--------------------------: |     :---------:   |
-|        MeasurementId         |       String      |
-| Start offset of ChunkHeader  |        long       |
-|          Data type           |        short      |
-|    Number of data points     |        long       |
-|          Start time          |        long       |
-|           End time           |        long       |
-|         Minimum value        | Type of the chunk |
-|         Maximum value        | Type of the chunk |
-|          First value         | Type of the chunk |
-|           Last value         | Type of the chunk |
-|              Sum             |      double       |
+|             Member             |  Type  | Description |
+| :------------------------------------------------: | :------: | :----: |
+|             measurementUid             |  String  | Name of measurement |
+| offsetOfChunkHeader |   long   | Start offset of ChunkHeader  |
+|                tsDataType                |  TSDataType   | Data type |
+|   statistics    |       Statistics        | Statistic values |
 
 As for the five statistics (min, max, first, last and sum), `ChunkMetadata` of Binary and Boolean type only has two values: first and last.
 
@@ -166,20 +151,13 @@ As for the five statistics (min, max, first, last and sum), `ChunkMetadata` of B
 
 The second part of metadata is `TimeseriesMetadata`.
 
-|      Member Description      |     Member Type   |
-| :--------------------------: |     :---------:   |
-|        MeasurementId         |       String      |
-|          Data type           |        short      |
-|Start offset of ChunkMetadata list  |  long       |
-|    ChunkMetadata list size   |        int        |
-|    Number of data points     |        long       |
-|          Start time          |        long       |
-|           End time           |        long       |
-|         Minimum value        | Type of the chunk |
-|         Maximum value        | Type of the chunk |
-|          First value         | Type of the chunk |
-|           Last value         | Type of the chunk |
-|              Sum             |      double       |
+|             Member             |  Type  | Description |
+| :------------------------------------------------: | :------: | :------: |
+|             measurementUid            |  String  | Name of measurement |
+|               tsDataType                |  short   |  Data type |
+| startOffsetOfChunkMetadataList |  long  | Start offset of ChunkMetadata list |
+|  chunkMetaDataListDataSize  |  int  | ChunkMetadata list size |
+|   statistics    |       Statistics        | Statistic values |
 
 As for the five statistics (min, max, first, last and sum), `TimeseriesMetadata` of Binary and Boolean type only has two values: first and last.
 
@@ -187,37 +165,29 @@ As for the five statistics (min, max, first, last and sum), `TimeseriesMetadata`
 
 The third part of metadata is `TsFileMetaData`.
 
-|              Member Description              |            Member Type             |
-| :------------------------------------------: | :--------------------------------: |
-|            MetadataIndexNode list            |             See below              |
-|                 Author byte                  |                byte                |
-|        Author(if author byte is 0x01)        |               String               |
-|                TotalChunkNum                 |                int                 |
-|               InvalidChunkNum                |                int                 |
-|             Version info map size            |                int                 |
-|                Version info map              |            Long, Long Pair         |
-|       MetaMarker.SEPARATOR offset            |                long                |
-|              Bloom filter size               |                int                 |
-|           Bloom filter bit vector            |      byte[Bloom filter size]       |
-|            Bloom filter capacity             |                int                 |
-|       Bloom filter hash functions size       |                int                 |
+|             Member             |  Type  | Description |
+| :-------------------------------------------------: | :---------------------: | :---: |
+|       MetadataIndex              |   MetadataIndexNode      | MetadataIndex node |
+|           totalChunkNum            |                int                 | total chunk num |
+|          invalidChunkNum           |                int                 | invalid chunk num |
+|                versionInfo         |             List<Pair<Long, Long>>       | version information |
+|        metaOffset   |                long                 | offset of MetaMarker.SEPARATOR |
+|                bloomFilter                 |                BloomFilter      | bloom filter |
 
-If size of version info map is greater than 0, there is an array of \<Long, Long\> pair as version info.
+MetadataIndexNode has members as below:
 
-There **may** exist more than one MetadataIndexNode. Each node has members as below:
+|             Member             |  Type  | Description |
+| :------------------------------------: | :----: | :---: |
+|      children    | List<MetadataIndexEntry> | MetadataIndexEntry list |
+|       endOffset      | long |    EndOffset of this MetadataIndexNode |
+|   nodeType    | MetadataIndexNodeType | MetadataIndexNode type |
 
-|         Member Description              |Member Type|
-| :------------------------------------:  |  :----:   |
-|        MetadataIndexEntry size          |    int    |
-|       MetadataIndexEntry list           | See below |
-|   EndOffset of this MetadataIndexNode   |   long    |
-|           MetadataIndexNode type       |    byte   |
+MetadataIndexEntry has members as below:
 
-Each MetadataIndexEntry has members as below:
-|         Member Description              |Member Type|
-| :------------------------------------:  |  :----:   |
-|  Name of related device or measurement  |  String   |
-|                   offset                |    long   |
+|             Member             |  Type  | Description |
+| :------------------------------------: | :----: | :---: |
+|  name    | String | Name of related device or measurement |
+|     offset     | long   | offset |
 
 All MetadataIndexNode forms a **metadata index tree**, which consists of no more than two levels: device index level and measurement index level. In different situation, the tree could have different components. The MetadataIndexNodeType has four enums: `INTERNAL_DEVICE`, `LEAF_DEVICE`, `INTERNAL_MEASUREMENT`, `LEAF_MEASUREMENT`, which indicates the internal or leaf node of device index level and measurement index level respectively. Only the `LEAF_MEASUREMENT` nodes point to `TimeseriesMetadata`.
 

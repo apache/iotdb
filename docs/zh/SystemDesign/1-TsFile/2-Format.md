@@ -65,7 +65,7 @@
 
 下图是关于TsFile的结构图。
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/81935360-1e9f4e80-9623-11ea-8ebc-75951bf11a68.png)
+![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/82113144-29262900-9786-11ea-83c6-1c45b6c1f3a5.png)
 
 此文件包括两个设备 d1、d2，每个设备包含三个测点 s1、s2、s3，共 6 个时间序列，d1为蓝色，d2为紫色。每个时间序列包含两个 Chunk。
 
@@ -102,14 +102,14 @@ TsFile文件的内容可以划分为两个部分: 数据（Chunk）和元数据�
 
 ##### ChunkHeader
 
-|             成员             |  类型  |
-| :--------------------------: | :----: |
-|  传感器名称(measurementID)   | String |
-|     chunk大小(dataSize)      |  int   |
-|  chunk的数据类型(dataType)   | short  |
-|  包含的page数量(numOfPages)  |  int   |
-|  压缩类型(compressionType)   | short  |
-|    编码类型(encodingType)    | short  |
+|             成员             |  类型  | 解释 |
+| :--------------------------: | :----: | :----: |
+|  measurementID   | String | 传感器名称 |
+|     dataSize      |  int   | chunk 大小 |
+|  dataType   | TSDataType  | chunk的数据类型 |
+|  compressionType   | CompressionType  | 压缩类型 |
+|    encodingType    | TSEncoding  | 编码类型 |
+|  numOfPages  |  int   | 包含的page数量 |
 
 ##### Page
 
@@ -117,26 +117,19 @@ TsFile文件的内容可以划分为两个部分: 数据（Chunk）和元数据�
 
 PageHeader 结构
 
-|                 成员                 |       类型       |
-| :----------------------------------: | :--------------: |
-|   压缩前数据大小(uncompressedSize)   |       int        |
-| SNAPPY压缩后数据大小(compressedSize) |       int        |
-|   包含的values的数量(numOfValues)    |       int        |
-|       最大时间戳(maxTimestamp)       |       long       |
-|       最小时间戳(minTimestamp)       |       long       |
-|           该页最小值(min)            | Type of the page |
-|           该页最大值(max)            | Type of the page |
-|         该页第一个值(first)          | Type of the page |
-|         该页最后一个值(last)         | Type of the page |
-|           该页值的和(sum)            |      double      |
+|                 成员                 |       类型       | 解释 |
+| :----------------------------------: | :--------------: | :----: |
+|   uncompressedSize   |       int        | 压缩前数据大小 |
+| compressedSize |       int        | SNAPPY压缩后数据大小 |
+|   statistics    |       Statistics        | 统计量 |
 
 ##### ChunkGroupFooter
 
-|                成员                |  类型  |
-| :--------------------------------: | :----: |
-|          设备Id(deviceID)          | String |
-|      ChunkGroup大小(dataSize)      |  long  |
-| 包含的chunks的数量(numberOfChunks) |  int   |
+|                成员                |  类型  | 解释 |
+| :--------------------------------: | :----: | :----: |
+|         deviceID          | String | 设备名称 |
+|      dataSize      |  long  | ChunkGroup 大小 |
+| numberOfChunks |  int   | 包含的 chunks 的数量 |
 
 #### 1.2.3  元数据
 
@@ -144,19 +137,12 @@ PageHeader 结构
 
 第一部分的元数据是 `ChunkMetadata` 
 
-|                        成员                        |   类型   |
-| :------------------------------------------------: | :------: |
-|             传感器名称(measurementUid)             |  String  |
-| 文件中 ChunkHeader 开始的偏移量(offsetOfChunkHeader) |   long   |
-|                数据类型(tsDataType)                |  short   |
-|              数据的总数(count)                  |   long   |
-|                开始时间(startTime)                 |   long   |
-|                 结束时间(endTime)                  |   long   |
-|           最小值(min)            | Type of the chunk |
-|           最大值(max)            | Type of the chunk |
-|         第一个值(first)          | Type of the chunk |
-|         最后一个值(last)         | Type of the chunk |
-|           值的和(sum)            |      double      |
+|                        成员                        |   类型   | 解释 |
+| :------------------------------------------------: | :------: | :----: |
+|             measurementUid             |  String  | 传感器名称 |
+| offsetOfChunkHeader |   long   | 文件中 ChunkHeader 开始的偏移量 |
+|                tsDataType                |  TSDataType   | 数据类型 |
+|   statistics    |       Statistics        | 统计量 |
 
 其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `ChunkMetadata` 只有 first 和 last 两个值。
 
@@ -164,20 +150,13 @@ PageHeader 结构
 
 第二部分的元数据是 `TimeseriesMetadata`。
 
-|                        成员                        |   类型   |
-| :------------------------------------------------: | :------: |
-|             传感器名称(measurementUid)             |  String  |
-|                数据类型(tsDataType)                |  short   |
-| 文件中 ChunkMetadata 列表开始的偏移量(startOffsetOfChunkMetadataList) |  long  |
-|  ChunkMetadata 列表的大小(chunkMetaDataListDataSize)  |  int  |
-|              数据的总数(count)                  |   long   |
-|                开始时间(startTime)                 |   long   |
-|                 结束时间(endTime)                  |   long   |
-|           最小值(min)            | Type of the Timeseries |
-|           最大值(max)            | Type of the Timeseries |
-|         第一个值(first)          | Type of the Timeseries |
-|         最后一个值(last)         | Type of the Timeseries |
-|           值的和(sum)            |      double      |
+|                        成员                        |   类型   | 解释 |
+| :------------------------------------------------: | :------: | :------: |
+|             measurementUid            |  String  | 传感器名称 |
+|               tsDataType                |  TSDataType   |  数据类型 |
+| startOffsetOfChunkMetadataList |  long  | 文件中 ChunkMetadata 列表开始的偏移量 |
+|  chunkMetaDataListDataSize  |  int  | ChunkMetadata 列表的大小 |
+|   statistics    |       Statistics        | 统计量 |
 
 其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `TimeseriesMetadata` 只有 first 和 last 两个值。
 
@@ -185,36 +164,29 @@ PageHeader 结构
 
 第三部分的元数据是 `TsFileMetaData`。
 
-|                        成员                         |                类型                |
-| :-------------------------------------------------: | :--------------------------------: |
-|       元数据索引节点(MetadataIndexNode)列表              |   见下      |
-|                      水印标识                       |                byte                |
-|         当标识为0x01时的水印信息(createdBy)         |               String               |
-|           包含的 Chunk 总数(totalChunkNum)            |                int                 |
-|          失效的 Chunk 总数(invalidChunkNum)           |                int                 |
-|                版本信息映射的大小                 |                int                 |
-|                版本信息映射(versionInfo)         |              Long, Long Pair       |
-|       MetaMarker.SEPARATOR偏移量 (metaOffset)   |                long                 |
-|                布隆过滤器序列化大小                 |                int                 |
-|                 布隆过滤器所有数据                  |      byte[Bloom filter size]       |
-|                   布隆过滤器容量                    |                int                 |
-|        布隆过滤器容量包含的HashFunction数量         |                int                 |
+|                        成员                        |   类型   | 解释 |
+| :-------------------------------------------------: | :---------------------: | :---:|
+|       MetadataIndex              |   MetadataIndexNode      |元数据索引节点 |
+|           totalChunkNum            |                int                 | 包含的 Chunk 总数 |
+|          invalidChunkNum           |                int                 | 失效的 Chunk 总数 |
+|                versionInfo         |             List<Pair<Long, Long>>       | 版本信息映射 |
+|        metaOffset   |                long                 | MetaMarker.SEPARATOR偏移量 |
+|                bloomFilter                 |                BloomFilter      | 布隆过滤器 |
 
-如果版本信息映射的数量大于 0, 版本信息映射会以一个列表形式的 \<Long, Long\> 键值对存储。
-其中，元数据索引节点(MetadataIndexNode) **可能**不止一个，每一个节点的成员和类型具体如下：
+元数据索引节点 (MetadataIndexNode) 的成员和类型具体如下：
 
-|                  成员                  |  类型  |
-| :------------------------------------: | :----: |
-|  元数据索引项(MetadataIndexEntry)个数    | int |
-|      元数据索引项(MetadataIndexEntry)列表    | 见下 |
-|          此元数据索引节点的结束偏移量(endOffset)      | long |
-|   元数据索引节点类型(MetadataIndexNodeType)   | byte |
+|                  成员                  |  类型  | 解释 |
+| :------------------------------------: | :----: | :---: |
+|      children    | List<MetadataIndexEntry> | 节点元数据索引项列表 |
+|       endOffset      | long |    此元数据索引节点的结束偏移量 |
+|   nodeType    | MetadataIndexNodeType | 节点类型 |
 
-每一个元数据索引项(MetadataIndexEntry)的成员和类型具体如下：
-|                  成员                  |  类型  |
-| :------------------------------------: | :----: |
-|  对应设备或传感器的名字(name)    | String |
-|           偏移量(offset)       | long  |
+元数据索引项 (MetadataIndexEntry) 的成员和类型具体如下：
+
+|                  成员                  |  类型  | 解释 |
+| :------------------------------------: | :----: | :---: |
+|  name    | String | 对应设备或传感器的名字 |
+|     offset     | long   | 偏移量 |
 
 所有的元数据索引节点构成一棵**元数据索引树**，这棵树最多由两个层级组成：设备索引层级和传感器索引层级，在不同的情况下会有不同的组成方式。元数据索引节点类型有四种，分别是`INTERNAL_DEVICE`、`LEAF_DEVICE`、`INTERNAL_MEASUREMENT`、`LEAF_MEASUREMENT`，分别对应设备索引层级的中间节点和叶子节点，和传感器索引层级的中间节点和叶子节点。
 只有传感器索引层级的叶子节点(`LEAF_MEASUREMENT`) 指向 `TimeseriesMetadata`。
