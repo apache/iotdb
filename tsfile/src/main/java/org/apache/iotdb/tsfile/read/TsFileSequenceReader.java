@@ -208,7 +208,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.getBytes().length * 2
         + TSFileConfig.VERSION_NUMBER.getBytes().length
         && (readTailMagic().equals(readHeadMagic()) || readTailMagic()
-        .equals(TSFileConfig.OLD_VERSION));
+        .equals(TSFileConfig.VERSION_NUMBER_V1));
   }
 
   /**

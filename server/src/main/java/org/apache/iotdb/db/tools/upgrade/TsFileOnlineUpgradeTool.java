@@ -566,7 +566,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     }
 
     String versionNumber = readVersionNumber();
-    if (!versionNumber.equals(TSFileConfig.OLD_VERSION)) {
+    if (!versionNumber.equals(TSFileConfig.VERSION_NUMBER_V1)) {
       logger.error("the file's Version Number is incorrect, file path: {}", oldTsFile.getPath());
       return false;
     }

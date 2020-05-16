@@ -168,12 +168,14 @@ public class FileReaderManager implements IService {
       else {
         tsFileReader = new TsFileSequenceReader(filePath);
         switch (tsFileReader.readVersionNumber()) {
-            case TSFileConfig.OLD_VERSION:
-              tsFileReader.close();
-                tsFileReader = new TsFileSequenceReaderForV1(filePath);
-                break;
-            case TSFileConfig.VERSION_NUMBER:
-                break;
+          case TSFileConfig.VERSION_NUMBER_V1:
+            tsFileReader.close();
+            tsFileReader = new TsFileSequenceReaderForV1(filePath);
+            break;
+          case TSFileConfig.VERSION_NUMBER:
+            break;
+          default:
+            throw new IOException("The version of this TsFile is not corrent. ");
         }
       }
       readerMap.put(filePath, tsFileReader);
