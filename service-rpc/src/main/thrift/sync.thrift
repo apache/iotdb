@@ -17,7 +17,7 @@
  * under the License.
  */
 namespace java org.apache.iotdb.service.sync.thrift
-
+namespace netstd IoTDBService
 struct SyncStatus{
   1:required i32 code
   2:required string msg
