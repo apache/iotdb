@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="adjunct-System.Text.StringBuilderExtensions" Version="2.0.0" />
+    <PackageReference Include="ApacheThrift" Version="0.13.0.1" />
+    <PackageReference Include="System.Text.Encoding" Version="4.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="IoTDBClient\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="IoTDBClient\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="IoTDBClient\**" />
+  </ItemGroup>
+
+</Project>
