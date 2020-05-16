@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="IoTDBService, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>..\obj\Debug\netstandard2.0\IoTDBService.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ApacheThrift" Version="0.13.0.1" />
+  </ItemGroup>
+
+</Project>
