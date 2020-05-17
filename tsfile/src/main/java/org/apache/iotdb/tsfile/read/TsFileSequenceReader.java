@@ -959,7 +959,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   public List<ChunkMetadata> readChunkMetaDataList(TimeseriesMetadata timeseriesMetaData)
       throws IOException {
     List<Pair<Long, Long>> versionInfo = tsFileMetaData.getVersionInfo();
-    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+    ArrayList<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     long startOffsetOfChunkMetadataList = timeseriesMetaData.getOffsetOfChunkMetaDataList();
     int dataSizeOfChunkMetadataList = timeseriesMetaData.getDataSizeOfChunkMetaDataList();
 
@@ -970,6 +970,8 @@ public class TsFileSequenceReader implements AutoCloseable {
 
     VersionUtils.applyVersion(chunkMetadataList, versionInfo);
 
+    // minimize the storage of an ArrayList instance.
+    chunkMetadataList.trimToSize();
     return chunkMetadataList;
   }
 

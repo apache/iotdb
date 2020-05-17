@@ -33,6 +33,9 @@ public class BooleanStatistics extends Statistics<Boolean> {
   private boolean firstValue;
   private boolean lastValue;
 
+  private static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 48;
+
+
   @Override
   public TSDataType getType() {
     return TSDataType.BOOLEAN;
@@ -85,6 +88,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override

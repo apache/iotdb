@@ -38,6 +38,9 @@ public class IntegerStatistics extends Statistics<Integer> {
   private int lastValue;
   private double sumValue;
 
+  private static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
+
+
   @Override
   public TSDataType getType() {
     return TSDataType.INT32;
@@ -108,6 +111,11 @@ public class IntegerStatistics extends Statistics<Integer> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return INTEGER_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override

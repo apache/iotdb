@@ -35,6 +35,8 @@ public class DoubleStatistics extends Statistics<Double> {
   private double lastValue;
   private double sumValue;
 
+  private static final int DOUBLE_STATISTICS_FIXED_RAM_SIZE = 80;
+
   @Override
   public TSDataType getType() {
     return TSDataType.DOUBLE;
@@ -113,6 +115,11 @@ public class DoubleStatistics extends Statistics<Double> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return DOUBLE_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override

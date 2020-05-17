@@ -35,6 +35,9 @@ public class LongStatistics extends Statistics<Long> {
   private long lastValue;
   private double sumValue;
 
+  private static final int LONG_STATISTICS_FIXED_RAM_SIZE = 80;
+
+
   @Override
   public TSDataType getType() {
     return TSDataType.INT64;
@@ -139,6 +142,11 @@ public class LongStatistics extends Statistics<Long> {
     if (maxValue > this.maxValue) {
       this.maxValue = maxValue;
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return LONG_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override

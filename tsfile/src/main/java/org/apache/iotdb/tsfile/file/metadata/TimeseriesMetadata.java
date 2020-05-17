@@ -23,12 +23,13 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
+import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class TimeseriesMetadata {
+public class TimeseriesMetadata implements Accountable {
 
   private long startOffsetOfChunkMetaDataList;
   private int chunkMetaDataListDataSize;
@@ -42,6 +43,20 @@ public class TimeseriesMetadata {
   private boolean modified;
 
   private IChunkMetadataLoader chunkMetadataLoader;
+
+  private long ramSize;
+
+  public TimeseriesMetadata() {
+  }
+
+  public TimeseriesMetadata(TimeseriesMetadata timeseriesMetadata) {
+    this.startOffsetOfChunkMetaDataList = timeseriesMetadata.startOffsetOfChunkMetaDataList;
+    this.chunkMetaDataListDataSize = timeseriesMetadata.chunkMetaDataListDataSize;
+    this.measurementId = timeseriesMetadata.measurementId;
+    this.tsDataType = timeseriesMetadata.tsDataType;
+    this.statistics = timeseriesMetadata.statistics;
+    this.modified = timeseriesMetadata.modified;
+  }
 
   public static TimeseriesMetadata deserializeFrom(ByteBuffer buffer) {
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
@@ -124,5 +139,14 @@ public class TimeseriesMetadata {
 
   public void setModified(boolean modified) {
     this.modified = modified;
+  }
+
+  public void setRamSize(long size) {
+    this.ramSize = size;
+  }
+
+  @Override
+  public long getRamSize() {
+    return ramSize;
   }
 }
