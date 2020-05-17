@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +49,6 @@ public class ChunkMetadataCache {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChunkMetaDataCache();
   private static final boolean cacheEnable = config.isMetaDataCacheEnable();
-  private static final long CHUNK_METADATA_FIXED_RAM_SIZE = 160;
 
   /**
    * key: file path dot deviceId dot sensorId.
@@ -75,8 +75,7 @@ public class ChunkMetadataCache {
         }
         long entrySize;
         if (count < 10) {
-          long currentSize = CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator
-              .sizeOf(value.get(0).getMeasurementUid());
+          long currentSize = value.get(0).calculateRAMSize();
           averageSize = ((averageSize * count) + currentSize) / (++count);
           IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageSize);
           entrySize = RamUsageEstimator.sizeOf(key)
@@ -88,8 +87,7 @@ public class ChunkMetadataCache {
               + (averageSize + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.size()
               + RamUsageEstimator.shallowSizeOf(value);
         } else {
-          averageSize = CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator
-              .sizeOf(value.get(0).getMeasurementUid());
+          averageSize = value.get(0).calculateRAMSize();
           count = 1;
           entrySize = RamUsageEstimator.sizeOf(key)
               + (averageSize + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.size()

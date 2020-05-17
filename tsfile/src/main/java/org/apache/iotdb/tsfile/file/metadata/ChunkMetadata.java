@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
@@ -64,6 +65,9 @@ public class ChunkMetadata implements Accountable {
 
   private long RAMSize;
 
+  private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 80;
+
+
   private ChunkMetadata() {
   }
 
@@ -71,9 +75,9 @@ public class ChunkMetadata implements Accountable {
    * constructor of ChunkMetaData.
    *
    * @param measurementUid measurement id
-   * @param tsDataType time series data type
-   * @param fileOffset file offset
-   * @param statistics value statistics
+   * @param tsDataType     time series data type
+   * @param fileOffset     file offset
+   * @param statistics     value statistics
    */
   public ChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
       Statistics statistics) {
@@ -210,6 +214,11 @@ public class ChunkMetadata implements Accountable {
 
   public void setModified(boolean modified) {
     this.modified = modified;
+  }
+
+  public long calculateRAMSize() {
+    return CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator.sizeOf(measurementUid) + statistics
+        .calculateRAMSize();
   }
 
   public void setRAMSize(long size) {
