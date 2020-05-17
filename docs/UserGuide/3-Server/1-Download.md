@@ -36,8 +36,8 @@ To use IoTDB, you need to have:
 3. Set the max open files num as 65535 to avoid "too many open files" problem.
 
 >Note: If you don't have maven installed, you should replace 'mvn' in the following commands with 'mvnw.sh' or 'mvnw.cmd'.
->
->### Installation from  binary files
+
+## Installation from  binary files
 
 You can download the binary file from:
 [Here](/Download/)

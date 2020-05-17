@@ -32,6 +32,8 @@ src/main/resources/metadata/mlog.txt
 tsfile-jdbc/src/main/resources/output/queryRes.csv
 
 *.txt
+!client-cpp/CMakeLists.txt
+!client-cpp/Session/CMakeLists.txt
 
 *.jar
 *.gz
