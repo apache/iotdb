@@ -64,7 +64,7 @@ public class TimeseriesMetadata implements Accountable {
     timeseriesMetaData.setTSDataType(ReadWriteIOUtils.readDataType(buffer));
     timeseriesMetaData.setOffsetOfChunkMetaDataList(ReadWriteIOUtils.readLong(buffer));
     timeseriesMetaData.setDataSizeOfChunkMetaDataList(ReadWriteIOUtils.readInt(buffer));
-    timeseriesMetaData.statistics = Statistics.deserialize(buffer, timeseriesMetaData.tsDataType);
+    timeseriesMetaData.setStatistics(Statistics.deserialize(buffer, timeseriesMetaData.tsDataType));
     return timeseriesMetaData;
   }
 

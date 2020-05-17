@@ -65,7 +65,7 @@
 
 下图是关于TsFile的结构图。
 
-![TsFile Breakdown](https://user-images.githubusercontent.com/7240743/78330206-05cc6380-75b6-11ea-96c7-06f6f7346f6a.png)
+![TsFile Breakdown](https://user-images.githubusercontent.com/19167280/82113144-29262900-9786-11ea-83c6-1c45b6c1f3a5.png)
 
 此文件包括两个设备 d1、d2，每个设备包含三个测点 s1、s2、s3，共 6 个时间序列，d1为蓝色，d2为紫色。每个时间序列包含两个 Chunk。
 
@@ -77,8 +77,8 @@
 
 查询流程：以查 d1.s1 为例
 
-* 反序列化 TsFileMetadata，得到 d1 的所有 TimeseriesMetadata 的位置
-* 反序列化 d1 的所有 TimeseriesMetadata，并得到 d1.s1 的 TimeseriesMetadata
+* 反序列化 TsFileMetadata，得到 d1.s1 的 TimeseriesMetadata 的位置
+* 反序列化得到 d1.s1 的 TimeseriesMetadata
 * 根据 d1.s1 的 TimeseriesMetadata，反序列化其所有 ChunkMetadata
 * 根据 d1.s1 的每一个 ChunkMetadata，读取其 Chunk 数据
 
@@ -102,15 +102,14 @@ TsFile文件的内容可以划分为两个部分: 数据（Chunk）和元数据�
 
 ##### ChunkHeader
 
-|             成员             |  类型  |
-| :--------------------------: | :----: |
-|  传感器名称(measurementID)   | String |
-|     chunk大小(dataSize)      |  int   |
-|  chunk的数据类型(dataType)   | short  |
-|  包含的page数量(numOfPages)  |  int   |
-|  压缩类型(compressionType)   | short  |
-|    编码类型(encodingType)    | short  |
-| Max Tombstone Time(暂时没用) |  long  |
+|             成员             |  类型  | 解释 |
+| :--------------------------: | :----: | :----: |
+|  measurementID   | String | 传感器名称 |
+|     dataSize      |  int   | chunk 大小 |
+|  dataType   | TSDataType  | chunk的数据类型 |
+|  compressionType   | CompressionType  | 压缩类型 |
+|    encodingType    | TSEncoding  | 编码类型 |
+|  numOfPages  |  int   | 包含的page数量 |
 
 ##### Page
 
@@ -118,163 +117,103 @@ TsFile文件的内容可以划分为两个部分: 数据（Chunk）和元数据�
 
 PageHeader 结构
 
-|                 成员                 |       类型       |
-| :----------------------------------: | :--------------: |
-|   压缩前数据大小(uncompressedSize)   |       int        |
-| SNAPPY压缩后数据大小(compressedSize) |       int        |
-|   包含的values的数量(numOfValues)    |       int        |
-|       最大时间戳(maxTimestamp)       |       long       |
-|       最小时间戳(minTimestamp)       |       long       |
-|           该页最大值(max)            | Type of the page |
-|           该页最小值(min)            | Type of the page |
-|         该页第一个值(first)          | Type of the page |
-|           该页值的和(sum)            |      double      |
-|         该页最后一个值(last)         | Type of the page |
+|                 成员                 |       类型       | 解释 |
+| :----------------------------------: | :--------------: | :----: |
+|   uncompressedSize   |       int        | 压缩前数据大小 |
+| compressedSize |       int        | SNAPPY压缩后数据大小 |
+|   statistics    |       Statistics        | 统计量 |
 
 ##### ChunkGroupFooter
 
-|                成员                |  类型  |
-| :--------------------------------: | :----: |
-|          设备Id(deviceID)          | String |
-|      ChunkGroup大小(dataSize)      |  long  |
-| 包含的chunks的数量(numberOfChunks) |  int   |
+|                成员                |  类型  | 解释 |
+| :--------------------------------: | :----: | :----: |
+|         deviceID          | String | 设备名称 |
+|      dataSize      |  long  | ChunkGroup 大小 |
+| numberOfChunks |  int   | 包含的 chunks 的数量 |
 
 #### 1.2.3  元数据
 
-##### 1.2.3.1 TsDeviceMetaData
+##### 1.2.3.1 ChunkMetadata
 
-第一部分的元数据是 `TsDeviceMetaData` 
+第一部分的元数据是 `ChunkMetadata` 
 
-|                       成员                       | 类型 |
-| :----------------------------------------------: | :--: |
-|               开始时间(startTime)                | long |
-|                结束时间(endTime)                 | long |
-|              包含的ChunkGroup的数量              | int  |
-| 所有的ChunkGroupMetaData(chunkGroupMetadataList) | list |
+|                        成员                        |   类型   | 解释 |
+| :------------------------------------------------: | :------: | :----: |
+|             measurementUid             |  String  | 传感器名称 |
+| offsetOfChunkHeader |   long   | 文件中 ChunkHeader 开始的偏移量 |
+|                tsDataType                |  TSDataType   | 数据类型 |
+|   statistics    |       Statistics        | 统计量 |
 
-###### ChunkGroupMetaData
+其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `ChunkMetadata` 只有 first 和 last 两个值。
 
-|                          成员                           |  类型  |
-| :-----------------------------------------------------: | :----: |
-|                    设备Id(deviceID)                     | String |
-| 在文件中ChunkGroup开始的偏移量(startOffsetOfChunkGroup) |  long  |
-|  在文件中ChunkGroup结束的偏移量(endOffsetOfChunkGroup)  |  long  |
-|                      版本(version)                      |  long  |
-|                包含的ChunkMetaData的数量                |  int   |
-|         所有的ChunkMetaData(chunkMetaDataList)          |  list  |
+##### 1.2.3.2 TimeseriesMetadata
 
-###### ChunkMetaData
+第二部分的元数据是 `TimeseriesMetadata`。
 
-|                        成员                        |   类型   |
-| :------------------------------------------------: | :------: |
-|             传感器名称(measurementUid)             |  String  |
-| 文件中ChunkHeader开始的偏移量(offsetOfChunkHeader) |   long   |
-|              数据的总数(numOfPoints)               |   long   |
-|                开始时间(startTime)                 |   long   |
-|                 结束时间(endTime)                  |   long   |
-|                数据类型(tsDataType)                |  short   |
-|                  chunk的统计信息                   | TsDigest |
+|                        成员                        |   类型   | 解释 |
+| :------------------------------------------------: | :------: | :------: |
+|             measurementUid            |  String  | 传感器名称 |
+|               tsDataType                |  TSDataType   |  数据类型 |
+| startOffsetOfChunkMetadataList |  long  | 文件中 ChunkMetadata 列表开始的偏移量 |
+|  chunkMetaDataListDataSize  |  int  | ChunkMetadata 列表的大小 |
+|   statistics    |       Statistics        | 统计量 |
 
-###### TsDigest
+其中，对于五个统计值(min、max、first、last、sum)，Binary 和 Boolean 类型的 `TimeseriesMetadata` 只有 first 和 last 两个值。
 
-目前有五项统计数据: `min_value, max_value, first_value, last_value, sum_value`。
+##### 1.2.3.3 TsFileMetaData
 
-在 v0.8.0 版本中, 统计数据使用 name-value 编码的键值对。 也就是 `Map<String, ByteBuffer> statistics`。 name使用的一个字符串类型(需要注意的是字符串前有个长度标识)。 对于值来讲，它有可能是很多种类型，所以需要用 integer 类型用来描述值的长度。 比如, 如果 `min_value` 是一个 integer 类型的 0, 那么在 TsFile 中将被存储为 [9 "min_value" 4 0]。
+第三部分的元数据是 `TsFileMetaData`。
 
-下面是一个调用 `TsDigest.deserializeFrom(buffer)` 方法后的数据示例。在 v0.8.0 版本中, 我们会得到 
+|                        成员                        |   类型   | 解释 |
+| :-------------------------------------------------: | :---------------------: | :---:|
+|       MetadataIndex              |   MetadataIndexNode      |元数据索引节点 |
+|           totalChunkNum            |                int                 | 包含的 Chunk 总数 |
+|          invalidChunkNum           |                int                 | 失效的 Chunk 总数 |
+|                versionInfo         |             List<Pair<Long, Long>>       | 版本信息映射 |
+|        metaOffset   |                long                 | MetaMarker.SEPARATOR偏移量 |
+|                bloomFilter                 |                BloomFilter      | 布隆过滤器 |
 
-```
-Map<String, ByteBuffer> statistics = {
-    "min_value" -> ByteBuffer of int value 0, 
-    "last" -> ByteBuffer of int value 19,
-    "sum" -> ByteBuffer of double value 1093347116,
-    "first" -> ByteBuffer of int value 0,
-    "max_value" -> ByteBuffer of int value 99
-}
-```
+元数据索引节点 (MetadataIndexNode) 的成员和类型具体如下：
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/63765352-664a4280-c8fb-11e9-869e-859edf6d00bb.png">
+|                  成员                  |  类型  | 解释 |
+| :------------------------------------: | :----: | :---: |
+|      children    | List<MetadataIndexEntry> | 节点元数据索引项列表 |
+|       endOffset      | long |    此元数据索引节点的结束偏移量 |
+|   nodeType    | MetadataIndexNodeType | 节点类型 |
 
-在 v0.9.0 版本中, 为了提高空间和时间的效率，存储的结构被修改为数组的形式。也就是 `ByteBuffer[] statistics`。用固定的位置代表某一个具体的统计信息, 在 StatisticType 中定义的顺序如下:
+元数据索引项 (MetadataIndexEntry) 的成员和类型具体如下：
 
-```
-enum StatisticType {
-    min_value, max_value, first_value, last_value, sum_value
-}
-```
+|                  成员                  |  类型  | 解释 |
+| :------------------------------------: | :----: | :---: |
+|  name    | String | 对应设备或传感器的名字 |
+|     offset     | long   | 偏移量 |
 
-修改存储形式后,在上面的示例中,我们将得到
+所有的元数据索引节点构成一棵**元数据索引树**，这棵树最多由两个层级组成：设备索引层级和传感器索引层级，在不同的情况下会有不同的组成方式。元数据索引节点类型有四种，分别是`INTERNAL_DEVICE`、`LEAF_DEVICE`、`INTERNAL_MEASUREMENT`、`LEAF_MEASUREMENT`，分别对应设备索引层级的中间节点和叶子节点，和传感器索引层级的中间节点和叶子节点。
+只有传感器索引层级的叶子节点(`LEAF_MEASUREMENT`) 指向 `TimeseriesMetadata`。
 
-```
-ByteBuffer[] statistics = [
-    ByteBuffer of int value 0, // associated with "min_value"
-    ByteBuffer of int value 99, // associated with "max_value"
-    ByteBuffer of int value 0, // associated with "first_value"
-    ByteBuffer of int value 19, // associated with "last_value"
-    ByteBuffer of double value 1093347116 // associated with "sum_value"
-]
-```
+为了更清楚的说明元数据索引树的结构，这里我们使用四个例子来加以详细说明。
 
-另一个关于 v0.9.0 的示例数据, 当我们从 buffer [3, 0,4,0, 1,4,99, 3,4,19] 反序列化为 TsDigest 结构时, 我们将得到 
+元数据索引树的最大度（即每个节点的最大子节点个数）是可以由用户进行配置的，配置项为`max_degree_of_index_node`，其默认值为1024。在以下例子中，为了简化，我们假定 `max_degree_of_index_node = 10`。
 
-```
-//这里可能会有些难理解，读取顺序为：1.读取一个int类型的数据总数(3) 2.读取short类型的位于数组中的位置(0) 3.读取int类型的数据长度(4) 4.根据第3步的长度读取数据(0)
-//因为示例数据中，索引值只出现了(0,1,3),所以 first_value sum_value 的值为null
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935219-de3fd080-9622-11ea-9aa1-a59bef1c0001.png">
 
-ByteBuffer[] statistics = [
-    ByteBuffer of int value 0, // associated with "min_value"
-    ByteBuffer of int value 99, // associated with "max_value"
-    null, // associated with "first_value"
-    ByteBuffer of int value 19, // associated with "last_value"
-    null // associated with "sum_value"
-]
-```
+在5个设备，每个设备有5个传感器的情况下，由于设备数和传感器树均不超过 `max_degree_of_index_node`，因此元数据索引树只有默认的传感器层级。在这个层级里，每个 MetadataIndexNode 最多由10个 MetadataIndexEntry 组成。根节点的 MetadataIndexNode 是 `INTERNAL_MEASUREMENT` 类型，其中的5个 MetadataIndexEntry 指向对应的设备的 MetadataIndexNode，这些节点直接指向 `TimeseriesMetadata`，是 `LEAF_MEASUREMENT`。
 
-##### 1.2.3.2 TsFileMetaData
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935210-d97b1c80-9622-11ea-8a69-2c2c5f05a876.png">
 
-上节讲到的是 `TsDeviceMetadatas` 紧跟其后的数据是 `TsFileMetaData`。
+在1个设备，设备中有150个传感器的情况下，传感器个数超过了 `max_degree_of_index_node`，元数据索引树有默认的传感器层级。在这个层级里，每个 MetadataIndexNode 最多由10个 MetadataIndexEntry 组成。直接指向 `TimeseriesMetadata`的节点类型均为 `LEAF_MEASUREMENT`；而后续产生的中间节点和根节点不是传感器索引层级的叶子节点，这些节点是 `INTERNAL_MEASUREMENT`。
 
-|                        成员                         |                类型                |
-| :-------------------------------------------------: | :--------------------------------: |
-|                   包含的设备个数                    |                int                 |
-|  设备名称和设备元数据索引的键值对(deviceIndexMap)   | String, TsDeviceMetadataIndex pair |
-|                  包含的传感器个数                   |                int                 |
-| 传感器名称和传感器元数据的键值对(measurementSchema) |   String, MeasurementSchema pair   |
-|                      水印标识                       |                byte                |
-|         当标识为0x01时的水印信息(createdBy)         |               String               |
-|           包含的Chunk总数(totalChunkNum)            |                int                 |
-|          失效的Chunk总数(invalidChunkNum)           |                int                 |
-|                布隆过滤器序列化大小                 |                int                 |
-|                 布隆过滤器所有数据                  |      byte[Bloom filter size]       |
-|                   布隆过滤器容量                    |                int                 |
-|        布隆过滤器容量包含的HashFunction数量         |                int                 |
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935182-cd8f5a80-9622-11ea-8e41-661a5219974b.png">
 
-###### TsDeviceMetadataIndex
+在150个设备，每个设备中有1个传感器的情况下，设备个数超过了 `max_degree_of_index_node`，形成元数据索引树的传感器层级和设备索引层级。在这两个层级里，每个 MetadataIndexNode 最多由10个 MetadataIndexEntry 组成。直接指向 `TimeseriesMetadata` 的节点类型为 `LEAF_MEASUREMENT`，传感器索引层级的根节点同时作为设备索引层级的叶子节点，其节点类型为 `LEAF_DEVICE`；而后续产生的中间节点和根节点不是设备索引层级的叶子节点，因此节点类型为 `INTERNAL_DEVICE`。
 
-|                  成员                  |  类型  |
-| :------------------------------------: | :----: |
-|                 设备名                 | String |
-| 文件中TsDeviceMetaData的偏移量(offset) |  long  |
-|         序列化后数据大小(len)          |  int   |
-|     存储的设备最小时间(startTime)      |  long  |
-|      存储的设备最大时间(endTime)       |  long  |
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/81935138-b6e90380-9622-11ea-94f9-c97bd2b5d050.png">
 
-###### MeasurementSchema
+在150个设备，每个设备中有150个传感器的情况下，传感器和设备个数均超过了 `max_degree_of_index_node`，形成元数据索引树的传感器层级和设备索引层级。在这两个层级里，每个 MetadataIndexNode 均最多由10个 MetadataIndexEntry 组成。如前所述，从根节点到设备索引层级的叶子节点，类型分别为`INTERNAL_DEVICE` 和 `LEAF_DEVICE`，而每个设备索引层级的叶子节点都是传感器索引层级的根节点，从这里到传感器索引层级的叶子节点，类型分别为`INTERNAL_MEASUREMENT` 和 `LEAF_MEASUREMENT`。
 
-|           成员            |        类型         |
-| :-----------------------: | :-----------------: |
-| 传感器名称(measurementId) |       String        |
-|      数据类型(type)       |        short        |
-|    编码方式(encoding)     |        short        |
-|   压缩方式(compressor)    |        short        |
-|      附带参数的数量       |         int         |
-|   所有附带的参数(props)   | String, String pair |
+元数据索引采用树形结构进行设计的目的是在设备数或者传感器数量过大时，可以不用一次读取所有的 `TimeseriesMetadata`，只需要根据所读取的传感器定位对应的节点，从而减少 I/O，加快查询速度。有关 TsFile 的读流程将在本章最后一节加以详细说明。
 
-如果附带的参数数量大于 0, 传感器的附带参数会以一个数组形式的 <String, String> 键值对存储。
-
-比如说: "max_point_number""2".
-
-##### 1.2.3.3 TsFileMetadataSize
+##### 1.2.3.4 TsFileMetadataSize
 
 在TsFileMetaData之后，有一个int值用来表示TsFileMetaData的大小。
 
@@ -607,7 +546,6 @@ file length: 33436
                33436| END of TsFile
 
 ---------------------------------- TsFile Sketch End ----------------------------------
-
 ````````````````````````
 
 #### 1.3.4 TsFileSequenceRead
@@ -616,10 +554,14 @@ file length: 33436
 
 ### 1.4 TsFile 的总览图
 
-#### v0.8.0
+#### v0.8
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/65209576-2bd36000-dacb-11e9-9e43-49e0dd01274e.png">
 
-#### v0.9.0
+#### v0.9 / 000001
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/33376433/69341240-26012300-0ca4-11ea-91a1-d516810cad44.png">
+
+#### v0.10 / 000002
+
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/82010604-299ac300-96a5-11ea-996d-013c0017f669.png">

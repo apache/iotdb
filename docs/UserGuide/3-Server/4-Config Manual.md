@@ -141,6 +141,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1048576 |
 |Effective|Trigger|
 
+* max\_degree\_of\_index\_node
+
+|Name| max\_degree\_of\_index\_node |
+|:---:|:---|
+|Description|The maximum degree of the metadata index tree (that is, the max number of each node's children)|
+|Type|Int32|
+|Default| 1024 |
+|Effective|Trigger|
+
 * max\_string\_length
 
 |Name| max\_string\_length |
