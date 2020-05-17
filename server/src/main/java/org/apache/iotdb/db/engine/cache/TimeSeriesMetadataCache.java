@@ -213,7 +213,7 @@ public class TimeSeriesMetadataCache {
     private final String device;
     private final String measurement;
 
-    private long RAMSize;
+    private long ramSize;
 
 
     public TimeSeriesMetadataCacheKey(String filePath, String device, String measurement) {
@@ -241,13 +241,13 @@ public class TimeSeriesMetadataCache {
       return Objects.hash(filePath, device, measurement);
     }
 
-    public void setRAMSize(long size) {
-      this.RAMSize = size;
+    public void setRamSize(long size) {
+      this.ramSize = size;
     }
 
     @Override
-    public long getRAMSize() {
-      return RAMSize;
+    public long getRamSize() {
+      return ramSize;
     }
   }
 

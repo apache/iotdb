@@ -63,7 +63,7 @@ public class ChunkMetadata implements Accountable {
 
   private Statistics statistics;
 
-  private long RAMSize;
+  private long ramSize;
 
   private static final int CHUNK_METADATA_FIXED_RAM_SIZE = 80;
 
@@ -216,17 +216,17 @@ public class ChunkMetadata implements Accountable {
     this.modified = modified;
   }
 
-  public long calculateRAMSize() {
+  public long calculateRamSize() {
     return CHUNK_METADATA_FIXED_RAM_SIZE + RamUsageEstimator.sizeOf(measurementUid) + statistics
-        .calculateRAMSize();
+        .calculateRamSize();
   }
 
-  public void setRAMSize(long size) {
-    this.RAMSize = size;
+  public void setRamSize(long size) {
+    this.ramSize = size;
   }
 
   @Override
-  public long getRAMSize() {
-    return RAMSize;
+  public long getRamSize() {
+    return ramSize;
   }
 }

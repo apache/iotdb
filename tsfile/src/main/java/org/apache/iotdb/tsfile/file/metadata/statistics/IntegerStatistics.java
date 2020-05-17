@@ -114,7 +114,7 @@ public class IntegerStatistics extends Statistics<Integer> {
   }
 
   @Override
-  public long calculateRAMSize() {
+  public long calculateRamSize() {
     return INTEGER_STATISTICS_FIXED_RAM_SIZE;
   }
 

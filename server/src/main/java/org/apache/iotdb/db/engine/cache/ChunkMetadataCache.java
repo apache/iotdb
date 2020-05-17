@@ -75,7 +75,7 @@ public class ChunkMetadataCache {
         }
         long entrySize;
         if (count < 10) {
-          long currentSize = value.get(0).calculateRAMSize();
+          long currentSize = value.get(0).calculateRamSize();
           averageSize = ((averageSize * count) + currentSize) / (++count);
           IoTDBConfigDynamicAdapter.setChunkMetadataSizeInByte(averageSize);
           entrySize = RamUsageEstimator.sizeOf(key)
@@ -87,7 +87,7 @@ public class ChunkMetadataCache {
               + (averageSize + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.size()
               + RamUsageEstimator.shallowSizeOf(value);
         } else {
-          averageSize = value.get(0).calculateRAMSize();
+          averageSize = value.get(0).calculateRamSize();
           count = 1;
           entrySize = RamUsageEstimator.sizeOf(key)
               + (averageSize + RamUsageEstimator.NUM_BYTES_OBJECT_REF) * value.size()

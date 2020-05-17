@@ -411,7 +411,7 @@ public abstract class Statistics<T> {
     this.count = count;
   }
 
-  public abstract long calculateRAMSize();
+  public abstract long calculateRamSize();
 
   @Override
   public String toString() {

@@ -132,7 +132,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   }
 
   @Override
-  public long calculateRAMSize() {
+  public long calculateRamSize() {
     return RamUsageEstimator.sizeOf(this);
   }
 

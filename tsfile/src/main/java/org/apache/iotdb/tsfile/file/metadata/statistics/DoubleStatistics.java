@@ -118,7 +118,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  public long calculateRAMSize() {
+  public long calculateRamSize() {
     return DOUBLE_STATISTICS_FIXED_RAM_SIZE;
   }
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.common.cache;
 
 public interface Accountable {
 
-  void setRAMSize(long size);
+  void setRamSize(long size);
 
-  long getRAMSize();
+  long getRamSize();
 }

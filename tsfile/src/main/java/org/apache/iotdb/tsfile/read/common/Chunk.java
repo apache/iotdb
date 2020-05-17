@@ -37,7 +37,7 @@ public class Chunk implements Accountable {
   private long deletedAt;
   private EndianType endianType;
 
-  private long RAMSize;
+  private long ramSize;
 
   public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt, EndianType endianType) {
     this.chunkHeader = header;
@@ -67,12 +67,12 @@ public class Chunk implements Accountable {
   }
 
   @Override
-  public void setRAMSize(long size) {
-    this.RAMSize = size;
+  public void setRamSize(long size) {
+    this.ramSize = size;
   }
 
   @Override
-  public long getRAMSize() {
-    return RAMSize;
+  public long getRamSize() {
+    return ramSize;
   }
 }

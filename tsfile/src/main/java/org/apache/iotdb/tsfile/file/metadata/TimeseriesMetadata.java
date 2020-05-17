@@ -44,7 +44,7 @@ public class TimeseriesMetadata implements Accountable {
 
   private IChunkMetadataLoader chunkMetadataLoader;
 
-  private long RAMSize;
+  private long ramSize;
 
   public TimeseriesMetadata() {
   }
@@ -141,12 +141,12 @@ public class TimeseriesMetadata implements Accountable {
     this.modified = modified;
   }
 
-  public void setRAMSize(long size) {
-    this.RAMSize = size;
+  public void setRamSize(long size) {
+    this.ramSize = size;
   }
 
   @Override
-  public long getRAMSize() {
-    return RAMSize;
+  public long getRamSize() {
+    return ramSize;
   }
 }

@@ -113,7 +113,7 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   @Override
-  public long calculateRAMSize() {
+  public long calculateRamSize() {
     return FLOAT_STATISTICS_FIXED_RAM_SIZE;
   }
 

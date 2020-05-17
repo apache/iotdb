@@ -24,7 +24,7 @@ import org.apache.iotdb.tsfile.common.cache.Accountable;
 public class AccountableString implements Accountable {
 
   private final String string;
-  private long RAMSize;
+  private long ramSize;
 
   public AccountableString(String string) {
     this.string = string;
@@ -35,13 +35,13 @@ public class AccountableString implements Accountable {
   }
 
   @Override
-  public void setRAMSize(long size) {
-    this.RAMSize = size;
+  public void setRamSize(long size) {
+    this.ramSize = size;
   }
 
   @Override
-  public long getRAMSize() {
-    return RAMSize;
+  public long getRamSize() {
+    return ramSize;
   }
 
   @Override

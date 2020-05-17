@@ -62,14 +62,14 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
 
   public V put(K key, V value) {
     long size = calEntrySize(key, value) + MAP_ENTRY_SIZE;
-    key.setRAMSize(size);
+    key.setRamSize(size);
     usedMemory += size;
     V v = linkedHashMap.put(key, value);
     if (usedMemory > maxMemory) {
       Iterator<Entry<K, V>> iterator = linkedHashMap.entrySet().iterator();
       while (usedMemory > retainMemory && iterator.hasNext()) {
         Entry<K, V> entry = iterator.next();
-        usedMemory -= entry.getKey().getRAMSize();
+        usedMemory -= entry.getKey().getRamSize();
         iterator.remove();
       }
     }
@@ -92,7 +92,7 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
   public V remove(K key) {
     V v = linkedHashMap.remove(key);
     if (v != null && key != null) {
-      usedMemory -= key.getRAMSize();
+      usedMemory -= key.getRamSize();
     }
     return v;
   }

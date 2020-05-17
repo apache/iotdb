@@ -91,7 +91,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  public long calculateRAMSize() {
+  public long calculateRamSize() {
     return BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
   }
 

@@ -145,7 +145,7 @@ public class LongStatistics extends Statistics<Long> {
   }
 
   @Override
-  public long calculateRAMSize() {
+  public long calculateRamSize() {
     return LONG_STATISTICS_FIXED_RAM_SIZE;
   }
 
