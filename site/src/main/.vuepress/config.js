@@ -106,6 +106,13 @@ var config = {
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
 				  },
+				{
+					text: 'Blog',
+					items: [
+						{ text: 'Overview', link: '/Blog/Index'},
+						{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
+					]
+				},
 				  {
 					text: 'ASF',
 					items: [

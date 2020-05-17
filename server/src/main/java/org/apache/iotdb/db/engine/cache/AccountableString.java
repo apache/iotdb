@@ -16,47 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.common;
+package org.apache.iotdb.db.engine.cache;
 
-import java.nio.ByteBuffer;
-
+import java.util.Objects;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
-import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 
-/**
- * used in query.
- */
-public class Chunk implements Accountable {
+public class AccountableString implements Accountable {
 
-  private ChunkHeader chunkHeader;
-  private ByteBuffer chunkData;
-  /**
-   * All data with timestamp <= deletedAt are considered deleted.
-   */
-  private long deletedAt;
-
+  private final String string;
   private long ramSize;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt) {
-    this.chunkHeader = header;
-    this.chunkData = buffer;
-    this.deletedAt = deletedAt;
+  public AccountableString(String string) {
+    this.string = string;
   }
 
-  public ChunkHeader getHeader() {
-    return chunkHeader;
-  }
-
-  public ByteBuffer getData() {
-    return chunkData;
-  }
-
-  public long getDeletedAt() {
-    return deletedAt;
-  }
-
-  public void setDeletedAt(long deletedAt) {
-    this.deletedAt = deletedAt;
+  public String getString() {
+    return string;
   }
 
   @Override
@@ -67,5 +42,22 @@ public class Chunk implements Accountable {
   @Override
   public long getRamSize() {
     return ramSize;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    AccountableString that = (AccountableString) o;
+    return Objects.equals(string, that.string);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(string);
   }
 }

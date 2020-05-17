@@ -22,11 +22,9 @@ import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -67,7 +65,7 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
   /**
    * For query v0.9/v1 tsfile only
    * When generate temporary timeseriesMetadata
-   * set DiskChunkLoader to each chunkMetadata in chunkMetadataList
+   * set DiskChunkLoader to each chunkMetadata in the List
    * @param chunkMetadataList
    * @throws IOException
    */
@@ -76,18 +74,17 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
   }
 
-  public static void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList, TsFileResource resource, Path seriesPath, QueryContext context) throws IOException {
+  public static void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList,
+      TsFileResource resource, Path seriesPath, QueryContext context) {
     List<Modification> pathModifications =
-            context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
+        context.getPathModifications(resource.getModFile(), seriesPath.getFullPath());
 
     if (!pathModifications.isEmpty()) {
       QueryUtils.modifyChunkMetaData(chunkMetadataList, pathModifications);
     }
 
-    TsFileSequenceReader tsFileSequenceReader =
-            FileReaderManager.getInstance().get(resource.getPath(), resource.isClosed());
     for (ChunkMetadata data : chunkMetadataList) {
-      data.setChunkLoader(new DiskChunkLoader(tsFileSequenceReader));
+      data.setChunkLoader(new DiskChunkLoader(resource));
     }
   }
 

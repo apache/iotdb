@@ -411,6 +411,8 @@ public abstract class Statistics<T> {
     this.count = count;
   }
 
+  public abstract long calculateRamSize();
+
   @Override
   public String toString() {
     return "startTime: " + startTime + " endTime: " + endTime + " count: " + count;

@@ -274,8 +274,8 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[]{"COUNT TIMESERIES root.ln"};
-      String[] standards = new String[]{"2,\n"};
+      String[] sqls = new String[]{"COUNT TIMESERIES root.ln", "COUNT TIMESERIES"};
+      String[] standards = new String[]{"2,\n", "2,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -293,7 +293,7 @@ public class IoTDBMetadataFetchIT {
               }
             }
           }
-          Assert.assertEquals(builder.toString(), standard);
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
           e.printStackTrace();
           fail(e.getMessage());

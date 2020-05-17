@@ -564,11 +564,12 @@ public abstract class AbstractCli {
               e.printStackTrace();
             }
           }
-          resetArgs();
         }
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
+    } finally {
+      resetArgs();
     }
   }
 
@@ -606,8 +607,8 @@ public abstract class AbstractCli {
       }
     }
     int j = 0;
-    isReachEnd = !resultSet.next();
     if (cursorBeforeFirst) {
+      isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
     if (resultSet instanceof IoTDBJDBCResultSet) {
