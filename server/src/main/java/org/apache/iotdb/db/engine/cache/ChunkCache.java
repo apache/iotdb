@@ -43,7 +43,7 @@ public class ChunkCache {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_CHUNK_CACHE = config
       .getAllocateMemoryForChunkCache();
-  private static final boolean cacheEnable = config.isMetaDataCacheEnable();
+  private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
   private final LRULinkedHashMap<ChunkMetadata, Chunk> lruCache;
 
@@ -54,7 +54,7 @@ public class ChunkCache {
 
 
   private ChunkCache() {
-    if (cacheEnable) {
+    if (CACHE_ENABLE) {
       logger.info("ChunkCache size = " + MEMORY_THRESHOLD_IN_CHUNK_CACHE);
     }
     lruCache = new LRULinkedHashMap<ChunkMetadata, Chunk>(MEMORY_THRESHOLD_IN_CHUNK_CACHE) {
@@ -83,7 +83,7 @@ public class ChunkCache {
   }
 
   public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader) throws IOException {
-    if (!cacheEnable) {
+    if (!CACHE_ENABLE) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
       return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt(),
           reader.getEndianType());

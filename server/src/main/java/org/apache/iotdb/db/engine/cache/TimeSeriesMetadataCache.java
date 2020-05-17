@@ -49,7 +49,7 @@ public class TimeSeriesMetadataCache {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE = config
       .getAllocateMemoryForTimeSeriesMetaDataCache();
-  private static final boolean cacheEnable = config.isMetaDataCacheEnable();
+  private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
   private final LRULinkedHashMap<TimeSeriesMetadataCacheKey, TimeseriesMetadata> lruCache;
 
@@ -60,7 +60,7 @@ public class TimeSeriesMetadataCache {
 
 
   private TimeSeriesMetadataCache() {
-    if (cacheEnable) {
+    if (CACHE_ENABLE) {
       logger
           .info("TimeseriesMetadataCache size = " + MEMORY_THRESHOLD_IN_TIME_SERIES_METADATA_CACHE);
     }
@@ -98,7 +98,7 @@ public class TimeSeriesMetadataCache {
 
   public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors)
       throws IOException {
-    if (!cacheEnable) {
+    if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
       BloomFilter bloomFilter = reader.readBloomFilter();

@@ -48,7 +48,7 @@ public class ChunkMetadataCache {
   private static final Logger logger = LoggerFactory.getLogger(ChunkMetadataCache.class);
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long MEMORY_THRESHOLD_IN_B = config.getAllocateMemoryForChunkMetaDataCache();
-  private static final boolean cacheEnable = config.isMetaDataCacheEnable();
+  private static final boolean CACHE_ENABLE = config.isMetaDataCacheEnable();
 
   /**
    * key: file path dot deviceId dot sensorId.
@@ -64,7 +64,7 @@ public class ChunkMetadataCache {
 
 
   private ChunkMetadataCache(long memoryThreshold) {
-    if (cacheEnable) {
+    if (CACHE_ENABLE) {
       logger.info("ChunkMetadataCache size = " + memoryThreshold);
     }
     lruCache = new LRULinkedHashMap<AccountableString, List<ChunkMetadata>>(memoryThreshold) {
@@ -107,7 +107,7 @@ public class ChunkMetadataCache {
    */
   public List<ChunkMetadata> get(String filePath, Path seriesPath)
       throws IOException {
-    if (!cacheEnable) {
+    if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
       BloomFilter bloomFilter = tsFileReader.readBloomFilter();
