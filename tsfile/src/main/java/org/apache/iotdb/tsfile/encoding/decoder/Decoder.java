@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 public abstract class Decoder {
 
   private TSEncoding type;
-  private static EndianType endian;
 
   public Decoder(TSEncoding type) {
     this.type = type;
@@ -46,14 +45,6 @@ public abstract class Decoder {
     return type;
   }
 
-  public void setEndianType(EndianType endian) {
-    Decoder.endian = endian;
-  }
-
-  public EndianType getEndianType() {
-    return endian;
-  }
-
   /**
    * get Decoder object by type.
    *
@@ -64,7 +55,7 @@ public abstract class Decoder {
   public static Decoder getDecoderByType(TSEncoding type, TSDataType dataType) {
     // PLA and DFT encoding are not supported in current version
     if (type == TSEncoding.PLAIN) {
-      return new PlainDecoder(endian);
+      return new PlainDecoder(EndianType.BIG_ENDIAN);
     } else if (type == TSEncoding.RLE) {
       switch (dataType) {
         case BOOLEAN:

@@ -56,7 +56,7 @@ public class DoubleStatistics extends Statistics<Double> {
    * @param last  the last value
    * @param sum   sum value
    */
-  private void initializeStats(double min, double max, double first, double last, double sum) {
+  public void initializeStats(double min, double max, double first, double last, double sum) {
     this.minValue = min;
     this.maxValue = max;
     this.firstValue = first;

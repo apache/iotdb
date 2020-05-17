@@ -16,25 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.controller;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+package org.apache.iotdb.tsfile.v1.file.metadata;
 
 import java.io.IOException;
 import java.util.List;
 
-public interface IChunkMetadataLoader {
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 
-  /**
-   * read all chunk metadata of one time series in one file.
-   */
-  List<ChunkMetadata> loadChunkMetadataList() throws IOException;
+public class TimeseriesMetadataForV1 extends TimeseriesMetadata {
+  
+  private List<ChunkMetadata> chunkMetadataList;
 
-  /**
-   * For query 0.9/v1 tsfile only
-   * @param chunkMetadataList
-   * @throws IOException
-   */
-  void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException;
+  public void setChunkMetadataList(List<ChunkMetadata> chunkMetadataList) {
+    this.chunkMetadataList = chunkMetadataList;
+  }
+
+  @Override
+  public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
+    chunkMetadataLoader.setDiskChunkLoader(chunkMetadataList);
+    return chunkMetadataList;
+  }
 
 }

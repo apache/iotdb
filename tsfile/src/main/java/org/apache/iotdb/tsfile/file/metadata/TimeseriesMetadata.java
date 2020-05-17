@@ -42,7 +42,7 @@ public class TimeseriesMetadata implements Accountable {
   // modified is true when there are modifications of the series, or from unseq file
   private boolean modified;
 
-  private IChunkMetadataLoader chunkMetadataLoader;
+  protected IChunkMetadataLoader chunkMetadataLoader;
 
   private long ramSize;
 

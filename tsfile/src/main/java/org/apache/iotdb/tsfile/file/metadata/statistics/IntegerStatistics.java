@@ -51,7 +51,7 @@ public class IntegerStatistics extends Statistics<Integer> {
     return 24;
   }
 
-  private void initializeStats(int min, int max, int first, int last, double sum) {
+  public void initializeStats(int min, int max, int first, int last, double sum) {
     this.minValue = min;
     this.maxValue = max;
     this.firstValue = first;

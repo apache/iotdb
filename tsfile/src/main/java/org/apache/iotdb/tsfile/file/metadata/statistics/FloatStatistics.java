@@ -51,7 +51,7 @@ public class FloatStatistics extends Statistics<Float> {
     return 24;
   }
 
-  private void initializeStats(float min, float max, float first, float last, double sum) {
+  public void initializeStats(float min, float max, float first, float last, double sum) {
     this.minValue = min;
     this.maxValue = max;
     this.firstValue = first;

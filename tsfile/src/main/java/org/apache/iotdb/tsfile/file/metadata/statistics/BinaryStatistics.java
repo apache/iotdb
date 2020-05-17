@@ -53,7 +53,7 @@ public class BinaryStatistics extends Statistics<Binary> {
    * @param first the first value
    * @param last  the last value
    */
-  private void initializeStats(Binary first, Binary last) {
+  public void initializeStats(Binary first, Binary last) {
     this.firstValue = first;
     this.lastValue = last;
   }

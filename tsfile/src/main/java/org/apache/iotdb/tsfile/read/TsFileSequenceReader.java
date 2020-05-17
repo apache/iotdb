@@ -33,10 +33,10 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
-import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -70,13 +70,12 @@ public class TsFileSequenceReader implements AutoCloseable {
   private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   protected String file;
-  private TsFileInput tsFileInput;
+  protected TsFileInput tsFileInput;
   private long fileMetadataPos;
   private int fileMetadataSize;
   private ByteBuffer markerBuffer = ByteBuffer.allocate(Byte.BYTES);
   private int totalChunkNum;
   private TsFileMetadata tsFileMetaData;
-  private EndianType endianType = EndianType.BIG_ENDIAN;
   // device -> measurement -> TimeseriesMetadata
   private Map<String, Map<String, TimeseriesMetadata>> cachedDeviceMetadata = new ConcurrentHashMap<>();
   private static final ReadWriteLock cacheLock = new ReentrantReadWriteLock();
@@ -209,7 +208,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return tsFileInput.size() >= TSFileConfig.MAGIC_STRING.getBytes().length * 2
         + TSFileConfig.VERSION_NUMBER.getBytes().length
         && (readTailMagic().equals(readHeadMagic()) || readTailMagic()
-        .equals(TSFileConfig.OLD_VERSION));
+        .equals(TSFileConfig.VERSION_NUMBER_V1));
   }
 
   /**
@@ -232,10 +231,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     tsFileInput.read(versionNumberBytes, TSFileConfig.MAGIC_STRING.getBytes().length);
     versionNumberBytes.flip();
     return new String(versionNumberBytes.array());
-  }
-
-  public EndianType getEndianType() {
-    return this.endianType;
   }
 
   /**
@@ -686,7 +681,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     ChunkHeader header = readChunkHeader(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
     ByteBuffer buffer = readChunk(metaData.getOffsetOfChunkHeader() + header.getSerializedSize(),
         header.getDataSize());
-    return new Chunk(header, buffer, metaData.getDeletedAt(), endianType);
+    return new Chunk(header, buffer, metaData.getDeletedAt());
   }
 
   /**

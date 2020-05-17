@@ -62,6 +62,18 @@ public class DiskChunkMetadataLoader implements IChunkMetadataLoader {
     return chunkMetadataList;
   }
 
+  /**
+   * For query v0.9/v1 tsfile only
+   * When generate temporary timeseriesMetadata
+   * set DiskChunkLoader to each chunkMetadata in the List
+   * @param chunkMetadataList
+   * @throws IOException
+   */
+  @Override
+  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException {
+    setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
+  }
+
   public static void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList,
       TsFileResource resource, Path seriesPath, QueryContext context) {
     List<Modification> pathModifications =

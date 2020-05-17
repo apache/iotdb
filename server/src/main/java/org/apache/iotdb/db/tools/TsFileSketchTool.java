@@ -126,7 +126,6 @@ public class TsFileSketchTool {
               String.format("%20s", "") + "|\t\t[version] " 
               + versionMap.get(chunkEndPos + chunkGroupFooter.getSerializedSize()));
         }
-        
       }
 
       // metadata begins

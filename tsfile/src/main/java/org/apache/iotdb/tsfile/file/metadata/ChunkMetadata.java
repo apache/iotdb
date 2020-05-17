@@ -62,6 +62,8 @@ public class ChunkMetadata implements Accountable {
   private IChunkLoader chunkLoader;
 
   private Statistics statistics;
+  
+  private boolean isFromOldTsFile = false;
 
   private long ramSize;
 
@@ -214,6 +216,14 @@ public class ChunkMetadata implements Accountable {
 
   public void setModified(boolean modified) {
     this.modified = modified;
+  }
+
+  public boolean isFromOldTsFile() {
+    return isFromOldTsFile;
+  }
+
+  public void setFromOldTsFile(boolean isFromOldTsFile) {
+    this.isFromOldTsFile = isFromOldTsFile;
   }
 
   public long calculateRamSize() {

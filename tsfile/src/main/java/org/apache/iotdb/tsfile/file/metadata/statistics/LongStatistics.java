@@ -48,7 +48,7 @@ public class LongStatistics extends Statistics<Long> {
     return 40;
   }
 
-  private void initializeStats(long min, long max, long firstValue, long last, double sum) {
+  public void initializeStats(long min, long max, long firstValue, long last, double sum) {
     this.minValue = min;
     this.maxValue = max;
     this.firstValue = firstValue;

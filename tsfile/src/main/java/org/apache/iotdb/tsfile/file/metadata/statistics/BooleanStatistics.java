@@ -52,7 +52,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
    * @param firstValue first boolean value
    * @param lastValue  last boolean value
    */
-  private void initializeStats(boolean firstValue, boolean lastValue) {
+  public void initializeStats(boolean firstValue, boolean lastValue) {
     this.firstValue = firstValue;
     this.lastValue = lastValue;
   }
