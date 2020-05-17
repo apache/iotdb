@@ -957,7 +957,7 @@ public final class RamUsageEstimator {
      */
     @Deprecated
     public static final boolean JRE_IS_MINIMUM_JAVA6 =
-            new Boolean(true).booleanValue(); // prevent inlining in foreign class files
+        Boolean.TRUE; // prevent inlining in foreign class files
 
     public static final boolean JRE_IS_MINIMUM_JAVA7;
     public static final boolean JRE_IS_MINIMUM_JAVA8;
