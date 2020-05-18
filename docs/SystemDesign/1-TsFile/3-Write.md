@@ -61,13 +61,13 @@ After the persistence is complete, the corresponding metadata information is cac
 
 - TsFileWriter.close()
 
-Based on the metadata cached in memory, TsFileMetadata is generated and appended to the end of the file, and the file is finally closed.
+Based on the metadata cached in memory, TsFileMetadata is generated and appended to the end of the file (`TsFileWriter.flushMetadataIndex()`), and the file is finally closed.
 
 One of the most important steps in constructing TsFileMetadata is to construct MetadataIndex tree. As we have mentioned before, the MetadataIndex is designed as tree structure so that not all the `TimeseriesMetadata` need to be read when the number of devices or measurements is too large. Only reading specific MetadataIndex nodes according to requirement and reducing I/O could speed up the query. The whole process of constructing MetadataIndex tree is as below:
 
-### org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor
+* org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor
 
-* MetadataIndexConstructor.constructMetadataIndex()
+### MetadataIndexConstructor.constructMetadataIndex()
 
 The input params of this method:
 * Map\<String, List\<TimeseriesMetadata\>\> deviceTimeseriesMetadataMap, which indicates the map from device to its `TimeseriesMetadata`
@@ -75,7 +75,7 @@ The input params of this method:
 
 The whole method contains three parts:
 
-1. In measurement index level, each device and its TimeseriesMetadata in `deviceTimeseriesMetadataMap` is converted into `deviceMetadataIndexMap`
+1. In measurement index level, each device and its TimeseriesMetadata in `deviceTimeseriesMetadataMap` is converted into `deviceMetadataIndexMap`. Specificly, for each device:
 
 ```
     for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
@@ -155,7 +155,7 @@ The whole method contains three parts:
     return deviceMetadataIndexNode;
 ```
 
-* MetadataIndexConstructor.generateRootNode
+### MetadataIndexConstructor.generateRootNode
 
 The input params of this method:
 * Queue\<MetadataIndexNode\> metadataIndexNodeQueue
@@ -163,47 +163,16 @@ The input params of this method:
 * MetadataIndexNodeType type, which indicates the internal nodes type of generated tree. There are two types: when the method is called by measurement index level, it is INTERNAL_MEASUREMENT; when the method is called by device index level, it is INTERNAL_DEVICE 
 
 The method needs to generate a tree structure of nodes in metadataIndexNodeQueue, and return the root node:
+1. New `currentIndexNode` in specific `type`
+2. Loop handling the queue: build an entry for each MetadataIndexNode in the queue, and add it into `currentIndexNode`. Then serialize this MetadataIndexNode
+3. After storing `MAX_DEGREE_OF_INDEX_NODE` entries, `currentIndexNode` is full. Add it into the queue and handle it in next loop
+4. Return the root node in the queue when the queue has only one node
 
-```
-    int queueSize = metadataIndexNodeQueue.size();
-    MetadataIndexNode metadataIndexNode;
-    // new a currentIndexNode in specific type
-    MetadataIndexNode currentIndexNode = new MetadataIndexNode(type);
-    // loop handle the queue until which has only one root node
-    while (queueSize != 1) {
-      for (int i = 0; i < queueSize; i++) {
-        metadataIndexNode = metadataIndexNodeQueue.poll();
-        // when constructing from internal node, each node is related to an entry. Once current MetadataIndexNode is full, add it into queue
-        if (currentIndexNode.isFull()) {
-          addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
-          currentIndexNode = new MetadataIndexNode(type);
-        }
-        // new an entry of the MetadataIndexNode, and add it in the current MetadataIndexNode
-        currentIndexNode.addEntry(new MetadataIndexEntry(metadataIndexNode.peek().getName(),
-            out.getPosition()));
-        // serialize MetadataIndexNode
-        metadataIndexNode.serializeTo(out.wrapAsStream());
-      }
-      // dd current MetadataIndexNode, which contains some remaining entries, into queue
-      addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
-      currentIndexNode = new MetadataIndexNode(type);
-      // count current queue size
-      queueSize = metadataIndexNodeQueue.size();
-    }
-    // return the root node, which is remaining in the queue
-    return metadataIndexNodeQueue.poll();
-```
-
-* MetadataIndexConstructor.addCurrentIndexNodeToQueue
+### MetadataIndexConstructor.addCurrentIndexNodeToQueue
 
 The input params of this method:
 * MetadataIndexNode currentIndexNode
 * Queue\<MetadataIndexNode\> metadataIndexNodeQueue
 * TsFileOutput out
 
-This method set the endOffset of current MetadataIndexNode, and put it into queue:
-
-```
-    currentIndexNode.setEndOffset(out.getPosition());
-    metadataIndexNodeQueue.add(currentIndexNode);
-```
+This method set the endOffset of current MetadataIndexNode, and put it into queue.
