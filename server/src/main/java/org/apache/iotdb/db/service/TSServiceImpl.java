@@ -518,27 +518,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteInsertRowInBatchResp insertRowInBatch(TSInsertInBatchReq req) {
     TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
-    if (!checkLogin()) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      resp.addToStatusList(new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR)));
-      return resp;
-    }
-
-    InsertPlan plan = new InsertPlan();
-    for (int i = 0; i < req.deviceIds.size(); i++) {
-      plan.setDeviceId(req.getDeviceIds().get(i));
-      plan.setTime(req.getTimestamps().get(i));
-      plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
-      plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
-      TSStatus status = checkAuthority(plan);
-      if (status != null) {
-        resp.addToStatusList(new TSStatus(status));
+    try {
+      if (!checkLogin()) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        resp.addToStatusList(new TSStatus(getStatus(TSStatusCode.NOT_LOGIN_ERROR)));
+        return resp;
       }
-      else{
-        resp.addToStatusList(executePlan(plan));
-      }
-    }
 
+      InsertPlan plan = new InsertPlan();
+      for (int i = 0; i < req.deviceIds.size(); i++) {
+        plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setTime(req.getTimestamps().get(i));
+        plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+        plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
+        TSStatus status = checkAuthority(plan);
+        if (status != null) {
+          resp.addToStatusList(new TSStatus(status));
+        } else {
+          resp.addToStatusList(executePlan(plan));
+        }
+      }
+    } catch (Exception e) {
+      logger.error("meet error when insertRowInBatch", e);
+    }
     return resp;
   }
 
