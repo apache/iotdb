@@ -21,6 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
@@ -52,7 +53,7 @@ public class BinaryStatistics extends Statistics<Binary> {
    * @param first the first value
    * @param last  the last value
    */
-  private void initializeStats(Binary first, Binary last) {
+  public void initializeStats(Binary first, Binary last) {
     this.firstValue = first;
     this.lastValue = last;
   }
@@ -128,6 +129,11 @@ public class BinaryStatistics extends Statistics<Binary> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return RamUsageEstimator.sizeOf(this);
   }
 
   @Override

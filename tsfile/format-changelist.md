@@ -26,6 +26,7 @@ Last Updated on 2019-11-28 by Jialin Qiao.
 
 | PR#   | Name                                                        | Author          | Changes                                                      |
 | ---- | ------------------------------------------------------------ | --------------- | ------------------------------------------------------------ |
+| 553  | [IOTDB-279] Merge TsDigest into Statistics                   | jack870131      | Merge the function of TsDigest into Statistics class, which TsDisgest is the ByteBuffer format of Statistics |
 | 587  | [IOTDB-325] Refactor Statistics                              | qiaojialin      | Move start time, end time, count in PageHeader and ChunkMetadata into Statistics; Remove maxTombstoneTime in ChunkHeader |
 | 855  | [IOTDB-587] New TsFile version 2                             | HTHou           | Remove ChunkGroupMetadata, store ChunkMetadata list by series, Add TimeseriesMetadata for each series |
 | 1024 | [IOTDB-585] Fix recover version bug                          | qiaojialin      | Add MetaMarker.VERSION and version behind each flushing memtable (flushAllChunkGroups) |

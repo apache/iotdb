@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -275,7 +277,7 @@ public class TsFileProcessor {
       return config.getMemtableSizeThreshold();
     }
     long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
-        / IoTDBDescriptor.getInstance().getConfig().getMemtableNumInEachStorageGroup()
+        / IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() / MEMTABLE_NUM_FOR_EACH_PARTITION
         * ActiveTimeSeriesCounter.getInstance()
         .getActiveRatio(storageGroupName));
     return Math.max(memTableSize, config.getMemtableSizeThreshold());

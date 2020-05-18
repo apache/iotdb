@@ -38,6 +38,9 @@ public class FloatStatistics extends Statistics<Float> {
   private float lastValue;
   private double sumValue;
 
+  private static final int FLOAT_STATISTICS_FIXED_RAM_SIZE = 64;
+
+
   @Override
   public TSDataType getType() {
     return TSDataType.FLOAT;
@@ -48,7 +51,7 @@ public class FloatStatistics extends Statistics<Float> {
     return 24;
   }
 
-  private void initializeStats(float min, float max, float first, float last, double sum) {
+  public void initializeStats(float min, float max, float first, float last, double sum) {
     this.minValue = min;
     this.maxValue = max;
     this.firstValue = first;
@@ -107,6 +110,11 @@ public class FloatStatistics extends Statistics<Float> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return FLOAT_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override
