@@ -136,7 +136,6 @@ public class BasicDaoImpl implements BasicDao {
       Long from = zonedCovertToLong(timeRange.left);
     Long to = zonedCovertToLong(timeRange.right);
     final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
-    List<TimeValues> rows = null;
     String sql = String.format("SELECT %s FROM root.%s WHERE time > %d and time < %d",
         s.substring(s.lastIndexOf('.') + 1), s.substring(0, s.lastIndexOf('.')),
         from * timestampRadioX, to * timestampRadioX);

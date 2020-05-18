@@ -61,6 +61,10 @@
         <file>
             <source>${maven.multiModuleProjectDirectory}/RELEASE_NOTES.md</source>
         </file>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/grafana/src/main/resources/application.properties</source>
+            <destName>tools/grafana/application.properties</destName>
+        </file>
     </files>
     <fileSets>
         <fileSet>
