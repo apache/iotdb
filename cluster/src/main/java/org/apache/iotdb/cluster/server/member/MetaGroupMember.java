@@ -1131,7 +1131,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   /**
    * Load the partition table from a local file if it can be found.
-   *
    */
   private void loadPartitionTable() {
     File partitionFile = new File(PARTITION_FILE_NAME);
