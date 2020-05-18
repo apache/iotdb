@@ -30,6 +30,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -205,6 +206,11 @@ public class TimeSeriesMetadataCache {
       lruCache.remove(key);
     }
     lock.writeLock().unlock();
+  }
+
+  @TestOnly
+  public boolean isEmpty() {
+    return lruCache.isEmpty();
   }
 
   public static class TimeSeriesMetadataCacheKey implements Accountable {

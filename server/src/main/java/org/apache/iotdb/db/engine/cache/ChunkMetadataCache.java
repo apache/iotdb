@@ -31,6 +31,7 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -213,6 +214,11 @@ public class ChunkMetadataCache {
       lruCache.entrySet().removeIf(e -> e.getKey().getString().startsWith(resource.getPath()));
     }
     lock.writeLock().unlock();
+  }
+
+  @TestOnly
+  public boolean isEmpty() {
+    return lruCache.isEmpty();
   }
 
   /**
