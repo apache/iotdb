@@ -194,6 +194,14 @@ public class Session {
       throw new IllegalArgumentException(
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
+    for (int i = 0; i < measurementsList.size(); i++) {
+      List<String> measurements = measurementsList.get(i);
+      List<String> values = valuesList.get(i);
+      if (measurements.size() != values.size()) {
+        throw new IllegalArgumentException(
+            "each measurements size and values size should be equal");
+      }
+    }
 
     TSInsertInBatchReq request = new TSInsertInBatchReq();
     request.setDeviceIds(deviceIds);
