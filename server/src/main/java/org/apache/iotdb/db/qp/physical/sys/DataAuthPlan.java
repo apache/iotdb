@@ -81,14 +81,13 @@ public class DataAuthPlan extends PhysicalPlan {
   }
 
   private int getPlanType(OperatorType operatorType) {
-    int type = OperatorType.LAST.ordinal();
-    switch (operatorType) {
-      case GRANT_WATERMARK_EMBEDDING:
-        type = PhysicalPlanType.GRANT_WATERMARK_EMBEDDING.ordinal();
-        break;
-      case REVOKE_WATERMARK_EMBEDDING:
-        type = PhysicalPlanType.REVOKE_WATERMARK_EMBEDDING.ordinal();
-        break;
+    int type;
+    if (operatorType == OperatorType.GRANT_WATERMARK_EMBEDDING) {
+      type = PhysicalPlanType.GRANT_WATERMARK_EMBEDDING.ordinal();
+    } else if (operatorType == OperatorType.REVOKE_WATERMARK_EMBEDDING) {
+      type = PhysicalPlanType.REVOKE_WATERMARK_EMBEDDING.ordinal();
+    } else {
+      throw new IllegalArgumentException("Unknown operator: " + operatorType.toString());
     }
     return type;
   }

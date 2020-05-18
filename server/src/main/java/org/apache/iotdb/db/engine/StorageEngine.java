@@ -335,24 +335,15 @@ public class StorageEngine implements IService {
       logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
           storageGroupName, isSeq, partitionId);
       processor.writeLock();
+      // to avoid concurrent modification problem, we need a new array list
+      List<TsFileProcessor> processors = isSeq ?
+          new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
+          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor());
       try {
-        if (isSeq) {
-          // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkSequenceTsFileProcessors())) {
-            if (tsfileProcessor.getTimeRangeId() == partitionId) {
-              processor.asyncCloseOneTsFileProcessor(true, tsfileProcessor);
-              break;
-            }
-          }
-        } else {
-          // to avoid concurrent modification problem, we need a new array list
-          for (TsFileProcessor tsfileProcessor : new ArrayList<>(
-              processor.getWorkUnsequenceTsFileProcessor())) {
-            if (tsfileProcessor.getTimeRangeId() == partitionId) {
-              processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
-              break;
-            }
+        for (TsFileProcessor tsfileProcessor : processors) {
+          if (tsfileProcessor.getTimeRangeId() == partitionId) {
+            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            break;
           }
         }
       } finally {

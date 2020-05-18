@@ -32,7 +32,10 @@ public class CheckStartUpStatusHandler implements AsyncMethodCallback<CheckStatu
 
   @Override
   public void onComplete(CheckStatusResponse response) {
-    this.result.set(response);
+    synchronized (result) {
+      this.result.set(response);
+      result.notifyAll();
+    }
   }
 
   @Override

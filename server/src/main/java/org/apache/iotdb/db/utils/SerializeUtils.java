@@ -462,7 +462,7 @@ public class SerializeUtils {
 
   public static Object[] deserializeObjects(ByteBuffer buffer) {
     if (buffer == null || buffer.limit() == 0) {
-      return null;
+      return new Object[0];
     }
     int size = buffer.getInt();
     Object[] ret = new Object[size];

@@ -99,6 +99,8 @@ public class TsFileResource {
 
   private TsFileLock tsFileLock = new TsFileLock();
 
+  private Random random = new Random();
+
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
@@ -116,9 +118,6 @@ public class TsFileResource {
   private TimeseriesMetadata timeSeriesMetadata;
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-
-
-  private Random random = new Random();
 
   /**
    *  generated upgraded TsFile ResourceList
@@ -194,10 +193,6 @@ public class TsFileResource {
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
-    if ((chunkMetadataList == null ||chunkMetadataList.isEmpty())
-        && (readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
-      timeSeriesMetadata = null;
-    }
     timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);

@@ -128,6 +128,7 @@ public class MetaGroupMemberTest extends MemberTest {
   private Node exiledNode;
 
   private int prevReplicaNum;
+  private List<String> prevSeedNodes;
 
   @Override
   @After
@@ -135,10 +136,13 @@ public class MetaGroupMemberTest extends MemberTest {
     dataClusterServer.stop();
     super.tearDown();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicaNum);
+    ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevSeedNodes);
   }
 
   @Before
   public void setUp() throws Exception {
+    prevSeedNodes = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
+    ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(Collections.emptyList());
     prevReplicaNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
     super.setUp();
@@ -360,6 +364,19 @@ public class MetaGroupMemberTest extends MemberTest {
               new Thread(() -> {
                 testMetaMember.applyRemoveNode(node);
                 resultHandler.onComplete(Response.RESPONSE_AGREE);
+              }).start();
+            }
+
+            @Override
+            public void checkStatus(StartUpStatus startUpStatus,
+                AsyncMethodCallback<CheckStatusResponse> resultHandler) {
+              new Thread(() -> {
+                CheckStatusResponse response = new CheckStatusResponse();
+                response.setHashSaltEquals(true);
+                response.setPartitionalIntervalEquals(true);
+                response.setReplicationNumEquals(true);
+                response.setSeedNodeEquals(true);
+                resultHandler.onComplete(response);
               }).start();
             }
           };

@@ -69,7 +69,6 @@ import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -815,12 +814,7 @@ public class StorageGroupProcessor {
         }
       }
     } catch (MetadataException | QueryProcessException e) {
-      if (!(e instanceof PathNotExistException)) {
-        // ignore PathNotExistException which means the schema is stored on a different node, so
-        // there is no Last cache locally
-        // TODO-Cluster: enable Last cache for such series
-        throw new WriteProcessException(e);
-      }
+      throw new WriteProcessException(e);
     } finally {
       if (node != null) {
         ((InternalMNode) node).readUnlock();
@@ -1659,24 +1653,8 @@ public class StorageGroupProcessor {
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
       // get both seqFile lock and merge lock
-      boolean fileLockGot;
-      boolean mergeLockGot;
-      while (true) {
-        fileLockGot = seqFile.tryWriteLock();
-        mergeLockGot = mergeLock.writeLock().tryLock();
+      doubleWriteLock(seqFile);
 
-        if (fileLockGot && mergeLockGot) {
-          break;
-        } else {
-          // did not get all of them, release the gotten one and retry
-          if (fileLockGot) {
-            seqFile.writeUnlock();
-          }
-          if(mergeLockGot) {
-            mergeLock.writeLock().unlock();
-          }
-        }
-      }
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
@@ -1686,11 +1664,44 @@ public class StorageGroupProcessor {
           mergeLog.delete();
         }
       } finally {
-        mergeLock.writeLock().unlock();
-        seqFile.writeUnlock();
+        doubleWriteUnlock(seqFile);
       }
     }
     logger.info("{} a merge task ends", storageGroupName);
+  }
+
+  /**
+   * acquire the write locks of the resource and the merge lock
+   * @param seqFile
+   */
+  private void doubleWriteLock(TsFileResource seqFile) {
+    boolean fileLockGot;
+    boolean mergeLockGot;
+    while (true) {
+      fileLockGot = seqFile.tryWriteLock();
+      mergeLockGot = mergeLock.writeLock().tryLock();
+
+      if (fileLockGot && mergeLockGot) {
+        break;
+      } else {
+        // did not get all of them, release the gotten one and retry
+        if (fileLockGot) {
+          seqFile.writeUnlock();
+        }
+        if(mergeLockGot) {
+          mergeLock.writeLock().unlock();
+        }
+      }
+    }
+  }
+
+  /**
+   * release the write locks of the resource and the merge lock
+   * @param seqFile
+   */
+  private void doubleWriteUnlock(TsFileResource seqFile) {
+    mergeLock.writeLock().unlock();
+    seqFile.writeUnlock();
   }
 
   /**
@@ -1798,11 +1809,10 @@ public class StorageGroupProcessor {
    * @param version
    */
   public void setPartitionFileVersionToMax(long partition, long version) {
-    partitionMaxFileVersions.compute(partition, (prt, oldVer) -> computeMaxVersion(partition,
-        oldVer, version));
+    partitionMaxFileVersions.compute(partition, (prt, oldVer) -> computeMaxVersion(oldVer, version));
   }
 
-  private long computeMaxVersion(long partition, Long oldVersion, Long newVersion) {
+  private long computeMaxVersion(Long oldVersion, Long newVersion) {
     if (oldVersion == null) {
       return newVersion;
     }
@@ -1918,35 +1928,40 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void removeFullyOverlapFiles(TsFileResource resource, Iterator<TsFileResource> iterator
+  private void removeFullyOverlapFiles(TsFileResource newTsFile, Iterator<TsFileResource> iterator
       , boolean isSeq) {
     while (iterator.hasNext()) {
-      TsFileResource seqFile = iterator.next();
-      if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())
-          && !resource.getHistoricalVersions().equals(seqFile.getHistoricalVersions())
-          && seqFile.tryWriteLock()) {
+      TsFileResource existingTsFile = iterator.next();
+      if (newTsFile.getHistoricalVersions().containsAll(existingTsFile.getHistoricalVersions())
+          && !newTsFile.getHistoricalVersions().equals(existingTsFile.getHistoricalVersions())
+          && existingTsFile.tryWriteLock()) {
         try {
-          if (!seqFile.isClosed()) {
-            // also remove the TsFileProcessor if the overlapped file is not closed
-            long timePartition = seqFile.getTimePartition();
-            Map<Long, TsFileProcessor> fileProcessorMap = isSeq ? workSequenceTsFileProcessors :
-                workUnsequenceTsFileProcessors;
-            TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
-            if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == seqFile) {
-              tsFileProcessor.syncClose();
-              fileProcessorMap.remove(timePartition);
-            }
-          }
-          iterator.remove();
-          seqFile.remove();
+          removeFullyOverlapFile(existingTsFile, iterator, isSeq);
         } catch (Exception e) {
           logger.error("Something gets wrong while removing FullyOverlapFiles ", e);
           throw e;
         } finally {
-          seqFile.writeUnlock();
+          existingTsFile.writeUnlock();
         }
       }
     }
+  }
+
+  private void removeFullyOverlapFile(TsFileResource tsFileResource, Iterator<TsFileResource> iterator
+      , boolean isSeq) {
+    if (!tsFileResource.isClosed()) {
+      // also remove the TsFileProcessor if the overlapped file is not closed
+      long timePartition = tsFileResource.getTimePartition();
+      Map<Long, TsFileProcessor> fileProcessorMap = isSeq ? workSequenceTsFileProcessors :
+          workUnsequenceTsFileProcessors;
+      TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
+      if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == tsFileResource) {
+        tsFileProcessor.syncClose();
+        fileProcessorMap.remove(timePartition);
+      }
+    }
+    iterator.remove();
+    tsFileResource.remove();
   }
 
   /**
@@ -2292,8 +2307,7 @@ public class StorageGroupProcessor {
     }
     Set<Long> partitionFileVersions = partitionDirectFileVersions
         .getOrDefault(partitionNum, Collections.emptySet());
-    // TODO-Cluter: change to debug
-    logger.info("FileVersions/PartitionVersions: {}/{}", tsFileResource.getHistoricalVersions(),
+    logger.debug("FileVersions/PartitionVersions: {}/{}", tsFileResource.getHistoricalVersions(),
         partitionFileVersions);
     return partitionFileVersions.containsAll(tsFileResource.getHistoricalVersions());
   }

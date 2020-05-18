@@ -119,9 +119,11 @@ public class Session {
     if (!isClosed) {
       return;
     }
+
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
     transport = new TFastFramedTransport(new TSocket(host, port, connectionTimeoutInMs));
+
     if (!transport.isOpen()) {
       try {
         transport.open();

@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
@@ -82,6 +83,23 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
   @Override
   public int compareTo(ShowTimeSeriesResult o) {
     return this.name.compareTo(o.name);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ShowTimeSeriesResult result = (ShowTimeSeriesResult) o;
+    return Objects.equals(name, result.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name);
   }
 
   public void serialize(OutputStream outputStream) throws IOException {

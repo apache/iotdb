@@ -310,6 +310,7 @@ public class PlanExecutor implements IPlanExecutor {
     return queryDataSet;
   }
 
+  @SuppressWarnings("unused")
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
                                                          QueryContext context, IQueryRouter router) {
     return new AlignByDeviceDataSet(plan, context, queryRouter);
@@ -900,33 +901,8 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       for (int i = 0; i < measurementList.length; i++) {
         String measurement = measurementList[i];
-
-        if (node != null && !node.hasChild(measurement)) {
-          if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-            MeasurementSchema schema = MManager.getInstance()
-                    .getSeriesSchema(deviceId, measurement);
-            if (schema != null) {
-              schemas[i] = schema;
-              continue;
-            } else {
-              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
-            }
-          }
-          TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValues[i]);
-          Path path = new Path(deviceId, measurement);
-
-          internalCreateTimeseries(path.toString(), dataType);
-          LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
-          schemas[i] = measurementNode.getSchema();
-          measurementList[i] = measurementNode.getName();
-        } else if (node != null) {
-          LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
-          schemas[i] = measurementNode.getSchema();
-          measurementList[i] = measurementNode.getName();
-        } else {
-          schemas[i] = MManager.getInstance().getSeriesSchema(deviceId, measurement);
-          measurementList[i] = schemas[i].getMeasurementId();
-        }
+        schemas[i] = getSeriesSchema(node, measurement, deviceId, strValues[i]);
+        measurementList[i] = schemas[i].getMeasurementId();
       }
     } finally {
       if (node != null) {
@@ -935,6 +911,39 @@ public class PlanExecutor implements IPlanExecutor {
     }
     return schemas;
   }
+
+  private MeasurementSchema getSeriesSchema(MNode deviceNode, String measurement, String deviceId
+      , String strValue) throws MetadataException {
+    MeasurementSchema measurementSchema;
+    if (deviceNode != null && !deviceNode.hasChild(measurement)) {
+      // devices exists in MTree
+      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+        // but measurement not in MTree and cannot auto-create, try the cache
+        measurementSchema = MManager.getInstance()
+            .getSeriesSchema(deviceId, measurement);
+        if (measurementSchema == null) {
+          throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+        }
+      } else {
+        // auto-create
+        TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValue);
+        Path path = new Path(deviceId, measurement);
+
+        internalCreateTimeseries(path.toString(), dataType);
+        LeafMNode measurementNode = (LeafMNode) deviceNode.getChild(measurement);
+        measurementSchema = measurementNode.getSchema();
+      }
+    } else if (deviceNode != null) {
+      // device and measurement exists in MTree
+      LeafMNode measurementNode = (LeafMNode) deviceNode.getChild(measurement);
+      measurementSchema = measurementNode.getSchema();
+    } else {
+      // device in not in MTree, try the cache
+      measurementSchema = MManager.getInstance().getSeriesSchema(deviceId, measurement);
+    }
+    return measurementSchema;
+  }
+
 
   /**
    * create timeseries with ignore PathAlreadyExistException
@@ -1119,7 +1128,7 @@ public class PlanExecutor implements IPlanExecutor {
       Set<String> emptyStorageGroups = new HashSet<>();
       List<String> failedNames = new LinkedList<>();
       for (Path path : deletePathList) {
-        Pair<Set<String>, String> pair = deleteTimeseries(path.toString());
+        Pair<Set<String>, String> pair = deleteTimeSeries(path.toString());
         emptyStorageGroups.addAll(pair.left);
         if (!pair.right.isEmpty()) {
           failedNames.add(pair.right);
@@ -1410,10 +1419,11 @@ public class PlanExecutor implements IPlanExecutor {
     return dataSet;
   }
 
-  protected Pair<Set<String>, String> deleteTimeseries(String path) throws MetadataException {
+  protected Pair<Set<String>, String> deleteTimeSeries(String path) throws MetadataException {
     return mManager.deleteTimeseries(path);
   }
 
+  @SuppressWarnings("unused") // for the distributed version
   protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
     IoTDBDescriptor.getInstance().loadHotModifiedProps();
   }

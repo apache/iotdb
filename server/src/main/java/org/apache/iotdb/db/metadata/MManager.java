@@ -871,12 +871,8 @@ public class MManager {
       if (leaf != null) {
         return ((LeafMNode) leaf).getSchema();
       } else {
-        try {
-          return mRemoteSchemaCache
-              .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
-        } catch (IOException e) {
-          throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
-        }
+        return mRemoteSchemaCache
+            .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
       }
     } catch (PathNotExistException e) {
       try {
@@ -890,6 +886,9 @@ public class MManager {
       } catch (IOException ex) {
         throw e;
       }
+    } catch (IOException e) {
+      // cache miss
+      throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
     } finally {
       lock.readLock().unlock();
     }
