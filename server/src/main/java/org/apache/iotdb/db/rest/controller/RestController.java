@@ -68,7 +68,6 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metrics.MetricsSystem;
 import org.apache.iotdb.db.rest.service.RestService;
 import org.apache.iotdb.tsfile.utils.Pair;
