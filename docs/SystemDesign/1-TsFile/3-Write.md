@@ -76,84 +76,21 @@ The input params of this method:
 The whole method contains three parts:
 
 1. In measurement index level, each device and its TimeseriesMetadata in `deviceTimeseriesMetadataMap` is converted into `deviceMetadataIndexMap`. Specificly, for each device:
-
-```
-    for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
-      // if TimeseriesMetadata list of the device is empty, continue directly
-      if (entry.getValue().isEmpty()) {
-        continue;
-      }
-      Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
-      TimeseriesMetadata timeseriesMetadata;
-      // when initializing MetadataIndexNode of one device, new a node of LEAF_MEASUREMENT type
-      MetadataIndexNode currentIndexNode = new MetadataIndexNode(
-          MetadataIndexNodeType.LEAF_MEASUREMENT);
-      for (int i = 0; i < entry.getValue().size(); i++) {
-        timeseriesMetadata = entry.getValue().get(i);
-        // when constructing from leaf node, every "degree number of nodes" are related to an entry
-        if (i % MAX_DEGREE_OF_INDEX_NODE == 0) {
-          // once current MetadataIndexNode is full, add it into queue, which is used to generate later tree structure
-          if (currentIndexNode.isFull()) {
-            addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
-            currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
-          }
-          // new an entry of TimeseriesMetadata, and add it in the current MetadataIndexNode
-          currentIndexNode.addEntry(new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(),
-              out.getPosition()));
-        }
-        // serialize TimeseriesMetadata
-        timeseriesMetadata.serializeTo(out.wrapAsStream());
-      }
-      // add current MetadataIndexNode, which contains some remaining entries in this device, into queue
-      addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
-      // generate root node of measurement index level according to queue (this method will be described later), and put the "device-root node" map into deviceMetadataIndexMap
-      deviceMetadataIndexMap.put(entry.getKey(), generateRootNode(measurementMetadataIndexQueue,
-          out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
-    }
-```
+    * First new a MetadataIndexNode of `LEAF_MEASUREMENT` type
+    * After storing `MAX_DEGREE_OF_INDEX_NODE` entries, `currentIndexNode` is full. Add it into the queue and handle it in next loop
+    * Construct an entry of TimeseriesMetadata, add it in the current MetadataIndexNode, and serialize TimeseriesMetadata
+    * Generate root node of measurement index level according to queue (this method will be described later), and put the "device-root node" map into `deviceMetadataIndexMap`
 
 2. Then judge whether the number of devices exceed `MAX_DEGREE_OF_INDEX_NODE`. If not, the root node of MetadataIndex tree could be generated and return
-```
-    if (deviceMetadataIndexMap.size() <= MAX_DEGREE_OF_INDEX_NODE) {
-      // new a MetadataIndexNode. Since it cannnot be the leaf node of measurement index level, it is INTERNAL_MEASUREMENT type
-      MetadataIndexNode metadataIndexNode = new MetadataIndexNode(
-          MetadataIndexNodeType.INTERNAL_MEASUREMENT);
-      for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-        // new an entry of device metadata, and add it in the current MetadataIndexNode
-        metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-        // serialize device metadata
-        entry.getValue().serializeTo(out.wrapAsStream());
-      }
-      // set the endOffset of current MetadataIndexNode and return it
-      metadataIndexNode.setEndOffset(out.getPosition());
-      return metadataIndexNode;
-    }
-```
+    * First new a MetadataIndexNode of `INTERNAL_MEASUREMENT` type, since it cannnot be the leaf node of measurement index level
+    * Construct an entry of each entry in `deviceMetadataIndexMap`, add it in the current MetadataIndexNode, and serialize the entry
+    * Set the endOffset of current MetadataIndexNode and return it
 
 3. If the number of devices exceed `MAX_DEGREE_OF_INDEX_NODE`, the device index level of MetadataIndex tree is generated
-
-```
-    for (Map.Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-      // when constructing from internal node, each node is related to an entry. Once current MetadataIndexNode is full, add it into queue, which is used to generate later tree structure
-      if (currentIndexNode.isFull()) {
-        addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadaIndexQueue, out);
-        // new MetadataIndexNode in LEAF_DEVICE type
-        currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-      }
-      // new an entry of device metadata, and add it in the current MetadataIndexNode
-      currentIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-      // serialize device metadata
-      entry.getValue().serializeTo(out.wrapAsStream());
-    }
-    // add current MetadataIndexNode, which contains some remaining entries, into queue
-    addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadaIndexQueue, out);
-    // generate root node of device index level according to queue (this method will be described later)
-    deviceMetadataIndexNode = generateRootNode(deviceMetadaIndexQueue,
-        out, MetadataIndexNodeType.INTERNAL_DEVICE);
-    // set the endOffset of current MetadataIndexNode and return it
-    deviceMetadataIndexNode.setEndOffset(out.getPosition());
-    return deviceMetadataIndexNode;
-```
+    * First new a MetadataIndexNode of `LEAF_DEVICE` type
+    * Construct an entry of each entry in `deviceMetadataIndexMap`, add it in the current MetadataIndexNode, and serialize the entry
+    * Generate root node of measurement index level according to queue
+    * Set the endOffset of root node and return it
 
 ### MetadataIndexConstructor.generateRootNode
 
