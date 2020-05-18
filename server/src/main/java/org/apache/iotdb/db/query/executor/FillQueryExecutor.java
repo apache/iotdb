@@ -103,8 +103,7 @@ public class FillQueryExecutor {
   }
 
   protected IFill configureFill(IFill fill, Path path, TSDataType dataType, long queryTime,
-      Set<String> deviceMeasurements, QueryContext context)
-      throws QueryProcessException, StorageEngineException {
+      Set<String> deviceMeasurements, QueryContext context) {
     fill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
     return fill;
   }

@@ -343,6 +343,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     startUpStatus.setSeedNodeList(allNodes);
+  }
+
+  /**
+   * Check if the seed nodes are consistent with other nodes. Only used when establishing the
+   * initial cluster.
+   */
+  private void checkSeedNodes() {
     boolean canEstablishCluster = false;
     long startTime = System.currentTimeMillis();
     while (!canEstablishCluster) {
@@ -416,7 +423,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         continue;
       }
       canEstablishCluster = analyseStartUpCheckResult(consistentNum.get(), inconsistentNum.get(),
-          seedUrls.size(), System.currentTimeMillis() - startTime);
+          allNodes.size(), System.currentTimeMillis() - startTime);
     }
   }
 
@@ -494,6 +501,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * nodes. This method is to skip the one-by-one addition to establish a large cluster quickly.
    */
   public void buildCluster() {
+    checkSeedNodes();
     // just establish the heartbeat thread and it will do the remaining
     loadPartitionTable();
     heartBeatService.submit(new MetaHeartbeatThread(this));
