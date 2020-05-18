@@ -28,10 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
-import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
@@ -39,6 +37,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -62,6 +62,7 @@ class MergeFileTask {
   private InplaceMergeLogger mergeLogger;
   private MergeResource resource;
   private List<TsFileResource> unmergedFiles;
+  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   MergeFileTask(String taskName, MergeContext context, InplaceMergeLogger mergeLogger,
       MergeResource resource, List<TsFileResource> unmergedSeqFiles) {
@@ -121,7 +122,6 @@ class MergeFileTask {
 
     seqFile.getWriteQueryLock().writeLock().lock();
     try {
-      TsFileMetaDataCache.getInstance().remove(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
 
@@ -167,10 +167,11 @@ class MergeFileTask {
       newFileWriter.getFile().delete();
 
       File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
-      FileUtils.moveFile(seqFile.getFile(), nextMergeVersionFile);
-      FileUtils
-          .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-              new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      fsFactory.moveFile(seqFile.getFile(), nextMergeVersionFile);
+      fsFactory.moveFile(
+          fsFactory.getFile(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+          fsFactory
+              .getFile(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
       RestorableTsFileIOWriter oldFileRecoverWriter = new RestorableTsFileIOWriter(
@@ -258,16 +259,16 @@ class MergeFileTask {
     seqFile.getWriteQueryLock().writeLock().lock();
     try {
       resource.removeFileReader(seqFile);
-      TsFileMetaDataCache.getInstance().remove(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
       seqFile.getFile().delete();
 
       File nextMergeVersionFile = getNextMergeVersionFile(seqFile.getFile());
-      FileUtils.moveFile(fileWriter.getFile(), nextMergeVersionFile);
-      FileUtils
-          .moveFile(new File(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
-              new File(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
+      fsFactory.moveFile(fileWriter.getFile(), nextMergeVersionFile);
+      fsFactory.moveFile(
+          fsFactory.getFile(seqFile.getFile().getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX),
+          fsFactory
+              .getFile(nextMergeVersionFile.getAbsolutePath() + TsFileResource.RESOURCE_SUFFIX));
       seqFile.setFile(nextMergeVersionFile);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
@@ -280,7 +281,7 @@ class MergeFileTask {
     String[] splits = seqFile.getName().replace(TSFILE_SUFFIX, "")
         .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
     int mergeVersion = Integer.parseInt(splits[2]) + 1;
-    return new File(seqFile.getParentFile(),
+    return fsFactory.getFile(seqFile.getParentFile(),
         splits[0] + IoTDBConstant.TSFILE_NAME_SEPARATOR + splits[1]
             + IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX);
   }

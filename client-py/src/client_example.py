@@ -24,8 +24,8 @@ sys.path.append("../target")
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
-    TSBatchInsertionReq, TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, \
+from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, \
+    TSInsertTabletReq, TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, \
     TSFetchResultsReq, TSCloseOperationReq, \
     TSCloseSessionReq
 from iotdb.rpc.ttypes import TSProtocolVersion, TSFetchMetadataReq
@@ -226,7 +226,7 @@ if __name__ == '__main__':
     # insert a single row
     values = ["1", "11", "1.1", "11.1", "TRUE", "\'text0\'"]
     timestamp = 1
-    status = client.insert(TSInsertionReq(sessionId, deviceId, measurements,
+    status = client.insert(TSInsertRecordReq(sessionId, deviceId, measurements,
                                           values, timestamp))
     print(status.status)
 
@@ -255,7 +255,7 @@ if __name__ == '__main__':
                               bytes('\'text3\'', encoding)))
     # warning: the data in batch must be sorted by time
     times.extend(struct.pack(time_pack_str, 2, 3, 4))
-    resp = client.insertBatch(TSBatchInsertionReq(sessionId,deviceId,
+    resp = client.insertTablet(TSInsertTabletReq(sessionId,deviceId,
                                                   measurements, values,
                                                   times, dataTypes, rowCnt))
     status = resp.status

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.Map;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class FillQueryPlan extends RawDataQueryPlan {

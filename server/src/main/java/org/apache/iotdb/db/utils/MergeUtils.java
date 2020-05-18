@@ -29,14 +29,12 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +46,7 @@ public class MergeUtils {
   private MergeUtils() {
     // util class
   }
-  
+
   public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
@@ -74,11 +72,13 @@ public class MergeUtils {
     }
   }
 
-  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
+  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader)
+      throws IOException {
     return sequenceReader.getAllPaths();
   }
 
-  public static long collectFileSizes(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public static long collectFileSizes(List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : seqFiles) {
       totalSize += tsFileResource.getFileSize();
@@ -89,7 +89,8 @@ public class MergeUtils {
     return totalSize;
   }
 
-  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter) throws IOException {
+  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter)
+      throws IOException {
     ChunkReader chunkReader = new ChunkReader(chunk, null);
     int ptWritten = 0;
     while (chunkReader.hasNextSatisfiedPage()) {
@@ -142,28 +143,19 @@ public class MergeUtils {
     }
     logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
         totalChunkNum, maxChunkNum);
-    return new long[] {totalChunkNum, maxChunkNum};
+    return new long[]{totalChunkNum, maxChunkNum};
   }
 
-  public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) throws IOException {
-    long minPos = Long.MAX_VALUE;
-    TsFileMetadata fileMetaData = sequenceReader.readFileMetadata();
-    for (Pair<Long, Integer> deviceMetaData : fileMetaData.getDeviceMetadataIndex().values()) {
-      long timeseriesMetaDataEndOffset = deviceMetaData.left + deviceMetaData.right;
-      minPos = timeseriesMetaDataEndOffset < minPos ? timeseriesMetaDataEndOffset : minPos;
-    }
-    return seqFile.getFileSize() - minPos;
+  public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) {
+    return seqFile.getFileSize() - sequenceReader.getFileMetadataPos();
   }
 
   /**
-   * Reads chunks of paths in unseqResources and put them in separated lists. When reading a
-   * file, this method follows the order of positions of chunks instead of the order of
-   * timeseries, which reduce disk seeks.
+   * Reads chunks of paths in unseqResources and put them in separated lists. When reading a file,
+   * this method follows the order of positions of chunks instead of the order of timeseries, which
+   * reduce disk seeks.
+   *
    * @param paths names of the timeseries
-   * @param unseqResources
-   * @param mergeResource
-   * @return
-   * @throws IOException
    */
   public static List<Chunk>[] collectUnseqChunks(List<Path> paths,
       List<TsFileResource> unseqResources, MergeResource mergeResource) throws IOException {
@@ -186,7 +178,8 @@ public class MergeUtils {
   }
 
   private static void buildMetaHeap(List<Path> paths, TsFileSequenceReader tsFileReader,
-      MergeResource resource, TsFileResource tsFileResource, PriorityQueue<MetaListEntry> chunkMetaHeap)
+      MergeResource resource, TsFileResource tsFileResource,
+      PriorityQueue<MetaListEntry> chunkMetaHeap)
       throws IOException {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
@@ -228,7 +221,8 @@ public class MergeUtils {
 
   public static boolean isChunkTooSmall(int ptWritten, ChunkMetadata chunkMetaData,
       boolean isLastChunk, int minChunkPointNum) {
-    return ptWritten > 0 || (minChunkPointNum >= 0 && chunkMetaData.getNumOfPoints() < minChunkPointNum
+    return ptWritten > 0 || (minChunkPointNum >= 0
+        && chunkMetaData.getNumOfPoints() < minChunkPointNum
         && !isLastChunk);
   }
 
@@ -259,7 +253,8 @@ public class MergeUtils {
     return ret;
   }
 
-  public static class MetaListEntry implements Comparable<MetaListEntry>{
+  public static class MetaListEntry implements Comparable<MetaListEntry> {
+
     private int pathId;
     private int listIdx;
     private List<ChunkMetadata> chunkMetadataList;

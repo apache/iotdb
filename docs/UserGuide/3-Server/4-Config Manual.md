@@ -186,6 +186,18 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| The default is 2 digits. Note: The 32-bit floating point number has a decimal precision of 7 bits, and the 64-bit floating point number has a decimal precision of 15 bits. If the setting is out of the range, it will have no practical significance. |
 |Effective|Trigger|
 
+
+* bloomFilterErrorRate
+
+|Name| bloomFilterErrorRate |
+|:---:|:---|
+|Description| The false positive rate of bloom filter in each TsFile. Bloom filter checks whether a given time series is in the tsfile before loading metadata. This can improve the performance of loading metadata and skip the tsfile that doesn't contain specified time series. If you want to learn more about its mechanism, you can refer to: [wiki page of bloom filter](https://en.wikipedia.org/wiki/Bloom_filter).|
+|Type|float, (0, 1)|
+|Default| 0.05 |
+|Effective|After restart system|
+
+
+
 ### Engine Layer
 
 * rpc\_address
@@ -286,6 +298,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| When a TsFile size on the disk exceeds this threshold, the TsFile is closed and open a new TsFile to accept data writes. The unit is byte and the default value is 2G.|
 |Type| Int64 |
 |Default| 536870912 |
+|Effective|After restart system|
+
+* tag\_attribute\_total\_size
+
+|Name| tag\_attribute\_total\_size |
+|:---:|:---|
+|Description| The maximum persistence size of tags and attributes of each time series.|
+|Type| Int32 |
+|Default| 700 |
 |Effective|After restart system|
 
 * flush\_wal\_threshold

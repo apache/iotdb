@@ -29,8 +29,8 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.*;
-import org.apache.iotdb.db.query.fill.LinearFill;
-import org.apache.iotdb.db.query.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
+import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -60,7 +60,7 @@ public class PhysicalPlanTest {
   private Planner processor = new Planner();
 
   @Before
-  public void before() throws QueryProcessException, MetadataException {
+  public void before() throws MetadataException {
     MManager.getInstance().init();
     MManager.getInstance().setStorageGroup("root.vehicle");
     MManager.getInstance().createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
@@ -90,6 +90,15 @@ public class PhysicalPlanTest {
   @Test
   public void testMetadata2() throws QueryProcessException {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
+    Planner processor = new Planner();
+    CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
+    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+  }
+
+  @Test
+  public void testMetadata3() throws QueryProcessException {
+    String metadata = "create timeseries root.vehicle.d1.s2(温度) with datatype=int32,encoding=rle, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    System.out.println(metadata.length());
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
@@ -456,6 +465,17 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  public void testOffsetLimit() throws QueryProcessException {
+    String sqlStr = "SELECT s1 FROM root.vehicle.d1,root.vehicle.d2 WHERE time < 10 "
+        + "offset 10 limit 100 soffset 1 slimit 1";
+    QueryPlan plan = (QueryPlan) processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(100, plan.getRowLimit());
+    assertEquals(10, plan.getRowOffset());
+    // NOTE that the parameters of the SLIMIT clause is not stored in the physicalPlan,
+    // because the SLIMIT clause takes effect before the physicalPlan is finally generated.
+  }
+
+  @Test
   public void testQueryFloat1() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE s1 > 20.5e3";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
@@ -679,21 +699,21 @@ public class PhysicalPlanTest {
     Planner processor = new Planner();
     OperateFilePlan plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
     metadata = String.format("load %s true", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=2, operatorType=LOAD_FILES}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=true, sgLevel=1, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
     metadata = String.format("load %s false", filePath);
     processor = new Planner();
     plan = (OperateFilePlan) processor.parseSQLToPhysicalPlan(metadata);
     assertEquals(String.format(
-        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=2, operatorType=LOAD_FILES}",
+        "OperateFilePlan{file=%s, targetDir=null, autoCreateSchema=false, sgLevel=1, operatorType=LOAD_FILES}",
         filePath), plan.toString());
 
     metadata = String.format("load %s true 3", filePath);

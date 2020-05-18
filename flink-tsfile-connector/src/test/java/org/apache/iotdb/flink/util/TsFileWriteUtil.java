@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 public class TsFileWriteUtil {
 
 	public static final String TMP_DIR = "target";
-	private static final String DEFAULT_TEMPLATE = "template";
+	public static final String DEFAULT_TEMPLATE = "template";
 
 	public static void create1(String tsfilePath) throws Exception {
 		File f = new File(tsfilePath);

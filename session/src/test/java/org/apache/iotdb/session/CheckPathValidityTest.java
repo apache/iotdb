@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.session;
 
-import static org.apache.iotdb.session.Config.PATH_PATTERN;
+import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 

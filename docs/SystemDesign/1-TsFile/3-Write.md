@@ -43,7 +43,7 @@ TsFile file layer has two write interfaces
 
 Write a device with a timestamp and multiple measurement points.
 
-- TsFileWriter.write(RowBatch rowBatch)
+- TsFileWriter.write(Tablet tablet)
 
  Write multiple timestamps and multiple measurement points on one device.
 
@@ -57,7 +57,7 @@ When the data in the memory reaches a certain threshold, the persistence operati
 
 After the persistence is complete, the corresponding metadata information is cached in memory for querying and generating the metadata at the end of the file.
 
-## 3、关闭文件
+## 3、File Close
 
 - TsFileWriter.close()
 

@@ -121,7 +121,7 @@ public class ChunkReader implements IChunkReader {
     if (pageHeader.getEndTime() <= deletedAt) {
       return false;
     } else if (pageHeader.getStartTime() <= deletedAt) {
-      pageHeader.getStatistics().setCanUseStatistics(false);
+      pageHeader.setModified(true);
     }
     return filter == null || filter.satisfy(pageHeader.getStatistics());
   }

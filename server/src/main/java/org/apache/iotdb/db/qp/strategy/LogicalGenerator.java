@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.strategy;
 
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -26,11 +27,12 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.*;
 import org.apache.iotdb.db.qp.logical.sys.*;
+import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.*;
-import org.apache.iotdb.db.query.fill.IFill;
-import org.apache.iotdb.db.query.fill.LinearFill;
-import org.apache.iotdb.db.query.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
+import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -52,6 +54,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private ZoneId zoneId;
   private int operatorType;
   private CreateTimeSeriesOperator createTimeSeriesOperator;
+  private AlterTimeSeriesOperator alterTimeSeriesOperator;
   private InsertOperator insertOp;
   private SelectOperator selectOp;
   private UpdateOperator updateOp;
@@ -76,6 +79,41 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()));
     }
+  }
+
+  @Override
+  public void enterFlush(FlushContext ctx) {
+    super.enterFlush(ctx);
+    FlushOperator flushOperator = new FlushOperator(SQLConstant.TOK_FLUSH);
+    if(ctx.ID() != null) {
+      if(ctx.ID().getText().equalsIgnoreCase("true")
+          || ctx.ID().getText().equalsIgnoreCase("false")) {
+        flushOperator.setSeq(Boolean.parseBoolean(ctx.ID().getText()));
+      } else {
+        throw new ParseCancellationException("Should be true or false");
+      }
+    }
+    if(ctx.prefixPath(0) != null) {
+      List<Path> storageGroups = new ArrayList<>();
+      for(PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+        storageGroups.add(parsePrefixPath(prefixPathContext));
+      }
+      flushOperator.setStorageGroupList(storageGroups);
+    }
+
+    initializedOperator = flushOperator;
+  }
+
+  @Override
+  public void enterMerge(MergeContext ctx) {
+    super.enterMerge(ctx);
+    initializedOperator = new MergeOperator(SQLConstant.TOK_MERGE);
+  }
+
+  @Override
+  public void enterFullMerge(FullMergeContext ctx) {
+    super.enterFullMerge(ctx);
+    initializedOperator = new MergeOperator(SQLConstant.TOK_FULL_MERGE);
   }
 
   @Override
@@ -191,6 +229,69 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator = new CreateTimeSeriesOperator(SQLConstant.TOK_METADATA_CREATE);
     operatorType = SQLConstant.TOK_METADATA_CREATE;
     createTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
+  }
+
+  @Override
+  public void enterAlterTimeseries(SqlBaseParser.AlterTimeseriesContext ctx) {
+    super.enterAlterTimeseries(ctx);
+    alterTimeSeriesOperator = new AlterTimeSeriesOperator(SQLConstant.TOK_METADATA_ALTER);
+    operatorType = SQLConstant.TOK_METADATA_ALTER;
+    alterTimeSeriesOperator.setPath(parseFullPath(ctx.fullPath()));
+  }
+
+  @Override
+  public void enterAlterClause(SqlBaseParser.AlterClauseContext ctx) {
+    super.enterAlterClause(ctx);
+    Map<String, String> alterMap = new HashMap<>();
+    // rename
+    if (ctx.RENAME() != null) {
+      alterTimeSeriesOperator.setAlterType(AlterType.RENAME);
+      alterMap.put(ctx.beforeName.getText(), ctx.currentName.getText());
+    } else if (ctx.SET() != null) {
+      // set
+      alterTimeSeriesOperator.setAlterType(AlterType.SET);
+      setMap(ctx, alterMap);
+    } else if (ctx.DROP() != null) {
+      // drop
+      alterTimeSeriesOperator.setAlterType(AlterType.DROP);
+      for (TerminalNode dropId : ctx.ID()) {
+        alterMap.put(dropId.getText(), null);
+      }
+    } else if (ctx.TAGS() != null) {
+      // add tag
+      alterTimeSeriesOperator.setAlterType(AlterType.ADD_TAGS);
+      setMap(ctx, alterMap);
+    } else if (ctx.ATTRIBUTES() != null){
+      // add attribute
+      alterTimeSeriesOperator.setAlterType(AlterType.ADD_ATTRIBUTES);
+      setMap(ctx, alterMap);
+    } else {
+      // upsert
+      alterTimeSeriesOperator.setAlterType(AlterType.UPSERT);
+    }
+    alterTimeSeriesOperator.setAlterMap(alterMap);
+    initializedOperator = alterTimeSeriesOperator;
+  }
+
+  private void setMap(SqlBaseParser.AlterClauseContext ctx, Map<String, String> alterMap) {
+    List<PropertyContext> tagsList = ctx.property();
+    if (ctx.property(0) != null) {
+      for (PropertyContext property : tagsList) {
+        String value;
+        if(property.propertyValue().STRING_LITERAL() != null) {
+          value = removeStringQuote(property.propertyValue().getText());
+        } else {
+          value = property.propertyValue().getText();
+        }
+        alterMap.put(property.ID().getText(), value);
+      }
+    }
+  }
+
+  @Override
+  public void enterAlias(AliasContext ctx) {
+    super.enterAlias(ctx);
+    createTimeSeriesOperator.setAlias(ctx.ID().getText());
   }
 
   @Override
@@ -580,7 +681,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         throw new SQLParserException("group by fill doesn't support linear fill");
       }
       // all type use the same fill way
-      if (SQLConstant.ALL.equals(typeClause.dataType().getText().toLowerCase())) {
+      if (SQLConstant.ALL.equalsIgnoreCase(typeClause.dataType().getText())) {
         IFill fill;
         if (typeClause.previousUntilLastClause() != null) {
           fill = new PreviousFill(-1, true);
@@ -732,7 +833,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (limit <= 0) {
       throw new SQLParserException("LIMIT <N>: N should be greater than 0.");
     }
-    queryOp.setRowLimit(limit);
+    if (initializedOperator instanceof ShowTimeSeriesOperator) {
+      ((ShowTimeSeriesOperator) initializedOperator).setLimit(limit);
+    } else {
+      queryOp.setRowLimit(limit);
+    }
   }
 
   @Override
@@ -745,10 +850,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       throw new SQLParserException(
           "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.");
     }
-    if (offset <= 0) {
-      throw new SQLParserException("OFFSET <OFFSETValue>: OFFSETValue should be greater than 0.");
+    if (offset < 0) {
+      throw new SQLParserException("OFFSET <OFFSETValue>: OFFSETValue should >= 0.");
     }
-    queryOp.setRowOffset(offset);
+    if (initializedOperator instanceof ShowTimeSeriesOperator) {
+      ((ShowTimeSeriesOperator) initializedOperator).setOffset(offset);
+    } else {
+      queryOp.setRowOffset(offset);
+    }
   }
 
   @Override
@@ -777,9 +886,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       throw new SQLParserException(
           "Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
     }
-    if (soffset <= 0) {
+    if (soffset < 0) {
       throw new SQLParserException(
-          "SOFFSET <SOFFSETValue>: SOFFSETValue should be greater than 0.");
+          "SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.");
     }
     queryOp.setSeriesOffset(soffset);
   }
@@ -840,7 +949,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator.setEncoding(TSEncoding.valueOf(encoding));
     CompressionType compressor;
     List<PropertyContext> properties = ctx.property();
-    Map<String, String> props = new HashMap<>(properties.size(), 1);
+    Map<String, String> props = new HashMap<>(properties.size());
     if (ctx.propertyValue() != null) {
       compressor = CompressionType.valueOf(ctx.propertyValue().getText().toUpperCase());
     } else {
@@ -850,12 +959,51 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : properties) {
         props.put(property.ID().getText().toLowerCase(),
-            property.propertyValue().getText().toLowerCase());
+                property.propertyValue().getText().toLowerCase());
       }
     }
     createTimeSeriesOperator.setCompressor(compressor);
     createTimeSeriesOperator.setProps(props);
     initializedOperator = createTimeSeriesOperator;
+  }
+
+  @Override
+  public void enterAttributeClause(AttributeClauseContext ctx) {
+    super.enterAttributeClause(ctx);
+    Map<String, String> attributes = extractMap(ctx.property(), ctx.property(0));
+    if (createTimeSeriesOperator != null) {
+      createTimeSeriesOperator.setAttributes(attributes);
+    } else if (alterTimeSeriesOperator != null) {
+      alterTimeSeriesOperator.setAttributesMap(attributes);
+    }
+  }
+
+  @Override
+  public void enterTagClause(TagClauseContext ctx) {
+    super.enterTagClause(ctx);
+    Map<String, String> tags = extractMap(ctx.property(), ctx.property(0));
+    if (createTimeSeriesOperator != null) {
+      createTimeSeriesOperator.setTags(tags);
+    } else if (alterTimeSeriesOperator != null) {
+      alterTimeSeriesOperator.setTagsMap(tags);
+    }
+  }
+
+  private Map<String, String> extractMap(List<PropertyContext> property2,
+      PropertyContext property3) {
+    String value;
+    Map<String, String> tags = new HashMap<>(property2.size());
+    if (property3 != null) {
+      for (PropertyContext property : property2) {
+        if (property.propertyValue().STRING_LITERAL() != null) {
+          value = removeStringQuote(property.propertyValue().getText());
+        } else {
+          value = property.propertyValue().getText();
+        }
+        tags.put(property.ID().getText(), value);
+      }
+    }
+    return tags;
   }
 
   @Override
@@ -1021,6 +1169,29 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
   }
 
+  @Override
+  public void enterShowWhereClause(ShowWhereClauseContext ctx) {
+    super.enterShowWhereClause(ctx);
+
+    ShowTimeSeriesOperator operator = (ShowTimeSeriesOperator) initializedOperator;
+    PropertyValueContext propertyValueContext;
+    if (ctx.containsExpression() != null) {
+      operator.setContains(true);
+      propertyValueContext = ctx.containsExpression().propertyValue();
+      operator.setKey(ctx.containsExpression().ID().getText());
+    } else {
+      operator.setContains(false);
+      propertyValueContext = ctx.property().propertyValue();
+      operator.setKey(ctx.property().ID().getText());
+    }
+    String value;
+    if(propertyValueContext.STRING_LITERAL() != null) {
+      value = removeStringQuote(propertyValueContext.getText());
+    } else {
+      value = propertyValueContext.getText();
+    }
+    operator.setValue(value);
+  }
 
   private FilterOperator parseOrExpression(OrExpressionContext ctx) {
     if (ctx.andExpression().size() == 1) {
@@ -1079,8 +1250,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       if (ctx.TIME() != null || ctx.TIMESTAMP() != null) {
         path = new Path(SQLConstant.RESERVED_TIME);
       }
-      if (ctx.prefixPath() != null) {
-        path = parsePrefixPath(ctx.prefixPath());
+      if (ctx.fullPath() != null) {
+        path = parseFullPath(ctx.fullPath());
       }
       if (ctx.suffixPath() != null) {
         path = parseSuffixPath(ctx.suffixPath());

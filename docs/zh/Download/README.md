@@ -27,6 +27,16 @@
 	    <th colspan="3">IoTDB Sources</th>
 	    <th>release notes</th>  
 	</tr >
+	<tr>
+	    <td>0.9.2</td>
+	    <td><a href="https://www.apache.org/dyn/closer.cgi/incubator/iotdb/0.9.2-incubating/apache-iotdb-0.9.2-incubating-bin.zip">Release</a></td>
+        <td><a href="https://downloads.apache.org/incubator/iotdb/0.9.2-incubating/apache-iotdb-0.9.2-incubating-bin.zip.sha512">SHA512</a></td>
+        <td><a href="https://downloads.apache.org/incubator/iotdb/0.9.2-incubating/apache-iotdb-0.9.2-incubating-bin.zip.asc">ASC</a></td>
+        <td><a href="https://www.apache.org/dyn/closer.cgi/incubator/iotdb/0.9.2-incubating/apache-iotdb-0.9.2-incubating-source-release.zip">Sources</a></td>
+        <td><a href="https://downloads.apache.org/incubator/iotdb/0.9.2-incubating/apache-iotdb-0.9.2-incubating-source-release.zip.sha512">SHA512</a></td>
+        <td><a href="https://downloads.apache.org/incubator/iotdb/0.9.2-incubating/apache-iotdb-0.9.2-incubating-source-release.zip.asc">ASC</a></td>
+        <td><a href="https://raw.githubusercontent.com/apache/incubator-iotdb/release/0.9.2/RELEASE_NOTES.md">release notes</a></td>
+	</tr>
     <tr>
         <td>0.9.1</td>
         <td><a href="https://www.apache.org/dyn/closer.cgi/incubator/iotdb/0.9.1-incubating/apache-iotdb-0.9.1-incubating-bin.zip">Release</a></td>

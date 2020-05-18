@@ -28,9 +28,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
-import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -177,7 +175,6 @@ public class SqueezeMergeTask implements Callable<Void> {
     seqFile.getWriteQueryLock().writeLock().lock();
     try {
       resource.removeFileReader(seqFile);
-      TsFileMetaDataCache.getInstance().remove(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
       seqFile.getFile().delete();

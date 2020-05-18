@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.time.ZoneId;
+import java.util.Properties;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -34,11 +42,6 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.*;
-import java.net.URL;
-import java.time.ZoneId;
-import java.util.Properties;
 
 public class IoTDBDescriptor {
 
@@ -60,7 +63,8 @@ public class IoTDBDescriptor {
 
   public void replaceProps(String[] params) {
     Options options = new Options();
-    Option rpcPort = new Option("rpc_port", "rpc_port", true,
+    final String RPC_PORT = "rpc_port";
+    Option rpcPort = new Option(RPC_PORT, RPC_PORT, true,
         "The jdbc service listens on the port");
     rpcPort.setRequired(false);
     options.addOption(rpcPort);
@@ -70,8 +74,8 @@ public class IoTDBDescriptor {
       logger.error("replaces properties failed, use default conf params");
       return;
     } else {
-      if (commandLine.hasOption("rpc_port")) {
-        conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue("rpc_port")));
+      if (commandLine.hasOption(RPC_PORT)) {
+        conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue(RPC_PORT)));
         logger.debug("replace rpc port with={}", conf.getRpcPort());
       }
     }
@@ -388,6 +392,11 @@ public class IoTDBDescriptor {
           Integer.parseInt(properties.getProperty("default_fill_interval",
               String.valueOf(conf.getDefaultFillInterval()))));
 
+      conf.setTagAttributeTotalSize(
+          Integer.parseInt(properties.getProperty("tag_attribute_total_size",
+              String.valueOf(conf.getTagAttributeTotalSize())))
+      );
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));
@@ -536,6 +545,9 @@ public class IoTDBDescriptor {
     TSFileDescriptor.getInstance().getConfig().setCompressor(properties
         .getProperty("compressor",
             TSFileDescriptor.getInstance().getConfig().getCompressor().toString()));
+    TSFileDescriptor.getInstance().getConfig().setMaxDegreeOfIndexNode(Integer.parseInt(properties
+        .getProperty("max_degree_of_index_node", Integer
+            .toString(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
@@ -613,12 +625,15 @@ public class IoTDBDescriptor {
           maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
     }
 
+    logger.info("allocateMemoryForRead = " + conf.getAllocateMemoryForRead());
+    logger.info("allocateMemoryForWrite = " + conf.getAllocateMemoryForWrite());
+
     if (!conf.isMetaDataCacheEnable()) {
       return;
     }
 
     String queryMemoryAllocateProportion = properties
-        .getProperty("filemeta_chunkmeta_chunk_free_memory_proportion");
+        .getProperty("chunkmeta_chunk_timeseriesmeta_free_memory_proportion");
     if (queryMemoryAllocateProportion != null) {
       String[] proportions = queryMemoryAllocateProportion.split(":");
       int proportionSum = 0;
@@ -627,18 +642,16 @@ public class IoTDBDescriptor {
       }
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
       try {
-        conf.setAllocateMemoryForFileMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForChunkMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
         conf.setAllocateMemoryForChunkCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForTimeSeriesMetaDataCache(
-            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
+            maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
-            "Each subsection of configuration item filemeta_chunkmeta_free_memory_proportion should be an"
-                + " integer, which is "
+            "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
+                + " should be an integer, which is "
                 + queryMemoryAllocateProportion);
       }
 

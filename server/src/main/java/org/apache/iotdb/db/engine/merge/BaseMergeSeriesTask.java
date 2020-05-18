@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -19,6 +20,7 @@ import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -176,8 +178,8 @@ public abstract class BaseMergeSeriesTask {
           resource.putChunkWriter(path, chunkWriter);
         }
       }
-      newResource.getStartTimeMap().put(path.getDevice(), currMinTime);
-      newResource.getEndTimeMap().put(path.getDevice(), currMaxTime);
+      newResource.updateStartTime(path.getDevice(), currMinTime);
+      newResource.updateEndTime(path.getDevice(), currMaxTime);
       mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
       tsFilesReader.close();
     }

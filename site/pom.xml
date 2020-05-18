@@ -371,6 +371,7 @@
             <plugin>
                 <groupId>org.simplify4u.plugins</groupId>
                 <artifactId>sitemapxml-maven-plugin</artifactId>
+                <version>2.0.0</version>
                 <configuration>
                     <siteOutputDirectory>${project.build.directory}/vue-source/src/.vuepress/dist</siteOutputDirectory>
                     <maxDepth>5</maxDepth>

@@ -35,8 +35,8 @@ In order to achieve the above kinds of queries, a basic query component for a si
 
 ## Related documents
 
-* [Basic query components](/SystemDesign/5-DataQuery/2-SeriesReader.html)
-* [Modification handle](/SystemDesign/5-DataQuery/3-ModificationHandle.html)
+* [Query fundamentals](/SystemDesign/5-DataQuery/2-QueryFundamentals.html)
+* [Basic query components](/SystemDesign/5-DataQuery/3-SeriesReader.html)
 * [Raw data query](/SystemDesign/5-DataQuery/4-RawDataQuery.html)
 * [Aggregate query](/SystemDesign/5-DataQuery/5-AggregationQuery.html)
 * [Downsampling query](/SystemDesign/5-DataQuery/6-GroupByQuery.html)

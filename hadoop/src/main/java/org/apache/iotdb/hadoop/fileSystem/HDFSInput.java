@@ -25,7 +25,6 @@ import java.nio.channels.FileChannel;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.ChecksumFileSystem;
 import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
@@ -33,33 +32,26 @@ import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 public class HDFSInput implements TsFileInput {
 
   private FSDataInputStream fsDataInputStream;
-  private FileStatus fileStatus;
-  private boolean byteBufferReadable;
+  private FileSystem fs;
+  private Path path;
 
   public HDFSInput(String filePath) throws IOException {
-
-    this(filePath, new Configuration());
+    this(new Path(filePath), new Configuration());
   }
 
   public HDFSInput(String filePath, Configuration configuration) throws IOException {
-
     this(new Path(filePath), configuration);
   }
 
   public HDFSInput(Path path, Configuration configuration) throws IOException {
-    FileSystem fs = path.getFileSystem(configuration);
-    if (fs instanceof ChecksumFileSystem) {
-      byteBufferReadable = false;
-    } else {
-      byteBufferReadable = true;
-    }
-    fsDataInputStream = fs.open(path);
-    fileStatus = fs.getFileStatus(path);
+    this.fs = path.getFileSystem(configuration);
+    this.path = path;
+    this.fsDataInputStream = fs.open(path);
   }
 
   @Override
-  public long size() {
-    return fileStatus.getLen();
+  public long size() throws IOException {
+    return fs.getFileStatus(path).getLen();
   }
 
   @Override
@@ -68,26 +60,26 @@ public class HDFSInput implements TsFileInput {
   }
 
   @Override
-  public TsFileInput position(long newPosition) throws IOException {
+  public synchronized TsFileInput position(long newPosition) throws IOException {
     fsDataInputStream.seek(newPosition);
     return this;
   }
 
   @Override
-  public int read(ByteBuffer dst) throws IOException {
+  public synchronized int read(ByteBuffer dst) throws IOException {
     int res;
-    if (byteBufferReadable) {
-      res = fsDataInputStream.read(dst);
-    } else {
+    if (fs instanceof ChecksumFileSystem) {
       byte[] bytes = new byte[dst.remaining()];
       res = fsDataInputStream.read(bytes);
       dst.put(bytes);
+    } else {
+      res = fsDataInputStream.read(dst);
     }
     return res;
   }
 
   @Override
-  public int read(ByteBuffer dst, long position) throws IOException {
+  public synchronized int read(ByteBuffer dst, long position) throws IOException {
     if (position < 0) {
       throw new IllegalArgumentException("position must be non-negative");
     }
@@ -107,17 +99,17 @@ public class HDFSInput implements TsFileInput {
 
   @Override
   public int read() throws IOException {
-    throw new IOException("Not support");
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public int read(byte[] b, int off, int len) throws IOException {
-    throw new IOException("Not support");
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public FileChannel wrapAsFileChannel() throws IOException {
-    throw new IOException("Not support");
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -132,7 +124,6 @@ public class HDFSInput implements TsFileInput {
 
   @Override
   public int readInt() throws IOException {
-    throw new IOException("Not support");
+    throw new UnsupportedOperationException();
   }
-
 }

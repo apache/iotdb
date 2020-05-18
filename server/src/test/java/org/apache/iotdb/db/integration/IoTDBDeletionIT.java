@@ -76,7 +76,7 @@ public class IoTDBDeletionIT {
             "root");
         Statement statement = connection.createStatement()) {
 
-      statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE time <= 300");
+      statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time <= 300");
       statement.execute("DELETE FROM root.vehicle.d0.s1,root.vehicle.d0.s2,root.vehicle.d0.s3"
           + " WHERE time <= 350");
       statement.execute("DELETE FROM root.vehicle.d0 WHERE time <= 150");
@@ -84,6 +84,7 @@ public class IoTDBDeletionIT {
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
+          System.out.println(set.getTimestamp(1));
           cnt++;
         }
         assertEquals(250, cnt);
