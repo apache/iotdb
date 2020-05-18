@@ -156,12 +156,7 @@ public class BasicDaoImpl implements BasicDao {
       columnName = function + "(root." + s + ")";
     }
     logger.info(sql);
-    try {
-      rows = jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
-    } catch (Exception e) {
-      logger.error(e.getMessage());
-    }
-    return rows;
+    return jdbcTemplate.query(sql, new TimeValuesRowMapper(columnName));
   }
 
   private Long zonedCovertToLong(ZonedDateTime time) {
