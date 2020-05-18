@@ -66,6 +66,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metrics.MetricsSystem;
@@ -285,7 +286,7 @@ public class RestController {
     } catch (Exception e) {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity(e.getMessage()).build();
     }
-    return Response.status(Response.Status.OK).entity(jsonArray).build();
+    return Response.status(Status.INTERNAL_SERVER_ERROR).entity(jsonArray).build();
   }
 
   /**
