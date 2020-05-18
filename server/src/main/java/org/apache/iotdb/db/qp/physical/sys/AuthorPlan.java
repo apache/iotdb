@@ -356,7 +356,7 @@ public class AuthorPlan extends PhysicalPlan {
   }
 
   private int getPlanType(OperatorType operatorType) {
-    int type = OperatorType.LAST.ordinal();
+    int type;
     switch (operatorType) {
       case CREATE_ROLE:
         type = PhysicalPlanType.CREATE_ROLE.ordinal();
@@ -391,6 +391,8 @@ public class AuthorPlan extends PhysicalPlan {
       case DELETE_USER:
         type = PhysicalPlanType.DELETE_USER.ordinal();
         break;
+      default:
+        throw new IllegalArgumentException("Unknown operator: " + operatorType.toString());
     }
     return type;
   }

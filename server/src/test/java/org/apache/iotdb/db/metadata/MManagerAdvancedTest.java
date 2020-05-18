@@ -168,10 +168,10 @@ public class MManagerAdvancedTest {
     mmanager.cacheSchema("root.test1.a.d", schema3);
     mmanager.cacheSchema("root.vehicle.d2.s0", schema2);
 
-    Assert.assertEquals(mmanager.getSeriesType("root.test1.a.b"), TSDataType.INT32);
-    Assert.assertEquals(mmanager.getSeriesType("root.test2.a.c"), TSDataType.BOOLEAN);
-    Assert.assertEquals(mmanager.getSeriesType("root.test1.a.d"), TSDataType.TEXT);
-    Assert.assertEquals(mmanager.getSeriesType("root.vehicle.d2.s0"), TSDataType.DOUBLE);
+    Assert.assertEquals(TSDataType.INT32, mmanager.getSeriesType("root.test1.a.b"));
+    Assert.assertEquals(TSDataType.BOOLEAN, mmanager.getSeriesType("root.test2.a.c"));
+    Assert.assertEquals(TSDataType.TEXT, mmanager.getSeriesType("root.test1.a.d"));
+    Assert.assertEquals(TSDataType.DOUBLE, mmanager.getSeriesType("root.vehicle.d2.s0"));
 
     List<String> groups = new ArrayList<>();
     groups.add("root.test2");

@@ -587,7 +587,6 @@ public class IoTDBDescriptor {
       loadTsFileProps(properties);
 
     } catch (Exception e) {
-      logger.warn("Fail to reload configuration ", e);
       throw new QueryProcessException(
           String.format("Fail to reload configuration because %s", e));
     }

@@ -1809,11 +1809,10 @@ public class StorageGroupProcessor {
    * @param version
    */
   public void setPartitionFileVersionToMax(long partition, long version) {
-    partitionMaxFileVersions.compute(partition, (prt, oldVer) -> computeMaxVersion(partition,
-        oldVer, version));
+    partitionMaxFileVersions.compute(partition, (prt, oldVer) -> computeMaxVersion(oldVer, version));
   }
 
-  private long computeMaxVersion(long partition, Long oldVersion, Long newVersion) {
+  private long computeMaxVersion(Long oldVersion, Long newVersion) {
     if (oldVersion == null) {
       return newVersion;
     }

@@ -190,10 +190,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
   protected Set<String> getDeviceMeasurements(String device) throws IOException {
     try {
-      MNode deviceNode = MManager.getInstance().getNodeByPath(currentDevice);
+      MNode deviceNode = MManager.getInstance().getNodeByPath(device);
       return deviceNode.getChildren().keySet();
     } catch (MetadataException e) {
-      throw new IOException("Cannot get node from " + currentDevice, e);
+      throw new IOException("Cannot get node from " + device, e);
     }
   }
 
