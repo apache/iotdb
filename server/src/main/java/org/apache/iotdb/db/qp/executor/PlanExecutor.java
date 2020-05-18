@@ -310,6 +310,7 @@ public class PlanExecutor implements IPlanExecutor {
     return queryDataSet;
   }
 
+  @SuppressWarnings("unused")
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
                                                          QueryContext context, IQueryRouter router) {
     return new AlignByDeviceDataSet(plan, context, queryRouter);

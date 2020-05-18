@@ -22,7 +22,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +46,12 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -100,7 +104,6 @@ public class MManager {
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
-  private ByteBuffer partitionTableBuffer;
 
   private static class MManagerHolder {
 
@@ -867,12 +870,8 @@ public class MManager {
       if (leaf != null) {
         return ((LeafMNode) leaf).getSchema();
       } else {
-        try {
-          return mRemoteSchemaCache
-              .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
-        } catch (IOException e) {
-          throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
-        }
+        return mRemoteSchemaCache
+            .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
       }
     } catch (PathNotExistException e) {
       try {
@@ -886,6 +885,9 @@ public class MManager {
       } catch (IOException ex) {
         throw e;
       }
+    } catch (IOException e) {
+      // cache miss
+      throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
     } finally {
       lock.readLock().unlock();
     }

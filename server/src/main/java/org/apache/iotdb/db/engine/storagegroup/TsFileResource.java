@@ -193,10 +193,6 @@ public class TsFileResource {
   }
 
   private void generateTimeSeriesMetadata() throws IOException {
-    if ((chunkMetadataList == null ||chunkMetadataList.isEmpty())
-        && (readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
-      timeSeriesMetadata = null;
-    }
     timeSeriesMetadata = new TimeseriesMetadata();
     timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
@@ -648,7 +644,7 @@ public class TsFileResource {
     return newResource;
   }
 
-  public void setModFile(ModificationFile modFile) {
+  public synchronized void setModFile(ModificationFile modFile) {
     this.modFile = modFile;
   }
 

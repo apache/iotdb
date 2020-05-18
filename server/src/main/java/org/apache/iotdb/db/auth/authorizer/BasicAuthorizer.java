@@ -42,6 +42,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
+  private static final String NO_SUCH_USER_EXCEPTION = "No such user : %s";
 
   static {
     ADMIN_PRIVILEGES = new HashSet<>();
@@ -211,7 +212,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     User user = userManager.getUser(username);
     if (user == null) {
-      throw new AuthException(String.format("No such user : %s", username));
+      throw new AuthException(String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
     Set<Integer> privileges = user.getPrivileges(path);
@@ -240,7 +241,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     User user = userManager.getUser(username);
     if (user == null) {
-      throw new AuthException(String.format("No such user : %s", username));
+      throw new AuthException(String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
     if (user.checkPrivilege(path, privilegeId)) {
@@ -264,7 +265,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       try {
         userWaterMarkStatus.put(user, isUserUseWaterMark(user));
       } catch (AuthException e) {
-        logger.error(String.format("No such user : %s", user));
+        logger.error(String.format(NO_SUCH_USER_EXCEPTION, user));
       }
     }
     return userWaterMarkStatus;

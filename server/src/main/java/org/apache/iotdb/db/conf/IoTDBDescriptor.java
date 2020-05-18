@@ -589,7 +589,7 @@ public class IoTDBDescriptor {
     } catch (Exception e) {
       logger.warn("Fail to reload configuration ", e);
       throw new QueryProcessException(
-          String.format("Fail to reload configuration because %s", e.getMessage()));
+          String.format("Fail to reload configuration because %s", e));
     }
   }
 
