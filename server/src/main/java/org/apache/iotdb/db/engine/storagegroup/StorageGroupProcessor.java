@@ -63,6 +63,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -613,12 +614,22 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime) {
-    String[] measurementList = plan.getMeasurements();
-    for (int i = 0; i < measurementList.length; i++) {
-      LastCacheManager.getInstance()
-          .put(plan.getPaths().get(i).getFullPath(), plan.composeLastTimeValuePair(i),
-              true, latestFlushedTime);
+  public void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
+      throws WriteProcessException {
+    try {
+      String[] measurementList = plan.getMeasurements();
+      for (int i = 0; i < measurementList.length; i++) {
+        String fullPath = plan.getPaths().get(i).getFullPath();
+        TimeValuePair cachedLastPair = LastCacheManager.getInstance().get(fullPath);
+        // If no cache available, and the written timestamp is before 'latestFlushTime',
+        // do not update cache as it is not the latest write.
+        if (cachedLastPair.getValue() != null && cachedLastPair.getTimestamp() < latestFlushedTime) {
+          continue;
+        }
+        LastCacheManager.getInstance().put(fullPath, plan.composeLastTimeValuePair(i), true);
+      }
+    } catch (MetadataException e) {
+      throw new WriteProcessException(e);
     }
   }
 
@@ -658,11 +669,16 @@ public class StorageGroupProcessor {
     try {
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
-        LastCacheManager.getInstance()
-            .put(plan.getPaths().get(i).getFullPath(), plan.composeTimeValuePair(i),
-                true, latestFlushedTime);
+        String fullPath = plan.getPaths().get(i).getFullPath();
+        TimeValuePair cachedLastPair = LastCacheManager.getInstance().get(fullPath);
+        // If no cache available, and the written timestamp is before 'latestFlushTime',
+        // do not update cache as it is not the latest write.
+        if (cachedLastPair.getValue() != null && cachedLastPair.getTimestamp() < latestFlushedTime) {
+          continue;
+        }
+        LastCacheManager.getInstance().put(fullPath, plan.composeTimeValuePair(i), true);
       }
-    } catch (QueryProcessException e) {
+    } catch (QueryProcessException | MetadataException e) {
       throw new WriteProcessException(e);
     }
   }

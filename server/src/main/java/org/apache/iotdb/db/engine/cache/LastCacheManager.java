@@ -18,65 +18,121 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
+import java.sql.Time;
 import java.util.HashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class LastCacheManager {
-  private static final Logger logger = LoggerFactory.getLogger(LastCacheManager.class);
 
-  private HashMap<String, TimeValuePair> lastCache;
-  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+  private HashMap<String, StorageGroupLastCache> storageGroupMap;
 
   private LastCacheManager() {
-    lastCache = new HashMap<>();
+    storageGroupMap = new HashMap<>();
   }
 
   public static LastCacheManager getInstance() {
     return SingletonClassInstance.instance;
   }
 
-  public TimeValuePair get(String key) {
-    try {
-      lock.readLock().lock();
-      if (lastCache.containsKey(key)) {
-        return lastCache.get(key);
-      }
-      return new TimeValuePair(0, null);
-    } finally {
-      lock.readLock().unlock();
+  public TimeValuePair get(String timeseriesPath) throws MetadataException {
+    String storageGroupName = MManager.getInstance().getStorageGroupName(timeseriesPath);
+    if (storageGroupMap.containsKey(storageGroupName)) {
+      return storageGroupMap.get(storageGroupName).get(timeseriesPath);
+    } else {
+      StorageGroupLastCache newEntry = new StorageGroupLastCache(storageGroupName);
+      storageGroupMap.put(storageGroupName, newEntry);
+      return newEntry.get(timeseriesPath);
     }
   }
 
-  public void put(String key, TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) return;
+  public void put(String timeseriesPath, TimeValuePair timeValuePair, boolean highPriorityUpdate)
+      throws MetadataException {
+    String storageGroupName = MManager.getInstance().getStorageGroupName(timeseriesPath);
+    if (storageGroupMap.containsKey(storageGroupName)) {
+      storageGroupMap.get(storageGroupName).put(timeseriesPath, timeValuePair, highPriorityUpdate);
+    } else {
+      StorageGroupLastCache newEntry = new StorageGroupLastCache(storageGroupName);
+      newEntry.put(timeseriesPath, timeValuePair, highPriorityUpdate);
+      storageGroupMap.put(storageGroupName, newEntry);
+    }
+  }
 
-    try {
-      lock.writeLock().lock();
-      if (lastCache.containsKey(key)) {
-        TimeValuePair cachedPair = lastCache.get(key);
-        if (timeValuePair.getTimestamp() > cachedPair.getTimestamp()
-            || (timeValuePair.getTimestamp() == cachedPair.getTimestamp()
-            && highPriorityUpdate)) {
-          cachedPair.setTimestamp(timeValuePair.getTimestamp());
-          cachedPair.setValue(timeValuePair.getValue());
-        }
-      } else {
-        if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
-          TimeValuePair cachedPair =
-              new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
-          lastCache.put(key, cachedPair);
-        }
-      }
-    } finally {
-      lock.writeLock().unlock();
+  public void clearCache(String timeseriesPath) throws MetadataException {
+    String storageGroupName = MManager.getInstance().getStorageGroupName(timeseriesPath);
+    if (storageGroupMap.get(storageGroupName) != null) {
+      storageGroupMap.get(storageGroupName).clear();
     }
   }
 
   private static class SingletonClassInstance{
     private static final LastCacheManager instance = new LastCacheManager();
+  }
+
+  private static class StorageGroupLastCache {
+    private String storageGroupName;
+    private HashMap<String, TimeValuePair> lastCache;
+    private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
+    public StorageGroupLastCache(String name) {
+      this.storageGroupName = name;
+      this.lastCache = new HashMap<>();
+    }
+
+    TimeValuePair get(String key) {
+      try {
+        lock.readLock().lock();
+        if (lastCache.containsKey(key)) {
+          return lastCache.get(key);
+        }
+        return new TimeValuePair(0, null);
+      } finally {
+        lock.readLock().unlock();
+      }
+    }
+
+    void put(String key, TimeValuePair timeValuePair, boolean highPriorityUpdate) {
+      if (timeValuePair == null || timeValuePair.getValue() == null) return;
+
+      try {
+        lock.writeLock().lock();
+        if (lastCache.containsKey(key)) {
+          TimeValuePair cachedPair = lastCache.get(key);
+          if (timeValuePair.getTimestamp() > cachedPair.getTimestamp()
+              || (timeValuePair.getTimestamp() == cachedPair.getTimestamp()
+              && highPriorityUpdate)) {
+            cachedPair.setTimestamp(timeValuePair.getTimestamp());
+            cachedPair.setValue(timeValuePair.getValue());
+          }
+        } else {
+          TimeValuePair cachedPair =
+              new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+          lastCache.put(key, cachedPair);
+        }
+      } finally {
+        lock.writeLock().unlock();
+      }
+    }
+
+    void clear() {
+      lock.writeLock().lock();
+      if (lastCache != null) {
+        lastCache.clear();
+      }
+      lock.writeLock().unlock();
+    }
+
+    String getName() {
+      return storageGroupName;
+    }
+
+    void setName(String name) {
+      this.storageGroupName = name;
+    }
   }
 }

@@ -73,7 +73,7 @@ public class LastQueryExecutor {
    * @param context query context
    */
   public QueryDataSet execute(QueryContext context, LastQueryPlan lastQueryPlan)
-      throws StorageEngineException, IOException, QueryProcessException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
 
     ListDataSet dataSet = new ListDataSet(
         Arrays.asList(new Path(COLUMN_TIMESERIES), new Path(COLUMN_VALUE)),
@@ -112,11 +112,11 @@ public class LastQueryExecutor {
    */
   public static TimeValuePair calculateLastPairForOneSeries(
       Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> sensors)
-      throws IOException, QueryProcessException, StorageEngineException {
+      throws IOException, QueryProcessException, StorageEngineException, MetadataException {
 
     // Retrieve last value from LastCacheManager
     TimeValuePair cachedLast = LastCacheManager.getInstance().get(seriesPath.getFullPath());
-    if (cachedLast != null) {
+    if (cachedLast != null && cachedLast.getValue() != null) {
       return cachedLast;
     }
 
@@ -177,7 +177,7 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    LastCacheManager.getInstance().put(seriesPath.getFullPath(), resultPair, false, Long.MIN_VALUE);
+    LastCacheManager.getInstance().put(seriesPath.getFullPath(), resultPair, false);
     //node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
     return resultPair;
   }

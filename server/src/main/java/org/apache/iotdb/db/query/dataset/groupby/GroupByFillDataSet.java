@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -49,7 +50,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes,
       GroupByEngineDataSet groupByEngineDataSet,
       Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByFillPlan groupByFillPlan)
-      throws StorageEngineException, IOException, QueryProcessException {
+      throws StorageEngineException, IOException, QueryProcessException, MetadataException {
     super(paths, dataTypes);
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.fillTypes = fillTypes;
@@ -76,7 +77,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   }
 
   private void initLastTimeArray(QueryContext context, GroupByFillPlan groupByFillPlan)
-      throws IOException, StorageEngineException, QueryProcessException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
     for (int i = 0; i < paths.size(); i++) {

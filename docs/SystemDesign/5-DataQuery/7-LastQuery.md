@@ -27,20 +27,16 @@ The main logic of Last query is in LastQueryExecutor
 
 The Last query executes the `calculateLastPairForOneSeries` method for each specified time series.
 
-## Read MNode cache data
+## Read Last cache data in LastCacheManager
 
-We add a Last data cache to the MNode structure corresponding to the time series that needs to be queried.
+All the Last data are cached in a global structure instance: `LastCacheManager`.
 
-`calculateLastPairForOneSeries` method For the last query of a certain time series, first try to read the cached data in the MNode.
+The method `calculateLastPairForOneSeries` starts with reading the cached data via LastCacheManager.
 
 ```
-try {
-  node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
-} catch (MetadataException e) {
-  throw new QueryProcessException(e);
-}
-if (((LeafMNode) node).getCachedLast() != null) {
-  return ((LeafMNode) node).getCachedLast();
+TimeValuePair cachedLast = LastCacheManager.getInstance().get(seriesPath.getFullPath());
+if (cachedLast != null && cachedLast.getValue() != null) {
+  return cachedLast;
 }
 ```
 If it is found that the cache has not been written, execute the following standard query process to read the TsFile data.
@@ -92,31 +88,37 @@ Last standard query process needs to traverse all sequential files and unsequent
 
 ## Last cache update strategy
 
-The last cache update logic is located in the `UpdateCachedLast` method of` LeafMNode`. Here, two additional parameters `highPriorityUpdate` and` latestFlushTime` are introduced.  `highPriorityUpdate` is used to indicate whether this update is high priority. Cache updates caused by new data writing are considered high priority updates, and the update cache defaults to low priority updates when querying.  `latestFlushTime` is used to record the maximum timestamp of data that has been currently written back to disk.
+ When inserting new records in `StorageGroupProcessor.java`, `latestFlushTime` is used to maintain the maximum timestamp of data that has been currently written back to disk.
+ 
+ - When the cache is empty, if the timestamp of the latest record is smaller than `latestFlushTime`, do not update the cache as it is not a valid last pair.
 
-The cache update strategy is as follows:
+The last cache update logic is located in the `put()` method of `StorageGroupLastCache`. An additional parameters `highPriorityUpdate` is introduced.  `highPriorityUpdate` is used to indicate whether this update is high priority. Cache updates caused by new data writing are considered high priority updates, and the update cache defaults to low priority updates when querying. 
 
-1. When there is no record in the cache, the query results are written directly into the cache for the last data that is queried.
-2. When there is no record in the cache, if the latest data written is a timestamp greater than or equal to `latestFlushTime`, the written data is written to the cache.
-3. When there are records in the cache, the timestamp of the query or written data is compared with the timestamp in the current cache.  The written data has a high priority, and the cache is updated when the timestamp is not less than the cache record; the data that is queried has a lower priority and must be greater than the timestamp of the cache record to update the cache.
+ - When there is no record in the cache, the query results are written directly into the cache for the last data that is queried.
+ - When there are records in the cache, the timestamp of the query or written data is compared with the timestamp in the current cache.  The written data has a high priority, and the cache is updated when the timestamp is not less than the cache record; the data that is queried has a lower priority and must be greater than the timestamp of the cache record to update the cache.
 
 The specific code is as follows
 ```
-public synchronized void updateCachedLast(
-  TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) return;
-    
-    if (cachedLastValuePair == null) {
-      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will update cache.
-      if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
-        cachedLastValuePair =
-            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+void put(String key, TimeValuePair timeValuePair, boolean highPriorityUpdate) {
+  if (timeValuePair == null || timeValuePair.getValue() == null) return;
+
+  try {
+    lock.writeLock().lock();
+    if (lastCache.containsKey(key)) {
+      TimeValuePair cachedPair = lastCache.get(key);
+      if (timeValuePair.getTimestamp() > cachedPair.getTimestamp()
+          || (timeValuePair.getTimestamp() == cachedPair.getTimestamp()
+          && highPriorityUpdate)) {
+        cachedPair.setTimestamp(timeValuePair.getTimestamp());
+        cachedPair.setValue(timeValuePair.getValue());
       }
-    } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && highPriorityUpdate)) {
-      cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
-      cachedLastValuePair.setValue(timeValuePair.getValue());
+    } else {
+      TimeValuePair cachedPair =
+          new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+      lastCache.put(key, cachedPair);
     }
+  } finally {
+    lock.writeLock().unlock();
+  }
 }
 ```

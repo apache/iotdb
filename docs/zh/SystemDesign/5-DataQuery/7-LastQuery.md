@@ -27,17 +27,15 @@ Last 查询的主要逻辑在 LastQueryExecutor
 
 Last查询对每个指定的时间序列执行`calculateLastPairForOneSeries`方法。
 
-## 读取MNode缓存数据
+## 通过LastCacheManager读取缓存数据
 
-我们在需要查询的时间序列所对应的MNode结构中添加Last数据缓存。`calculateLastPairForOneSeries`方法对于某个时间序列的Last查询，首先尝试读取MNode中的缓存数据。
+`LastCacheManage`的全局对象负责保存所有时间序列的LAST缓存数据。
+
+`calculateLastPairForOneSeries`方法首先尝试读取已缓存在LastCacheManage中的数据。
 ```
-try {
-  node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
-} catch (MetadataException e) {
-  throw new QueryProcessException(e);
-}
-if (((LeafMNode) node).getCachedLast() != null) {
-  return ((LeafMNode) node).getCachedLast();
+TimeValuePair cachedLast = LastCacheManager.getInstance().get(seriesPath.getFullPath());
+if (cachedLast != null && cachedLast.getValue() != null) {
+  return cachedLast;
 }
 ```
 如果发现缓存没有被写入过，则执行下面的标准查询流程读取TsFile数据。
@@ -89,31 +87,36 @@ Last标准查询流程需要遍历所有的顺序文件和乱序文件得到查�
 
 ## Last 缓存更新策略
 
-Last缓存更新的逻辑位于`LeafMNode`的`updateCachedLast`方法内，这里引入两个额外的参数`highPriorityUpdate`和`latestFlushTime`。`highPriorityUpdate`用来表示本次更新是否是高优先级的，新数据写入而导致的缓存更新都被认为是高优先级更新，而查询时更新缓存默认为低优先级更新。`latestFlushTime`用来记录当前已被写回到磁盘的数据的最大时间戳。
+在`StorageGroupProcessor.java`中插入数据时，我们使用变量`latestFlushTime`记录当前已被写回到磁盘的数据的最大时间戳。
+- 当缓存中没有记录时，对于写入的最新数据如果时间戳小于`latestFlushTime`，则表明该时间点数据不是最新数据，不更新LAST缓存。
 
-缓存更新的策略如下：
+Last缓存更新的逻辑位于`StorageGroupLastCache`的`put()`方法内，这里引入额外的参数`highPriorityUpdate`。`highPriorityUpdate`用来表示本次更新是否是高优先级的，新数据写入而导致的缓存更新都被认为是高优先级更新，而查询时更新缓存默认为低优先级更新。
 
-1. 当缓存中没有记录时，对于查询到的Last数据，将查询的结果直接写入到缓存中。
-2. 当缓存中没有记录时，对于写入的最新数据如果时间戳大于或等于`latestFlushTime`，则将写入的数据写入到缓存中。
-3. 当缓存中已有记录时，根据查询或写入的数据时间戳与当前缓存中时间戳作对比。写入的数据具有高优先级，时间戳不小于缓存记录则更新缓存；查询出的数据低优先级，必须大于缓存记录的时间戳才更新缓存。
+- 当缓存中没有记录时，对于查询到的Last数据，将查询的结果直接写入到缓存中。
+- 当缓存中已有记录时，根据查询或写入的数据时间戳与当前缓存中时间戳作对比。写入的数据具有高优先级，时间戳不小于缓存记录则更新缓存；查询出的数据低优先级，必须大于缓存记录的时间戳才更新缓存。
 
 具体代码如下
 ```
-public synchronized void updateCachedLast(
-  TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) return;
-    
-    if (cachedLastValuePair == null) {
-      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will update cache.
-      if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
-        cachedLastValuePair =
-            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+void put(String key, TimeValuePair timeValuePair, boolean highPriorityUpdate) {
+  if (timeValuePair == null || timeValuePair.getValue() == null) return;
+
+  try {
+    lock.writeLock().lock();
+    if (lastCache.containsKey(key)) {
+      TimeValuePair cachedPair = lastCache.get(key);
+      if (timeValuePair.getTimestamp() > cachedPair.getTimestamp()
+          || (timeValuePair.getTimestamp() == cachedPair.getTimestamp()
+          && highPriorityUpdate)) {
+        cachedPair.setTimestamp(timeValuePair.getTimestamp());
+        cachedPair.setValue(timeValuePair.getValue());
       }
-    } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && highPriorityUpdate)) {
-      cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
-      cachedLastValuePair.setValue(timeValuePair.getValue());
+    } else {
+      TimeValuePair cachedPair =
+          new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
+      lastCache.put(key, cachedPair);
     }
+  } finally {
+    lock.writeLock().unlock();
+  }
 }
 ```

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -175,7 +176,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet groupByFill(GroupByFillPlan groupByFillPlan, QueryContext context)
-          throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
+      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException, MetadataException {
     GroupByEngineDataSet groupByEngineDataSet = (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
     return new GroupByFillDataSet(groupByFillPlan.getDeduplicatedPaths(), groupByFillPlan.getDeduplicatedDataTypes(),
             groupByEngineDataSet, groupByFillPlan.getFillType(), context, groupByFillPlan);
@@ -183,7 +184,7 @@ public class QueryRouter implements IQueryRouter {
 
   @Override
   public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
-          throws StorageEngineException, QueryProcessException, IOException {
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException {
     LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
     return lastQueryExecutor.execute(context, lastQueryPlan);
   }

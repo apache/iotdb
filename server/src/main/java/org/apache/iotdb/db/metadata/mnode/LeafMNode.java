@@ -39,8 +39,6 @@ public class LeafMNode extends MNode {
   // tag/attribute's start offset in tag file
   private long offset = -1;
 
-  private TimeValuePair cachedLastValuePair = null;
-
   /**
    * @param alias alias of measurementName
    */
@@ -93,32 +91,6 @@ public class LeafMNode extends MNode {
 
   public MeasurementSchema getSchema() {
     return schema;
-  }
-
-  public TimeValuePair getCachedLast() {
-    return cachedLastValuePair;
-  }
-
-  public synchronized void updateCachedLast(
-      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) return;
-
-    if (cachedLastValuePair == null) {
-      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will update cache.
-      if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
-        cachedLastValuePair =
-            new TimeValuePair(timeValuePair.getTimestamp(), timeValuePair.getValue());
-      }
-    } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
-        || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && highPriorityUpdate)) {
-      cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
-      cachedLastValuePair.setValue(timeValuePair.getValue());
-    }
-  }
-
-  public void resetCache() {
-    cachedLastValuePair = null;
   }
 
   public long getOffset() {

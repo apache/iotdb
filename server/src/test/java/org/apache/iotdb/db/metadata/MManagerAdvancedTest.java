@@ -140,20 +140,4 @@ public class MManagerAdvancedTest {
     }
   }
 
-  @Test
-  public void testCachedLastTimeValue() throws MetadataException {
-    mmanager.createTimeseries("root.vehicle.d2.s0", TSDataType.DOUBLE, TSEncoding.RLE,
-        TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-
-    TimeValuePair tv1 = new TimeValuePair(1000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 1.0));
-    TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
-    TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
-    MNode node = mmanager.getNodeByPath("root.vehicle.d2.s0");
-    ((LeafMNode)node).updateCachedLast(tv1, true, Long.MIN_VALUE);
-    ((LeafMNode)node).updateCachedLast(tv2, true, Long.MIN_VALUE);
-    Assert.assertEquals(tv2.getTimestamp(), ((LeafMNode)node).getCachedLast().getTimestamp());
-    ((LeafMNode)node).updateCachedLast(tv3, true, Long.MIN_VALUE);
-    Assert.assertEquals(tv2.getTimestamp(), ((LeafMNode)node).getCachedLast().getTimestamp());
-  }
-
 }
