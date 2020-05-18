@@ -59,7 +59,7 @@ This chapter provides an example of how to open a database connection, execute a
 
 Requires that you include the packages containing the JDBC classes needed for database programming.
 
-**NOTE: For faster insertion, the insertBatch() in Session is recommended.**
+**NOTE: For faster insertion, the insertTablet() in Session is recommended.**
 
 ```Java
 import java.sql.*;
