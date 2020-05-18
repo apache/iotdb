@@ -121,7 +121,7 @@ public class MergeUpgradeTest {
     if (changeVersion) {
       try (RandomAccessFile oldTsfile = new RandomAccessFile(tsFileResource.getFile(), "rw")) {
         oldTsfile.seek(TSFileConfig.MAGIC_STRING.length());
-        oldTsfile.write(TSFileConfig.OLD_VERSION.getBytes());
+        oldTsfile.write(TSFileConfig.VERSION_NUMBER_V1.getBytes());
       }
       changeVersion = false;
     }

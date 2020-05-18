@@ -106,7 +106,6 @@ public class LastPointReader {
               dataType);
         } else {
           List<ChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
-
           for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
             lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
             // last point of this sequence chunk is valid, quit the loop

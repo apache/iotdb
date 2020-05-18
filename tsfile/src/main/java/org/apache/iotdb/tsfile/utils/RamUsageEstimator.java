@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.cache;
+package org.apache.iotdb.tsfile.utils;
 
 import java.lang.management.ManagementFactory;
 import java.lang.reflect.Array;
@@ -50,7 +50,7 @@ public final class RamUsageEstimator {
   /**
    * JVM diagnostic features.
    */
-  public static enum JvmFeature {
+  public enum JvmFeature {
     OBJECT_REFERENCE_SIZE("Object reference size estimated using array index scale"),
     ARRAY_HEADER_SIZE("Array header size estimated using array based offset"),
     FIELD_OFFSETS("Shallow instance size based on field offsets"),
@@ -71,7 +71,7 @@ public final class RamUsageEstimator {
   /**
    * JVM info string for debugging and reports.
    */
-  public final static String JVM_INFO_STRING;
+  public static final String JVM_INFO_STRING;
 
   /**
    * One kilobyte bytes.
@@ -106,23 +106,23 @@ public final class RamUsageEstimator {
   /**
    * Number of bytes this jvm uses to represent an object reference.
    */
-  public final static int NUM_BYTES_OBJECT_REF;
+  public static final int NUM_BYTES_OBJECT_REF;
 
   /**
    * Number of bytes to represent an object header (no fields, no alignments).
    */
-  public final static int NUM_BYTES_OBJECT_HEADER;
+  public static final int NUM_BYTES_OBJECT_HEADER;
 
   /**
    * Number of bytes to represent an array header (no content, but with alignments).
    */
-  public final static int NUM_BYTES_ARRAY_HEADER;
+  public static final int NUM_BYTES_ARRAY_HEADER;
 
   /**
    * A constant specifying the object alignment boundary inside the JVM. Objects will always take a
    * full multiple of this constant, possibly wasting some space.
    */
-  public final static int NUM_BYTES_OBJECT_ALIGNMENT;
+  public static final int NUM_BYTES_OBJECT_ALIGNMENT;
 
   /**
    * Sizes of primitive classes.
@@ -144,17 +144,17 @@ public final class RamUsageEstimator {
   /**
    * A handle to <code>sun.misc.Unsafe</code>.
    */
-  private final static Object theUnsafe;
+  private static final Object theUnsafe;
 
   /**
    * A handle to <code>sun.misc.Unsafe#fieldOffset(Field)</code>.
    */
-  private final static Method objectFieldOffsetMethod;
+  private static final Method objectFieldOffsetMethod;
 
   /**
    * All the supported "internal" JVM features detected at clinit.
    */
-  private final static EnumSet<JvmFeature> supportedFeatures;
+  private static final EnumSet<JvmFeature> supportedFeatures;
 
   /**
    * Initialize constants and try to collect information about the JVM internals.
@@ -957,7 +957,7 @@ public final class RamUsageEstimator {
      */
     @Deprecated
     public static final boolean JRE_IS_MINIMUM_JAVA6 =
-            new Boolean(true).booleanValue(); // prevent inlining in foreign class files
+        Boolean.TRUE; // prevent inlining in foreign class files
 
     public static final boolean JRE_IS_MINIMUM_JAVA7;
     public static final boolean JRE_IS_MINIMUM_JAVA8;

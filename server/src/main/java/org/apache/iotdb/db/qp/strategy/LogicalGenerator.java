@@ -77,8 +77,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
     } else {
-      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
-          parsePrefixPath(ctx.prefixPath()));
+      if(ctx.prefixPath() != null) {
+        initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
+            parsePrefixPath(ctx.prefixPath()));
+      } else {
+        initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
+            new Path(SQLConstant.ROOT));
+      }
     }
   }
 
