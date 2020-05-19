@@ -221,7 +221,7 @@ service RaftService {
   * @return if the leader is valid, HeartBeatResponse.term will set -1, and the follower will tell
   * leader its lastLogIndex; otherwise, the follower will tell the fake leader its term.
   **/
-	HeartBeatResponse sendHeartbeat(1:HeartBeatRequest request);
+  HeartBeatResponse sendHeartbeat(1:HeartBeatRequest request);
 
 	/**
   * If a node wants to be a leader, it'll call the method to other nodes to get a vote.
