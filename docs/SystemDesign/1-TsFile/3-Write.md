@@ -76,23 +76,30 @@ The input params of this method:
 The whole method contains three parts:
 
 1. In measurement index level, each device and its TimeseriesMetadata in `deviceTimeseriesMetadataMap` is converted into `deviceMetadataIndexMap`. Specificly, for each device:
-    * First new a MetadataIndexNode of `LEAF_MEASUREMENT` type
-    * After serializing each TimeseriesMetadata, check and add an entry into the node **every** `MAX_DEGREE_OF_INDEX_NODE` **entries**
-    * After storing `MAX_DEGREE_OF_INDEX_NODE` entries, `currentIndexNode` is full. Add it into the queue and handle it in next loop. Start to store entries in a new MetadataIndexNode
-    * Construct an entry of TimeseriesMetadata, add it in the current MetadataIndexNode, and serialize TimeseriesMetadata
-    * Generate root node of measurement index level according to queue (this method will be described later), and put the "device-root node" map into `deviceMetadataIndexMap`
+  * Initialize a `queue` for MetadataIndex nodes in this device
+  * Initialize a leaf node of measurement index level, which is `LEAF_MEASUREMENT` type
+  * For each TimeseriesMetadata：
+    * Serialize
+    * Add an entry into `currentIndexNode` every `MAX_DEGREE_OF_INDEX_NODE` entries
+    * After storing `MAX_DEGREE_OF_INDEX_NODE` entries, add `currentIndexNode` into `queue`, and point `currentIndexNode` to a new MetadataIndexNode
+  * Generate upper-level nodes of measurement index level according to the leaf nodes in `queue`, until the final root node (this method will be described later), and put the "device-root node" map into `deviceMetadataIndexMap`
 
 2. Then judge whether the number of devices exceed `MAX_DEGREE_OF_INDEX_NODE`. If not, the root node of MetadataIndex tree could be generated and return
-    * First new a MetadataIndexNode of `INTERNAL_MEASUREMENT` type, since it cannnot be the leaf node of measurement index level
-    * Construct an entry of each entry in `deviceMetadataIndexMap`, add it in the current MetadataIndexNode, and serialize the entry
-    * Set the endOffset of current MetadataIndexNode and return it
+  * Initialize the root node of MetadataIndex tree, which is `INTERNAL_MEASUREMENT` type
+  * For each entry in `deviceMetadataIndexMap`:
+    * Serialize
+    * Convert it into an entry and add the entry into `metadataIndexNode`
+  * Set the `endOffset` of root node and return it
 
 3. If the number of devices exceed `MAX_DEGREE_OF_INDEX_NODE`, the device index level of MetadataIndex tree is generated
-    * First new a MetadataIndexNode of `LEAF_DEVICE` type
-    * Construct an entry of each entry in `deviceMetadataIndexMap`, add it in the current MetadataIndexNode, and serialize the entry
-    * After storing `MAX_DEGREE_OF_INDEX_NODE` entries, `currentIndexNode` is full. Add it into the queue and handle it in next loop. Start to store entries in a new MetadataIndexNode
-    * Generate root node of measurement index level according to queue
-    * Set the endOffset of root node and return it
+  * Initialize a `queue` for MetadataIndex nodes in device index level
+  * Initialize a leaf node of device index level, which is `LEAF_DEVICE` type
+  * For each entry in `deviceMetadataIndexMap`:
+    * Serialize
+    * Convert it into an entry and add the entry into `metadataIndexNode`
+    * After storing `MAX_DEGREE_OF_INDEX_NODE` entries, add `currentIndexNode` into `queue`, and point `currentIndexNode` to a new MetadataIndexNode
+  * Generate upper-level nodes of device index level according to the leaf nodes in `queue`, until the final root node (this method will be described later)
+  * Set the `endOffset` of root node and return it
 
 ### MetadataIndexConstructor.generateRootNode
 
@@ -103,9 +110,11 @@ The input params of this method:
 
 The method needs to generate a tree structure of nodes in metadataIndexNodeQueue, and return the root node:
 1. New `currentIndexNode` in specific `type`
-2. Loop handling the queue: build an entry for each MetadataIndexNode in the queue, and add it into `currentIndexNode`. Then serialize this MetadataIndexNode
-3. After storing `MAX_DEGREE_OF_INDEX_NODE` entries, `currentIndexNode` is full. Add it into the queue and handle it in next loop. Start to store entries in a new MetadataIndexNode
-4. Return the root node in the queue when the queue has only one node
+2. When there are more than one nodes in the queue, loop handling the queue. For each node in the queue:
+  * Serialize
+  * Convert it into an entry and add the entry into `currentIndexNode`
+  * After storing `MAX_DEGREE_OF_INDEX_NODE` entries, add `currentIndexNode` into `queue`, and point `currentIndexNode` to a new MetadataIndexNode
+3. Return the root node in the queue when the queue has only one node
 
 ### MetadataIndexConstructor.addCurrentIndexNodeToQueue
 

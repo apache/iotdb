@@ -76,22 +76,30 @@ TsFile 文件层的写入接口有两种
 
 整个方法分成三大部分：
 1. 在传感器索引层级，把 `deviceTimeseriesMetadataMap` 中的每一个设备及其 `TimeseriesMetadata` 列表，转化为 MetadataIndexNode 并放进 `deviceMetadataIndexMap` 中。具体来说，对于每一个设备：
-    * 先初始化一个 MetadataIndexNode，类型为 `LEAF_MEASUREMENT`
-    * 对于每个 TimeseriesMetadata，序列化之后进行检查，**每隔** `MAX_DEGREE_OF_INDEX_NODE` **个**加一条 entry 到节点中
-    * 每攒够 `MAX_DEGREE_OF_INDEX_NODE` 个 entry，当前节点满，将这个节点加入队列，在下一次循环中处理；并开始攒新的节点
-    * 根据队列生成当前设备在传感器索引层级最终的根节点（此方法解析见下），并将设备-根节点对应的映射加入 `deviceMetadataIndexMap` 中
+  * 初始化此设备的索引节点的队列 `queue`
+  * 初始化传感器索引层级的叶子节点 `currentIndexNode` ，类型为 `LEAF_MEASUREMENT`
+  * 对于每个 TimeseriesMetadata：
+    * 序列化
+    * 每隔 `MAX_DEGREE_OF_INDEX_NODE` 个，加一条 entry 到 `currentIndexNode` 中
+    * 每当 currentIndexNode 中攒够 `MAX_DEGREE_OF_INDEX_NODE` 个 entry 后，将 `currentIndexNode` 加入 `queue` 中，并将 `currentIndexNode` 指向一个新的 MetadataIndexNode
+  * 根据 `queue` 中已经存储的叶子节点，逐层生成上层节点，直至最终的根节点（此方法解析见下），并将"设备-根节点"对应的映射加入 `deviceMetadataIndexMap` 中
 
 2. 接下来，判断设备数是否超过 `MAX_DEGREE_OF_INDEX_NODE`，如果未超过则可以直接形成元数据索引树的根节点并返回
-    * 先初始化一个 MetadataIndexNode，由于它一定不是传感器索引层级的叶子节点，因此其类型为 `INTERNAL_MEASUREMENT`
-    * 对于 `deviceMetadataIndexMap` 中的每一个 entry，将其对应成一个索引项放入当前索引节点中，并序列化这个 entry
-    * 设置当前 MetadataIndexNode 的 `endOffset` 并返回
+  * 初始化元数据索引树的根节点 `metadataIndexNode`，类型为 `INTERNAL_MEASUREMENT`
+  * 对于 `deviceMetadataIndexMap` 中的每一个 entry：
+    * 序列化
+    * 将其转化成一个索引项，加入到 `metadataIndexNode` 中
+  * 设置根节点的 `endOffset` 并返回
 
 3. 如果设备数超过 `MAX_DEGREE_OF_INDEX_NODE`，则需要形成元数据索引树的设备索引层级
-    * 先初始化一个 MetadataIndexNode，类型为 `LEAF_DEVICE`
-    * 对于 `deviceMetadataIndexMap` 中的每一个 entry，将其对应成一个索引项放入当前索引节点中，并序列化这个 entry
-    * 每攒够 `MAX_DEGREE_OF_INDEX_NODE` 个 entry，当前节点满，需要将其加入队列，在下一次循环中处理；并开始攒新的节点
-    * 根据队列生成当前设备在传感器索引层级最终的根节点（此方法解析见下）
-    * 设置根节点的 `endOffset` 并返回
+  * 初始化存放设备索引层级节点的队列 `queue`
+  * 初始化设备索引层级的叶子节点 `currentIndexNode` ，类型为 `LEAF_DEVICE`
+  * 对于 `deviceMetadataIndexMap` 中的每一个 entry：
+    * 序列化
+    * 将其转化成一个索引项，加入到 `metadataIndexNode` 中
+    * 每当 currentIndexNode 中攒够 `MAX_DEGREE_OF_INDEX_NODE` 个 entry 后，将 `currentIndexNode` 加入 `queue` 中，并将 `currentIndexNode` 指向一个新的 MetadataIndexNode
+  * 根据 `queue` 中已经存储的叶子节点，逐层生成上层节点，直至最终的根节点（此方法解析见下）
+  * 设置根节点的 `endOffset` 并返回
 
 ### MetadataIndexConstructor.generateRootNode
 
@@ -102,9 +110,11 @@ TsFile 文件层的写入接口有两种
 
 该方法需要将队列中的 MetadataIndexNode 形成树级结构，并返回根节点：
 1. 根据需要的类型 `type` 初始化 `currentIndexNode`
-2. 循环处理队列，队列中存在的每个节点，对应一个索引项 entry，将 entry 加入当前节点 `currentIndexNode` 中，并序列化这个节点
-3. 每存储 `MAX_DEGREE_OF_INDEX_NODE` 个 entry 后，当前节点满，将这个节点加入队列，在下一次循环中处理；并开始攒新的节点
-4. 直到队列中只有一个节点时结束循环，返回队列中最终剩余的根节点
+2. 当队列中有多余一个节点时，循环处理队列，对于队列中存在的每个节点：
+  * 序列化
+  * 将其转化成一个索引项，加入到 `currentIndexNode` 中
+  * 每当 currentIndexNode 中攒够 `MAX_DEGREE_OF_INDEX_NODE` 个 entry 后，将 `currentIndexNode` 加入 `queue` 中，并将 `currentIndexNode` 指向一个新的 MetadataIndexNode
+3. 队列中只剩下一个节点时，返回队列中最终剩余的根节点
 
 ### MetadataIndexConstructor.addCurrentIndexNodeToQueue
 
