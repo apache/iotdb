@@ -17,35 +17,31 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client;
+package org.apache.iotdb.cluster.client.async;
 
 import java.io.IOException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request,
  * you should not cache it anywhere else or there may be conflicts.
  */
-public class DataClient extends AsyncClient {
-
-  private static final Logger logger = LoggerFactory.getLogger(DataClient.class);
+public class MetaClient extends AsyncClient {
 
   private Node node;
   private ClientPool pool;
 
-  public DataClient(TProtocolFactory protocolFactory,
+  public MetaClient(TProtocolFactory protocolFactory,
       TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
     // the difference of the two clients lies in the port
-    super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getDataPort()
-        , RaftServer.connectionTimeoutInMS));
+    super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getMetaPort(),
+        RaftServer.connectionTimeoutInMS));
     this.node = node;
     this.pool = pool;
   }
@@ -53,7 +49,10 @@ public class DataClient extends AsyncClient {
   @Override
   public void onComplete() {
     super.onComplete();
-    pool.putClient(node, this);
+    // return itself to the pool if the job is done
+    if (pool != null) {
+      pool.putClient(node, this);
+    }
   }
 
   public static class Factory implements ClientFactory {
@@ -61,15 +60,15 @@ public class DataClient extends AsyncClient {
     public Factory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
     }
-    public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool) throws IOException {
-      return new DataClient(protocolFactory, new TAsyncClientManager(), node, pool);
+
+    @Override
+    public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool)
+        throws IOException {
+      return new MetaClient(protocolFactory, new TAsyncClientManager(), node, pool);
     }
   }
 
-  @Override
-  public String toString() {
-    return "DataClient{" +
-        "node=" + node +
-        '}';
+  public Node getNode() {
+    return node;
   }
 }

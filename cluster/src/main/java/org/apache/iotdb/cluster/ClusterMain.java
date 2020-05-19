@@ -22,7 +22,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.MetaClient;
+import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -107,8 +108,9 @@ public class ClusterMain {
   }
 
   private static void replaceDefaultPrams(String[] args) {
-    int index = 0;
-    String[] clusterParams = null, serverParams = null;
+    int index;
+    String[] clusterParams;
+    String[] serverParams = null;
     for (index = 0; index < args.length; index++) {
       if (SERVER_CONF_SEPARATOR.equals(args[index])) {
         break;
@@ -120,7 +122,7 @@ public class ClusterMain {
       serverParams = Arrays.copyOfRange(args, index + 1, args.length);
     }
 
-    if (clusterParams != null && clusterParams.length > 0) {
+    if (clusterParams.length > 0) {
       // replace the cluster default conf params
       ClusterDescriptor.getInstance().replaceProps(clusterParams);
     }
@@ -180,14 +182,8 @@ public class ClusterMain {
       node.setIp(splits[0]).setMetaPort(Integer.parseInt(splits[1]));
       MetaClient client = new MetaClient(factory, new TAsyncClientManager(), node, null);
 
-      AtomicReference<Long> responseRef = new AtomicReference<>();
-      GenericHandler handler = new GenericHandler(node, responseRef);
       try {
-        synchronized (responseRef) {
-          client.removeNode(nodeToRemove, handler);
-          responseRef.wait(RaftServer.connectionTimeoutInMS);
-        }
-        Long response = responseRef.get();
+        Long response = SyncClientAdaptor.removeNode(client, nodeToRemove);
         if (response != null) {
           if (response == Response.RESPONSE_AGREE) {
             logger.info("Node {} is successfully removed", nodeToRemove);
@@ -200,7 +196,10 @@ public class ClusterMain {
             return;
           }
         }
-      } catch (TException | InterruptedException e) {
+      } catch (TException e) {
+        logger.warn("Cannot send remove node request through {}, try next node", node);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.warn("Cannot send remove node request through {}, try next node", node);
       }
     }

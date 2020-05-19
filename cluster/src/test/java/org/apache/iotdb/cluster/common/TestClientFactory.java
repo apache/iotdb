@@ -21,8 +21,8 @@ package org.apache.iotdb.cluster.common;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.client.ClientFactory;
-import org.apache.iotdb.cluster.client.ClientPool;
+import org.apache.iotdb.cluster.client.async.ClientFactory;
+import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.thrift.async.TAsyncClientManager;

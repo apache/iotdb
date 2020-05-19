@@ -20,8 +20,8 @@
 package org.apache.iotdb.cluster.common;
 
 import java.io.IOException;
-import org.apache.iotdb.cluster.client.ClientPool;
-import org.apache.iotdb.cluster.client.MetaClient;
+import org.apache.iotdb.cluster.client.async.ClientPool;
+import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;

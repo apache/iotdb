@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.DataClient;
+import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
 import org.apache.iotdb.cluster.log.Snapshot;

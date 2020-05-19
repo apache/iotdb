@@ -22,19 +22,13 @@ package org.apache.iotdb.cluster.log.catchup;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
-import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
-import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -42,7 +36,7 @@ import org.slf4j.LoggerFactory;
 
 public class CatchUpTask implements Runnable {
 
-  private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(CatchUpTask.class);
 
   private Node node;
   private Peer peer;
@@ -59,11 +53,14 @@ public class CatchUpTask implements Runnable {
     this.snapshot = null;
   }
 
+  /**
+   *
+   * @return true if the matched index exceed the memory log bound so a snapshot is necessary, or
+   * false if the catch up can be done using memory logs.
+   * @throws TException
+   * @throws InterruptedException
+   */
   boolean checkMatchIndex() throws TException, InterruptedException {
-
-    AtomicReference<Boolean> resultRef = new AtomicReference<>();
-    GenericHandler matchTermHandler = new GenericHandler(node, resultRef);
-
     synchronized (raftMember.getLogManager()) {
       peer.setNextIndex(raftMember.getLogManager().getLastLogIndex());
       try {
@@ -98,16 +95,11 @@ public class CatchUpTask implements Runnable {
         }
       }
 
-      synchronized (resultRef) {
-        AsyncClient client = raftMember.connectNode(node);
-        if (client == null) {
-          break;
-        }
-        client.matchTerm(prevLogIndex, prevLogTerm, raftMember.getHeader(), matchTermHandler);
-        raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        resultRef.wait(RaftServer.connectionTimeoutInMS);
-      }
-      if (resultRef.get()) {
+      RaftService.AsyncClient client = raftMember.connectNode(node);
+      boolean matched = SyncClientAdaptor
+          .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
+      raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+      if (matched) {
         // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
         logs.subList(0, index).clear();
         if (logger.isDebugEnabled()) {
@@ -118,6 +110,10 @@ public class CatchUpTask implements Runnable {
       }
       index--;
     }
+    return true;
+  }
+
+  private void doSnapshot() {
     try {
       raftMember.getLogManager().takeSnapshot();
     } catch (IOException e) {
@@ -128,12 +124,12 @@ public class CatchUpTask implements Runnable {
       logger
           .debug("{}: Logs in {} are too old, catch up with snapshot", raftMember.getName(), node);
     }
-    return true;
   }
 
   public void run() {
     try {
       if (checkMatchIndex()) {
+        doSnapshot();
         SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftMember);
         task.run();
       } else {

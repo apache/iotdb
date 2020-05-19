@@ -19,28 +19,19 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import org.apache.iotdb.cluster.client.DataClient;
+import java.io.IOException;
+import java.util.List;
+import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
-import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 
 /**
  * provide client which could connect to all nodes of the partitionGroup.
@@ -83,41 +74,21 @@ public class DataSourceInfo {
       return null;
     }
 
-    AtomicReference<Long> result = new AtomicReference<>();
-
     int nextNodePos = (this.curPos + 1) % this.nodes.size();
     while (true) {
       Node node = nodes.get(nextNodePos);
       logger.debug("querying {} from {} of {}", request.path, node, partitionGroup.getHeader());
-      GenericHandler<Long> handler = new GenericHandler<>(node, result);
       try {
-        DataClient client = this.metaGroupMember.getDataClient(node);
-        synchronized (result) {
-          result.set(null);
-          if (byTimestamp) {
-            client.querySingleSeriesByTimestamp(request, handler);
-          } else {
-            // add timestamp to as a timeFilter to skip the data which has been read
-            Filter newFilter;
-            if (request.isSetTimeFilterBytes()) {
-              Filter timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
-              newFilter = new AndFilter(timeFilter, TimeFilter.gt(timestamp));
-            } else {
-              newFilter = TimeFilter.gt(timestamp);
-            }
-            request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
-            client.querySingleSeries(request, handler);
-          }
 
-          result.wait(connectionTimeoutInMS);
-        }
-        Long readerId = result.get();
-        if (readerId != null) {
-          logger.debug("get a readerId {} for {} from {}", readerId, request.path, node);
-          if (readerId != -1) {
+        DataClient client = this.metaGroupMember.getDataClient(node);
+        Long newReaderId = applyForReaderId(client, byTimestamp, timestamp);
+
+        if (newReaderId != null) {
+          logger.debug("get a readerId {} for {} from {}", newReaderId, request.path, node);
+          if (newReaderId != -1) {
             // register the node so the remote resources can be released
             context.registerRemoteNode(partitionGroup.getHeader(), node);
-            this.readerId = readerId;
+            this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
             return client;
@@ -129,7 +100,10 @@ public class DataSourceInfo {
             return null;
           }
         }
-      } catch (TException | InterruptedException | IOException e) {
+      } catch (TException | IOException e) {
+        logger.error("Cannot query {} from {}", this.request.path, node, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.error("Cannot query {} from {}", this.request.path, node, e);
       }
       nextNodePos = (nextNodePos + 1) % this.nodes.size();
@@ -142,6 +116,17 @@ public class DataSourceInfo {
     // all nodes are failed
     this.isNoData = false;
     return null;
+  }
+
+  private Long applyForReaderId(DataClient client, boolean byTimestamp, long timestamp)
+      throws TException, InterruptedException {
+    Long newReaderId;
+    if (byTimestamp) {
+      newReaderId = SyncClientAdaptor.querySingleSeriesByTimestamp(client, request);
+    } else {
+      newReaderId = SyncClientAdaptor.querySingleSeries(client, request, timestamp);
+    }
+    return newReaderId;
   }
 
   public long getReaderId() {
@@ -168,7 +153,4 @@ public class DataSourceInfo {
     return this.isNoData;
   }
 
-  public void setMetaGroupMemberForTest(MetaGroupMember metaGroupMember) {
-    this.metaGroupMember = metaGroupMember;
-  }
 }

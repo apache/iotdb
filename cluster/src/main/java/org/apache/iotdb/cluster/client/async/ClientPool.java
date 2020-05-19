@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.client;
+package org.apache.iotdb.cluster.client.async;
 
 import java.io.IOException;
 import java.util.ArrayDeque;

@@ -216,6 +216,7 @@ public class ClientMain {
     return openResp.getSessionId();
   }
 
+  @SuppressWarnings("resource") // the transport is used later
   private static Client getClient(String ip, int port) throws TTransportException {
     TSIService.Client.Factory factory = new Factory();
     TTransport transport = new TFramedTransport(new TSocket(ip, port));
