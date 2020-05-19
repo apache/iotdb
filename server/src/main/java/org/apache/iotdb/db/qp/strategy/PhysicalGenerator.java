@@ -74,6 +74,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -274,6 +275,8 @@ public class PhysicalGenerator {
             ((MoveFileOperator) operator).getFile(),
             ((MoveFileOperator) operator).getTargetDir(),
             OperatorType.MOVE_FILE);
+      case CLEAR_CACHE:
+        return new ClearCachePlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

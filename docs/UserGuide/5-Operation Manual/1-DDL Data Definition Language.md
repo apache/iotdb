@@ -318,4 +318,9 @@ IoTDB> MERGE
 IoTDB> FULL MERGE
 ```
 
+## CLEAR CACHE
 
+Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
+```
+IoTDB> CLEAR CACHE
+```

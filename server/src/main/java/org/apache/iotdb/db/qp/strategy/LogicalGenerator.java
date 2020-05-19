@@ -123,6 +123,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
+  public void enterClearcache(SqlBaseParser.ClearcacheContext ctx) {
+    super.enterClearcache(ctx);
+    initializedOperator = new ClearCacheOperator(SQLConstant.TOK_CLEAR_CACHE);
+  }
+
+  @Override
   public void enterCountNodes(CountNodesContext ctx) {
     super.enterCountNodes(ctx);
     initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODES,
