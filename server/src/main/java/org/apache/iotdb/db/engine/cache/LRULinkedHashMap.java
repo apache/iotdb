@@ -87,6 +87,8 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
   public void clear() {
     linkedHashMap.clear();
     usedMemory = 0;
+    count = 0;
+    averageSize = 0;
   }
 
   public V remove(K key) {
@@ -123,6 +125,10 @@ public abstract class LRULinkedHashMap<K extends Accountable, V> {
 
   public Set<Entry<K, V>> entrySet() {
     return linkedHashMap.entrySet();
+  }
+
+  public boolean isEmpty() {
+    return linkedHashMap.isEmpty();
   }
 
   @Override
