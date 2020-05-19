@@ -16,14 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.qp.logical.RootOperator;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-public class MergeOperator extends RootOperator {
+public class ClearCachePlan extends PhysicalPlan {
 
-  public MergeOperator(int tokenIntType) {
-    super(tokenIntType);
-    operatorType = OperatorType.MERGE;
+  public ClearCachePlan() {
+    super(false, OperatorType.CLEAR_CACHE);
+  }
+
+  @Override
+  public List<Path> getPaths() {
+    return new ArrayList<>();
   }
 }

@@ -26,6 +26,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -182,6 +183,11 @@ public class ChunkCache {
       lruCache.remove(chunkMetaData);
     }
     lock.writeLock().unlock();
+  }
+
+  @TestOnly
+  public boolean isEmpty() {
+    return lruCache.isEmpty();
   }
 
   /**

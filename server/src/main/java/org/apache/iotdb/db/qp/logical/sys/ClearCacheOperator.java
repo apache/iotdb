@@ -20,10 +20,10 @@ package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
-public class MergeOperator extends RootOperator {
+public class ClearCacheOperator extends RootOperator {
 
-  public MergeOperator(int tokenIntType) {
+  public ClearCacheOperator(int tokenIntType) {
     super(tokenIntType);
-    operatorType = OperatorType.MERGE;
+    operatorType = OperatorType.CLEAR_CACHE;
   }
 }

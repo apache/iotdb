@@ -63,6 +63,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -95,6 +98,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -240,10 +244,11 @@ public class PlanExecutor implements IPlanExecutor {
         operateFlush((FlushPlan) plan);
         return true;
       case MERGE:
-        operateMerge((MergePlan) plan);
-        return true;
       case FULL_MERGE:
         operateMerge((MergePlan) plan);
+        return true;
+      case CLEAR_CACHE:
+        operateClearCache((ClearCachePlan) plan);
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -258,6 +263,14 @@ public class PlanExecutor implements IPlanExecutor {
       StorageEngine.getInstance()
           .mergeAll(IoTDBDescriptor.getInstance().getConfig().isForceFullMerge());
     }
+  }
+
+  private void operateClearCache(ClearCachePlan plan) {
+    ChunkCache.getInstance().clear();
+    ChunkMetadataCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    // try to notify the jvm to release the memory footprint
+    System.gc();
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {

@@ -44,9 +44,9 @@ The following describes four common data manipulation operations, which are inse
 ### Batch data (multiple timestamp multiple values for one device) write
 
 * Corresponding interface
-	* Session‘s insertBatch
+	* Session‘s insertTablet
 
-* Main entrance: ```public Integer[] insertBatch(BatchInsertPlan batchInsertPlan)```  StorageEngine.java
+* Main entrance: ```public Integer[] insertTablet(InsertTabletPlan insertTabletPlan)```  StorageEngine.java
     * Find the corresponding StorageGroupProcessor
 	* According to the time of this batch of data and the last timestamp of the current device order, this batch of data is divided into small batches, which correspond to a TsFileProcessor
 	* Pre-write log
