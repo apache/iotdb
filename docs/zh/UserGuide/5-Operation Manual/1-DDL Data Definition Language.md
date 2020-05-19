@@ -310,4 +310,11 @@ IoTDB> MERGE
 IoTDB> FULL MERGE
 ```
 
+## CLEAR CACHE
+
+手动清除chunk, chunk metadata和timeseries metadata的缓存，在内存资源紧张时，可以通过此命令，释放查询时缓存所占的内存空间。
+```
+IoTDB> CLEAR CACHE
+```
+
 
