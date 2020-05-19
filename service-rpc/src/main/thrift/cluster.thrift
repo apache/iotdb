@@ -24,6 +24,7 @@ typedef i32 int
 typedef i16 short
 typedef i64 long
 
+// TODO-Cluster: update rpc change list when ready to merge
 // leader -> follower
 struct HeartBeatRequest {
   1: required long term // leader's meta log
