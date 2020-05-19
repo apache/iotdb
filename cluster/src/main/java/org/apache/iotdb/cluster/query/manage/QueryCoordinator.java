@@ -19,18 +19,15 @@
 
 package org.apache.iotdb.cluster.query.manage;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -89,16 +86,9 @@ public class QueryCoordinator {
     if (currTime - nodeStatus.getLastUpdateTime() > NODE_STATUS_UPDATE_INTERVAL_MS
         || nodeStatus.getStatus() == null) {
       MetaClient metaClient = (MetaClient) metaGroupMember.connectNode(node);
-      AtomicReference<TNodeStatus> resultRef = new AtomicReference<>();
-      GenericHandler<TNodeStatus> handler = new GenericHandler<>(node, resultRef);
-
       try {
         long startTime = System.nanoTime();
-        synchronized (resultRef) {
-          metaClient.queryNodeStatus(handler);
-          resultRef.wait(connectionTimeoutInMS);
-        }
-        TNodeStatus status = resultRef.get();
+        TNodeStatus status = SyncClientAdaptor.queryNodeStatus(metaClient);
         if (status != null) {
           long responseTime = System.nanoTime() - startTime;
           nodeStatus.setStatus(status);
@@ -109,7 +99,10 @@ public class QueryCoordinator {
         }
         logger.info("NodeStatus of {} is updated, status: {}, response time: {}", node,
             nodeStatus.getStatus(), nodeStatus.getLastResponseLatency());
-      } catch (TException | InterruptedException e) {
+      } catch (TException e) {
+        logger.error("Cannot query the node status of {}", node, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.error("Cannot query the node status of {}", node, e);
       }
     }

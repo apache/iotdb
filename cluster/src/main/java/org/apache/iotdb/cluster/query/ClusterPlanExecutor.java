@@ -19,24 +19,21 @@
 
 package org.apache.iotdb.cluster.query;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
-
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPathHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
-import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,7 +50,10 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.*;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -74,6 +74,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private static final int THREAD_POOL_SIZE = 6;
   private static final int WAIT_GET_NODES_LIST_TIME = 5;
   private static final TimeUnit WAIT_GET_NODES_LIST_TIME_UNIT = TimeUnit.MINUTES;
+  private static final String LOG_FAIL_CONNECT = "Failed to connect to node: {}";
 
   public ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
     super();
@@ -95,7 +96,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
       metaGroupMember.syncLeader();
       return processAuthorQuery((AuthorPlan) queryPlan);
     } else {
-      //TODO-Cluster: support more queries
       throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
     }
   }
@@ -124,33 +124,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
         continue;
       }
       pool.submit(() -> {
-        GetNodesListHandler handler = new GetNodesListHandler();
-        AtomicReference<List<String>> response = new AtomicReference<>(null);
-        handler.setResponse(response);
-
-        for (Node node : group) {
-          try {
-            DataClient client = metaGroupMember.getDataClient(node);
-            handler.setContact(node);
-            synchronized (response) {
-              if (client != null) {
-                client.getNodeList(header, schemaPattern, level, handler);
-                response.wait(connectionTimeoutInMS);
-              }
-            }
-            List<String> paths = response.get();
-            if (paths != null) {
-              nodeSet.addAll(paths);
-              break;
-            }
-          } catch (IOException e) {
-            logger.error("Failed to connect to node: {}", node, e);
-          } catch (TException e) {
-            logger.error("Error occurs when getting node lists in node {}.", node, e);
-          } catch (InterruptedException e) {
-            logger.error("Interrupted when getting node lists in node {}.", node, e);
-            Thread.currentThread().interrupt();
-          }
+        List<String> paths = getNodesList(group, header, schemaPattern, level);
+        if (paths != null) {
+          nodeSet.addAll(paths);
+        } else {
+          logger.error("Fail to get node list of {}@{} from {}", schemaPattern, level, group);
         }
       });
     }
@@ -158,9 +136,32 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNodeList()", e);
     }
     return new ArrayList<>(nodeSet);
+  }
+
+  private List<String> getNodesList(PartitionGroup group, Node header, String schemaPattern,
+      int level) {
+    List<String> paths = null;
+    for (Node node : group) {
+      try {
+        DataClient client = metaGroupMember.getDataClient(node);
+        paths = SyncClientAdaptor.getNodeList(client, header, schemaPattern, level);
+        if (paths != null) {
+          break;
+        }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting node lists in node {}.", node, e);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when getting node lists in node {}.", node, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    return paths;
   }
 
   @Override
@@ -177,33 +178,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
         continue;
       }
       pool.submit(() -> {
-        GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
-        AtomicReference<List<String>> response = new AtomicReference<>(null);
-        handler.setResponse(response);
-
-        for (Node node : group) {
-          try {
-            DataClient client = metaGroupMember.getDataClient(node);
-            handler.setContact(node);
-            synchronized (response) {
-              if (client != null) {
-                client.getChildNodePathInNextLevel(header, path, handler);
-                response.wait(connectionTimeoutInMS);
-              }
-            }
-            List<String> nextChildren = response.get();
-            if (nextChildren != null) {
-              resultSet.addAll(nextChildren);
-              break;
-            }
-          } catch (IOException e) {
-            logger.error("Failed to connect to node: {}", node, e);
-          } catch (TException e) {
-            logger.error("Error occurs when getting node lists in node {}.", node, e);
-          } catch (InterruptedException e) {
-            logger.error("Interrupted when getting node lists in node {}.", node, e);
-            Thread.currentThread().interrupt();
-          }
+        List<String> nextChildren = getNextChildren(group, header, path);
+        if (nextChildren != null) {
+          resultSet.addAll(nextChildren);
+        } else {
+          logger.error("Fail to get next children of {} from {}", path, group);
         }
       });
     }
@@ -211,9 +190,31 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNextChildren()", e);
     }
     return resultSet;
+  }
+
+  private List<String> getNextChildren(PartitionGroup group, Node header, String path) {
+    List<String> nextChildren = null;
+    for (Node node : group) {
+      try {
+        DataClient client = metaGroupMember.getDataClient(node);
+        nextChildren = SyncClientAdaptor.getNextChildren(client, header, path);
+        if (nextChildren != null) {
+          break;
+        }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting node lists in node {}.", node, e);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when getting node lists in node {}.", node, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    return nextChildren;
   }
 
   @Override
@@ -240,44 +241,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
         continue;
       }
       pool.submit(() -> {
-        GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
-        AtomicReference<ByteBuffer> response = new AtomicReference<>(null);
-        handler.setResponse(response);
-
-        for (Node node : group) {
-          try {
-            DataClient client = metaGroupMember.getDataClient(node);
-            handler.setContact(node);
-            synchronized (response) {
-              if (client != null) {
-                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-                plan.serialize(dataOutputStream);
-                client.getAllMeasurementSchema(node,
-                        ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
-                        handler);
-                response.wait(connectionTimeoutInMS);
-              }
-            }
-            ByteBuffer resultBinary = response.get();
-            if (resultBinary != null) {
-              int size = resultBinary.getInt();
-              for (int i = 0; i < size; i++) {
-                resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
-              }
-              break;
-            }
-          } catch (IOException e) {
-            logger.error("Failed to connect to node: {}", node, e);
-          } catch (TException e) {
-            logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
-          } catch (InterruptedException e) {
-            logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
-            Thread.currentThread().interrupt();
+        ByteBuffer resultBinary = showTimeseries(group, plan);
+        if (resultBinary != null) {
+          int size = resultBinary.getInt();
+          for (int i = 0; i < size; i++) {
+            resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
           }
-        }
-        if (response.get() == null) {
-          logger.info("Failed to get any result from group: {}.", group);
+        } else {
+          logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
         }
       });
     }
@@ -285,9 +256,32 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.warn("Unexpected interruption when waiting for getTimeseriesSchemas to finish", e);
     }
     return new ArrayList<>(resultSet);
+  }
+
+  private ByteBuffer showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan) {
+    ByteBuffer resultBinary = null;
+    for (Node node : group) {
+      try {
+        DataClient client = metaGroupMember.getDataClient(node);
+        resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
+            plan);
+        if (resultBinary != null) {
+          break;
+        }
+      } catch (IOException e) {
+        logger.error(LOG_FAIL_CONNECT, node, e);
+      } catch (TException e) {
+        logger.error("Error occurs when getting timeseries schemas in node {}.", node, e);
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when getting timeseries schemas in node {}.", node, e);
+        Thread.currentThread().interrupt();
+      }
+    }
+    return resultBinary;
   }
 
   @Override
