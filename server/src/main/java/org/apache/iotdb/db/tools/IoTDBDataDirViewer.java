@@ -100,13 +100,29 @@ public class IoTDBDataDirViewer {
     File[] files = storageGroup.listFiles();
     if (files == null) {
       throw new IOException(
-          "Irregular data dir structure.There should be tsfiles under "
+          "Irregular data dir structure.There should be timeInterval directories under "
               + "the storage group directory " + storageGroup.getName());
     }
     List<File> fileList = Arrays.asList(files);
     fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
     for (File file : files) {
       printlnBoth(pw, "|  |  |--" + file.getName());
+      printFilesInTimeInterval(file, pw);
+    }
+  }
+
+  private static void printFilesInTimeInterval(File timeInterval, PrintWriter pw)
+      throws IOException {
+    File[] files = timeInterval.listFiles();
+    if (files == null) {
+      throw new IOException(
+          "Irregular data dir structure.There should be tsfiles under "
+              + "the timeInterval directories directory " + timeInterval.getName());
+    }
+    List<File> fileList = Arrays.asList(files);
+    fileList.sort(((o1, o2) -> o1.getName().compareTo(o2.getName())));
+    for (File file : files) {
+      printlnBoth(pw, "|  |  |  |--" + file.getName());
 
       // To print the content if it is a tsfile.resource
       if (file.getName().endsWith(".tsfile.resource")) {
@@ -123,7 +139,7 @@ public class IoTDBDataDirViewer {
     SortedSet<String> keys = new TreeSet<>(resource.getStartTimeMap().keySet());
     for (String device : keys) {
       printlnBoth(pw,
-          String.format("|  |  |  |--device %s, start time %d (%s), end time %d (%s)", device,
+          String.format("|  |  |  |  |--device %s, start time %d (%s), end time %d (%s)", device,
               resource.getStartTimeMap().get(device), DatetimeUtils
                   .convertMillsecondToZonedDateTime(resource.getStartTimeMap().get(device)),
               resource.getEndTimeMap().get(device), DatetimeUtils
