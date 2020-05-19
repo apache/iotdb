@@ -123,9 +123,9 @@ struct StartUpStatus {
 
 // follower -> leader
 struct CheckStatusResponse {
- 1: required bool partitionalIntervalEquals
- 2: required bool hashSaltEquals
- 3: required bool replicationNumEquals
+  1: required bool partitionalIntervalEquals
+  2: required bool hashSaltEquals
+  3: required bool replicationNumEquals
 }
 
 struct SendSnapshotRequest {
