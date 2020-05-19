@@ -116,9 +116,9 @@ struct Node {
 
 // leader -> follower
 struct StartUpStatus {
- 1: required long partitionInterval
- 2: required int hashSalt
- 3: required int replicationNumber
+  1: required long partitionInterval
+  2: required int hashSalt
+  3: required int replicationNumber
 }
 
 // follower -> leader
