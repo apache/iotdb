@@ -77,8 +77,8 @@ TsFile 文件层的写入接口有两种
 整个方法分成三大部分：
 1. 在传感器索引层级，把 `deviceTimeseriesMetadataMap` 中的每一个设备及其 `TimeseriesMetadata` 列表，转化为 MetadataIndexNode 并放进 `deviceMetadataIndexMap` 中。具体来说，对于每一个设备：
     * 先初始化一个 MetadataIndexNode，类型为 `LEAF_MEASUREMENT`
-    * 每存储 `MAX_DEGREE_OF_INDEX_NODE` 个 entry 后，当前节点满，将这个节点加入队列，在下一次循环中处理
-    * 将 TimeseriesMetadata 对应成一个索引项 entry 放入当前索引节点中，并序列化 TimeseriesMetadata
+    * 对于每个 TimeseriesMetadata，序列化之后进行检查，**每隔** `MAX_DEGREE_OF_INDEX_NODE` **个**加一条 entry 到节点中
+    * 每攒够 `MAX_DEGREE_OF_INDEX_NODE` 个 entry，当前节点满，将这个节点加入队列，在下一次循环中处理；并开始攒新的节点
     * 根据队列生成当前设备在传感器索引层级最终的根节点（此方法解析见下），并将设备-根节点对应的映射加入 `deviceMetadataIndexMap` 中
 
 2. 接下来，判断设备数是否超过 `MAX_DEGREE_OF_INDEX_NODE`，如果未超过则可以直接形成元数据索引树的根节点并返回
@@ -89,7 +89,7 @@ TsFile 文件层的写入接口有两种
 3. 如果设备数超过 `MAX_DEGREE_OF_INDEX_NODE`，则需要形成元数据索引树的设备索引层级
     * 先初始化一个 MetadataIndexNode，类型为 `LEAF_DEVICE`
     * 对于 `deviceMetadataIndexMap` 中的每一个 entry，将其对应成一个索引项放入当前索引节点中，并序列化这个 entry
-    * 每当这个节点满，需要将其加入队列，在下一次循环中处理
+    * 每攒够 `MAX_DEGREE_OF_INDEX_NODE` 个 entry，当前节点满，需要将其加入队列，在下一次循环中处理；并开始攒新的节点
     * 根据队列生成当前设备在传感器索引层级最终的根节点（此方法解析见下）
     * 设置根节点的 `endOffset` 并返回
 
@@ -103,7 +103,7 @@ TsFile 文件层的写入接口有两种
 该方法需要将队列中的 MetadataIndexNode 形成树级结构，并返回根节点：
 1. 根据需要的类型 `type` 初始化 `currentIndexNode`
 2. 循环处理队列，队列中存在的每个节点，对应一个索引项 entry，将 entry 加入当前节点 `currentIndexNode` 中，并序列化这个节点
-3. 每存储 `MAX_DEGREE_OF_INDEX_NODE` 个 entry 后，当前节点满，将这个节点加入队列，在下一次循环中处理
+3. 每存储 `MAX_DEGREE_OF_INDEX_NODE` 个 entry 后，当前节点满，将这个节点加入队列，在下一次循环中处理；并开始攒新的节点
 4. 直到队列中只有一个节点时结束循环，返回队列中最终剩余的根节点
 
 ### MetadataIndexConstructor.addCurrentIndexNodeToQueue
