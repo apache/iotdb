@@ -106,6 +106,13 @@ var config = {
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
 				  },
+				{
+					text: 'Blog',
+					items: [
+						{ text: 'Overview', link: '/Blog/Index'},
+						{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
+					]
+				},
 				  {
 					text: 'ASF',
 					items: [
@@ -352,7 +359,7 @@ var config = {
 						children: [
 							['5-Operation Manual/1-DDL Data Definition Language','DDL (Data Definition Language)'],
 							['5-Operation Manual/2-DML Data Manipulation Language','DML (Data Manipulation Language)'],
-							['5-Operation Manual/3-Account Management Statements','Account Management Statements'],
+							['5-Operation Manual/3-Administration','Administration'],
 							['5-Operation Manual/4-SQL Reference','SQL Reference']
 						]
 					},
@@ -767,7 +774,7 @@ var config = {
 						children: [
 							['5-Operation Manual/1-DDL Data Definition Language','DDL (数据定义语言)'],
 							['5-Operation Manual/2-DML Data Manipulation Language','DML (数据操作语言)'],
-							['5-Operation Manual/3-Account Management Statements','账户管理语句'],
+							['5-Operation Manual/3-Administration','权限管理语句'],
 							['5-Operation Manual/4-SQL Reference','SQL 参考文档']
 						]
 					},

@@ -39,6 +39,7 @@ statement
     | MERGE #merge
     | FLUSH prefixPath? (COMMA prefixPath)* (ID)?#flush //ID is true or false
     | FULL MERGE #fullMerge
+    | CLEAR CACHE #clearcache
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
@@ -72,7 +73,7 @@ statement
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
-    | COUNT TIMESERIES prefixPath (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION #loadConfigurationStatement
     | LOAD FILE autoCreateSchema? #loadFiles
@@ -821,6 +822,14 @@ RENAME
 
 FULL
     : F U L L
+    ;
+
+CLEAR
+    : C L E A R
+    ;
+
+CACHE
+    : C A C H E
     ;
 //============================
 // End of the keywords list

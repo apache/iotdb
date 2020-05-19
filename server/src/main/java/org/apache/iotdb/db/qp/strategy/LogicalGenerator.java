@@ -76,8 +76,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
     } else {
-      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
-          parsePrefixPath(ctx.prefixPath()));
+      if(ctx.prefixPath() != null) {
+        initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
+            parsePrefixPath(ctx.prefixPath()));
+      } else {
+        initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
+            new Path(SQLConstant.ROOT));
+      }
     }
   }
 
@@ -114,6 +119,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterFullMerge(FullMergeContext ctx) {
     super.enterFullMerge(ctx);
     initializedOperator = new MergeOperator(SQLConstant.TOK_FULL_MERGE);
+  }
+
+  @Override
+  public void enterClearcache(SqlBaseParser.ClearcacheContext ctx) {
+    super.enterClearcache(ctx);
+    initializedOperator = new ClearCacheOperator(SQLConstant.TOK_CLEAR_CACHE);
   }
 
   @Override

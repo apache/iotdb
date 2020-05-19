@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.conf;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MLogWriter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -26,16 +27,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.file.Files;
 import java.util.Properties;
 
 public class IoTDBConfigCheck {
 
-  // this file is located in data/system/schema/system_properties.
-  // If user delete folder "data", system_properties can reset.
+  // this file is located in data/system/schema/system.properties
+  // If user delete folder "data", system.properties can reset.
   public static final String PROPERTIES_FILE_NAME = "system.properties";
   public static final String SCHEMA_DIR =
           IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
-  private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   // this is a initial parameter.
   private static String timestampPrecision = "ms";
@@ -44,8 +45,8 @@ public class IoTDBConfigCheck {
   private static String iotdbVersion = "0.10.0";
   private Properties properties = new Properties();
 
-  public static final IoTDBConfigCheck getInstance() {
-    return IoTDBConfigCheck.INSTANCE;
+  public static IoTDBConfigCheck getInstance() {
+    return IoTDBConfigCheckHolder.INSTANCE;
   }
 
   public void checkConfig() {
@@ -84,12 +85,13 @@ public class IoTDBConfigCheck {
   }
 
   private void checkFile(String filepath) {
-    // create file : read timestamp precision from engine.properties, create system_properties.txt
+    // create file : read timestamp precision from engine.properties, create system.properties
     // use output stream to write timestamp precision to file.
     File file = SystemFileFactory.INSTANCE
             .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
+    File tmpPropertiesFile = new File(file.getAbsoluteFile() + ".tmp");
     try {
-      if (!file.exists()) {
+      if (!file.exists() && !tmpPropertiesFile.exists()) {
         file.createNewFile();
         logger.info(" {} has been created.", file.getAbsolutePath());
         try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
@@ -99,47 +101,101 @@ public class IoTDBConfigCheck {
           properties.setProperty("iotdb_version", iotdbVersion);
           properties.store(outputStream, "System properties:");
         }
+        return;
+      }
+      else if (!file.exists() && tmpPropertiesFile.exists()) {
+        // rename upgraded system.properties.tmp to system.properties
+        FileUtils.moveFile(tmpPropertiesFile, file);
+        logger.info(" {} has been upgraded.", file.getAbsolutePath());
+        checkProperties();
+        return;
       }
     } catch (IOException e) {
       logger.error("Can not create {}.", file.getAbsolutePath(), e);
     }
+    
     // get existed properties from system_properties.txt
     File inputFile = SystemFileFactory.INSTANCE
             .getFile(filepath + File.separator + PROPERTIES_FILE_NAME);
     try (FileInputStream inputStream = new FileInputStream(inputFile.toString())) {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
-      if (!properties.getProperty("timestamp_precision").equals(timestampPrecision)) {
-        logger.error("Wrong timestamp precision, please set as: " + properties
-                .getProperty("timestamp_precision") + " !");
-        System.exit(-1);
-      }
-      if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
-              == partitionInterval)) {
-        logger.error("Wrong storage group time range, please set as: " + properties
-                .getProperty("storage_group_time_range") + " !");
-        System.exit(-1);
-      }
-      if (!(properties.getProperty("tsfile_storage_fs").equals(tsfileFileSystem))) {
-        logger.error("Wrong tsfile file system, please set as: " + properties
-            .getProperty("tsfile_storage_fs") + " !");
-        System.exit(-1);
-      }
-      if (properties.getProperty("iotdb_version") == null) {
-        logger.info("Lower iotdb version detected, upgrading old mlog file... ");
-        MLogWriter.upgradeMLog(IoTDBDescriptor.getInstance().getConfig().getSchemaDir(), 
-            MetadataConstant.METADATA_LOG);
-        logger.info("Old mlog file is upgraded.");
-        try (FileOutputStream outputStream = new FileOutputStream(file.toString())) {
-          properties.setProperty("timestamp_precision", timestampPrecision);
-          properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
-          properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
-          properties.setProperty("iotdb_version", iotdbVersion);
-          properties.store(outputStream, "System properties:");
-        }
+      // need to upgrade
+      if (!properties.containsKey("iotdb_version")) {
+        upgradeMlog();
+      } else {
+        checkProperties();
+        return;
       }
     } catch (IOException e) {
       logger.error("Load system.properties from {} failed.", file.getAbsolutePath(), e);
     }
+
+    // if tmpPropertiesFile exists, remove it
+    if (tmpPropertiesFile.exists()) {
+      try {
+        Files.delete(tmpPropertiesFile.toPath());
+      } catch (IOException e) {
+        logger.error("Fail to remove broken file {}", tmpPropertiesFile);
+      }
+    }
+    // create an empty tmpPropertiesFile
+    try {
+      if (tmpPropertiesFile.createNewFile()) {
+        logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+      }
+    } catch (IOException e) {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile, e);
+    }
+    // try to add the storage_group_time_range, tsfile_storage_fs 
+    // and iotdb_version property in system.properties.tmp
+    try (FileOutputStream outputStream = new FileOutputStream(tmpPropertiesFile.toString())) {
+      properties.setProperty("storage_group_time_range", String.valueOf(partitionInterval));
+      properties.setProperty("tsfile_storage_fs", tsfileFileSystem);
+      properties.setProperty("iotdb_version", iotdbVersion);
+      properties.store(outputStream, "System properties:");
+      checkProperties();
+      // upgrade finished, delete old system.properties file
+      if (file.exists()) {
+        Files.delete(file.toPath());
+      }
+      // rename system.properties.tmp to system.properties
+      FileUtils.moveFile(tmpPropertiesFile, file);
+    }  catch (IOException e) {
+      logger.error("Something went wrong while upgrading teh system.properties. The file is {}.", file.getAbsolutePath(), e);
+    }
+
+  }
+
+  private void checkProperties() {
+    if (!properties.getProperty("timestamp_precision").equals(timestampPrecision)) {
+      logger.error("Wrong timestamp precision, please set as: " + properties
+              .getProperty("timestamp_precision") + " !");
+      System.exit(-1);
+    }
+    if (!(Long.parseLong(properties.getProperty("storage_group_time_range"))
+            == partitionInterval)) {
+      logger.error("Wrong storage group time range, please set as: " + properties
+              .getProperty("storage_group_time_range") + " !");
+      System.exit(-1);
+    }
+    if (!(properties.getProperty("tsfile_storage_fs").equals(tsfileFileSystem))) {
+      logger.error("Wrong tsfile file system, please set as: " + properties
+              .getProperty("tsfile_storage_fs") + " !");
+      System.exit(-1);
+    }
+  }
+
+  private void upgradeMlog() {
+    try {
+      MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
+    } catch (IOException e) {
+      logger.error("Upgrade mlog.txt from {} failed.", SCHEMA_DIR, e);
+    }
+  }
+
+  private static class IoTDBConfigCheckHolder {
+
+    private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   }
 }
 

@@ -327,9 +327,38 @@ public class SessionExample {
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024); // default is 512
     while (iterator.next()) {
-      System.out.println(String.format("%s,%s,%s,%s,%s", iterator.getLong(1), iterator.getLong(2),
-          iterator.getLong("root.sg1.d1.s2"), iterator.getLong(4),
-          iterator.getObject("root.sg1.d1.s4")));
+      StringBuilder builder = new StringBuilder();
+      // get time
+      builder.append(iterator.getLong(1)).append(",");
+      // get second column
+      if (!iterator.isNull(2)) {
+        builder.append(iterator.getLong(2)).append(",");
+      } else {
+        builder.append("null").append(",");
+      }
+
+      // get third column
+      if (!iterator.isNull("root.sg1.d1.s2")) {
+        builder.append(iterator.getLong("root.sg1.d1.s2")).append(",");
+      } else {
+        builder.append("null").append(",");
+      }
+
+      // get forth column
+      if (!iterator.isNull(4)) {
+        builder.append(iterator.getLong(4)).append(",");
+      } else {
+        builder.append("null").append(",");
+      }
+
+      // get fifth column
+      if (!iterator.isNull("root.sg1.d1.s4")) {
+        builder.append(iterator.getObject("root.sg1.d1.s4"));
+      } else {
+        builder.append("null");
+      }
+
+      System.out.println(builder.toString());
     }
 
     dataSet.closeOperationHandle();
