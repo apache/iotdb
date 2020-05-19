@@ -372,12 +372,12 @@ service TSMetaService extends RaftService {
   **/
   long removeNode(1: Node node)
 
-   /**
-   * When a node is removed from the cluster, if it is not the meta leader, it cannot receive
-   * the commit command by heartbeat since it has been removed, so the leader should tell it
-   * directly that it is no longer in the cluster.
-   **/
-   void exile()
+  /**
+  * When a node is removed from the cluster, if it is not the meta leader, it cannot receive
+  * the commit command by heartbeat since it has been removed, so the leader should tell it
+  * directly that it is no longer in the cluster.
+  **/
+  void exile()
 
   TNodeStatus queryNodeStatus()
 
