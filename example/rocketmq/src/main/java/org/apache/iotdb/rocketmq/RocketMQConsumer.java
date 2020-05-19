@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.rocketmq;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -89,8 +90,37 @@ public class RocketMQConsumer {
     String device = dataArray[0];
     long time = Long.parseLong(dataArray[1]);
     List<String> measurements = Arrays.asList(dataArray[2].split(":"));
-    List<String> values = Arrays.asList(dataArray[3].split(":"));
-    session.insertRecord(device, time, measurements, values);
+    List<TSDataType> types = new ArrayList<>();
+    for(String type : dataArray[3].split(":")){
+      types.add(TSDataType.valueOf(type));
+    }
+
+    List<Object> values = new ArrayList<>();
+    String[] valuesStr = dataArray[4].split(":");
+    for(int i = 0; i < valuesStr.length; i++){
+      switch (types.get(i)){
+        case INT64:
+          values.add(Long.parseLong(valuesStr[i]));
+          break;
+        case DOUBLE:
+          values.add(Double.parseDouble(valuesStr[i]));
+          break;
+        case INT32:
+          values.add(Integer.parseInt(valuesStr[i]));
+          break;
+        case TEXT:
+          values.add(valuesStr[i]);
+          break;
+        case FLOAT:
+          values.add(Float.parseFloat(valuesStr[i]));
+          break;
+        case BOOLEAN:
+          values.add(Boolean.parseBoolean(valuesStr[i]));
+          break;
+      }
+    }
+
+    session.insertRecord(device, time, measurements, types, values);
   }
 
   public void start() throws MQClientException {
