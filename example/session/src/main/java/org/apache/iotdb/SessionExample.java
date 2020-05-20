@@ -209,16 +209,6 @@ public class SessionExample {
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
   /**
-<<<<<<< HEAD
-   * insert a batch data of one device, each batch contains multiple timestamps with values of
-   * sensors
-   * <p>
-   * a RowBatch example:
-   * <p>
-   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
-   * <p>
-   * Users need to control the count of RowBatch and write a batch when it reaches the maxBatchSize
-=======
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
    * a Tablet example:
@@ -230,7 +220,6 @@ public class SessionExample {
    * 3,   3,  3,  3
    *
    * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
->>>>>>> 73dd5eb6e44e2194b650eea72aabcfaf929e5bdc
    */
   private static void insertTablet() throws IoTDBConnectionException, BatchExecutionException {
     // The schema of sensors of one device

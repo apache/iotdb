@@ -239,7 +239,11 @@ public class Session {
    * <p>
    * a Tablet example:
    * <p>
-   * device1 time s1, s2, s3 1,   1,  1,  1 2,   2,  2,  2 3,   3,  3,  3
+   *              device1
+   *          time s1, s2, s3
+   *          1,   1,  1,  1
+   *          2,   2,  2,  2
+   *          3,   3,  3,  3
    * <p>
    * times in Tablet may be not in ascending order
    *
@@ -464,7 +468,9 @@ public class Session {
           ReadWriteIOUtils.write((Double) values.get(i), buffer);
           break;
         case TEXT:
-          ReadWriteIOUtils.write(new Binary((String) values.get(i)), buffer);
+          byte[] bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
+          ReadWriteIOUtils.write(bytes.length, buffer);
+          buffer.put(bytes);
           break;
         default:
           throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));

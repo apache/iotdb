@@ -305,7 +305,7 @@ public class InsertPlan extends PhysicalPlan {
     this.types = types;
   }
 
-  public void getValues(ByteBuffer buffer) throws QueryProcessException {
+  public void setValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < measurements.length; i++) {
       types[i] = ReadWriteIOUtils.readDataType(buffer);
       switch (types[i]) {
@@ -369,7 +369,7 @@ public class InsertPlan extends PhysicalPlan {
     this.types = new TSDataType[measurementSize];
     this.values = new Object[measurementSize];
     try {
-      getValues(buffer);
+      setValues(buffer);
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
