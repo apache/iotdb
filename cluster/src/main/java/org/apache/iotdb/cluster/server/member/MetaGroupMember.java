@@ -346,7 +346,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         allNodes.add(node);
       }
     }
-    startUpStatus.setSeedNodeList(allNodes);
   }
 
   /**
@@ -579,7 +578,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private boolean joinCluster(Node node, StartUpStatus startUpStatus)
       throws TException, InterruptedException {
-
 
     MetaClient client = (MetaClient) connectNode(node);
     AddNodeResponse resp = SyncClientAdaptor.addNode(client, thisNode, startUpStatus);
@@ -943,7 +941,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       seedNodeEquals = false;
       if (logger.isInfoEnabled()) {
         logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
-            Arrays.toString(allNodes.toArray(new Node[0])), remoteReplicationNum);
+            Arrays.toString(allNodes.toArray(new Node[0])), remoteSeedNodeList);
       }
     }
     if (!(partitionIntervalEquals && hashSaltEquals && replicationNumEquals && seedNodeEquals)) {
@@ -992,6 +990,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     while (i < seedNodeList.size() && j < subSeedNodeList.size()) {
       int compareResult = compareSeedNode(seedNodeList.get(i), subSeedNodeList.get(j));
       if (compareResult > 0) {
+        if (logger.isInfoEnabled()) {
+          logger.info("Node {} not found in cluster", subSeedNodeList.get(j));
+        }
         return false;
       } else if (compareResult < 0) {
         i++;
