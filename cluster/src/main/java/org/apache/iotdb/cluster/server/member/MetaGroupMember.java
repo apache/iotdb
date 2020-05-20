@@ -140,6 +140,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -408,7 +409,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   private void examineCheckStatusResponse(CheckStatusResponse response,
-      AtomicInteger consistentNum,  AtomicInteger inconsistentNum) {
+      AtomicInteger consistentNum, AtomicInteger inconsistentNum) {
     boolean partitionIntervalEquals = response.partitionalIntervalEquals;
     boolean hashSaltEquals = response.hashSaltEquals;
     boolean replicationNumEquals = response.replicationNumEquals;
@@ -579,7 +580,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private boolean joinCluster(Node node, StartUpStatus startUpStatus)
       throws TException, InterruptedException {
-
 
     MetaClient client = (MetaClient) connectNode(node);
     AddNodeResponse resp = SyncClientAdaptor.addNode(client, thisNode, startUpStatus);
@@ -1388,11 +1388,23 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
+  public TSStatus validatePlan(PhysicalPlan plan) {
+    TSStatus result = StatusUtils.OK;
+    if(plan instanceof SetStorageGroupPlan){
+      String path = ((SetStorageGroupPlan) plan).getPath().getFullPath();
+      if(getAllStorageGroupNames().contains(path)){
+        result = StatusUtils.PATH_ALREADY_EXIST_ERROR;
+      }
+    }
+    // TODO add more pre-validations
+    return result;
+  }
+
   /**
-   * A non-partitioned plan (like storage group creation) should be executed on all meta group
-   * nodes, so the MetaLeader should take the responsible to make sure that every node receives the
-   * plan. Thus the plan will be processed locally only by the MetaLeader and forwarded by
-   * non-leader nodes.
+   * A non-partitioned plan (like storage group creation) should be executed on all metagroup nodes,
+   * so the MetaLeader should take the responsible to make sure that every node receives the plan.
+   * Thus the plan will be processed locally only by the MetaLeader and forwarded by non-leader
+   * nodes.
    *
    * @param plan
    * @return

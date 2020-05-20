@@ -24,6 +24,8 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class StatusUtils {
 
+
+
   private StatusUtils() {
     // util class
   }
@@ -39,6 +41,7 @@ public class StatusUtils {
           getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
   public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
+  public static final TSStatus PATH_ALREADY_EXIST_ERROR = getStatus(TSStatusCode.PATH_ALREADY_EXIST_ERROR);
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
     TSStatus status = new TSStatus();
