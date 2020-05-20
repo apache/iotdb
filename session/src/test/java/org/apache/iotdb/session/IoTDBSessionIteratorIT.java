@@ -24,6 +24,7 @@ import static org.junit.Assert.fail;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.cache.LastCacheManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -96,6 +97,7 @@ public class IoTDBSessionIteratorIT {
     };
 
     try {
+      LastCacheManager.getInstance().clear();
       SessionDataSet sessionDataSet = session.executeQueryStatement("select last * from root.sg1");
       sessionDataSet.setFetchSize(1024);
       DataIterator iterator = sessionDataSet.iterator();
