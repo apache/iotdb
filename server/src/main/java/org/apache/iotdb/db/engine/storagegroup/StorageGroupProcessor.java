@@ -530,6 +530,8 @@ public class StorageGroupProcessor {
         workSequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
+        tsFileResource.endTimeMap.clear();
+        tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
@@ -564,6 +566,7 @@ public class StorageGroupProcessor {
         workUnsequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
+        tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
