@@ -148,12 +148,16 @@ public class StorageEngine implements IService {
     List<Future> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
-        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
-            storageGroup.getFullPath(), fileFlushPolicy);
-        processor.setDataTTL(storageGroup.getDataTTL());
-        processorMap.put(storageGroup.getFullPath(), processor);
-        logger.info("Storage Group Processor {} is recovered successfully",
-            storageGroup.getFullPath());
+        try {
+          StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
+              storageGroup.getFullPath(), fileFlushPolicy);
+          processor.setDataTTL(storageGroup.getDataTTL());
+          processorMap.put(storageGroup.getFullPath(), processor);
+          logger.info("Storage Group Processor {} is recovered successfully",
+              storageGroup.getFullPath());
+        } catch (Exception e) {
+          logger.error("meet error when recovering storage group: {}", storageGroup, e);
+        }
         return null;
       }));
     }
