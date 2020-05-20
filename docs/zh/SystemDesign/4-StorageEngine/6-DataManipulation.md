@@ -45,9 +45,9 @@
 ### 批量数据（一个设备多个时间戳多个值）写入
 
 * 对应的接口
-	* Session 的 insertBatch
+	* Session 的 insertTablet
 
-* 总入口: public Integer[] insertBatch(BatchInsertPlan batchInsertPlan)  StorageEngine.java
+* 总入口: public Integer[] insertTablet(InsertTabletPlan insertTabletPlan)  StorageEngine.java
     * 找到对应的 StorageGroupProcessor
 	* 根据这批数据的时间以及当前设备落盘的最后时间戳，将这批数据分成小批，分别对应到一个 TsFileProcessor 中
 	* 记录写前日志

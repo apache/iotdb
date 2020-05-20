@@ -31,9 +31,9 @@
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579014-695ef980-1efa-11e9-8cbc-e9e7ee4fa0d8.png">
 
-在场景1中，仅需要TsFile、TsFileSync部署在一台PC上，此外还需要Hadoop/Spark集群。其示意图如图1.2所示。图1.3展示了此时的应用架构。
+在场景1中，仅需要TsFile、TsFileSync部署在一台PC上，此外还需要部署Hadoop/Spark连接器用于数据中心端Hadoop/Spark集群的数据存储和分析。其示意图如图1.2所示。图1.3展示了此时的应用架构。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579026-77ad1580-1efa-11e9-8345-564b22d70286.jpg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/25913899/81768490-bf034f00-950d-11ea-9b56-fef3edca0958.png">
 
 ## 场景2
 
@@ -41,7 +41,7 @@
 
 为了保证发电机的正常运转并对发电机及时监控和分析，公司需要收集这些传感器信息，在发电机工作环境中进行部分计算和分析，还需要将收集的原始信息上传到数据中心。
 
-此时可以采用IoTDB套件中的IoTDB、TsFileSync工具和Hadoop/Spark集成组件等。需要部署一个场控PC机，其上安装IoTDB和TsFileSync工具，用于支持读写数据、本地计算和分析以及上传数据到数据中心。此外还需要部署Hadoop/Spark集群用于数据中心端的数据存储和分析。如图1.4所示。
+此时可以采用IoTDB套件中的IoTDB、TsFileSync工具和Hadoop/Spark集成组件等。需要部署一个场控PC机，其上安装IoTDB和TsFileSync工具，用于支持读写数据、本地计算和分析以及上传数据到数据中心。此外还需要部署Hadoop/Spark连接器用于数据中心端Hadoop/Spark集群的数据存储和分析。如图1.4所示。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579033-7ed42380-1efa-11e9-889f-fb4180291a9e.png">
 
@@ -55,13 +55,13 @@
 
 为了保证机械手的监控数据能够及时监控和分析，公司需要收集这些机械手传感器信息，将其发送至可以连接外部网络的服务器上，而后将原始数据信息上传到数据中心进行复杂的计算和分析。
 
-此时，可以采用IoTDB套件中的IoTDB、IoTDB-Client工具、TsFileSync工具和Hadoop/Spark集成组件等。将IoTDB服务器安装在工厂连接外网的服务器上，用户接收机械手传输的数据并将数据上传到数据中心。将IoTDB-Client工具安装在每一个连接工厂内网的机械手上，用于将传感器产生的实时数据上传到工厂内部服务器。再使用TsFileSync工具将原始数据上传到数据中心。此外还需要部署Hadoop/Spark集群用于数据中心端的数据存储和分析。如图1.6中间场景所示。
+此时，可以采用IoTDB套件中的IoTDB、IoTDB-Client工具、TsFileSync工具和Hadoop/Spark集成组件等。将IoTDB服务器安装在工厂连接外网的服务器上，用户接收机械手传输的数据并将数据上传到数据中心。将IoTDB-Client工具安装在每一个连接工厂内网的机械手上，用于将传感器产生的实时数据上传到工厂内部服务器。再使用TsFileSync工具将原始数据上传到数据中心。此外还需要部署Hadoop/Spark连接器用于数据中心端Hadoop/Spark集群的数据存储和分析。如图1.6中间场景所示。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579080-96aba780-1efa-11e9-87ac-940c45b19dd7.jpg">
 
 图1.7给出了此时的应用架构。
 
-<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51579085-9dd2b580-1efa-11e9-97b9-f56bc8d342b0.jpg">
+<img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/25913899/81768477-b874d780-950d-11ea-80ca-8807b9bd0970.png">
 
 ## 场景4
 

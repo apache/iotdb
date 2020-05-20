@@ -35,6 +35,8 @@ public class DoubleStatistics extends Statistics<Double> {
   private double lastValue;
   private double sumValue;
 
+  private static final int DOUBLE_STATISTICS_FIXED_RAM_SIZE = 80;
+
   @Override
   public TSDataType getType() {
     return TSDataType.DOUBLE;
@@ -54,7 +56,7 @@ public class DoubleStatistics extends Statistics<Double> {
    * @param last  the last value
    * @param sum   sum value
    */
-  private void initializeStats(double min, double max, double first, double last, double sum) {
+  public void initializeStats(double min, double max, double first, double last, double sum) {
     this.minValue = min;
     this.maxValue = max;
     this.firstValue = first;
@@ -113,6 +115,11 @@ public class DoubleStatistics extends Statistics<Double> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return DOUBLE_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override

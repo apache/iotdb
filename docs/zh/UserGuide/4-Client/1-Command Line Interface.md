@@ -109,11 +109,20 @@ Windows系统启动命令如下：
 
 针对cli/Shell工具的-e参数用法如下：
 
+Linux系统与MacOS指令:
+
 ```
   Shell > sbin/start-cli.sh -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
 ```
 
-为了更好的解释-e参数的使用，可以参考下面的例子。
+Windows系统指令
+```
+  Shell > sbin\start-cli.bat -h {host} -p {port} -u {user} -pw {password} -e {sql for iotdb}
+```
+
+在Windows环境下，-e参数的SQL语句需要使用` `` `对于`" "`进行替换
+
+为了更好的解释-e参数的使用，可以参考下面在Linux上执行的例子。
 
 假设用户希望对一个新启动的IoTDB进行如下操作：
 

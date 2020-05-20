@@ -44,7 +44,7 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
   }
 
   @Override
-  public List<ChunkMetadata> loadChunkMetadataList() throws IOException {
+  public List<ChunkMetadata> loadChunkMetadataList() {
     List<ChunkMetadata> chunkMetadataList = resource.getChunkMetadataList();
 
     DiskChunkMetadataLoader.setDiskChunkLoader(chunkMetadataList, resource, seriesPath, context);
@@ -64,5 +64,10 @@ public class MemChunkMetadataLoader implements IChunkMetadataLoader {
             .satisfyStartEndTime(chunkMetaData.getStartTime(), chunkMetaData.getEndTime()))
             || chunkMetaData.getStartTime() > chunkMetaData.getEndTime());
     return chunkMetadataList;
+  }
+
+  @Override
+  public void setDiskChunkLoader(List<ChunkMetadata> chunkMetadataList) throws IOException {
+    // DO NOTHING
   }
 }

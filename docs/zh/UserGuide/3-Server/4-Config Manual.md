@@ -112,6 +112,15 @@
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
+* max\_degree\_of\_index\_node
+
+|名字| max\_degree\_of\_index\_node |
+|:---:|:---|
+|描述|元数据索引树的最大度（即每个节点的最大子节点个数）|
+|类型|Int32|
+|默认值| 1024 |
+|改后生效方式|触发生效|
+
 * max\_string\_length
 
 |名字| max\_string\_length |

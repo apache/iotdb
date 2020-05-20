@@ -141,6 +141,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 1048576 |
 |Effective|Trigger|
 
+* max\_degree\_of\_index\_node
+
+|Name| max\_degree\_of\_index\_node |
+|:---:|:---|
+|Description|The maximum degree of the metadata index tree (that is, the max number of each node's children)|
+|Type|Int32|
+|Default| 1024 |
+|Effective|Trigger|
+
 * max\_string\_length
 
 |Name| max\_string\_length |
@@ -273,13 +282,13 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Effective|Should not be changed after first start up|
 
 
-* memtable\_num\_in\_each\_storage\_group
+* concurrent\_writing\_time\_partition
 
-|Name| memtable\_num\_in\_each\_storage\_group |
+|Name| concurrent\_writing\_time\_partition |
 |:---:|:---|
-|Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 3 different days, you should set this param >= 6 (for sequence and unsequence) |
+|Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|Int32|
-|Default| 10 |
+|Default| 5 |
 |Effective|After restart system|
 
 * multi\_dir\_strategy
