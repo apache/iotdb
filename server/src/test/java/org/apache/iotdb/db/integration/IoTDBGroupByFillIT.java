@@ -29,6 +29,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.cache.LastCacheManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -316,6 +317,7 @@ public class IoTDBGroupByFillIT {
     try (Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
+      LastCacheManager.getInstance().clear();
       boolean hasResultSet = statement.execute(
               "select last_value(temperature) from "
                       + "root.ln.wf01.wt01 "
@@ -346,6 +348,7 @@ public class IoTDBGroupByFillIT {
     try (Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
+      LastCacheManager.getInstance().clear();
       statement.execute(
               "select count(temperature) from "
                       + "root.ln.wf01.wt01 "
@@ -378,6 +381,7 @@ public class IoTDBGroupByFillIT {
     try (Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
+      LastCacheManager.getInstance().clear();
       boolean hasResultSet = statement.execute(
               "select last_value(temperature) from "
                       + "root.ln.wf01.wt01 "
@@ -420,6 +424,7 @@ public class IoTDBGroupByFillIT {
     try (Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
+      LastCacheManager.getInstance().clear();
       boolean hasResultSet = statement.execute(
               "select last_value(temperature), last_value(hardware) from "
                       + "root.ln.wf01.wt01 "
@@ -460,6 +465,7 @@ public class IoTDBGroupByFillIT {
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      LastCacheManager.getInstance().clear();
       boolean hasResultSet = statement.execute(
           "select last_value(temperature) from "
               + "root.ln.wf01.wt01 "
@@ -502,6 +508,7 @@ public class IoTDBGroupByFillIT {
     try (Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
+      LastCacheManager.getInstance().clear();
       boolean hasResultSet = statement.execute(
               "select last_value(temperature) from "
                       + "root.ln.wf01.wt01 "
@@ -545,6 +552,7 @@ public class IoTDBGroupByFillIT {
     try (Connection connection = DriverManager.
             getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
+      LastCacheManager.getInstance().clear();
       boolean hasResultSet = statement.execute(
               "select last_value(temperature), last_value(hardware) from "
                       + "root.ln.wf01.wt01 "

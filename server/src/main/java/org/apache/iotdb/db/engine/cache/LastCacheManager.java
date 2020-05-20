@@ -70,6 +70,10 @@ public class LastCacheManager {
     }
   }
 
+  public void clear() {
+    this.storageGroupMap.clear();
+  }
+
   private static class SingletonClassInstance{
     private static final LastCacheManager instance = new LastCacheManager();
   }

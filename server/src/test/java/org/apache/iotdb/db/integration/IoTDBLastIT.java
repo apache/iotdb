@@ -116,6 +116,7 @@ public class IoTDBLastIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
+      LastCacheManager.getInstance().clear();
       boolean hasResultSet = statement.execute(
               "select last temperature,status,id from root.ln.wf01.wt01");
 
@@ -191,6 +192,7 @@ public class IoTDBLastIT {
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
+      LastCacheManager.getInstance().clear();
       String temperaturePath = "root.ln.wf01.wt02.temperature";
       LastCacheManager.getInstance().clearCache(temperaturePath);
       boolean hasResultSet =
@@ -236,7 +238,6 @@ public class IoTDBLastIT {
         new String[] {
             "300,root.ln.wf01.wt03.temperature,23.1",
         };
-
 
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
