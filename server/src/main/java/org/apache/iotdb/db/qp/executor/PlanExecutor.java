@@ -269,8 +269,6 @@ public class PlanExecutor implements IPlanExecutor {
     ChunkCache.getInstance().clear();
     ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    // try to notify the jvm to release the memory footprint
-    System.gc();
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -323,10 +321,9 @@ public class PlanExecutor implements IPlanExecutor {
     return queryDataSet;
   }
 
-  @SuppressWarnings("unused")
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
       QueryContext context, IQueryRouter router) {
-    return new AlignByDeviceDataSet(plan, context, queryRouter);
+    return new AlignByDeviceDataSet(plan, context, router);
   }
 
   protected QueryDataSet processShowQuery(ShowPlan showPlan)

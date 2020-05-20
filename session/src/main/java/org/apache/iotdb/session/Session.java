@@ -78,7 +78,7 @@ public class Session {
   private long statementId;
   private int fetchSize;
   private int connectionTimeoutInMs = Config.DEFAULT_TIMEOUT_MS;
-  private boolean enableRPCCompression = false;
+  private boolean enableRPCCompression = true;
   private final int RETRY_NUM = 2;
   private final int RETRY_INTERVAL = 1000;
 
