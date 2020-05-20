@@ -302,7 +302,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public ByteBuffer serialize() {
-    //thisNode is not need to serialized;
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream(4096);
     DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
@@ -334,7 +333,6 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    //thisNode is not need to deserialized;
 
     logger.info("Initializing the partition table from buffer");
     totalSlotNumbers = buffer.getInt();
@@ -488,6 +486,7 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public List<PartitionGroup> getGlobalGroups() {
+    // TODO-Cluster: cache the AllGroups in PartitionTable?
     List<PartitionGroup> allGroups = new ArrayList<>();
     for (Node n : getAllNodes()) {
       allGroups.add(getHeaderGroup(n));

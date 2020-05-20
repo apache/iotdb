@@ -20,19 +20,23 @@
 package org.apache.iotdb.cluster.client.sync;
 
 import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+import static org.apache.iotdb.cluster.server.RaftServer.queryTimeOutInSec;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.xml.crypto.Data;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
+import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
+import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
@@ -56,7 +60,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 
 /**
- * SyncClientAdaptor convert the async of AsyncClient method call to a sync one.
+ * SyncClientAdaptor convert the async of AsyncClient method call to a sync one by synchronizing
+ * on an AtomicReference of the return value of an RPC, and wait for at most
+ * connectionTimeoutInMS until the reference is set by the handler or the request timeouts.
  */
 @SuppressWarnings("java:S2274") // enable timeout
 public class SyncClientAdaptor {
@@ -198,7 +204,7 @@ public class SyncClientAdaptor {
     handler.setContact(client.getNode());
     synchronized (response) {
       client.addNode(thisNode, startUpStatus, handler);
-      response.wait(60 * 1000);
+      response.wait(60 * 1000L);
     }
     return response.get();
   }
@@ -212,5 +218,63 @@ public class SyncClientAdaptor {
       timeseriesSchemas.wait(connectionTimeoutInMS);
     }
     return timeseriesSchemas.get();
+  }
+
+  public static List<ByteBuffer> getAggrResult(DataClient client, GetAggrResultRequest request)
+      throws TException, InterruptedException {
+    AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
+    GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(), resultReference);
+    synchronized (resultReference) {
+      resultReference.set(null);
+      client.getAggrResult(request, handler);
+      resultReference.wait(connectionTimeoutInMS);
+    }
+    return resultReference.get();
+  }
+
+  public static List<String> getAllPaths(DataClient client, Node header, List<String> pathsToQuery)
+      throws InterruptedException, TException {
+    AtomicReference<List<String>> remoteResult = new AtomicReference<>();
+    GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
+    synchronized (remoteResult) {
+      client.getAllPaths(header, pathsToQuery, handler);
+      remoteResult.wait(connectionTimeoutInMS);
+    }
+    return remoteResult.get();
+  }
+
+  public static Set<String> getAllDevices(DataClient client, Node header,
+      List<String> pathsToQuery)
+      throws InterruptedException, TException {
+    AtomicReference<Set<String>> remoteResult = new AtomicReference<>();
+    GenericHandler<Set<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
+    synchronized (remoteResult) {
+      client.getAllDevices(header, pathsToQuery, handler);
+      remoteResult.wait(connectionTimeoutInMS);
+    }
+    return remoteResult.get();
+  }
+
+  public static Long getGroupByExecutor(DataClient client, GroupByRequest request)
+      throws TException, InterruptedException {
+    AtomicReference<Long> result = new AtomicReference<>();
+    GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
+    synchronized (result) {
+      result.set(null);
+      client.getGroupByExecutor(request, handler);
+      result.wait(connectionTimeoutInMS);
+    }
+    return result.get();
+  }
+
+  public static ByteBuffer previousFill(DataClient client, PreviousFillRequest request)
+      throws TException, InterruptedException {
+    AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
+    GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(client.getNode(), resultRef);
+    synchronized (resultRef) {
+      client.previousFill(request, nodeHandler);
+      resultRef.wait(queryTimeOutInSec * 1000L);
+    }
+    return resultRef.get();
   }
 }
