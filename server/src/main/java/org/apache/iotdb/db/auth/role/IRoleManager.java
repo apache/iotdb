@@ -96,7 +96,9 @@ public interface IRoleManager {
   List<String> listAllRoles();
 
   /**
-   * clear all old roles info, replace the old roles with the new one
+   * clear all old roles info, replace the old roles with the new one. The caller should
+   * guarantee that no other methods of this interface are invoked concurrently when this method
+   * is called.
    *
    * @param roles new roles info
    * @throws AuthException

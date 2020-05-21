@@ -146,7 +146,9 @@ public interface IUserManager {
 
 
   /**
-   * clear all old users info, replace the old users with the new one
+   * clear all old users info, replace the old users with the new one. The caller should
+   * guarantee that no other methods of this interface are invoked concurrently when this method
+   * is called.
    *
    * @param users new users info
    * @throws AuthException
