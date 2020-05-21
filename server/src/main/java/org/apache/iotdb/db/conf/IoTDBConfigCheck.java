@@ -19,15 +19,20 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.MLogWriter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.List;
 import java.util.Properties;
 
 public class IoTDBConfigCheck {
@@ -37,6 +42,10 @@ public class IoTDBConfigCheck {
   public static final String PROPERTIES_FILE_NAME = "system.properties";
   public static final String SCHEMA_DIR =
           IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
+  public static final String WAL_DIR =
+      IoTDBDescriptor.getInstance().getConfig().getWalFolder();
+  public static final String[] DATA_DIRS =
+      IoTDBDescriptor.getInstance().getConfig().getDataDirs();
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   // this is a initial parameter.
   private static String timestampPrecision = "ms";
@@ -70,10 +79,10 @@ public class IoTDBConfigCheck {
     }
 
     tsfileFileSystem = IoTDBDescriptor.getInstance().getConfig().getTsFileStorageFs().toString();
-
     createDir(SCHEMA_DIR);
     checkFile(SCHEMA_DIR);
     logger.info("System configuration is ok.");
+    
   }
 
   private void createDir(String filepath) {
@@ -121,6 +130,7 @@ public class IoTDBConfigCheck {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
       // need to upgrade
       if (!properties.containsKey("iotdb_version")) {
+        checkUnClosedTsFileV1();
         upgradeMlog();
       } else {
         checkProperties();
@@ -190,6 +200,40 @@ public class IoTDBConfigCheck {
       MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
     } catch (IOException e) {
       logger.error("Upgrade mlog.txt from {} failed.", SCHEMA_DIR, e);
+    }
+  }
+
+  private void checkUnClosedTsFileV1() {
+    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory() 
+        && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
+      logger.error("Unclosed Version-1 TsFile detected, please run 'flush' on V0.9 IoTDB"
+          + " before upgrading to V0.10");
+      System.exit(-1);
+    }
+    checkUnClosedTsFileV1Helper(DirectoryManager.getInstance().getAllSequenceFileFolders());
+    checkUnClosedTsFileV1Helper(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
+  }
+
+  private void checkUnClosedTsFileV1Helper(List<String> folders) {
+    for (String baseDir : folders) {
+      File fileFolder = FSFactoryProducer.getFSFactory().getFile(baseDir);
+      if (!fileFolder.isDirectory()) {
+        continue;
+      }
+      for (File storageGroup : fileFolder.listFiles()) {
+        if (!storageGroup.isDirectory()) {
+          continue;
+        }
+        File[] tsfiles = FSFactoryProducer.getFSFactory()
+            .listFilesBySuffix(storageGroup.toString(), TsFileConstant.TSFILE_SUFFIX);
+        File[] resources = FSFactoryProducer.getFSFactory()
+            .listFilesBySuffix(storageGroup.toString(), TsFileResource.RESOURCE_SUFFIX);
+        if (tsfiles.length != resources.length) {
+          logger.error("Unclosed Version-1 TsFile detected, please run 'flush' on V0.9 IoTDB"
+              + " before upgrading to V0.10");
+          System.exit(-1);
+        }
+      }
     }
   }
 
