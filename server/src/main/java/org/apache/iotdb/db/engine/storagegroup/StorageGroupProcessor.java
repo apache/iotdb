@@ -1492,10 +1492,11 @@ public class StorageGroupProcessor {
     for (TsFileResource resource : upgradedResources) {
       long partitionId = resource.getTimePartition();
       partitionLatestFlushedTimeForEachDevice
-          .get(partitionId).putAll(resource.getEndTimeMap());
-      resource.getEndTimeMap().forEach((device, time) -> {
-        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, time);
-      });
+          .computeIfAbsent(partitionId, id -> new HashMap<>())
+          .putAll(resource.getEndTimeMap());
+      resource.getEndTimeMap().forEach((device, time) -> 
+        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, time)
+      );
     }
     insertLock.writeLock().lock();
     mergeLock.writeLock().lock();
