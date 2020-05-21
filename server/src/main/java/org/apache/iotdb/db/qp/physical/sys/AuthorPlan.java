@@ -132,45 +132,45 @@ public class AuthorPlan extends PhysicalPlan {
 
   public AuthorPlan(OperatorType operatorType) throws IOException {
     super(false, operatorType);
-    setAuthorType(AuthorType.values()[transformOperatorTypeToAuthorType(operatorType)]);
+    setAuthorType(transformOperatorTypeToAuthorType(operatorType));
   }
 
-  private int transformOperatorTypeToAuthorType(OperatorType operatorType)
+  private AuthorType transformOperatorTypeToAuthorType(OperatorType operatorType)
       throws IOException {
-    int type;
+    AuthorType type;
     switch (operatorType) {
       case CREATE_ROLE:
-        type = AuthorType.CREATE_ROLE.ordinal();
+        type = AuthorType.CREATE_ROLE;
         break;
       case DELETE_ROLE:
-        type = AuthorType.DROP_ROLE.ordinal();
+        type = AuthorType.DROP_ROLE;
         break;
       case CREATE_USER:
-        type = AuthorType.CREATE_USER.ordinal();
+        type = AuthorType.CREATE_USER;
         break;
       case REVOKE_USER_ROLE:
-        type = AuthorType.REVOKE_ROLE_FROM_USER.ordinal();
+        type = AuthorType.REVOKE_ROLE_FROM_USER;
         break;
       case REVOKE_ROLE_PRIVILEGE:
-        type = AuthorType.REVOKE_ROLE.ordinal();
+        type = AuthorType.REVOKE_ROLE;
         break;
       case REVOKE_USER_PRIVILEGE:
-        type = AuthorType.REVOKE_USER.ordinal();
+        type = AuthorType.REVOKE_USER;
         break;
       case GRANT_ROLE_PRIVILEGE:
-        type = AuthorType.GRANT_ROLE_TO_USER.ordinal();
+        type = AuthorType.GRANT_ROLE_TO_USER;
         break;
       case GRANT_USER_PRIVILEGE:
-        type = AuthorType.GRANT_USER.ordinal();
+        type = AuthorType.GRANT_USER;
         break;
       case GRANT_USER_ROLE:
-        type = AuthorType.GRANT_ROLE.ordinal();
+        type = AuthorType.GRANT_ROLE;
         break;
       case MODIFY_PASSWORD:
-        type = AuthorType.UPDATE_USER.ordinal();
+        type = AuthorType.UPDATE_USER;
         break;
       case DELETE_USER:
-        type = AuthorType.DROP_USER.ordinal();
+        type = AuthorType.DROP_USER;
         break;
       default:
         throw new IOException("unrecognized author type " + operatorType.name());
