@@ -809,11 +809,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
    *
    * @param follower
-   * @param followerLastLogIndex
    */
-  public void catchUp(Node follower, long followerLastLogIndex) {
+  public void catchUp(Node follower) {
     // for one follower, there is at most one ongoing catch-up
-    synchronized (follower) {
+    synchronized (catchUpService) {
       // check if the last catch-up is still ongoing
       Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
       if (lastCatchupResp != null

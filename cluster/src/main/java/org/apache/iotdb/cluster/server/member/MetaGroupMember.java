@@ -250,7 +250,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     loadIdentifier();
 
     Factory dataMemberFactory = new Factory(factory, this);
-    dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory);
+    dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
     clientServer = new ClientServer(this);
     startUpStatus = getStartUpStatus();
   }
@@ -1203,11 +1203,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     } catch (IOException e) {
       logger.error("Cannot save the partition table", e);
     }
-    try {
-      Files.delete(Paths.get(oldFile.getAbsolutePath()));
-    } catch (IOException e) {
-      logger.warn("Old partition table file is not successfully deleted", e);
+    if (oldFile.exists()) {
+      try {
+        Files.delete(Paths.get(oldFile.getAbsolutePath()));
+      } catch (IOException e) {
+        logger.warn("Old partition table file is not successfully deleted", e);
+      }
     }
+
     if (!tempFile.renameTo(oldFile)) {
       logger.warn("New partition table file is not successfully renamed");
     }
@@ -2820,7 +2823,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
         if (executorId != -1) {
           // record the queried node to release resources later
-          ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
+          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
           logger.debug("{}: get an executorId {} for {}@{} from {}", name, executorId,
               aggregationTypes, path, node);
           // create a remote executor with the return id

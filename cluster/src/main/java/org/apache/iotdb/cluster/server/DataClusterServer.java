@@ -52,6 +52,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
@@ -69,13 +70,17 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   // key: the header of a data group, value: the member representing this node in this group but
   // it is out of service because another node has joined the group and expelled this node, or
   // the node itself is removed, but it is still stored to provide snapshot for other nodes
+  // TODO-Cluster: recover stopped members if there are unfinished data pulling
   private Map<Node, DataGroupMember> stoppedMemberMap = new ConcurrentHashMap<>();
   private PartitionTable partitionTable;
   private DataGroupMember.Factory dataMemberFactory;
+  private MetaGroupMember metaGroupMember;
 
-  public DataClusterServer(Node thisNode, DataGroupMember.Factory dataMemberFactory) {
+  public DataClusterServer(Node thisNode, DataGroupMember.Factory dataMemberFactory,
+      MetaGroupMember metaGroupMember) {
     super(thisNode);
     this.dataMemberFactory = dataMemberFactory;
+    this.metaGroupMember = metaGroupMember;
   }
 
   @Override
@@ -119,22 +124,28 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       }
       return null;
     }
+    DataGroupMember member = stoppedMemberMap.get(header);
+    if (member != null) {
+      return member;
+    }
+
     // avoid creating two members for a header
     Exception ex = null;
     synchronized (headerGroupMap) {
-      DataGroupMember member = headerGroupMap.get(header);
-      if (member == null) {
-        logger.info("Received a request \"{}\" from unregistered header {}", request, header);
-        if (partitionTable != null) {
-          try {
-            member = createNewMember(header);
-          } catch (NotInSameGroupException | TTransportException e) {
-            ex = e;
-          }
-        } else {
-          logger.info("Partition is not ready, cannot create member");
-          ex = new PartitionTableUnavailableException(thisNode);
+      member = headerGroupMap.get(header);
+      if (member != null) {
+        return member;
+      }
+      logger.info("Received a request \"{}\" from unregistered header {}", request, header);
+      if (partitionTable != null) {
+        try {
+          member = createNewMember(header);
+        } catch (TTransportException | NotInSameGroupException e) {
+          ex = e;
         }
+      } else {
+        logger.info("Partition is not ready, cannot create member");
+        ex = new PartitionTableUnavailableException(thisNode);
       }
       if (ex != null && resultHandler != null) {
         resultHandler.onError(ex);
@@ -152,22 +163,31 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   private DataGroupMember createNewMember(Node header)
       throws NotInSameGroupException, TTransportException {
     DataGroupMember member;
-    synchronized (partitionTable) {
-      PartitionGroup partitionGroup = partitionTable.getHeaderGroup(header);
-      if (partitionGroup != null && partitionGroup.contains(thisNode)) {
-        // the two nodes are in the same group, create a new data member
-        member = dataMemberFactory.create(partitionGroup, thisNode);
-        DataGroupMember prevMember = headerGroupMap.put(header, member);
-        if (prevMember != null) {
-          prevMember.stop();
-        }
-        logger.info("Created a member for header {}", header);
-        member.start();
-      } else {
-        logger.info("This node {} does not belong to the group {}, header {}", thisNode,
-            partitionGroup, header);
-        throw new NotInSameGroupException(partitionGroup, thisNode);
+    PartitionGroup partitionGroup;
+    partitionGroup = partitionTable.getHeaderGroup(header);
+    if (partitionGroup == null || !partitionGroup.contains(thisNode)) {
+      // if the partition table is old, this node may have not been moved to the new group
+      metaGroupMember.syncLeader();
+      partitionGroup = partitionTable.getHeaderGroup(header);
+    }
+    if (partitionGroup != null && partitionGroup.contains(thisNode)) {
+      // the two nodes are in the same group, create a new data member
+      member = dataMemberFactory.create(partitionGroup, thisNode);
+      DataGroupMember prevMember = headerGroupMap.put(header, member);
+      if (prevMember != null) {
+        prevMember.stop();
       }
+      logger.info("Created a member for header {}", header);
+      member.start();
+    } else {
+      // the member may have been stopped after syncLeader
+      member = stoppedMemberMap.get(header);
+      if (member != null) {
+        return member;
+      }
+      logger.info("This node {} does not belong to the group {}, header {}", thisNode,
+          partitionGroup, header);
+      throw new NotInSameGroupException(partitionGroup, thisNode);
     }
     return member;
   }
@@ -223,10 +243,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     Node header = request.getHeader();
-    DataGroupMember member = stoppedMemberMap.get(header);
-    if (member == null) {
-      member = getDataMember(header, resultHandler, request);
-    }
+    DataGroupMember member = getDataMember(header, resultHandler, request);
     if (member != null) {
       member.pullSnapshot(request, resultHandler);
     }
@@ -244,10 +261,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    DataGroupMember member = stoppedMemberMap.get(header);
-    if (member == null) {
-      member = getDataMember(header, resultHandler, "Request commit index");
-    }
+    DataGroupMember member = getDataMember(header, resultHandler, "Request commit index");
     if (member != null) {
       member.requestCommitIndex(header, resultHandler);
     }
@@ -293,10 +307,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   @Override
   public void endQuery(Node header, Node thisNode, long queryId,
       AsyncMethodCallback<Void> resultHandler) {
-    DataGroupMember member = stoppedMemberMap.get(header);
-    if (member == null) {
-      member = getDataMember(header, resultHandler, "End query");
-    }
+    DataGroupMember member = getDataMember(header, resultHandler, "End query");
     if (member != null) {
       member.endQuery(header, thisNode, queryId, resultHandler);
     }
@@ -545,10 +556,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       dataMemberReports.add(value.genReport());
     }
     return dataMemberReports;
-  }
-
-  public Map<Node, DataGroupMember> getHeaderGroupMap() {
-    return headerGroupMap;
   }
 
   @Override

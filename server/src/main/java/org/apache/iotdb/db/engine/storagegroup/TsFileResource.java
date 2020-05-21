@@ -325,7 +325,7 @@ public class TsFileResource {
 
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+      modFile = new ModificationFile(file.getPath() + ModificationFile.FILE_SUFFIX);
     }
     return modFile;
   }

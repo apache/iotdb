@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -39,6 +40,7 @@ import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
@@ -93,7 +95,7 @@ public class SnapshotCatchUpTaskTest {
   }
 
   @Test
-  public void testCatchUp() {
+  public void testCatchUp() throws InterruptedException, TException, LeaderUnknownException {
     List<Log> logList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Log log = new TestLog();
@@ -107,14 +109,14 @@ public class SnapshotCatchUpTaskTest {
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     SnapshotCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
-    task.run();
+    task.call();
 
     assertEquals(logList, receivedLogs);
     assertEquals(snapshot, receivedSnapshot);
   }
 
   @Test
-  public void testLeadershipLost() {
+  public void testLeadershipLost() throws InterruptedException, TException, LeaderUnknownException {
     testLeadershipFlag = true;
     // the leadership will be lost after sending the snapshot
     List<Log> logList = TestUtils.prepareTestLogs(10);
@@ -122,21 +124,21 @@ public class SnapshotCatchUpTaskTest {
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
-    task.run();
+    task.call();
 
     assertEquals(snapshot, receivedSnapshot);
     assertTrue(receivedLogs.isEmpty());
   }
 
   @Test
-  public void testNoLeadership() {
+  public void testNoLeadership() throws InterruptedException, TException, LeaderUnknownException {
     // the leadership is lost from the beginning
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Snapshot snapshot = new TestSnapshot(9989);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.ELECTOR);
     LogCatchUpTask task = new SnapshotCatchUpTask(logList, snapshot, receiver, sender);
-    task.run();
+    task.call();
 
     assertNull(receivedSnapshot);
     assertTrue(receivedLogs.isEmpty());

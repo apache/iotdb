@@ -127,6 +127,7 @@ public class HeartbeatThread implements Runnable {
   /**
    * Send each node (except the local node) in list a heartbeat.
    */
+  @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size() - 1);
@@ -261,6 +262,7 @@ public class HeartbeatThread implements Runnable {
    * @param electionTerminated
    * @param electionValid
    */
+  @SuppressWarnings("java:S2445")
   private void requestVote(Collection<Node> nodes, ElectionRequest request, long nextTerm,
       AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid) {
     synchronized (nodes) {

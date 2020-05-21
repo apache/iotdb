@@ -149,7 +149,7 @@ public class MetaGroupMemberTest extends MemberTest {
           public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
             return getDataGroupMember(partitionGroup, thisNode);
           }
-        });
+        }, testMetaMember);
     buildDataGroups(dataClusterServer);
     testMetaMember.getThisNode().setNodeIdentifier(0);
     mockDataClusterServer = false;

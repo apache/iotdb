@@ -69,10 +69,13 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
           .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
       if (!peer.isCatchUp() || !localMember.getLogManager()
           .isLogUpToDate(lastLogTerm, lastLogIdx)) {
-        logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}", memberName, follower,
+        logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}, peer nextIndex {}, peer "
+                + "match index {}",
+            memberName, follower,
             lastLogIdx, lastLogTerm,
-            localLastLogIdx, localLastLogTerm);
-        localMember.catchUp(follower, lastLogIdx);
+            localLastLogIdx, localLastLogTerm,
+            peer.getNextIndex(), peer.getMatchIndex());
+        localMember.catchUp(follower);
       }
     } else {
       // current leadership is invalid because the follower has a larger term

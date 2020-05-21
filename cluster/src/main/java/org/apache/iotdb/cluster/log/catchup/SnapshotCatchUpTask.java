@@ -20,7 +20,9 @@
 package org.apache.iotdb.cluster.log.catchup;
 
 import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -37,7 +39,7 @@ import org.slf4j.LoggerFactory;
 /**
  * SnapshotCatchUpTask first sends the snapshot to the stale node then sends the logs to the node.
  */
-public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
+public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Void> {
 
   private static final Logger logger = LoggerFactory.getLogger(SnapshotCatchUpTask.class);
 
@@ -48,7 +50,8 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     this.snapshot = snapshot;
   }
 
-  private boolean doSnapshotCatchUp() throws TException, InterruptedException {
+  private boolean doSnapshotCatchUp()
+      throws TException, InterruptedException, LeaderUnknownException {
     AsyncClient client = raftMember.connectNode(node);
     if (client == null) {
       return false;
@@ -65,8 +68,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
     synchronized (raftMember.getTerm()) {
       // make sure this node is still a leader
       if (raftMember.getCharacter() != NodeCharacter.LEADER) {
-        logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
-        return false;
+        throw new LeaderUnknownException(raftMember.getAllNodes());
       }
     }
 
@@ -80,17 +82,15 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Runnable {
   }
 
   @Override
-  public void run() {
-    try {
-      if (doSnapshotCatchUp()) {
-        logger.debug("Snapshot catch up {} finished, begin to catch up log", node);
-        doLogCatchUp();
-      }
-    } catch (Exception e) {
-      logger.error("Catch up {} errored", node, e);
+  public Void call() throws InterruptedException, TException, LeaderUnknownException {
+    if (doSnapshotCatchUp()) {
+      logger.debug("Snapshot catch up {} finished, begin to catch up log", node);
+      doLogCatchUp();
     }
+
     logger.debug("Catch up {} finished", node);
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);
+    return null;
   }
 }

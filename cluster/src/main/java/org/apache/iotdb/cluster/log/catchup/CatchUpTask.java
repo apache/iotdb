@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -60,14 +61,16 @@ public class CatchUpTask implements Runnable {
    * @throws TException
    * @throws InterruptedException
    */
-  boolean checkMatchIndex() throws TException, InterruptedException {
+  boolean checkMatchIndex() throws TException, InterruptedException, LeaderUnknownException {
     synchronized (raftMember.getLogManager()) {
       peer.setNextIndex(raftMember.getLogManager().getLastLogIndex());
       try {
-        long lo = Math.max(raftMember.getLogManager().getFirstIndex(), peer.getMatchIndex() + 1);
+        long localFirstIndex = raftMember.getLogManager().getFirstIndex();
+        long lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
         long hi = peer.getNextIndex() + 1;
         logs = raftMember.getLogManager().getEntries(lo, hi);
-        logger.debug("Get {} logs of [{}, {}]to check match index", logs.size(), lo, hi);
+        logger.debug("Get {} logs of [{}, {}]to check match index, local first index: {}",
+            logs.size(), lo, hi, localFirstIndex);
       } catch (Exception e) {
         logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
       }
@@ -79,8 +82,7 @@ public class CatchUpTask implements Runnable {
       synchronized (raftMember.getTerm()) {
         // make sure this node is still a leader
         if (raftMember.getCharacter() != NodeCharacter.LEADER) {
-          logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
-          break;
+          throw new LeaderUnknownException(raftMember.getAllNodes());
         }
       }
       long prevLogIndex = log.getCurrLogIndex() - 1;
@@ -128,13 +130,14 @@ public class CatchUpTask implements Runnable {
 
   public void run() {
     try {
-      if (checkMatchIndex()) {
+      boolean needSnapshot = checkMatchIndex();
+      if (needSnapshot) {
         doSnapshot();
         SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftMember);
-        task.run();
+        task.call();
       } else {
         LogCatchUpTask task = new LogCatchUpTask(logs, node, raftMember);
-        task.run();
+        task.call();
       }
       // there must be at least one log if catchUp is called.
       peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
@@ -142,6 +145,8 @@ public class CatchUpTask implements Runnable {
       peer.setCatchUp(true);
       logger.debug("Catch up {} finished, update it's matchIndex to {}", node,
           logs.get(logs.size() - 1).getCurrLogIndex());
+    } catch (LeaderUnknownException e) {
+      logger.warn("Catch up {} failed because leadership is lost", node);
     } catch (Exception e) {
       logger.error("Catch up {} errored", node, e);
     }

@@ -813,8 +813,10 @@ public class StorageGroupProcessor {
               .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
         }
       }
-    } catch (MetadataException | QueryProcessException e) {
+    } catch (QueryProcessException e) {
       throw new WriteProcessException(e);
+    } catch (MetadataException e) {
+      // skip last cache update if the local MTree does not contain the schema
     } finally {
       if (node != null) {
         ((InternalMNode) node).readUnlock();

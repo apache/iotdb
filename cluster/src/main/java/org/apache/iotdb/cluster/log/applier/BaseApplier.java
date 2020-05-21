@@ -82,7 +82,12 @@ abstract class BaseApplier implements LogApplier {
     try {
       getQueryExecutor().processNonQuery(plan);
     } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
-      if (e.getCause() instanceof PathNotExistException) {
+      // check if this is caused by metadata missing, if so, pull metadata and retry
+      Throwable metaMissingException = findMetaMissingException(e);
+      boolean causedByPathNotExist = metaMissingException instanceof PathNotExistException;
+      boolean causedByStorageGroupNotSet = metaMissingException instanceof StorageGroupNotSetException;
+
+      if (causedByPathNotExist) {
         logger.debug("Timeseries is not found locally, try pulling it from another group: {}",
             e.getCause().getMessage());
         try {
@@ -96,13 +101,32 @@ abstract class BaseApplier implements LogApplier {
           throw new QueryProcessException(e1);
         }
         getQueryExecutor().processNonQuery(plan);
-      } else if (e.getCause() instanceof StorageGroupNotSetException || e instanceof StorageGroupNotSetException) {
+      } else if (causedByStorageGroupNotSet) {
         metaGroupMember.syncLeader();
         getQueryExecutor().processNonQuery(plan);
       } else {
         throw e;
       }
     }
+  }
+
+  /**
+   * If e or one of its recursive causes is a PathNotExistException or
+   * StorageGroupNotSetException, return such an exception or null if it cannot be found.
+   * @param currEx
+   * @return null or a PathNotExistException or a StorageGroupNotSetException
+   */
+  private Throwable findMetaMissingException(Throwable currEx) {
+    while (true) {
+      if (currEx instanceof PathNotExistException || currEx instanceof StorageGroupNotSetException) {
+       return currEx;
+      }
+      if (currEx.getCause() == null) {
+        break;
+      }
+      currEx = currEx.getCause();
+    }
+    return null;
   }
 
   protected void registerMeasurement(String path, MeasurementSchema schema) {
