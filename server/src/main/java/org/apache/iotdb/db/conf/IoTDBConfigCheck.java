@@ -44,8 +44,6 @@ public class IoTDBConfigCheck {
           IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
   public static final String WAL_DIR =
       IoTDBDescriptor.getInstance().getConfig().getWalFolder();
-  public static final String[] DATA_DIRS =
-      IoTDBDescriptor.getInstance().getConfig().getDataDirs();
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
   // this is a initial parameter.
   private static String timestampPrecision = "ms";
