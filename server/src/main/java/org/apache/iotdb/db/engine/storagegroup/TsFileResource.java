@@ -325,7 +325,7 @@ public class TsFileResource {
 
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+      modFile = new ModificationFile(file.getPath() + ModificationFile.FILE_SUFFIX);
     }
     return modFile;
   }
@@ -606,7 +606,7 @@ public class TsFileResource {
 
   /**
    * Create a hardlink for the TsFile and modification file (if exists)
-   * The hardlink with have a suffix like ".{sysTime}_{randomLong}"
+   * The hardlink will have a suffix like ".{sysTime}_{randomLong}"
    * @return a new TsFileResource with its file changed to the hardlink or null the hardlink
    * cannot be created.
    */

@@ -77,7 +77,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
           parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
     } else {
-      if(ctx.prefixPath() != null) {
+      if (ctx.prefixPath() != null) {
         initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
             parsePrefixPath(ctx.prefixPath()));
       } else {
@@ -91,17 +91,17 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterFlush(FlushContext ctx) {
     super.enterFlush(ctx);
     FlushOperator flushOperator = new FlushOperator(SQLConstant.TOK_FLUSH);
-    if(ctx.ID() != null) {
-      if(ctx.ID().getText().equalsIgnoreCase("true")
+    if (ctx.ID() != null) {
+      if (ctx.ID().getText().equalsIgnoreCase("true")
           || ctx.ID().getText().equalsIgnoreCase("false")) {
         flushOperator.setSeq(Boolean.parseBoolean(ctx.ID().getText()));
       } else {
         throw new ParseCancellationException("Should be true or false");
       }
     }
-    if(ctx.prefixPath(0) != null) {
+    if (ctx.prefixPath(0) != null) {
       List<Path> storageGroups = new ArrayList<>();
-      for(PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+      for (PrefixPathContext prefixPathContext : ctx.prefixPath()) {
         storageGroups.add(parsePrefixPath(prefixPathContext));
       }
       flushOperator.setStorageGroupList(storageGroups);
@@ -202,9 +202,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
-    if(ctx.GLOBAL()!=null){
+    if (ctx.GLOBAL() != null) {
       initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.GLOBAL);
-    }else{
+    } else {
       initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.LOCAL);
     }
 
@@ -278,7 +278,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       // add tag
       alterTimeSeriesOperator.setAlterType(AlterType.ADD_TAGS);
       setMap(ctx, alterMap);
-    } else if (ctx.ATTRIBUTES() != null){
+    } else if (ctx.ATTRIBUTES() != null) {
       // add attribute
       alterTimeSeriesOperator.setAlterType(AlterType.ADD_ATTRIBUTES);
       setMap(ctx, alterMap);
@@ -295,7 +295,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : tagsList) {
         String value;
-        if(property.propertyValue().STRING_LITERAL() != null) {
+        if (property.propertyValue().STRING_LITERAL() != null) {
           value = removeStringQuote(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
@@ -683,7 +683,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setFill(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
-
     // parse timeUnit
     queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
     queryOp.setSlidingStep(queryOp.getUnit());
@@ -976,7 +975,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : properties) {
         props.put(property.ID().getText().toLowerCase(),
-                property.propertyValue().getText().toLowerCase());
+            property.propertyValue().getText().toLowerCase());
       }
     }
     createTimeSeriesOperator.setCompressor(compressor);
@@ -1202,7 +1201,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       operator.setKey(ctx.property().ID().getText());
     }
     String value;
-    if(propertyValueContext.STRING_LITERAL() != null) {
+    if (propertyValueContext.STRING_LITERAL() != null) {
       value = removeStringQuote(propertyValueContext.getText());
     } else {
       value = propertyValueContext.getText();
