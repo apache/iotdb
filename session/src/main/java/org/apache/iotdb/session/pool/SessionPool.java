@@ -647,7 +647,8 @@ public class SessionPool {
     }
   }
 
-  public boolean checkTimeseriesExists(String path) throws IoTDBConnectionException {
+  public boolean checkTimeseriesExists(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -657,6 +658,9 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
       }
     }
     //never go here.
