@@ -45,7 +45,7 @@ public class DataClient extends AsyncClient {
       TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
     // the difference of the two clients lies in the port
     super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getDataPort()
-        , RaftServer.CONNECTION_TIMEOUT_IN_MS));
+        , RaftServer.getConnectionTimeoutInMS()));
     this.node = node;
     this.pool = pool;
   }

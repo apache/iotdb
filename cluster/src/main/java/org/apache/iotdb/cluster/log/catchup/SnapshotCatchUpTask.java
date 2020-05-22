@@ -75,7 +75,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Void
     synchronized (succeed) {
       client.sendSnapshot(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-      succeed.wait(RaftServer.CONNECTION_TIMEOUT_IN_MS);
+      succeed.wait(RaftServer.getConnectionTimeoutInMS());
     }
 
     return succeed.get();

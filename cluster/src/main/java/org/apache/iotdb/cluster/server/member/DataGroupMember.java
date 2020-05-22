@@ -695,7 +695,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           result.set(null);
           synchronized (result) {
             client.readFile(remotePath, offset, fetchSize, handler);
-            result.wait(RaftServer.CONNECTION_TIMEOUT_IN_MS);
+            result.wait(RaftServer.getConnectionTimeoutInMS());
           }
           ByteBuffer buffer = result.get();
           if (buffer == null || buffer.limit() - buffer.position() == 0) {

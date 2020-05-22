@@ -240,6 +240,7 @@ public class ClientServer extends TSServiceImpl {
    * @return the data types of "paths" (using the aggregation)
    * @throws MetadataException
    */
+  @Override
   protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
       throws MetadataException {
     return metaGroupMember.getSeriesTypesByString(paths, aggregation);

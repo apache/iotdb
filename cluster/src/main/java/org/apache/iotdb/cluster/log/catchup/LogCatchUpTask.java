@@ -119,7 +119,7 @@ public class LogCatchUpTask implements Callable<Void> {
         }
         client.appendEntry(request, handler);
         raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        appendSucceed.wait(RaftServer.CONNECTION_TIMEOUT_IN_MS);
+        appendSucceed.wait(RaftServer.getConnectionTimeoutInMS());
       }
       abort = !appendSucceed.get();
     }
@@ -179,7 +179,7 @@ public class LogCatchUpTask implements Callable<Void> {
 
         client.appendEntries(request, handler);
         raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        appendSucceed.wait(RaftServer.CONNECTION_TIMEOUT_IN_MS);
+        appendSucceed.wait(RaftServer.getConnectionTimeoutInMS());
       }
       abort = !appendSucceed.get();
     }

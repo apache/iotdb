@@ -182,8 +182,8 @@ public class HeartbeatThreadTest {
 
   @Test
   public void testAsFollower() throws InterruptedException {
-    int prevTimeOut = RaftServer.CONNECTION_TIMEOUT_IN_MS;
-    RaftServer.CONNECTION_TIMEOUT_IN_MS = 500;
+    int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
+    RaftServer.setConnectionTimeoutInMS(500);
     member.setCharacter(NodeCharacter.FOLLOWER);
     member.setLastHeartbeatReceivedTime(System.currentTimeMillis());
     respondToElection = false;
@@ -195,7 +195,7 @@ public class HeartbeatThreadTest {
       testThread.interrupt();
       testThread.join();
     } finally {
-      RaftServer.CONNECTION_TIMEOUT_IN_MS = prevTimeOut;
+      RaftServer.setConnectionTimeoutInMS(prevTimeOut);
     }
   }
 

@@ -53,6 +53,7 @@ public class ClusterMain {
   private static final String MODE_REMOVE = "-r";
   // the separator between the cluster configuration and the single-server configuration
   private static final String SERVER_CONF_SEPARATOR = "-sc";
+  private static MetaClusterServer metaServer;
 
   public static void main(String[] args) {
     if (args.length < 1) {
@@ -73,7 +74,7 @@ public class ClusterMain {
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     logger.info("Running mode {}", mode);
     try {
-      MetaClusterServer metaServer;
+
       if (MODE_START.equals(mode)) {
         metaServer = new MetaClusterServer();
         ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
@@ -199,5 +200,9 @@ public class ClusterMain {
         logger.warn("Cannot send remove node request through {}, try next node", node);
       }
     }
+  }
+
+  public static MetaClusterServer getMetaServer() {
+    return metaServer;
   }
 }

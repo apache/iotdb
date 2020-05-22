@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.query.reader;
 
 import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -34,8 +35,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIMEOUT_IN_MS;
 
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
@@ -110,7 +109,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
         try {
           currClient = sourceInfo.getCurClient();
           currClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
-          fetchResult.wait(CONNECTION_TIMEOUT_IN_MS);
+          fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
         } catch (TException | InterruptedException e) {
           // try other nodes
           DataClient newClient = sourceInfo.nextDataClient(false, this.lastTimestamp);
