@@ -93,7 +93,7 @@ public class SessionExample {
   }
 
   private static void createMultiTimeseries()
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException {
 
     if (!session.checkTimeseriesExists("root.sg1.d2.s1") && !session
         .checkTimeseriesExists("root.sg1.d2.s2")) {
