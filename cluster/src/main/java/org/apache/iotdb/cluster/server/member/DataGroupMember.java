@@ -1499,6 +1499,20 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
+  @Override
+  public void getSeriesDataType(Node header, String path,
+      AsyncMethodCallback<Integer> resultHandler) throws TException {
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+    try {
+      resultHandler.onComplete(MManager.getInstance().getSeriesType(path).ordinal());
+    } catch (MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
 
   /**
    * Execute aggregations over the given path and return the results to the requester.

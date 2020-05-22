@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -36,6 +40,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -48,6 +53,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -195,6 +203,8 @@ public class ClientServer extends TSServiceImpl {
         : validateResult;
   }
 
+
+
   /**
    * EventHandler handles the preprocess and postprocess of the thrift requests, but it currently
    * only release resources when a client disconnects.
@@ -297,4 +307,7 @@ public class ClientServer extends TSServiceImpl {
       }
     }
   }
+
+
+
 }

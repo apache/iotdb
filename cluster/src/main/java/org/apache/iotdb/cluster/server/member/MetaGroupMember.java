@@ -23,6 +23,7 @@ import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
 import static org.apache.iotdb.cluster.server.RaftServer.queryTimeOutInSec;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.*;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -140,6 +141,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -229,6 +231,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private ScheduledExecutorService reportThread;
 
   private StartUpStatus startUpStatus;
+
+  private final int VALIDATE_BUFFER_CAPACITY = 10000;
+  private CircularQueue<String> insertPathValidatedBuffer = new CircularQueue<>(
+      VALIDATE_BUFFER_CAPACITY);
+  private CircularQueue<TSDataType> insertDatatypeValidatedBuffer = new CircularQueue<>(
+      VALIDATE_BUFFER_CAPACITY);
 
   @TestOnly
   public MetaGroupMember() {
@@ -1390,15 +1398,113 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public TSStatus validatePlan(PhysicalPlan plan) {
     TSStatus result = StatusUtils.OK;
-    if(plan instanceof SetStorageGroupPlan){
-      String path = ((SetStorageGroupPlan) plan).getPath().getFullPath();
-      if(getAllStorageGroupNames().contains(path)){
-        result = StatusUtils.PATH_ALREADY_EXIST_ERROR;
-      }
+    if (plan instanceof SetStorageGroupPlan) {
+      return validateSetStorageGroupPlan((SetStorageGroupPlan) plan);
+    } else if (plan instanceof InsertPlan) {
+      return validateInsertPlan((InsertPlan) plan);
     }
     // TODO add more pre-validations
     return result;
   }
+
+  private TSStatus validateSetStorageGroupPlan(SetStorageGroupPlan plan) {
+    String path = plan.getPath().getFullPath();
+    if (getAllStorageGroupNames().contains(path)) {
+      return StatusUtils.PATH_ALREADY_EXIST_ERROR;
+    }
+    return StatusUtils.OK;
+  }
+
+  private TSStatus validateInsertPlan(InsertPlan plan) {
+    List<Path> paths = (plan).getPaths();
+    String[] values = (plan).getValues();
+    for (int i = 0; i < paths.size(); i++) {
+      String path = paths.get(i).getFullPath();
+      String value = values[i];
+      int index = insertPathValidatedBuffer.indexOf(path);
+      TSDataType expectedDatatype = null;
+      if (index == -1) { // the date is not recorded locally, fetch it from the cluster
+        PartitionGroup group;
+        try {
+          group = getPartitionTable()
+              .partitionByPathTime(path, plan.getTime());
+        } catch (MetadataException e) {
+          return StatusUtils.NO_STORAGE_GROUP;
+        }
+
+        for (Node node : group) {
+          DataClient client;
+          try {
+            client = getDataClient(node);
+          } catch (IOException e) {
+            continue;
+          }
+          AtomicReference<Integer> resultReference = new AtomicReference<>();
+          GenericHandler<Integer> handler = new GenericHandler<>(node, resultReference);
+          try {
+            synchronized (resultReference) {
+              resultReference.set(null);
+              client.getSeriesDataType(group.getHeader(), path, handler);
+              resultReference.wait(connectionTimeoutInMS);
+            }
+            if (resultReference.get() == null) {
+              continue;
+            }
+            TSDataType dataType = values()[resultReference.get()];
+            expectedDatatype = dataType;
+            insertPathValidatedBuffer.add(path);
+            insertDatatypeValidatedBuffer.add(dataType);
+            break;
+          } catch (TException | InterruptedException e) {
+            logger.error("{}: Cannot get data type of {} from {}", name, path, node, e);
+          }
+        }
+      } else {
+        expectedDatatype = insertDatatypeValidatedBuffer.get(index);
+      }
+
+      try {
+        if (expectedDatatype == null) {
+          return StatusUtils.PATH_NOT_EXIST_ERROR;
+        } else {
+          tryParse(value, expectedDatatype);
+        }
+      } catch (IllegalArgumentException e) {
+        TSStatus result = new TSStatus(StatusUtils.WRITE_PROCESS_ERROR.getCode());
+        result.setMessage(StatusUtils.WRITE_PROCESS_ERROR.getMessage() + e.getMessage());
+        return result;
+      }
+    }
+    return StatusUtils.OK;
+  }
+
+
+  private void tryParse(String value, TSDataType type) {
+    switch (type) {
+      case INT32:
+        Integer.parseInt(value);
+        break;
+      case INT64:
+        Long.parseLong(value);
+        break;
+      case BOOLEAN:
+        if (!(value.equals("true") || value.equals("TRUE")
+            || value.equals("false") || value.equals("FALSE")
+            || value.equals("0") || value.equals("1"))) {
+          throw new IllegalArgumentException(
+              "The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+        }
+        break;
+      case DOUBLE:
+        Double.parseDouble(value);
+        break;
+      case TEXT:
+        break;
+      default:
+        throw new IllegalArgumentException("Data Type is not recognized");
+    }
+  }
+
 
   /**
    * A non-partitioned plan (like storage group creation) should be executed on all metagroup nodes,
@@ -2955,6 +3061,60 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     super.closeLogManager();
     if (dataClusterServer != null) {
       dataClusterServer.closeLogManagers();
+    }
+  }
+
+  class CircularQueue<T> {
+
+    int capacity;
+    int size;
+    List<T> elements;
+    int i = 0;
+
+    public CircularQueue(int capacity) {
+      this.capacity = capacity;
+      elements = new ArrayList<>(capacity);
+    }
+
+    public int size() {
+      return size;
+    }
+
+    public void add(T element) {
+      if (size < capacity) {
+        elements.add(element);
+        size++;
+      } else {
+        elements.set(i++, element);
+        i = i % capacity;
+      }
+    }
+
+    public boolean contains(T element) {
+      return elements.contains(element);
+    }
+
+    public boolean contains(List<T> thatElements) {
+      return elements.containsAll(thatElements);
+    }
+
+    public List<T> getList() {
+      List<T> result = elements.subList(i, size);
+      result.addAll(elements.subList(0, i));
+      return result;
+    }
+
+    public T get(int index) {
+      return elements.get(index);
+    }
+
+    public int indexOf(T element) {
+      return elements.indexOf(element);
+    }
+
+    @Override
+    public String toString() {
+      return Arrays.toString(getList().toArray());
     }
   }
 }

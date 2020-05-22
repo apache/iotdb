@@ -53,6 +53,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -361,6 +362,14 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     DataGroupMember dataMember = getDataMember(header, resultHandler,
         "Get all measurement schema");
     dataMember.getAllMeasurementSchema(header, planBytes, resultHandler);
+  }
+
+  @Override
+  public void getSeriesDataType(Node header, String path,
+      AsyncMethodCallback<Integer> resultHandler) throws TException {
+    DataGroupMember dataMember = getDataMember(header, resultHandler,
+        "Get series data type");
+    dataMember.getSeriesDataType(header, path, resultHandler);
   }
 
   @Override

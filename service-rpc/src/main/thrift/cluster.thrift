@@ -331,6 +331,7 @@ service TSDataService extends RaftService {
 
   binary getAllMeasurementSchema(1: Node header, 2: binary planBinary)
 
+  int getSeriesDataType(1: Node header, 2: string path)
 
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
