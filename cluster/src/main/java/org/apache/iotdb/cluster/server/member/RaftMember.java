@@ -186,7 +186,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
     catchUpService = null;
     heartBeatService = null;
-    logger.info("{} stopped", name);
+    logger.info("{} heartbeats stopped", name);
   }
 
   /**
@@ -1020,6 +1020,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     if (leader == null) {
       // the leader has not been elected, we must assume the node falls behind
       return false;
+    }
+    if (character == NodeCharacter.LEADER) {
+      return true;
     }
     logger.debug("{}: try synchronizing with the leader {}", name, leader);
     long startTime = System.currentTimeMillis();

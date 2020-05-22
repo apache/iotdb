@@ -136,6 +136,9 @@ public class HeartbeatThread implements Runnable {
         if (node.equals(localMember.getThisNode())) {
           continue;
         }
+        if (Thread.interrupted()) {
+          return;
+        }
 
         if (localMember.getCharacter() != NodeCharacter.LEADER) {
           // if the character changes, abort the remaining heartbeats

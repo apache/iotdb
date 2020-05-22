@@ -322,6 +322,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         logger.error("Unexpected interruption when waiting for reportThread to end", e);
       }
     }
+    logger.info("{}: stopped", name);
   }
 
   /**
@@ -531,6 +532,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     while (retry > 0) {
       // randomly pick up a node to try
       Node node = allNodes.get(random.nextInt(allNodes.size()));
+      if (node.equals(thisNode)) {
+        continue;
+      }
       logger.info("start joining the cluster with the help of {}", node);
       try {
         if (joinCluster(node, startUpStatus)) {
@@ -896,6 +900,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
                 response.setPartitionTableBytes(partitionTable.serialize());
               }
               response.setRespNum((int) Response.RESPONSE_AGREE);
+              logger.info("Sending join response of {}", node);
               resultHandler.onComplete(response);
               return true;
             case TIME_OUT:
@@ -1219,6 +1224,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (!tempFile.renameTo(oldFile)) {
       logger.warn("New partition table file is not successfully renamed");
     }
+    logger.info("Partition table is saved");
   }
 
   /**

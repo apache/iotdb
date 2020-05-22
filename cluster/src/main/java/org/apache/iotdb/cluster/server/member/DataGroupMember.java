@@ -216,6 +216,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void stop() {
+    logger.info("{}: stopping...", name);
     super.stop();
     if (pullSnapshotService != null) {
       pullSnapshotService.shutdownNow();
@@ -233,6 +234,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     } catch (StorageEngineException e) {
       logger.error("Cannot release queries of {}", name, e);
     }
+    logger.info("{}: stopped", name);
   }
 
   /**

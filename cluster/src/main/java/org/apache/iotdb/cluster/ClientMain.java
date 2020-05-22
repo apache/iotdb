@@ -251,7 +251,7 @@ public class ClientMain {
   private static void executeQuery(Client client, long sessionId, String query, long statementId)
       throws TException, StatementExecutionException, IoTDBConnectionException {
     if (logger.isInfoEnabled()) {
-      logger.info("\\{ {} \\}", query);
+      logger.info("{ {} }", query);
     }
     TSExecuteStatementResp resp = client
         .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId));

@@ -264,6 +264,14 @@ public class StorageGroupProcessor {
 
   }
 
+  private Map<Long, List<TsFileResource>> splitResourcesByPartition(List<TsFileResource> resources) {
+    Map<Long, List<TsFileResource>> ret = new HashMap<>();
+    for (TsFileResource resource : resources) {
+      ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
+    }
+    return ret;
+  }
+
   private void recover() throws StorageGroupProcessorException {
     logger.info("recover Storage Group  {}", storageGroupName);
 
@@ -280,8 +288,16 @@ public class StorageGroupProcessor {
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
 
-      recoverSeqFiles(tmpSeqTsFiles);
-      recoverUnseqFiles(tmpUnseqTsFiles);
+      // split by partition so that we can find the last file of each partition and decide to
+      // close it or not
+      Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles = splitResourcesByPartition(tmpSeqTsFiles);
+      Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles = splitResourcesByPartition(tmpUnseqTsFiles);
+      for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
+        recoverSeqFiles(value);
+      }
+      for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
+        recoverUnseqFiles(value);
+      }
 
       for (TsFileResource resource : sequenceFileTreeSet) {
         long partitionNum = resource.getTimePartition();
