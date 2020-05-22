@@ -200,7 +200,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws TTransportException
    */
   @Override
-  public void start() throws TTransportException {
+  public void start() {
     if (heartBeatService != null) {
       return;
     }
@@ -222,6 +222,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       try {
         pullSnapshotService.awaitTermination(10, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for pullSnapshotService to end", e);
       }
       pullSnapshotService = null;
@@ -738,8 +739,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    if (character != NodeCharacter.LEADER) {
-      // forward the request to the leader
+    if (character != NodeCharacter.LEADER && !readOnly) {
+      // if this node has been set readOnly, then it must have been synchronized with the leader
+      // otherwise forward the request to the leader
       if (leader != null) {
         logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
         DataClient client = (DataClient) connectNode(leader);
@@ -780,6 +782,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.warn("{}: Unexpected interruption when waiting for logs to commit", name, e);
       }
     }

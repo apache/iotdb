@@ -298,16 +298,8 @@ public class SlotPartitionTableTest {
 
   @Test
   public void testPhysicalPlan() throws QueryProcessException {
-    PhysicalPlan aggregationPlan = new AggregationPlan();
-    assertTrue(PartitionUtils.isLocalNonQueryPlan(aggregationPlan));
     PhysicalPlan deletePlan = new DeletePlan();
     assertTrue(PartitionUtils.isGlobalDataPlan(deletePlan));
-    PhysicalPlan fillQueryPlan = new FillQueryPlan();
-    assertTrue(PartitionUtils.isLocalNonQueryPlan(fillQueryPlan));
-    PhysicalPlan groupByPlan = new GroupByPlan();
-    assertTrue(PartitionUtils.isLocalNonQueryPlan(groupByPlan));
-    PhysicalPlan queryPlan = new RawDataQueryPlan();
-    assertTrue(PartitionUtils.isLocalNonQueryPlan(queryPlan));
     PhysicalPlan updatePlan = new UpdatePlan();
 
     ClusterPlanRouter router = new ClusterPlanRouter(localTable);
@@ -341,14 +333,6 @@ public class SlotPartitionTableTest {
     assertTrue(PartitionUtils.isGlobalMetaPlan(setStorageGroupPlan));
     PhysicalPlan setTTLPlan = new SetTTLPlan("");
     assertTrue(PartitionUtils.isGlobalMetaPlan(setTTLPlan));
-    PhysicalPlan showPlan = new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
-    assertTrue(PartitionUtils.isLocalNonQueryPlan(showPlan));
-    showPlan = new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
-    assertTrue(PartitionUtils.isLocalNonQueryPlan(showPlan));
-    showPlan = new ShowPlan(ShowContentType.VERSION);
-    assertTrue(PartitionUtils.isLocalNonQueryPlan(showPlan));
-    showPlan = new ShowPlan(ShowContentType.TTL);
-    assertTrue(PartitionUtils.isLocalNonQueryPlan(showPlan));
 
   }
 

@@ -286,7 +286,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @throws TTransportException
    */
   @Override
-  public void start() throws TTransportException {
+  public void start() {
     if (heartBeatService != null) {
       return;
     }
@@ -788,7 +788,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     synchronized (partitionTable) {
       try {
         initSubServers();
-        getDataClusterServer().bulidDataGroupMembers(partitionTable);
+        getDataClusterServer().buildDataGroupMembers(partitionTable);
       } catch (TTransportException | StartupException e) {
         logger.error("Build partition table failed: ", e);
         stop();

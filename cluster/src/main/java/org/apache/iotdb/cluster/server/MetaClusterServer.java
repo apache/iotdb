@@ -39,7 +39,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -200,7 +199,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   @Override
   public void checkStatus(StartUpStatus startUpStatus,
-      AsyncMethodCallback<CheckStatusResponse> resultHandler) throws TException {
+      AsyncMethodCallback<CheckStatusResponse> resultHandler) {
     member.checkStatus(startUpStatus, resultHandler);
   }
 

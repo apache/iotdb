@@ -29,6 +29,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
  * 1. The MetaMemberReport of the meta member.
  * 2. The DataMemberReports of each data member.
  */
+@SuppressWarnings("java:S107") // reports need enough parameters
 public class NodeReport {
 
   private Node thisNode;

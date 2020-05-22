@@ -146,7 +146,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    *
    * @throws TTransportException
    */
-  public void start() throws TTransportException {
+  public void start() {
     if (heartBeatService != null) {
       return;
     }
@@ -180,6 +180,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       heartBeatService.awaitTermination(10, TimeUnit.SECONDS);
       catchUpService.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for heartBeatService and catchUpService "
           + "to end", e);
     }

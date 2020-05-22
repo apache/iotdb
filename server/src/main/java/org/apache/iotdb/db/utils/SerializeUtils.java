@@ -494,4 +494,21 @@ public class SerializeUtils {
     }
     return ret;
   }
+
+  public static Node stringToNode(String str) {
+    int ipFirstPos = str.indexOf("ip:", 0) + "ip:".length();
+    int ipLastPos = str.indexOf(',', ipFirstPos);
+    int metaPortFirstPos = str.indexOf("metaPort:", ipLastPos) + "metaPort:".length();
+    int metaPortLastPos = str.indexOf(',', metaPortFirstPos);
+    int idFirstPos = str.indexOf("nodeIdentifier:", metaPortLastPos) + "nodeIdentifier:".length();
+    int idLastPos = str.indexOf(',', idFirstPos);
+    int dataPortFirstPos = str.indexOf("dataPort:", idLastPos) + "dataPort:".length();
+    int dataPortLastPos = str.indexOf(')', dataPortFirstPos);
+
+    String ip = str.substring(ipFirstPos, ipLastPos);
+    int metaPort = Integer.parseInt(str.substring(metaPortFirstPos, metaPortLastPos));
+    int id = Integer.parseInt(str.substring(idFirstPos, idLastPos));
+    int dataPort = Integer.parseInt(str.substring(dataPortFirstPos, dataPortLastPos));
+    return new Node(ip, metaPort, id, dataPort);
+  }
 }
