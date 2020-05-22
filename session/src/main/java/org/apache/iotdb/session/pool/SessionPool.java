@@ -222,7 +222,7 @@ public class SessionPool {
     }
   }
 
-  private void mayThrowConnectionException(Session session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
+  private void cleanSessionAndMayThrowConnectionException(Session session, int times, IoTDBConnectionException e) throws IoTDBConnectionException {
     closeSession(session);
     removeSession();
     if (times == FINAL_RETRY) {
@@ -278,7 +278,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (BatchExecutionException e) {
         putBack(session);
         throw e;
@@ -312,7 +312,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (BatchExecutionException e) {
         putBack(session);
         throw e;
@@ -338,7 +338,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (BatchExecutionException e) {
         putBack(session);
         throw e;
@@ -363,7 +363,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -385,7 +385,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (BatchExecutionException e) {
         putBack(session);
         throw e;
@@ -408,7 +408,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (BatchExecutionException e) {
         putBack(session);
         throw e;
@@ -430,7 +430,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -453,7 +453,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -476,7 +476,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -500,7 +500,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -524,7 +524,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -542,7 +542,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -560,7 +560,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -578,7 +578,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -596,7 +596,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -617,7 +617,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -639,7 +639,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (BatchExecutionException e) {
         putBack(session);
         throw e;
@@ -656,7 +656,7 @@ public class SessionPool {
         return resp;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       }
     }
     //never go here.
@@ -683,7 +683,7 @@ public class SessionPool {
         return wrapper;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
@@ -708,7 +708,7 @@ public class SessionPool {
         return;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
-        mayThrowConnectionException(session, i, e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
