@@ -598,6 +598,7 @@ public class Session {
     try {
       return executeQueryStatement(String.format("SHOW TIMESERIES %s", path)).hasNext();
     } catch (Exception e) {
+      logger.error("meet error when check Timeseries {}", path, e);
       throw new IoTDBConnectionException(e);
     }
   }
