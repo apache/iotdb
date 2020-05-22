@@ -70,7 +70,7 @@ public class ClusterPlanRouter {
       return routePlan((ShowChildPathsPlan) plan);
     }
     //the if clause can be removed after the program is stable
-    if (PartitionUtils.isLocalPlan(plan)) {
+    if (PartitionUtils.isLocalNonQueryPlan(plan)) {
       logger.error("{} is a local plan. Please run it locally directly", plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);
@@ -116,7 +116,7 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((InsertPlan) plan);
     }
     //the if clause can be removed after the program is stable
-    if (PartitionUtils.isLocalPlan(plan)) {
+    if (PartitionUtils.isLocalNonQueryPlan(plan)) {
       logger.error("{} is a local plan. Please run it locally directly", plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan) || PartitionUtils.isGlobalDataPlan(plan)) {
       logger.error("{} is a global plan. Please forward it to all partitionGroups", plan);

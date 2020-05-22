@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
-import static org.apache.iotdb.cluster.server.RaftServer.queryTimeOutInSec;
+import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIMEOUT_IN_MS;
+import static org.apache.iotdb.cluster.server.RaftServer.QUERY_TIMEOUT_IN_SEC;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
@@ -77,7 +77,7 @@ public class SyncClientAdaptor {
     GenericHandler handler = new GenericHandler(metaClient.getNode(), responseRef);
     synchronized (responseRef) {
       metaClient.removeNode(nodeToRemove, handler);
-      responseRef.wait(RaftServer.connectionTimeoutInMS);
+      responseRef.wait(RaftServer.CONNECTION_TIMEOUT_IN_MS);
     }
     return responseRef.get();
   }
@@ -89,7 +89,7 @@ public class SyncClientAdaptor {
 
     synchronized (resultRef) {
       client.matchTerm(prevLogIndex, prevLogTerm, header, matchTermHandler);
-      resultRef.wait(RaftServer.connectionTimeoutInMS);
+      resultRef.wait(RaftServer.CONNECTION_TIMEOUT_IN_MS);
     }
     return resultRef.get();
   }
@@ -100,7 +100,7 @@ public class SyncClientAdaptor {
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
     synchronized (result) {
       client.querySingleSeriesByTimestamp(request, handler);
-      result.wait(connectionTimeoutInMS);
+      result.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return result.get();
   }
@@ -121,7 +121,7 @@ public class SyncClientAdaptor {
 
     synchronized (result) {
       client.querySingleSeries(request, handler);
-      result.wait(connectionTimeoutInMS);
+      result.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return result.get();
   }
@@ -134,7 +134,7 @@ public class SyncClientAdaptor {
     handler.setContact(client.getNode());
     synchronized (response) {
       client.getNodeList(header, schemaPattern, level, handler);
-      response.wait(connectionTimeoutInMS);
+      response.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return response.get();
   }
@@ -147,7 +147,7 @@ public class SyncClientAdaptor {
     handler.setContact(client.getNode());
     synchronized (response) {
       client.getChildNodePathInNextLevel(header, path, handler);
-      response.wait(connectionTimeoutInMS);
+      response.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return response.get();
   }
@@ -166,7 +166,7 @@ public class SyncClientAdaptor {
       plan.serialize(dataOutputStream);
       client.getAllMeasurementSchema(header, ByteBuffer.wrap(byteArrayOutputStream.toByteArray()),
           handler);
-      response.wait(connectionTimeoutInMS);
+      response.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return response.get();
   }
@@ -177,7 +177,7 @@ public class SyncClientAdaptor {
     GenericHandler<TNodeStatus> handler = new GenericHandler<>(client.getNode(), resultRef);
     synchronized (resultRef) {
       client.queryNodeStatus(handler);
-      resultRef.wait(connectionTimeoutInMS);
+      resultRef.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return resultRef.get();
   }
@@ -215,7 +215,7 @@ public class SyncClientAdaptor {
     synchronized (timeseriesSchemas) {
       client.pullTimeSeriesSchema(pullSchemaRequest, new PullTimeseriesSchemaHandler(client.getNode(),
           pullSchemaRequest.getPrefixPaths(), timeseriesSchemas));
-      timeseriesSchemas.wait(connectionTimeoutInMS);
+      timeseriesSchemas.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return timeseriesSchemas.get();
   }
@@ -227,7 +227,7 @@ public class SyncClientAdaptor {
     synchronized (resultReference) {
       resultReference.set(null);
       client.getAggrResult(request, handler);
-      resultReference.wait(connectionTimeoutInMS);
+      resultReference.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return resultReference.get();
   }
@@ -238,7 +238,7 @@ public class SyncClientAdaptor {
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
     synchronized (remoteResult) {
       client.getAllPaths(header, pathsToQuery, handler);
-      remoteResult.wait(connectionTimeoutInMS);
+      remoteResult.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return remoteResult.get();
   }
@@ -250,7 +250,7 @@ public class SyncClientAdaptor {
     GenericHandler<Set<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
     synchronized (remoteResult) {
       client.getAllDevices(header, pathsToQuery, handler);
-      remoteResult.wait(connectionTimeoutInMS);
+      remoteResult.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return remoteResult.get();
   }
@@ -262,7 +262,7 @@ public class SyncClientAdaptor {
     synchronized (result) {
       result.set(null);
       client.getGroupByExecutor(request, handler);
-      result.wait(connectionTimeoutInMS);
+      result.wait(CONNECTION_TIMEOUT_IN_MS);
     }
     return result.get();
   }
@@ -273,7 +273,7 @@ public class SyncClientAdaptor {
     GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(client.getNode(), resultRef);
     synchronized (resultRef) {
       client.previousFill(request, nodeHandler);
-      resultRef.wait(queryTimeOutInSec * 1000L);
+      resultRef.wait(QUERY_TIMEOUT_IN_SEC * 1000L);
     }
     return resultRef.get();
   }

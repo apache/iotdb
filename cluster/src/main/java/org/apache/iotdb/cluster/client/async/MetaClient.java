@@ -41,7 +41,7 @@ public class MetaClient extends AsyncClient {
       TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
     // the difference of the two clients lies in the port
     super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getMetaPort(),
-        RaftServer.connectionTimeoutInMS));
+        RaftServer.CONNECTION_TIMEOUT_IN_MS));
     this.node = node;
     this.pool = pool;
   }

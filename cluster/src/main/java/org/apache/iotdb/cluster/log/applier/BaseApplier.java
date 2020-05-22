@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -35,9 +34,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +63,6 @@ abstract class BaseApplier implements LogApplier {
         if (e.getCause() instanceof StorageGroupNotSetException) {
           metaGroupMember.syncLeader();
           getQueryExecutor().processNonQuery(plan);
-          return;
         } else {
           throw e;
         }

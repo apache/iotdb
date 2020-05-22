@@ -35,7 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.NoSuchElementException;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIMEOUT_IN_MS;
 
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
@@ -110,7 +110,7 @@ public class RemoteSimpleSeriesReader implements IPointReader {
         try {
           currClient = sourceInfo.getCurClient();
           currClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
-          fetchResult.wait(connectionTimeoutInMS);
+          fetchResult.wait(CONNECTION_TIMEOUT_IN_MS);
         } catch (TException | InterruptedException e) {
           // try other nodes
           DataClient newClient = sourceInfo.nextDataClient(false, this.lastTimestamp);

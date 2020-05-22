@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIMEOUT_IN_MS;
 
 public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
 
@@ -64,7 +64,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
         try {
           sourceInfo.getCurClient().fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
               sourceInfo.getReaderId(), timestamp, handler);
-          fetchResult.wait(connectionTimeoutInMS);
+          fetchResult.wait(CONNECTION_TIMEOUT_IN_MS);
         } catch (TException | InterruptedException e) {
           //try other node
           DataClient client = sourceInfo.nextDataClient(true, timestamp);

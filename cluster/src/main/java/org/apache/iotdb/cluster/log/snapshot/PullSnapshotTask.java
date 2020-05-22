@@ -91,7 +91,7 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Map<Intege
       synchronized (snapshotRef) {
         client.pullSnapshot(request, new PullSnapshotHandler<>(snapshotRef,
             node, descriptor.getSlots(), snapshotFactory));
-        snapshotRef.wait(RaftServer.connectionTimeoutInMS);
+        snapshotRef.wait(RaftServer.CONNECTION_TIMEOUT_IN_MS);
       }
       Map<Integer, T> result = snapshotRef.get();
       if (result != null) {

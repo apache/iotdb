@@ -417,8 +417,8 @@ public class MetaGroupMemberTest extends MemberTest {
         StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
     assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
-    int prevTimeout = RaftServer.connectionTimeoutInMS;
-    RaftServer.connectionTimeoutInMS = 1;
+    int prevTimeout = RaftServer.CONNECTION_TIMEOUT_IN_MS;
+    RaftServer.CONNECTION_TIMEOUT_IN_MS = 1;
     try {
       for (int i = 20; i < 30; i++) {
         insertPlan.setTime(i);
@@ -460,7 +460,7 @@ public class MetaGroupMemberTest extends MemberTest {
       testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
     } finally {
-      RaftServer.connectionTimeoutInMS = prevTimeout;
+      RaftServer.CONNECTION_TIMEOUT_IN_MS = prevTimeout;
     }
   }
 
@@ -512,15 +512,15 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testJoinClusterFailed() throws QueryProcessException {
     System.out.println("Start testJoinClusterFailed()");
-    long prevInterval = RaftServer.heartBeatIntervalMs;
-    RaftServer.heartBeatIntervalMs = 10;
+    long prevInterval = RaftServer.HEART_BEAT_INTERVAL_MS;
+    RaftServer.HEART_BEAT_INTERVAL_MS = 10;
     try {
       dummyResponse.set(Response.RESPONSE_NO_CONNECTION);
       MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
       assertFalse(newMember.joinCluster());
       newMember.closeLogManager();
     } finally {
-      RaftServer.heartBeatIntervalMs = prevInterval;
+      RaftServer.HEART_BEAT_INTERVAL_MS = prevInterval;
     }
   }
 
@@ -872,8 +872,8 @@ public class MetaGroupMemberTest extends MemberTest {
   @Test
   public void testRemoteAddNode() {
     System.out.println("Start testRemoteAddNode()");
-    int prevTimeout = RaftServer.connectionTimeoutInMS;
-    RaftServer.connectionTimeoutInMS = 100;
+    int prevTimeout = RaftServer.CONNECTION_TIMEOUT_IN_MS;
+    RaftServer.CONNECTION_TIMEOUT_IN_MS = 100;
     try {
       // cannot add node when partition table is not built
       testMetaMember.setPartitionTable(null);
@@ -1001,7 +1001,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     } finally {
       testMetaMember.stop();
-      RaftServer.connectionTimeoutInMS = prevTimeout;
+      RaftServer.CONNECTION_TIMEOUT_IN_MS = prevTimeout;
     }
   }
 

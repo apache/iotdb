@@ -185,7 +185,7 @@ public class ClientServer extends TSServiceImpl {
    * @return
    */
   @Override
-  protected TSStatus executePlan(PhysicalPlan plan) {
+  protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     return metaGroupMember.executeNonQuery(plan);
   }
 

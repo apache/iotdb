@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIMEOUT_IN_MS;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -77,7 +77,7 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
       fetchResult.set(null);
       try {
         client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
-        fetchResult.wait(connectionTimeoutInMS);
+        fetchResult.wait(CONNECTION_TIMEOUT_IN_MS);
       } catch (TException | InterruptedException e) {
         throw new IOException(e);
       }

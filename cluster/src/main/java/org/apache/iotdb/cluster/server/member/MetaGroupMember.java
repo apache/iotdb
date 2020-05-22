@@ -19,8 +19,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
-import static org.apache.iotdb.cluster.server.RaftServer.queryTimeOutInSec;
+import static org.apache.iotdb.cluster.server.RaftServer.CONNECTION_TIMEOUT_IN_MS;
+import static org.apache.iotdb.cluster.server.RaftServer.QUERY_TIMEOUT_IN_SEC;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
@@ -84,6 +84,7 @@ import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.fill.PreviousFillArguments;
@@ -129,6 +130,7 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
@@ -139,6 +141,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -150,6 +153,7 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -228,6 +232,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private ScheduledExecutorService reportThread;
 
   private StartUpStatus startUpStatus;
+
+  // localExecutor is used to directly execute plans like load configuration (locally)
+  private PlanExecutor localExecutor;
 
   @TestOnly
   public MetaGroupMember() {
@@ -1106,7 +1113,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
 
       try {
-        groupRemainings.wait(connectionTimeoutInMS);
+        groupRemainings.wait(CONNECTION_TIMEOUT_IN_MS);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for the group votes", e);
@@ -1375,8 +1382,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   @Override
   public TSStatus executeNonQuery(PhysicalPlan plan) {
-    if (PartitionUtils.isLocalPlan(plan)) {// run locally
-      return processPlanLocally(plan);
+    if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
+      return executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
       return processNonPartitionedMetaPlan(plan);
     } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
@@ -1390,6 +1397,23 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         return status;
       }
     }
+  }
+
+  protected TSStatus executeNonQueryLocally(PhysicalPlan plan) {
+    boolean execRet;
+    try {
+      execRet = getLocalExecutor().processNonQuery(plan);
+    } catch (QueryProcessException e) {
+      logger.debug("meet error while processing non-query. ", e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (Exception e) {
+      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+
+    return execRet
+        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
+        : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
   /**
@@ -2879,7 +2903,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     fillService.shutdown();
     try {
-      fillService.awaitTermination(queryTimeOutInSec, TimeUnit.SECONDS);
+      fillService.awaitTermination(QUERY_TIMEOUT_IN_SEC, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for fill pool to stop", e);
@@ -2949,5 +2973,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (dataClusterServer != null) {
       dataClusterServer.closeLogManagers();
     }
+  }
+
+  protected PlanExecutor getLocalExecutor() throws QueryProcessException {
+    if (localExecutor == null) {
+      localExecutor = new PlanExecutor();
+    }
+    return localExecutor;
   }
 }

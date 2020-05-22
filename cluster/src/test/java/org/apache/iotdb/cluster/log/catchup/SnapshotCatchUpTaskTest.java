@@ -117,7 +117,7 @@ public class SnapshotCatchUpTaskTest {
   }
 
   @Test
-  public void testLeadershipLost() throws InterruptedException, TException, LeaderUnknownException {
+  public void testLeadershipLost() {
     testLeadershipFlag = true;
     // the leadership will be lost after sending the snapshot
     List<Log> logList = TestUtils.prepareTestLogs(10);
@@ -149,7 +149,7 @@ public class SnapshotCatchUpTaskTest {
   }
 
   @Test
-  public void testNoLeadership() throws InterruptedException, TException, LeaderUnknownException {
+  public void testNoLeadership() {
     // the leadership is lost from the beginning
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Snapshot snapshot = new TestSnapshot(9989);

@@ -299,15 +299,15 @@ public class SlotPartitionTableTest {
   @Test
   public void testPhysicalPlan() throws QueryProcessException {
     PhysicalPlan aggregationPlan = new AggregationPlan();
-    assertTrue(PartitionUtils.isLocalPlan(aggregationPlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(aggregationPlan));
     PhysicalPlan deletePlan = new DeletePlan();
     assertTrue(PartitionUtils.isGlobalDataPlan(deletePlan));
     PhysicalPlan fillQueryPlan = new FillQueryPlan();
-    assertTrue(PartitionUtils.isLocalPlan(fillQueryPlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(fillQueryPlan));
     PhysicalPlan groupByPlan = new GroupByPlan();
-    assertTrue(PartitionUtils.isLocalPlan(groupByPlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(groupByPlan));
     PhysicalPlan queryPlan = new RawDataQueryPlan();
-    assertTrue(PartitionUtils.isLocalPlan(queryPlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(queryPlan));
     PhysicalPlan updatePlan = new UpdatePlan();
 
     ClusterPlanRouter router = new ClusterPlanRouter(localTable);
@@ -335,20 +335,20 @@ public class SlotPartitionTableTest {
     PhysicalPlan localLoadConfigPlan = new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
     assertFalse(PartitionUtils.isGlobalMetaPlan(localLoadConfigPlan));
     PhysicalPlan operateFilePlan = new OperateFilePlan(new File(""), OperatorType.TABLESCAN);
-    assertTrue(PartitionUtils.isLocalPlan(operateFilePlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(operateFilePlan));
 
     PhysicalPlan setStorageGroupPlan = new SetStorageGroupPlan();
     assertTrue(PartitionUtils.isGlobalMetaPlan(setStorageGroupPlan));
     PhysicalPlan setTTLPlan = new SetTTLPlan("");
     assertTrue(PartitionUtils.isGlobalMetaPlan(setTTLPlan));
     PhysicalPlan showPlan = new ShowPlan(ShowContentType.DYNAMIC_PARAMETER);
-    assertTrue(PartitionUtils.isLocalPlan(showPlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(showPlan));
     showPlan = new ShowPlan(ShowContentType.FLUSH_TASK_INFO);
-    assertTrue(PartitionUtils.isLocalPlan(showPlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(showPlan));
     showPlan = new ShowPlan(ShowContentType.VERSION);
-    assertTrue(PartitionUtils.isLocalPlan(showPlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(showPlan));
     showPlan = new ShowPlan(ShowContentType.TTL);
-    assertTrue(PartitionUtils.isLocalPlan(showPlan));
+    assertTrue(PartitionUtils.isLocalNonQueryPlan(showPlan));
 
   }
 

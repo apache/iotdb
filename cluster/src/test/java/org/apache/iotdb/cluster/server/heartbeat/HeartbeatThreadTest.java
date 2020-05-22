@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.File;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -183,8 +182,8 @@ public class HeartbeatThreadTest {
 
   @Test
   public void testAsFollower() throws InterruptedException {
-    int prevTimeOut = RaftServer.connectionTimeoutInMS;
-    RaftServer.connectionTimeoutInMS = 500;
+    int prevTimeOut = RaftServer.CONNECTION_TIMEOUT_IN_MS;
+    RaftServer.CONNECTION_TIMEOUT_IN_MS = 500;
     member.setCharacter(NodeCharacter.FOLLOWER);
     member.setLastHeartbeatReceivedTime(System.currentTimeMillis());
     respondToElection = false;
@@ -196,7 +195,7 @@ public class HeartbeatThreadTest {
       testThread.interrupt();
       testThread.join();
     } finally {
-      RaftServer.connectionTimeoutInMS = prevTimeOut;
+      RaftServer.CONNECTION_TIMEOUT_IN_MS = prevTimeOut;
     }
   }
 
