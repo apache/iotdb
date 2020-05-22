@@ -155,7 +155,8 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testCreateMultiTimeseries() throws IoTDBConnectionException, BatchExecutionException {
+  public void testCreateMultiTimeseries()
+      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 

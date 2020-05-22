@@ -594,13 +594,12 @@ public class Session {
     }
   }
 
-  public boolean checkTimeseriesExists(String path) throws IoTDBConnectionException {
-    try {
-      return executeQueryStatement(String.format("SHOW TIMESERIES %s", path)).hasNext();
-    } catch (Exception e) {
-      logger.error("meet error when check Timeseries {}", path, e);
-      throw new IoTDBConnectionException(e);
-    }
+  public boolean checkTimeseriesExists(String path)
+      throws IoTDBConnectionException, StatementExecutionException {
+    SessionDataSet dataSet = executeQueryStatement(String.format("SHOW TIMESERIES %s", path));
+    boolean result = dataSet.hasNext();
+    dataSet.closeOperationHandle();
+    return result;
   }
 
   private synchronized String getTimeZone()
