@@ -37,6 +37,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.engine.cache.LastCacheManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -198,6 +199,7 @@ public class EnvironmentUtils {
 
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
+    LastCacheManager.getInstance().clear();
 
     createAllDir();
     // disable the system monitor

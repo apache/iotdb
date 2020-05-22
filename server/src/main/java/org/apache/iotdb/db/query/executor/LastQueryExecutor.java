@@ -23,7 +23,6 @@ package org.apache.iotdb.db.query.executor;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 
-import java.sql.Time;
 import java.util.Set;
 import org.apache.iotdb.db.engine.cache.LastCacheManager;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -31,8 +30,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -176,9 +173,7 @@ public class LastQueryExecutor {
       }
     }
 
-    // Update cached last value with low priority
     LastCacheManager.getInstance().put(seriesPath.getFullPath(), resultPair, false);
-    //node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
     return resultPair;
   }
 

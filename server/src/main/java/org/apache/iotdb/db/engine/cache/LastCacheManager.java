@@ -18,22 +18,21 @@
  */
 package org.apache.iotdb.db.engine.cache;
 
-import java.sql.Time;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LastCacheManager {
 
-  private HashMap<String, StorageGroupLastCache> storageGroupMap;
+  private Map<String, StorageGroupLastCache> storageGroupMap;
 
   private LastCacheManager() {
-    storageGroupMap = new HashMap<>();
+    storageGroupMap = new ConcurrentHashMap<>();
   }
 
   public static LastCacheManager getInstance() {
@@ -63,6 +62,7 @@ public class LastCacheManager {
     }
   }
 
+  // Used for testing. This method will clear all cache in the storage group containing timeseriesPath
   public void clearCache(String timeseriesPath) throws MetadataException {
     String storageGroupName = MManager.getInstance().getStorageGroupName(timeseriesPath);
     if (storageGroupMap.get(storageGroupName) != null) {
