@@ -136,7 +136,8 @@ public class HeartbeatThread implements Runnable {
         if (node.equals(localMember.getThisNode())) {
           continue;
         }
-        if (Thread.interrupted()) {
+        if (Thread.currentThread().isInterrupted()) {
+          Thread.currentThread().interrupt();
           return;
         }
 
