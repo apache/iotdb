@@ -50,12 +50,13 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class RaftServer implements RaftService.AsyncIface {
 
-  private static final Logger logger = LoggerFactory.getLogger(RaftService.class);
-  public static int connectionTimeoutInMS = ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
-  public static int queryTimeOutInSec =
+  private static final Logger logger = LoggerFactory.getLogger(RaftServer.class);
+  private static int connectionTimeoutInMS =
+      ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+  private static int queryTimeoutInSec =
       ClusterDescriptor.getInstance().getConfig().getQueryTimeoutInSec();
-  public static int syncLeaderMaxWaitMs = 20 * 1000;
-  public static long heartBeatIntervalMs = 1000L;
+  private static int syncLeaderMaxWaitMs = 20 * 1000;
+  private static long heartBeatIntervalMs = 1000L;
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the socket poolServer will listen to
@@ -81,13 +82,41 @@ public abstract class RaftServer implements RaftService.AsyncIface {
     this.thisNode = thisNode;
   }
 
+  public static int getConnectionTimeoutInMS() {
+    return connectionTimeoutInMS;
+  }
+
+  public static void setConnectionTimeoutInMS(int connectionTimeoutInMS) {
+    RaftServer.connectionTimeoutInMS = connectionTimeoutInMS;
+  }
+
+  public static int getQueryTimeoutInSec() {
+    return queryTimeoutInSec;
+  }
+
+  public static int getSyncLeaderMaxWaitMs() {
+    return syncLeaderMaxWaitMs;
+  }
+
+  public static void setSyncLeaderMaxWaitMs(int syncLeaderMaxWaitMs) {
+    RaftServer.syncLeaderMaxWaitMs = syncLeaderMaxWaitMs;
+  }
+
+  public static long getHeartBeatIntervalMs() {
+    return heartBeatIntervalMs;
+  }
+
+  public static void setHeartBeatIntervalMs(long heartBeatIntervalMs) {
+    RaftServer.heartBeatIntervalMs = heartBeatIntervalMs;
+  }
+
   /**
    * Establish a thrift server with the configurations in ClusterConfig to listen to and respond to
    * thrift RPCs.
    * Calling the method twice does not induce side effects.
    * @throws TTransportException
-   * @throws StartupException
    */
+  @SuppressWarnings("java:S1130") // thrown in override method
   public void start() throws TTransportException, StartupException {
     if (poolServer != null) {
       return;

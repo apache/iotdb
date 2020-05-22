@@ -695,7 +695,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           result.set(null);
           synchronized (result) {
             client.readFile(remotePath, offset, fetchSize, handler);
-            result.wait(RaftServer.connectionTimeoutInMS);
+            result.wait(RaftServer.getConnectionTimeoutInMS());
           }
           ByteBuffer buffer = result.get();
           if (buffer == null || buffer.limit() - buffer.position() == 0) {
@@ -1498,21 +1498,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       resultHandler.onError(e);
     }
   }
-
-  @Override
-  public void getSeriesDataType(Node header, String path,
-      AsyncMethodCallback<Integer> resultHandler) throws TException {
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
-      return;
-    }
-    try {
-      resultHandler.onComplete(MManager.getInstance().getSeriesType(path).ordinal());
-    } catch (MetadataException e) {
-      resultHandler.onError(e);
-    }
-  }
-
 
   /**
    * Execute aggregations over the given path and return the results to the requester.

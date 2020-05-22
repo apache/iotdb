@@ -325,7 +325,7 @@ public class TsFileResource {
 
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
-      modFile = new ModificationFile(file.getAbsolutePath() + ModificationFile.FILE_SUFFIX);
+      modFile = new ModificationFile(file.getPath() + ModificationFile.FILE_SUFFIX);
     }
     return modFile;
   }
@@ -416,6 +416,10 @@ public class TsFileResource {
     file.delete();
     fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
     fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
+  }
+
+  public void removeResourceFile() {
+    fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
   }
 
   void moveTo(File targetDir) {

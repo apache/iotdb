@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.query.groupby;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -28,6 +26,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -77,7 +76,7 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
       fetchResult.set(null);
       try {
         client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
-        fetchResult.wait(connectionTimeoutInMS);
+        fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
       } catch (TException | InterruptedException e) {
         throw new IOException(e);
       }

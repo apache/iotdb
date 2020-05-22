@@ -24,6 +24,7 @@ typedef i32 int
 typedef i16 short
 typedef i64 long
 
+// TODO-Cluster: update rpc change list when ready to merge
 // leader -> follower
 struct HeartBeatRequest {
   1: required long term // leader's meta log
@@ -116,18 +117,18 @@ struct Node {
 
 // leader -> follower
 struct StartUpStatus {
- 1: required long partitionInterval
- 2: required int hashSalt
- 3: required int replicationNumber
- 4: required list<Node> seedNodeList
+  1: required long partitionInterval
+  2: required int hashSalt
+  3: required int replicationNumber
+  4: required list<Node> seedNodeList
 }
 
 // follower -> leader
 struct CheckStatusResponse {
- 1: required bool partitionalIntervalEquals
- 2: required bool hashSaltEquals
- 3: required bool replicationNumEquals
- 4: required bool seedNodeEquals
+  1: required bool partitionalIntervalEquals
+  2: required bool hashSaltEquals
+  3: required bool replicationNumEquals
+  4: required bool seedNodeEquals
 }
 
 struct SendSnapshotRequest {
@@ -223,7 +224,7 @@ service RaftService {
   * @return if the leader is valid, HeartBeatResponse.term will set -1, and the follower will tell
   * leader its lastLogIndex; otherwise, the follower will tell the fake leader its term.
   **/
-	HeartBeatResponse sendHeartbeat(1:HeartBeatRequest request);
+  HeartBeatResponse sendHeartbeat(1:HeartBeatRequest request);
 
 	/**
   * If a node wants to be a leader, it'll call the method to other nodes to get a vote.
@@ -331,8 +332,6 @@ service TSDataService extends RaftService {
 
   binary getAllMeasurementSchema(1: Node header, 2: binary planBinary)
 
-  int getSeriesDataType(1: Node header, 2: string path)
-
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
@@ -382,12 +381,12 @@ service TSMetaService extends RaftService {
   **/
   long removeNode(1: Node node)
 
-   /**
-   * When a node is removed from the cluster, if it is not the meta leader, it cannot receive
-   * the commit command by heartbeat since it has been removed, so the leader should tell it
-   * directly that it is no longer in the cluster.
-   **/
-   void exile()
+  /**
+  * When a node is removed from the cluster, if it is not the meta leader, it cannot receive
+  * the commit command by heartbeat since it has been removed, so the leader should tell it
+  * directly that it is no longer in the cluster.
+  **/
+  void exile()
 
   TNodeStatus queryNodeStatus()
 

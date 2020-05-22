@@ -197,10 +197,10 @@ public class ClientServer extends TSServiceImpl {
    * @return
    */
   @Override
-  protected TSStatus executePlan(PhysicalPlan plan) {
-    TSStatus validateResult = metaGroupMember.validatePlan(plan);
-    return validateResult == StatusUtils.OK ? metaGroupMember.executeNonQuery(plan)
-        : validateResult;
+  protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
+      TSStatus validateResult = metaGroupMember.validatePlan(plan);
+      return validateResult == StatusUtils.OK ? metaGroupMember.executeNonQuery(plan)
+          : validateResult;
   }
 
 
@@ -258,6 +258,7 @@ public class ClientServer extends TSServiceImpl {
    * @return the data types of "paths" (using the aggregation)
    * @throws MetadataException
    */
+  @Override
   protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
       throws MetadataException {
     return metaGroupMember.getSeriesTypesByString(paths, aggregation);

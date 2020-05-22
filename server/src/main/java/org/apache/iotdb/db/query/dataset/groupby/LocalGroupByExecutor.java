@@ -54,8 +54,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   public LocalGroupByExecutor(Path path, Set<String> allSensors, TSDataType dataType,
       QueryContext context, Filter timeFilter, TsFileFilter fileFilter)
       throws StorageEngineException, QueryProcessException {
-      queryDataSource = QueryResourceManager.getInstance()
-          .getQueryDataSource(path, context, timeFilter);
+    queryDataSource = QueryResourceManager.getInstance()
+        .getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
     this.reader = new SeriesAggregateReader(path, allSensors, dataType, context, queryDataSource,
@@ -65,7 +65,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   }
 
   public boolean isEmpty() {
-    return queryDataSource.getSeqResources().isEmpty() && queryDataSource.getUnseqResources().isEmpty();
+    return queryDataSource.getSeqResources().isEmpty() && queryDataSource.getUnseqResources()
+        .isEmpty();
   }
 
   @Override

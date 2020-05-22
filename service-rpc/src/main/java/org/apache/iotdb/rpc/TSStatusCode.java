@@ -69,6 +69,7 @@ public enum TSStatusCode {
   NO_PERMISSION_ERROR(602),
   UNINITIALIZED_AUTH_ERROR(603),
 
+  // TODO-Cluster: update docs when ready to merge
   PARTITION_NOT_READY(700),
   TIME_OUT(701),
   NO_LEADER(702),

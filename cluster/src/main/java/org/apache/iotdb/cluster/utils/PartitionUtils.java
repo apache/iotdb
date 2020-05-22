@@ -56,36 +56,22 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.OrFilter;
 import org.apache.iotdb.tsfile.utils.Murmur128Hash;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PartitionUtils {
-
-  private static final Logger logger = LoggerFactory.getLogger(PartitionUtils.class);
 
   private PartitionUtils() {
     // util class
   }
 
   /**
-   * Localplan only be executed locally.
+   * Whether the plan should be directly executed without spreading it into the cluster.
    *
    * @param plan
    * @return
    */
-  public static boolean isLocalPlan(PhysicalPlan plan) {
-    //QueryPlan is hard to be splited, so we do it locally and use a remote series reader to get data.
-    return plan instanceof QueryPlan
-        || plan instanceof LoadDataPlan
+  public static boolean isLocalNonQueryPlan(PhysicalPlan plan) {
+    return plan instanceof LoadDataPlan
         || plan instanceof OperateFilePlan
-        || (plan instanceof ShowPlan
-        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.DYNAMIC_PARAMETER))
-        || (plan instanceof ShowPlan
-        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.FLUSH_TASK_INFO))
-        || (plan instanceof ShowPlan
-        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.VERSION))
-        || (plan instanceof ShowPlan
-        && ((ShowPlan) plan).getShowContentType().equals(ShowContentType.TTL))
         || (plan instanceof LoadConfigurationPlan
         && ((LoadConfigurationPlan) plan).getLoadConfigurationPlanType().equals(
         LoadConfigurationPlanType.LOCAL))
@@ -99,7 +85,6 @@ public class PartitionUtils {
    * @return
    */
   public static boolean isGlobalMetaPlan(PhysicalPlan plan) {
-    // TODO-Cluster#348: support more plans
     return plan instanceof SetStorageGroupPlan
         || plan instanceof SetTTLPlan
         || plan instanceof ShowTTLPlan
@@ -213,7 +198,7 @@ public class PartitionUtils {
    */
   public static class Intervals extends ArrayList<Long> {
 
-    public static final Intervals ALL_INTERVAL = new Intervals(Long.MIN_VALUE,
+    protected static final Intervals ALL_INTERVAL = new Intervals(Long.MIN_VALUE,
         Long.MAX_VALUE);
 
     public Intervals() {
@@ -235,6 +220,14 @@ public class PartitionUtils {
 
     public long getUpperBound(int index) {
       return get(index * 2 + 1);
+    }
+
+    public void setLowerBound(int index, long lb) {
+      set(index * 2, lb);
+    }
+
+    public void setUpperBound(int index, long ub) {
+      set(index * 2 + 1, ub);
     }
 
     public void addInterval(long lowerBound, long upperBound) {
@@ -271,76 +264,76 @@ public class PartitionUtils {
      * @return
      */
     public Intervals union(Intervals that) {
-      Intervals result = new Intervals();
       if (this.isEmpty()) {
         return that;
       } else if (that.isEmpty()) {
         return this;
       }
+      Intervals result = new Intervals();
 
       int thisSize = this.getIntervalSize();
       int thatSize = that.getIntervalSize();
       int thisIndex = 0;
       int thatIndex = 0;
-      long lastLowerBound = 0;
-      long lastUpperBound = 0;
-      boolean lastBoundSet = false;
       // merge the heads of the two intervals
       while (thisIndex < thisSize && thatIndex < thatSize) {
         long thisLB = this.getLowerBound(thisIndex);
         long thisUB = this.getUpperBound(thisIndex);
         long thatLB = that.getLowerBound(thatIndex);
         long thatUB = that.getUpperBound(thatIndex);
-        if (!lastBoundSet) {
-          lastBoundSet = true;
-          if (thisLB <= thatLB) {
-            lastLowerBound = thisLB;
-            lastUpperBound = thisUB;
-            thisIndex++;
-          } else {
-            lastLowerBound = thatLB;
-            lastUpperBound = thatUB;
-            thatIndex++;
-          }
+        if (thisLB <= thatLB) {
+          result.mergeLast(thisLB, thisUB);
+          thisIndex++;
         } else {
-          if (thisLB <= lastUpperBound + 1 && thisUB >= lastLowerBound - 1) {
-            // the next interval from this can merge with last interval
-            lastLowerBound = Math.min(thisLB, lastLowerBound);
-            lastUpperBound = Math.max(thisUB, lastUpperBound);
-            thisIndex++;
-          } else if (thatLB <= lastUpperBound + 1 && thatUB >= lastLowerBound - 1) {
-            // the next interval from that can merge with last interval
-            lastLowerBound = Math.min(thatLB, lastLowerBound);
-            lastUpperBound = Math.max(thatUB, lastUpperBound);
-            thatIndex++;
-          } else {
-            // neither intervals can merge, add the last interval to the result and select a new
-            // one as base
-            result.addInterval(lastLowerBound, lastUpperBound);
-            lastBoundSet = false;
-          }
+          result.mergeLast(thatLB, thatUB);
+          thatIndex++;
         }
       }
       // merge the remaining intervals
       Intervals remainingIntervals = thisIndex < thisSize ? this : that;
       int remainingIndex = thisIndex < thisSize ? thisIndex : thatIndex;
+      mergeRemainingIntervals(remainingIndex, remainingIntervals, result);
+
+      return result;
+    }
+
+    private void mergeRemainingIntervals(int remainingIndex, Intervals remainingIntervals,
+        Intervals result) {
       for (int i = remainingIndex; i < remainingIntervals.getIntervalSize(); i++) {
         long lb = remainingIntervals.getLowerBound(i);
         long ub = remainingIntervals.getUpperBound(i);
-        if (lb <= lastUpperBound && ub >= lastLowerBound) {
-          // the next interval can merge with last interval
-          lastLowerBound = Math.min(lb, lastLowerBound);
-          lastUpperBound = Math.max(ub, lastUpperBound);
-        } else {
-          // the two interval does not intersect, add the previous interval to the result
-          result.addInterval(lastLowerBound, lastUpperBound);
-          lastLowerBound = lb;
-          lastUpperBound = ub;
-        }
+        result.mergeLast(lb, ub);
       }
-      // add the last interval
-      result.addInterval(lastLowerBound, lastLowerBound);
-      return result;
+    }
+
+    /**
+     * Merge an interval of [lowerBound, upperBound] with the last interval if they can be
+     * merged, or just add it as the last interval if its lowerBound is larger than the
+     * upperBound of the last interval. If the upperBound of the new interval is less than the
+     * lowerBound of the last interval, nothing will be done.
+     * @param lowerBound
+     * @param upperBound
+     */
+    private void mergeLast(long lowerBound, long upperBound) {
+      if (getIntervalSize() == 0) {
+        addInterval(lowerBound, upperBound);
+        return;
+      }
+      int lastIndex = getIntervalSize() - 1;
+      long lastLB = getLowerBound(lastIndex);
+      long lastUB = getUpperBound(lastIndex);
+      if (lowerBound > lastUB + 1) {
+        // e.g., last [3, 5], new [7, 10], just add the new interval
+        addInterval(lowerBound, upperBound);
+        return;
+      }
+      if (upperBound < lastLB - 1) {
+        // e.g., last [7, 10], new [3, 5], do nothing
+        return;
+      }
+      // merge the new interval into the last one
+      setLowerBound(lastIndex, Math.min(lastLB, lowerBound));
+      setUpperBound(lastIndex, Math.max(lastUB, upperBound));
     }
 
     public Intervals not() {

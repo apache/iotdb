@@ -170,7 +170,4 @@ public class RemoteTsFileResource extends TsFileResource {
     return withModification;
   }
 
-  public void setWithModification(boolean withModification) {
-    this.withModification = withModification;
-  }
 }

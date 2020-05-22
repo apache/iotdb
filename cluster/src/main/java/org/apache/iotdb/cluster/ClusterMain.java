@@ -21,16 +21,13 @@ package org.apache.iotdb.cluster;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -51,13 +48,12 @@ public class ClusterMain {
   private static final String MODE_START = "-s";
   // join an established cluster
   private static final String MODE_ADD = "-a";
-  // send a request to remove a node, more arguments: {ip-of-removed-node}
-  // {metaport-of-removed-node}
+  // send a request to remove a node, more arguments: ip-of-removed-node
+  // metaport-of-removed-node
   private static final String MODE_REMOVE = "-r";
   // the separator between the cluster configuration and the single-server configuration
   private static final String SERVER_CONF_SEPARATOR = "-sc";
-
-  public static MetaClusterServer metaServer;
+  private static MetaClusterServer metaServer;
 
   public static void main(String[] args) {
     if (args.length < 1) {
@@ -78,6 +74,7 @@ public class ClusterMain {
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
     logger.info("Running mode {}", mode);
     try {
+
       if (MODE_START.equals(mode)) {
         metaServer = new MetaClusterServer();
         ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
@@ -203,5 +200,9 @@ public class ClusterMain {
         logger.warn("Cannot send remove node request through {}, try next node", node);
       }
     }
+  }
+
+  public static MetaClusterServer getMetaServer() {
+    return metaServer;
   }
 }

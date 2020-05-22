@@ -509,10 +509,10 @@ public class DataGroupMemberTest extends MemberTest {
   @Test
   public void testPullTimeseries() {
     System.out.println("Start testPullTimeseries()");
-    int prevTimeOut = RaftServer.connectionTimeoutInMS;
-    int prevMaxWait = RaftServer.syncLeaderMaxWaitMs;
-    RaftServer.connectionTimeoutInMS = 20;
-    RaftServer.syncLeaderMaxWaitMs = 200;
+    int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
+    int prevMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
+    RaftServer.setConnectionTimeoutInMS(20);
+    RaftServer.setSyncLeaderMaxWaitMs(200);
     try {
       // sync with leader is temporarily disabled, the request should be forward to the leader
       dataGroupMember.setLeader(TestUtils.getNode(1));
@@ -539,8 +539,8 @@ public class DataGroupMemberTest extends MemberTest {
         assertEquals(TestUtils.getTestMeasurementSchema(i), result.get().get(i));
       }
     } finally {
-      RaftServer.connectionTimeoutInMS = prevTimeOut;
-      RaftServer.syncLeaderMaxWaitMs = prevMaxWait;
+      RaftServer.setConnectionTimeoutInMS(prevTimeOut);
+      RaftServer.setSyncLeaderMaxWaitMs(prevMaxWait);
     }
   }
 

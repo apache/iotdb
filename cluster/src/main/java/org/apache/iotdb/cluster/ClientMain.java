@@ -61,15 +61,16 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("java:S106")
 public class ClientMain {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientMain.class);
 
-  private static String PARAM_INSERTION = "i";
-  private static String PARAM_QUERY = "q";
-  private static String PARAM_DELETE_STORAGE_GROUP = "dsg";
-  private static String PARAM_DELETE_SERIES = "ds";
-  private static String PARAM_QUERY_PORTS = "qp";
+  private static final String PARAM_INSERTION = "i";
+  private static final String PARAM_QUERY = "q";
+  private static final String PARAM_DELETE_STORAGE_GROUP = "dsg";
+  private static final String PARAM_DELETE_SERIES = "ds";
+  private static final String PARAM_QUERY_PORTS = "qp";
   private static Options options = new Options();
 
   static {
@@ -137,7 +138,7 @@ public class ClientMain {
       "SELECT AVG(*) FROM root.*.* WHERE s1 <= 0.7 GROUP BY ([0, 864000000), 3d, 3d)"
   };
 
-  private static String[] META_QUERY = new String[]{
+  private static final String[] META_QUERY = new String[]{
       "SHOW STORAGE GROUP",
       "SHOW TIMESERIES root",
       "COUNT TIMESERIES root",
@@ -216,7 +217,7 @@ public class ClientMain {
     return openResp.getSessionId();
   }
 
-  @SuppressWarnings("resource") // the transport is used later
+  @SuppressWarnings({"java:S2095", "resource"}) // the transport is used later
   private static Client getClient(String ip, int port) throws TTransportException {
     TSIService.Client.Factory factory = new Factory();
     TTransport transport = new TFramedTransport(new TSocket(ip, port));
@@ -249,7 +250,9 @@ public class ClientMain {
 
   private static void executeQuery(Client client, long sessionId, String query, long statementId)
       throws TException, StatementExecutionException, IoTDBConnectionException {
-    logger.info("{" + query + "}");
+    if (logger.isInfoEnabled()) {
+      logger.info("\\{ {} \\}", query);
+    }
     TSExecuteStatementResp resp = client
         .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId));
     if (resp.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
@@ -258,14 +261,18 @@ public class ClientMain {
     }
 
     long queryId = resp.getQueryId();
-    logger.info(resp.columns.toString());
+    if (logger.isInfoEnabled()) {
+      logger.info(resp.columns.toString());
+    }
 
     SessionDataSet dataSet = new SessionDataSet(query, resp.getColumns(),
         resp.getDataTypeList(), resp.columnNameIndexMap, queryId, client, sessionId,
         resp.queryDataSet, false);
 
     while (dataSet.hasNext()) {
-      logger.info(dataSet.next().toString());
+      if (logger.isInfoEnabled()) {
+        logger.info(dataSet.next().toString());
+      }
     }
     System.out.println();
 
@@ -276,15 +283,14 @@ public class ClientMain {
 
   private static void testDeleteStorageGroup(Client client, long sessionId)
       throws TException, StatementExecutionException, IoTDBConnectionException {
-    logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
+    if (logger.isInfoEnabled()) {
+      logger.info(client.deleteStorageGroups(sessionId, Arrays.asList(STORAGE_GROUPS)).toString());
+    }
+
     testQuery(client, sessionId, new String[]{"SELECT * FROM root"});
   }
 
-  private static void testInsertion(Client client, long sessionId) throws TException {
-    for (String storageGroup : STORAGE_GROUPS) {
-      logger.info(client.setStorageGroup(sessionId, storageGroup).toString());
-    }
-
+  private static void registerTimeseries(long sessionId, Client client) throws TException {
     TSCreateTimeseriesReq req = new TSCreateTimeseriesReq();
     req.setSessionId(sessionId);
     for (MeasurementSchema schema : schemas) {
@@ -292,8 +298,21 @@ public class ClientMain {
       req.setEncoding(schema.getEncodingType().ordinal());
       req.setCompressor(schema.getCompressor().ordinal());
       req.setPath(schema.getMeasurementId());
-      logger.info(client.createTimeseries(req).toString());
+      if (logger.isInfoEnabled()) {
+        logger.info(client.createTimeseries(req).toString());
+      }
     }
+  }
+
+  @SuppressWarnings("ConstantConditions")
+  private static void testInsertion(Client client, long sessionId) throws TException {
+    for (String storageGroup : STORAGE_GROUPS) {
+      if (logger.isInfoEnabled()) {
+        logger.info(client.setStorageGroup(sessionId, storageGroup).toString());
+      }
+    }
+
+    registerTimeseries(sessionId, client);
 
     TSInsertRecordReq insertReq = new TSInsertRecordReq();
     insertReq.setMeasurements(Arrays.asList(MEASUREMENTS));
@@ -326,8 +345,10 @@ public class ClientMain {
       insertReq.setValues(Arrays.asList(values));
       for (String device : DEVICES) {
         insertReq.setDeviceId(device);
-        logger.info(insertReq.toString());
-        logger.info(client.insertRecord(insertReq).toString());
+        if (logger.isInfoEnabled()) {
+          logger.info(insertReq.toString());
+          logger.info(client.insertRecord(insertReq).toString());
+        }
       }
     }
   }

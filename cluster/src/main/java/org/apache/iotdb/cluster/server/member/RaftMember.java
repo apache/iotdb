@@ -582,7 +582,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
 
       try {
-        voteCounter.wait(RaftServer.connectionTimeoutInMS);
+        voteCounter.wait(RaftServer.getConnectionTimeoutInMS());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Unexpected interruption when sending a log", e);
@@ -809,15 +809,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * <br>notice that if a part of data is in the snapshot, then it is not in the logs</>
    *
    * @param follower
-   * @param followerLastLogIndex
    */
-  public void catchUp(Node follower, long followerLastLogIndex) {
+  public void catchUp(Node follower) {
     // for one follower, there is at most one ongoing catch-up
-    synchronized (follower) {
+    synchronized (catchUpService) {
       // check if the last catch-up is still ongoing
       Long lastCatchupResp = lastCatchUpResponseTime.get(follower);
       if (lastCatchupResp != null
-          && System.currentTimeMillis() - lastCatchupResp < RaftServer.connectionTimeoutInMS) {
+          && System.currentTimeMillis() - lastCatchupResp < RaftServer.getConnectionTimeoutInMS()) {
         logger.debug("{}: last catch up of {} is ongoing", name, follower);
         return;
       } else {
@@ -892,7 +891,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
       synchronized (status) {
         client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
-        status.wait(RaftServer.connectionTimeoutInMS);
+        status.wait(RaftServer.getConnectionTimeoutInMS());
       }
       return status.get() == null ? StatusUtils.TIME_OUT : status.get();
     } catch (IOException | TException e) {
@@ -1025,7 +1024,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     long startTime = System.currentTimeMillis();
     long waitedTime = 0;
     AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
-    while (waitedTime < RaftServer.syncLeaderMaxWaitMs) {
+    while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
       AsyncClient client = connectNode(leader);
       if (client == null) {
         // cannot connect to the leader
@@ -1034,7 +1033,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       try {
         synchronized (commitIdResult) {
           client.requestCommitIndex(getHeader(), new GenericHandler<>(leader, commitIdResult));
-          commitIdResult.wait(RaftServer.syncLeaderMaxWaitMs);
+          commitIdResult.wait(RaftServer.getSyncLeaderMaxWaitMs());
         }
         long leaderCommitId = commitIdResult.get();
         long localCommitId = logManager.getCommitLogIndex();
@@ -1055,7 +1054,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // the node may have some inconsistent logs with the leader
         waitedTime = System.currentTimeMillis() - startTime;
         synchronized (syncLock) {
-          syncLock.wait(RaftServer.heartBeatIntervalMs);
+          syncLock.wait(RaftServer.getHeartBeatIntervalMs());
         }
       } catch (TException | InterruptedException e) {
         logger.error("{}: Cannot request commit index from {}", name, leader, e);

@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import org.apache.iotdb.cluster.client.async.DataClient;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.db.utils.SerializeUtils;
-import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
+import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.server.RaftServer;
+import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
 
@@ -64,7 +62,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
         try {
           sourceInfo.getCurClient().fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
               sourceInfo.getReaderId(), timestamp, handler);
-          fetchResult.wait(connectionTimeoutInMS);
+          fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
         } catch (TException | InterruptedException e) {
           //try other node
           DataClient client = sourceInfo.nextDataClient(true, timestamp);

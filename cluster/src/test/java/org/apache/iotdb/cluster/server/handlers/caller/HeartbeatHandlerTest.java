@@ -44,7 +44,7 @@ public class HeartbeatHandlerTest {
   public void setUp() {
     metaGroupMember = new TestMetaGroupMember() {
       @Override
-      public void catchUp(Node follower, long followerLastLogIndex) {
+      public void catchUp(Node follower) {
         synchronized (metaGroupMember) {
           catchUpFlag = true;
           metaGroupMember.notifyAll();

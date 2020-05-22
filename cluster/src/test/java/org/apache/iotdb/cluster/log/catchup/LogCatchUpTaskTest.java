@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.catchup;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
@@ -36,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
@@ -96,18 +99,18 @@ public class LogCatchUpTaskTest {
   }
 
   @Test
-  public void testCatchUp() {
+  public void testCatchUp() throws InterruptedException, TException, LeaderUnknownException {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
-    task.run();
+    task.call();
 
     assertEquals(logList, receivedLogs);
   }
 
   @Test
-  public void testLeadershipLost() {
+  public void testLeadershipLost() throws InterruptedException, TException, LeaderUnknownException {
     testLeadershipFlag = true;
     // the leadership will be lost after sending 5 logs
     List<Log> logList = TestUtils.prepareTestLogs(10);
@@ -115,42 +118,61 @@ public class LogCatchUpTaskTest {
     sender.setCharacter(NodeCharacter.LEADER);
     LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, false);
     task.setUseBatch(false);
-    task.run();
+    try {
+      task.call();
+      fail("Expected LeaderUnknownException");
+    } catch (TException | InterruptedException e) {
+      fail(e.getMessage());
+    } catch (LeaderUnknownException e) {
+      assertEquals("The leader is unknown in this group [Node(ip:192.168.0.0, metaPort:9003, "
+          + "nodeIdentifier:0, dataPort:40010), Node(ip:192.168.0.1, metaPort:9003, "
+          + "nodeIdentifier:1, dataPort:40010), Node(ip:192.168.0.2, metaPort:9003, "
+          + "nodeIdentifier:2, dataPort:40010), Node(ip:192.168.0.3, metaPort:9003, "
+          + "nodeIdentifier:3, dataPort:40010), Node(ip:192.168.0.4, metaPort:9003, "
+          + "nodeIdentifier:4, dataPort:40010), Node(ip:192.168.0.5, metaPort:9003, "
+          + "nodeIdentifier:5, dataPort:40010), Node(ip:192.168.0.6, metaPort:9003, "
+          + "nodeIdentifier:6, dataPort:40010), Node(ip:192.168.0.7, metaPort:9003, "
+          + "nodeIdentifier:7, dataPort:40010), Node(ip:192.168.0.8, metaPort:9003, "
+          + "nodeIdentifier:8, dataPort:40010), Node(ip:192.168.0.9, metaPort:9003, "
+          + "nodeIdentifier:9, dataPort:40010)]", e.getMessage());
+    }
 
     assertEquals(logList.subList(0, 5), receivedLogs);
   }
 
   @Test
-  public void testCatchUpInBatch() {
+  public void testCatchUpInBatch() throws InterruptedException, TException, LeaderUnknownException {
     List<Log> logList = TestUtils.prepareTestLogs(10);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
-    task.run();
+    task.call();
 
     assertEquals(logList, receivedLogs);
   }
 
   @Test
-  public void testCatchUpInBatch2() {
+  public void testCatchUpInBatch2()
+      throws InterruptedException, TException, LeaderUnknownException {
     List<Log> logList = TestUtils.prepareTestLogs(500);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
-    task.run();
+    task.call();
 
     assertEquals(logList, receivedLogs);
   }
 
   @Test
-  public void testLeadershipLostInBatch() {
+  public void testLeadershipLostInBatch()
+      throws InterruptedException, TException, LeaderUnknownException {
     testLeadershipFlag = true;
     // the leadership will be lost after sending 256 logs
     List<Log> logList = TestUtils.prepareTestLogs(300);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     LogCatchUpTask task = new LogCatchUpTask(logList, receiver, sender, true);
-    task.run();
+    task.call();
 
     assertEquals(logList.subList(0, 256), receivedLogs);
   }

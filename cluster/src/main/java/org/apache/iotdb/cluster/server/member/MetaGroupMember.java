@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
-import static org.apache.iotdb.cluster.server.RaftServer.queryTimeOutInSec;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.*;
@@ -59,7 +57,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.client.async.DataClient;
@@ -88,6 +85,7 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
+import org.apache.iotdb.cluster.query.fill.PreviousFillArguments;
 import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.query.reader.DataSourceInfo;
@@ -117,6 +115,7 @@ import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.NodeReport;
 import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
+import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -127,9 +126,11 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
@@ -140,6 +141,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -153,6 +155,7 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -232,11 +235,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private StartUpStatus startUpStatus;
 
-  private final int VALIDATE_BUFFER_CAPACITY = 10000;
-  private CircularQueue<String> insertPathValidatedBuffer = new CircularQueue<>(
-      VALIDATE_BUFFER_CAPACITY);
-  private CircularQueue<TSDataType> insertDatatypeValidatedBuffer = new CircularQueue<>(
-      VALIDATE_BUFFER_CAPACITY);
+  // localExecutor is used to directly execute plans like load configuration (locally)
+  private PlanExecutor localExecutor;
 
   @TestOnly
   public MetaGroupMember() {
@@ -259,7 +259,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     loadIdentifier();
 
     Factory dataMemberFactory = new Factory(factory, this);
-    dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory);
+    dataClusterServer = new DataClusterServer(thisNode, dataMemberFactory, this);
     clientServer = new ClientServer(this);
     startUpStatus = getStartUpStatus();
   }
@@ -355,7 +355,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         allNodes.add(node);
       }
     }
-    startUpStatus.setSeedNodeList(allNodes);
   }
 
   /**
@@ -951,7 +950,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       seedNodeEquals = false;
       if (logger.isInfoEnabled()) {
         logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
-            Arrays.toString(allNodes.toArray(new Node[0])), remoteReplicationNum);
+            Arrays.toString(allNodes.toArray(new Node[0])), remoteSeedNodeList);
       }
     }
     if (!(partitionIntervalEquals && hashSaltEquals && replicationNumEquals && seedNodeEquals)) {
@@ -1000,6 +999,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     while (i < seedNodeList.size() && j < subSeedNodeList.size()) {
       int compareResult = compareSeedNode(seedNodeList.get(i), subSeedNodeList.get(j));
       if (compareResult > 0) {
+        if (logger.isInfoEnabled()) {
+          logger.info("Node {} not found in cluster", subSeedNodeList.get(j));
+        }
         return false;
       } else if (compareResult < 0) {
         i++;
@@ -1064,7 +1066,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   /**
    * Send "request" to each node in "nodeRing" and when a node returns a success, decrease all
-   * conuters of the groups it is in of "groupRemainings"
+   * counters of the groups it is in of "groupRemainings"
    *
    * @param nodeRing
    * @param request
@@ -1113,7 +1115,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
 
       try {
-        groupRemainings.wait(connectionTimeoutInMS);
+        groupRemainings.wait(RaftServer.getConnectionTimeoutInMS());
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for the group votes", e);
@@ -1210,11 +1212,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     } catch (IOException e) {
       logger.error("Cannot save the partition table", e);
     }
-    try {
-      Files.delete(Paths.get(oldFile.getAbsolutePath()));
-    } catch (IOException e) {
-      logger.warn("Old partition table file is not successfully deleted", e);
+    if (oldFile.exists()) {
+      try {
+        Files.delete(Paths.get(oldFile.getAbsolutePath()));
+      } catch (IOException e) {
+        logger.warn("Old partition table file is not successfully deleted", e);
+      }
     }
+
     if (!tempFile.renameTo(oldFile)) {
       logger.warn("New partition table file is not successfully renamed");
     }
@@ -1379,8 +1384,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   @Override
   public TSStatus executeNonQuery(PhysicalPlan plan) {
-    if (PartitionUtils.isLocalPlan(plan)) {// run locally
-      return processPlanLocally(plan);
+    if (PartitionUtils.isLocalNonQueryPlan(plan)) { // run locally
+      return executeNonQueryLocally(plan);
     } else if (PartitionUtils.isGlobalMetaPlan(plan)) { //forward the plan to all meta group nodes
       return processNonPartitionedMetaPlan(plan);
     } else if (PartitionUtils.isGlobalDataPlan(plan)) { //forward the plan to all data group nodes
@@ -1395,6 +1400,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
   }
+
 
   public TSStatus validatePlan(PhysicalPlan plan) {
     TSStatus result = StatusUtils.OK;
@@ -1418,61 +1424,35 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private TSStatus validateInsertPlan(InsertPlan plan) {
     List<Path> paths = (plan).getPaths();
     String[] values = (plan).getValues();
+    List<String> pathStrings = new ArrayList<>();
+    for (Path path : paths) {
+      pathStrings.add(path.getFullPath());
+    }
+    List<MeasurementSchema> measurementSchemas;
+    try {
+      measurementSchemas = pullTimeSeriesSchemas(pathStrings);
+    } catch (MetadataException e) {
+      return StatusUtils.NO_STORAGE_GROUP;
+    }
     for (int i = 0; i < paths.size(); i++) {
-      String path = paths.get(i).getFullPath();
+      String measurement = paths.get(i).getMeasurement();
       String value = values[i];
-      int index = insertPathValidatedBuffer.indexOf(path);
-      TSDataType expectedDatatype = null;
-      if (index == -1) { // the date is not recorded locally, fetch it from the cluster
-        PartitionGroup group;
-        try {
-          group = getPartitionTable()
-              .partitionByPathTime(path, plan.getTime());
-        } catch (MetadataException e) {
-          return StatusUtils.NO_STORAGE_GROUP;
-        }
-
-        for (Node node : group) {
-          DataClient client;
+      TSStatus result = null;
+      for (MeasurementSchema schema : measurementSchemas) {
+        if (schema.getMeasurementId().equals(measurement)) {
           try {
-            client = getDataClient(node);
-          } catch (IOException e) {
-            continue;
+            tryParse(value, schema.getType());
+            result = StatusUtils.OK;
+          } catch (IllegalArgumentException e) {
+            result = new TSStatus(StatusUtils.WRITE_PROCESS_ERROR.getCode());
+            result.setMessage(StatusUtils.WRITE_PROCESS_ERROR.getMessage() + e.getMessage());
+            return result;
           }
-          AtomicReference<Integer> resultReference = new AtomicReference<>();
-          GenericHandler<Integer> handler = new GenericHandler<>(node, resultReference);
-          try {
-            synchronized (resultReference) {
-              resultReference.set(null);
-              client.getSeriesDataType(group.getHeader(), path, handler);
-              resultReference.wait(connectionTimeoutInMS);
-            }
-            if (resultReference.get() == null) {
-              continue;
-            }
-            TSDataType dataType = values()[resultReference.get()];
-            expectedDatatype = dataType;
-            insertPathValidatedBuffer.add(path);
-            insertDatatypeValidatedBuffer.add(dataType);
-            break;
-          } catch (TException | InterruptedException e) {
-            logger.error("{}: Cannot get data type of {} from {}", name, path, node, e);
-          }
+          break;
         }
-      } else {
-        expectedDatatype = insertDatatypeValidatedBuffer.get(index);
       }
-
-      try {
-        if (expectedDatatype == null) {
-          return StatusUtils.PATH_NOT_EXIST_ERROR;
-        } else {
-          tryParse(value, expectedDatatype);
-        }
-      } catch (IllegalArgumentException e) {
-        TSStatus result = new TSStatus(StatusUtils.WRITE_PROCESS_ERROR.getCode());
-        result.setMessage(StatusUtils.WRITE_PROCESS_ERROR.getMessage() + e.getMessage());
-        return result;
+      if (result == null) {
+        return StatusUtils.PATH_NOT_EXIST_ERROR;
       }
     }
     return StatusUtils.OK;
@@ -1503,6 +1483,24 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       default:
         throw new IllegalArgumentException("Data Type is not recognized");
     }
+  }
+
+
+  protected TSStatus executeNonQueryLocally(PhysicalPlan plan) {
+    boolean execRet;
+    try {
+      execRet = getLocalExecutor().processNonQuery(plan);
+    } catch (QueryProcessException e) {
+      logger.debug("meet error while processing non-query. ", e);
+      return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
+    } catch (Exception e) {
+      logger.error("{}: server Internal Error: ", IoTDBConstant.GLOBAL_DB_NAME, e);
+      return RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+    }
+
+    return execRet
+        ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully")
+        : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
 
@@ -2070,7 +2068,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       path, Set<String> deviceMeasurements, List<String> aggregations,
       TSDataType dataType, Filter timeFilter, PartitionGroup partitionGroup,
       QueryContext context) throws StorageEngineException {
-    AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
+
     GetAggrResultRequest request = new GetAggrResultRequest();
     request.setPath(path.getFullPath());
     request.setAggregations(aggregations);
@@ -2086,16 +2084,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Node node : partitionGroup) {
       logger.debug("{}: querying aggregation {} of {} from {} of {}", name, aggregations, path,
           node, partitionGroup.getHeader());
-      GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(node, resultReference);
+
       try {
         DataClient client = getDataClient(node);
-        synchronized (resultReference) {
-          resultReference.set(null);
-          client.getAggrResult(request, handler);
-          resultReference.wait(connectionTimeoutInMS);
-        }
         // each buffer is an AggregationResult
-        List<ByteBuffer> resultBuffers = resultReference.get();
+        List<ByteBuffer> resultBuffers = SyncClientAdaptor.getAggrResult(client, request);
         if (resultBuffers != null) {
           List<AggregateResult> results = new ArrayList<>(resultBuffers.size());
           for (ByteBuffer resultBuffer : resultBuffers) {
@@ -2109,12 +2102,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               path, node, partitionGroup.getHeader(), results);
           return results;
         }
-      } catch (TException | InterruptedException | IOException e) {
-        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      } catch (TException | IOException e) {
+        logger.error("{}: Cannot query aggregation {} from {}", name, path, node, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("{}: query {} interrupted from {}", name, path, node, e);
       }
     }
     throw new StorageEngineException(
-        new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+        new RequestTimeOutException("Query aggregate: " + path + " in " + partitionGroup));
   }
 
 
@@ -2143,13 +2139,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (firstLB == Long.MIN_VALUE || lastUB == Long.MAX_VALUE) {
       // as there is no TimeLowerBound or TimeUpperBound, the query should be broadcast to every
       // group
-      // TODO-Cluster: cache the AllGroups in PartitionTable?
-      for (Node node : partitionTable.getAllNodes()) {
-        partitionGroups.add(partitionTable.getHeaderGroup(node));
-      }
+      partitionGroups.addAll(partitionTable.getGlobalGroups());
     } else {
       // compute the related data groups of all intervals
-      // TODO-Cluster: change to a broadcast when the computation is too expensive
+      // TODO-Cluster#690: change to a broadcast when the computation is too expensive
       try {
         String storageGroupName = MManager.getInstance()
             .getStorageGroupName(path.getFullPath());
@@ -2225,14 +2218,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param partitionGroup
    * @param context
    * @return
-   * @throws IOException
    * @throws StorageEngineException
    */
   private IPointReader getRemoteSeriesPointReader(Filter timeFilter,
       Filter valueFilter, TSDataType dataType, Path path,
       Set<String> deviceMeasurements, PartitionGroup partitionGroup,
       QueryContext context)
-      throws IOException, StorageEngineException {
+      throws StorageEngineException {
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
@@ -2354,34 +2346,36 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
-      AtomicReference<List<String>> remoteResult = new AtomicReference<>();
-
-      // choose the node with lowest latency or highest throughput
-      List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-      for (Node node : coordinatedNodes) {
-        try {
-          DataClient client = getDataClient(node);
-          GenericHandler<List<String>> handler = new GenericHandler<>(node, remoteResult);
-          remoteResult.set(null);
-          synchronized (remoteResult) {
-            client.getAllPaths(partitionGroup.getHeader(), pathsToQuery, handler);
-            remoteResult.wait(connectionTimeoutInMS);
-          }
-          List<String> paths = remoteResult.get();
-          logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
-              node, paths);
-          if (paths != null) {
-            result.addAll(paths);
-            // query next group
-            break;
-          }
-        } catch (IOException | TException | InterruptedException e) {
-          throw new MetadataException(e);
-        }
-      }
+      result.addAll(getMatchedPaths(partitionGroup, pathsToQuery));
     }
 
     return result;
+  }
+
+  private List<String> getMatchedPaths(PartitionGroup partitionGroup, List<String> pathsToQuery)
+      throws MetadataException {
+    // choose the node with lowest latency or highest throughput
+    List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : coordinatedNodes) {
+      try {
+        DataClient client = getDataClient(node);
+        List<String> paths = SyncClientAdaptor.getAllPaths(client, partitionGroup.getHeader(),
+            pathsToQuery);
+        logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
+            node, paths);
+        if (paths != null) {
+          // query next group
+          return paths;
+        }
+      } catch (IOException | TException e) {
+        throw new MetadataException(e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new MetadataException(e);
+      }
+    }
+    logger.warn("Cannot get paths of {} from {}", pathsToQuery, partitionGroup);
+    return Collections.emptyList();
   }
 
   /**
@@ -2420,34 +2414,37 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
-      AtomicReference<Set<String>> remoteResult = new AtomicReference<>();
 
-      // choose the node with lowest latency or highest throughput
-      List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
-      for (Node node : coordinatedNodes) {
-        try {
-          DataClient client = getDataClient(node);
-          GenericHandler<Set<String>> handler = new GenericHandler<>(node, remoteResult);
-          remoteResult.set(null);
-          synchronized (remoteResult) {
-            client.getAllDevices(partitionGroup.getHeader(), pathsToQuery, handler);
-            remoteResult.wait(connectionTimeoutInMS);
-          }
-          Set<String> paths = remoteResult.get();
-          logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
-              node, paths);
-          if (paths != null) {
-            result.addAll(paths);
-            // query next group
-            break;
-          }
-        } catch (IOException | TException | InterruptedException e) {
-          throw new MetadataException(e);
-        }
-      }
+      result.addAll(getMatchedDevices(partitionGroup, pathsToQuery));
     }
 
     return result;
+  }
+
+  private Set<String> getMatchedDevices(PartitionGroup partitionGroup, List<String> pathsToQuery)
+      throws MetadataException {
+    // choose the node with lowest latency or highest throughput
+    List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : coordinatedNodes) {
+      try {
+        DataClient client = getDataClient(node);
+        Set<String> paths = SyncClientAdaptor.getAllDevices(client, partitionGroup.getHeader(),
+            pathsToQuery);
+        logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
+            node, paths);
+        if (paths != null) {
+          // query next group
+          return paths;
+        }
+      } catch (IOException | TException e) {
+        throw new MetadataException(e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new MetadataException(e);
+      }
+    }
+    logger.warn("Cannot get paths of {} from {}", pathsToQuery, partitionGroup);
+    return Collections.emptySet();
   }
 
   public List<String> getAllStorageGroupNames() {
@@ -2462,6 +2459,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return MManager.getInstance().getAllStorageGroupNodes();
   }
 
+  @SuppressWarnings("java:S2274")
   public Map<Node, Boolean> getAllNodeStatus() {
     if (getPartitionTable() == null) {
       // the cluster is being built.
@@ -2482,8 +2480,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
         nodeStatus.wait(ClusterConstant.CHECK_ALIVE_TIME_OUT_MS);
       }
-    } catch (InterruptedException | TException e) {
-      logger.warn("Cannot get the status of all nodes");
+    } catch (TException e) {
+      logger.warn("Cannot get the status of all nodes", e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("Cannot get the status of all nodes", e);
     }
     return nodeStatus;
   }
@@ -2508,15 +2509,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   public void setPartitionTable(PartitionTable partitionTable) {
     this.partitionTable = partitionTable;
     router = new ClusterPlanRouter(partitionTable);
-    DataClusterServer dataClusterServer = getDataClusterServer();
-    if (dataClusterServer != null) {
-      dataClusterServer.setPartitionTable(partitionTable);
+    DataClusterServer dClusterServer = getDataClusterServer();
+    if (dClusterServer != null) {
+      dClusterServer.setPartitionTable(partitionTable);
     }
   }
 
   @Override
   public void checkStatus(StartUpStatus startUpStatus,
-      AsyncMethodCallback<CheckStatusResponse> resultHandler) throws TException {
+      AsyncMethodCallback<CheckStatusResponse> resultHandler) {
     // check status of the new node
     long remotePartitionInterval = startUpStatus.getPartitionInterval();
     int remoteHashSalt = startUpStatus.getHashSalt();
@@ -2548,9 +2549,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     if (!checkSeedNodes(false, this.allNodes, remoteSeedNodeList)) {
       seedNodeListEquals = false;
-      logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
-          Arrays.toString(this.allNodes.toArray(new Node[0])),
-          Arrays.toString(remoteSeedNodeList.toArray(new Node[0])));
+      if (logger.isInfoEnabled()) {
+        logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
+            Arrays.toString(this.allNodes.toArray(new Node[0])),
+            Arrays.toString(remoteSeedNodeList.toArray(new Node[0])));
+      }
     }
 
     CheckStatusResponse response = new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
@@ -2620,66 +2623,67 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return true if is successfully processed, false if further forwarding is required
    */
   private boolean processRemoveNodeLocally(Node node, AsyncMethodCallback resultHandler) {
-    if (character == NodeCharacter.LEADER) {
-      // if we cannot have enough replica after the removal, reject it
-      if (allNodes.size() <= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
-        resultHandler.onComplete(Response.RESPONSE_CLUSTER_TOO_SMALL);
-        return true;
-      }
+    if (character != NodeCharacter.LEADER) {
+      return false;
+    }
 
-      // find the node to be removed in the node list
-      Node target = null;
-      synchronized (allNodes) {
-        for (Node n : allNodes) {
-          if (n.ip.equals(node.ip) && n.metaPort == node.metaPort) {
-            target = n;
-            break;
-          }
-        }
-      }
+    // if we cannot have enough replica after the removal, reject it
+    if (allNodes.size() <= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
+      resultHandler.onComplete(Response.RESPONSE_CLUSTER_TOO_SMALL);
+      return true;
+    }
 
-      if (target == null) {
-        logger.debug("Node {} is not in the cluster", node);
-        resultHandler.onComplete(Response.RESPONSE_REJECT);
-        return true;
-      }
-
-      // node removal must be serialized to reduce potential concurrency problem
-      synchronized (logManager) {
-        RemoveNodeLog removeNodeLog = new RemoveNodeLog();
-        removeNodeLog.setCurrLogTerm(getTerm().get());
-        removeNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
-        removeNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
-        removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-        removeNodeLog.setRemovedNode(target);
-
-        logManager.append(removeNodeLog);
-
-        int retryTime = 1;
-        while (true) {
-          logger.info("Send the node removal request of {} to other nodes, retry time: {}", target,
-              retryTime);
-          AppendLogResult result = sendLogToAllGroups(removeNodeLog);
-
-          switch (result) {
-            case OK:
-              logger.info("Removal request of {} is accepted", target);
-              logManager.commitTo(removeNodeLog.getCurrLogIndex());
-              resultHandler.onComplete(Response.RESPONSE_AGREE);
-              return true;
-            case TIME_OUT:
-              logger.info("Removal request of {} timed out", target);
-              break;
-            // retry
-            case LEADERSHIP_STALE:
-            default:
-              return false;
-          }
+    // find the node to be removed in the node list
+    Node target = null;
+    synchronized (allNodes) {
+      for (Node n : allNodes) {
+        if (n.ip.equals(node.ip) && n.metaPort == node.metaPort) {
+          target = n;
+          break;
         }
       }
     }
-    return false;
+
+    if (target == null) {
+      logger.debug("Node {} is not in the cluster", node);
+      resultHandler.onComplete(Response.RESPONSE_REJECT);
+      return true;
+    }
+
+    // node removal must be serialized to reduce potential concurrency problem
+    synchronized (logManager) {
+      RemoveNodeLog removeNodeLog = new RemoveNodeLog();
+      removeNodeLog.setCurrLogTerm(getTerm().get());
+      removeNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
+      removeNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
+      removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      removeNodeLog.setRemovedNode(target);
+
+      logManager.append(removeNodeLog);
+
+      int retryTime = 1;
+      while (true) {
+        logger.info("Send the node removal request of {} to other nodes, retry time: {}", target,
+            retryTime);
+        AppendLogResult result = sendLogToAllGroups(removeNodeLog);
+
+        switch (result) {
+          case OK:
+            logger.info("Removal request of {} is accepted", target);
+            logManager.commitTo(removeNodeLog.getCurrLogIndex());
+            resultHandler.onComplete(Response.RESPONSE_AGREE);
+            return true;
+          case TIME_OUT:
+            logger.info("Removal request of {} timed out", target);
+            break;
+          // retry
+          case LEADERSHIP_STALE:
+          default:
+            return false;
+        }
+      }
+    }
   }
 
   /**
@@ -2904,7 +2908,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       List<Integer> aggregationTypes, TSDataType dataType, Path path,
       Set<String> deviceMeasurements, PartitionGroup partitionGroup,
       QueryContext context) throws StorageEngineException {
-    AtomicReference<Long> result = new AtomicReference<>();
     GroupByRequest request = new GroupByRequest();
     if (timeFilter != null) {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(timeFilter));
@@ -2922,37 +2925,37 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Node node : orderedNodes) {
       // query a remote node
       logger.debug("{}: querying group by {} from {}", name, path, node);
-      GenericHandler<Long> handler = new GenericHandler<>(node, result);
+
       try {
         DataClient client = getDataClient(node);
-        synchronized (result) {
-          result.set(null);
-          client.getGroupByExecutor(request, handler);
-          result.wait(connectionTimeoutInMS);
+        Long executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
+        if (executorId == null) {
+          continue;
         }
-        Long executorId = result.get();
-        if (executorId != null) {
-          if (executorId != -1) {
-            // record the queried node to release resources later
-            ((RemoteQueryContext) context).registerRemoteNode(partitionGroup.getHeader(), node);
-            logger.debug("{}: get an executorId {} for {}@{} from {}", name, executorId,
-                aggregationTypes, path, node);
-            // create a remote executor with the return id
-            RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
-                this, node, partitionGroup.getHeader());
-            for (Integer aggregationType : aggregationTypes) {
-              remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
-                  AggregationType.values()[aggregationType], dataType));
-            }
-            return remoteGroupByExecutor;
-          } else {
-            // an id of -1 means there is no satisfying data on the remote node, create an empty
-            // reader tp reduce further communication
-            logger.debug("{}: no data for {} from {}", name, path, node);
-            return new EmptyReader();
+
+        if (executorId != -1) {
+          // record the queried node to release resources later
+          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
+          logger.debug("{}: get an executorId {} for {}@{} from {}", name, executorId,
+              aggregationTypes, path, node);
+          // create a remote executor with the return id
+          RemoteGroupByExecutor remoteGroupByExecutor = new RemoteGroupByExecutor(executorId,
+              this, node, partitionGroup.getHeader());
+          for (Integer aggregationType : aggregationTypes) {
+            remoteGroupByExecutor.addAggregateResult(AggregateResultFactory.getAggrResultByType(
+                AggregationType.values()[aggregationType], dataType));
           }
+          return remoteGroupByExecutor;
+        } else {
+          // an id of -1 means there is no satisfying data on the remote node, create an empty
+          // reader tp reduce further communication
+          logger.debug("{}: no data for {} from {}", name, path, node);
+          return new EmptyReader();
         }
-      } catch (TException | InterruptedException | IOException e) {
+      } catch (TException | IOException e) {
+        logger.error("{}: Cannot query {} from {}", name, path, node, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.error("{}: Cannot query {} from {}", name, path, node, e);
       }
     }
@@ -2979,56 +2982,58 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     PreviousFillHandler handler = new PreviousFillHandler(latch);
 
     ExecutorService fillService = Executors.newFixedThreadPool(partitionGroups.size());
+    PreviousFillArguments arguments = new PreviousFillArguments(path, dataType, queryTime,
+        beforeRange, deviceMeasurements);
+
     for (PartitionGroup partitionGroup : partitionGroups) {
-      fillService.submit(() -> {
-        performPreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
-            partitionGroup, handler);
-      });
+      fillService.submit(() -> performPreviousFill(arguments, context,
+          partitionGroup, handler));
     }
     fillService.shutdown();
     try {
-      fillService.awaitTermination(queryTimeOutInSec, TimeUnit.SECONDS);
+      fillService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for fill pool to stop", e);
     }
     return handler.getResult();
   }
 
-  public void performPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
-      Set<String> deviceMeasurements, QueryContext context, PartitionGroup group,
+  public void performPreviousFill(PreviousFillArguments arguments, QueryContext context,
+      PartitionGroup group,
       PreviousFillHandler fillHandler) {
     if (group.contains(thisNode)) {
-      localPreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
-          group, fillHandler);
+      localPreviousFill(arguments, context, group, fillHandler);
     } else {
-      remotePreviousFill(path, dataType, queryTime, beforeRange, deviceMeasurements, context,
-          group, fillHandler);
+      remotePreviousFill(arguments, context, group, fillHandler);
     }
   }
 
-  public void localPreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
-      Set<String> deviceMeasurements, QueryContext context, PartitionGroup group,
+  public void localPreviousFill(PreviousFillArguments arguments, QueryContext context,
+      PartitionGroup group,
       PreviousFillHandler fillHandler) {
     DataGroupMember localDataMember = getLocalDataMember(group.getHeader());
     try {
       fillHandler
-          .onComplete(localDataMember.localPreviousFill(path, dataType, queryTime, beforeRange,
-              deviceMeasurements, context));
+          .onComplete(
+              localDataMember.localPreviousFill(arguments.getPath(), arguments.getDataType(),
+                  arguments.getQueryTime(), arguments.getBeforeRange(),
+                  arguments.getDeviceMeasurements(), context));
     } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
       fillHandler.onError(e);
     }
   }
 
-  public void remotePreviousFill(Path path, TSDataType dataType, long queryTime, long beforeRange,
-      Set<String> deviceMeasurements, QueryContext context, PartitionGroup group,
+  public void remotePreviousFill(PreviousFillArguments arguments, QueryContext context,
+      PartitionGroup group,
       PreviousFillHandler fillHandler) {
-    PreviousFillRequest request = new PreviousFillRequest(path.getFullPath(), queryTime,
-        beforeRange, context.getQueryId(), thisNode, group.getHeader(), dataType.ordinal(),
-        deviceMeasurements);
-    AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
+    PreviousFillRequest request = new PreviousFillRequest(arguments.getPath().getFullPath(),
+        arguments.getQueryTime(),
+        arguments.getBeforeRange(), context.getQueryId(), thisNode, group.getHeader(),
+        arguments.getDataType().ordinal(),
+        arguments.getDeviceMeasurements());
 
     for (Node node : group) {
-      GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(node, resultRef);
       DataClient dataClient;
       try {
         dataClient = getDataClient(node);
@@ -3037,26 +3042,24 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         continue;
       }
 
-      synchronized (resultRef) {
-        try {
-          dataClient.previousFill(request, nodeHandler);
-          resultRef.wait(queryTimeOutInSec * 1000L);
-        } catch (Exception e) {
-          logger.error("{}: Cannot perform previous fill of {} to {}", name, path, node, e);
+      try {
+        ByteBuffer byteBuffer = SyncClientAdaptor.previousFill(dataClient, request);
+        if (byteBuffer != null) {
+          fillHandler.onComplete(byteBuffer);
+          return;
         }
-      }
-
-      ByteBuffer byteBuffer = resultRef.get();
-      if (byteBuffer != null) {
-        fillHandler.onComplete(byteBuffer);
-        return;
+      } catch (Exception e) {
+        logger
+            .error("{}: Cannot perform previous fill of {} to {}", name, arguments.getPath(), node,
+                e);
       }
     }
 
     fillHandler.onError(new QueryTimeOutException(String.format("PreviousFill %s@%d range: %d",
-        path.getFullPath(), queryTime, beforeRange)));
+        arguments.getPath().getFullPath(), arguments.getQueryTime(), arguments.getBeforeRange())));
   }
 
+  @Override
   public void closeLogManager() {
     super.closeLogManager();
     if (dataClusterServer != null) {
@@ -3064,57 +3067,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  class CircularQueue<T> {
-
-    int capacity;
-    int size;
-    List<T> elements;
-    int i = 0;
-
-    public CircularQueue(int capacity) {
-      this.capacity = capacity;
-      elements = new ArrayList<>(capacity);
+  protected PlanExecutor getLocalExecutor() throws QueryProcessException {
+    if (localExecutor == null) {
+      localExecutor = new PlanExecutor();
     }
-
-    public int size() {
-      return size;
-    }
-
-    public void add(T element) {
-      if (size < capacity) {
-        elements.add(element);
-        size++;
-      } else {
-        elements.set(i++, element);
-        i = i % capacity;
-      }
-    }
-
-    public boolean contains(T element) {
-      return elements.contains(element);
-    }
-
-    public boolean contains(List<T> thatElements) {
-      return elements.containsAll(thatElements);
-    }
-
-    public List<T> getList() {
-      List<T> result = elements.subList(i, size);
-      result.addAll(elements.subList(0, i));
-      return result;
-    }
-
-    public T get(int index) {
-      return elements.get(index);
-    }
-
-    public int indexOf(T element) {
-      return elements.indexOf(element);
-    }
-
-    @Override
-    public String toString() {
-      return Arrays.toString(getList().toArray());
-    }
+    return localExecutor;
   }
+
 }

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import static org.apache.iotdb.cluster.server.RaftServer.connectionTimeoutInMS;
-
 import java.util.Collection;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -77,19 +75,19 @@ public class HeartbeatThread implements Runnable {
           case LEADER:
             // send heartbeats to the followers
             sendHeartbeats();
-            Thread.sleep(RaftServer.heartBeatIntervalMs);
+            Thread.sleep(RaftServer.getHeartBeatIntervalMs());
             break;
           case FOLLOWER:
             // check if heartbeat times out
             long heartBeatInterval = System.currentTimeMillis() - localMember
                 .getLastHeartbeatReceivedTime();
-            if (heartBeatInterval >= connectionTimeoutInMS) {
+            if (heartBeatInterval >= RaftServer.getConnectionTimeoutInMS()) {
               // the leader is considered dead, an election will be started in the next loop
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
             } else {
               logger.debug("{}: Heartbeat is still valid", memberName);
-              Thread.sleep(connectionTimeoutInMS);
+              Thread.sleep(RaftServer.getConnectionTimeoutInMS());
             }
             break;
           case ELECTOR:
@@ -127,6 +125,7 @@ public class HeartbeatThread implements Runnable {
   /**
    * Send each node (except the local node) in list a heartbeat.
    */
+  @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Send heartbeat to {} followers", memberName, nodes.size() - 1);
@@ -230,8 +229,8 @@ public class HeartbeatThread implements Runnable {
 
       try {
         logger.info("{}: Wait for {}ms until election time out", memberName,
-            connectionTimeoutInMS);
-        localMember.getTerm().wait(connectionTimeoutInMS);
+            RaftServer.getConnectionTimeoutInMS());
+        localMember.getTerm().wait(RaftServer.getConnectionTimeoutInMS());
       } catch (InterruptedException e) {
         logger.info("{}: Unexpected interruption when waiting the result of election {}",
             memberName, nextTerm);
@@ -261,6 +260,7 @@ public class HeartbeatThread implements Runnable {
    * @param electionTerminated
    * @param electionValid
    */
+  @SuppressWarnings("java:S2445")
   private void requestVote(Collection<Node> nodes, ElectionRequest request, long nextTerm,
       AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid) {
     synchronized (nodes) {

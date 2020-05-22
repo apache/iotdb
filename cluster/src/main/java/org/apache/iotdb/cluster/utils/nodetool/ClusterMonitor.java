@@ -135,7 +135,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   }
 
   private MetaGroupMember getMetaGroupMember() {
-    MetaClusterServer metaClusterServer = ClusterMain.metaServer;
+    MetaClusterServer metaClusterServer = ClusterMain.getMetaServer();
     if (metaClusterServer == null) {
       return null;
     }

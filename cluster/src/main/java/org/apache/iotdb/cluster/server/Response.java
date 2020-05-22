@@ -25,8 +25,6 @@ package org.apache.iotdb.cluster.server;
  */
 public class Response {
 
-  // currently unused
-  public static final long RESPONSE_UNSET = 0;
   // the request is successfully accepted
   public static final long RESPONSE_AGREE = -1;
   // cannot find the previous log of the log sent to the follower, a catch-up is required

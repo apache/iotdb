@@ -87,7 +87,7 @@ public class DataSourceInfo {
           logger.debug("get a readerId {} for {} from {}", newReaderId, request.path, node);
           if (newReaderId != -1) {
             // register the node so the remote resources can be released
-            context.registerRemoteNode(partitionGroup.getHeader(), node);
+            context.registerRemoteNode(node, partitionGroup.getHeader());
             this.readerId = newReaderId;
             this.curSource = node;
             this.curPos = nextNodePos;
