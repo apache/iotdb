@@ -768,7 +768,7 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 ```
 
 * LAST_VALUE
-原有的 `LAST` 方法在 `v0.10.0` 版本更名为 `LAST_VALUE`。
+
 ```
 SELECT LAST_VALUE (Path) (COMMA LAST_VALUE (Path))* FROM <FromClause> [WHERE <WhereClause>]?
 Eg. SELECT LAST_VALUE (status), LAST_VALUE (temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
