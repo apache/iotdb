@@ -75,10 +75,6 @@ public class Session {
   private ZoneId zoneId;
   private long statementId;
   private int fetchSize;
-  private int connectionTimeoutInMs = Config.DEFAULT_TIMEOUT_MS;
-  private boolean enableRPCCompression = false;
-  private final int RETRY_NUM = 2;
-  private final int RETRY_INTERVAL = 1000;
 
   public Session(String host, int port) {
     this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
@@ -117,8 +113,6 @@ public class Session {
     if (!isClosed) {
       return;
     }
-    this.enableRPCCompression = enableRPCCompression;
-    this.connectionTimeoutInMs = connectionTimeoutInMs;
     transport = new TSocket(host, port, connectionTimeoutInMs);
     if (!transport.isOpen()) {
       try {
@@ -191,29 +185,6 @@ public class Session {
     }
   }
 
-  private boolean reconnect() {
-    boolean flag = false;
-    for (int i = 1; i <= RETRY_NUM; i++) {
-      try {
-        if (transport != null) {
-          transport.close();
-        }
-        isClosed = true;
-        open(enableRPCCompression, connectionTimeoutInMs);
-        flag = true;
-        break;
-      } catch (Exception e) {
-        try {
-          Thread.sleep(RETRY_INTERVAL);
-        } catch (InterruptedException e1) {
-          Thread.currentThread().interrupt();
-          logger.error("reconnection is interrupted.", e1);
-        }
-      }
-    }
-    return flag;
-  }
-
   /**
    * insert data in one row, if you want to improve your performance, please use insertRecords method
    * or insertTablet method
@@ -250,16 +221,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertRecord(request));
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.insertRecord(request));
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -314,16 +276,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertTablet(request).statusList);
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.insertTablet(request).statusList);
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -378,16 +331,7 @@ public class Session {
       try {
         RpcUtils.verifySuccess(client.insertTablets(request).statusList);
       } catch (TException e) {
-        if (reconnect()) {
-          try {
-            RpcUtils.verifySuccess(client.insertTablets(request).statusList);
-          } catch (TException e1) {
-            throw new IoTDBConnectionException(e1);
-          }
-        } else {
-          throw new IoTDBConnectionException("Fail to reconnect to server,"
-              + " please check server status", e);
-        }
+        throw new IoTDBConnectionException(e);
       }
     }
   }
@@ -421,16 +365,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.insertRecords(request).statusList);
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.insertRecords(request).statusList);
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -528,16 +463,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.deleteTimeseries(sessionId, paths));
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.deleteTimeseries(sessionId, paths));
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -570,16 +496,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.deleteData(request));
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.deleteData(request));
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -588,16 +505,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroupId));
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.setStorageGroup(sessionId, storageGroupId));
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -614,16 +522,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroup));
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.deleteStorageGroups(sessionId, storageGroup));
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -651,16 +550,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.createTimeseries(request));
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.createTimeseries(request));
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -700,16 +590,7 @@ public class Session {
     try {
       RpcUtils.verifySuccess(client.createMultiTimeseries(request).statusList);
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.createMultiTimeseries(request).statusList);
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
@@ -766,17 +647,9 @@ public class Session {
     try {
       execResp = client.executeQueryStatement(execReq);
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          execResp = client.executeQueryStatement(execReq);
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
+
     RpcUtils.verifySuccess(execResp.getStatus());
     return new SessionDataSet(sql, execResp.getColumns(), execResp.getDataTypeList(), execResp.columnNameIndexMap,
         execResp.getQueryId(), client, sessionId, execResp.queryDataSet, execResp.isIgnoreTimeStamp());
@@ -791,18 +664,10 @@ public class Session {
       throws IoTDBConnectionException, StatementExecutionException {
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
     try {
-      RpcUtils.verifySuccess(client.executeUpdateStatement(execReq).getStatus());
+      TSExecuteStatementResp execResp = client.executeUpdateStatement(execReq);
+      RpcUtils.verifySuccess(execResp.getStatus());
     } catch (TException e) {
-      if (reconnect()) {
-        try {
-          RpcUtils.verifySuccess(client.executeUpdateStatement(execReq).getStatus());
-        } catch (TException e1) {
-          throw new IoTDBConnectionException(e1);
-        }
-      } else {
-        throw new IoTDBConnectionException("Fail to reconnect to server,"
-            + " please check server status", e);
-      }
+      throw new IoTDBConnectionException(e);
     }
   }
 
