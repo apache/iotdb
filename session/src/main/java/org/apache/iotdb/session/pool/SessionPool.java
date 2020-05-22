@@ -696,6 +696,7 @@ public class SessionPool {
         return resp;
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
+        logger.error("Connection error, need to retry: ", e);
         closeSession(session);
         removeSession();
       }

@@ -230,7 +230,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
     logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
-    long sessionId = req.getSessionId();
+    long sessionId = currSessionId.get();
+    currSessionId.remove();
+
     TSStatus tsStatus;
     if (sessionIdUsernameMap.remove(sessionId) == null) {
       tsStatus = RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
