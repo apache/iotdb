@@ -176,11 +176,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       } else {
         int sgLevel = acsc.INT() == null ? IoTDBDescriptor.getInstance().getConfig()
             .getDefaultStorageGroupLevel() : Integer.parseInt(acsc.INT().getText());
-        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()), Boolean
+        initializedOperator = new LoadFilesOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())), Boolean
             .parseBoolean(acsc.ID().getText()), sgLevel);
       }
     } else {
-      initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()), true,
+      initializedOperator = new LoadFilesOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())), true,
           IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
     }
   }
@@ -188,14 +188,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterMoveFile(MoveFileContext ctx) {
     super.enterMoveFile(ctx);
-    initializedOperator = new MoveFileOperator(new File(ctx.FILE(0).getText()),
-        new File(ctx.FILE(1).getText()));
+    initializedOperator = new MoveFileOperator(new File(removeStringQuote(ctx.STRING_LITERAL(0).getText())),
+        new File(removeStringQuote(ctx.STRING_LITERAL(1).getText())));
   }
 
   @Override
   public void enterRemoveFile(RemoveFileContext ctx) {
     super.enterRemoveFile(ctx);
-    initializedOperator = new RemoveFileOperator(new File(ctx.FILE().getText()));
+    initializedOperator = new RemoveFileOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())));
   }
 
   @Override

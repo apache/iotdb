@@ -76,9 +76,9 @@ statement
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION #loadConfigurationStatement
-    | LOAD FILE autoCreateSchema? #loadFiles
-    | REMOVE FILE #removeFile
-    | MOVE FILE FILE #moveFile
+    | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
+    | REMOVE STRING_LITERAL #removeFile
+    | MOVE STRING_LITERAL STRING_LITERAL #moveFile
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -915,16 +915,19 @@ DATETIME
 /** Allow unicode rule/token names */
 ID : NAME_CHAR NAME_CHAR*;
 
-FILE
-    :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
-    ;
-
 fragment
 NAME_CHAR
     :   'A'..'Z'
     |   'a'..'z'
     |   '0'..'9'
+    |   '-'
     |   '_'
+    |   '/'
+    |   '@'
+    |   '#'
+    |   '$'
+    |   '%'
+    |   '&'
     |   CN_CHAR
     ;
 

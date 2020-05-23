@@ -994,4 +994,29 @@ public class IoTDBSessionIT {
     }
   }
 
-}
+  @Test
+  public void testSpecialCharacters()
+      throws StatementExecutionException, IoTDBConnectionException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    session.executeNonQueryStatement("set storage group to root./@#$%&-");
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery("show storage group");
+      final ResultSetMetaData metaData = resultSet.getMetaData();
+      final int colCount = metaData.getColumnCount();
+      String resultStr = "";
+      while(resultSet.next()) {
+        for(int i = 1; i <= colCount; i++) {
+          resultStr = resultSet.getString(i);
+        }
+      }
+      assertEquals("root./@#$%&-", resultStr);
+    } catch (SQLException e) {
+      Assert.fail(e.getMessage());
+    }
+  }
+
+  }
