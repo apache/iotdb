@@ -470,6 +470,12 @@ var config = {
 							['7-Connector/4-Spark-IOTDB','Spark-IOTDB']
 						]
 					},
+					{
+						title: '8-Client',
+						children: [
+							['8-Client/1-RPC','RPC']
+						]
+					},
 				],
 			}
 		  },
@@ -883,6 +889,12 @@ var config = {
 							['7-Connector/2-Hive-TsFile','Hive-TsFile'],
 							['7-Connector/3-Spark-TsFile','Spark-TsFile'],
 							['7-Connector/4-Spark-IOTDB','Spark-IOTDB']
+						]
+					},
+					{
+						title: '8-客户端',
+						children: [
+							['8-Client/1-RPC','RPC']
 						]
 					},
 				],
