@@ -35,12 +35,12 @@ public abstract class MNode implements Serializable {
   /**
    * Name of the MNode
    */
-  private String name;
+  protected String name;
 
   protected MNode parent;
 
   /**
-   * from root to this node, only be set when used once
+   * from root to this node, only be set when used once for InternalMNode
    */
   protected String fullPath;
 
@@ -95,14 +95,18 @@ public abstract class MNode implements Serializable {
     if (fullPath != null) {
       return fullPath;
     }
+    fullPath = concatFullPath();
+    return fullPath;
+  }
+
+  String concatFullPath() {
     StringBuilder builder = new StringBuilder(name);
     MNode curr = this;
     while (curr.getParent() != null) {
       curr = curr.getParent();
       builder.insert(0, IoTDBConstant.PATH_SEPARATOR).insert(0, curr.name);
     }
-    fullPath = builder.toString();
-    return fullPath;
+    return builder.toString();
   }
 
   @Override
