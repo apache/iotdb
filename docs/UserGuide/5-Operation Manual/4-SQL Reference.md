@@ -797,7 +797,7 @@ Eg. SELECT FIRST_VALUE (status), FIRST_VALUE (temperature) FROM root.ln.wf01.wt0
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* LAST_VALUE(Rename from `LAST` at `V0.10.0`)
+* LAST_VALUE
 
 The LAST_VALUE function returns the last point value of the choosen timeseries(one or more).
 

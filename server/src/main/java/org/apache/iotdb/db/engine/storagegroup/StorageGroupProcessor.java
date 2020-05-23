@@ -1509,6 +1509,24 @@ public class StorageGroupProcessor {
     }
     mergeLock.writeLock().unlock();
     insertLock.writeLock().unlock();
+    
+    // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
+    if (countUpgradeFiles() == 0) {
+      for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice
+          .entrySet()) {
+        long timePartitionId = entry.getKey();
+        Map<String, Long> latestFlushTimeForPartition = partitionLatestFlushedTimeForEachDevice
+            .getOrDefault(timePartitionId, new HashMap<>());
+        for (Entry<String, Long> endTimeMap : entry.getValue().entrySet()) {
+          String device = endTimeMap.getKey();
+          long endTime = endTimeMap.getValue();
+          if (latestFlushTimeForPartition.getOrDefault(device, Long.MIN_VALUE) < endTime) {
+            partitionLatestFlushedTimeForEachDevice
+                .computeIfAbsent(timePartitionId, id -> new HashMap<>()).put(device, endTime);
+          }
+        }
+      }
+    }
   }
 
   public void merge(boolean fullMerge) {

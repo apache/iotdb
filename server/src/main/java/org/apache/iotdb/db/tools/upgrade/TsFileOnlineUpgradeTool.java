@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.footer.ChunkGroupFooter;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -339,7 +338,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
     long startOffsetOfChunkGroup = 0;
     boolean newChunkGroup = true;
     long versionOfChunkGroup = 0;
-    List<ChunkGroupMetadata> newMetaData = new ArrayList<>();
+    int chunkGroupCount = 0;
     List<List<PageHeader>> pageHeadersInChunkGroup = new ArrayList<>();
     List<List<ByteBuffer>> pageDataInChunkGroup = new ArrayList<>();
     List<List<Boolean>> pagePartitionInfoInChunkGroup = new ArrayList<>();
@@ -389,6 +388,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
             measurementSchemaList.clear();
             pagePartitionInfoInChunkGroup.clear();
             newChunkGroup = true;
+            chunkGroupCount++;
             break;
 
           default:
@@ -403,7 +403,7 @@ public class TsFileOnlineUpgradeTool implements AutoCloseable {
       }
     } catch (IOException e2) {
       logger.info("TsFile upgrade process cannot proceed at position {} after {} chunk groups "
-          + "recovered, because : {}", this.position(), newMetaData.size(), e2.getMessage());
+          + "recovered, because : {}", this.position(), chunkGroupCount, e2.getMessage());
     } finally {
       if (tsFileInput != null) {
         tsFileInput.close();
