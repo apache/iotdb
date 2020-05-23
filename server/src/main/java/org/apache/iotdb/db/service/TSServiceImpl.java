@@ -80,6 +80,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSBatchInsertionReq;
@@ -1240,6 +1241,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSStatus(status);
     }
     return new TSStatus(executePlan(plan));
+  }
+
+  @Override
+  public TSExecuteBatchStatementResp testInsertBatch(TSBatchInsertionReq req) {
+    logger.debug("Test insert batch request receive.");
+    return new TSExecuteBatchStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  @Override
+  public TSStatus testInsertRow(TSInsertReq req) {
+    logger.debug("Test insert row request receive.");
+    return new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  @Override
+  public TSExecuteInsertRowInBatchResp testInsertRowInBatch(TSInsertInBatchReq req) {
+    logger.debug("Test insert row in batch request receive.");
+    TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
+    resp.addToStatusList(getStatus(TSStatusCode.SUCCESS_STATUS));
+    return resp;
   }
 
   @Override

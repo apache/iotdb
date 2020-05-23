@@ -458,6 +458,8 @@ public class IoTDBConfig {
    */
   private long defaultTTL = Long.MAX_VALUE;
 
+  private int primitiveArrayPoolSize = 128;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1277,5 +1279,13 @@ public class IoTDBConfig {
 
   public void setDefaultTTL(long defaultTTL) {
     this.defaultTTL = defaultTTL;
+  }
+
+  public int getPrimitiveArrayPoolSize() {
+    return primitiveArrayPoolSize;
+  }
+
+  public void setPrimitiveArrayPoolSize(int primitiveArrayPoolSize) {
+    this.primitiveArrayPoolSize = primitiveArrayPoolSize;
   }
 }

@@ -334,6 +334,9 @@ public class IoTDBDescriptor {
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
+      conf.setPrimitiveArrayPoolSize((Integer.parseInt(
+              properties.getProperty(
+                  "primitive_array_pool_size", String.valueOf(conf.getDefaultTTL())))));
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
