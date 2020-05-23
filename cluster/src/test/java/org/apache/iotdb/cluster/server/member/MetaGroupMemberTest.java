@@ -380,6 +380,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
     };
     metaGroupMember.setLeader(node);
+    metaGroupMember.setAllNodes(allNodes);
     metaGroupMember.setCharacter(NodeCharacter.LEADER);
     return metaGroupMember;
   }

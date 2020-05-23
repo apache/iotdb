@@ -528,6 +528,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return true if the node has successfully joined the cluster, false otherwise.
    */
   public boolean joinCluster() {
+    if (allNodes.size() == 1) {
+      logger.error("Seed nodes not provided, cannot join cluster");
+      return false;
+    }
+
     int retry = DEFAULT_JOIN_RETRY;
     while (retry > 0) {
       // randomly pick up a node to try
