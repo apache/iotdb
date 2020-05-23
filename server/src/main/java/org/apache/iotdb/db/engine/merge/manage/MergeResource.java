@@ -261,4 +261,8 @@ public class MergeResource {
       measurementSchemaMap.put(measurementSchema.getMeasurementId(), measurementSchema);
     }
   }
+
+  public void clearChunkWriterCache() {
+    this.chunkWriterCache.clear();
+  }
 }

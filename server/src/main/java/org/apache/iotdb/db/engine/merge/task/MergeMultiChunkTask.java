@@ -110,6 +110,7 @@ class MergeMultiChunkTask {
       while (pathSelector.hasNext()) {
         currMergingPaths = pathSelector.next();
         mergePaths();
+        resource.clearChunkWriterCache();
         mergedSeriesCnt += currMergingPaths.size();
         logMergeProgress();
       }
