@@ -272,6 +272,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| true |
 |Effective|Trigger|
 
+* enable\_partition
+
+|Name| enable\_partition |
+|:---:|:---|
+|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
+|Type|Bool|
+|Default| false |
+|Effective|After restart system|
+
 * partition\_interval
 
 |Name| partition\_interval |

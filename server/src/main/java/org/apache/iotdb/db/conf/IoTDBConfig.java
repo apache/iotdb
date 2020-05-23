@@ -534,6 +534,13 @@ public class IoTDBConfig {
    * The default value of primitive array size in array pool
    */
   private int primitiveArraySize = 128;
+
+  /**
+   * whether enable data partition
+   * if disabled, all data belongs to partition 0
+   */
+  private boolean enablePartition = false;
+
   /**
    * Time range for partitioning data inside each storage group, the unit is second
    */
@@ -566,6 +573,14 @@ public class IoTDBConfig {
 
   public void setDefaultFillInterval(int defaultFillInterval) {
     this.defaultFillInterval = defaultFillInterval;
+  }
+
+  public boolean isEnablePartition() {
+    return enablePartition;
+  }
+
+  public void setEnablePartition(boolean enablePartition) {
+    this.enablePartition = enablePartition;
   }
 
   public long getPartitionInterval() {

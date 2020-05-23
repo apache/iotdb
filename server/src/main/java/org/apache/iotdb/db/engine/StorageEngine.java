@@ -113,24 +113,38 @@ public class StorageEngine implements IService {
   @ServerConfigConsistent
   private static long timePartitionInterval;
 
+  /**
+   * whether enable data partition
+   * if disabled, all data belongs to partition 0
+   */
+  @ServerConfigConsistent
+  private static boolean enablePartition;
+
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
-    // build time Interval to divide time partition
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000_000_000L;
-        break;
-      case "us":
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000_000L;
-        break;
-      default:
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000;
-        break;
+
+    enablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+
+    if (!enablePartition) {
+      timePartitionInterval = Long.MAX_VALUE;
+    } else {
+      // build time Interval to divide time partition
+      String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+      switch (timePrecision) {
+        case "ns":
+          timePartitionInterval = IoTDBDescriptor.getInstance().
+              getConfig().getPartitionInterval() * 1000_000_000L;
+          break;
+        case "us":
+          timePartitionInterval = IoTDBDescriptor.getInstance().
+              getConfig().getPartitionInterval() * 1000_000L;
+          break;
+        default:
+          timePartitionInterval = IoTDBDescriptor.getInstance().
+              getConfig().getPartitionInterval() * 1000;
+          break;
+      }
     }
     // create systemDir
     try {
@@ -140,10 +154,10 @@ public class StorageEngine implements IService {
     }
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
+
     /*
      * recover all storage group processors.
      */
-
     List<StorageGroupMNode> sgNodes = MManager.getInstance().getAllStorageGroupNodes();
     List<Future> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
@@ -520,6 +534,6 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartition(long time) {
-    return time / timePartitionInterval;
+    return enablePartition ? time / timePartitionInterval : 0;
   }
 }

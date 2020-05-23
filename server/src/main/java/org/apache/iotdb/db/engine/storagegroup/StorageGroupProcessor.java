@@ -874,8 +874,8 @@ public class StorageGroupProcessor {
             >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
           Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
           logger.info(
-              "will close a TsFile because too many memtables ({} > {}) in the storage group {},",
-              tsFileProcessorTreeMap.size(),
+              "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
+              sequence, tsFileProcessorTreeMap.size(),
               IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
               storageGroupName);
           asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
