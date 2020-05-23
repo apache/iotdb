@@ -269,19 +269,19 @@ public class StorageGroupProcessor {
 
     try {
       // collect candidate TsFiles from sequential and unsequential data directory
-      Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair = getAllFiles(
+      Pair<List<List<TsFileResource>>, List<TsFileResource>> seqTsFilesPair = getAllFiles(
               DirectoryManager.getInstance().getAllSequenceFileFolders());
-      List<TsFileResource> tmpSeqTsFiles = seqTsFilesPair.left;
+      List<List<TsFileResource>> tmpSeqTsFilesInPartitions = seqTsFilesPair.left;
       List<TsFileResource> oldSeqTsFiles = seqTsFilesPair.right;
       upgradeSeqFileList.addAll(oldSeqTsFiles);
-      Pair<List<TsFileResource>, List<TsFileResource>> unseqTsFilesPair = getAllFiles(
+      Pair<List<List<TsFileResource>>, List<TsFileResource>> unseqTsFilesPair = getAllFiles(
               DirectoryManager.getInstance().getAllUnSequenceFileFolders());
-      List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
+      List<List<TsFileResource>> tmpUnseqTsFilesInPartitions = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
 
-      recoverSeqFiles(tmpSeqTsFiles);
-      recoverUnseqFiles(tmpUnseqTsFiles);
+      tmpSeqTsFilesInPartitions.forEach(tmpSeqTsFiles -> recoverSeqFiles(tmpSeqTsFiles));
+      tmpUnseqTsFilesInPartitions.forEach(tmpUnseqTsFiles -> recoverUnseqFiles(tmpUnseqTsFiles));
 
       for (TsFileResource resource : sequenceFileTreeSet) {
         long partitionNum = resource.getTimePartition();
@@ -392,8 +392,8 @@ public class StorageGroupProcessor {
         });
   }
 
-  private Pair<List<TsFileResource>, List<TsFileResource>> getAllFiles(List<String> folders) throws IOException {
-    List<File> tsFiles = new ArrayList<>();
+  private Pair<List<List<TsFileResource>>, List<TsFileResource>> getAllFiles(List<String> folders) throws IOException {
+    List<List<File>> tsFilesInPartitions = new ArrayList<>();
     List<File> upgradeFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
@@ -458,6 +458,7 @@ public class StorageGroupProcessor {
           if (!partitionFolder.isDirectory()) {
             logger.warn("{} is not a directory.", partitionFolder.getAbsolutePath());
           } else if (!partitionFolder.getName().equals(IoTDBConstant.UPGRADE_FOLDER_NAME)) {
+            List<File> tsFiles = new ArrayList<>();
             // some TsFileResource may be being persisted when the system crashed, try recovering such
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
@@ -468,14 +469,20 @@ public class StorageGroupProcessor {
 
             Collections.addAll(tsFiles,
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), TSFILE_SUFFIX));
+            tsFiles.sort(this::compareFileName);
+            tsFilesInPartitions.add(tsFiles);
           }
         }
       }
 
     }
-    tsFiles.sort(this::compareFileName);
-    List<TsFileResource> ret = new ArrayList<>();
-    tsFiles.forEach(f -> ret.add(new TsFileResource(f)));
+    List<List<TsFileResource>> ret = new ArrayList<>();
+    tsFilesInPartitions.forEach(tsFiles -> {
+      List<TsFileResource> resources = new ArrayList<>();
+      tsFiles.forEach(f -> resources.add(new TsFileResource(f)));
+      ret.add(resources);
+    });
+    
     upgradeFiles.sort(this::compareFileName);
     List<TsFileResource> upgradeRet = new ArrayList<>();
     for (File f : upgradeFiles) {
