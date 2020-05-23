@@ -237,6 +237,83 @@ public class Session {
   }
 
   /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertRow(String deviceId, long time, List<String> measurements,
+      List<String> values) throws IoTDBSessionException {
+    TSInsertReq request = new TSInsertReq();
+    request.setDeviceId(deviceId);
+    request.setTimestamp(time);
+    request.setMeasurements(measurements);
+    request.setValues(values);
+
+    try {
+      RpcUtils.verifySuccess(client.testInsertRow(request));
+    } catch (TException | IoTDBRPCException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertBatch(RowBatch rowBatch)
+      throws IoTDBSessionException {
+    TSBatchInsertionReq request = new TSBatchInsertionReq();
+    request.deviceId = rowBatch.deviceId;
+    for (MeasurementSchema measurementSchema : rowBatch.measurements) {
+      request.addToMeasurements(measurementSchema.getMeasurementId());
+      request.addToTypes(measurementSchema.getType().ordinal());
+    }
+    request.setTimestamps(SessionUtils.getTimeBuffer(rowBatch));
+    request.setValues(SessionUtils.getValueBuffer(rowBatch));
+    request.setSize(rowBatch.batchSize);
+
+    try {
+      RpcUtils.verifySuccess(client.testInsertBatch(request).status);
+    } catch (TException | IoTDBRPCException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertRowInBatch(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<String>> valuesList)
+      throws IoTDBSessionException {
+    int len = deviceIds.size();
+    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "deviceIds, times, measurementsList and valuesList's size should be equal");
+    }
+    for (int i = 0; i < measurementsList.size(); i++) {
+      List<String> measurements = measurementsList.get(i);
+      List<String> values = valuesList.get(i);
+      if (measurements.size() != values.size()) {
+        throw new IllegalArgumentException(
+            "each measurements size and values size should be equal");
+      }
+    }
+    TSInsertInBatchReq request = new TSInsertInBatchReq();
+    request.setDeviceIds(deviceIds);
+    request.setTimestamps(times);
+    request.setMeasurementsList(measurementsList);
+    request.setValuesList(valuesList);
+
+    try {
+      for (TSStatus cur : client.insertRowInBatch(request).getStatusList()) {
+        RpcUtils.verifySuccess(cur);
+      }
+    } catch (TException | IoTDBRPCException e) {
+      throw new IoTDBSessionException(e);
+    }
+  }
+
+  /**
    * delete a timeseries, including data and schema
    *
    * @param path timeseries to delete, should be a whole path

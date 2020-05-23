@@ -1243,6 +1243,26 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public TSExecuteBatchStatementResp testInsertBatch(TSBatchInsertionReq req) {
+    logger.debug("Test insert batch request receive.");
+    return new TSExecuteBatchStatementResp(getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  @Override
+  public TSStatus testInsertRow(TSInsertReq req) {
+    logger.debug("Test insert row request receive.");
+    return new TSStatus(getStatus(TSStatusCode.SUCCESS_STATUS));
+  }
+
+  @Override
+  public TSExecuteInsertRowInBatchResp testInsertRowInBatch(TSInsertInBatchReq req) {
+    logger.debug("Test insert row in batch request receive.");
+    TSExecuteInsertRowInBatchResp resp = new TSExecuteInsertRowInBatchResp();
+    resp.addToStatusList(getStatus(TSStatusCode.SUCCESS_STATUS));
+    return resp;
+  }
+
+  @Override
   public TSStatus deleteData(TSDeleteDataReq req) {
     if (!checkLogin()) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);

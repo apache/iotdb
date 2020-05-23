@@ -304,6 +304,89 @@ public class SessionPool {
   }
 
   /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertRow(String deviceId, long time, List<String> measurements,
+      List<String> values) throws IoTDBSessionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertRow(deviceId, time, measurements, values);
+        putBack(session);
+        return;
+      } catch (IoTDBSessionException e) {
+        if (e.getCause() instanceof TException) {
+          // TException means the connection is broken, remove it and get a new one.
+          closeSession(session);
+          removeSession();
+        } else {
+          putBack(session);
+          throw e;
+        }
+      }
+    }
+    throw new IoTDBSessionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertBatch(RowBatch rowBatch)
+      throws IoTDBSessionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertBatch(rowBatch);
+        putBack(session);
+        return;
+      }
+      catch (IoTDBSessionException e){
+        if (e.getCause() instanceof TException) {
+          // TException means the connection is broken, remove it and get a new one.
+          closeSession(session);
+          removeSession();
+        } else {
+          putBack(session);
+          throw e;
+        }
+      }
+    }
+    throw new IoTDBSessionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertRowInBatch(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<String>> valuesList)
+      throws IoTDBSessionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertRowInBatch(deviceIds, times, measurementsList, valuesList);
+        putBack(session);
+        return;
+      } catch (IoTDBSessionException e) {
+        if (e.getCause() instanceof TException) {
+          // TException means the connection is broken, remove it and get a new one.
+          closeSession(session);
+          removeSession();
+        } else {
+          putBack(session);
+          throw e;
+        }
+      }
+    }
+    throw new IoTDBSessionException(
+        String.format("retry to execute statement on %s:%s failed %d times", ip, port, RETRY));
+  }
+
+  /**
    * delete a timeseries, including data and schema
    *
    * @param paths timeseries to delete, should be a whole path
