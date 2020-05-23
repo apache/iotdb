@@ -36,7 +36,7 @@ public class PrimitiveArrayPool {
   private static final EnumMap<TSDataType, ArrayDeque> primitiveArraysMap = new EnumMap<>(TSDataType.class);
 
   public static final int ARRAY_SIZE =
-      IoTDBDescriptor.getInstance().getConfig().getPrimitiveArrayPoolSize();
+      IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
 
   static {
     primitiveArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque());
