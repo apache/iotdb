@@ -118,13 +118,12 @@ public class StorageEngine implements IService {
    * if disabled, all data belongs to partition 0
    */
   @ServerConfigConsistent
-  private static boolean enablePartition;
+  private static boolean enablePartition =
+      IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
-
-    enablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
 
     if (!enablePartition) {
       timePartitionInterval = Long.MAX_VALUE;
