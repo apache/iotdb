@@ -920,7 +920,6 @@ NAME_CHAR
     :   'A'..'Z'
     |   'a'..'z'
     |   '0'..'9'
-    |   '-'
     |   '_'
     |   '/'
     |   '@'
@@ -1046,10 +1045,6 @@ fragment Y
 
 fragment Z
     : 'z' | 'Z'
-    ;
-
-fragment PATH_FRAGMENT
-    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
     ;
 
 WS
