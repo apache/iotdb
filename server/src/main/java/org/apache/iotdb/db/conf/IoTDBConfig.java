@@ -529,6 +529,11 @@ public class IoTDBConfig {
    * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
+
+  /**
+   * The default value of primitive array size in array pool
+   */
+  private int primitiveArraySize = 128;
   /**
    * Time range for partitioning data inside each storage group, the unit is second
    */
@@ -1492,5 +1497,13 @@ public class IoTDBConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getPrimitiveArraySize() {
+    return primitiveArraySize;
+  }
+
+  public void setPrimitiveArraySize(int primitiveArraySize) {
+    this.primitiveArraySize = primitiveArraySize;
   }
 }
