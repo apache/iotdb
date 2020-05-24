@@ -799,7 +799,7 @@ public class PhysicalPlanTest {
 
   @Test
   public void testSpecialCharacters() throws QueryProcessException {
-    String sqlStr1 = "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String sqlStr1 = "create timeseries root.3e-3.-1.1/2.[].{}.SNAPPY.RLE with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, plan1.getOperatorType());
   }

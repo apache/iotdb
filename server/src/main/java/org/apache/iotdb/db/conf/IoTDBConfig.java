@@ -47,12 +47,15 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
-  private static final String NODE_MATCHER =
-      "[" + PATH_SEPARATOR + "]" + "([a-zA-Z0-9\u2E80-\u9FFF_]+)";
+  // e.g., a31+/$%#&[]{}3e4
+  private static final String ID_MATCHER = "([a-zA-Z0-9/@#$%&{}\\[\\]\\-+\u2E80-\u9FFF_]+)";
+
+  // e.g.,  .s1
+  private static final String NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
   // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
   private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']([a-zA-Z0-9\u2E80-\u9FFF_]+)(" + NODE_MATCHER + ")+[\"|\']";
+      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER +"(" + NODE_MATCHER+ ")*[\"|\']";
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
