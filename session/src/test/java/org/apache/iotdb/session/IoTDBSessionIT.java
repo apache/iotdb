@@ -1000,7 +1000,7 @@ public class IoTDBSessionIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
-    session.executeNonQueryStatement("set storage group to root./@#$%&-");
+    session.executeNonQueryStatement("set storage group to root./@#$%&");
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
