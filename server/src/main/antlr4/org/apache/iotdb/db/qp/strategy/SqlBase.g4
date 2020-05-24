@@ -323,13 +323,7 @@ timeValue
 
 propertyValue
     : ID
-    | MINUS? INT
-    | MINUS? realLiteral
     | STRING_LITERAL
-    ;
-
-propertyLabelPair
-    : propertyName=ID DOT labelName=ID
     ;
 
 fullPath
@@ -346,18 +340,21 @@ suffixPath
 
 nodeName
     : ID
-    | INT
     | STAR
     | ID STAR
-    | STRING_LITERAL
     | DURATION
+    | encoding
+    | dataType
+    | constant
     ;
 
 nodeNameWithoutStar
-    : INT
-    | ID
+    : ID
     | STRING_LITERAL
     | DURATION
+    | encoding
+    | dataType
+    | constant
     ;
 
 dataType
@@ -371,7 +368,6 @@ dateFormat
 
 constant
     : dateExpression
-    | ID
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
@@ -912,12 +908,12 @@ DATETIME
       INT ':' INT ':' INT (DOT INT)?
       (('+' | '-') INT ':' INT)?)?
     ;
-/** Allow unicode rule/token names */
-ID : NAME_CHAR NAME_CHAR*;
 
 FILE
     :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
     ;
+/** Allow unicode rule/token names */
+ID : FIRST_NAME_CHAR NAME_CHAR*;
 
 fragment
 NAME_CHAR
@@ -925,6 +921,28 @@ NAME_CHAR
     |   'a'..'z'
     |   '0'..'9'
     |   '_'
+    |   '-'
+    |   '/'
+    |   '@'
+    |   '#'
+    |   '$'
+    |   '%'
+    |   '&'
+    |   CN_CHAR
+    ;
+
+fragment
+FIRST_NAME_CHAR
+    :   'A'..'Z'
+    |   'a'..'z'
+    |   '0'..'9'
+    |   '_'
+    |   '/'
+    |   '@'
+    |   '#'
+    |   '$'
+    |   '%'
+    |   '&'
     |   CN_CHAR
     ;
 
