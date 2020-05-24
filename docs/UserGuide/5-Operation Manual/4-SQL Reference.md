@@ -32,6 +32,8 @@ All of these statements are write in IoTDB's own syntax, for details about the s
 
 ## Keywords
 
+Please not use these keywords as identifiers.
+
 ```
 CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,
 CONFIGURATION, DESCRIBE, SLIMIT, LIMIT, UNLINK, OFFSET, SOFFSET, FILL, LINEAR, PREVIOUS, PREVIOUSUNTILLAST,
