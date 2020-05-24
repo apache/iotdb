@@ -516,7 +516,7 @@ public class IoTDBConfig {
   /**
    * the num of memtable in each storage group
    */
-  private int concurrentWritingTimePartition = 10;
+  private int concurrentWritingTimePartition = 1;
 
   /**
    * the default fill interval in LinearFill and PreviousFill, -1 means infinite past time
@@ -744,6 +744,12 @@ public class IoTDBConfig {
   }
 
   void setTimestampPrecision(String timestampPrecision) {
+    if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
+        || timestampPrecision.equals("ns"))) {
+      logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
+          + timestampPrecision);
+      System.exit(-1);
+    }
     this.timestampPrecision = timestampPrecision;
   }
 
