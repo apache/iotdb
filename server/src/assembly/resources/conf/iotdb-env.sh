@@ -159,6 +159,12 @@ fi
 
 calculate_heap_sizes
 
+## Set heap size by percentage of total memory
+#max_percentage=90
+#min_percentage=50
+#MAX_HEAP_SIZE=`expr $system_memory_in_mb \* $max_percentage / 100`
+#HEAP_NEWSIZE=`expr $system_memory_in_mb \* $min_percentage / 100`
+
 # Maximum heap size
 #MAX_HEAP_SIZE="2G"
 # Minimum heap size
