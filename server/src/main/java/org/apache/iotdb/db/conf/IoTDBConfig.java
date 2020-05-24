@@ -516,7 +516,7 @@ public class IoTDBConfig {
   /**
    * the num of memtable in each storage group
    */
-  private int concurrentWritingTimePartition = 10;
+  private int concurrentWritingTimePartition = 1;
 
   /**
    * the default fill interval in LinearFill and PreviousFill, -1 means infinite past time
@@ -534,6 +534,13 @@ public class IoTDBConfig {
    * The default value of primitive array size in array pool
    */
   private int primitiveArraySize = 128;
+
+  /**
+   * whether enable data partition
+   * if disabled, all data belongs to partition 0
+   */
+  private boolean enablePartition = false;
+
   /**
    * Time range for partitioning data inside each storage group, the unit is second
    */
@@ -566,6 +573,14 @@ public class IoTDBConfig {
 
   public void setDefaultFillInterval(int defaultFillInterval) {
     this.defaultFillInterval = defaultFillInterval;
+  }
+
+  public boolean isEnablePartition() {
+    return enablePartition;
+  }
+
+  public void setEnablePartition(boolean enablePartition) {
+    this.enablePartition = enablePartition;
   }
 
   public long getPartitionInterval() {
@@ -729,6 +744,12 @@ public class IoTDBConfig {
   }
 
   void setTimestampPrecision(String timestampPrecision) {
+    if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
+        || timestampPrecision.equals("ns"))) {
+      logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
+          + timestampPrecision);
+      System.exit(-1);
+    }
     this.timestampPrecision = timestampPrecision;
   }
 
