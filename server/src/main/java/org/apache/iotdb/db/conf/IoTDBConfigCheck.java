@@ -20,6 +20,7 @@ package org.apache.iotdb.db.conf;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -47,7 +48,12 @@ public class IoTDBConfigCheck {
   private static final String SCHEMA_DIR = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
   private static final String WAL_DIR = IoTDBDescriptor.getInstance().getConfig().getWalFolder();
 
+  File propertiesFile;
+  File tmpPropertiesFile;
+
   private Properties properties = new Properties();
+
+  private Map<String, String> systemProperties = new HashMap<>();
 
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
 
@@ -106,6 +112,11 @@ public class IoTDBConfigCheck {
       System.exit(-1);
     }
 
+    systemProperties.put(TIMESTAMP_PRECISION_STRING, timestampPrecision);
+    systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
+    systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
+    systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
+    systemProperties.put(IOTDB_VERSION_STRING, iotdbVersion);
   }
 
 
@@ -120,9 +131,9 @@ public class IoTDBConfigCheck {
    * (2) rename system.properties.tmp to system.properties
    */
   public void checkConfig() throws IOException {
-    File propertiesFile = SystemFileFactory.INSTANCE
+    propertiesFile = SystemFileFactory.INSTANCE
             .getFile(IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
-    File tmpPropertiesFile = new File(propertiesFile.getAbsoluteFile() + ".tmp");
+    tmpPropertiesFile = new File(propertiesFile.getAbsoluteFile() + ".tmp");
 
     // system init first time, no need to check, write system.properties and return
     if (!propertiesFile.exists() && !tmpPropertiesFile.exists()) {
@@ -136,13 +147,7 @@ public class IoTDBConfigCheck {
 
       // write properties to system.properties
       try (FileOutputStream outputStream = new FileOutputStream(propertiesFile)) {
-
-        properties.setProperty(TIMESTAMP_PRECISION_STRING, timestampPrecision);
-        properties.setProperty(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
-        properties.setProperty(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
-        properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
-        properties.setProperty(IOTDB_VERSION_STRING, iotdbVersion);
-
+        systemProperties.forEach((k, v) -> properties.setProperty(k, v));
         properties.store(outputStream, SYSTEM_PROPERTIES_STRING);
       }
       return;
@@ -161,13 +166,12 @@ public class IoTDBConfigCheck {
 
     // no tmp file, read properties from system.properties
     try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-      properties.clear();
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
       // need to upgrade from 0.9 to 0.10
       if (!properties.containsKey(IOTDB_VERSION_STRING)) {
         checkUnClosedTsFileV1();
         MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
-        upgradePropertiesFile(propertiesFile, tmpPropertiesFile);
+        upgradePropertiesFile();
       }
       checkProperties();
     }
@@ -176,13 +180,14 @@ public class IoTDBConfigCheck {
   /**
    * upgrade 0.9 properties to 0.10 properties
    */
-  private void upgradePropertiesFile(File propertiesFile, File tmpPropertiesFile)
+  private void upgradePropertiesFile()
       throws IOException {
     // create an empty tmpPropertiesFile
     if (tmpPropertiesFile.createNewFile()) {
       logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
     } else {
       logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
     }
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
@@ -201,14 +206,48 @@ public class IoTDBConfigCheck {
     }
   }
 
-  private void checkProperties() {
+
+  /**
+   *  repair 0.10 properties
+   */
+  private void upgradePropertiesFileFromBrokenFile()
+      throws IOException {
+    // create an empty tmpPropertiesFile
+    if (tmpPropertiesFile.createNewFile()) {
+      logger.info("Create system.properties.tmp {}.", tmpPropertiesFile);
+    } else {
+      logger.error("Create system.properties.tmp {} failed.", tmpPropertiesFile);
+      System.exit(-1);
+    }
+
+    try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
+      systemProperties.forEach((k, v) -> properties.setProperty(k, v));
+
+      properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
+      // upgrade finished, delete old system.properties file
+      if (propertiesFile.exists()) {
+        Files.delete(propertiesFile.toPath());
+      }
+      // rename system.properties.tmp to system.properties
+      FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
+    }
+  }
+
+  private void checkProperties() throws IOException {
+    for (Entry<String, String> entry : systemProperties.entrySet()) {
+      if (!properties.contains(entry.getKey())) {
+        upgradePropertiesFileFromBrokenFile();
+        logger.info("repair system.properties, lack {}", entry.getKey());
+      }
+    }
+
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
       logger.error("Wrong " + TIMESTAMP_PRECISION_STRING + ", please set as: " + properties
           .getProperty(TIMESTAMP_PRECISION_STRING) + " !");
       System.exit(-1);
     }
 
-    if (!(Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval)))
+    if (!(Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING))
         == partitionInterval)) {
       logger.error("Wrong " + PARTITION_INTERVAL_STRING + ", please set as: " + properties
           .getProperty(PARTITION_INTERVAL_STRING) + " !");
