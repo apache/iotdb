@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
-class MetaUtils {
+public class MetaUtils {
 
   public static final String PATH_SEPARATOR = "\\.";
 

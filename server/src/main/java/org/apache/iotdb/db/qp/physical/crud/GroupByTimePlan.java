@@ -33,8 +33,6 @@ public class GroupByTimePlan extends AggregationPlan {
   // if it is left close and right open interval
   private boolean leftCRightO = true;
 
-  private boolean byTime = false;
-
   public GroupByTimePlan() {
     super();
     setOperatorType(Operator.OperatorType.GROUPBYTIME);
@@ -80,11 +78,4 @@ public class GroupByTimePlan extends AggregationPlan {
     this.leftCRightO = leftCRightO;
   }
 
-  public boolean isByTime() {
-    return byTime;
-  }
-
-  public void setByTime(boolean isByTime) {
-    this.byTime = isByTime;
-  }
 }

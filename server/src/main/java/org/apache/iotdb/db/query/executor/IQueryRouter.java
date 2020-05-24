@@ -58,7 +58,7 @@ public interface IQueryRouter {
   /**
    * Execute group by fill query
    */
-  QueryDataSet groupByFill(GroupByFillTimePlan groupByFillPlan, QueryContext context)
+  QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException,
       QueryProcessException, IOException;
 

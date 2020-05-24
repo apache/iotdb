@@ -239,10 +239,10 @@ public class PhysicalPlanTest {
       if (!plan.isQuery()) {
         fail();
       }
-      if (!(plan instanceof GroupByFillTimePlan)) {
+      if (!(plan instanceof GroupByTimeFillPlan)) {
         fail();
       }
-      GroupByFillTimePlan groupByFillPlan = (GroupByFillTimePlan) plan;
+      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
       assertEquals(3L, groupByFillPlan.getInterval());
       assertEquals(3L, groupByFillPlan.getSlidingStep());
       assertEquals(8L, groupByFillPlan.getStartTime());
@@ -268,10 +268,10 @@ public class PhysicalPlanTest {
       if (!plan.isQuery()) {
         fail();
       }
-      if (!(plan instanceof GroupByFillTimePlan)) {
+      if (!(plan instanceof GroupByTimeFillPlan)) {
         fail();
       }
-      GroupByFillTimePlan groupByFillPlan = (GroupByFillTimePlan) plan;
+      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
       assertEquals(3L, groupByFillPlan.getInterval());
       assertEquals(3L, groupByFillPlan.getSlidingStep());
       assertEquals(8L, groupByFillPlan.getStartTime());
@@ -299,10 +299,10 @@ public class PhysicalPlanTest {
       if (!plan.isQuery()) {
         fail();
       }
-      if (!(plan instanceof GroupByFillTimePlan)) {
+      if (!(plan instanceof GroupByTimeFillPlan)) {
         fail();
       }
-      GroupByFillTimePlan groupByFillPlan = (GroupByFillTimePlan) plan;
+      GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) plan;
       assertEquals(3L, groupByFillPlan.getInterval());
       assertEquals(3L, groupByFillPlan.getSlidingStep());
       assertEquals(8L, groupByFillPlan.getStartTime());
@@ -383,7 +383,7 @@ public class PhysicalPlanTest {
       if (!plan.isQuery()) {
         fail();
       }
-      if (!(plan instanceof GroupByFillPlan)) {
+      if (!(plan instanceof GroupByTimeFillPlan)) {
         fail();
       }
     } catch (Exception e) {

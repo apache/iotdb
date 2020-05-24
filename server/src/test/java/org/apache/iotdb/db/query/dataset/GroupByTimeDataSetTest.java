@@ -31,9 +31,8 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
-import static org.junit.Assert.assertEquals;
 
-public class GroupByLevelDataSetTest {
+public class GroupByTimeDataSetTest {
   private IPlanExecutor queryExecutor = new PlanExecutor();
   private Planner processor = new Planner();
   private String[] sqls = {
@@ -43,7 +42,6 @@ public class GroupByLevelDataSetTest {
     "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-    "CREATE TIMESERIES root.test.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "CREATE TIMESERIES root.test.d1.\"s3.xy\" WITH DATATYPE=TEXT, ENCODING=PLAIN",
     "insert into root.vehicle.d0(timestamp,s0) values(10,100)",
     "insert into root.vehicle.d0(timestamp,s0,s1) values(12,101,'102')",
@@ -78,14 +76,13 @@ public class GroupByLevelDataSetTest {
     "insert into root.test.d0(timestamp,s0) values(1900,1316)",
     "insert into root.test.d0(timestamp,s0,s1) values(700,1307,'1038')",
     "insert into root.test.d0(timestamp,s1) values(3000,'1309')",
-    "insert into root.test.d0(timestamp,s3) values(10,'100')",
     "insert into root.test.d1(timestamp, \"s3.xy\") values(10, 'text')"};
 
   static {
     MManager.getInstance().init();
   }
 
-  public GroupByLevelDataSetTest() throws QueryProcessException {
+  public GroupByTimeDataSetTest() throws QueryProcessException {
   }
 
   @Before
@@ -102,68 +99,88 @@ public class GroupByLevelDataSetTest {
   }
 
   @Test
-  public void testGroupByLevel() throws Exception {
+  public void testGroupByTimeAndLevel() throws Exception {
+    // with time interval
     QueryPlan queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=1");
+      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by ([0,20), 1ms), level=1");
     QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
-    assertEquals("0\t12", dataSet.next().toString());
+    assertEquals("0\t0", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("1\t0", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("2\t1", dataSet.next().toString());
 
     queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=0");
+      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by ([0,20), 1ms), level=0");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
-    assertEquals("0\t12", dataSet.next().toString());
+    assertEquals("0\t0", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("1\t0", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("2\t1", dataSet.next().toString());
 
     queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=6");
+      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by ([0,20), 1ms), level=6");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
-    assertEquals("0\t12", dataSet.next().toString());
+    assertEquals("0\t0", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("1\t0", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("2\t1", dataSet.next().toString());
 
     // multi paths
     queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1) from root.test.*,root.vehicle.* group by level=1");
+      .parseSQLToPhysicalPlan("select count(s1) from root.test.*,root.vehicle.* group by ([0,20), 1ms), level=1");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
-    assertEquals("0\t12\t10", dataSet.next().toString());
-
-    // with multi result
-    queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1), count(s0) from root.test.* group by level=6");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
+    assertEquals("0\t0\t0", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
-    assertEquals("0\t12\t12", dataSet.next().toString());
-
-    // with multi result
-    queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(s1), count(s3) from root.test.* group by level=2");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
+    assertEquals("1\t0\t0", dataSet.next().toString());
     assertTrue(dataSet.hasNext());
-    assertEquals("0\t13", dataSet.next().toString());
+    assertEquals("2\t1\t0", dataSet.next().toString());
 
-    // with double quotation mark
+    // with sliding step
     queryPlan = (QueryPlan) processor
-      .parseSQLToPhysicalPlan("select count(\"s3.xy\") from root.test.* group by level=2");
+      .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by ([0,20), 3ms, 10ms), level=6");
     dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
 
+    // with multi result
+    queryPlan = (QueryPlan) processor
+      .parseSQLToPhysicalPlan("select count(s1), count(s1) from root.test.* group by ([0,20), 3ms, 10ms), level=6");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t1", dataSet.next().toString());
+
+    // with double quotation mark
+    queryPlan = (QueryPlan) processor
+      .parseSQLToPhysicalPlan("select count(\"s3.xy\") from root.test.* group by ([0,20), 3ms, 10ms), level=2");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t0", dataSet.next().toString());
+    assertTrue(dataSet.hasNext());
+    assertEquals("10\t1", dataSet.next().toString());
+
     // not count
     try {
       queryPlan = (QueryPlan) processor
-        .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by level=6");
+        .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by ([0,200), 1ms), level=6");
       dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
       fail();
     } catch (Exception e) {
       assertEquals("group by level only support count now.", e.getMessage());
     }
   }
+
 }

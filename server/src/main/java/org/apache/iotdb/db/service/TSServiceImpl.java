@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.service;
 
 import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
-import static org.apache.iotdb.db.qp.logical.Operator.OperatorType.GROUPBYTIME;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
 import java.io.IOException;
@@ -54,13 +53,8 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -544,7 +538,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (plan.getOperatorType() == OperatorType.FILL) {
           throw new QueryProcessException("Fill doesn't support disable align clause.");
         }
-        if (plan.getOperatorType() == GROUPBYTIME) {
+        if (plan.getOperatorType() == OperatorType.GROUPBYTIME) {
           throw new QueryProcessException("Group by doesn't support disable align clause.");
         }
       }
@@ -693,8 +687,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // Last Query should return different respond instead of the static one
       // because the query dataset and query id is different although the header of last query is same.
       return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan.getOperatorType() == GROUPBYTIME && plan.getLevel() >= 0) {
-      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan.getPaths(), plan.getLevel(), null);
+    } else if (plan instanceof AggregationPlan && ((AggregationPlan)plan).getLevel() >= 0) {
+      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(((AggregationPlan)plan).getDeduplicatedPaths(), ((AggregationPlan)plan).getLevel(), null);
       for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
         respColumns.add("count(" + entry.getKey() + ")");
         columnsTypes.add(TSDataType.INT64.toString());
