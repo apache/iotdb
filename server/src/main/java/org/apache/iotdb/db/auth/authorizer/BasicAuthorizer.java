@@ -48,8 +48,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  private IUserManager userManager;
-  private IRoleManager roleManager;
+  IUserManager userManager;
+  IRoleManager roleManager;
 
   BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
     this.userManager = userManager;

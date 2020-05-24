@@ -549,7 +549,7 @@ public class IoTDBConfig {
   private int tagAttributeTotalSize = 700;
 
   // Open ID Secret
-  private String openIdSecret = null;
+  private String openIdProviderUrl = null;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1510,11 +1510,11 @@ public class IoTDBConfig {
     this.primitiveArraySize = primitiveArraySize;
   }
 
-  public String getOpenIdSecret() {
-    return openIdSecret;
+  public String getOpenIdProviderUrl() {
+    return openIdProviderUrl;
   }
 
-  public void setOpenIdSecret(String openIdSecret) {
-    this.openIdSecret = openIdSecret;
+  public void setOpenIdProviderUrl(String openIdProviderUrl) {
+    this.openIdProviderUrl = openIdProviderUrl;
   }
 }

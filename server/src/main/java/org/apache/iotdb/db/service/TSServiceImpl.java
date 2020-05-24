@@ -181,7 +181,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     boolean status;
     IAuthorizer authorizer;
     try {
-      authorizer = OpenIdAuthorizer.getInstance();
+      authorizer = LocalFileAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new TException(e);
     }

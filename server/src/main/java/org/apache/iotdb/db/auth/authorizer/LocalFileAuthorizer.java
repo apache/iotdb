@@ -19,6 +19,10 @@
 package org.apache.iotdb.db.auth.authorizer;
 
 import java.io.File;
+import java.io.IOException;
+import java.net.URISyntaxException;
+
+import com.nimbusds.oauth2.sdk.ParseException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.db.auth.user.LocalFileUserManager;
@@ -46,7 +50,7 @@ public class LocalFileAuthorizer extends BasicAuthorizer {
   /**
    * function for getting the instance of the local file authorizer.
    */
-  public static LocalFileAuthorizer getInstance() throws AuthException {
+  public static IAuthorizer getInstance() throws AuthException {
     if (InstanceHolder.instance == null) {
       throw new AuthException("Authorizer uninitialized");
     }
@@ -54,12 +58,13 @@ public class LocalFileAuthorizer extends BasicAuthorizer {
   }
 
   private static class InstanceHolder {
-    private static LocalFileAuthorizer instance;
+    private static OpenIdAuthorizer instance;
 
     static {
       try {
-        instance = new LocalFileAuthorizer();
-      } catch (AuthException e) {
+        IoTDBDescriptor.getInstance().getConfig().setOpenIdProviderUrl("https://auth.demo.pragmaticindustries.de/auth/realms/IoTDB/");
+        instance = new OpenIdAuthorizer();
+      } catch (AuthException | ParseException | IOException | URISyntaxException e) {
         logger.error("Authorizer initialization failed due to ", e);
         instance = null;
       }

@@ -165,6 +165,11 @@
             <version>0.10.7</version>
             <scope>runtime</scope>
         </dependency>
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>oauth2-oidc-sdk</artifactId>
+            <version>8.3</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

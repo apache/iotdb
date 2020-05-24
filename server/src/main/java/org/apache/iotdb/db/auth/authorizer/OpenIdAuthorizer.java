@@ -4,13 +4,20 @@
 
 package org.apache.iotdb.db.auth.authorizer;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.jwk.RSAKey;
+import com.nimbusds.oauth2.sdk.ParseException;
+import com.nimbusds.oauth2.sdk.util.JSONObjectUtils;
+import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
+import net.minidev.json.JSONArray;
+import net.minidev.json.JSONObject;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.role.IRoleManager;
+import org.apache.iotdb.db.auth.entity.Role;
+import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.LocalFileRoleManager;
-import org.apache.iotdb.db.auth.user.IUserManager;
 import org.apache.iotdb.db.auth.user.LocalFileUserManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -18,6 +25,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.security.interfaces.RSAPublicKey;
+import java.util.*;
 
 /**
  * Uses an OpenID Connect provider for Authorization / Authentication.
@@ -25,47 +39,87 @@ import java.io.File;
 public class OpenIdAuthorizer extends BasicAuthorizer {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenIdAuthorizer.class);
+    public static final String IOTDB_ADMIN_ROLE_NAME = "iotdb_admin";
 
     private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-    private final String secret;
+    private RSAPublicKey providerKey;
 
-    public OpenIdAuthorizer() throws AuthException {
-        this(config.getOpenIdSecret());
+    /** Stores all claims to the respective user */
+    private Map<String, Claims> loggedClaims = new HashMap<>();
+
+    public OpenIdAuthorizer() throws AuthException, ParseException, IOException, URISyntaxException {
+        this(config.getOpenIdProviderUrl());
     }
 
-    OpenIdAuthorizer(String secret) throws AuthException {
+    OpenIdAuthorizer(JSONObject jwk) throws AuthException, URISyntaxException, ParseException, IOException {
         super(new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),
                 new LocalFileRoleManager(config.getSystemDir() + File.separator + "roles"));
-        if (secret == null) {
-            throw new IllegalArgumentException("OpenID Secret is null which is not allowed!");
+        try {
+            providerKey = RSAKey.parse(jwk).toRSAPublicKey();
+        } catch (java.text.ParseException | JOSEException e) {
+            throw new AuthException("Unable to get OIDC Provider Key from JWK " +  jwk.toString(), e);
         }
-        this.secret = secret;
+        logger.info("Initialized with providerKey: {}", providerKey);
     }
 
-    /**
-     * function for getting the instance of the local file authorizer.
-     */
-    public static OpenIdAuthorizer getInstance() throws AuthException {
-        if (OpenIdAuthorizer.InstanceHolder.instance == null) {
-            throw new AuthException("Authorizer uninitialized");
-        }
-        return OpenIdAuthorizer.InstanceHolder.instance;
+    OpenIdAuthorizer(String providerUrl) throws AuthException, URISyntaxException, ParseException, IOException {
+        this(getJWKfromProvider(providerUrl));
     }
 
-    private static class InstanceHolder {
-        private static OpenIdAuthorizer instance;
+    private static JSONObject getJWKfromProvider(String providerUrl) throws URISyntaxException, IOException, ParseException, AuthException {
+        if (providerUrl == null) {
+            throw new IllegalArgumentException("OpenID Connect Provider URI must be given!");
+        }
 
-        static {
-            // Only for testing here!
-            IoTDBDescriptor.getInstance().getConfig().setOpenIdSecret("111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
-            try {
-                instance = new OpenIdAuthorizer();
-            } catch (AuthException e) {
-                logger.error("Authorizer initialization failed due to ", e);
-                instance = null;
+        //
+        OIDCProviderMetadata providerMetadata = fetchMetadata(providerUrl);
+
+        System.out.println(providerMetadata);
+
+        try {
+            URL url = new URI(providerMetadata.getJWKSetURI().toString().replace("http", "https")).toURL();
+            System.out.println("Using url " + url);
+            return getProviderRSAJWK(url.openStream());
+        } catch (IOException e) {
+            throw new AuthException("Unable to start the Auth", e);
+        }
+    }
+
+    private static JSONObject getProviderRSAJWK(InputStream is) throws ParseException {
+        // Read all data from stream
+        StringBuilder sb = new StringBuilder();
+        try (Scanner scanner = new Scanner(is);) {
+            while (scanner.hasNext()) {
+                sb.append(scanner.next());
             }
         }
+
+        // Parse the data as json
+        String jsonString = sb.toString();
+        JSONObject json = JSONObjectUtils.parse(jsonString);
+
+        // Find the RSA signing key
+        JSONArray keyList = (JSONArray) json.get("keys");
+        for (Object key : keyList) {
+            JSONObject k = (JSONObject) key;
+            if (k.get("use").equals("sig") && k.get("kty").equals("RSA")) {
+                return k;
+            }
+        }
+        return null;
+    }
+
+    static OIDCProviderMetadata fetchMetadata(String providerUrl) throws URISyntaxException, IOException, ParseException {
+        URI issuerURI = new URI(providerUrl);
+        URL providerConfigurationURL = issuerURI.resolve(".well-known/openid-configuration").toURL();
+        InputStream stream = providerConfigurationURL.openStream();
+        // Read all data from URL
+        String providerInfo = null;
+        try (java.util.Scanner s = new java.util.Scanner(stream)) {
+            providerInfo = s.useDelimiter("\\A").hasNext() ? s.next() : "";
+        }
+        return OIDCProviderMetadata.parse(providerInfo);
     }
 
     @Override
@@ -92,10 +146,14 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
         logger.debug("Issuer: {}", claims.getIssuer());
         logger.debug("Expiration: {}", claims.getExpiration());
         // Create User if not exists
-        if (!super.listAllUsers().contains(claims.getId())) {
-            logger.info("User {} logs in for first time, storing it locally!", claims.getId());
-            super.createUser(claims.getSubject(), "UNUSED_PASSWORT");
+        String iotdbUsername = getUsername(claims);
+        if (!super.listAllUsers().contains(iotdbUsername)) {
+            logger.info("User {} logs in for first time, storing it locally!", iotdbUsername);
+            // We give the user a random password so that no one could hijack them via local login
+            super.createUser(iotdbUsername, UUID.randomUUID().toString());
         }
+        // Always store claims and user
+        this.loggedClaims.put(getUsername(claims), claims);
         return true;
     }
 
@@ -105,9 +163,17 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
                 // Basically ignore the Expiration Date, if there is any???
                 .setAllowedClockSkewSeconds(Long.MAX_VALUE / 1000)
                 // .setSigningKey(DatatypeConverter.parseBase64Binary(secret))
-                .setSigningKey(secret.getBytes())
+                .setSigningKey(providerKey)
                 .parseClaimsJws(token)
                 .getBody();
+    }
+
+    private String getUsername(Claims claims) {
+        return "openid:" + claims.getSubject();
+    }
+
+    private String getUsername(String token) {
+        return getUsername(validateToken(token));
     }
 
     @Override
@@ -120,115 +186,63 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
         throw new UnsupportedOperationException("This operation is not supported for JWT Auth Provider!");
     }
 
+    /**
+     * So not with the token!
+     * @param token Usually the JWT but could also be just the name of the user ({@link #getUsername(String)}.
+     * @return true if the user is an admin
+     */
     @Override
     boolean isAdmin(String token) {
         Claims claims;
-        try {
-            claims = validateToken(token);
-        } catch (JwtException e) {
-            logger.warn("Unable to validate token {}!", token, e);
-            return false;
+        if (this.loggedClaims.containsKey(token)) {
+            // This is a username!
+            claims = this.loggedClaims.get(token);
+        } else {
+            // Its a token
+            try {
+                claims = validateToken(token);
+            } catch (JwtException e) {
+                logger.warn("Unable to validate token {}!", token, e);
+                return false;
+            }
         }
-        if (!(claims.get("IOTDB_ADMIN") instanceof Boolean) || !claims.get("IOTDB_ADMIN", Boolean.class)) {
-            logger.warn("Given Token has no admin rights, is custom claim IOTDB_ADMIN set to true?");
+        // Get available roles (from keycloack)
+        List<String> availableRoles = ((Map<String, List<String>>) claims.get("realm_access")).get("roles");
+        if (!availableRoles.contains(IOTDB_ADMIN_ROLE_NAME)) {
+            logger.warn("Given Token has no admin rights, is there a ROLE with name {} in 'realm_access' role set?", IOTDB_ADMIN_ROLE_NAME);
             return false;
         }
         return true;
     }
 
-//    @Override
-//    public void grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException {
-//        if (isAdmin(username)) {
-//            throw new AuthException("Given Token has no Admin privileges!");
-//        }
-//        // Yes, you are Admin! Gratz!
-//        // Do something here...
-//        super.grantPrivilegeToUser(username, path, privilegeId);
-//    }
-//    @Override
-//    public void revokePrivilegeFromUser(String username, String path, int privilegeId) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public void createRole(String roleName) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public void deleteRole(String roleName) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public void grantPrivilegeToRole(String roleName, String path, int privilegeId) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public void revokePrivilegeFromRole(String roleName, String path, int privilegeId) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public void grantRoleToUser(String roleName, String username) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public void revokeRoleFromUser(String roleName, String username) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public Set<Integer> getPrivileges(String username, String path) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
+    @Override
+    public boolean checkUserPrivileges(String username, String path, int privilegeId)
+            throws AuthException {
+        if (isAdmin(username)) {
+            return true;
+        }
+
+        User user = userManager.getUser(getUsername(username));
+        if (user == null) {
+            throw new AuthException(String.format("No such user : %s", getUsername(username)));
+        }
+        // get privileges of the user
+        if (user.checkPrivilege(path, privilegeId)) {
+            return true;
+        }
+        // merge the privileges of the roles of the user
+        for (String roleName : user.getRoleList()) {
+            Role role = roleManager.getRole(roleName);
+            if (role.checkPrivilege(path, privilegeId)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     @Override
     public void updateUserPassword(String username, String newPassword) throws AuthException {
         throw new UnsupportedOperationException("This operation is not supported for JWT Auth Provider!");
     }
-//
-//    @Override
-//    public boolean checkUserPrivileges(String username, String path, int privilegeId) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public void reset() throws AuthException {
-//        // Do nothing
-//        super.reset();
-//    }
-//
-//    @Override
-//    public List<String> listAllUsers() {
-//        // Unsure if we list all "known" users or just throw this exception??
-//        throw new UnsupportedOperationException("This operation is not supported for JWT Auth Provider!");
-//    }
-//
-//    @Override
-//    public List<String> listAllRoles() {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public Role getRole(String roleName) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public User getUser(String username) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public boolean isUserUseWaterMark(String userName) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
-//
-//    @Override
-//    public void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException {
-//        throw new NotImplementedException("Not yet implemented!");
-//    }
+
 }
