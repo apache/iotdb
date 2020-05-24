@@ -37,7 +37,7 @@ statement
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
     | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
     | MERGE #merge
-    | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush //ID is true or false
+    | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
