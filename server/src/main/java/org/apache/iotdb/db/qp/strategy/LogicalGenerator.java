@@ -96,7 +96,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
@@ -164,6 +164,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is a listener and you can get an operator which is a logical plan.
@@ -788,9 +790,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterGroupByFillClause(SqlBaseParser.GroupByFillClauseContext ctx) {
     super.enterGroupByFillClause(ctx);
-    queryOp.setGroupByLevel(true);
-    queryOp.setFill(true);
     queryOp.setGroupByTime(true);
+    queryOp.setFill(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
 
@@ -864,30 +865,34 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterGroupByTimeClause(GroupByTimeClauseContext ctx) {
     super.enterGroupByTimeClause(ctx);
-    queryOp.setGroupByLevel(true);
 
-    if (ctx.timeInterval() != null) {
-      queryOp.setGroupByTime(true);
-      queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
-      // parse timeUnit
-      queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
-      queryOp.setSlidingStep(queryOp.getUnit());
-      // parse sliding step
-      if (ctx.DURATION().size() == 2) {
-        queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
-        if (queryOp.getSlidingStep() < queryOp.getUnit()) {
-          throw new SQLParserException(
-            "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
-        }
+    queryOp.setGroupByTime(true);
+    queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
+    // parse timeUnit
+    queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
+    queryOp.setSlidingStep(queryOp.getUnit());
+    // parse sliding step
+    if (ctx.DURATION().size() == 2) {
+      queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
+      if (queryOp.getSlidingStep() < queryOp.getUnit()) {
+        throw new SQLParserException(
+          "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
       }
-
-      parseTimeInterval(ctx.timeInterval());
     }
+
+    parseTimeInterval(ctx.timeInterval());
 
     if (ctx.INT() != null) {
-      logger.debug("group by level:" + ctx.INT().getText() );
       queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
     }
+  }
+
+  @Override
+  public void enterGroupByLevelClause(SqlBaseParser.GroupByLevelClauseContext ctx) {
+    super.enterGroupByLevelClause(ctx);
+    queryOp.setGroupByLevel(true);
+
+    queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
   }
 
   @Override

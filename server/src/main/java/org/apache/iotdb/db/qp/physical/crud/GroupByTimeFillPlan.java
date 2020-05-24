@@ -24,11 +24,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
-public class GroupByFillTimePlan extends GroupByTimePlan {
+public class GroupByTimeFillPlan extends GroupByTimePlan {
 
   private Map<TSDataType, IFill> fillTypes;
 
-  public GroupByFillTimePlan() {
+  public GroupByTimeFillPlan() {
     super();
     setOperatorType(Operator.OperatorType.GROUP_BY_FILL);
   }

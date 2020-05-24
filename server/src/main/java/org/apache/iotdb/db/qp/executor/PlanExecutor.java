@@ -292,8 +292,8 @@ public class PlanExecutor implements IPlanExecutor {
       if (queryPlan.getPaths() == null || queryPlan.getPaths().isEmpty()) {
         // no time series are selected, return EmptyDataSet
         return new EmptyDataSet();
-      } else if (queryPlan instanceof GroupByFillTimePlan) {
-        GroupByFillTimePlan groupByFillPlan = (GroupByFillTimePlan) queryPlan;
+      } else if (queryPlan instanceof GroupByTimeFillPlan) {
+        GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) queryPlan;
         return queryRouter.groupByFill(groupByFillPlan, context);
       } else if (queryPlan instanceof GroupByTimePlan) {
         GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;

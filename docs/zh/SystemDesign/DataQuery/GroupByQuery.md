@@ -271,7 +271,7 @@ for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt+
 
 降采样后，我们也可以使用level关键字来进一步汇总点数。
 
-这个逻辑在 `GroupByLevelDataSet`类里。
+这个逻辑在 `GroupByTimeDataSet`类里。
 
 1. 首先，把所有涉及到的时序按level来进行汇集，最后的路径。
     > 例如把root.sg1.d1.s0,root.sg1.d2.s1按level=1汇集成root.sg1。

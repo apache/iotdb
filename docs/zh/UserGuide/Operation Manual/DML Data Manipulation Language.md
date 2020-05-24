@@ -170,6 +170,48 @@ select s1,s2 from root.sg1.* GROUP BY DEVICE
 
 'disable align' 意味着每条时序就有3列存在。更多语法请参照 SQL REFERENCE.
 
+### 聚合查询
+本章节主要介绍聚合查询的相关示例，
+主要使用的是IoTDB SELECT语句的聚合查询函数。
+
+#### 统计总点数
+
+
+```
+select count(status) from root.ln.wf01.wt01;
+```
+
+| count(root.ln.wf01.wt01.status) |
+| -------------- |
+| 4              |
+
+
+##### 按层级统计
+通过定义LEVEL来统计指定层级下的数据点个数。
+
+这可以用来查询不同层级下的数据点总个数
+
+语法是：
+
+这个可以用来查询某个路径下的总数据点数
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 7              |
+
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=2;
+```
+
+| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
+| ------ | ------------------- | ------------------- |
+| 0      | 4                   | 3                   |
 
 ### 降频聚合查询
 
@@ -295,36 +337,13 @@ SQL执行后的结果集如下所示：
 | 35     | 3                               |
 | 40     | 5                               |
 
-### 降采样后按Level聚合查询
+#### 降采样后按Level聚合查询
 
 除此之外，还可以通过定义LEVEL来统计指定层级下的数据点个数。
 
-这可以用来查询不同层级下的数据点总个数
+例如：
 
-语法是：
-
-这个可以用来查询某个路径下的总数据点数
-
-```
-select count(status) from root.ln.wf01.wt01 group by level=1;
-```
-
-
-| Time   | count(root.ln) |
-| ------ | -------------- |
-| 0      | 7              |
-
-
-```
-select count(status) from root.ln.wf01.wt01 group by level=2;
-```
-
-| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
-| ------ | ------------------- | ------------------- |
-| 0      | 4                   | 3                   |
-
-
-也可以用来统计降采样后的数据点个数
+统计降采样后的数据点个数
 
 ```
 select count(status) from root.ln.wf01.wt01 group by ([0,20),3ms), level=1;
@@ -717,7 +736,7 @@ SQL语句将不会执行，并且相应的错误提示如下：
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
 
-#### Row and Column Control over Query Results
+#### 控制查询结果的行和列
 
 除了对查询结果进行行或列控制之外，IoTDB还允许用户控制查询结果的行和列。 这是同时包含LIMIT子句和SLIMIT子句的完整示例。
 

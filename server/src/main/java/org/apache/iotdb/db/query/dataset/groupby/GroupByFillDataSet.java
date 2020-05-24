@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.GroupByFillTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
@@ -49,7 +49,7 @@ public class GroupByFillDataSet extends QueryDataSet {
 
   public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes,
       GroupByEngineDataSet groupByEngineDataSet,
-      Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByFillTimePlan groupByFillPlan)
+      Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws StorageEngineException, IOException, QueryProcessException {
     super(paths, dataTypes);
     this.groupByEngineDataSet = groupByEngineDataSet;
@@ -57,8 +57,8 @@ public class GroupByFillDataSet extends QueryDataSet {
     initPreviousParis(context, groupByFillPlan);
     initLastTimeArray(context, groupByFillPlan);
   }
-  
-  private void initPreviousParis(QueryContext context, GroupByFillTimePlan groupByFillPlan)
+
+  private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
           throws StorageEngineException, IOException, QueryProcessException {
     previousValue = new Object[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
@@ -85,7 +85,7 @@ public class GroupByFillDataSet extends QueryDataSet {
     }
   }
 
-  private void initLastTimeArray(QueryContext context, GroupByFillTimePlan groupByFillPlan)
+  private void initLastTimeArray(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws IOException, StorageEngineException, QueryProcessException {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);

@@ -283,11 +283,11 @@ public class PhysicalGenerator {
   private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessException {
     QueryPlan queryPlan;
 
-    if (queryOperator.isGroupByLevel() && queryOperator.isFill()) {
-      queryPlan = new GroupByFillTimePlan();
-      ((GroupByFillTimePlan) queryPlan).setInterval(queryOperator.getUnit());
-      ((GroupByFillTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-      ((GroupByFillTimePlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+    if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
+      queryPlan = new GroupByTimeFillPlan();
+      ((GroupByTimeFillPlan) queryPlan).setInterval(queryOperator.getUnit());
+      ((GroupByTimeFillPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+      ((GroupByTimeFillPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
       if (!queryOperator.isLeftCRightO()) {
         ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
         ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
@@ -295,16 +295,15 @@ public class PhysicalGenerator {
         ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime());
         ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime());
       }
-      ((GroupByFillTimePlan) queryPlan)
+      ((GroupByTimeFillPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
       for (String aggregation : queryPlan.getAggregations()) {
         if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
           throw new QueryProcessException("Group By Fill only support last_value function");
         }
       }
-      ((GroupByFillTimePlan) queryPlan).setFillType(queryOperator.getFillTypes());
-      ((GroupByFillTimePlan) queryPlan).setByTime(queryOperator.isGroupByTime());
-    } else if (queryOperator.isGroupByLevel()) {
+      ((GroupByTimeFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
+    } else if (queryOperator.isGroupByTime()) {
       queryPlan = new GroupByTimePlan();
       ((GroupByTimePlan) queryPlan).setInterval(queryOperator.getUnit());
       ((GroupByTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
@@ -319,12 +318,11 @@ public class PhysicalGenerator {
       ((GroupByTimePlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
       ((GroupByTimePlan) queryPlan).setLevel(queryOperator.getLevel());
-      ((GroupByTimePlan) queryPlan).setByTime(queryOperator.isGroupByTime());
 
       if (queryOperator.getLevel() >= 0) {
         for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
           if (!SQLConstant.COUNT.equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
-            throw new QueryProcessException("group by level only support count");
+            throw new QueryProcessException("group by level only support count now.");
           }
         }
       }
@@ -339,8 +337,16 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.hasAggregation()) {
       queryPlan = new AggregationPlan();
+      ((AggregationPlan)queryPlan).setLevel(queryOperator.getLevel());
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
+      if (queryOperator.getLevel() >= 0) {
+        for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
+          if (!SQLConstant.COUNT.equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
+            throw new QueryProcessException("group by level only support count now.");
+          }
+        }
+      }
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else {
@@ -361,6 +367,9 @@ public class PhysicalGenerator {
       } else if (queryPlan instanceof FillQueryPlan) {
         alignByDevicePlan.setFillQueryPlan((FillQueryPlan) queryPlan);
       } else if (queryPlan instanceof AggregationPlan) {
+        if (((AggregationPlan)queryPlan).getLevel() >= 0) {
+          throw new QueryProcessException("group by level does not support align by device now.");
+        }
         alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
       }
 

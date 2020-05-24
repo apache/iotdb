@@ -24,7 +24,11 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class FilePathUtils {
 
@@ -65,7 +69,7 @@ public class FilePathUtils {
 
     int i = 0;
     for (Path value : rawPaths) {
-      String[] tmpPath = value.getFullPath().split("\\.");
+      String[] tmpPath = MetaUtils.getNodeNames(value.getFullPath());
 
       String key;
       if (tmpPath.length <= level) {
@@ -88,6 +92,45 @@ public class FilePathUtils {
     }
 
     return finalPaths;
+  }
+
+  /**
+   * merge the raw record by level, for example
+   * raw record [timestamp, root.sg1.d1.s0, root.sg1.d1.s1, root.sg1.d2.s2], level=1
+   * and newRecord data is [100, 1, 1, 1]
+   * return [100, 3]
+   *
+   * @param newRecord
+   * @param finalPaths
+   * @param pathIndex
+   * @return
+   */
+  public static RowRecord mergeRecordByPath(RowRecord newRecord,
+                                      Map<String, Long> finalPaths,
+                                      Map<Integer, String> pathIndex) {
+    if (newRecord.getFields().size() < finalPaths.size()) {
+      return null;
+    }
+
+    // reset final paths
+    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+      entry.setValue(0L);
+    }
+
+    RowRecord tmpRecord = new RowRecord(newRecord.getTimestamp());
+
+    for (int i = 0; i < newRecord.getFields().size(); i++) {
+      if (newRecord.getFields().get(i) != null) {
+        finalPaths.put(pathIndex.get(i),
+          finalPaths.get(pathIndex.get(i)) + newRecord.getFields().get(i).getLongV());
+      }
+    }
+
+    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+      tmpRecord.addField(Field.getField(entry.getValue(), TSDataType.INT64));
+    }
+
+    return tmpRecord;
   }
 
 }
