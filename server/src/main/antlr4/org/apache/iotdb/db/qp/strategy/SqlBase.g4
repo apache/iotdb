@@ -37,7 +37,7 @@ statement
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
     | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
     | MERGE #merge
-    | FLUSH prefixPath? (COMMA prefixPath)* (ID)?#flush //ID is true or false
+    | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush //ID is true or false
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
@@ -322,8 +322,10 @@ timeValue
     ;
 
 propertyValue
-    : ID
+    : INT
+    | ID
     | STRING_LITERAL
+    | constant
     ;
 
 fullPath
@@ -371,6 +373,13 @@ constant
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
+    | TRUE
+    | FALSE
+    ;
+
+booleanClause
+    : TRUE
+    | FALSE
     ;
 
 dateExpression
@@ -392,8 +401,8 @@ property
     ;
 
 autoCreateSchema
-    : ID
-    | ID INT
+    : booleanClause
+    | booleanClause INT
     ;
 
 //============================
@@ -826,6 +835,14 @@ CLEAR
 
 CACHE
     : C A C H E
+    ;
+
+TRUE
+    : T R U E
+    ;
+
+FALSE
+    : F A L S E
     ;
 //============================
 // End of the keywords list

@@ -412,7 +412,7 @@ public class IoTDBLoadExternalTsfileIT {
       } catch (Exception e) {
         hasError = true;
         Assert.assertEquals(
-            "411: Meet error in query process: Please check the statement: load [FILE] true/false [storage group level]",
+            "401: line 1:99 mismatched input 'true1' expecting {<EOF>, TRUE, FALSE}",
             e.getMessage());
       }
       Assert.assertTrue(hasError);
