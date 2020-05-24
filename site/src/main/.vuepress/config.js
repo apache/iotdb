@@ -72,14 +72,14 @@ var config = {
 				 {
 					text: 'Document',
 					items: [
-						{ text: 'In progress', link: '/UserGuide/Master/0-Get Started/1-QuickStart' },
+						{ text: 'In progress', link: '/UserGuide/Master/Get Started/QuickStart' },
 						{ text: 'V0.9.x', link: '/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
 					    { text: 'V0.8.x', link: '/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  {
 					text: 'System design',
-					link: '/SystemDesign/0-Architecture/1-Architecture'
+					link: '/SystemDesign/Architecture/Architecture'
 				  },
 				  {
 					text: 'Download',
@@ -500,14 +500,14 @@ var config = {
 				 {
 					text: '文档',
 					items: [
-					  { text: 'In progress', link: '/zh/UserGuide/Master/0-Get Started/1-QuickStart' },
+					  { text: 'In progress', link: '/zh/UserGuide/Master/Get Started/QuickStart' },
 					  { text: 'V0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
 					  { text: 'V0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  	{
 					text: '系统设计',
-					link: '/zh/SystemDesign/0-Architecture/1-Architecture'
+					link: '/zh/SystemDesign/Architecture/Architecture'
 				  },
 				  {
 					text: '下载',
