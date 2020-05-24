@@ -548,6 +548,9 @@ public class IoTDBConfig {
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  // Open ID Secret
+  private String openIdSecret = null;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1505,5 +1508,13 @@ public class IoTDBConfig {
 
   public void setPrimitiveArraySize(int primitiveArraySize) {
     this.primitiveArraySize = primitiveArraySize;
+  }
+
+  public String getOpenIdSecret() {
+    return openIdSecret;
+  }
+
+  public void setOpenIdSecret(String openIdSecret) {
+    this.openIdSecret = openIdSecret;
   }
 }

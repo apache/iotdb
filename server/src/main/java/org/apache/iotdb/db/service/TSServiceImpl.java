@@ -41,6 +41,7 @@ import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -180,7 +181,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     boolean status;
     IAuthorizer authorizer;
     try {
-      authorizer = LocalFileAuthorizer.getInstance();
+      authorizer = OpenIdAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new TException(e);
     }

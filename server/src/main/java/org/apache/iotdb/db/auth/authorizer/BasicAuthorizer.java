@@ -63,6 +63,9 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     logger.info("Initialization of Authorizer completes");
   }
 
+  /** Checks if a user has admin privileges */
+  abstract boolean isAdmin(String username);
+
   @Override
   public boolean login(String username, String password) throws AuthException {
     User user = userManager.getUser(username);
@@ -78,7 +81,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Default administrator cannot be deleted");
     }
     if (!userManager.deleteUser(username)) {
@@ -90,7 +93,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
     String newPath = path;
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (!isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
@@ -105,7 +108,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void revokePrivilegeFromUser(String username, String path, int privilegeId)
       throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator must have all privileges");
     }
     String p = path;
@@ -204,7 +207,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public Set<Integer> getPrivileges(String username, String path) throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       return ADMIN_PRIVILEGES;
     }
     User user = userManager.getUser(username);
@@ -233,7 +236,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean checkUserPrivileges(String username, String path, int privilegeId)
       throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       return true;
     }
     User user = userManager.getUser(username);
