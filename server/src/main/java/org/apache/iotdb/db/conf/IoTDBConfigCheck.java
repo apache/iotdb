@@ -48,8 +48,8 @@ public class IoTDBConfigCheck {
   private static final String SCHEMA_DIR = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
   private static final String WAL_DIR = IoTDBDescriptor.getInstance().getConfig().getWalFolder();
 
-  File propertiesFile;
-  File tmpPropertiesFile;
+  private File propertiesFile;
+  private File tmpPropertiesFile;
 
   private Properties properties = new Properties();
 
@@ -242,21 +242,20 @@ public class IoTDBConfigCheck {
     }
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
-      logger.error("Wrong " + TIMESTAMP_PRECISION_STRING + ", please set as: " + properties
-          .getProperty(TIMESTAMP_PRECISION_STRING) + " !");
+      logger.error("Wrong {}, please set as: {} !", TIMESTAMP_PRECISION_STRING, properties
+          .getProperty(TIMESTAMP_PRECISION_STRING));
       System.exit(-1);
     }
 
-    if (!(Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING))
-        == partitionInterval)) {
-      logger.error("Wrong " + PARTITION_INTERVAL_STRING + ", please set as: " + properties
-          .getProperty(PARTITION_INTERVAL_STRING) + " !");
+    if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
+      logger.error("Wrong {}, please set as: {} !", PARTITION_INTERVAL_STRING, properties
+          .getProperty(PARTITION_INTERVAL_STRING));
       System.exit(-1);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {
-      logger.error("Wrong " + TSFILE_FILE_SYSTEM_STRING + ", please set as: " + properties
-          .getProperty(TSFILE_FILE_SYSTEM_STRING) + " !");
+      logger.error("Wrong {}, please set as: {} !", TSFILE_FILE_SYSTEM_STRING, properties
+          .getProperty(TSFILE_FILE_SYSTEM_STRING));
       System.exit(-1);
     }
   }
