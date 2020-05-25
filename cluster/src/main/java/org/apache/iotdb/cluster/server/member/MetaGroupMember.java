@@ -1415,6 +1415,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private TSStatus validateSetStorageGroupPlan(SetStorageGroupPlan plan) {
     String path = plan.getPath().getFullPath();
+    if(path.trim().equals("root")){
+      return StatusUtils.PATH_ILLEGAL;
+    }
     if (getAllStorageGroupNames().contains(path)) {
       return StatusUtils.PATH_ALREADY_EXIST_ERROR;
     }
