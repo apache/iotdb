@@ -144,7 +144,7 @@ public class SimpleFileVersionController implements VersionController {
     } else {
       versionFile = SystemFileFactory.INSTANCE.getFile(directory, FILE_PREFIX + "0");
       prevVersion = 0;
-      new FileOutputStream(versionFile).close();
+      versionFile.createNewFile();
     }
     // prevent overlapping in case of failure
     currVersion = prevVersion + saveInterval;

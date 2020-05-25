@@ -794,6 +794,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * Also build DataGroupMembers using the partition table.
    */
   private synchronized void startSubServers() {
+    logger.info("Starting sub-servers...");
     synchronized (partitionTable) {
       try {
         initSubServers();
@@ -803,6 +804,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         stop();
       }
     }
+    logger.info("Sub-servers started.");
   }
 
   /**
@@ -1192,6 +1194,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         idNodeMap.put(node.getNodeIdentifier(), node);
       }
       router = new ClusterPlanRouter(partitionTable);
+      startSubServers();
 
       logger.info("Load {} nodes: {}", allNodes.size(), allNodes);
     } catch (IOException e) {

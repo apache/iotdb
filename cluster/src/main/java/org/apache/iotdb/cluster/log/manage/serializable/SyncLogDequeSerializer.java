@@ -99,7 +99,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     try {
       versionController = new SimpleFileVersionController(logDir);
     } catch (IOException e) {
-      logger.error("log serializer build version controller failed");
+      logger.error("log serializer build version controller failed", e);
     }
     init();
   }
