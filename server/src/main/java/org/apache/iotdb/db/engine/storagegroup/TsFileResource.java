@@ -246,7 +246,8 @@ public class TsFileResource {
       }
 
       if (modFile != null && modFile.exists()) {
-        ReadWriteIOUtils.write(modFile.getFilePath(), outputStream);
+        String modFileName = new File(modFile.getFilePath()).getName();
+        ReadWriteIOUtils.write(modFileName, outputStream);
       }
     }
     File src = fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX);
@@ -288,7 +289,9 @@ public class TsFileResource {
       }
 
       if (inputStream.available() > 0) {
-        modFile = new ModificationFile(ReadWriteIOUtils.readString(inputStream));
+        String modFileName = ReadWriteIOUtils.readString(inputStream);
+        File modF = new File(file.getParentFile(), modFileName);
+        modFile = new ModificationFile(modF.getPath());
       }
     }
   }
