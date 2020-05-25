@@ -117,6 +117,10 @@ public class LeafMNode extends MNode {
     }
   }
 
+  public String getFullPath() {
+    return concatFullPath();
+  }
+
   public void resetCache() {
     cachedLastValuePair = null;
   }

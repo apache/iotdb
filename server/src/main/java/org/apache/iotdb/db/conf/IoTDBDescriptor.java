@@ -368,9 +368,12 @@ public class IoTDBDescriptor {
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
+
+      conf.setEnablePartition(Boolean.parseBoolean(
+          properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
+
       // Time range for dividing storage group
-      conf.setPartitionInterval(
-          Long.parseLong(properties
+      conf.setPartitionInterval(Long.parseLong(properties
               .getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
 
       // the num of memtables in each storage group
@@ -387,6 +390,9 @@ public class IoTDBDescriptor {
           Integer.parseInt(properties.getProperty("tag_attribute_total_size",
               String.valueOf(conf.getTagAttributeTotalSize())))
       );
+      conf.setPrimitiveArraySize((Integer.parseInt(
+          properties.getProperty(
+              "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.plan;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -813,11 +814,11 @@ public class PhysicalPlanTest {
   @Test
   public void testDelete1() throws QueryProcessException {
     Path path = new Path("root.vehicle.d1", "s1");
-    List<Path> pathList = new ArrayList<>(Arrays.asList(path));
+    List<Path> pathList = new ArrayList<>(Collections.singletonList(path));
     String sqlStr = "delete FROM root.vehicle.d1.s1 WHERE time < 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals(OperatorType.DELETE, plan.getOperatorType());
-    assertEquals(pathList, ((DeletePlan) plan).getPaths());
+    assertEquals(pathList, plan.getPaths());
   }
 
   @Test
@@ -828,7 +829,7 @@ public class PhysicalPlanTest {
     String sqlStr = "delete FROM root.vehicle.d1.s1,root.vehicle.d1.s2 WHERE time < 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals(OperatorType.DELETE, plan.getOperatorType());
-    assertEquals(pathList, ((DeletePlan) plan).getPaths());
+    assertEquals(pathList, plan.getPaths());
   }
 
   @Test
@@ -839,6 +840,14 @@ public class PhysicalPlanTest {
     String sqlStr = "delete FROM root.vehicle.d1.s1,root.vehicle.d2.s3 WHERE time < 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
     assertEquals(OperatorType.DELETE, plan.getOperatorType());
-    assertEquals(pathList, ((DeletePlan) plan).getPaths());
+    assertEquals(pathList, plan.getPaths());
+  }
+
+  @Test
+  public void testSpecialCharacters() throws QueryProcessException {
+    String sqlStr1 = "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE with datatype=FLOAT,  "
+        + "encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
+    Assert.assertEquals(OperatorType.CREATE_TIMESERIES, plan1.getOperatorType());
   }
 }

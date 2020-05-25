@@ -272,6 +272,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| true |
 |Effective|Trigger|
 
+* enable\_partition
+
+|Name| enable\_partition |
+|:---:|:---|
+|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
+|Type|Bool|
+|Default| false |
+|Effective|After restart system|
+
 * partition\_interval
 
 |Name| partition\_interval |
@@ -288,7 +297,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| This config decides how many time partitions in a storage group can be inserted concurrently </br> For example, your partitionInterval is 86400 and you want to insert data in 5 different days, |
 |Type|Int32|
-|Default| 5 |
+|Default| 1 |
 |Effective|After restart system|
 
 * multi\_dir\_strategy

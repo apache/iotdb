@@ -253,6 +253,15 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
+* enable\_partition
+
+|Name| enable\_partition |
+|:---:|:---|
+|Description| 是否开启将数据按时间分区存储的功能，如果关闭，所有数据都属于分区 0|
+|Type|Bool|
+|Default| false |
+|Effective|重启服务器生效|
+
 * partition\_interval
 
 |名字| partition\_interval |

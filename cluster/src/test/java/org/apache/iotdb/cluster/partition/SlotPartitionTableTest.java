@@ -45,6 +45,7 @@ import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -98,9 +99,13 @@ public class SlotPartitionTableTest {
   List<Node> nodes;
 
   private int prevReplicaNum;
+  private boolean prevEnablePartition;
 
   @Before
   public void setUp() throws MetadataException {
+    prevEnablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(true);
+
     MManager.getInstance().init();
     nodes = new ArrayList<>();
     IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
@@ -173,6 +178,7 @@ public class SlotPartitionTableTest {
         }
       }
     }
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartition(prevEnablePartition);
   }
 
   @Test
