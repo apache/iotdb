@@ -254,9 +254,6 @@ public class PhysicalGenerator {
                     "not supported operator type %s in show operation.", operator.getType()));
         }
       case LOAD_FILES:
-        if (((LoadFilesOperator) operator).isInvalid()) {
-          throw new LogicalOperatorException(((LoadFilesOperator) operator).getErrMsg());
-        }
         return new OperateFilePlan(
             ((LoadFilesOperator) operator).getFile(),
             OperatorType.LOAD_FILES,

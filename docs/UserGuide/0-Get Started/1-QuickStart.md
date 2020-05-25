@@ -258,4 +258,4 @@ Under the root path of incubator-iotdb:
 > mvn clean package -pl cli -am -DskipTests
 ```
 
-After build, the IoTDB client will be at the folder "client/target/iotdb-client-{project.version}".
+After build, the IoTDB cli will be at the folder "cli/target/iotdb-cli-{project.version}".

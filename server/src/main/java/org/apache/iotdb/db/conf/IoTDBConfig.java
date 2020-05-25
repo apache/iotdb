@@ -47,12 +47,15 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
-  private static final String NODE_MATCHER =
-      "[" + PATH_SEPARATOR + "]" + "([a-zA-Z0-9\u2E80-\u9FFF_]+)";
+  // e.g., a31+/$%#&[]{}3e4
+  private static final String ID_MATCHER = "([a-zA-Z0-9/@#$%&{}\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+
+  // e.g.,  .s1
+  private static final String NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
   // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
   private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']([a-zA-Z0-9\u2E80-\u9FFF_]+)(" + NODE_MATCHER + ")+[\"|\']";
+      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER +"(" + NODE_MATCHER+ ")*[\"|\']";
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
@@ -509,14 +512,14 @@ public class IoTDBConfig {
   private String kerberosKeytabFilePath = "/path";
 
   /**
-   * kerberos pricipal
+   * kerberos principal
    */
   private String kerberosPrincipal = "principal";
 
   /**
    * the num of memtable in each storage group
    */
-  private int concurrentWritingTimePartition = 10;
+  private int concurrentWritingTimePartition = 1;
 
   /**
    * the default fill interval in LinearFill and PreviousFill, -1 means infinite past time
@@ -529,6 +532,18 @@ public class IoTDBConfig {
    * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
+
+  /**
+   * The default value of primitive array size in array pool
+   */
+  private int primitiveArraySize = 64;
+
+  /**
+   * whether enable data partition
+   * if disabled, all data belongs to partition 0
+   */
+  private boolean enablePartition = false;
+
   /**
    * Time range for partitioning data inside each storage group, the unit is second
    */
@@ -561,6 +576,14 @@ public class IoTDBConfig {
 
   public void setDefaultFillInterval(int defaultFillInterval) {
     this.defaultFillInterval = defaultFillInterval;
+  }
+
+  public boolean isEnablePartition() {
+    return enablePartition;
+  }
+
+  public void setEnablePartition(boolean enablePartition) {
+    this.enablePartition = enablePartition;
   }
 
   public long getPartitionInterval() {
@@ -724,6 +747,12 @@ public class IoTDBConfig {
   }
 
   void setTimestampPrecision(String timestampPrecision) {
+    if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
+        || timestampPrecision.equals("ns"))) {
+      logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
+          + timestampPrecision);
+      System.exit(-1);
+    }
     this.timestampPrecision = timestampPrecision;
   }
 
@@ -1492,5 +1521,13 @@ public class IoTDBConfig {
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getPrimitiveArraySize() {
+    return primitiveArraySize;
+  }
+
+  public void setPrimitiveArraySize(int primitiveArraySize) {
+    this.primitiveArraySize = primitiveArraySize;
   }
 }

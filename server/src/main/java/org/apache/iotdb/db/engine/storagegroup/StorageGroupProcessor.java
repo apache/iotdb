@@ -874,8 +874,8 @@ public class StorageGroupProcessor {
             >= IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()) {
           Map.Entry<Long, TsFileProcessor> processorEntry = tsFileProcessorTreeMap.firstEntry();
           logger.info(
-              "will close a TsFile because too many memtables ({} > {}) in the storage group {},",
-              tsFileProcessorTreeMap.size(),
+              "will close a {} TsFile because too many active partitions ({} > {}) in the storage group {},",
+              sequence, tsFileProcessorTreeMap.size(),
               IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition(),
               storageGroupName);
           asyncCloseOneTsFileProcessor(sequence, processorEntry.getValue());
@@ -1509,6 +1509,24 @@ public class StorageGroupProcessor {
     }
     mergeLock.writeLock().unlock();
     insertLock.writeLock().unlock();
+    
+    // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
+    if (countUpgradeFiles() == 0) {
+      for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice
+          .entrySet()) {
+        long timePartitionId = entry.getKey();
+        Map<String, Long> latestFlushTimeForPartition = partitionLatestFlushedTimeForEachDevice
+            .getOrDefault(timePartitionId, new HashMap<>());
+        for (Entry<String, Long> endTimeMap : entry.getValue().entrySet()) {
+          String device = endTimeMap.getKey();
+          long endTime = endTimeMap.getValue();
+          if (latestFlushTimeForPartition.getOrDefault(device, Long.MIN_VALUE) < endTime) {
+            partitionLatestFlushedTimeForEachDevice
+                .computeIfAbsent(timePartitionId, id -> new HashMap<>()).put(device, endTime);
+          }
+        }
+      }
+    }
   }
 
   public void merge(boolean fullMerge) {

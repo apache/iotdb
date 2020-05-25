@@ -30,6 +30,21 @@ In this part, we will introduce you IoTDB's Query Language. IoTDB offers you a S
 
 All of these statements are write in IoTDB's own syntax, for details about the syntax composition, please check the `Reference` section.
 
+## Keywords
+
+Please not use these keywords as identifiers.
+
+```
+CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,
+CONFIGURATION, DESCRIBE, SLIMIT, LIMIT, UNLINK, OFFSET, SOFFSET, FILL, LINEAR, PREVIOUS, PREVIOUSUNTILLAST,
+METADATA, TIMESERIES, TIMESTAMP, PROPERTY, WITH, ROOT, DATATYPE, COMPRESSOR, STORAGE, GROUP, LABEL,INT32,
+INT64, FLOAT, DOUBLE, BOOLEAN, TEXT, ENCODING, PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, GORILLA, REGULAR,
+BITMAP, ADD, UPSERT, VALUES, NOW, LINK, INDEX, USING, ON, DROP, MERGE, LIST, USER, PRIVILEGES, ROLE, ALL, OF,
+ALTER, PASSWORD, REVOKE, LOAD, WATERMARK_EMBEDDING, UNSET, TTL, FLUSH, TASK, INFO, DYNAMIC, PARAMETER, VERSION,
+REMOVE, MOVE, CHILD, PATHS, DEVICES, COUNT, NODES, LEVEL, MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, AVG, FIRST_VALUE,
+SUM, LAST_VALUE, LAST, DISABLE, ALIGN, COMPRESSION, TIME, ATTRIBUTES, TAGS,RENAME, FULL, CLEAR, CACHE
+```
+
 ## Show Version
 
 ```sql
@@ -782,7 +797,7 @@ Eg. SELECT FIRST_VALUE (status), FIRST_VALUE (temperature) FROM root.ln.wf01.wt0
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
-* LAST_VALUE(Rename from `LAST` at `V0.10.0`)
+* LAST_VALUE
 
 The LAST_VALUE function returns the last point value of the choosen timeseries(one or more).
 

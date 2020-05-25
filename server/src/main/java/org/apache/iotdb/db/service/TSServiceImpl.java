@@ -230,7 +230,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
     logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
-    long sessionId = req.getSessionId();
+    long sessionId = currSessionId.get();
+    currSessionId.remove();
+
     TSStatus tsStatus;
     if (sessionIdUsernameMap.remove(sessionId) == null) {
       tsStatus = RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
@@ -418,14 +420,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return false;
       }
     } catch (ParseCancellationException e) {
-      logger.debug(e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, statement + " " + e.getMessage());
       result.add(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR,
-          ERROR_PARSING_SQL + e.getMessage()));
+          ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
       return false;
     } catch (SQLParserException e) {
       logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + e.getMessage()));
+          TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
       return false;
     } catch (QueryProcessException e) {
       logger.info(
@@ -467,7 +469,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeUpdateStatement(physicalPlan, req.getSessionId());
       }
     } catch (ParseCancellationException e) {
-      logger.debug(e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
     } catch (SQLParserException e) {
       logger.error("check metadata error: ", e);
@@ -511,7 +513,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           sessionIdUsernameMap.get(req.getSessionId()));
 
     } catch (ParseCancellationException e) {
-      logger.debug(e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
           ERROR_PARSING_SQL + e.getMessage());
     } catch (SQLParserException e) {
@@ -973,7 +975,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
     } catch (QueryProcessException | SQLParserException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, statement, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
     }
 
@@ -1426,7 +1428,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private TSStatus checkPathValidity(String path) {
     if (!PATH_PATTERN.matcher(path).matches()) {
-      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL);
+      logger.warn("Illegal path: {}", path);
+      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, path + " path is illegal");
     } else {
       return null;
     }
