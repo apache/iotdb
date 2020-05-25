@@ -19,6 +19,7 @@
 package org.apache.iotdb.cluster.server.handlers.caller;
 
 import static org.apache.iotdb.cluster.server.Response.RESPONSE_AGREE;
+import static org.apache.iotdb.cluster.server.Response.RESPONSE_LOG_MISMATCH;
 
 import java.net.ConnectException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -80,7 +81,9 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
       } else {
         //e.g., Response.RESPONSE_LOG_MISMATCH
         logger.debug("The log {} is rejected because: {}", log, resp);
-        setPeerNotCatchUp();
+        if (resp == RESPONSE_LOG_MISMATCH) {
+          setPeerNotCatchUp();
+        }
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
       // wait for the heartbeat to handle

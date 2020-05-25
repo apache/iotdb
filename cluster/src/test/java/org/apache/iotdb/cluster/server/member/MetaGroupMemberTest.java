@@ -33,6 +33,7 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -433,20 +434,25 @@ public class MetaGroupMemberTest extends MemberTest {
       // the net work is down
       dummyResponse.set(Long.MIN_VALUE);
 
-      DataGroupMember member = testMetaMember.getLocalDataMember(
-          testMetaMember.getPartitionTable().routeToHeaderByTime(TestUtils.getTestSg(0), 0));
-      for (Peer peer : member.getPeerMap().values()) {
+      for (Node node : testMetaMember.getAllNodes()) {
+        Peer peer = new Peer(0);
         peer.setCatchUp(true);
+        testMetaMember.getPeerMap().put(node, peer);
+        DataGroupMember localDataMember = testMetaMember.getLocalDataMember(node);
+        if (localDataMember != null) {
+          for (Node dNode : localDataMember.getAllNodes()) {
+            peer = new Peer(0);
+            peer.setCatchUp(true);
+            localDataMember.getPeerMap().put(dNode, peer);
+          }
+        }
       }
-      for (Peer peer : testMetaMember.getPeerMap().values()) {
-        peer.setCatchUp(true);
-      }
+
+
       // network resume in 100ms
       new Thread(() -> {
-        await().atMost(100, TimeUnit.MILLISECONDS).then().until(() -> {
-          dummyResponse.set(Response.RESPONSE_AGREE);
-          return true;
-        });
+        await().atLeast(200, TimeUnit.MILLISECONDS);
+        dummyResponse.set(Response.RESPONSE_AGREE);
       }).start();
 
       System.out.println("Close the first file");
@@ -984,10 +990,8 @@ public class MetaGroupMemberTest extends MemberTest {
       result.set(null);
       testMetaMember.setPartitionTable(partitionTable);
       new Thread(() -> {
-        await().atLeast(200, TimeUnit.MILLISECONDS).until(() -> {
-          dummyResponse.set(Response.RESPONSE_AGREE);
-          return true;
-        });
+        await().atLeast(200, TimeUnit.MILLISECONDS);
+        dummyResponse.set(Response.RESPONSE_AGREE);
       }).start();
       testMetaMember.addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
       response = result.get();
