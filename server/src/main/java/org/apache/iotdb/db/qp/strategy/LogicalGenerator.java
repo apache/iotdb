@@ -91,13 +91,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterFlush(FlushContext ctx) {
     super.enterFlush(ctx);
     FlushOperator flushOperator = new FlushOperator(SQLConstant.TOK_FLUSH);
-    if (ctx.ID() != null) {
-      if (ctx.ID().getText().equalsIgnoreCase("true")
-          || ctx.ID().getText().equalsIgnoreCase("false")) {
-        flushOperator.setSeq(Boolean.parseBoolean(ctx.ID().getText()));
-      } else {
-        throw new ParseCancellationException("Should be true or false");
-      }
+    if (ctx.booleanClause() != null) {
+      flushOperator.setSeq(Boolean.parseBoolean(ctx.booleanClause().getText()));
     }
     if (ctx.prefixPath(0) != null) {
       List<Path> storageGroups = new ArrayList<>();
@@ -168,21 +163,23 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadFiles(LoadFilesContext ctx) {
     super.enterLoadFiles(ctx);
-    AutoCreateSchemaContext acsc = ctx.autoCreateSchema();
-    if (acsc != null) {
-      if (!acsc.ID().getText().equalsIgnoreCase("true") && !acsc.ID().getText()
-          .equalsIgnoreCase("false")) {
-        initializedOperator = new LoadFilesOperator(true,
-            "Please check the statement: load [FILE] true/false [storage group level]");
+    if(ctx.autoCreateSchema() != null) {
+      if(ctx.autoCreateSchema().INT() != null) {
+        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()),
+            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
+            Integer.parseInt(ctx.autoCreateSchema().INT().getText())
+        );
       } else {
-        int sgLevel = acsc.INT() == null ? IoTDBDescriptor.getInstance().getConfig()
-            .getDefaultStorageGroupLevel() : Integer.parseInt(acsc.INT().getText());
-        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()), Boolean
-            .parseBoolean(acsc.ID().getText()), sgLevel);
+        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()),
+            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
+            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
+        );
       }
     } else {
-      initializedOperator = new LoadFilesOperator(new File(ctx.getChild(1).getText()), true,
-          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel());
+      initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()),
+          true,
+          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
+      );
     }
   }
 

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import java.io.IOException;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -53,7 +54,11 @@ public class IoTDB implements IoTDBMBean {
     if (args.length > 0) {
       IoTDBDescriptor.getInstance().replaceProps(args);
     }
-    IoTDBConfigCheck.getInstance().checkConfig();
+    try {
+      IoTDBConfigCheck.getInstance().checkConfig();
+    } catch (IOException e) {
+      logger.error("meet error when doing start checking", e);
+    }
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
   }

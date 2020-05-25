@@ -155,7 +155,8 @@ public class IoTDBSessionIT {
   }
 
   @Test
-  public void testCreateMultiTimeseries() throws IoTDBConnectionException, BatchExecutionException {
+  public void testCreateMultiTimeseries()
+      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
@@ -757,8 +758,10 @@ public class IoTDBSessionIT {
     checkSetSG(session, "root..vehicle", false);
     checkSetSG(session, "root.1234a4", true);
     checkSetSG(session, "root.1_2", true);
-    checkSetSG(session, "root.%12345", false);
-    checkSetSG(session, "root.a{12345}", false);
+    checkSetSG(session, "root.%12345", true);
+    checkSetSG(session, "root.+12345", true);
+    checkSetSG(session, "root.-12345", true);
+    checkSetSG(session, "root.a{12345}", true);
 
     //test create timeseries
     checkCreateTimeseries(session, "root.vehicle.d0.s0", true);
@@ -767,10 +770,10 @@ public class IoTDBSessionIT {
     checkCreateTimeseries(session, "root.vehicle._1234.s0", true);
     checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.3\"", true);
     checkCreateTimeseries(session, "root.vehicle.1245.\'1.2.4\'", true);
-    checkCreateTimeseries(session, "root.vehicle./d0.s0", false);
+    checkCreateTimeseries(session, "root.vehicle./d0.s0", true);
     checkCreateTimeseries(session, "root.vehicle.d\t0.s0", false);
     checkCreateTimeseries(session, "root.vehicle.!d\t0.s0", false);
-    checkCreateTimeseries(session, "root.vehicle.d{dfewrew0}.s0", false);
+    checkCreateTimeseries(session, "root.vehicle.d{dfewrew0}.s0", true);
 
     session.close();
   }

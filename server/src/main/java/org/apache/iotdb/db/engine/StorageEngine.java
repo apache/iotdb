@@ -113,11 +113,25 @@ public class StorageEngine implements IService {
   @ServerConfigConsistent
   private static long timePartitionInterval = -1;
 
+  /**
+   * whether enable data partition
+   * if disabled, all data belongs to partition 0
+   */
+  @ServerConfigConsistent
+  private static boolean enablePartition =
+      IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
+
     // build time Interval to divide time partition
-    initTimePartition();
+    if (!enablePartition) {
+      timePartitionInterval = Long.MAX_VALUE;
+    } else {
+      initTimePartition();
+    }
+
     // create systemDir
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
@@ -126,10 +140,10 @@ public class StorageEngine implements IService {
     }
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
+
     /*
      * recover all storage group processors.
      */
-
     List<StorageGroupMNode> sgNodes = MManager.getInstance().getAllStorageGroupNodes();
     List<Future> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
@@ -556,7 +570,7 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartition(long time) {
-    return time / getTimePartitionInterval();
+    return enablePartition ? time / timePartitionInterval : 0;
   }
 
   /**

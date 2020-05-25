@@ -418,6 +418,10 @@ public class TsFileResource {
     fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
+  public void removeResourceFile() {
+    fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
+  }
+
   void moveTo(File targetDir) {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
     fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
