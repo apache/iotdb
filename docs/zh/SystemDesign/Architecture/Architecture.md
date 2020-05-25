@@ -33,23 +33,23 @@ IoTDB 采用客户端-服务器架构，如下图所示。
 
 其中服务器端主要包括查询引擎，用来处理用户的所有请求，并分发到对应的管理组件，包括数据写入层、数据查询、元数据管理、权限管理等模块。
 
-* [数据文件](/#/SystemDesign/progress/chap1/sec1)
-* [查询引擎](/#/SystemDesign/progress/chap2/sec1)
-* [元数据管理](/#/SystemDesign/progress/chap3/sec1)
-* [存储引擎](/#/SystemDesign/progress/chap4/sec1)
-* [数据查询](/#/SystemDesign/progress/chap5/sec1)
+* [数据文件](../TsFile/TsFile.html)
+* [查询引擎](../QueryEngine/QueryEngine.html)
+* [元数据管理](../SchemaManager/SchemaManager.html)
+* [存储引擎](../StorageEngine/StorageEngine.html)
+* [数据查询](../DataQuery/DataQuery.html)
 
 ## 系统工具
 
-* [数据同步工具](/#/SystemDesign/progress/chap6/sec1)
+* [数据同步工具](../Tools/Sync.html)
 
 ## 连接器
 
 IoTDB 与大数据系统进行了对接。
 
 * [Hadoop-TsFile](/#/SystemDesign/progress/chap7/sec1)
-* [Hive-TsFile](/#/SystemDesign/progress/chap7/sec2)
-* [Spark-TsFile](/#/SystemDesign/progress/chap7/sec3)
-* [Spark-IoTDB](/#/SystemDesign/progress/chap7/sec4)
+* [Hive-TsFile](../Connector/Hive-TsFile.html)
+* [Spark-TsFile](../Connector/Spark-TsFile.html)
+* [Spark-IoTDB](../Connector/Spark-IOTDB.html)
 * [Grafana](/#/SystemDesign/progress/chap7/sec5)
 

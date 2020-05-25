@@ -29,4 +29,4 @@ IoTDB allows you to specify the compression method of the column when creating a
 
 * SNAPPY
 
-The specified syntax for compression is detailed in [Create Timeseries Statement](../5-Operation%20Manual/4-SQL%20Reference.html).
+The specified syntax for compression is detailed in [Create Timeseries Statement](../Operation%20Manual/SQL%20Reference.html).

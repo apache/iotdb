@@ -60,5 +60,5 @@ The query engine is responsible for parsing all user commands, generating plans,
 
 ## Related documents
 
-* [Query Plan Generator](/SystemDesign/2-QueryEngine/2-Planner.html)
-* [PlanExecutor](/SystemDesign/2-QueryEngine/3-PlanExecutor.html)
+* [Query Plan Generator](/SystemDesign/QueryEngine/Planner.html)
+* [PlanExecutor](/SystemDesign/QueryEngine/PlanExecutor.html)

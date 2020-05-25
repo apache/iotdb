@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -43,14 +43,14 @@
 
 | time | device_name                   | status                   | hardware                   | temperature |
 |------|-------------------------------|--------------------------|----------------------------|-------------------------------|
-|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2                           | 
-|    1 | root.ln.wf02.wt02             | true                     | null                       | null                          | 
-|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2                           |                 
-|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null                          |                   
-|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1                           |                 
-|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null                          |                  
-|    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |                   
-|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |                   
+|    1 | root.ln.wf02.wt01             | true                     | null                       | 2.2                           |
+|    1 | root.ln.wf02.wt02             | true                     | null                       | null                          |
+|    2 | root.ln.wf02.wt01             | null                     | null                       | 2.2                           |
+|    2 | root.ln.wf02.wt02             | false                    | aaa                        | null                          |
+|    3 | root.ln.wf02.wt01             | true                     | null                       | 2.1                           |
+|    4 | root.ln.wf02.wt02             | true                     | bbb                        | null                          |
+|    5 | root.ln.wf02.wt01             | false                    | null                       | null                          |
+|    6 | root.ln.wf02.wt02             | null                     | ccc                        | null                          |
 
 ## 查询流程步骤
 
@@ -85,7 +85,7 @@ SQL转化为表达式后，由于窄表结构与 TsFile 原生查询结构不同
 
 实际数据查询执行由 TsFile 原生组件完成，参见：
 
-* [Tsfile原生查询流程](../1-TsFile/4-Read.md)
+* [Tsfile原生查询流程](../TsFile/Read.md)
 
 ## 写入步骤流程
 

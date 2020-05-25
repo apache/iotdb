@@ -73,7 +73,7 @@ The main logic of the SQL analysis of the wide table structure is src / main / s
 #### 5. Query execution
 The actual data query execution is performed by the Tsfile native component, see:
 
-* [Tsfile native query process](../1-TsFile/4-Read.md)
+* [Tsfile native query process](../TsFile/Read.md)
 
 ## Write step flow
 Writing is mainly to convert the data in the Dataframe structure into Tsfile's RowRecord, and write using Tsfile Writer

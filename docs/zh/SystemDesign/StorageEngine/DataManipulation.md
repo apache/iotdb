@@ -64,17 +64,18 @@
 目前不支持数据的原地更新操作，即update语句，但用户可以直接插入新的数据，在同一个时间点上的同一个时间序列以最新插入的数据为准
 旧数据会通过合并来自动删除，参见：
 
-* [文件合并机制](/zh/SystemDesign/4-StorageEngine/4-MergeManager.html)
+* [文件合并机制](/zh/SystemDesign/StorageEngine/MergeManager.html)
 
 ## 数据删除
 
 * 对应的接口
 	* JDBC 的 execute 接口，使用delete SQL语句
 	
+
 每个 StorageGroupProsessor 中针对每个分区会维护一个自增的版本号，由 SimpleFileVersionController 管理。
 每个内存缓冲区 memtable 在持久化的时候会申请一个版本号。持久化到 TsFile 后，会在 TsFileMetadata 中记录此 memtable 对应的 多个 ChunkGroup 的终止位置和版本号。
 查询时会根据此信息对 ChunkMetadata 赋 version。
-	
+​	
 * 总入口: public void delete(String deviceId, String measurementId, long timestamp) StorageEngine.java
   * 找到对应的 StorageGroupProcessor
   * 找到受影响的所有 working TsFileProcessor 记录写前日志

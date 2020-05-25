@@ -39,7 +39,7 @@
 
 <!-- /TOC -->
 
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../1-Overview/1-What%20is%20IoTDB.html).
+This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](../Overview/What%20is%20IoTDB.html).
 
 ## Prerequisites
 
@@ -72,7 +72,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`). 
 
-For more, see [Chapter3: Server](../3-Server/1-Download.html) in detail.
+For more, see [Chapter3: Server](../Server/Download.html) in detail.
 
 ## Start
 
@@ -235,7 +235,7 @@ or
 IoTDB> exit
 ```
 
-For more on what commands are supported by IoTDB SQL, see [SQL Reference](../5-Operation%20Manual/4-SQL%20Reference.html).
+For more on what commands are supported by IoTDB SQL, see [SQL Reference](../Operation%20Manual/SQL%20Reference.html).
 
 ### Stop IoTDB
 

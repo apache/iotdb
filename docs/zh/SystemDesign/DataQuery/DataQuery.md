@@ -35,12 +35,12 @@
 
 ## 相关文档
 
-* [查询基础介绍](/zh/SystemDesign/5-DataQuery/2-QueryFundamentals.html)
-* [基础查询组件](/zh/SystemDesign/5-DataQuery/3-SeriesReader.html)
-* [原始数据查询](/zh/SystemDesign/5-DataQuery/4-RawDataQuery.html)
-* [聚合查询](/zh/SystemDesign/5-DataQuery/5-AggregationQuery.html)
-* [降采样查询](/zh/SystemDesign/5-DataQuery/6-GroupByQuery.html)
-* [最近时间戳查询](/zh/SystemDesign/5-DataQuery/7-LastQuery.html)
-* [按设备对齐查询](/zh/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html)
-* [空值填充](/zh/SystemDesign/5-DataQuery/9-FillFunction.html)
-* [降采样补空值查询](/zh/SystemDesign/5-DataQuery/10-GroupByFillQuery.html)
+* [查询基础介绍](/zh/SystemDesign/DataQuery/QueryFundamentals.html)
+* [基础查询组件](/zh/SystemDesign/DataQuery/SeriesReader.html)
+* [原始数据查询](/zh/SystemDesign/DataQuery/RawDataQuery.html)
+* [聚合查询](/zh/SystemDesign/DataQuery/AggregationQuery.html)
+* [降采样查询](/zh/SystemDesign/DataQuery/GroupByQuery.html)
+* [最近时间戳查询](/zh/SystemDesign/DataQuery/LastQuery.html)
+* [按设备对齐查询](/zh/SystemDesign/DataQuery/AlignByDeviceQuery.html)
+* [空值填充](/zh/SystemDesign/DataQuery/FillFunction.html)
+* [降采样补空值查询](/zh/SystemDesign/DataQuery/GroupByFillQuery.html)

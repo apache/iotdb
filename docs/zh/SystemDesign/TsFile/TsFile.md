@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,6 +26,6 @@ TsFile 是 IoTDB 的底层数据文件，专门为时间序列数据设计的列
 
 ## 相关文档
 
-* [文件格式](/#/SystemDesign/progress/chap1/sec2)
-* [写流程](/#/SystemDesign/progress/chap1/sec3)
-* [读流程](/#/SystemDesign/progress/chap1/sec4)
+* [文件格式](../TsFile/Format.html)
+* [写流程](../TsFile/Write.html)
+* [读流程](../TsFile/Read.html)

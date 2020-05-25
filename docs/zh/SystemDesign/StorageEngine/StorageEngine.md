@@ -49,7 +49,7 @@
 
 ## 数据写入
 详见：
-* [数据写入](/zh/SystemDesign/4-StorageEngine/6-DataManipulation.html)
+* [数据写入](/zh/SystemDesign/StorageEngine/DataManipulation.html)
 
 ## 数据访问
 
@@ -60,8 +60,8 @@
 
 ## 相关文档
 
-* [写前日志 (WAL)](/zh/SystemDesign/4-StorageEngine/2-WAL.html)
+* [写前日志 (WAL)](/zh/SystemDesign/StorageEngine/WAL.html)
 
-* [memtable 持久化](/zh/SystemDesign/4-StorageEngine/3-FlushManager.html)
+* [memtable 持久化](/zh/SystemDesign/StorageEngine/FlushManager.html)
 
-* [文件合并机制](/zh/SystemDesign/4-StorageEngine/4-MergeManager.html)
+* [文件合并机制](/zh/SystemDesign/StorageEngine/MergeManager.html)

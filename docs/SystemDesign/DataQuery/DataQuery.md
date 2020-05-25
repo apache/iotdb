@@ -35,12 +35,12 @@ In order to achieve the above kinds of queries, a basic query component for a si
 
 ## Related documents
 
-* [Query fundamentals](/SystemDesign/5-DataQuery/2-QueryFundamentals.html)
-* [Basic query components](/SystemDesign/5-DataQuery/3-SeriesReader.html)
-* [Raw data query](/SystemDesign/5-DataQuery/4-RawDataQuery.html)
-* [Aggregate query](/SystemDesign/5-DataQuery/5-AggregationQuery.html)
-* [Downsampling query](/SystemDesign/5-DataQuery/6-GroupByQuery.html)
-* [Recent timestamp query](/SystemDesign/5-DataQuery/7-LastQuery.html)
-* [Align by device query](/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html)
-* [Fill function](/SystemDesign/5-DataQuery/9-FillFunction.html)
-* [Group by fill query](/SystemDesign/5-DataQuery/10-GroupByFillQuery.html)
+* [Query fundamentals](/SystemDesign/DataQuery/QueryFundamentals.html)
+* [Basic query components](/SystemDesign/DataQuery/SeriesReader.html)
+* [Raw data query](/SystemDesign/DataQuery/RawDataQuery.html)
+* [Aggregate query](/SystemDesign/DataQuery/AggregationQuery.html)
+* [Downsampling query](/SystemDesign/DataQuery/GroupByQuery.html)
+* [Recent timestamp query](/SystemDesign/DataQuery/LastQuery.html)
+* [Align by device query](/SystemDesign/DataQuery/AlignByDeviceQuery.html)
+* [Fill function](/SystemDesign/DataQuery/FillFunction.html)
+* [Group by fill query](/SystemDesign/DataQuery/GroupByFillQuery.html)

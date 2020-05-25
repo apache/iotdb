@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -63,7 +63,7 @@ SQL2：`SELECT count(s1), max_time(s1) FROM root.sg.d1;` ->
 
 - org.apache.iotdb.db.service.TSServiceImpl.getAlignByDeviceQueryHeaders
 
-按设备对齐查询的结果集构造依赖于物理查询计划中生成的**未去重**的度量（Measurements）列表。在此作简单介绍，度量列表是由 SELECT 子句中的后缀路径（包括通配符）生成的列表，其中共有三种类型，分别为常量（Constant）、存在的时间序列（Exist）以及不存在的时间序列（NonExist）。详细可以参考 [Align by device query](/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html)
+按设备对齐查询的结果集构造依赖于物理查询计划中生成的**未去重**的度量（Measurements）列表。在此作简单介绍，度量列表是由 SELECT 子句中的后缀路径（包括通配符）生成的列表，其中共有三种类型，分别为常量（Constant）、存在的时间序列（Exist）以及不存在的时间序列（NonExist）。详细可以参考 [Align by device query](/SystemDesign/DataQuery/AlignByDeviceQuery.html)
 
 由于按设备对齐查询采用关系表结构，因此首先在表头中加入设备列，其对应的数据类型为文本类型。
 
