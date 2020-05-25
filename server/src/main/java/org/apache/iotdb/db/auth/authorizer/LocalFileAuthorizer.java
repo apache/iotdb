@@ -19,18 +19,12 @@
 package org.apache.iotdb.db.auth.authorizer;
 
 import java.io.File;
-import java.io.IOException;
-import java.net.URISyntaxException;
-
-import com.nimbusds.oauth2.sdk.ParseException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.role.LocalFileRoleManager;
 import org.apache.iotdb.db.auth.user.LocalFileUserManager;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class LocalFileAuthorizer extends BasicAuthorizer {
 
