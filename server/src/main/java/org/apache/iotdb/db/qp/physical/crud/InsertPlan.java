@@ -49,6 +49,15 @@ public class InsertPlan extends PhysicalPlan {
   private Object[] values;
   private TSDataType[] types;
   private MeasurementSchema[] schemas;
+
+  public String[] getStrValueList() {
+    return strValueList;
+  }
+
+  public void setStrValueList(String[] strValueList) {
+    this.strValueList = strValueList;
+  }
+
   // only for sql
   private String[] strValueList;
 

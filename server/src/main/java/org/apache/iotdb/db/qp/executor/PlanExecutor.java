@@ -168,7 +168,7 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
       throws IOException, StorageEngineException, QueryFilterOptimizationException,
-          QueryProcessException, MetadataException {
+      QueryProcessException, MetadataException {
     if (queryPlan instanceof QueryPlan) {
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof AuthorPlan) {
@@ -255,7 +255,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateMerge(MergePlan plan) throws StorageEngineException {
-    if(plan.getOperatorType() == OperatorType.FULL_MERGE) {
+    if (plan.getOperatorType() == OperatorType.FULL_MERGE) {
       StorageEngine.getInstance().mergeAll(true);
     } else {
       StorageEngine.getInstance()
@@ -272,10 +272,10 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
-    if(plan.getPaths() == null) {
+    if (plan.getPaths() == null) {
       StorageEngine.getInstance().syncCloseAllProcessor();
     } else {
-      if(plan.isSeq() == null) {
+      if (plan.isSeq() == null) {
         for (Path storageGroup : plan.getPaths()) {
           StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), true);
           StorageEngine.getInstance().asyncCloseProcessor(storageGroup.toString(), false);
@@ -290,7 +290,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-          IOException {
+      IOException {
     QueryDataSet queryDataSet;
     if (queryPlan instanceof AlignByDevicePlan) {
       queryDataSet = new AlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
@@ -885,6 +885,10 @@ public class PlanExecutor implements IPlanExecutor {
         schemas[i] = measurementNode.getSchema();
         // reset measurement to common name instead of alias
         measurementList[i] = measurementNode.getName();
+
+        if(insertPlan.getStrValueList() == null) {
+          checkType(insertPlan, i, measurementNode.getSchema().getType());
+        }
       }
 
       insertPlan.setMeasurements(measurementList);
@@ -899,7 +903,53 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  /** create timeseries with ignore PathAlreadyExistException */
+  private void checkType(InsertPlan plan, int loc, TSDataType type) {
+    plan.getTypes()[loc] = type;
+    try {
+      switch (type) {
+        case INT32:
+          if (!(plan.getValues()[loc] instanceof Integer)) {
+            plan.getValues()[loc] =
+                Integer.parseInt(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case INT64:
+          if (!(plan.getValues()[loc] instanceof Long)) {
+            plan.getValues()[loc] =
+                Long.parseLong(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case DOUBLE:
+          if (!(plan.getValues()[loc] instanceof Double)) {
+            plan.getValues()[loc] =
+                Double.parseDouble(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case FLOAT:
+          if (!(plan.getValues()[loc] instanceof Float)) {
+            plan.getValues()[loc] =
+                Float.parseFloat(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case BOOLEAN:
+          if (!(plan.getValues()[loc] instanceof Boolean)) {
+            plan.getValues()[loc] =
+                Boolean.parseBoolean(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case TEXT:
+          // need to do nothing
+          break;
+      }
+    }
+    catch (ClassCastException e){
+      logger.error("inconsistent type between client and server");
+    }
+  }
+
+  /**
+   * create timeseries with ignore PathAlreadyExistException
+   */
   private void internalCreateTimeseries(String path, TSDataType dataType) throws MetadataException {
     try {
       mManager.createTimeseries(
@@ -918,7 +968,9 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  /** Get default encoding by dataType */
+  /**
+   * Get default encoding by dataType
+   */
   private TSEncoding getDefaultEncoding(TSDataType dataType) {
     IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
     switch (dataType) {
