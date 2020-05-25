@@ -93,6 +93,10 @@ public class LeafMNode extends MNode {
     return schema;
   }
 
+  public String getFullPath() {
+    return concatFullPath();
+  }
+
   public long getOffset() {
     return offset;
   }
