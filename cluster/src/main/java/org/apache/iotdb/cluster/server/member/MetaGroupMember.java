@@ -1415,7 +1415,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   private TSStatus validateSetStorageGroupPlan(SetStorageGroupPlan plan) {
     String path = plan.getPath().getFullPath();
-    if(path.trim().equals("root")){
+    if (path.trim().equals("root")) {
       return StatusUtils.PATH_ILLEGAL;
     }
     if (getAllStorageGroupNames().contains(path)) {
@@ -1428,9 +1428,23 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     List<Path> paths = (plan).getPaths();
     String[] values = (plan).getValues();
     List<String> pathStrings = new ArrayList<>();
-    for (Path path : paths) {
-      pathStrings.add(path.getFullPath());
+
+    // check schema cache
+    for (int i = 0; i < paths.size(); i++) {
+      String pathStr = paths.get(i).getFullPath();
+      try {
+        TSDataType dataType = MManager.getInstance().getSeriesType(pathStr);
+        tryParse(values[i], dataType);
+        values[i] = null;
+      } catch (MetadataException e) {
+        pathStrings.add(pathStr);
+      } catch (IllegalArgumentException e) {
+        TSStatus result = new TSStatus(StatusUtils.WRITE_PROCESS_ERROR.getCode());
+        result.setMessage(StatusUtils.WRITE_PROCESS_ERROR.getMessage() + e.getMessage());
+        return result;
+      }
     }
+
     List<MeasurementSchema> measurementSchemas;
     try {
       measurementSchemas = pullTimeSeriesSchemas(pathStrings);
@@ -1438,8 +1452,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return StatusUtils.NO_STORAGE_GROUP;
     }
     for (int i = 0; i < paths.size(); i++) {
-      String measurement = paths.get(i).getMeasurement();
       String value = values[i];
+      if (value == null) {
+        continue;
+      }
+      String measurement = paths.get(i).getMeasurement();
       TSStatus result = null;
       for (MeasurementSchema schema : measurementSchemas) {
         if (schema.getMeasurementId().equals(measurement)) {
