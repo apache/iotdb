@@ -20,8 +20,11 @@
 package org.apache.iotdb.cluster.server.member;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_FALSE_NUM;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_TRUE_NUM;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_FALSE;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_TRUE;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.*;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -126,7 +129,6 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
@@ -1480,6 +1482,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
 
   private void tryParse(String value, TSDataType type) {
+    value = value.trim();
     switch (type) {
       case INT32:
         Integer.parseInt(value);
@@ -1488,9 +1491,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         Long.parseLong(value);
         break;
       case BOOLEAN:
-        if (!(value.equals("true") || value.equals("TRUE")
-            || value.equals("false") || value.equals("FALSE")
-            || value.equals("0") || value.equals("1"))) {
+        if (!(value.equalsIgnoreCase(BOOLEAN_TRUE) || value.equalsIgnoreCase(BOOLEAN_FALSE)
+            || value.equals(BOOLEAN_TRUE_NUM) || value.equals(BOOLEAN_FALSE_NUM))) {
           throw new IllegalArgumentException(
               "The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
         }

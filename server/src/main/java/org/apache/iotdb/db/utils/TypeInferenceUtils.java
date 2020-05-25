@@ -38,8 +38,8 @@ public class TypeInferenceUtils {
   }
 
   private static boolean isBoolean(String s) {
-    return s.equalsIgnoreCase(SQLConstant.BOOLEN_TRUE) || s
-        .equalsIgnoreCase(SQLConstant.BOOLEN_FALSE);
+    return s.equalsIgnoreCase(SQLConstant.BOOLEAN_TRUE) || s
+        .equalsIgnoreCase(SQLConstant.BOOLEAN_FALSE);
   }
 
   /**

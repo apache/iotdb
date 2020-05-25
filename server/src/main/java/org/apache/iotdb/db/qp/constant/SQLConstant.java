@@ -45,8 +45,8 @@ public class SQLConstant {
   public static final String METADATA_PARAM_EQUAL = "=";
   public static final String QUOTE = "'";
   public static final String DQUOTE = "\"";
-  public static final String BOOLEN_TRUE = "true";
-  public static final String BOOLEN_FALSE = "false";
+  public static final String BOOLEAN_TRUE = "true";
+  public static final String BOOLEAN_FALSE = "false";
   public static final String BOOLEAN_TRUE_NUM = "1";
   public static final String BOOLEAN_FALSE_NUM = "0";
 
