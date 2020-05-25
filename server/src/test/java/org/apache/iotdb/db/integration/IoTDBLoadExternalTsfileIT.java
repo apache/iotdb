@@ -405,20 +405,9 @@ public class IoTDBLoadExternalTsfileIT {
         statement.execute(sql);
       }
 
-      // test wrong statement
-      boolean hasError = false;
-      try {
-        statement.execute(String.format("load %s true1 1", tmpDir.getAbsolutePath()));
-      } catch (Exception e) {
-        hasError = true;
-        Assert.assertEquals(
-            "411: Meet error in query process: Please check the statement: load [FILE] true/false [storage group level]",
-            e.getMessage());
-      }
-      Assert.assertTrue(hasError);
 
       // test not load metadata automatically, it will occur errors.
-      hasError = false;
+      boolean hasError = false;
       try {
         statement.execute(String.format("load %s false 1", tmpDir.getAbsolutePath()));
       } catch (Exception e) {

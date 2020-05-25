@@ -219,6 +219,7 @@ public class RPCService implements RPCServiceMBean, IService {
         poolArgs.protocolFactory(protocolFactory);
         poolArgs.transportFactory(new TFastFramedTransport.Factory());
         poolServer = new TThreadPoolServer(poolArgs);
+        poolServer.setServerEventHandler(new RPCServiceThriftHandler(impl));
         poolServer.serve();
       } catch (TTransportException e) {
         throw new RPCServiceException(String.format("%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME,
