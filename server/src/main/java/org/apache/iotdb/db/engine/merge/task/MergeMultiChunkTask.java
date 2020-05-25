@@ -223,7 +223,7 @@ class MergeMultiChunkTask {
     int[] ptWrittens = new int[seqChunkMeta.length];
     int mergeChunkSubTaskNum = IoTDBDescriptor.getInstance().getConfig()
         .getMergeChunkSubThreadNum();
-    MetaListEntry[] metaListEntries = new MetaListEntry[mergeChunkSubTaskNum];
+    MetaListEntry[] metaListEntries = new MetaListEntry[currMergingPaths.size()];
     PriorityQueue<Integer>[] chunkIdxHeaps = new PriorityQueue[mergeChunkSubTaskNum];
     for (int i = 0; i < mergeChunkSubTaskNum; i++) {
       chunkIdxHeaps[i] = new PriorityQueue<>();
@@ -282,14 +282,13 @@ class MergeMultiChunkTask {
       boolean isLastFile) throws IOException {
     while (!chunkIdxHeap.isEmpty()) {
       int pathIdx = chunkIdxHeap.poll();
+      Path path = currMergingPaths.get(pathIdx);
+      MeasurementSchema measurementSchema = resource.getSchema(path);
+      IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
       if (metaListEntries[pathIdx] != null) {
         MetaListEntry metaListEntry = metaListEntries[pathIdx];
         ChunkMetadata currMeta = metaListEntry.current();
         boolean isLastChunk = !metaListEntry.hasNext();
-        Path path = currMergingPaths.get(pathIdx);
-        MeasurementSchema measurementSchema = resource.getSchema(path);
-        IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
-
         boolean chunkOverflowed = MergeUtils
             .isChunkOverflowed(currTimeValuePairs[pathIdx], currMeta);
         boolean chunkTooSmall = MergeUtils
@@ -309,9 +308,6 @@ class MergeMultiChunkTask {
           continue;
         }
       }
-      Path path = currMergingPaths.get(pathIdx);
-      MeasurementSchema measurementSchema = resource.getSchema(path);
-      IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
       // this only happens when the seqFiles do not contain this series, otherwise the remaining
       // data will be merged with the last chunk in the seqFiles
       if (isLastFile && currTimeValuePairs[pathIdx] != null) {
