@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.server.member;
 import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
 import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
 import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -40,6 +41,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.DataClient;
@@ -385,7 +387,7 @@ public class MetaGroupMemberTest extends MemberTest {
     return metaGroupMember;
   }
 
-  private void buildDataGroups(DataClusterServer dataClusterServer) throws TTransportException {
+  private void buildDataGroups(DataClusterServer dataClusterServer) {
     List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
 
     dataClusterServer.setPartitionTable(partitionTable);
@@ -421,6 +423,7 @@ public class MetaGroupMemberTest extends MemberTest {
     int prevTimeout = RaftServer.getConnectionTimeoutInMS();
     RaftServer.setConnectionTimeoutInMS(1);
     try {
+      System.out.println("Create the first file");
       for (int i = 20; i < 30; i++) {
         insertPlan.setTime(i);
         insertPlan.setValues(new String[]{String.valueOf(i)});
@@ -429,27 +432,28 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       // the net work is down
       dummyResponse.set(Long.MIN_VALUE);
+
+      DataGroupMember member = testMetaMember.getLocalDataMember(
+          testMetaMember.getPartitionTable().routeToHeaderByTime(TestUtils.getTestSg(0), 0));
+      for (Peer peer : member.getPeerMap().values()) {
+        peer.setCatchUp(true);
+      }
+      for (Peer peer : testMetaMember.getPeerMap().values()) {
+        peer.setCatchUp(true);
+      }
       // network resume in 100ms
       new Thread(() -> {
-        try {
-          Thread.sleep(100);
+        await().atMost(100, TimeUnit.MILLISECONDS).then().until(() -> {
           dummyResponse.set(Response.RESPONSE_AGREE);
-          DataGroupMember member = testMetaMember.getLocalDataMember(
-              testMetaMember.getPartitionTable().routeToHeaderByTime(TestUtils.getTestSg(0), 0));
-          for (Peer peer : member.getPeerMap().values()) {
-            peer.setCatchUp(true);
-          }
-          for (Peer peer : testMetaMember.getPeerMap().values()) {
-            peer.setCatchUp(true);
-          }
-        } catch (InterruptedException e) {
-          // ignore
-        }
+          return true;
+        });
       }).start();
 
+      System.out.println("Close the first file");
       testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
+      System.out.println("Create the second file");
       for (int i = 30; i < 40; i++) {
         insertPlan.setTime(i);
         insertPlan.setValues(new String[]{String.valueOf(i)});
@@ -457,6 +461,7 @@ public class MetaGroupMemberTest extends MemberTest {
         planExecutor.processNonQuery(insertPlan);
       }
       // indicating the leader is stale
+      System.out.println("Close the second file");
       dummyResponse.set(100);
       testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
       assertFalse(processor.getWorkSequenceTsFileProcessors().isEmpty());
@@ -475,7 +480,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testBuildCluster() throws TTransportException {
+  public void testBuildCluster() {
     System.out.println("Start testBuildCluster()");
     testMetaMember.start();
     try {
@@ -495,7 +500,7 @@ public class MetaGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testJoinCluster() throws TTransportException, QueryProcessException {
+  public void testJoinCluster() throws QueryProcessException {
     System.out.println("Start testJoinCluster()");
     MetaGroupMember newMember = getMetaGroupMember(TestUtils.getNode(10));
     newMember.start();
@@ -821,7 +826,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
   @Test
   public void testProcessValidHeartbeatResp()
-      throws TTransportException, QueryProcessException {
+      throws QueryProcessException {
     System.out.println("Start testProcessValidHeartbeatResp()");
     MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     metaGroupMember.start();
@@ -979,13 +984,10 @@ public class MetaGroupMemberTest extends MemberTest {
       result.set(null);
       testMetaMember.setPartitionTable(partitionTable);
       new Thread(() -> {
-        try {
-          Thread.sleep(200);
-          // the network restores now
+        await().atLeast(200, TimeUnit.MILLISECONDS).until(() -> {
           dummyResponse.set(Response.RESPONSE_AGREE);
-        } catch (InterruptedException e) {
-          //ignore
-        }
+          return true;
+        });
       }).start();
       testMetaMember.addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
       response = result.get();

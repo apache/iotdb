@@ -947,7 +947,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    */
   protected boolean appendLogInGroup(Log log) {
     int retryTime = 0;
-    retry:
     while (true) {
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       AppendLogResult result = sendLogToFollowers(log, allNodes.size() / 2);
@@ -965,10 +964,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         case LEADERSHIP_STALE:
           // abort the appending, the new leader will fix the local logs by catch-up
         default:
-          break retry;
+          return false;
       }
     }
-    return false;
   }
 
   /**
