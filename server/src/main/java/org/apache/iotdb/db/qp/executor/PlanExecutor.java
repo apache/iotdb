@@ -52,7 +52,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
@@ -159,7 +159,7 @@ public class PlanExecutor implements IPlanExecutor {
     queryRouter = new QueryRouter();
     mManager = MManager.getInstance();
     try {
-      authorizer = LocalFileAuthorizer.getInstance();
+      authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new QueryProcessException(e.getMessage());
     }

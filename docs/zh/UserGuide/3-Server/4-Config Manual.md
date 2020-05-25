@@ -454,6 +454,26 @@
 |改后生效方式|重启服务器生效|
 
 
+* authorizer\_provider\_class
+
+|名字| authorizer\_provider\_class |
+|:---:|:---|
+|描述| 权限服务的类名|
+|类型| String |
+|默认值|org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|改后生效方式|重启服务器生效|
+|其他可选值| org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer |
+
+* openID\_url
+
+|名字| openID\_url |
+|:---:|:---|
+|描述| openID 服务器地址 （当OpenIdAuthorizer被启用时必须设定）|
+|类型| String （一个http地址） |
+|默认值| 无 |
+|改后生效方式|重启服务器生效|
+
+
 ## 开启GC日志
 GC日志默认是关闭的。为了性能调优，用户可能会需要手机GC信息。
 若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：

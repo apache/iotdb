@@ -35,9 +35,8 @@ import org.slf4j.LoggerFactory;
 public class LocalFileAuthorizer extends BasicAuthorizer {
 
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  private static Logger logger = LoggerFactory.getLogger(LocalFileAuthorizer.class);
 
-  private LocalFileAuthorizer() throws AuthException {
+  public LocalFileAuthorizer() throws AuthException {
     super(new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),
         new LocalFileRoleManager(config.getSystemDir() + File.separator + "roles"));
   }
@@ -47,27 +46,5 @@ public class LocalFileAuthorizer extends BasicAuthorizer {
     return IoTDBConstant.ADMIN_NAME.equals(username);
   }
 
-  /**
-   * function for getting the instance of the local file authorizer.
-   */
-  public static IAuthorizer getInstance() throws AuthException {
-    if (InstanceHolder.instance == null) {
-      throw new AuthException("Authorizer uninitialized");
-    }
-    return InstanceHolder.instance;
-  }
 
-  private static class InstanceHolder {
-    private static OpenIdAuthorizer instance;
-
-    static {
-      try {
-        IoTDBDescriptor.getInstance().getConfig().setOpenIdProviderUrl("https://auth.demo.pragmaticindustries.de/auth/realms/IoTDB/");
-        instance = new OpenIdAuthorizer();
-      } catch (AuthException | ParseException | IOException | URISyntaxException e) {
-        logger.error("Authorizer initialization failed due to ", e);
-        instance = null;
-      }
-    }
-  }
 }

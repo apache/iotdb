@@ -27,7 +27,9 @@ import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.IRoleManager;
 import org.apache.iotdb.db.auth.user.IUserManager;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -62,6 +64,36 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     roleManager.reset();
     logger.info("Initialization of Authorizer completes");
   }
+
+  /**
+   * function for getting the instance of the local file authorizer.
+   */
+  public static IAuthorizer getInstance() throws AuthException {
+    if (InstanceHolder.instance == null) {
+      throw new AuthException("Authorizer uninitialized");
+    }
+    return InstanceHolder.instance;
+  }
+
+  private static class InstanceHolder {
+    private static IAuthorizer instance;
+
+    static {
+        Class<BasicAuthorizer> c = null;
+        try {
+          c = (Class<BasicAuthorizer>) Class.forName(IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+          logger.info("Authorizer provider class: {}", IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+          instance = c.newInstance();
+        } catch (Exception e) {
+          logger.error("Authorizer initialization failed due to ", e);
+          instance = null;
+          //startup failed.
+          throw new RuntimeException(e);
+        }
+    }
+  }
+
+
 
   /** Checks if a user has admin privileges */
   abstract boolean isAdmin(String username);

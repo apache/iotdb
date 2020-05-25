@@ -551,6 +551,10 @@ public class IoTDBConfig {
   // Open ID Secret
   private String openIdProviderUrl = null;
 
+  // the authorizer provider class which extends BasicAuthorizer
+  private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
+
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1516,5 +1520,13 @@ public class IoTDBConfig {
 
   public void setOpenIdProviderUrl(String openIdProviderUrl) {
     this.openIdProviderUrl = openIdProviderUrl;
+  }
+
+  public String getAuthorizerProvider() {
+    return authorizerProvider;
+  }
+
+  public void setAuthorizerProvider(String authorizerProvider) {
+    this.authorizerProvider = authorizerProvider;
   }
 }
