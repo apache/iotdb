@@ -1906,7 +1906,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * If the historical versions of a file is a sub-set of the given file's, remove it to reduce
+   * If the historical versions of a file is a sub-set of the given file's, (close and) remove it to reduce
    * unnecessary merge. Only used when the file sender and the receiver share the same file
    * close policy.
    * Warning: DO NOT REMOVE
@@ -1938,7 +1938,8 @@ public class StorageGroupProcessor {
         try {
           removeFullyOverlapFile(existingTsFile, iterator, isSeq);
         } catch (Exception e) {
-          logger.error("Something gets wrong while removing FullyOverlapFiles ", e);
+          logger.error("Something gets wrong while removing FullyOverlapFiles: {}",
+              existingTsFile.getFile().getAbsolutePath(), e);
           throw e;
         } finally {
           existingTsFile.writeUnlock();
@@ -1947,6 +1948,14 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * remove the given tsFileResource. If the corresponding tsFileProcessor is in the working status,
+   * close it before remove the related resource files.
+   * maybe time-consuming for closing a tsfile.
+   * @param tsFileResource
+   * @param iterator
+   * @param isSeq
+   */
   private void removeFullyOverlapFile(TsFileResource tsFileResource, Iterator<TsFileResource> iterator
       , boolean isSeq) {
     if (!tsFileResource.isClosed()) {
@@ -1956,6 +1965,7 @@ public class StorageGroupProcessor {
           workUnsequenceTsFileProcessors;
       TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
       if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == tsFileResource) {
+        //have to take some time to close the tsFileProcessor
         tsFileProcessor.syncClose();
         fileProcessorMap.remove(timePartition);
       }
@@ -2267,7 +2277,6 @@ public class StorageGroupProcessor {
 
   @FunctionalInterface
   public interface CloseTsFileCallBack {
-
     void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 
@@ -2277,15 +2286,16 @@ public class StorageGroupProcessor {
 
   /**
    * Check if the data of "tsFileResource" all exist locally by comparing the historical versions
-   * in the partition of "partitionNumber". This is available only when the IoTDB which generated
-   * "tsFileResource" has the same close file policy as the local one.
+   * in the partition of "partitionNumber". This is available only when the IoTDB instances which generated
+   * "tsFileResource" have the same close file policy as the local one.
    * If one of the version in "tsFileResource" equals to a version of a working file, false is
-   * also returned because "tsFileResource" may have unwritten data of that file.
+   * returned because "tsFileResource" may have unwritten data of that file.
    * @param tsFileResource
    * @param partitionNum
    * @return true if the historicalVersions of "tsFileResource" is a subset of
-   * partitionDirectFileVersions, or false if it is not a subset and it does not contain any
+   * partitionDirectFileVersions, or false if it is not a subset and it contains any
    * version of a working file
+   * USED by cluster module
    */
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, long partitionNum) {
     // consider the case: The local node crashes when it is writing TsFile no.5.

@@ -94,6 +94,7 @@ public class MManager {
   private boolean writeToLog;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
+  // currently, if a key is not existed in the mRemoteSchemaCache, an IOException will be thrown
   private LRUCache<String, MeasurementSchema> mRemoteSchemaCache;
 
   // tag key -> tag value -> LeafMNode
@@ -610,7 +611,8 @@ public class MManager {
         MeasurementSchema schema = mRemoteSchemaCache.get(path);
         return schema.getType();
       } catch (IOException e) {
-        // ignore
+        // if the mRemoteSchemaCache has no such a path, an IOException will be thrown.
+        // we ignore it to get the type from the local mtree.
       }
 
       return mtree.getSchema(path).getType();
@@ -885,6 +887,9 @@ public class MManager {
       } catch (IOException ex) {
         throw e;
       }
+    } catch (IllegalPathException e) {
+      //do nothing and throw it directly.
+      throw e;
     } catch (IOException e) {
       // cache miss
       throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
@@ -951,6 +956,8 @@ public class MManager {
 
   /**
    * get device node, if the storage group is not set, create it when autoCreateSchema is true
+   *
+   * (we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * <p>!!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
    *
@@ -1502,6 +1509,12 @@ public class MManager {
     }
   }
 
+  /**
+   * if the path is in local mtree, nothing needed to do (because mtree is in the memory);
+   * Otherwise cache the path to mRemoteSchemaCache
+   * @param path
+   * @param schema
+   */
   public void cacheSchema(String path, MeasurementSchema schema) {
     // check schema is in local
     try {

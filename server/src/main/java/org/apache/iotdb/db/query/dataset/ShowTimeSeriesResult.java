@@ -104,7 +104,7 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
 
   public void serialize(OutputStream outputStream) throws IOException {
     ReadWriteIOUtils.write(name, outputStream);
-    ReadWriteIOUtils.write(alias != null, outputStream);
+    ReadWriteIOUtils.write(alias != null, outputStream); //flag
     if (alias != null) {
       ReadWriteIOUtils.write(alias, outputStream);
     }
@@ -113,7 +113,7 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
     ReadWriteIOUtils.write(encoding, outputStream);
     ReadWriteIOUtils.write(compressor, outputStream);
 
-    ReadWriteIOUtils.write(tagAndAttribute != null, outputStream);
+    ReadWriteIOUtils.write(tagAndAttribute != null, outputStream); //flag
     if (tagAndAttribute != null) {
       ReadWriteIOUtils.write(tagAndAttribute.size(), outputStream);
       for (Entry<String, String> stringStringEntry : tagAndAttribute.entrySet()) {
@@ -126,7 +126,7 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
   public static ShowTimeSeriesResult deserialize(ByteBuffer buffer) {
     ShowTimeSeriesResult result = new ShowTimeSeriesResult();
     result.name = ReadWriteIOUtils.readString(buffer);
-    if (buffer.get() == 1) {
+    if (buffer.get() == 1) { //flag
       result.alias = ReadWriteIOUtils.readString(buffer);
     }
     result.sgName = ReadWriteIOUtils.readString(buffer);
@@ -134,7 +134,7 @@ public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
     result.encoding = ReadWriteIOUtils.readString(buffer);
     result.compressor = ReadWriteIOUtils.readString(buffer);
 
-    if (buffer.get() == 1) {
+    if (buffer.get() == 1) { //flag
       int tagSize = buffer.getInt();
       result.tagAndAttribute = new HashMap<>(tagSize);
       for (int i = 0; i < tagSize; i++) {
