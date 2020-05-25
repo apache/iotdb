@@ -136,13 +136,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int DELETE_SIZE = 20;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
-
-  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
-
   protected Planner processor;
   protected IPlanExecutor executor;
-
+  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
   // Record the username for every rpc connection (session).
   private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
   private Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
@@ -168,6 +165,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
     executor = new PlanExecutor();
+  }
+
+  public static List<SqlArgument> getSqlArgumentList() {
+    return sqlArgumentList;
   }
 
   @Override
@@ -1081,9 +1082,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         } else {
           resp.addToStatusList(executePlan(plan));
         }
-      }
-      catch (Exception e) {
+      } catch (Exception e) {
         logger.error("meet error when insert in batch", e);
+        resp.addToStatusList(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
 
@@ -1442,10 +1443,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } else {
       return null;
     }
-  }
-
-  public static List<SqlArgument> getSqlArgumentList() {
-    return sqlArgumentList;
   }
 
   private long generateQueryId(boolean isDataQuery) {
