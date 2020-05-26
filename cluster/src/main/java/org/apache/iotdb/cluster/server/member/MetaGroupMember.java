@@ -116,6 +116,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
 import org.apache.iotdb.cluster.server.DataClusterServer;
+import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.NodeReport;
 import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
@@ -206,6 +207,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   public static final long START_UP_CHECK_TIME_INTERVAL = 5; // second
 
+  // hardlinks will be checked every hour
+  private static final long CLEAN_HARDLINK_INTERVAL_SEC = 3600;
+
   // blind nodes are nodes that do not have the partition table, and if the node is the leader,
   // the partition table should be sent to them at the next heartbeat
   private Set<Node> blindNodes = new HashSet<>();
@@ -240,6 +244,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   // localExecutor is used to directly execute plans like load configuration (locally)
   private PlanExecutor localExecutor;
+
+  private ScheduledExecutorService hardLinkCleanerThread;
 
   @TestOnly
   public MetaGroupMember() {
@@ -305,6 +311,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         "NodeReportThread"));
     reportThread.scheduleAtFixedRate(() -> logger.info(genNodeReport().toString()),
         REPORT_INTERVAL_SEC, REPORT_INTERVAL_SEC, TimeUnit.SECONDS);
+    hardLinkCleanerThread = Executors.newSingleThreadScheduledExecutor(n -> new Thread(n,
+        "HardLinkCleaner"));
+    hardLinkCleanerThread.scheduleAtFixedRate(new HardLinkCleaner(),
+        CLEAN_HARDLINK_INTERVAL_SEC, CLEAN_HARDLINK_INTERVAL_SEC, TimeUnit.SECONDS);
   }
 
   /**
@@ -327,6 +337,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for reportThread to end", e);
+      }
+    }
+    if (hardLinkCleanerThread != null) {
+      hardLinkCleanerThread.shutdownNow();
+      try {
+        hardLinkCleanerThread.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected interruption when waiting for hardlinkCleaner to end", e);
       }
     }
     logger.info("{}: stopped", name);
