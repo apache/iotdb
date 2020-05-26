@@ -20,6 +20,10 @@
 package org.apache.iotdb.cluster.server.member;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_FALSE_NUM;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_TRUE_NUM;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_FALSE;
+import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_TRUE;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
 import java.io.BufferedInputStream;
@@ -141,6 +145,8 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -413,7 +419,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   private void examineCheckStatusResponse(CheckStatusResponse response,
-      AtomicInteger consistentNum,  AtomicInteger inconsistentNum) {
+      AtomicInteger consistentNum, AtomicInteger inconsistentNum) {
     boolean partitionIntervalEquals = response.partitionalIntervalEquals;
     boolean hashSaltEquals = response.hashSaltEquals;
     boolean replicationNumEquals = response.replicationNumEquals;
@@ -1411,6 +1417,111 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
+
+  public TSStatus validatePlan(PhysicalPlan plan) {
+    TSStatus result = StatusUtils.OK;
+    if (plan instanceof SetStorageGroupPlan) {
+      return validateSetStorageGroupPlan((SetStorageGroupPlan) plan);
+    } else if (plan instanceof InsertPlan) {
+      return validateInsertPlan((InsertPlan) plan);
+    }
+    // TODO add more pre-validations
+    return result;
+  }
+
+  private TSStatus validateSetStorageGroupPlan(SetStorageGroupPlan plan) {
+    String path = plan.getPath().getFullPath();
+    if (path.trim().equals("root")) {
+      return StatusUtils.PATH_ILLEGAL;
+    }
+    if (getAllStorageGroupNames().contains(path)) {
+      return StatusUtils.PATH_ALREADY_EXIST_ERROR;
+    }
+    return StatusUtils.OK;
+  }
+
+  private TSStatus validateInsertPlan(InsertPlan plan) {
+    List<Path> paths = (plan).getPaths();
+    String[] values = (plan).getValues();
+    List<String> pathStrings = new ArrayList<>();
+
+    // check schema cache
+    for (int i = 0; i < paths.size(); i++) {
+      String pathStr = paths.get(i).getFullPath();
+      try {
+        TSDataType dataType = MManager.getInstance().getSeriesType(pathStr);
+        tryParse(values[i], dataType);
+        values[i] = null;
+      } catch (MetadataException e) {
+        pathStrings.add(pathStr);
+      } catch (IllegalArgumentException e) {
+        TSStatus result = new TSStatus(StatusUtils.WRITE_PROCESS_ERROR.getCode());
+        result.setMessage(StatusUtils.WRITE_PROCESS_ERROR.getMessage() + e.getMessage());
+        return result;
+      }
+    }
+
+    List<MeasurementSchema> measurementSchemas;
+    try {
+      measurementSchemas = pullTimeSeriesSchemas(pathStrings);
+    } catch (MetadataException e) {
+      return StatusUtils.NO_STORAGE_GROUP;
+    }
+    for (int i = 0; i < paths.size(); i++) {
+      String value = values[i];
+      if (value == null) {
+        continue;
+      }
+      String measurement = paths.get(i).getMeasurement();
+      TSStatus result = null;
+      for (MeasurementSchema schema : measurementSchemas) {
+        if (schema.getMeasurementId().equals(measurement)) {
+          try {
+            tryParse(value, schema.getType());
+            result = StatusUtils.OK;
+          } catch (IllegalArgumentException e) {
+            result = new TSStatus(StatusUtils.WRITE_PROCESS_ERROR.getCode());
+            result.setMessage(StatusUtils.WRITE_PROCESS_ERROR.getMessage() + e.getMessage());
+            return result;
+          }
+          break;
+        }
+      }
+      if (result == null) {
+        return StatusUtils.PATH_NOT_EXIST_ERROR;
+      }
+    }
+    return StatusUtils.OK;
+  }
+
+
+  private void tryParse(String value, TSDataType type) {
+    value = value.trim();
+    switch (type) {
+      case INT32:
+        Integer.parseInt(value);
+        break;
+      case INT64:
+        Long.parseLong(value);
+        break;
+      case BOOLEAN:
+        if (!(value.equalsIgnoreCase(BOOLEAN_TRUE) || value.equalsIgnoreCase(BOOLEAN_FALSE)
+            || value.equals(BOOLEAN_TRUE_NUM) || value.equals(BOOLEAN_FALSE_NUM))) {
+          throw new IllegalArgumentException(
+              "The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
+        }
+        break;
+      case DOUBLE:
+        Double.parseDouble(value);
+        break;
+      case TEXT:
+        break;
+      default:
+        throw new IllegalArgumentException("Data Type is not recognized");
+    }
+  }
+
+
   protected TSStatus executeNonQueryLocally(PhysicalPlan plan) {
     boolean execRet;
     try {
@@ -1428,11 +1539,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         : RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   }
 
+
   /**
-   * A non-partitioned plan (like storage group creation) should be executed on all meta group
-   * nodes, so the MetaLeader should take the responsible to make sure that every node receives the
-   * plan. Thus the plan will be processed locally only by the MetaLeader and forwarded by
-   * non-leader nodes.
+   * A non-partitioned plan (like storage group creation) should be executed on all metagroup nodes,
+   * so the MetaLeader should take the responsible to make sure that every node receives the plan.
+   * Thus the plan will be processed locally only by the MetaLeader and forwarded by non-leader
+   * nodes.
    *
    * @param plan
    * @return
@@ -2933,14 +3045,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
-  public void localPreviousFill(PreviousFillArguments arguments, QueryContext context, PartitionGroup group,
+  public void localPreviousFill(PreviousFillArguments arguments, QueryContext context,
+      PartitionGroup group,
       PreviousFillHandler fillHandler) {
     DataGroupMember localDataMember = getLocalDataMember(group.getHeader());
     try {
       fillHandler
-          .onComplete(localDataMember.localPreviousFill(arguments.getPath(), arguments.getDataType(),
-              arguments.getQueryTime(), arguments.getBeforeRange(),
-              arguments.getDeviceMeasurements(), context));
+          .onComplete(
+              localDataMember.localPreviousFill(arguments.getPath(), arguments.getDataType(),
+                  arguments.getQueryTime(), arguments.getBeforeRange(),
+                  arguments.getDeviceMeasurements(), context));
     } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
       fillHandler.onError(e);
     }
@@ -2971,7 +3085,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           return;
         }
       } catch (Exception e) {
-        logger.error("{}: Cannot perform previous fill of {} to {}", name, arguments.getPath(), node, e);
+        logger
+            .error("{}: Cannot perform previous fill of {} to {}", name, arguments.getPath(), node,
+                e);
       }
     }
 
@@ -2993,4 +3109,5 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     return localExecutor;
   }
+
 }

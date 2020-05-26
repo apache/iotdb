@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.cluster.server;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -36,19 +40,25 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -100,8 +110,8 @@ public class ClientServer extends TSServiceImpl {
   private TNonblockingServerSocket serverTransport;
 
   /**
-   * queryId -> queryContext map. When a query ends either normally or accidentally, the
-   * resources used by the query can be found in the context and then released.
+   * queryId -> queryContext map. When a query ends either normally or accidentally, the resources
+   * used by the query can be found in the context and then released.
    */
   private Map<Long, RemoteQueryContext> queryContextMap = new ConcurrentHashMap<>();
 
@@ -114,8 +124,8 @@ public class ClientServer extends TSServiceImpl {
 
   /**
    * Create a thrift server to listen to the client port and accept requests from clients. This
-   * server is run in a separate thread.
-   * Calling the method twice does not induce side effects.
+   * server is run in a separate thread. Calling the method twice does not induce side effects.
+   *
    * @throws TTransportException
    */
   public void start() throws TTransportException {
@@ -129,7 +139,7 @@ public class ClientServer extends TSServiceImpl {
 
     // this defines how thrift parse the requests bytes to a request
     TProtocolFactory protocolFactory;
-    if(ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()) {
+    if (ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()) {
       protocolFactory = new TCompactProtocol.Factory();
     } else {
       protocolFactory = new TBinaryProtocol.Factory();
@@ -140,11 +150,12 @@ public class ClientServer extends TSServiceImpl {
     // nonblocking server
     THsHaServer.Args poolArgs =
         new THsHaServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
-        getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1);
+            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1);
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
         poolArgs.maxWorkerThreads, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
         new SynchronousQueue<>(), new ThreadFactory() {
       private AtomicLong threadIndex = new AtomicLong(0);
+
       @Override
       public Thread newThread(Runnable r) {
         return new Thread(r, "ClusterClient" + threadIndex.incrementAndGet());
@@ -165,8 +176,8 @@ public class ClientServer extends TSServiceImpl {
   }
 
   /**
-   * Stop the thrift server, close the socket and shutdown the thread pool.
-   * Calling the method twice does not induce side effects.
+   * Stop the thrift server, close the socket and shutdown the thread pool. Calling the method twice
+   * does not induce side effects.
    */
   public void stop() {
     if (serverService == null) {
@@ -181,13 +192,18 @@ public class ClientServer extends TSServiceImpl {
 
   /**
    * Redirect the plan to the local MetaGroupMember so that it will be processed cluster-wide.
+   *
    * @param plan
    * @return
    */
   @Override
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    return metaGroupMember.executeNonQuery(plan);
+      TSStatus validateResult = metaGroupMember.validatePlan(plan);
+      return validateResult == StatusUtils.OK ? metaGroupMember.executeNonQuery(plan)
+          : validateResult;
   }
+
+
 
   /**
    * EventHandler handles the preprocess and postprocess of the thrift requests, but it currently
@@ -219,9 +235,10 @@ public class ClientServer extends TSServiceImpl {
 
   /**
    * Get the data types of each path in “paths”. If "aggregations" is not null, then it should be
-   * corresponding to "paths" one to one and the data type will be the type of the aggregation
-   * over the corresponding path.
-   * @param paths full timeseries paths
+   * corresponding to "paths" one to one and the data type will be the type of the aggregation over
+   * the corresponding path.
+   *
+   * @param paths        full timeseries paths
    * @param aggregations if not null, it should be the same size as "paths"
    * @return the data types of "paths" (using the aggregations)
    * @throws MetadataException
@@ -233,9 +250,10 @@ public class ClientServer extends TSServiceImpl {
   }
 
   /**
-   * Get the data types of each path in “paths”. If "aggregation" is not null, all "paths" will
-   * use this aggregation.
-   * @param paths full timeseries paths
+   * Get the data types of each path in “paths”. If "aggregation" is not null, all "paths" will use
+   * this aggregation.
+   *
+   * @param paths       full timeseries paths
    * @param aggregation if not null, it means "paths" all use this aggregation
    * @return the data types of "paths" (using the aggregation)
    * @throws MetadataException
@@ -247,8 +265,9 @@ public class ClientServer extends TSServiceImpl {
   }
 
   /**
-   * Generate and cache a QueryContext using "queryId". In the distributed version, the
-   * QueryContext is a RemoteQueryContext.
+   * Generate and cache a QueryContext using "queryId". In the distributed version, the QueryContext
+   * is a RemoteQueryContext.
+   *
    * @param queryId
    * @return a RemoteQueryContext using queryId
    */
@@ -261,6 +280,7 @@ public class ClientServer extends TSServiceImpl {
 
   /**
    * Release the local and remote resources used by a query.
+   *
    * @param queryId
    * @throws StorageEngineException
    */
@@ -288,4 +308,7 @@ public class ClientServer extends TSServiceImpl {
       }
     }
   }
+
+
+
 }

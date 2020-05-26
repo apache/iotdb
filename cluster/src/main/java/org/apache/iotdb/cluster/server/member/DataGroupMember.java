@@ -1504,7 +1504,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
   }
 
-
   /**
    * Execute aggregations over the given path and return the results to the requester.
    *
