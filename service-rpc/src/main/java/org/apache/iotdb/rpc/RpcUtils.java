@@ -42,8 +42,7 @@ public class RpcUtils {
    */
   public static void verifySuccess(TSStatus status) throws StatementExecutionException {
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new StatementExecutionException(String.format("%d: %s",
-          status.code, status.message));
+      throw new StatementExecutionException(status);
     }
   }
 
