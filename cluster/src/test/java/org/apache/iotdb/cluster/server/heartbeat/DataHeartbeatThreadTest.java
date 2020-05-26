@@ -120,12 +120,12 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
     dataLogManager = new TestLogManager(2);
     List<Log> logs = TestUtils.prepareTestLogs(14);
     dataLogManager.append(logs);
-    dataLogManager.commitTo(13);
+    dataLogManager.commitTo(13, false);
   }
 
   @Override

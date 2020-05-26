@@ -136,7 +136,7 @@ public class CatchUpTaskTest {
   }
 
   @Test
-  public void testCatchUpSingle() {
+  public void testCatchUpSingle() throws Exception {
     List<Log> logList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Log log = new EmptyContentLog();
@@ -145,7 +145,7 @@ public class CatchUpTaskTest {
       logList.add(log);
     }
     sender.getLogManager().append(logList);
-    sender.getLogManager().commitTo(9);
+    sender.getLogManager().commitTo(9, false);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
@@ -159,7 +159,7 @@ public class CatchUpTaskTest {
   }
 
   @Test
-  public void testCatchUpBatch() {
+  public void testCatchUpBatch() throws Exception {
     List<Log> logList = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       Log log = new EmptyContentLog();
@@ -168,7 +168,7 @@ public class CatchUpTaskTest {
       logList.add(log);
     }
     sender.getLogManager().append(logList);
-    sender.getLogManager().commitTo(9);
+    sender.getLogManager().commitTo(9, false);
     Node receiver = new Node();
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);

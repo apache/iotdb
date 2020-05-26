@@ -231,7 +231,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
   @Override
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     super.setUp();
     for (int i = 0; i < 3; i++) {
       idConflictNodes.add(TestUtils.getNode(i));

@@ -49,7 +49,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
 
   @Test
   public void testSnapshot()
-      throws QueryProcessException, StorageGroupNotSetException, IOException {
+      throws Exception {
     PartitionTable partitionTable = TestUtils.getPartitionTable(3);
     LogApplier applier = new TestLogApplier();
     FilePartitionedSnapshotLogManager manager = new FilePartitionedSnapshotLogManager(applier,
@@ -58,7 +58,7 @@ public class FilePartitionedSnapshotLogManagerTest extends IoTDBTest {
     try {
       List<Log> logs = TestUtils.prepareTestLogs(10);
       manager.append(logs);
-      manager.commitTo(10);
+      manager.commitTo(10, false);
 
       // create files for sgs
       for (int i = 1; i < 4; i++) {

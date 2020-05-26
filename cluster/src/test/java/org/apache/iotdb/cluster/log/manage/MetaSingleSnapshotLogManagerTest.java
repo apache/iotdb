@@ -61,10 +61,10 @@ public class MetaSingleSnapshotLogManagerTest extends IoTDBTest {
   }
 
   @Test
-  public void testTakeSnapshot() {
+  public void testTakeSnapshot() throws Exception {
     List<Log> testLogs = TestUtils.prepareTestLogs(10);
     logManager.append(testLogs);
-    logManager.commitTo(4);
+    logManager.commitTo(4, false);
 
     logManager.takeSnapshot();
     MetaSimpleSnapshot snapshot = (MetaSimpleSnapshot) logManager.getSnapshot();

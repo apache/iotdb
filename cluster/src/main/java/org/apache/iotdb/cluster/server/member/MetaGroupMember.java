@@ -70,6 +70,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.QueryTimeOutException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
@@ -908,7 +909,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           switch (result) {
             case OK:
               logger.info("Join request of {} is accepted", node);
-              logManager.commitTo(addNodeLog.getCurrLogIndex());
+              try {
+                logManager.commitTo(addNodeLog.getCurrLogIndex(), false);
+              } catch (LogExecutionException e) {
+                resultHandler.onError(e);
+                return true;
+              }
               synchronized (partitionTable) {
                 response.setPartitionTableBytes(partitionTable.serialize());
               }
@@ -2707,7 +2713,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         switch (result) {
           case OK:
             logger.info("Removal request of {} is accepted", target);
-            logManager.commitTo(removeNodeLog.getCurrLogIndex());
+            try {
+              logManager.commitTo(removeNodeLog.getCurrLogIndex(), false);
+            } catch (LogExecutionException e) {
+              resultHandler.onError(e);
+              return true;
+            }
             resultHandler.onComplete(Response.RESPONSE_AGREE);
             return true;
           case TIME_OUT:

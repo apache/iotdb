@@ -254,7 +254,7 @@ public class RaftLogManagerTest {
   }
 
   @Test
-  public void commitTo() {
+  public void commitTo() throws Exception {
     class RaftLogManagerTester {
 
       public long commitTo;
@@ -302,7 +302,7 @@ public class RaftLogManagerTest {
         add(new RaftLogManagerTester(last - 1, num, 0, last - 1));
       }};
       for (RaftLogManagerTester test : tests) {
-        instance.commitTo(test.commitTo);
+        instance.commitTo(test.commitTo, false);
         assertEquals(test.testCommittedEntryManagerSize,
             instance.committedEntryManager.getAllEntries().size());
         assertEquals(test.testUnCommittedEntryManagerSize,
@@ -315,12 +315,12 @@ public class RaftLogManagerTest {
   }
 
   @Test
-  public void applyEntries() {
+  public void applyEntries() throws Exception {
     List<Log> testLogs = TestUtils.prepareTestLogs(10);
     RaftLogManager instance = new RaftLogManager(new CommittedEntryManager(),
         new SyncLogDequeSerializer(testIdentifier), logApplier);
     try {
-      instance.applyEntries(testLogs);
+      instance.applyEntries(testLogs, false);
       assertTrue(appliedLogs.containsAll(testLogs.subList(0, 10)));
     } finally {
       instance.close();
@@ -383,7 +383,7 @@ public class RaftLogManagerTest {
   }
 
   @Test
-  public void maybeAppendBatch() {
+  public void maybeAppendBatch() throws Exception {
     class RaftLogManagerTester {
 
       public List<Log> entries;
@@ -466,7 +466,7 @@ public class RaftLogManagerTest {
           new SyncLogDequeSerializer(testIdentifier), logApplier);
       try {
         instance.append(previousEntries);
-        instance.commitTo(commit);
+        instance.commitTo(commit, false);
         assertEquals(test.testLastIndex,
             instance.maybeAppend(test.lastIndex, test.lastTerm, test.leaderCommit, test.entries));
         assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
@@ -487,7 +487,7 @@ public class RaftLogManagerTest {
   }
 
   @Test
-  public void maybeAppendSingle() {
+  public void maybeAppendSingle() throws Exception {
     class RaftLogManagerTester {
 
       public Log entry;
@@ -545,7 +545,7 @@ public class RaftLogManagerTest {
           new SyncLogDequeSerializer(testIdentifier), logApplier);
       try {
         instance.append(previousEntries);
-        instance.commitTo(commit);
+        instance.commitTo(commit, false);
         assertEquals(test.testLastIndex,
             instance.maybeAppend(test.lastIndex, test.lastTerm, test.leaderCommit, test.entry));
         assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
@@ -757,7 +757,7 @@ public class RaftLogManagerTest {
   }
 
   @Test
-  public void applyingSnapshot() {
+  public void applyingSnapshot() throws Exception {
     long index = 100;
     long term = 100;
     CommittedEntryManager committedEntryManager = new CommittedEntryManager();
@@ -775,7 +775,7 @@ public class RaftLogManagerTest {
       assertEquals(1, instance.committedEntryManager.getAllEntries().size());
       assertEquals(10, instance.unCommittedEntryManager.getAllEntries().size());
       assertEquals(100, instance.getCommitLogIndex());
-      instance.commitTo(105);
+      instance.commitTo(105, false);
       assertEquals(101, instance.getFirstIndex());
       assertEquals(6, instance.committedEntryManager.getAllEntries().size());
       assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());

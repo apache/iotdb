@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
+import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
@@ -216,7 +217,11 @@ public class RaftLogManager {
         long offset = lastIndex + 1;
         append(entries.subList((int) (ci - offset), entries.size()));
       }
-      commitTo(Math.min(leaderCommit, newLastIndex));
+      try {
+        commitTo(Math.min(leaderCommit, newLastIndex), true);
+      } catch (LogExecutionException e) {
+        // exceptions are ignored on follower side
+      }
       return newLastIndex;
     }
     return -1;
@@ -243,7 +248,11 @@ public class RaftLogManager {
       } else {
         append(entry);
       }
-      commitTo(Math.min(leaderCommit, newLastIndex));
+      try {
+        commitTo(Math.min(leaderCommit, newLastIndex), true);
+      } catch (LogExecutionException e) {
+        // exceptions are ignored on follower side
+      }
       return newLastIndex;
     }
     return -1;
@@ -295,7 +304,11 @@ public class RaftLogManager {
    */
   public boolean maybeCommit(long leaderCommit, long term) {
     if (leaderCommit > commitIndex && matchTerm(leaderCommit, term)) {
-      commitTo(leaderCommit);
+      try {
+        commitTo(leaderCommit, true);
+      } catch (LogExecutionException e) {
+        // exceptions are ignored on follower side
+      }
       return true;
     }
     return false;
@@ -375,15 +388,13 @@ public class RaftLogManager {
    * Used by MaybeCommit or MaybeAppend or follower to commit newly committed entries.
    *
    * @param newCommitIndex request commitIndex
-   * @return the newly commitIndex
    */
-  public long commitTo(long newCommitIndex) {
+  public void commitTo(long newCommitIndex, boolean ignoreExecutionExceptions) throws LogExecutionException {
     if (commitIndex < newCommitIndex) {
-      List<Log> entries = new ArrayList<>();
-      entries.addAll(unCommittedEntryManager
+      List<Log> entries = new ArrayList<>(unCommittedEntryManager
           .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(),
               newCommitIndex + 1));
-      if (entries.size() != 0) {
+      if (!entries.isEmpty()) {
         if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
           entries
               .subList(0,
@@ -393,7 +404,7 @@ public class RaftLogManager {
         try {
           committedEntryManager.append(entries);
           stableEntryManager.append(entries);
-          applyEntries(entries);
+          applyEntries(entries, ignoreExecutionExceptions);
           Log lastLog = entries.get(entries.size() - 1);
           unCommittedEntryManager.stableTo(lastLog.getCurrLogIndex());
           commitIndex = lastLog.getCurrLogIndex();
@@ -402,7 +413,6 @@ public class RaftLogManager {
         }
       }
     }
-    return commitIndex;
   }
 
   /**
@@ -426,14 +436,20 @@ public class RaftLogManager {
    * Used by commitTo to apply newly committed entries
    *
    * @param entries applying entries
+   * @param ignoreExecutionException when set to true, exceptions during applying the logs are
+   *                                 ignored, otherwise they are reported to the upper level
    */
-  protected void applyEntries(List<Log> entries) {
+  protected void applyEntries(List<Log> entries, boolean ignoreExecutionException) throws LogExecutionException {
     for (Log entry : entries) {
       try {
         logApplier.apply(entry);
-      } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
+      } catch (Exception e) {
         if (!(e.getCause() instanceof PathAlreadyExistException)) {
-          logger.error("Cannot apply a log {} in snapshot, ignored", entry, e);
+          if (ignoreExecutionException) {
+            logger.error("Cannot apply a log {} in snapshot, ignored", entry, e);
+          } else {
+            throw new LogExecutionException(e);
+          }
         }
       }
     }

@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.Log;
@@ -68,7 +69,10 @@ import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.cluster.utils.nodetool.function.Status;
+import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
@@ -236,15 +240,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
           // The term of the last log needs to be the same with leader's term in order to preserve
           // safety, otherwise it may come from an invalid leader and is not committed
-          if (logManager.getCommitLogIndex() < request.getCommitLogIndex() &&
-              logManager.matchTerm(request.getCommitLogTerm(), request.getCommitLogIndex())) {
+          if (logManager.maybeCommit(request.getCommitLogIndex(), request.getCommitLogTerm())) {
             logger.info("{}: Committing to {}-{}, localCommit: {}-{}, localLast: {}-{}", name,
                 request.getCommitLogIndex(),
                 request.getCommitLogTerm(), logManager.getCommitLogIndex(),
                 logManager.getCommitLogTerm(), logManager.getLastLogIndex(),
                 logManager.getLastLogTerm());
             synchronized (syncLock) {
-              logManager.commitTo(request.getCommitLogIndex());
               syncLock.notifyAll();
             }
           } else if (logManager.getCommitLogIndex() < request.getCommitLogIndex()) {
@@ -522,6 +524,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param voteCounter a decreasing vote counter
    * @return an AppendLogResult indicating a success or a failure and why
    */
+  @SuppressWarnings({"java:S2445", "java:S2274"})
   private AppendLogResult sendLogToFollowers(Log log, AtomicInteger voteCounter) {
     if (allNodes.size() == 1) {
       // single node group, does not need the agreement of others
@@ -902,6 +905,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
       return status;
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       return StatusUtils.TIME_OUT;
     }
   }
@@ -932,8 +936,18 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       logManager.append(log);
     }
 
-    if (appendLogInGroup(log)) {
-      return StatusUtils.OK;
+    try {
+      if (appendLogInGroup(log)) {
+        return StatusUtils.OK;
+      }
+    } catch (LogExecutionException e) {
+      TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+      Throwable cause = e.getCause();
+      if (cause instanceof IoTDBException) {
+        tsStatus.setCode(((IoTDBException) cause).getErrorCode());
+      }
+      tsStatus.setMessage(cause.getMessage());
+      return tsStatus;
     }
     return null;
   }
@@ -945,7 +959,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param log
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
-  protected boolean appendLogInGroup(Log log) {
+  protected boolean appendLogInGroup(Log log) throws LogExecutionException {
     int retryTime = 0;
     while (true) {
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
@@ -954,7 +968,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
           synchronized (logManager) {
-            logManager.commitTo(log.getCurrLogIndex());
+            logManager.commitTo(log.getCurrLogIndex(), false);
           }
           return true;
         case TIME_OUT:

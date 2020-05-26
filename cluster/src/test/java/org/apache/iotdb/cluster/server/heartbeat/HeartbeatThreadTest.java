@@ -126,7 +126,7 @@ public class HeartbeatThreadTest {
   }
 
   @Before
-  public void setUp() {
+  public void setUp() throws Exception {
     logManager = new TestLogManager(1);
     member = getMember();
 
@@ -135,7 +135,7 @@ public class HeartbeatThreadTest {
     member.getTerm().set(10);
     List<Log> logs = TestUtils.prepareTestLogs(7);
     logManager.append(logs);
-    logManager.commitTo(6);
+    logManager.commitTo(6, false);
 
     respondToElection = false;
     testHeartbeat = false;

@@ -47,6 +47,7 @@ import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
+import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
@@ -949,7 +950,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
       logger.info("Send the close file request of {} to other nodes", log);
     }
-    return appendLogInGroup(log);
+    try {
+      return appendLogInGroup(log);
+    } catch (LogExecutionException e) {
+      logger.error("Cannot close partition {}#{} seq:{}", storageGroupName, partitionId, isSeq, e);
+      return false;
+    }
   }
 
   /**
