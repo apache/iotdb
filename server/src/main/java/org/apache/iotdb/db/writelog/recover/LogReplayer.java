@@ -127,8 +127,8 @@ public class LogReplayer {
       throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertTabletPlan.getDeviceId());
-      if (lastEndTime != null && lastEndTime >= insertTabletPlan.getMinTime() &&
+      long lastEndTime = currentTsFileResource.getEndTime(insertTabletPlan.getDeviceId());
+      if (lastEndTime >= 0 && lastEndTime >= insertTabletPlan.getMinTime() &&
           !acceptDuplication) {
         return;
       }
@@ -155,8 +155,8 @@ public class LogReplayer {
   private void replayInsert(InsertPlan insertPlan) {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId());
-      if (lastEndTime != null && lastEndTime >= insertPlan.getTime() &&
+      long lastEndTime = currentTsFileResource.getEndTime(insertPlan.getDeviceId());
+      if (lastEndTime >= 0 && lastEndTime >= insertPlan.getTime() &&
           !acceptDuplication) {
         return;
       }

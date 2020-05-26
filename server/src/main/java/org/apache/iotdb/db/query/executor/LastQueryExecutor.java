@@ -159,7 +159,7 @@ public class LastQueryExecutor {
 
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
-      if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
+      if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         continue;
       }
       TimeseriesMetadata timeseriesMetadata =

@@ -63,16 +63,22 @@ public class TsFileResource {
   public static final String RESOURCE_SUFFIX = ".resource";
   static final String TEMP_SUFFIX = ".temp";
   private static final String CLOSING_SUFFIX = ".closing";
+  private static final int INIT_ARRAY_SIZE = 64;
 
   /**
-   * device -> start time
+   * start times array. 
    */
-  protected Map<String, Long> startTimeMap;
+  private long[] startTimes;
 
   /**
-   * device -> end time. It is null if it's an unsealed sequence tsfile
+   * end times array. The values in this array are -1 if it's an unsealed sequence tsfile
    */
-  protected Map<String, Long> endTimeMap;
+  private long[] endTimes;
+
+  /**
+   * device -> index of start times array and end times array
+   */
+  private Map<String, Integer> deviceToIndex;
 
   public TsFileProcessor getProcessor() {
     return processor;
@@ -136,8 +142,9 @@ public class TsFileResource {
 
   public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
-    this.startTimeMap = other.startTimeMap;
-    this.endTimeMap = other.endTimeMap;
+    this.deviceToIndex = other.deviceToIndex;
+    this.startTimes = other.startTimes;
+    this.endTimes = other.endTimes;
     this.processor = other.processor;
     this.modFile = other.modFile;
     this.closed = other.closed;
@@ -156,8 +163,11 @@ public class TsFileResource {
    */
   public TsFileResource(File file) {
     this.file = file;
-    this.startTimeMap = new ConcurrentHashMap<>();
-    this.endTimeMap = new HashMap<>();
+    this.deviceToIndex = new ConcurrentHashMap<>();
+    this.startTimes = new long[INIT_ARRAY_SIZE];
+    this.endTimes = new long[INIT_ARRAY_SIZE];
+    initTimes(startTimes);
+    initTimes(endTimes);
   }
 
   /**
@@ -165,8 +175,11 @@ public class TsFileResource {
    */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
-    this.startTimeMap = new ConcurrentHashMap<>();
-    this.endTimeMap = new ConcurrentHashMap<>();
+    this.deviceToIndex = new ConcurrentHashMap<>();
+    this.startTimes = new long[INIT_ARRAY_SIZE];
+    this.endTimes = new long[INIT_ARRAY_SIZE];
+    initTimes(startTimes);
+    initTimes(endTimes);
     this.processor = processor;
   }
 
@@ -174,13 +187,15 @@ public class TsFileResource {
    * unsealed TsFile
    */
   public TsFileResource(File file,
-      Map<String, Long> startTimeMap,
-      Map<String, Long> endTimeMap,
+      Map<String, Integer> deviceToIndex,
+      long[] startTimes,
+      long[] endTimes,
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<ChunkMetadata> chunkMetadataList) throws IOException {
     this.file = file;
-    this.startTimeMap = startTimeMap;
-    this.endTimeMap = endTimeMap;
+    this.deviceToIndex = deviceToIndex;
+    this.startTimes = startTimes;
+    this.endTimes = endTimes;
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
     generateTimeSeriesMetadata();
@@ -221,18 +236,24 @@ public class TsFileResource {
     }
   }
 
+  private void initTimes(long[] times) {
+    for (int i = 0; i < times.length; i++) {
+      times[i] = -1;
+    }
+  }
+
   public void serialize() throws IOException {
     try (OutputStream outputStream = fsFactory.getBufferedOutputStream(
         file + RESOURCE_SUFFIX + TEMP_SUFFIX)) {
-      ReadWriteIOUtils.write(this.startTimeMap.size(), outputStream);
-      for (Entry<String, Long> entry : this.startTimeMap.entrySet()) {
+      ReadWriteIOUtils.write(this.deviceToIndex.size(), outputStream);
+      for (Entry<String, Integer> entry : this.deviceToIndex.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
-        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+        ReadWriteIOUtils.write(startTimes[entry.getValue()], outputStream);
       }
-      ReadWriteIOUtils.write(this.endTimeMap.size(), outputStream);
-      for (Entry<String, Long> entry : this.endTimeMap.entrySet()) {
+      ReadWriteIOUtils.write(this.deviceToIndex.size(), outputStream);
+      for (Entry<String, Integer> entry : this.deviceToIndex.entrySet()) {
         ReadWriteIOUtils.write(entry.getKey(), outputStream);
-        ReadWriteIOUtils.write(entry.getValue(), outputStream);
+        ReadWriteIOUtils.write(endTimes[entry.getValue()], outputStream);
       }
 
       if (historicalVersions != null) {
@@ -252,21 +273,24 @@ public class TsFileResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
       int size = ReadWriteIOUtils.readInt(inputStream);
-      Map<String, Long> startTimes = new HashMap<>();
+      Map<String, Integer> deviceToIndex = new HashMap<>();
+      long[] startTimes = new long[size];
+      long[] endTimes = new long[size];
       for (int i = 0; i < size; i++) {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
-        startTimes.put(path, time);
+        deviceToIndex.put(path, i);
+        startTimes[i] = time;
       }
       size = ReadWriteIOUtils.readInt(inputStream);
-      Map<String, Long> endTimes = new HashMap<>();
       for (int i = 0; i < size; i++) {
-        String path = ReadWriteIOUtils.readString(inputStream);
+        ReadWriteIOUtils.readString(inputStream); // String path
         long time = ReadWriteIOUtils.readLong(inputStream);
-        endTimes.put(path, time);
+        endTimes[i] = time;
       }
-      this.startTimeMap = startTimes;
-      this.endTimeMap = endTimes;
+      this.startTimes = startTimes;
+      this.endTimes = endTimes;
+      this.deviceToIndex = deviceToIndex;
 
       if (inputStream.available() > 0) {
         int versionSize = ReadWriteIOUtils.readInt(inputStream);
@@ -283,16 +307,16 @@ public class TsFileResource {
   }
 
   public void updateStartTime(String device, long time) {
-    long startTime = startTimeMap.getOrDefault(device, Long.MAX_VALUE);
+    long startTime = getOrDefaultStartTime(device, Long.MAX_VALUE);
     if (time < startTime) {
-      startTimeMap.put(device, time);
+      putStartTime(device, time);
     }
   }
 
   public void updateEndTime(String device, long time) {
-    long endTime = endTimeMap.getOrDefault(device, Long.MIN_VALUE);
+    long endTime = getOrDefaultEndTime(device, Long.MIN_VALUE);
     if (time > endTime) {
-      endTimeMap.put(device, time);
+      putEndTime(device, time);
     }
   }
 
@@ -301,7 +325,7 @@ public class TsFileResource {
   }
 
   void forceUpdateEndTime(String device, long time) {
-    endTimeMap.put(device, time);
+    putEndTime(device, time);
   }
 
   public List<ChunkMetadata> getChunkMetadataList() {
@@ -324,7 +348,7 @@ public class TsFileResource {
   }
 
   boolean containsDevice(String deviceId) {
-    return startTimeMap.containsKey(deviceId);
+    return deviceToIndex.containsKey(deviceId);
   }
 
   public File getFile() {
@@ -339,12 +363,90 @@ public class TsFileResource {
     return file.length();
   }
 
-  public Map<String, Long> getStartTimeMap() {
-    return startTimeMap;
+  public long getStartTime(String deviceId) {
+    if (!deviceToIndex.containsKey(deviceId)) {
+      return -1;
+    }
+    return startTimes[deviceToIndex.get(deviceId)];
   }
 
-  public Map<String, Long> getEndTimeMap() {
-    return endTimeMap;
+  public long getEndTime(String deviceId) {
+    if (!deviceToIndex.containsKey(deviceId)) {
+      return -1;
+    }
+    return endTimes[deviceToIndex.get(deviceId)];
+  }
+
+  public long getOrDefaultStartTime(String deviceId, long defaultTime) {
+    return getStartTime(deviceId) >= 0 ? startTimes[deviceToIndex.get(deviceId)] : defaultTime;
+  }
+
+  public long getOrDefaultEndTime(String deviceId, long defaultTime) {
+    return getEndTime(deviceId) >= 0 ? endTimes[deviceToIndex.get(deviceId)] : defaultTime;
+  }
+
+  public void putStartTime(String deviceId, long startTime) {
+    int index;
+    if (containsDevice(deviceId)) {
+      index = deviceToIndex.get(deviceId);
+    }
+    else {
+      index = deviceToIndex.size();
+      deviceToIndex.put(deviceId, index);
+      if (startTimes.length <= index) {
+        enLargeArray(startTimes);
+        enLargeArray(endTimes);
+      }
+    }
+    startTimes[index] = startTime;
+  }
+
+  public void putEndTime(String deviceId, long endTime) {
+    int index;
+    if (containsDevice(deviceId)) {
+      index = deviceToIndex.get(deviceId);
+    }
+    else {
+      index = deviceToIndex.size();
+      deviceToIndex.put(deviceId, index);
+      if (endTimes.length <= index) {
+        enLargeArray(startTimes);
+        enLargeArray(endTimes);
+      }
+    }
+    endTimes[index] = endTime;
+  }
+
+  private void enLargeArray(long[] array) {
+    long[] tmp = new long[array.length * 2];
+    System.arraycopy(array, 0, tmp, 0, array.length);
+    array = tmp;
+  }
+
+  public Map<String, Integer> getDeviceToIndexMap() {
+    return deviceToIndex;
+  }
+
+  public long[] getStartTimes() {
+    return startTimes;
+  }
+
+  public long[] getEndTimes() {
+    return endTimes;
+  }
+
+  public void clearEndTimes() {
+    endTimes = new long[endTimes.length];
+    initTimes(endTimes);
+  }
+
+  public boolean areEndTimesEmpty() {
+    for (long endTime : endTimes) {
+      if (endTime != -1) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public boolean isClosed() {
@@ -446,7 +548,7 @@ public class TsFileResource {
     if (timeLowerBound == Long.MAX_VALUE) {
       return true;
     }
-    for (long endTime : endTimeMap.values()) {
+    for (long endTime : endTimes) {
       // the file cannot be deleted if any device still lives
       if (endTime >= timeLowerBound) {
         return true;
@@ -455,12 +557,12 @@ public class TsFileResource {
     return false;
   }
 
-  protected void setStartTimeMap(Map<String, Long> startTimeMap) {
-    this.startTimeMap = startTimeMap;
+  protected void setStartTimes(long[] startTimes) {
+    this.startTimes = startTimes;
   }
 
-  protected void setEndTimeMap(Map<String, Long> endTimeMap) {
-    this.endTimeMap = endTimeMap;
+  protected void setEndTimes(long[] endTimes) {
+    this.endTimes= endTimes;
   }
 
   /**
@@ -531,12 +633,12 @@ public class TsFileResource {
   }
 
   /**
-   * make sure Either the startTimeMap is not empty
+   * make sure Either the deviceToIndex is not empty
    *           Or the path contains a partition folder
    */
   public long getTimePartition() {
-    if (startTimeMap != null && !startTimeMap.isEmpty()) {
-      return StorageEngine.getTimePartition(startTimeMap.values().iterator().next());
+    if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
+      return StorageEngine.getTimePartition(startTimes[deviceToIndex.values().iterator().next()]);
     }
     String[] splits = FilePathUtils.splitTsFilePath(this);
     return Long.parseLong(splits[splits.length - 2]);
@@ -550,7 +652,7 @@ public class TsFileResource {
    */
   public long getTimePartitionWithCheck() throws PartitionViolationException {
     long partitionId = -1;
-    for (Long startTime : startTimeMap.values()) {
+    for (Long startTime : startTimes) {
       long p = StorageEngine.getTimePartition(startTime);
       if (partitionId == -1) {
         partitionId = p;
@@ -560,7 +662,7 @@ public class TsFileResource {
         }
       }
     }
-    for (Long endTime : endTimeMap.values()) {
+    for (Long endTime : endTimes) {
       long p = StorageEngine.getTimePartition(endTime);
       if (partitionId == -1) {
         partitionId = p;

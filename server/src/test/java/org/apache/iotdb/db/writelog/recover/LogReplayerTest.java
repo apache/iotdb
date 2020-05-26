@@ -51,7 +51,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -135,11 +134,11 @@ public class LogReplayerTest {
       assertEquals(1, mods.length);
       assertEquals(new Deletion(new Path("root.sg.device0", "sensor0"), 5, 200), mods[0]);
 
-      assertEquals(2, (long) tsFileResource.getStartTimeMap().get("root.sg.device0"));
-      assertEquals(100, (long) tsFileResource.getEndTimeMap().get("root.sg.device0"));
+      assertEquals(2, (long) tsFileResource.getStartTime("root.sg.device0"));
+      assertEquals(100, (long) tsFileResource.getEndTime("root.sg.device0"));
       for (int i = 1; i < 5; i++) {
-        assertEquals(i, (long) tsFileResource.getStartTimeMap().get("root.sg.device" + i));
-        assertEquals(i, (long) tsFileResource.getEndTimeMap().get("root.sg.device" + i));
+        assertEquals(i, (long) tsFileResource.getStartTime("root.sg.device" + i));
+        assertEquals(i, (long) tsFileResource.getEndTime("root.sg.device" + i));
       }
     } finally {
       modFile.close();

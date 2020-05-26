@@ -318,12 +318,18 @@ public class StorageGroupProcessor {
 
     for (TsFileResource resource : sequenceFileTreeSet) {
       long timePartitionId = resource.getTimePartition();
+      Map<String, Long> endTimeMap = new HashMap<>();
+      for (Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
+        String deviceId = entry.getKey();
+        long endTime = resource.getEndTime(deviceId);
+        endTimeMap.put(deviceId, endTime);
+      }
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
-          .putAll(resource.getEndTimeMap());
+          .putAll(endTimeMap);
       partitionLatestFlushedTimeForEachDevice
           .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-          .putAll(resource.getEndTimeMap());
-      globalLatestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
+          .putAll(endTimeMap);
+      globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
     }
   }
 
@@ -344,16 +350,16 @@ public class StorageGroupProcessor {
     VersionController versionController = new SimpleFileVersionController(storageGroupSysDir.getPath());
     long currentVersion = versionController.currVersion();
     for (TsFileResource resource : upgradeSeqFileList) {
-      for (Entry<String, Long> entry : resource.getEndTimeMap().entrySet()) {
+      for (Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
         String deviceId = entry.getKey();
-        long endTime = entry.getValue();
+        long endTime = resource.getEndTime(deviceId);
         long endTimePartitionId = StorageEngine.getTimePartition(endTime);
         latestTimeForEachDevice.computeIfAbsent(endTimePartitionId, l -> new HashMap<>())
                 .put(deviceId, endTime);
-        globalLatestFlushedTimeForEachDevice.putAll(resource.getEndTimeMap());
+        globalLatestFlushedTimeForEachDevice.put(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime to Long.MAX_VALUE
-        long partitionId = StorageEngine.getTimePartition(resource.startTimeMap.get(deviceId));
+        long partitionId = StorageEngine.getTimePartition(resource.getStartTime(deviceId));
         while (partitionId <= endTimePartitionId) {
           partitionLatestFlushedTimeForEachDevice.computeIfAbsent(partitionId, l -> new HashMap<>())
                   .put(deviceId, Long.MAX_VALUE);
@@ -530,7 +536,7 @@ public class StorageGroupProcessor {
         workSequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
-        tsFileResource.endTimeMap.clear();
+        tsFileResource.clearEndTimes();
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
@@ -1235,8 +1241,9 @@ public class StorageGroupProcessor {
                   .query(deviceId, measurementId, schema.getType(), schema.getEncodingType(),
                       schema.getProps(), context);
 
-          tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(),
-              tsFileResource.getStartTimeMap(), tsFileResource.getEndTimeMap(), pair.left,
+          tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(), 
+              tsFileResource.getDeviceToIndexMap(),
+              tsFileResource.getStartTimes(), tsFileResource.getEndTimes(), pair.left,
               pair.right));
         }
       } catch (IOException e) {
@@ -1269,13 +1276,13 @@ public class StorageGroupProcessor {
       return false;
     }
     if (dataTTL != Long.MAX_VALUE) {
-      Long deviceEndTime = tsFileResource.getEndTimeMap().get(deviceId);
-      return deviceEndTime == null || checkTTL(deviceEndTime);
+      long deviceEndTime = tsFileResource.getEndTime(deviceId);
+      return deviceEndTime < 0 || checkTTL(deviceEndTime);
     }
 
     if (timeFilter != null) {
-      long startTime = tsFileResource.getStartTimeMap().get(deviceId);
-      long endTime = tsFileResource.getEndTimeMap().getOrDefault(deviceId, Long.MAX_VALUE);
+      long startTime = tsFileResource.getStartTime(deviceId);
+      long endTime = tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE);
       return timeFilter.satisfyStartEndTime(startTime, endTime);
     }
     return true;
@@ -1368,7 +1375,7 @@ public class StorageGroupProcessor {
     String deviceId = deletion.getDevice();
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!tsFileResource.containsDevice(deviceId) ||
-          deletion.getTimestamp() < tsFileResource.getStartTimeMap().get(deviceId)) {
+          deletion.getTimestamp() < tsFileResource.getStartTime(deviceId)) {
         continue;
       }
 
@@ -1398,7 +1405,7 @@ public class StorageGroupProcessor {
    */
   private void updateEndTimeMap(TsFileProcessor tsFileProcessor) {
     TsFileResource resource = tsFileProcessor.getTsFileResource();
-    for (Entry<String, Long> startTime : resource.getStartTimeMap().entrySet()) {
+    for (Entry<String, Integer> startTime : resource.getDeviceToIndexMap().entrySet()) {
       String deviceId = startTime.getKey();
       resource.forceUpdateEndTime(deviceId,
           latestTimeForEachDevice.get(tsFileProcessor.getTimeRangeId()).get(deviceId));
@@ -1494,8 +1501,9 @@ public class StorageGroupProcessor {
     List<TsFileResource> upgradedResources = tsFileResource.getUpgradedResources();
     for (TsFileResource resource : upgradedResources) {
       long partitionId = resource.getTimePartition();
-      resource.getEndTimeMap().forEach((device, time) -> 
-        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, time)
+      resource.getDeviceToIndexMap().forEach((device, index) -> 
+        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, 
+            resource.getEndTime(device))
       );
     }
     insertLock.writeLock().lock();
@@ -1818,7 +1826,7 @@ public class StorageGroupProcessor {
         return POS_ALREADY_EXIST;
       }
       long localPartitionId = Long.parseLong(localFile.getFile().getParentFile().getName());
-      if (i == sequenceList.size() - 1 && localFile.getEndTimeMap().isEmpty()
+      if (i == sequenceList.size() - 1 && localFile.areEndTimesEmpty()
           || newFilePartitionId > localPartitionId) {
         // skip files that are in the previous partition and the last empty file, as the all data
         // in those files must be older than the new file
@@ -1852,14 +1860,14 @@ public class StorageGroupProcessor {
    */
   private int compareTsFileDevices(TsFileResource fileA, TsFileResource fileB) {
     boolean hasPre = false, hasSubsequence = false;
-    for (String device : fileA.getStartTimeMap().keySet()) {
-      if (!fileB.getStartTimeMap().containsKey(device)) {
+    for (String device : fileA.getDeviceToIndexMap().keySet()) {
+      if (!fileB.getDeviceToIndexMap().containsKey(device)) {
         continue;
       }
-      long startTimeA = fileA.getStartTimeMap().get(device);
-      long endTimeA = fileA.getEndTimeMap().get(device);
-      long startTimeB = fileB.getStartTimeMap().get(device);
-      long endTimeB = fileB.getEndTimeMap().get(device);
+      long startTimeA = fileA.getStartTime(device);
+      long endTimeA = fileA.getEndTime(device);
+      long startTimeB = fileB.getStartTime(device);
+      long endTimeB = fileB.getEndTime(device);
       if (startTimeA > endTimeB) {
         // A's data of the device is later than to the B's data
         hasPre = true;
@@ -1987,9 +1995,9 @@ public class StorageGroupProcessor {
    * @UsedBy sync module, load external tsfile module.
    */
   private void updateLatestTimeMap(TsFileResource newTsFileResource) {
-    for (Entry<String, Long> entry : newTsFileResource.getEndTimeMap().entrySet()) {
+    for (Entry<String, Integer> entry : newTsFileResource.getDeviceToIndexMap().entrySet()) {
       String device = entry.getKey();
-      long endTime = newTsFileResource.getEndTimeMap().get(device);
+      long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = StorageEngine.getTimePartition(endTime);
       if (!latestTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
           .containsKey(device)
