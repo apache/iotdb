@@ -58,7 +58,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   }
 
   private void initPreviousParis(QueryContext context, GroupByFillPlan groupByFillPlan)
-          throws StorageEngineException, IOException, QueryProcessException {
+      throws StorageEngineException, IOException, QueryProcessException {
     previousValue = new Object[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
@@ -66,7 +66,8 @@ public class GroupByFillDataSet extends QueryDataSet {
       IFill fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(),
           ((PreviousFill) fillTypes.get(dataType)).getBeforeRange(),
           ((PreviousFill) fillTypes.get(dataType)).isUntilLast());
-      fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(), groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
+      fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(),
+          groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -83,8 +84,8 @@ public class GroupByFillDataSet extends QueryDataSet {
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
     for (int i = 0; i < paths.size(); i++) {
       TimeValuePair lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeries(
-              paths.get(i), dataTypes.get(i), context,
-              groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
+          paths.get(i), dataTypes.get(i), context,
+          groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
       if (lastTimeValuePair.getValue() != null) {
         lastTimeArray[i] = lastTimeValuePair.getTimestamp();
       }
@@ -104,12 +105,16 @@ public class GroupByFillDataSet extends QueryDataSet {
       Field field = rowRecord.getFields().get(i);
       // current group by result is null
       if (field == null || field.getDataType() == null) {
-        // the previous value is not null and
-        // (fill type is not previous until last or now time is before last time)
-        if (previousValue[i] != null
-            && ((fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
-            .get(dataTypes.get(i))).isUntilLast())
-            || rowRecord.getTimestamp() <= lastTimeArray[i])) {
+        // the previous value is not null
+        // and (fill type is not previous until last or now time is before last time)
+        // and (previous before range is not limited or previous before range contains the previous interval)
+        if (previousValue[i] != null && (
+            (fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
+                .get(dataTypes.get(i))).isUntilLast())
+                || rowRecord.getTimestamp() <= lastTimeArray[i]) && (
+            ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
+                || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
+                >= groupByEngineDataSet.interval)) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         }
       } else {
