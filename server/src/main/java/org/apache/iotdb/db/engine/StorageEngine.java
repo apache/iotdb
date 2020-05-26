@@ -585,4 +585,12 @@ public class StorageEngine implements IService {
       throws StorageEngineException {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
+
+  public static void setEnablePartition(boolean enablePartition) {
+    StorageEngine.enablePartition = enablePartition;
+  }
+
+  public static boolean isEnablePartition() {
+    return enablePartition;
+  }
 }
