@@ -125,7 +125,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
     String newPath = path;
-    if (!isAdmin(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
