@@ -63,7 +63,9 @@ public class GroupByFillDataSet extends QueryDataSet {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       TSDataType dataType = dataTypes.get(i);
-      IFill fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(), -1L);
+      IFill fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(),
+          ((PreviousFill) fillTypes.get(dataType)).getBeforeRange(),
+          ((PreviousFill) fillTypes.get(dataType)).isUntilLast());
       fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(), groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();

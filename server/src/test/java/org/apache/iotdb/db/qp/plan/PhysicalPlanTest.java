@@ -374,6 +374,25 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  public void testGroupByFill7() {
+    String sqlStr =
+        "select last_value(d1.s1), last_value(d2.s1)" + " from root.vehicle "
+            + "group by([8,737), 3ms) fill(int32[previousuntillast,10ms], int64[previous,10ms])";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+      if (!plan.isQuery()) {
+        fail();
+      }
+      if (!(plan instanceof GroupByFillPlan)) {
+        fail();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
   public void testQuery1() throws QueryProcessException {
     String sqlStr = "SELECT s1 FROM root.vehicle.d1 WHERE time > 5000";
     PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
