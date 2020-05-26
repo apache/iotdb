@@ -517,7 +517,7 @@ public class IoTDBConfig {
   private String kerberosKeytabFilePath = "/path";
 
   /**
-   * kerberos pricipal
+   * kerberos principal
    */
   private String kerberosPrincipal = "principal";
 
@@ -541,7 +541,7 @@ public class IoTDBConfig {
   /**
    * The default value of primitive array size in array pool
    */
-  private int primitiveArraySize = 128;
+  private int primitiveArraySize = 64;
 
   /**
    * whether enable data partition

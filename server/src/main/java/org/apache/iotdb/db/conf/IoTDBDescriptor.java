@@ -369,17 +369,17 @@ public class IoTDBDescriptor {
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
 
-      conf.setEnablePartition(Boolean.parseBoolean(
-          properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
+//      conf.setEnablePartition(Boolean.parseBoolean(
+//          properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
 
       // Time range for dividing storage group
-      conf.setPartitionInterval(Long.parseLong(properties
-              .getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
+//      conf.setPartitionInterval(Long.parseLong(properties
+//              .getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
 
       // the num of memtables in each storage group
-      conf.setConcurrentWritingTimePartition(
-          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
-              String.valueOf(conf.getConcurrentWritingTimePartition()))));
+//      conf.setConcurrentWritingTimePartition(
+//          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
+//              String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(

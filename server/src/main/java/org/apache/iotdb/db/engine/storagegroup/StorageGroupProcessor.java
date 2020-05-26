@@ -1956,12 +1956,13 @@ public class StorageGroupProcessor {
       if (newTsFile.getHistoricalVersions().containsAll(existingTsFile.getHistoricalVersions())
           && !newTsFile.getHistoricalVersions().equals(existingTsFile.getHistoricalVersions())
           && existingTsFile.tryWriteLock()) {
+        // if we fail to lock the file, it means it is being queried or merged and we will not
+        // wait until it is free, we will just leave it to the next merge
         try {
           removeFullyOverlapFile(existingTsFile, iterator, isSeq);
         } catch (Exception e) {
           logger.error("Something gets wrong while removing FullyOverlapFiles: {}",
               existingTsFile.getFile().getAbsolutePath(), e);
-          throw e;
         } finally {
           existingTsFile.writeUnlock();
         }

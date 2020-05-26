@@ -420,14 +420,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return false;
       }
     } catch (ParseCancellationException e) {
-      logger.debug(e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, statement + " " + e.getMessage());
       result.add(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR,
-          ERROR_PARSING_SQL + e.getMessage()));
+          ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
       return false;
     } catch (SQLParserException e) {
       logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + e.getMessage()));
+          TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
       return false;
     } catch (QueryProcessException e) {
       logger.info(
@@ -469,7 +469,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return executeUpdateStatement(physicalPlan, req.getSessionId());
       }
     } catch (ParseCancellationException e) {
-      logger.debug(e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
     } catch (SQLParserException e) {
       logger.error("check metadata error: ", e);
@@ -513,7 +513,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           sessionIdUsernameMap.get(req.getSessionId()));
 
     } catch (ParseCancellationException e) {
-      logger.debug(e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, req.getStatement() + " " + e.getMessage());
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR,
           ERROR_PARSING_SQL + e.getMessage());
     } catch (SQLParserException e) {
@@ -975,7 +975,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
     } catch (QueryProcessException | SQLParserException e) {
-      logger.info(ERROR_PARSING_SQL, e.getMessage());
+      logger.warn(ERROR_PARSING_SQL, statement, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
     }
 
