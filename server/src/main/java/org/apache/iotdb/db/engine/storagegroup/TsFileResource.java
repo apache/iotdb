@@ -273,24 +273,24 @@ public class TsFileResource {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(
         file + RESOURCE_SUFFIX)) {
       int size = ReadWriteIOUtils.readInt(inputStream);
-      Map<String, Integer> deviceToIndex = new HashMap<>();
-      long[] startTimes = new long[size];
-      long[] endTimes = new long[size];
+      Map<String, Integer> deviceMap = new HashMap<>();
+      long[] startTimesArray = new long[size];
+      long[] endTimesArray = new long[size];
       for (int i = 0; i < size; i++) {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
-        deviceToIndex.put(path, i);
-        startTimes[i] = time;
+        deviceMap.put(path, i);
+        startTimesArray[i] = time;
       }
       size = ReadWriteIOUtils.readInt(inputStream);
       for (int i = 0; i < size; i++) {
         ReadWriteIOUtils.readString(inputStream); // String path
         long time = ReadWriteIOUtils.readLong(inputStream);
-        endTimes[i] = time;
+        endTimesArray[i] = time;
       }
-      this.startTimes = startTimes;
-      this.endTimes = endTimes;
-      this.deviceToIndex = deviceToIndex;
+      this.startTimes = startTimesArray;
+      this.endTimes = endTimesArray;
+      this.deviceToIndex = deviceMap;
 
       if (inputStream.available() > 0) {
         int versionSize = ReadWriteIOUtils.readInt(inputStream);
@@ -394,8 +394,8 @@ public class TsFileResource {
       index = deviceToIndex.size();
       deviceToIndex.put(deviceId, index);
       if (startTimes.length <= index) {
-        enLargeArray(startTimes);
-        enLargeArray(endTimes);
+        startTimes = enLargeArray(startTimes);
+        endTimes = enLargeArray(endTimes);
       }
     }
     startTimes[index] = startTime;
@@ -410,17 +410,17 @@ public class TsFileResource {
       index = deviceToIndex.size();
       deviceToIndex.put(deviceId, index);
       if (endTimes.length <= index) {
-        enLargeArray(startTimes);
-        enLargeArray(endTimes);
+        startTimes = enLargeArray(startTimes);
+        endTimes = enLargeArray(endTimes);
       }
     }
     endTimes[index] = endTime;
   }
 
-  private void enLargeArray(long[] array) {
+  private long[] enLargeArray(long[] array) {
     long[] tmp = new long[array.length * 2];
     System.arraycopy(array, 0, tmp, 0, array.length);
-    array = tmp;
+    return tmp;
   }
 
   public Map<String, Integer> getDeviceToIndexMap() {
