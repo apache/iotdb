@@ -54,6 +54,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -220,7 +221,7 @@ public class ClientMain {
   @SuppressWarnings({"java:S2095", "resource"}) // the transport is used later
   private static Client getClient(String ip, int port) throws TTransportException {
     TSIService.Client.Factory factory = new Factory();
-    TTransport transport = new TFramedTransport(new TSocket(ip, port));
+    TTransport transport = new TFastFramedTransport(new TSocket(ip, port));
     transport.open();
     return factory.getClient(new TCompactProtocol(transport));
   }

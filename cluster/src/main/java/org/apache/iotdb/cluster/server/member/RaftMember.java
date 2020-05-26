@@ -20,12 +20,12 @@
 package org.apache.iotdb.cluster.server.member;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.ClientPool;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
@@ -67,12 +68,13 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
-import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
-import org.apache.iotdb.cluster.utils.nodetool.function.Status;
 import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
@@ -85,6 +87,7 @@ import org.slf4j.LoggerFactory;
  * RaftMember process the common raft logic like leader election, log appending, catch-up and so
  * on.
  */
+@SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember implements RaftService.AsyncIface {
 
   /**
@@ -102,16 +105,16 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
   protected Node thisNode;
   // the nodes known by this node
-  protected volatile List<Node> allNodes;
-  protected volatile Map<Node, Peer> peerMap;
+  protected List<Node> allNodes;
+  protected Map<Node, Peer> peerMap;
 
   // the current term of the node, this object also works as lock of some transactions of the
   // member like elections
   AtomicLong term = new AtomicLong(0);
   volatile NodeCharacter character = NodeCharacter.ELECTOR;
   volatile Node leader;
-  final Object waitLeaderCondition = new Object();
   volatile Node voteFor;
+  final Object waitLeaderCondition = new Object();
   volatile long lastHeartbeatReceivedTime;
 
   // the raft logs are all stored and maintained in the log manager
@@ -232,8 +235,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         response.setTerm(Response.RESPONSE_AGREE);
         // tell the leader who I am in case of catch-up
         response.setFollower(thisNode);
-        // TODO-CLuster: the log being sent should be chosen wisely instead of the last log, so that
-        //  the leader would be able to find the last match log
         synchronized (logManager) {
           response.setLastLogIndex(logManager.getLastLogIndex());
           response.setLastLogTerm(logManager.getLastLogTerm());
@@ -411,7 +412,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
 
     try {
-      long response = 0;
+      long response;
       List<Log> logs = new ArrayList<>();
       for (ByteBuffer buffer : request.getEntries()) {
         Log log = LogParser.getINSTANCE().parse(buffer);
@@ -558,30 +559,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // synchronized: avoid concurrent modification
       synchronized (allNodes) {
         for (Node node : allNodes) {
-          if (node.equals(thisNode)) {
-            continue;
-          }
-          Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
-          if (!peer.isCatchUp()) {
-            logger.warn("{} can't append log to node {} because it needs catchUp", name, node);
-            continue;
-          }
-          AsyncClient client = connectNode(node);
-          if (client != null) {
-            AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-            handler.setReceiver(node);
-            handler.setVoteCounter(voteCounter);
-            handler.setLeaderShipStale(leaderShipStale);
-            handler.setLog(log);
-            handler.setPeer(peer);
-            handler.setReceiverTerm(newLeaderTerm);
-            try {
-              client.appendEntry(request, handler);
-              logger.debug("{} sending a log to {}: {}", name, node, log);
-            } catch (Exception e) {
-              logger.warn("{} cannot append log to node {}", name, node, e);
-            }
-          }
+          sendLogToFollower(log, voteCounter, node, leaderShipStale, newLeaderTerm, request);
         }
       }
 
@@ -605,6 +583,34 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
 
     return AppendLogResult.OK;
+  }
+
+  private void sendLogToFollower(Log log, AtomicInteger voteCounter, Node node,
+      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request) {
+    if (node.equals(thisNode)) {
+      return;
+    }
+    Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
+    if (!peer.isCatchUp()) {
+      logger.warn("{} can't append log to node {} because it needs catchUp", name, node);
+    } else {
+      AsyncClient client = connectNode(node);
+      if (client != null) {
+        AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+        handler.setReceiver(node);
+        handler.setVoteCounter(voteCounter);
+        handler.setLeaderShipStale(leaderShipStale);
+        handler.setLog(log);
+        handler.setPeer(peer);
+        handler.setReceiverTerm(newLeaderTerm);
+        try {
+          client.appendEntry(request, handler);
+          logger.debug("{} sending a log to {}: {}", name, node, log);
+        } catch (Exception e) {
+          logger.warn("{} cannot append log to node {}", name, node, e);
+        }
+      }
+    }
   }
 
   /**
@@ -883,21 +889,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return a TSStatus indicating if the forwarding is successful.
    */
   TSStatus forwardPlan(PhysicalPlan plan, AsyncClient client, Node receiver, Node header) {
-    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
     try {
-      plan.serialize(dataOutputStream);
-      AtomicReference<TSStatus> status = new AtomicReference<>();
-      ExecutNonQueryReq req = new ExecutNonQueryReq();
-      req.setPlanBytes(byteArrayOutputStream.toByteArray());
-      if (header != null) {
-        req.setHeader(header);
-      }
-      synchronized (status) {
-        client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
-        status.wait(RaftServer.getConnectionTimeoutInMS());
-      }
-      return status.get() == null ? StatusUtils.TIME_OUT : status.get();
+      TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
+      return tsStatus == null ? StatusUtils.TIME_OUT : tsStatus;
     } catch (IOException | TException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
       status.setMessage(e.getMessage());
@@ -946,7 +941,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       if (cause instanceof IoTDBException) {
         tsStatus.setCode(((IoTDBException) cause).getErrorCode());
       }
-      tsStatus.setMessage(cause.getMessage());
+      if (!(cause instanceof PathNotExistException) &&
+          !(cause instanceof StorageGroupNotSetException) &&
+          !(cause instanceof PathAlreadyExistException) &&
+          !(cause instanceof StorageGroupAlreadySetException)) {
+        logger.debug("{} cannot be executed because {}", plan, cause);
+      }
+      tsStatus.setMessage(cause.getClass().getName() + ":" + cause.getMessage());
       return tsStatus;
     }
     return null;
@@ -1072,7 +1073,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         synchronized (syncLock) {
           syncLock.wait(RaftServer.getHeartBeatIntervalMs());
         }
-      } catch (TException | InterruptedException e) {
+      } catch (TException e) {
+        logger.error("{}: Cannot request commit index from {}", name, leader, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
         logger.error("{}: Cannot request commit index from {}", name, leader, e);
       }
     }
@@ -1134,7 +1138,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     boolean fileExhausted = false;
     try (BufferedInputStream bufferedInputStream =
         new BufferedInputStream(new FileInputStream(file))) {
-      bufferedInputStream.skip(offset);
+      skipExactly(bufferedInputStream, offset);
       byte[] bytes = new byte[length];
       ByteBuffer result = ByteBuffer.wrap(bytes);
       int len = bufferedInputStream.read(bytes);
@@ -1147,7 +1151,17 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
 
     if (fileExhausted) {
-      file.delete();
+      try {
+        Files.delete(file.toPath());
+      } catch (IOException e) {
+        logger.warn("Cannot delete an exhausted file {}", filePath, e);
+      }
+    }
+  }
+
+  private void skipExactly(InputStream stream, long byteToSkip) throws IOException {
+    while (byteToSkip > 0) {
+      byteToSkip -= stream.skip(byteToSkip);
     }
   }
 
@@ -1210,6 +1224,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         try {
           waitLeaderCondition.wait(10);
         } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
           logger.error("Unexpected interruption when waiting for a leader to be elected", e);
         }
       }

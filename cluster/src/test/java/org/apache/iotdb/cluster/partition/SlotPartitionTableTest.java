@@ -100,11 +100,14 @@ public class SlotPartitionTableTest {
 
   private int prevReplicaNum;
   private boolean prevEnablePartition;
+  private long prevPartitionInterval;
 
   @Before
   public void setUp() throws MetadataException {
     prevEnablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+    prevPartitionInterval = StorageEngine.getTimePartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setEnablePartition(true);
+    StorageEngine.getInstance().setTimePartitionInterval(7 * 24 * 3600 * 1000L);
 
     MManager.getInstance().init();
     nodes = new ArrayList<>();
@@ -179,6 +182,7 @@ public class SlotPartitionTableTest {
       }
     }
     IoTDBDescriptor.getInstance().getConfig().setEnablePartition(prevEnablePartition);
+    StorageEngine.setTimePartitionInterval(prevPartitionInterval);
   }
 
   @Test

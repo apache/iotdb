@@ -58,11 +58,7 @@ public class DataLogApplier extends BaseApplier {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();
       if (plan instanceof InsertPlan || plan instanceof InsertTabletPlan) {
-        try {
-          applyInsert(plan);
-        } catch (StorageGroupNotSetException e) {
-          throw new QueryProcessException(e);
-        }
+        applyInsert(plan);
       } else {
         applyPhysicalPlan(plan);
       }
@@ -93,9 +89,9 @@ public class DataLogApplier extends BaseApplier {
         sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
         time = insertPlan.getTime();
       } else {
-        InsertTabletPlan InsertTabletPlan = (InsertTabletPlan) plan;
-        sg = MManager.getInstance().getStorageGroupName(InsertTabletPlan.getDeviceId());
-        time = InsertTabletPlan.getMinTime();
+        InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
+        sg = MManager.getInstance().getStorageGroupName(insertTabletPlan.getDeviceId());
+        time = insertTabletPlan.getMinTime();
       }
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
@@ -106,9 +102,9 @@ public class DataLogApplier extends BaseApplier {
         sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
         time = insertPlan.getTime();
       } else {
-        InsertTabletPlan InsertTabletPlan = (InsertTabletPlan) plan;
-        sg = MManager.getInstance().getStorageGroupName(InsertTabletPlan.getDeviceId());
-        time = InsertTabletPlan.getMinTime();
+        InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
+        sg = MManager.getInstance().getStorageGroupName(insertTabletPlan.getDeviceId());
+        time = insertTabletPlan.getMinTime();
       }
     }
     int slotId = PartitionUtils.calculateStorageGroupSlotByTime(sg, time, ClusterConstant.SLOT_NUM);

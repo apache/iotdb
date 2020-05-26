@@ -183,7 +183,7 @@ public class CommittedEntryManager {
    * @throws TruncateCommittedEntryException
    */
   public void append(List<Log> appendingEntries) throws TruncateCommittedEntryException {
-    if (appendingEntries.size() == 0) {
+    if (appendingEntries.isEmpty()) {
       return;
     }
     long offset = appendingEntries.get(0).getCurrLogIndex() - getDummyIndex();

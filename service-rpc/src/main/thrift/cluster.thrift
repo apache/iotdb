@@ -271,6 +271,11 @@ service RaftService {
   **/
   long requestCommitIndex(1:Node header)
 
+  /**
+  * Read a chunk of a file from the client. If the remaining of the file does not have enough
+  * bytes, only the remaining will be returned.
+  * Notice that when the last chunk of the file is read, the file will be deleted immediately.
+  **/
   binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
 
   /**

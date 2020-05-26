@@ -90,7 +90,8 @@ public class RemoteTsFileResource extends TsFileResource {
     try {
       dataOutputStream.writeInt(md5.length);
       dataOutputStream.write(md5);
-      //TODO getPath() may return an absolute path
+      // the path here is only for the remote node to get a download link, so it does not matter
+      // if it is absolute
       SerializeUtils.serialize(getFile().getPath(), dataOutputStream);
       Map<String, Long> startTimeMap = getStartTimeMap();
       Map<String, Long> endTimeMap = getEndTimeMap();

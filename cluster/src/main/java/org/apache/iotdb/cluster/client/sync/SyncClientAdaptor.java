@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -47,8 +48,11 @@ import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
+import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -273,5 +277,26 @@ public class SyncClientAdaptor {
       resultRef.wait(RaftServer.getQueryTimeoutInSec() * 1000L);
     }
     return resultRef.get();
+  }
+
+  public static TSStatus executeNonQuery(AsyncClient client, PhysicalPlan plan, Node header,
+      Node receiver) throws IOException, TException, InterruptedException {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    plan.serialize(dataOutputStream);
+
+    AtomicReference<TSStatus> status = new AtomicReference<>();
+    ExecutNonQueryReq req = new ExecutNonQueryReq();
+    req.setPlanBytes(byteArrayOutputStream.toByteArray());
+    if (header != null) {
+      req.setHeader(header);
+    }
+
+    synchronized (status) {
+      client.executeNonQueryPlan(req, new ForwardPlanHandler(status, plan, receiver));
+      status.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+
+    return status.get();
   }
 }

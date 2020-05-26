@@ -266,7 +266,7 @@ public class RaftLogManager {
    * @return the newly generated lastIndex
    */
   public long append(List<Log> entries) {
-    if (entries.size() == 0) {
+    if (entries.isEmpty()) {
       return getLastLogIndex();
     }
     long after = entries.get(0).getCurrLogIndex();
@@ -303,7 +303,7 @@ public class RaftLogManager {
    * @return true or false
    */
   public boolean maybeCommit(long leaderCommit, long term) {
-    if (leaderCommit > commitIndex && matchTerm(leaderCommit, term)) {
+    if (leaderCommit > commitIndex && matchTerm(term, leaderCommit)) {
       try {
         commitTo(leaderCommit, true);
       } catch (LogExecutionException e) {
@@ -391,9 +391,10 @@ public class RaftLogManager {
    */
   public void commitTo(long newCommitIndex, boolean ignoreExecutionExceptions) throws LogExecutionException {
     if (commitIndex < newCommitIndex) {
+      long lo = unCommittedEntryManager.getFirstUnCommittedIndex();
+      long hi = newCommitIndex + 1;
       List<Log> entries = new ArrayList<>(unCommittedEntryManager
-          .getEntries(unCommittedEntryManager.getFirstUnCommittedIndex(),
-              newCommitIndex + 1));
+          .getEntries(lo, hi));
       if (!entries.isEmpty()) {
         if (getCommitLogIndex() >= entries.get(0).getCurrLogIndex()) {
           entries
@@ -444,12 +445,10 @@ public class RaftLogManager {
       try {
         logApplier.apply(entry);
       } catch (Exception e) {
-        if (!(e.getCause() instanceof PathAlreadyExistException)) {
-          if (ignoreExecutionException) {
-            logger.error("Cannot apply a log {} in snapshot, ignored", entry, e);
-          } else {
-            throw new LogExecutionException(e);
-          }
+        if (ignoreExecutionException) {
+          logger.error("Cannot apply a log {} in snapshot, ignored", entry, e);
+        } else {
+          throw new LogExecutionException(e);
         }
       }
     }

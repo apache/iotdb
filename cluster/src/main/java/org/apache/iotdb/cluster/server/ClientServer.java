@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.cluster.server;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -40,7 +36,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.ClusterPlanner;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -53,12 +48,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.TSServiceImpl;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -69,11 +60,12 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.ServerContext;
-import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TServerEventHandler;
+import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TFastFramedTransport;
-import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TServerSocket;
+import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -107,7 +99,7 @@ public class ClientServer extends TSServiceImpl {
   /**
    * The socket poolServer will listen to. Async service requires nonblocking socket
    */
-  private TNonblockingServerSocket serverTransport;
+  private TServerTransport serverTransport;
 
   /**
    * queryId -> queryContext map. When a query ends either normally or accidentally, the resources
@@ -144,15 +136,15 @@ public class ClientServer extends TSServiceImpl {
     } else {
       protocolFactory = new TBinaryProtocol.Factory();
     }
-    serverTransport = new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
+    serverTransport = new TServerSocket(new InetSocketAddress(config.getLocalIP(),
         config.getLocalClientPort()));
     // async service also requires nonblocking server, and HsHaServer is basically more efficient a
     // nonblocking server
-    THsHaServer.Args poolArgs =
-        new THsHaServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
+    TThreadPoolServer.Args poolArgs =
+        new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
             getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1);
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
-        poolArgs.maxWorkerThreads, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
+        poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
         new SynchronousQueue<>(), new ThreadFactory() {
       private AtomicLong threadIndex = new AtomicLong(0);
 
@@ -167,7 +159,7 @@ public class ClientServer extends TSServiceImpl {
     // nonblocking server requests FramedTransport
     poolArgs.transportFactory(new TFastFramedTransport.Factory());
 
-    poolServer = new THsHaServer(poolArgs);
+    poolServer = new TThreadPoolServer(poolArgs);
     // mainly for handling client exit events
     poolServer.setServerEventHandler(new EventHandler());
 
@@ -198,9 +190,7 @@ public class ClientServer extends TSServiceImpl {
    */
   @Override
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-      TSStatus validateResult = metaGroupMember.validatePlan(plan);
-      return validateResult == StatusUtils.OK ? metaGroupMember.executeNonQuery(plan)
-          : validateResult;
+      return metaGroupMember.executeNonQuery(plan);
   }
 
 

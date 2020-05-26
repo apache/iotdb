@@ -54,7 +54,6 @@ import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -71,7 +70,6 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   // key: the header of a data group, value: the member representing this node in this group but
   // it is out of service because another node has joined the group and expelled this node, or
   // the node itself is removed, but it is still stored to provide snapshot for other nodes
-  // TODO-Cluster: recover stopped members if there are unfinished data pulling
   private StoppedMemberManager stoppedMemberManager;
   private PartitionTable partitionTable;
   private DataGroupMember.Factory dataMemberFactory;
