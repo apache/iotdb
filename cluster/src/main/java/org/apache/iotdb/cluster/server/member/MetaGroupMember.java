@@ -908,8 +908,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     synchronized (logManager) {
       AddNodeLog addNodeLog = new AddNodeLog();
       addNodeLog.setCurrLogTerm(getTerm().get());
-      addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
-      addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
       addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       addNodeLog.setNewNode(node);
@@ -2604,8 +2602,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     synchronized (logManager) {
       RemoveNodeLog removeNodeLog = new RemoveNodeLog();
       removeNodeLog.setCurrLogTerm(getTerm().get());
-      removeNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
-      removeNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
       removeNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       removeNodeLog.setRemovedNode(target);

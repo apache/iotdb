@@ -102,8 +102,6 @@ public class SnapshotCatchUpTaskTest {
       Log log = new TestLog();
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
-      log.setPreviousLogIndex(i - 1L);
-      log.setPreviousLogTerm(i - 1L);
       logList.add(log);
     }
     Snapshot snapshot = new TestSnapshot(9989);

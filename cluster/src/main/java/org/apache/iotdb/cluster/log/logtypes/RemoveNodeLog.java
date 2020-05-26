@@ -38,8 +38,6 @@ public class RemoveNodeLog extends Log {
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
         try {
             dataOutputStream.writeByte(Types.REMOVE_NODE.ordinal());
-            dataOutputStream.writeLong(getPreviousLogIndex());
-            dataOutputStream.writeLong(getPreviousLogTerm());
             dataOutputStream.writeLong(getCurrLogIndex());
             dataOutputStream.writeLong(getCurrLogTerm());
         } catch (IOException e) {
@@ -51,8 +49,6 @@ public class RemoveNodeLog extends Log {
 
     @Override
     public void deserialize(ByteBuffer buffer) {
-        setPreviousLogIndex(buffer.getLong());
-        setPreviousLogTerm(buffer.getLong());
         setCurrLogIndex(buffer.getLong());
         setCurrLogTerm(buffer.getLong());
 

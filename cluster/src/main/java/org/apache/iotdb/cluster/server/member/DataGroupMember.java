@@ -942,8 +942,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
-      log.setPreviousLogIndex(logManager.getLastLogIndex());
-      log.setPreviousLogTerm(logManager.getLastLogTerm());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       logManager.append(log);

@@ -33,7 +33,6 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -112,7 +111,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -860,8 +858,6 @@ public class MetaGroupMemberTest extends MemberTest {
     CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
     log.setCurrLogIndex(0);
     log.setCurrLogTerm(0);
-    log.setPreviousLogIndex(-1);
-    log.setPreviousLogTerm(-1);
     AppendEntryRequest request = new AppendEntryRequest();
     request.setEntry(log.serialize());
     request.setTerm(0);

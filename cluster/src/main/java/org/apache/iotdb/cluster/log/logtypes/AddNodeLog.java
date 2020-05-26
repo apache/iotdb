@@ -44,10 +44,10 @@ public class AddNodeLog extends Log {
   public ByteBuffer serialize() {
     byte[] ipBytes = newNode.getIp().getBytes();
 
-    // marker(byte), previous index(long), previous term(long), curr index(long), curr term(long)
+    // marker(byte), curr index(long), curr term(long)
     // ipLength(int), ipBytes(byte[]), port(int), identifier(int), dataPort(int)
     int totalSize =
-        Byte.BYTES + Long.BYTES + Long.BYTES + Long.BYTES + Long.BYTES +
+        Byte.BYTES + Long.BYTES + Long.BYTES +
             Integer.BYTES + ipBytes.length + Integer.BYTES + Integer.BYTES + Integer.BYTES;
     byte[] buffer = new byte[totalSize];
 
@@ -55,8 +55,6 @@ public class AddNodeLog extends Log {
 
     byteBuffer.put((byte) Types.ADD_NODE.ordinal());
 
-    byteBuffer.putLong(getPreviousLogIndex());
-    byteBuffer.putLong(getPreviousLogTerm());
     byteBuffer.putLong(getCurrLogIndex());
     byteBuffer.putLong(getCurrLogTerm());
 
@@ -74,10 +72,8 @@ public class AddNodeLog extends Log {
   public void deserialize(ByteBuffer buffer) {
 
     // marker is previously read, remaining fields:
-    // previous index(long), previous term(long), curr index(long), curr term(long)
+    // curr index(long), curr term(long)
     // ipLength(int), inBytes(byte[]), port(int), identifier(int), dataPort(int)
-    setPreviousLogIndex(buffer.getLong());
-    setPreviousLogTerm(buffer.getLong());
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
 

@@ -22,18 +22,15 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /**
- * Log records operations that are made on this cluster. Each log records 4 longs: currLogIndex
- * (may be replaced by previousLogIndex + 1), currLogTerm, previousLogIndex, previousLogTerm, so
- * that the logs in a cluster will form a log chain and abnormal operations can thus be
- * distinguished and removed.
+ * Log records operations that are made on this cluster. Each log records 2 longs: currLogIndex, currLogTerm, so that the
+ * logs in a cluster will form a log chain and abnormal operations can thus be distinguished and
+ * removed.
  */
 public abstract class Log {
 
   protected static final int DEFAULT_BUFFER_SIZE = 4096;
   private long currLogIndex;
   private long currLogTerm;
-  private long previousLogIndex;
-  private long previousLogTerm;
 
   public abstract ByteBuffer serialize();
 
@@ -42,22 +39,6 @@ public abstract class Log {
   public enum Types {
     // DO CHECK LogParser when you add a new type of log
     ADD_NODE, PHYSICAL_PLAN, CLOSE_FILE, REMOVE_NODE, EMPTY_CONTENT
-  }
-
-  public long getPreviousLogIndex() {
-    return previousLogIndex;
-  }
-
-  public void setPreviousLogIndex(long previousLogIndex) {
-    this.previousLogIndex = previousLogIndex;
-  }
-
-  public long getPreviousLogTerm() {
-    return previousLogTerm;
-  }
-
-  public void setPreviousLogTerm(long previousLogTerm) {
-    this.previousLogTerm = previousLogTerm;
   }
 
   public long getCurrLogIndex() {
@@ -86,13 +67,11 @@ public abstract class Log {
     }
     Log log = (Log) o;
     return currLogIndex == log.currLogIndex &&
-        currLogTerm == log.currLogTerm &&
-        previousLogIndex == log.previousLogIndex &&
-        previousLogTerm == log.previousLogTerm;
+        currLogTerm == log.currLogTerm;
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(currLogIndex, currLogTerm, previousLogIndex, previousLogTerm);
+    return Objects.hash(currLogIndex, currLogTerm);
   }
 }

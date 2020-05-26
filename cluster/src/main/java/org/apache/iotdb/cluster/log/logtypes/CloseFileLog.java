@@ -52,8 +52,6 @@ public class CloseFileLog extends Log {
     try {
       dataOutputStream.writeByte((byte) CLOSE_FILE.ordinal());
 
-      dataOutputStream.writeLong(getPreviousLogIndex());
-      dataOutputStream.writeLong(getPreviousLogTerm());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
 
@@ -71,8 +69,6 @@ public class CloseFileLog extends Log {
   @Override
   public void deserialize(ByteBuffer buffer) {
 
-    setPreviousLogIndex(buffer.getLong());
-    setPreviousLogTerm(buffer.getLong());
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
 

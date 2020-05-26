@@ -71,8 +71,6 @@ public class TestUtils {
       log.setNewNode(getNode(i));
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
-      log.setPreviousLogIndex(i - 1L);
-      log.setPreviousLogTerm(i - 1L);
       logList.add(log);
     }
     return logList;
@@ -87,7 +85,7 @@ public class TestUtils {
         .setReplicationNumber(ClusterDescriptor.getInstance().getConfig().getReplicationNum());
     List<String> seedUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
     List<Node> seedNodeList = new ArrayList<>();
-    for(int i = 0; i < 100; i+= 10){
+    for (int i = 0; i < 100; i += 10) {
       seedNodeList.add(getNode(i));
     }
     startUpStatus.setSeedNodeList(seedNodeList);
@@ -100,8 +98,6 @@ public class TestUtils {
       Log log = new TestLog();
       log.setCurrLogIndex(i);
       log.setCurrLogTerm(i);
-      log.setPreviousLogIndex(i - 1L);
-      log.setPreviousLogTerm(i - 1L);
       logList.add(log);
     }
     return logList;

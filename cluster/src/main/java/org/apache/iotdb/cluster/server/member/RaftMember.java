@@ -931,8 +931,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     // assign term and index to the new log and append it
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
-      log.setPreviousLogIndex(logManager.getLastLogIndex());
-      log.setPreviousLogTerm(logManager.getLastLogTerm());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       log.setPlan(plan);

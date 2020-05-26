@@ -29,41 +29,36 @@ import org.apache.iotdb.cluster.log.Log;
 
 public class EmptyContentLog extends Log {
 
-	public EmptyContentLog() {
-	}
+  public EmptyContentLog() {
+  }
 
-	public EmptyContentLog(long index, long term) {
-		this.setCurrLogIndex(index);
-		this.setCurrLogTerm(term);
-	}
+  public EmptyContentLog(long index, long term) {
+    this.setCurrLogIndex(index);
+    this.setCurrLogTerm(term);
+  }
 
-	@Override
-	public ByteBuffer serialize() {
-		ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
-		DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-		try {
-			dataOutputStream.writeByte((byte) EMPTY_CONTENT.ordinal());
-			dataOutputStream.writeLong(getPreviousLogIndex());
-			dataOutputStream.writeLong(getPreviousLogTerm());
-			dataOutputStream.writeLong(getCurrLogIndex());
-			dataOutputStream.writeLong(getCurrLogTerm());
-		} catch (IOException e) {
-			// unreachable
-		}
-		return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
-	}
+  @Override
+  public ByteBuffer serialize() {
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    try {
+      dataOutputStream.writeByte((byte) EMPTY_CONTENT.ordinal());
+      dataOutputStream.writeLong(getCurrLogIndex());
+      dataOutputStream.writeLong(getCurrLogTerm());
+    } catch (IOException e) {
+      // unreachable
+    }
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
 
-	@Override
-	public void deserialize(ByteBuffer buffer) {
-		setPreviousLogIndex(buffer.getLong());
-		setPreviousLogTerm(buffer.getLong());
-		setCurrLogIndex(buffer.getLong());
-		setCurrLogTerm(buffer.getLong());
-	}
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    setCurrLogIndex(buffer.getLong());
+    setCurrLogTerm(buffer.getLong());
+  }
 
-	@Override
-	public String toString() {
-		return "term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex() +
-				",prevTerm:" + getPreviousLogTerm() + ",prevIndex:" + getPreviousLogIndex();
-	}
+  @Override
+  public String toString() {
+    return "term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
+  }
 }
