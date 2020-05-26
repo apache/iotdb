@@ -363,17 +363,17 @@ public class IoTDBConfig {
   private boolean enableAutoCreateSchema = true;
 
   /**
-   * when receive boolean string "true" or "false", we register the time series as BOOLEAN type
+   * register time series as which type when receiving boolean string "true" or "false"
    */
   private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
 
   /**
-   * when receive an integer string "67", we register the time series as INT32 type
+   * register time series as which type when receiving an integer string "67"
    */
   private TSDataType integerStringInferType = TSDataType.FLOAT;
 
   /**
-   * when receive a floating number string "6.7", we register the time series as FLOAT type
+   * register time series as which type when receiving a floating number string "6.7"
    */
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
 
