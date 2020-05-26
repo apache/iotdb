@@ -19,10 +19,18 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
 
 public class TypeInferenceUtils {
+
+  private static TSDataType booleanStringInferType = IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType();
+
+  private static TSDataType integerStringInferType = IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
+
+  private static TSDataType floatingStringInferType = IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
   private TypeInferenceUtils() {
 
@@ -46,17 +54,34 @@ public class TypeInferenceUtils {
    * Get predicted DataType of the given value
    */
   public static TSDataType getPredictedDataType(Object value) {
-    if (value instanceof Boolean || (value instanceof String && isBoolean((String) value))) {
-      return TSDataType.BOOLEAN;
-    } else if (value instanceof Number || (value instanceof String && isNumber((String) value))) {
-      String v = String.valueOf(value);
-      if (!v.contains(".")) {
-        return TSDataType.INT64;
+
+    if (value instanceof String) {
+      String strValue = (String) value;
+      if (isBoolean(strValue)) {
+        return booleanStringInferType;
+      } else if (isNumber(strValue)){
+        if (!strValue.contains(".")) {
+          return integerStringInferType;
+        } else {
+          return floatingStringInferType;
+        }
       } else {
-        return TSDataType.DOUBLE;
+        return TSDataType.TEXT;
       }
-    } else {
+    } else if (value instanceof Boolean) {
+      return TSDataType.BOOLEAN;
+    } else if (value instanceof Integer) {
+      return TSDataType.INT32;
+    } else if (value instanceof Long) {
+      return TSDataType.INT64;
+    } else if (value instanceof Float) {
+      return TSDataType.FLOAT;
+    } else if (value instanceof Double) {
+      return TSDataType.DOUBLE;
+    } else if (value instanceof Binary) {
       return TSDataType.TEXT;
     }
+
+    return TSDataType.TEXT;
   }
 }
