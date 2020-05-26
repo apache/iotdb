@@ -269,8 +269,6 @@ In group by fill, sliding step is not supported in group by clause
 
 Now, only last_value aggregation function is supported in group by fill.
 
-There is no limit about time in group by fill.
-
 Linear fill is not supported in group by fill.
 
 
