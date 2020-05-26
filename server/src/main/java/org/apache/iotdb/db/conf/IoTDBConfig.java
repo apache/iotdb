@@ -112,16 +112,6 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /**
-   * JMX user name
-   */
-  private String jmxUser = "admin";
-
-  /**
-   * JMX user password
-   */
-  private String jmxPassword = "password";
-
-  /**
    * Memory allocated for the read process
    */
   private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
@@ -704,22 +694,6 @@ public class IoTDBConfig {
 
   public void setEnableMetricService(boolean enableMetricService) {
     this.enableMetricService = enableMetricService;
-  }
-
-  public String getJmxUser() {
-    return jmxUser;
-  }
-
-  public void setJmxUser(String jmxUser) {
-    this.jmxUser = jmxUser;
-  }
-
-  public String getJmxPassword() {
-    return jmxPassword;
-  }
-
-  public void setJmxPassword(String jmxPassword) {
-    this.jmxPassword = jmxPassword;
   }
 
   void setDataDirs(String[] dataDirs) {
