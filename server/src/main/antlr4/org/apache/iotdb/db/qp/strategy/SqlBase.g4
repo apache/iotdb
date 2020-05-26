@@ -945,6 +945,7 @@ NAME_CHAR
     |   '$'
     |   '%'
     |   '&'
+    |   '+'
     |   CN_CHAR
     ;
 
@@ -960,6 +961,7 @@ FIRST_NAME_CHAR
     |   '$'
     |   '%'
     |   '&'
+    |   '+'
     |   CN_CHAR
     ;
 
