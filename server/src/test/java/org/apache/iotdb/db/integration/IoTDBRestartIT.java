@@ -45,7 +45,7 @@ public class IoTDBRestartIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
         Statement statement = connection.createStatement()){
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1)");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(1,1.0)");
       statement.execute("flush");
     }
 
@@ -55,7 +55,7 @@ public class IoTDBRestartIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
         Statement statement = connection.createStatement()){
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,1)");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,1.0)");
     }
 
     EnvironmentUtils.restartDaemon();
@@ -64,14 +64,14 @@ public class IoTDBRestartIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");
         Statement statement = connection.createStatement()){
-      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,1)");
+      statement.execute("insert into root.turbine.d1(timestamp,s1) values(3,1.0)");
 
       boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
       assertTrue(hasResultSet);
       String[] exp = new String[]{
-          "1,1",
-          "2,1",
-          "3,1"
+          "1,1.0",
+          "2,1.0",
+          "3,1.0"
       };
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -112,8 +112,8 @@ public class IoTDBRestartIT {
       boolean hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
       assertTrue(hasResultSet);
       String[] exp = new String[]{
-          "2,2",
-          "3,3"
+          "2,2.0",
+          "3,3.0"
       };
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -129,7 +129,7 @@ public class IoTDBRestartIT {
       hasResultSet = statement.execute("SELECT s1 FROM root.turbine.d1");
       assertTrue(hasResultSet);
       exp = new String[]{
-          "3,3"
+          "3,3.0"
       };
       resultSet = statement.getResultSet();
       cnt = 0;

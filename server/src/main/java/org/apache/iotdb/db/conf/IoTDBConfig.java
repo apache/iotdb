@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
@@ -350,6 +351,21 @@ public class IoTDBConfig {
    * Switch of creating schema automatically
    */
   private boolean enableAutoCreateSchema = true;
+
+  /**
+   * register time series as which type when receiving boolean string "true" or "false"
+   */
+  private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
+
+  /**
+   * register time series as which type when receiving an integer string "67"
+   */
+  private TSDataType integerStringInferType = TSDataType.FLOAT;
+
+  /**
+   * register time series as which type when receiving a floating number string "6.7"
+   */
+  private TSDataType floatingStringInferType = TSDataType.FLOAT;
 
   /**
    * Storage group level when creating schema automatically is enabled
@@ -1223,6 +1239,33 @@ public class IoTDBConfig {
 
   public void setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     this.enableAutoCreateSchema = enableAutoCreateSchema;
+  }
+
+  public TSDataType getBooleanStringInferType() {
+    return booleanStringInferType;
+  }
+
+  public void setBooleanStringInferType(
+      TSDataType booleanStringInferType) {
+    this.booleanStringInferType = booleanStringInferType;
+  }
+
+  public TSDataType getIntegerStringInferType() {
+    return integerStringInferType;
+  }
+
+  public void setIntegerStringInferType(
+      TSDataType integerStringInferType) {
+    this.integerStringInferType = integerStringInferType;
+  }
+
+  public TSDataType getFloatingStringInferType() {
+    return floatingStringInferType;
+  }
+
+  public void setFloatingStringInferType(
+      TSDataType floatingNumberStringInferType) {
+    this.floatingStringInferType = floatingNumberStringInferType;
   }
 
   public int getDefaultStorageGroupLevel() {
