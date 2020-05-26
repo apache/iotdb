@@ -31,7 +31,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.interfaces.RSAPublicKey;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+import java.util.UUID;
 
 /**
  * Uses an OpenID Connect provider for Authorization / Authentication.
@@ -52,7 +56,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
         this(config.getOpenIdProviderUrl());
     }
 
-    OpenIdAuthorizer(JSONObject jwk) throws AuthException, URISyntaxException, ParseException, IOException {
+    OpenIdAuthorizer(JSONObject jwk) throws AuthException {
         super(new LocalFileUserManager(config.getSystemDir() + File.separator + "users"),
                 new LocalFileRoleManager(config.getSystemDir() + File.separator + "roles"));
         try {
@@ -72,14 +76,14 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
             throw new IllegalArgumentException("OpenID Connect Provider URI must be given!");
         }
 
-        //
+        // Fetch Metadata
         OIDCProviderMetadata providerMetadata = fetchMetadata(providerUrl);
 
-        System.out.println(providerMetadata);
+        logger.debug("Using Provider Metadata: {}", providerMetadata);
 
         try {
             URL url = new URI(providerMetadata.getJWKSetURI().toString().replace("http", "https")).toURL();
-            System.out.println("Using url " + url);
+            logger.debug("Using url {}", url);
             return getProviderRSAJWK(url.openStream());
         } catch (IOException e) {
             throw new AuthException("Unable to start the Auth", e);
@@ -157,7 +161,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
         return true;
     }
 
-    private Claims validateToken(String token) throws JwtException {
+    private Claims validateToken(String token) {
         return Jwts
                 .parser()
                 // Basically ignore the Expiration Date, if there is any???
@@ -178,12 +182,16 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
     @Override
     public void createUser(String username, String password) throws AuthException {
+        throwUnsupportedOperationException();
+    }
+
+    private void throwUnsupportedOperationException() {
         throw new UnsupportedOperationException("This operation is not supported for JWT Auth Provider!");
     }
 
     @Override
     public void deleteUser(String username) throws AuthException {
-        throw new UnsupportedOperationException("This operation is not supported for JWT Auth Provider!");
+        throwUnsupportedOperationException();
     }
 
     /**
@@ -242,7 +250,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
     @Override
     public void updateUserPassword(String username, String newPassword) throws AuthException {
-        throw new UnsupportedOperationException("This operation is not supported for JWT Auth Provider!");
+        throwUnsupportedOperationException();
     }
 
 }

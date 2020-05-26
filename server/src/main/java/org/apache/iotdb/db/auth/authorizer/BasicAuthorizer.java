@@ -18,16 +18,12 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.IRoleManager;
 import org.apache.iotdb.db.auth.user.IUserManager;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -36,6 +32,10 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
@@ -83,12 +83,12 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
         try {
           c = (Class<BasicAuthorizer>) Class.forName(IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
           logger.info("Authorizer provider class: {}", IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
-          instance = c.newInstance();
+          instance = c.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
           logger.error("Authorizer initialization failed due to ", e);
           instance = null;
           //startup failed.
-          throw new RuntimeException(e);
+          throw new IllegalStateException("Authorizer could not be initialized!", e);
         }
     }
   }
