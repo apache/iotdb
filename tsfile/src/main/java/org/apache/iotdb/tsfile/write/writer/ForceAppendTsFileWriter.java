@@ -72,7 +72,7 @@ public class ForceAppendTsFileWriter extends TsFileIOWriter {
       for (String device : devices) {
         List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
         reader.readChunkMetadataInDevice(device).values()
-            .forEach(list -> chunkMetadataList.addAll(list));            
+            .forEach(chunkMetadataList::addAll);          
         ChunkGroupMetadata chunkGroupMetadata = new ChunkGroupMetadata(device, chunkMetadataList);
         chunkGroupMetadataList.add(chunkGroupMetadata);
       }
