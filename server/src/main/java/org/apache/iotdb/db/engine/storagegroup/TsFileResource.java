@@ -419,6 +419,7 @@ public class TsFileResource {
 
   private long[] enLargeArray(long[] array) {
     long[] tmp = new long[array.length * 2];
+    initTimes(tmp);
     System.arraycopy(array, 0, tmp, 0, array.length);
     return tmp;
   }
