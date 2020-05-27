@@ -321,7 +321,8 @@ public class StorageGroupProcessor {
       Map<String, Long> endTimeMap = new HashMap<>();
       for (Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
         String deviceId = entry.getKey();
-        long endTime = resource.getEndTime(deviceId);
+        int index = entry.getValue();
+        long endTime = resource.getEndTime(index);
         endTimeMap.put(deviceId, endTime);
       }
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>())
@@ -352,14 +353,15 @@ public class StorageGroupProcessor {
     for (TsFileResource resource : upgradeSeqFileList) {
       for (Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {
         String deviceId = entry.getKey();
-        long endTime = resource.getEndTime(deviceId);
+        int index = entry.getValue();
+        long endTime = resource.getEndTime(index);
         long endTimePartitionId = StorageEngine.getTimePartition(endTime);
         latestTimeForEachDevice.computeIfAbsent(endTimePartitionId, l -> new HashMap<>())
                 .put(deviceId, endTime);
         globalLatestFlushedTimeForEachDevice.put(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime to Long.MAX_VALUE
-        long partitionId = StorageEngine.getTimePartition(resource.getStartTime(deviceId));
+        long partitionId = StorageEngine.getTimePartition(resource.getStartTime(index));
         while (partitionId <= endTimePartitionId) {
           partitionLatestFlushedTimeForEachDevice.computeIfAbsent(partitionId, l -> new HashMap<>())
                   .put(deviceId, Long.MAX_VALUE);
@@ -1503,7 +1505,7 @@ public class StorageGroupProcessor {
       long partitionId = resource.getTimePartition();
       resource.getDeviceToIndexMap().forEach((device, index) -> 
         updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, 
-            resource.getEndTime(device))
+            resource.getEndTime(index))
       );
     }
     insertLock.writeLock().lock();
@@ -1997,7 +1999,8 @@ public class StorageGroupProcessor {
   private void updateLatestTimeMap(TsFileResource newTsFileResource) {
     for (Entry<String, Integer> entry : newTsFileResource.getDeviceToIndexMap().entrySet()) {
       String device = entry.getKey();
-      long endTime = newTsFileResource.getEndTime(device);
+      int index = entry.getValue();
+      long endTime = newTsFileResource.getEndTime(index);
       long timePartitionId = StorageEngine.getTimePartition(endTime);
       if (!latestTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>())
           .containsKey(device)

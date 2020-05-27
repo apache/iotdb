@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -237,9 +238,7 @@ public class TsFileResource {
   }
 
   private void initTimes(long[] times) {
-    for (int i = 0; i < times.length; i++) {
-      times[i] = -1;
-    }
+    Arrays.fill(times, -1);
   }
 
   public void serialize() throws IOException {
@@ -370,6 +369,10 @@ public class TsFileResource {
     return startTimes[deviceToIndex.get(deviceId)];
   }
 
+  public long getStartTime(int index) {
+    return startTimes[index];
+  }
+
   public long getEndTime(String deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
       return -1;
@@ -377,12 +380,18 @@ public class TsFileResource {
     return endTimes[deviceToIndex.get(deviceId)];
   }
 
+  public long getEndTime(int index) {
+    return endTimes[index];
+  }
+
   public long getOrDefaultStartTime(String deviceId, long defaultTime) {
-    return getStartTime(deviceId) >= 0 ? startTimes[deviceToIndex.get(deviceId)] : defaultTime;
+    long startTime = getStartTime(deviceId);
+    return startTime >= 0 ? startTime : defaultTime;
   }
 
   public long getOrDefaultEndTime(String deviceId, long defaultTime) {
-    return getEndTime(deviceId) >= 0 ? endTimes[deviceToIndex.get(deviceId)] : defaultTime;
+    long endTime = getEndTime(deviceId);
+    return endTime >= 0 ? endTime : defaultTime;
   }
 
   public void putStartTime(String deviceId, long startTime) {
@@ -418,7 +427,7 @@ public class TsFileResource {
   }
 
   private long[] enLargeArray(long[] array) {
-    long[] tmp = new long[array.length * 2];
+    long[] tmp = new long[(int) (array.length * 1.5)];
     initTimes(tmp);
     System.arraycopy(array, 0, tmp, 0, array.length);
     return tmp;
@@ -450,6 +459,11 @@ public class TsFileResource {
     return true;
   }
 
+  private void trimStartEndTimes() {
+    startTimes = Arrays.copyOfRange(startTimes, 0, deviceToIndex.size());
+    endTimes = Arrays.copyOfRange(endTimes, 0, deviceToIndex.size());
+  }
+
   public boolean isClosed() {
     return closed;
   }
@@ -462,6 +476,7 @@ public class TsFileResource {
     }
     processor = null;
     chunkMetadataList = null;
+    trimStartEndTimes();
   }
 
   TsFileProcessor getUnsealedFileProcessor() {

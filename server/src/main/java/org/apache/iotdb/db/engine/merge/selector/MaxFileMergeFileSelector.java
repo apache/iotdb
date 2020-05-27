@@ -215,8 +215,9 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     int tmpSelectedNum = 0;
     for (Entry<String, Integer> deviceStartTimeEntry : unseqFile.getDeviceToIndexMap().entrySet()) {
       String deviceId = deviceStartTimeEntry.getKey();
-      long unseqStartTime = unseqFile.getStartTime(deviceId);
-      long unseqEndTime = unseqFile.getEndTime(deviceId);
+      int deviceIndex = deviceStartTimeEntry.getValue();
+      long unseqStartTime = unseqFile.getStartTime(deviceIndex);
+      long unseqEndTime = unseqFile.getEndTime(deviceIndex);
 
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
