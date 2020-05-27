@@ -187,9 +187,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected Set<String> getPathNextChildren(String path)
           throws MetadataException {
-    ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>(
-            MManager.getInstance().getChildNodePathInNextLevel(path));
-
+    ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
