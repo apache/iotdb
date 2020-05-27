@@ -119,7 +119,8 @@ public class GroupByFillDataSet extends QueryDataSet {
             (fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
                 .get(dataTypes.get(i))).isUntilLast())
                 || rowRecord.getTimestamp() <= lastTimeArray[i]) && (
-            !fillTypes.containsKey(dataTypes.get(i)) || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
+            !fillTypes.containsKey(dataTypes.get(i))
+                || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
                 || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
                 >= groupByEngineDataSet.interval)) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
