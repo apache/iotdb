@@ -216,7 +216,8 @@ public abstract class AbstractMemTable implements IMemTable {
       if (chunk == null) {
         return;
       }
-      chunk.delete(timestamp);
+      int deletedPointsNumber = chunk.delete(timestamp);
+      averagePointNumber -= deletedPointsNumber / seriesNumber;
     }
   }
 

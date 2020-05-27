@@ -98,5 +98,8 @@ public interface IWritableMemChunk {
     return Long.MIN_VALUE;
   }
 
-  void delete(long upperBound);
+  /**
+   * @return how many points are deleted
+   */
+  int delete(long upperBound);
 }

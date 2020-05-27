@@ -202,7 +202,7 @@ public abstract class TVList {
     PrimitiveArrayPool.getInstance().release(timestamps.remove(timestamps.size() - 1));
   }
 
-  public void delete(long upperBound) {
+  public int delete(long upperBound) {
     int newSize = 0;
     minTime = Long.MAX_VALUE;
     for (int i = 0; i < size; i++) {
@@ -212,6 +212,7 @@ public abstract class TVList {
         minTime = time < minTime ? time : minTime;
       }
     }
+    int deletedNumber = size - newSize;
     size = newSize;
     // release primitive arrays that are empty
     int newArrayNum = newSize / ARRAY_SIZE;
@@ -222,6 +223,7 @@ public abstract class TVList {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
+    return deletedNumber;
   }
 
   protected void cloneAs(TVList cloneList) {
