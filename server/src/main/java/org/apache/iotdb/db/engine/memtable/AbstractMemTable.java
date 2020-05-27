@@ -100,11 +100,12 @@ public abstract class AbstractMemTable implements IMemTable {
 
         memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
 
-        averagePointNumber += insertPlan.getPaths().size() / seriesNumber;
-
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
             insertPlan.getSchemas()[i], insertPlan.getTime(), value);
       }
+
+      averagePointNumber += insertPlan.getValues().length / seriesNumber;
+
     } catch (QueryProcessException e) {
       throw new WriteProcessException(e.getMessage());
     }
