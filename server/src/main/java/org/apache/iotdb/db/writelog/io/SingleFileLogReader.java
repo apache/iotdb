@@ -90,7 +90,7 @@ public class SingleFileLogReader implements ILogReader {
 
       batchLogReader = new BatchLogReader(ByteBuffer.wrap(buffer));
       fileCorrupted = fileCorrupted || batchLogReader.isFileCorrupted();
-    } catch (IOException e) {
+    } catch (Exception e) {
       logger.error("Cannot read more PhysicalPlans from {} because", filepath, e);
       fileCorrupted = true;
       return false;

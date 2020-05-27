@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByFillPlan;
@@ -69,7 +70,8 @@ public class GroupByFillDataSet extends QueryDataSet {
             ((PreviousFill) fillTypes.get(dataType)).getBeforeRange(),
             ((PreviousFill) fillTypes.get(dataType)).isUntilLast());
       } else {
-        fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(), -1L);
+        fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(),
+            IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval());
       }
       fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(),
           groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
@@ -117,7 +119,8 @@ public class GroupByFillDataSet extends QueryDataSet {
             (fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
                 .get(dataTypes.get(i))).isUntilLast())
                 || rowRecord.getTimestamp() <= lastTimeArray[i]) && (
-            !fillTypes.containsKey(dataTypes.get(i)) || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
+            !fillTypes.containsKey(dataTypes.get(i))
+                || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
                 || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
                 >= groupByEngineDataSet.interval)) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));

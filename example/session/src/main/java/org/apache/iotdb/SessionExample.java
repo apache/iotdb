@@ -25,6 +25,7 @@ import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
@@ -46,9 +47,8 @@ public class SessionExample {
     try {
       session.setStorageGroup("root.sg1");
     } catch (StatementExecutionException e) {
-      if (!e.getMessage().contains("StorageGroupAlreadySetException")) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())
         throw e;
-      }
     }
 
     createTimeseries();
