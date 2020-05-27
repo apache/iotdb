@@ -103,7 +103,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -823,7 +822,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testRemoveLeader() throws TTransportException {
+  public void testRemoveLeader() {
     System.out.println("Start testRemoveLeader()");
     Node nodeToRemove = TestUtils.getNode(10);
     NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()
@@ -851,7 +850,7 @@ public class DataGroupMemberTest extends MemberTest {
   }
 
   @Test
-  public void testRemoveNonLeader() throws TTransportException {
+  public void testRemoveNonLeader() {
     System.out.println("Start testRemoveNonLeader()");
     Node nodeToRemove = TestUtils.getNode(10);
     NodeRemovalResult nodeRemovalResult = testMetaMember.getPartitionTable()

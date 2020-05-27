@@ -195,7 +195,7 @@ public class MemberTest {
       }
 
       @Override
-      protected DataGroupMember getLocalDataMember(Node header) {
+      public DataGroupMember getLocalDataMember(Node header) {
         return getDataGroupMember(header);
       }
 
