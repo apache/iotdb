@@ -76,9 +76,9 @@ statement
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION #loadConfigurationStatement
-    | LOAD FILE autoCreateSchema? #loadFiles
-    | REMOVE FILE #removeFile
-    | MOVE FILE FILE #moveFile
+    | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
+    | REMOVE STRING_LITERAL #removeFile
+    | MOVE STRING_LITERAL STRING_LITERAL #moveFile
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -343,11 +343,16 @@ suffixPath
 nodeName
     : ID
     | STAR
+    | STRING_LITERAL
     | ID STAR
     | DURATION
     | encoding
     | dataType
-    | constant
+    | dateExpression
+    | MINUS? EXPONENT
+    | MINUS? INT
+    | booleanClause
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     ;
 
 nodeNameWithoutStar
@@ -356,7 +361,11 @@ nodeNameWithoutStar
     | DURATION
     | encoding
     | dataType
-    | constant
+    | dateExpression
+    | MINUS? EXPONENT
+    | MINUS? INT
+    | booleanClause
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     ;
 
 dataType
@@ -373,8 +382,7 @@ constant
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
-    | TRUE
-    | FALSE
+    | booleanClause
     ;
 
 booleanClause
@@ -926,9 +934,6 @@ DATETIME
       (('+' | '-') INT ':' INT)?)?
     ;
 
-FILE
-    :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
-    ;
 /** Allow unicode rule/token names */
 ID : FIRST_NAME_CHAR NAME_CHAR*;
 
@@ -1080,10 +1085,6 @@ fragment Y
 
 fragment Z
     : 'z' | 'Z'
-    ;
-
-fragment PATH_FRAGMENT
-    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
     ;
 
 WS
