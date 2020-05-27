@@ -234,23 +234,17 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
 
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
-
-    for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
+    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    if (logger.isDebugEnabled()) {
+      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPaths(),
+          globalGroups.size());
+    }
+    for (PartitionGroup group : globalGroups) {
       Node header = group.getHeader();
       if (header.equals(metaGroupMember.getThisNode())) {
         continue;
       }
-      pool.submit(() -> {
-        ByteBuffer resultBinary = showTimeseries(group, plan);
-        if (resultBinary != null) {
-          int size = resultBinary.getInt();
-          for (int i = 0; i < size; i++) {
-            resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
-          }
-        } else {
-          logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
-        }
-      });
+      pool.submit(() -> showTimeseries(group, plan, resultSet));
     }
     pool.shutdown();
     try {
@@ -262,7 +256,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return new ArrayList<>(resultSet);
   }
 
-  private ByteBuffer showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan) {
+  private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
+      Set<ShowTimeSeriesResult> resultSet) {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
@@ -281,7 +276,16 @@ public class ClusterPlanExecutor extends PlanExecutor {
         Thread.currentThread().interrupt();
       }
     }
-    return resultBinary;
+
+    if (resultBinary != null) {
+      int size = resultBinary.getInt();
+      logger.debug("Fetched {} schemas of {} from {}", size, plan.getPath(), group);
+      for (int i = 0; i < size; i++) {
+        resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
+      }
+    } else {
+      logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
+    }
   }
 
   @Override

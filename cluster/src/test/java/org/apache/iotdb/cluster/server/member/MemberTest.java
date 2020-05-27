@@ -74,8 +74,8 @@ public class MemberTest {
 
   @Before
   public void setUp() throws Exception {
-    prevLeaderWait = RaftMember.WAIT_LEADER_TIME_MS;
-    RaftMember.WAIT_LEADER_TIME_MS = 10;
+    prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
+    RaftMember.setWaitLeaderTimeMs(10);
     EnvironmentUtils.envSetUp();
     prevUrls = ClusterDescriptor.getInstance().getConfig().getSeedNodeUrls();
     List<String> testUrls = new ArrayList<>();
@@ -129,7 +129,7 @@ public class MemberTest {
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
     new File(MetaGroupMember.PARTITION_FILE_NAME).delete();
     new File(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME).delete();
-    RaftMember.WAIT_LEADER_TIME_MS = prevLeaderWait;
+    RaftMember.setWaitLeaderTimeMs(prevLeaderWait);
   }
 
   DataGroupMember getDataGroupMember(Node node) {

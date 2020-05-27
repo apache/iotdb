@@ -20,10 +20,6 @@
 package org.apache.iotdb.cluster.server.member;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_FALSE_NUM;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_TRUE_NUM;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_FALSE;
-import static org.apache.iotdb.db.qp.constant.SQLConstant.BOOLEAN_TRUE;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
 import java.io.BufferedInputStream;
@@ -147,8 +143,6 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -883,76 +877,76 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private boolean processAddNodeLocally(Node node, StartUpStatus startUpStatus,
       AddNodeResponse response, AsyncMethodCallback resultHandler) {
-    if (character == NodeCharacter.LEADER) {
-      if (allNodes.contains(node)) {
-        logger.debug("Node {} is already in the cluster", node);
-        response.setRespNum((int) Response.RESPONSE_AGREE);
-        synchronized (partitionTable) {
-          response.setPartitionTableBytes(partitionTable.serialize());
-        }
-        resultHandler.onComplete(response);
-        return true;
+    if (character != NodeCharacter.LEADER) {
+      return false;
+    }
+    if (allNodes.contains(node)) {
+      logger.debug("Node {} is already in the cluster", node);
+      response.setRespNum((int) Response.RESPONSE_AGREE);
+      synchronized (partitionTable) {
+        response.setPartitionTableBytes(partitionTable.serialize());
       }
+      resultHandler.onComplete(response);
+      return true;
+    }
 
-      Node idConflictNode = idNodeMap.get(node.getNodeIdentifier());
-      if (idConflictNode != null) {
-        logger.debug("{}'s id conflicts with {}", node, idConflictNode);
-        response.setRespNum((int) Response.RESPONSE_IDENTIFIER_CONFLICT);
-        resultHandler.onComplete(response);
-        return true;
-      }
+    Node idConflictNode = idNodeMap.get(node.getNodeIdentifier());
+    if (idConflictNode != null) {
+      logger.debug("{}'s id conflicts with {}", node, idConflictNode);
+      response.setRespNum((int) Response.RESPONSE_IDENTIFIER_CONFLICT);
+      resultHandler.onComplete(response);
+      return true;
+    }
 
-      // check status of the new node
-      if (!checkNodeConfig(startUpStatus, resultHandler, response)) {
-        // the request is finished
-        return true;
-      }
+    // check status of the new node
+    if (!checkNodeConfig(startUpStatus, resultHandler, response)) {
+      // the request is finished
+      return true;
+    }
 
-      // node adding must be serialized to reduce potential concurrency problem
-      synchronized (logManager) {
-        AddNodeLog addNodeLog = new AddNodeLog();
-        addNodeLog.setCurrLogTerm(getTerm().get());
-        addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
-        addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
-        addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+    // node adding must be serialized to reduce potential concurrency problem
+    synchronized (logManager) {
+      AddNodeLog addNodeLog = new AddNodeLog();
+      addNodeLog.setCurrLogTerm(getTerm().get());
+      addNodeLog.setPreviousLogIndex(logManager.getLastLogIndex());
+      addNodeLog.setPreviousLogTerm(logManager.getLastLogTerm());
+      addNodeLog.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-        addNodeLog.setNewNode(node);
+      addNodeLog.setNewNode(node);
 
-        logManager.append(addNodeLog);
+      logManager.append(addNodeLog);
 
-        int retryTime = 1;
-        while (true) {
-          logger
-              .info("Send the join request of {} to other nodes, retry time: {}", node, retryTime);
-          AppendLogResult result = sendLogToAllGroups(addNodeLog);
-          switch (result) {
-            case OK:
-              logger.info("Join request of {} is accepted", node);
-              try {
-                logManager.commitTo(addNodeLog.getCurrLogIndex(), false);
-              } catch (LogExecutionException e) {
-                resultHandler.onError(e);
-                return true;
-              }
-              synchronized (partitionTable) {
-                response.setPartitionTableBytes(partitionTable.serialize());
-              }
-              response.setRespNum((int) Response.RESPONSE_AGREE);
-              logger.info("Sending join response of {}", node);
-              resultHandler.onComplete(response);
+      int retryTime = 1;
+      while (true) {
+        logger
+            .info("Send the join request of {} to other nodes, retry time: {}", node, retryTime);
+        AppendLogResult result = sendLogToAllGroups(addNodeLog);
+        switch (result) {
+          case OK:
+            logger.info("Join request of {} is accepted", node);
+            try {
+              logManager.commitTo(addNodeLog.getCurrLogIndex(), false);
+            } catch (LogExecutionException e) {
+              resultHandler.onError(e);
               return true;
-            case TIME_OUT:
-              logger.info("Join request of {} timed out", node);
-              retryTime++;
-              continue;
-            case LEADERSHIP_STALE:
-            default:
-              return false;
-          }
+            }
+            synchronized (partitionTable) {
+              response.setPartitionTableBytes(partitionTable.serialize());
+            }
+            response.setRespNum((int) Response.RESPONSE_AGREE);
+            logger.info("Sending join response of {}", node);
+            resultHandler.onComplete(response);
+            return true;
+          case TIME_OUT:
+            logger.info("Join request of {} timed out", node);
+            retryTime++;
+            continue;
+          case LEADERSHIP_STALE:
+          default:
+            return false;
         }
       }
     }
-    return false;
   }
 
   private boolean checkNodeConfig(StartUpStatus remoteStartUpStatus,

@@ -90,11 +90,7 @@ import org.slf4j.LoggerFactory;
 @SuppressWarnings("java:S3077") // reference volatile is enough
 public abstract class RaftMember implements RaftService.AsyncIface {
 
-  /**
-   * The maximum time to wait if there is no leader in the group, after which a
-   * LeadNotFoundException will be thrown.
-   */
-  public static long WAIT_LEADER_TIME_MS = 60 * 1000L;
+  private static long waitLeaderTimeMs = 60 * 1000L;
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
@@ -145,6 +141,18 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   RaftMember(String name, ClientPool pool) {
     this.name = name;
     this.clientPool = pool;
+  }
+
+  /**
+   * The maximum time to wait if there is no leader in the group, after which a
+   * LeadNotFoundException will be thrown.
+   */
+  public static long getWaitLeaderTimeMs() {
+    return waitLeaderTimeMs;
+  }
+
+  public static void setWaitLeaderTimeMs(long waitLeaderTimeMs) {
+    RaftMember.waitLeaderTimeMs = waitLeaderTimeMs;
   }
 
   /**
@@ -1032,6 +1040,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     waitLeader();
     if (leader == null) {
       // the leader has not been elected, we must assume the node falls behind
+      logger.warn("{}: No leader is found when synchronizing", name);
       return false;
     }
     if (character == NodeCharacter.LEADER) {
@@ -1045,6 +1054,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       AsyncClient client = connectNode(leader);
       if (client == null) {
         // cannot connect to the leader
+        logger.warn("{}: No leader is found when synchronizing", name);
         return false;
       }
       try {
@@ -1080,6 +1090,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         logger.error("{}: Cannot request commit index from {}", name, leader, e);
       }
     }
+    logger.warn("{}: Failed to synchronize with the leader after {}ms", name, waitedTime);
     return false;
   }
 
@@ -1229,7 +1240,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         }
       }
       long consumedTime = System.currentTimeMillis() - startTime;
-      if (consumedTime >= WAIT_LEADER_TIME_MS) {
+      if (consumedTime >= getWaitLeaderTimeMs()) {
         break;
       }
     }
