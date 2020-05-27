@@ -42,7 +42,6 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -175,10 +174,10 @@ public class ClientServer extends TSServiceImpl {
     if (serverService == null) {
       return;
     }
-
+    
     poolServer.stop();
-    serverTransport.close();
     serverService.shutdownNow();
+    serverTransport.close();
   }
 
 
