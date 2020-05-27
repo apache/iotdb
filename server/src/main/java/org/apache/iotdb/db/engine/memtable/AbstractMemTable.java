@@ -49,6 +49,10 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long memSize = 0;
 
+  private float seriesNumber = 0;
+
+  private float averagePointNumber = 0;
+
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
   }
@@ -79,6 +83,7 @@ public abstract class AbstractMemTable implements IMemTable {
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     if (!memSeries.containsKey(measurement)) {
       memSeries.put(measurement, genMemSeries(schema));
+      seriesNumber++;
     }
     return memSeries.get(measurement);
   }
@@ -95,6 +100,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
         memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
 
+        averagePointNumber += insertPlan.getPaths().size() / seriesNumber;
+
         write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
             insertPlan.getSchemas()[i], insertPlan.getTime(), value);
       }
@@ -110,6 +117,9 @@ public abstract class AbstractMemTable implements IMemTable {
       write(insertTabletPlan, start, end);
       long recordSizeInByte = MemUtils.getRecordSize(insertTabletPlan, start, end);
       memSize += recordSizeInByte;
+      averagePointNumber +=
+          (float) (insertTabletPlan.getMeasurements().length * insertTabletPlan.getRowCount())
+              / seriesNumber;
     } catch (RuntimeException e) {
       throw new WriteProcessException(e.getMessage());
     }
@@ -148,6 +158,11 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long memSize() {
     return memSize;
+  }
+
+  @Override
+  public float getAveragePointNumber() {
+    return averagePointNumber;
   }
 
   @Override
@@ -219,6 +234,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void release() {
+    seriesNumber = 0;
+    averagePointNumber = 0;
     for (Entry<String, Map<String, IWritableMemChunk>> entry : memTableMap.entrySet()) {
       for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());

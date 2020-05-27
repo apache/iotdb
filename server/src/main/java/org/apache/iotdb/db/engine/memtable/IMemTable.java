@@ -56,6 +56,11 @@ public interface IMemTable {
    */
   long memSize();
 
+  /**
+   * @return average number of points in each WritableChunk
+   */
+  float getAveragePointNumber();
+
   void insert(InsertPlan insertPlan) throws WriteProcessException;
 
   /**

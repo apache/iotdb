@@ -70,6 +70,9 @@ public class TsFileProcessor {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileProcessor.class);
   private final String storageGroupName;
+
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   /**
    * sync this object in query() and asyncTryToFlush()
    */
@@ -260,8 +263,9 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
-    return workMemTable != null
-        && workMemTable.memSize() > getMemtableSizeThresholdBasedOnSeriesNum();
+    return workMemTable != null &&
+        (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()
+            || workMemTable.getAveragePointNumber() >= config.getAvgSeriesPointNumberThreshold());
   }
 
   /**
@@ -272,7 +276,6 @@ public class TsFileProcessor {
    * size. We need to adjust it according to the number of timeseries in a specific storage group.
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     if(!config.isEnableParameterAdapter()){
       return config.getMemtableSizeThreshold();
     }

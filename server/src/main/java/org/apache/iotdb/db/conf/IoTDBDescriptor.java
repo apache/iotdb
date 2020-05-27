@@ -237,6 +237,10 @@ public class IoTDBDescriptor {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
 
+      conf.setAvgSeriesPointNumberThreshold(Float.parseFloat(properties
+          .getProperty("avg_series_point_number_threshold",
+              Float.toString(conf.getAvgSeriesPointNumberThreshold()))));
+
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));

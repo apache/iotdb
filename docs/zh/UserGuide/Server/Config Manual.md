@@ -253,6 +253,42 @@
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
 
+* enable\_parameter\_adapter
+
+|Name| enable\_parameter\_adapter |
+|:---:|:---|
+|Description| 开启自动调整系统参数，避免爆内存|
+|Type|Bool|
+|Default| true |
+|Effective|重启服务器生效|
+
+* memtable\_size\_threshold
+
+|Name| memtable\_size\_threshold |
+|:---:|:---|
+|Description| 内存缓冲区 memtable 阈值|
+|Type|Long|
+|Default| false |
+|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+
+* avg\_series\_point\_number\_threshold
+
+|Name| avg\_series\_point\_number\_threshold |
+|:---:|:---|
+|Description| 内存中平均每个时间序列点数最大值，达到触发flush|
+|Type|Int32|
+|Default| 2048 |
+|Effective|重启服务器生效|
+
+* tsfile\_size\_threshold
+
+|Name| tsfile\_size\_threshold |
+|:---:|:---|
+|Description| 每个 tsfile 大小|
+|Type|Long|
+|Default| false |
+|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+
 * enable\_partition
 
 |Name| enable\_partition |
