@@ -187,18 +187,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected Set<String> getPathNextChildren(String path)
           throws MetadataException {
-    ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>(
-            MManager.getInstance().getChildNodePathInNextLevel(path));
-
+    ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
-      Node header = group.getHeader();
-      if (header.equals(metaGroupMember.getThisNode())) {
-        continue;
-      }
       pool.submit(() -> {
-        List<String> nextChildren = getNextChildren(group, header, path);
+        List<String> nextChildren = getNextChildren(group, path);
         if (nextChildren != null) {
           resultSet.addAll(nextChildren);
         } else {
@@ -216,12 +210,34 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return resultSet;
   }
 
-  private List<String> getNextChildren(PartitionGroup group, Node header, String path) {
+  private List<String> getNextChildren(PartitionGroup group, String path) {
+    if (group.contains(metaGroupMember.getThisNode())) {
+      return getLocalNextChildren(group, path);
+    } else {
+      return getRemoteNextChildren(group, path);
+    }
+  }
+
+  private List<String> getLocalNextChildren(PartitionGroup group, String path) {
+    Node header = group.getHeader();
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    localDataMember.syncLeader();
+    try {
+      return new ArrayList<>(
+          MManager.getInstance().getChildNodePathInNextLevel(path));
+    } catch (MetadataException e) {
+      logger
+          .error("Cannot not get next children of {} from {} locally", path, group);
+      return Collections.emptyList();
+    }
+  }
+
+  private List<String> getRemoteNextChildren(PartitionGroup group, String path) {
     List<String> nextChildren = null;
     for (Node node : group) {
       try {
         DataClient client = metaGroupMember.getDataClient(node);
-        nextChildren = SyncClientAdaptor.getNextChildren(client, header, path);
+        nextChildren = SyncClientAdaptor.getNextChildren(client, group.getHeader(), path);
         if (nextChildren != null) {
           break;
         }
@@ -247,12 +263,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
           throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
-    if (plan.getKey() != null && plan.getValue() != null) {
-      resultSet.addAll(MManager.getInstance().getAllTimeseriesSchema(plan));
-    } else {
-      resultSet.addAll(MManager.getInstance().showTimeseries(plan));
-    }
-
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     if (logger.isDebugEnabled()) {
@@ -260,10 +270,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
           globalGroups.size());
     }
     for (PartitionGroup group : globalGroups) {
-      Node header = group.getHeader();
-      if (header.equals(metaGroupMember.getThisNode())) {
-        continue;
-      }
       pool.submit(() -> showTimeseries(group, plan, resultSet));
     }
     pool.shutdown();
@@ -277,6 +283,32 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
+      Set<ShowTimeSeriesResult> resultSet) {
+    if (group.contains(metaGroupMember.getThisNode())) {
+      showLocalTimeseries(group, plan, resultSet);
+    } else {
+      showRemoteTimeseries(group, plan, resultSet);
+    }
+  }
+
+  private void showLocalTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
+      Set<ShowTimeSeriesResult> resultSet) {
+    Node header = group.getHeader();
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    localDataMember.syncLeader();
+    try {
+      if (plan.getKey() != null && plan.getValue() != null) {
+        resultSet.addAll(MManager.getInstance().getAllTimeseriesSchema(plan));
+      } else {
+        resultSet.addAll(MManager.getInstance().showTimeseries(plan));
+      }
+    } catch (MetadataException e) {
+      logger
+          .error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
+    }
+  }
+
+  private void showRemoteTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
       Set<ShowTimeSeriesResult> resultSet) {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
