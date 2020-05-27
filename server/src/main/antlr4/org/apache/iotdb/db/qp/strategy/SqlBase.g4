@@ -347,7 +347,12 @@ nodeName
     | DURATION
     | encoding
     | dataType
-    | constant
+    | dateExpression
+    | MINUS? EXPONENT
+    | MINUS? INT
+    | booleanClause
+    | FILE
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     ;
 
 nodeNameWithoutStar
@@ -356,7 +361,12 @@ nodeNameWithoutStar
     | DURATION
     | encoding
     | dataType
-    | constant
+    | dateExpression
+    | MINUS? EXPONENT
+    | MINUS? INT
+    | booleanClause
+    | FILE
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     ;
 
 dataType
@@ -373,8 +383,7 @@ constant
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
-    | TRUE
-    | FALSE
+    | booleanClause
     ;
 
 booleanClause
@@ -1083,7 +1092,7 @@ fragment Z
     ;
 
 fragment PATH_FRAGMENT
-    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
+    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-')*
     ;
 
 WS
