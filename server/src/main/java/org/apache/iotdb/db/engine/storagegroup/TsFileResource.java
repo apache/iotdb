@@ -539,6 +539,7 @@ public class TsFileResource {
 
   public void setClosed(boolean closed) {
     this.closed = closed;
+    trimStartEndTimes();
   }
 
   public boolean isDeleted() {
