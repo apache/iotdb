@@ -44,6 +44,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
 
     private static final Logger logger = LoggerFactory.getLogger(OpenIdAuthorizer.class);
     public static final String IOTDB_ADMIN_ROLE_NAME = "iotdb_admin";
+    public static final String OPENID_USER_PREFIX = "openid-";
 
     private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -173,7 +174,7 @@ public class OpenIdAuthorizer extends BasicAuthorizer {
     }
 
     private String getUsername(Claims claims) {
-        return "openid:" + claims.getSubject();
+        return OPENID_USER_PREFIX + claims.getSubject();
     }
 
     private String getUsername(String token) {

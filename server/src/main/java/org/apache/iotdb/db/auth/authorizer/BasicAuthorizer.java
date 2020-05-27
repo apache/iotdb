@@ -85,7 +85,6 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
           logger.info("Authorizer provider class: {}", IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
           instance = c.getDeclaredConstructor().newInstance();
         } catch (Exception e) {
-          logger.error("Authorizer initialization failed due to ", e);
           instance = null;
           //startup failed.
           throw new IllegalStateException("Authorizer could not be initialized!", e);
