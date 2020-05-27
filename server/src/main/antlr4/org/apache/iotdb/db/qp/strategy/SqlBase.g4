@@ -343,6 +343,7 @@ suffixPath
 nodeName
     : ID
     | STAR
+    | STRING_LITERAL
     | ID STAR
     | DURATION
     | encoding
