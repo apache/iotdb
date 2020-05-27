@@ -2761,7 +2761,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param header the header of the group which the local node is in
    * @return
    */
-  protected DataGroupMember getLocalDataMember(Node header) {
+  public DataGroupMember getLocalDataMember(Node header) {
     return dataClusterServer.getDataMember(header, null, "Internal call");
   }
 

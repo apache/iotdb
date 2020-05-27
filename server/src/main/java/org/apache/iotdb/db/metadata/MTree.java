@@ -47,6 +47,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -736,6 +737,11 @@ public class MTree implements Serializable {
 
   /** Get all paths from root to the given level */
   List<String> getNodesList(String path, int nodeLevel) throws MetadataException {
+    return getNodesList(path, nodeLevel, null);
+  }
+
+  /** Get all paths from root to the given level */
+  List<String> getNodesList(String path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(path);
     if (!nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path);
@@ -745,16 +751,20 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (node.getChild(nodes[i]) != null) {
         node = node.getChild(nodes[i]);
+        if (node instanceof StorageGroupMNode && !filter.satisfy(node.getFullPath())) {
+          return res;
+        }
       } else {
         throw new MetadataException(nodes[i - 1] + " does not have the child node " + nodes[i]);
       }
     }
-    findNodes(node, path, res, nodeLevel - (nodes.length - 1));
+    findNodes(node, path, res, nodeLevel - (nodes.length - 1), filter);
     return res;
   }
 
-  private void findNodes(MNode node, String path, List<String> res, int targetLevel) {
-    if (node == null) {
+  private void findNodes(MNode node, String path, List<String> res, int targetLevel,
+      StorageGroupFilter filter) {
+    if (node == null || node instanceof StorageGroupMNode && !filter.satisfy(node.getFullPath())) {
       return;
     }
     if (targetLevel == 0) {
@@ -763,7 +773,7 @@ public class MTree implements Serializable {
     }
     if (node instanceof InternalMNode) {
       for (MNode child : node.getChildren().values()) {
-        findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1);
+        findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1, filter);
       }
     }
   }

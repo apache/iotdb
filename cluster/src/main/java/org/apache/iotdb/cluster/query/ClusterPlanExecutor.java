@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -33,7 +34,9 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
+import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -111,20 +114,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<String> getNodesList(String schemaPattern, int level)
-          throws MetadataException {
-    ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>(
-            MManager.getInstance().getNodesList(schemaPattern, level));
+  protected List<String> getNodesList(String schemaPattern, int level) {
 
+    ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
-      Node header = group.getHeader();
-      if (header.equals(metaGroupMember.getThisNode())) {
-        continue;
-      }
       pool.submit(() -> {
-        List<String> paths = getNodesList(group, header, schemaPattern, level);
+        List<String> paths = getNodesList(group, schemaPattern, level);
         if (paths != null) {
           nodeSet.addAll(paths);
         } else {
@@ -142,13 +139,36 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return new ArrayList<>(nodeSet);
   }
 
-  private List<String> getNodesList(PartitionGroup group, Node header, String schemaPattern,
+  private List<String> getNodesList(PartitionGroup group, String schemaPattern,
+      int level) {
+    if (group.contains(metaGroupMember.getThisNode())) {
+      return getLocalNodesList(group, schemaPattern, level);
+    } else {
+      return getRemoteNodesList(group, schemaPattern, level);
+    }
+  }
+
+  private List<String> getLocalNodesList(PartitionGroup group, String schemaPattern,
+      int level) {
+    Node header = group.getHeader();
+    DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
+    localDataMember.syncLeader();
+    try {
+      return MManager.getInstance().getNodesList(schemaPattern, level,
+          new SlotSgFilter(metaGroupMember.getPartitionTable().getNodeSlots(header)));
+    } catch (MetadataException e) {
+      logger.error("Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
+      return Collections.emptyList();
+    }
+  }
+
+  private List<String> getRemoteNodesList(PartitionGroup group, String schemaPattern,
       int level) {
     List<String> paths = null;
     for (Node node : group) {
       try {
         DataClient client = metaGroupMember.getDataClient(node);
-        paths = SyncClientAdaptor.getNodeList(client, header, schemaPattern, level);
+        paths = SyncClientAdaptor.getNodeList(client, group.getHeader(), schemaPattern, level);
         if (paths != null) {
           break;
         }

@@ -664,6 +664,10 @@ public class MManager {
    * @return A List instance which stores all node at given level
    */
   public List<String> getNodesList(String prefixPath, int nodeLevel) throws MetadataException {
+    return getNodesList(prefixPath, nodeLevel, null);
+  }
+
+  public List<String> getNodesList(String prefixPath, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getNodesList(prefixPath, nodeLevel);
@@ -1529,5 +1533,15 @@ public class MManager {
     } catch (MetadataException e) {
       mRemoteSchemaCache.put(path, schema);
     }
+  }
+
+  /**
+   * StorageGroupFilter filters unsatisfied storage groups in metadata queries to speed up and
+   * deduplicate.
+   */
+  @FunctionalInterface
+  public
+  interface StorageGroupFilter {
+    boolean satisfy(String storageGroup);
   }
 }
