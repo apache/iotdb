@@ -63,9 +63,14 @@ public class GroupByFillDataSet extends QueryDataSet {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       TSDataType dataType = dataTypes.get(i);
-      IFill fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(),
-          ((PreviousFill) fillTypes.get(dataType)).getBeforeRange(),
-          ((PreviousFill) fillTypes.get(dataType)).isUntilLast());
+      IFill fill;
+      if (fillTypes.containsKey(dataType)) {
+        fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(),
+            ((PreviousFill) fillTypes.get(dataType)).getBeforeRange(),
+            ((PreviousFill) fillTypes.get(dataType)).isUntilLast());
+      } else {
+        fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(), -1L);
+      }
       fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(),
           groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
@@ -112,7 +117,7 @@ public class GroupByFillDataSet extends QueryDataSet {
             (fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
                 .get(dataTypes.get(i))).isUntilLast())
                 || rowRecord.getTimestamp() <= lastTimeArray[i]) && (
-            ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
+            !fillTypes.containsKey(dataTypes.get(i)) || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
                 || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
                 >= groupByEngineDataSet.interval)) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
