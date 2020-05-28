@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -90,27 +89,27 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
 
   @Override
   public void close() {
-
+    // do nothing
   }
 
   @Override
-  public boolean hasNextFile() throws IOException {
+  public boolean hasNextFile() {
     return false;
   }
 
   @Override
-  public boolean canUseCurrentFileStatistics() throws IOException {
+  public boolean canUseCurrentFileStatistics() {
     return false;
   }
 
   @Override
-  public Statistics currentFileStatistics() throws IOException {
+  public Statistics currentFileStatistics() {
     return null;
   }
 
   @Override
   public void skipCurrentFile() {
-
+    // do nothing
   }
 
   @Override
@@ -130,7 +129,7 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
 
   @Override
   public void skipCurrentChunk() {
-
+    // do nothing
   }
 
   @Override
@@ -150,7 +149,7 @@ public class EmptyReader implements ManagedSeriesReader, IAggregateReader, IPoin
 
   @Override
   public void skipCurrentPage() {
-
+    // do nothing
   }
 
   @Override

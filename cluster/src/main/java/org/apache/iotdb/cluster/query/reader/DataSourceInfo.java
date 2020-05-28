@@ -153,4 +153,44 @@ public class DataSourceInfo {
     return this.isNoData;
   }
 
+  @Override
+  public String toString() {
+    return "DataSourceInfo{" +
+        "readerId=" + readerId +
+        ", curSource=" + curSource +
+        ", partitionGroup=" + partitionGroup +
+        ", request=" + request +
+        '}';
+  }
+
+  /**
+   * Check if there is still any available client and there is still any left data.
+   * @return true if there is an available client and data to read, false all data has been read.
+   * @throws IOException if all clients are unavailable.
+   */
+  boolean checkCurClient() throws IOException {
+    if (getCurClient() == null) {
+      if (!isNoData()) {
+        throw new IOException("no available client.");
+      } else {
+        // no data
+        return false;
+      }
+    }
+    return true;
+  }
+
+  boolean switchNode(boolean byTimestamp, long timeOffset) throws IOException {
+    DataClient newClient = nextDataClient(byTimestamp, timeOffset);
+    logger.info("Client failed, changed to {}", newClient);
+    if (newClient == null) {
+      if (!isNoData()) {
+        throw new IOException("no available client.");
+      } else {
+        // no data
+        return false;
+      }
+    }
+    return true;
+  }
 }

@@ -299,4 +299,17 @@ public class SyncClientAdaptor {
 
     return status.get();
   }
+
+  public static ByteBuffer readFile(DataClient client, String remotePath, long offset,
+      int fetchSize)
+      throws InterruptedException, TException {
+    AtomicReference<ByteBuffer> result = new AtomicReference<>();
+    GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
+    result.set(null);
+    synchronized (result) {
+      client.readFile(remotePath, offset, fetchSize, handler);
+      result.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+    return result.get();
+  }
 }

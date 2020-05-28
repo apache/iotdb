@@ -95,7 +95,6 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
     }
     // rejected because the follower's logs are stale or the follower has no cluster info, just
     // wait for the heartbeat to handle
-    // TODO-Cluster: active catch-up
   }
 
   /**

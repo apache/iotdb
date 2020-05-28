@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
  */
-public class RemoteSimpleSeriesReader implements IPointReader {
+public class RemoteSimpleSeriesReader implements IPointReader  {
 
   private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
   private DataSourceInfo sourceInfo;
@@ -92,38 +92,29 @@ public class RemoteSimpleSeriesReader implements IPointReader {
   }
 
   void fetchBatch() throws IOException {
-    if (sourceInfo.getCurClient() == null) {
-      if (!sourceInfo.isNoData()) {
-        throw new IOException("no available client.");
-      } else {
-        // no data
-        cachedBatch = null;
-        return;
-      }
+    if (!sourceInfo.checkCurClient()) {
+      cachedBatch = null;
+      return;
     }
 
     while (true) {
       synchronized (fetchResult) {
         fetchResult.set(null);
-        DataClient currClient = null;
+        DataClient currClient = sourceInfo.getCurClient();
         try {
-          currClient = sourceInfo.getCurClient();
           currClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
           fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
-        } catch (TException | InterruptedException e) {
+        } catch (TException e) {
           // try other nodes
-          DataClient newClient = sourceInfo.nextDataClient(false, this.lastTimestamp);
-          logger.info("Client failed, changed from {} to {}", currClient, newClient);
-          if (newClient == null) {
-            if (!sourceInfo.isNoData()) {
-              throw new IOException("no available client.");
-            } else {
-              // no data
-              cachedBatch = null;
-              return;
-            }
+          if (!sourceInfo.switchNode(false, lastTimestamp)) {
+            cachedBatch = null;
+            return;
           }
           continue;
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn("Query {} interrupted", sourceInfo);
+          return;
         }
       }
       cachedBatch = SerializeUtils.deserializeBatchData(fetchResult.get());

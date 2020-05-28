@@ -70,14 +70,14 @@ public class PreviousFillHandler implements AsyncMethodCallback<ByteBuffer> {
     latch.countDown();
   }
 
-  public CountDownLatch getLatch() {
-    return latch;
-  }
-
   public TimeValuePair getResult() {
     try {
-      latch.await(MAX_WAIT_MIN, TimeUnit.MINUTES);
+      if (!latch.await(MAX_WAIT_MIN, TimeUnit.MINUTES)) {
+        logger.warn("Not all nodes returned previous fill result when timed out, remaining {}",
+            latch.getCount());
+      }
     } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for the result of previous fill");
     }
     return result;

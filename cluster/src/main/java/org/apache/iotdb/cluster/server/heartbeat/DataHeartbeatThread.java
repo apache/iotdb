@@ -22,12 +22,9 @@ package org.apache.iotdb.cluster.server.heartbeat;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DataHeartbeatThread extends HeartbeatThread {
 
-  private static final Logger logger = LoggerFactory.getLogger(DataHeartbeatThread.class);
   private DataGroupMember dataGroupMember;
 
   public DataHeartbeatThread(DataGroupMember raftMember) {

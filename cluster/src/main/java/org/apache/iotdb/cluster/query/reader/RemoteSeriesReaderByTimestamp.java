@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.query.reader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -33,8 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
 
-  private static final Logger logger = LoggerFactory.getLogger(RemoteSimpleSeriesReader.class);
-
+  private static final Logger logger = LoggerFactory.getLogger(RemoteSeriesReaderByTimestamp.class);
   private DataSourceInfo sourceInfo;
 
   private AtomicReference<ByteBuffer> fetchResult = new AtomicReference<>();
@@ -47,13 +45,8 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
 
   @Override
   public Object getValueInTimestamp(long timestamp) throws IOException {
-    if (sourceInfo.getCurClient() == null) {
-      if (!sourceInfo.isNoData()) {
-        throw new IOException("no available client.");
-      } else {
-        // no such data
-        return null;
-      }
+    if (!sourceInfo.checkCurClient()) {
+      return null;
     }
 
     while (true) {
@@ -63,18 +56,16 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
           sourceInfo.getCurClient().fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
               sourceInfo.getReaderId(), timestamp, handler);
           fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
-        } catch (TException | InterruptedException e) {
+        } catch (TException e) {
           //try other node
-          DataClient client = sourceInfo.nextDataClient(true, timestamp);
-          if (client == null) {
-            if (!sourceInfo.isNoData()) {
-              throw new IOException("no available client.");
-            } else {
-              // no such data
-              return null;
-            }
+          if (!sourceInfo.switchNode(true, timestamp)) {
+            return null;
           }
           continue;
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn("Query {} interrupted", sourceInfo);
+          return null;
         }
       }
       return SerializeUtils.deserializeObject(fetchResult.get());

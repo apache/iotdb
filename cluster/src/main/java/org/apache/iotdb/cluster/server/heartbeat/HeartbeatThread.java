@@ -202,6 +202,7 @@ public class HeartbeatThread implements Runnable {
    * Start one round of election. Increase the local term, ask for vote from each of the nodes in
    * the group and become the leader if at least half of them agree.
    */
+  @SuppressWarnings({"java:S2274"}) // enable timeout
   void startElection() {
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();

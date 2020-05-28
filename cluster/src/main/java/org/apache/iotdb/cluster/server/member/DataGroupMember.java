@@ -28,7 +28,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -41,10 +43,10 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
 import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -83,9 +85,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.Peer;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -411,6 +411,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   public void applySnapshot(Map<Integer, Snapshot> snapshotMap)
       throws SnapshotApplicationException {
+    // ensure StorageGroups are synchronized
+    metaGroupMember.syncLeader();
+
     for (Snapshot value : snapshotMap.values()) {
       if (value instanceof FileSnapshot) {
         FileSnapshot fileSnapshot = (FileSnapshot) value;
@@ -448,6 +451,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   public void applySnapshot(Snapshot snapshot, int slot) throws SnapshotApplicationException {
     logger.debug("{}: applying snapshot {}", name, snapshot);
+    // ensure storage groups are synchronized
     metaGroupMember.syncLeader();
     if (snapshot instanceof FileSnapshot) {
       try {
@@ -478,12 +482,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       int segSize = pathSegments.length;
       String storageGroupName = pathSegments[segSize - 3];
       try {
-        try {
-          // the storage group may not exists because the meta member is not synchronized
-          MManager.getInstance().setStorageGroup(storageGroupName);
-        } catch (MetadataException e) {
-          // ignore
-        }
         StorageEngine.getInstance().setPartitionVersionToMax(storageGroupName,
             remoteTsFileResource.getTimePartition(), remoteTsFileResource.getMaxVersion());
       } catch (StorageEngineException e) {
@@ -530,7 +528,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   private boolean isFileAlreadyPulled(RemoteTsFileResource resource) {
     String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
-    // {storageGroupName}/{partitionNum}/{fileName}
+    // <storageGroupName>/<partitionNum>/<fileName>
     String storageGroupName = pathSegments[segSize - 3];
     long partitionNumber = Long.parseLong(pathSegments[segSize - 2]);
     return StorageEngine.getInstance()
@@ -599,7 +597,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   private void loadRemoteResource(RemoteTsFileResource resource) {
     // the new file is stored at:
-    // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
+    // remote/<nodeIdentifier>/<storageGroupName>/<partitionNum>/<fileName>
     String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     String storageGroupName = pathSegments[segSize - 3];
@@ -618,8 +616,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // dir, so we can add a suffix to find the old modification file.
       File localModFile =
           new File(resource.getFile().getAbsoluteFile() + ModificationFile.FILE_SUFFIX);
-      localModFile.delete();
-      remoteModFile.renameTo(localModFile);
+      try {
+        Files.delete(localModFile.toPath());
+      } catch (IOException e) {
+        logger.warn("Cannot delete localModFile {}", localModFile, e);
+      }
+      if (!remoteModFile.renameTo(localModFile)) {
+        logger.warn("Cannot rename remoteModFile {}", remoteModFile);
+      }
     }
     resource.setRemote(false);
   }
@@ -639,7 +643,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     String[] pathSegments = FilePathUtils.splitTsFilePath(resource);
     int segSize = pathSegments.length;
     // the new file is stored at:
-    // remote/{nodeIdentifier}/{storageGroupName}/{partitionNum}/{fileName}
+    // remote/<nodeIdentifier>/<storageGroupName>/<partitionNum>/<fileName>
     // the file in the snapshot is a hardlink, remove the hardlink suffix
     String tempFileName = pathSegments[segSize - 1].substring(0,
         pathSegments[segSize - 1].lastIndexOf('.'));
@@ -653,7 +657,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     if (pullRemoteFile(resource.getFile().getAbsolutePath(), node, tempFile)) {
       if (!checkMd5(tempFile, resource.getMd5())) {
         logger.error("The downloaded file of {} does not have the right MD5", resource);
-        tempFile.delete();
+        Files.delete(tempFile.toPath());
         return null;
       }
       if (resource.isWithModification()) {
@@ -685,53 +689,60 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return false;
     }
 
-    AtomicReference<ByteBuffer> result = new AtomicReference<>();
     int pullFileRetry = 5;
     for (int i = 0; i < pullFileRetry; i++) {
       try (BufferedOutputStream bufferedOutputStream =
           new BufferedOutputStream(new FileOutputStream(dest))) {
-        int offset = 0;
-        // TODO-Cluster: use elaborate downloading techniques
-        int fetchSize = 64 * 1024;
-        GenericHandler<ByteBuffer> handler = new GenericHandler<>(node, result);
-
-        while (true) {
-          result.set(null);
-          synchronized (result) {
-            client.readFile(remotePath, offset, fetchSize, handler);
-            result.wait(RaftServer.getConnectionTimeoutInMS());
-          }
-          ByteBuffer buffer = result.get();
-          if (buffer == null || buffer.limit() - buffer.position() == 0) {
-            break;
-          }
-
-          // notice: the buffer returned by thrift is a slice of a larger buffer which contains
-          // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
-          // not the size of the downloaded chunk
-          bufferedOutputStream.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
-              buffer.limit() - buffer.position());
-          offset += buffer.limit() - buffer.position();
-        }
-        bufferedOutputStream.flush();
+        downloadFile(client, remotePath, bufferedOutputStream);
         if (logger.isInfoEnabled()) {
           logger.info("{}: remote file {} is pulled at {}, length: {}", name, remotePath, dest,
               dest.length());
         }
         return true;
-      } catch (TException | InterruptedException e) {
+      } catch (TException e) {
         logger.warn("{}: Cannot pull file {} from {}, wait 5s to retry", name, remotePath, node,
             e);
-        try {
-          Thread.sleep(5000);
-        } catch (InterruptedException ex) {
-          // ignore
-        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("{}: Pulling file {} from {} interrupted", name, remotePath, node, e);
+        return false;
       }
-      dest.delete();
+
+      try {
+        Files.delete(dest.toPath());
+        Thread.sleep(5000);
+      } catch (IOException e) {
+        logger.warn("Cannot delete file when pulling {} from {} failed", remotePath, node);
+      } catch (InterruptedException ex) {
+        Thread.currentThread().interrupt();
+        logger.warn("{}: Pulling file {} from {} interrupted", name, remotePath, node, ex);
+        return false;
+      }
       // next try
     }
     return false;
+  }
+
+  private void downloadFile(DataClient client, String remotePath, OutputStream dest)
+      throws IOException, TException, InterruptedException {
+    int offset = 0;
+    // TODO-Cluster: use elaborate downloading techniques
+    int fetchSize = 64 * 1024;
+
+    while (true) {
+      ByteBuffer buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
+      if (buffer == null || buffer.limit() - buffer.position() == 0) {
+        break;
+      }
+
+      // notice: the buffer returned by thrift is a slice of a larger buffer which contains
+      // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
+      // not the size of the downloaded chunk
+      dest.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
+          buffer.limit() - buffer.position());
+      offset += buffer.limit() - buffer.position();
+    }
+    dest.flush();
   }
 
   /**
@@ -743,24 +754,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
     if (character != NodeCharacter.LEADER && !readOnly) {
-      // if this node has been set readOnly, then it must have been synchronized with the leader
-      // otherwise forward the request to the leader
-      if (leader != null) {
-        logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
-        DataClient client = (DataClient) connectNode(leader);
-        try {
-          client.pullSnapshot(request, new GenericForwardHandler<>(resultHandler));
-        } catch (TException e) {
-          resultHandler.onError(e);
-        }
-        return;
-      } else {
-        waitLeader();
-        if (leader == null) {
-          resultHandler.onError(new LeaderUnknownException(getAllNodes()));
-          return;
-        }
-      }
+      forwardPullSnapshot(request, resultHandler);
+      return;
     }
     // if the requester pulls the snapshots because the header of the group is removed, then the
     // member should no longer receive new data
@@ -811,6 +806,25 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       resp.setSnapshotBytes(resultMap);
       logger.debug("{}: Sending {} snapshots to the requester", name, resultMap.size());
       resultHandler.onComplete(resp);
+    }
+  }
+
+  private void forwardPullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
+    // if this node has been set readOnly, then it must have been synchronized with the leader
+    // otherwise forward the request to the leader
+    if (leader != null) {
+      logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
+      DataClient client = (DataClient) connectNode(leader);
+      try {
+        client.pullSnapshot(request, new GenericForwardHandler<>(resultHandler));
+      } catch (TException e) {
+        resultHandler.onError(e);
+      }
+    } else {
+      waitLeader();
+      if (leader == null) {
+        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      }
     }
   }
 
@@ -876,7 +890,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       return;
     }
 
-    pullSnapshotService.submit(new PullSnapshotTask(descriptor, this, FileSnapshot::new, null));
+    pullSnapshotService
+        .submit(new PullSnapshotTask(descriptor, this, FileSnapshot::new, snapshotSave));
   }
 
   /**
@@ -891,15 +906,20 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     File[] files = snapshotTaskDir.listFiles();
     if (files != null) {
       for (File file : files) {
-        if (file.getName().endsWith(PullSnapshotTask.TASK_SUFFIX)) {
-          try (DataInputStream dataInputStream =
-              new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
-            PullSnapshotTaskDescriptor descriptor = new PullSnapshotTaskDescriptor();
-            descriptor.deserialize(dataInputStream);
-            pullFileSnapshot(descriptor, file);
-          } catch (IOException e) {
-            logger.error("Cannot resume pull-snapshot-task in file {}", file, e);
-            file.delete();
+        if (!file.getName().endsWith(PullSnapshotTask.TASK_SUFFIX)) {
+          continue;
+        }
+        try (DataInputStream dataInputStream =
+            new DataInputStream(new BufferedInputStream(new FileInputStream(file)))) {
+          PullSnapshotTaskDescriptor descriptor = new PullSnapshotTaskDescriptor();
+          descriptor.deserialize(dataInputStream);
+          pullFileSnapshot(descriptor, file);
+        } catch (IOException e) {
+          logger.error("Cannot resume pull-snapshot-task in file {}", file, e);
+          try {
+            Files.delete(file.toPath());
+          } catch (IOException ex) {
+            logger.debug("Cannot remove pull snapshot task file {}", file, e);
           }
         }
       }
@@ -1198,7 +1218,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
             request.getRequester(), request.getQueryId(), readerId);
         resultHandler.onComplete(readerId);
       } else {
-        logger.debug("{}: There is no data {} for {}#{}", name, path,
+        logger.debug("{}: There is no data of {} for {}#{}", name, path,
             request.getRequester(), request.getQueryId());
         resultHandler.onComplete(-1L);
         if (batchReader != null) {
@@ -1401,6 +1421,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * slots from the removed group, and add a new node to the group the removed node was in the
    * group.
    */
+  @SuppressWarnings("java:S2445") // the reference of allNodes is unchanged
   public void removeNode(Node removedNode, NodeRemovalResult removalResult) {
     synchronized (allNodes) {
       if (allNodes.contains(removedNode)) {
@@ -1499,10 +1520,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
 
       ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
-      dataOutputStream.writeInt(allTimeseriesSchema.size());
-      for (ShowTimeSeriesResult result : allTimeseriesSchema) {
-        result.serialize(outputStream);
+      try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+        dataOutputStream.writeInt(allTimeseriesSchema.size());
+        for (ShowTimeSeriesResult result : allTimeseriesSchema) {
+          result.serialize(outputStream);
+        }
       }
       resultHandler.onComplete(ByteBuffer.wrap(outputStream.toByteArray()));
     } catch (Exception e) {

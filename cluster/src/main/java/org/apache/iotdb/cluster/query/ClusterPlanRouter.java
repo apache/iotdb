@@ -41,6 +41,7 @@ import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.slf4j.Logger;
@@ -154,7 +155,6 @@ public class ClusterPlanRouter {
     long endTime = startTime + StorageEngine.getTimePartitionInterval();//excluded
     int startLoc = 0; //included
 
-    //Map<PartitionGroup>
     Map<PartitionGroup, List<Integer>> splitMap = new HashMap<>();
     //for each List in split, they are range1.start, range.end, range2.start, range2.end, ...
     for (int i = 1; i < times.length; i++) {// times are sorted in session API.
@@ -189,29 +189,7 @@ public class ClusterPlanRouter {
       }
       long[] subTimes = new long[count];
       int destLoc = 0;
-      Object[] values = new Object[plan.getMeasurements().length];
-      for (int i = 0; i < values.length; i++) {
-        switch (plan.getDataTypes()[i]) {
-          case TEXT:
-            values[i] = new Binary[count];
-            break;
-          case FLOAT:
-            values[i] = new float[count];
-            break;
-          case INT32:
-            values[i] = new int[count];
-            break;
-          case INT64:
-            values[i] = new long[count];
-            break;
-          case DOUBLE:
-            values[i] = new double[count];
-            break;
-          case BOOLEAN:
-            values[i] = new boolean[count];
-            break;
-        }
-      }
+      Object[] values = initTabletValues(plan.getMeasurements().length, count, plan.getDataTypes());
       for (int i = 0; i < locs.size(); i += 2) {
         int start = locs.get(i);
         int end = locs.get(i + 1);
@@ -225,6 +203,33 @@ public class ClusterPlanRouter {
       result.put(newBatch, entry.getKey());
     }
     return result;
+  }
+
+  private Object[] initTabletValues(int columnSize, int rowSize, TSDataType[] dataTypes) {
+    Object[] values = new Object[columnSize];
+    for (int i = 0; i < values.length; i++) {
+      switch (dataTypes[i]) {
+        case TEXT:
+          values[i] = new Binary[rowSize];
+          break;
+        case FLOAT:
+          values[i] = new float[rowSize];
+          break;
+        case INT32:
+          values[i] = new int[rowSize];
+          break;
+        case INT64:
+          values[i] = new long[rowSize];
+          break;
+        case DOUBLE:
+          values[i] = new double[rowSize];
+          break;
+        case BOOLEAN:
+          values[i] = new boolean[rowSize];
+          break;
+      }
+    }
+    return values;
   }
 
   public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(UpdatePlan plan)

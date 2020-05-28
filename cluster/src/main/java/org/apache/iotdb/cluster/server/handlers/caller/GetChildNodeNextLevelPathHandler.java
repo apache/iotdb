@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 
 public class GetChildNodeNextLevelPathHandler implements AsyncMethodCallback<Set<String>> {
 
-  private static final Logger logger = LoggerFactory.getLogger(GetNodesListHandler.class);
+  private static final Logger logger = LoggerFactory.getLogger(GetChildNodeNextLevelPathHandler.class);
 
   private Node contact;
   private AtomicReference<Set<String>> result;

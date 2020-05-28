@@ -61,14 +61,9 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
       }
     } else {
       // the follower's term has updated, which means a new leader is elected
-      synchronized (raftMember.getTerm()) {
-        long currTerm = raftMember.getTerm().get();
-        if (currTerm < resp) {
-          logger.debug("{}: Received a rejection because term is stale: {}/{}", memberName,
-              currTerm, resp);
-          raftMember.stepDown(resp);
-        }
-      }
+      logger.debug("{}: Received a rejection because term is updated to: {}", memberName, resp);
+      raftMember.stepDown(resp);
+
       synchronized (appendSucceed) {
         appendSucceed.notifyAll();
       }

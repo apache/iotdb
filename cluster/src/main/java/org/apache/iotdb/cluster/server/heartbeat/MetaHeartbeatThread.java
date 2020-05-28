@@ -55,14 +55,12 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     }
 
     // if the node requires the partition table and it is ready, send it
-    if (localMetaMember.isNodeBlind(node)) {
-      if (localMetaMember.getPartitionTable() != null) {
-        logger.debug("Send partition table to {}", node);
-        request.setPartitionTableBytes(localMetaMember.getPartitionTable().serialize());
-        // if the node does not receive the list, it will require it in the next heartbeat, so
-        // we can remove it now
-        localMetaMember.removeBlindNode(node);
-      }
+    if (localMetaMember.isNodeBlind(node) && localMetaMember.getPartitionTable() != null) {
+      logger.debug("Send partition table to {}", node);
+      request.setPartitionTableBytes(localMetaMember.getPartitionTable().serialize());
+      // if the node does not receive the list, it will require it in the next heartbeat, so
+      // we can remove it now
+      localMetaMember.removeBlindNode(node);
     }
 
     // the actual sending goes here
