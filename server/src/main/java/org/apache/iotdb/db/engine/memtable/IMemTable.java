@@ -56,6 +56,16 @@ public interface IMemTable {
    */
   long memSize();
 
+  /**
+   * @return whether the average number of points in each WritableChunk reaches the threshold
+   */
+  boolean reachTotalPointNumThreshold();
+
+  int getSeriesNumber();
+
+  long getTotalPointsNum();
+
+
   void insert(InsertPlan insertPlan) throws WriteProcessException;
 
   /**
