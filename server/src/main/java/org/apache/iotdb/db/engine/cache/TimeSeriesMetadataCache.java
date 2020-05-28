@@ -144,7 +144,12 @@ public class TimeSeriesMetadataCache {
       timeSeriesMetadataList.forEach(timeseriesMetadata ->
           lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device,
               timeseriesMetadata.getMeasurementId()), timeseriesMetadata));
-      return new TimeseriesMetadata(lruCache.get(key));
+      TimeseriesMetadata metadata = lruCache.get(key);
+      if (metadata == null) {
+        return null;
+      } else {
+        return new TimeseriesMetadata(lruCache.get(key));
+      }
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", key.filePath);
       throw e;
