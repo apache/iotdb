@@ -226,7 +226,7 @@ public class IoTDBDescriptor {
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold > 0) {
+      if (tsfileSizeThreshold >= 0) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
@@ -236,6 +236,10 @@ public class IoTDBDescriptor {
       if (memTableSizeThreshold > 0) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
+
+      conf.setAvgSeriesPointNumberThreshold(Integer.parseInt(properties
+          .getProperty("avg_series_point_number_threshold",
+              Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -583,7 +587,7 @@ public class IoTDBDescriptor {
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
+      if (tsfileSizeThreshold >= 0 && !conf.isEnableParameterAdapter()) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
