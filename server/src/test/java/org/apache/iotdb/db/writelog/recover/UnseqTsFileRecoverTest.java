@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
@@ -53,16 +57,11 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
 
 public class UnseqTsFileRecoverTest {
 
@@ -96,7 +95,8 @@ public class UnseqTsFileRecoverTest {
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         Path path = new Path(("root.sg.device" + i), ("sensor" + j));
-        MeasurementSchema measurementSchema = new MeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN);
+        MeasurementSchema measurementSchema = new MeasurementSchema("sensor" + j, TSDataType.INT64,
+            TSEncoding.PLAIN);
         schema.registerTimeseries(path, measurementSchema);
         MManager.getInstance().createTimeseries(path.getFullPath(), measurementSchema.getType(),
             measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
@@ -145,19 +145,22 @@ public class UnseqTsFileRecoverTest {
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         String[] measurements = new String[10];
+        TSDataType[] types = new TSDataType[10];
         String[] values = new String[10];
         for (int k = 0; k < 10; k++) {
           measurements[k] = "sensor" + k;
+          types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k + 10);
         }
-        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, values);
+        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, types,
+            values);
         node.write(insertPlan);
       }
       node.notifyStartFlush();
     }
-    InsertPlan insertPlan = new InsertPlan("root.sg.device99", 1, "sensor4", "4");
+    InsertPlan insertPlan = new InsertPlan("root.sg.device99", 1, "sensor4", TSDataType.INT64, "4");
     node.write(insertPlan);
-    insertPlan = new InsertPlan("root.sg.device99", 300, "sensor2", "2");
+    insertPlan = new InsertPlan("root.sg.device99", 300, "sensor2", TSDataType.INT64, "2");
     node.write(insertPlan);
     node.close();
 
@@ -176,7 +179,8 @@ public class UnseqTsFileRecoverTest {
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         versionController, resource, true, false);
-    ActiveTimeSeriesCounter.getInstance().init(resource.getFile().getParentFile().getParentFile().getName());
+    ActiveTimeSeriesCounter.getInstance()
+        .init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();
 
     assertEquals(1, (long) resource.getStartTime("root.sg.device99"));

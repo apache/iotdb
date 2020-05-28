@@ -36,10 +36,10 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -48,9 +48,9 @@ import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -104,10 +104,13 @@ public class LogReplayerTest {
 
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
-      node.write(new InsertPlan("root.sg.device0", 100, "sensor0", String.valueOf(0)));
-      node.write(new InsertPlan("root.sg.device0", 2, "sensor1", String.valueOf(0)));
+      node.write(
+          new InsertPlan("root.sg.device0", 100, "sensor0", TSDataType.INT64, String.valueOf(0)));
+      node.write(
+          new InsertPlan("root.sg.device0", 2, "sensor1", TSDataType.INT64, String.valueOf(0)));
       for (int i = 1; i < 5; i++) {
-        node.write(new InsertPlan("root.sg.device" + i, i, "sensor" + i, String.valueOf(i)));
+        node.write(new InsertPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
+            String.valueOf(i)));
       }
       DeletePlan deletePlan = new DeletePlan(200, new Path("root.sg.device0", "sensor0"));
       node.write(deletePlan);
@@ -116,8 +119,9 @@ public class LogReplayerTest {
       replayer.replayLogs();
 
       for (int i = 0; i < 5; i++) {
-        ReadOnlyMemChunk memChunk = memTable.query("root.sg.device" + i, "sensor" + i, TSDataType.INT64,
-            TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE);
+        ReadOnlyMemChunk memChunk = memTable
+            .query("root.sg.device" + i, "sensor" + i, TSDataType.INT64,
+                TSEncoding.RLE, Collections.emptyMap(), Long.MIN_VALUE);
         IPointReader iterator = memChunk.getPointReader();
         if (i == 0) {
           assertFalse(iterator.hasNextTimeValuePair());
