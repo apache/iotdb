@@ -33,7 +33,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,14 +41,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public abstract class AbstractMemTable implements IMemTable {
 
+  private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
+
   private long version = Long.MAX_VALUE;
 
   private List<Modification> modifications = new ArrayList<>();
 
   private int avgSeriesPointNumThreshold = IoTDBDescriptor.getInstance().getConfig()
       .getAvgSeriesPointNumberThreshold();
-
-  private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
 
   private long memSize = 0;
 
@@ -98,24 +97,17 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
 
   @Override
-  public void insert(InsertPlan insertPlan) throws WriteProcessException {
-    try {
-      for (int i = 0; i < insertPlan.getValues().length; i++) {
+  public void insert(InsertPlan insertPlan) {
+    for (int i = 0; i < insertPlan.getValues().length; i++) {
 
-        Object value = CommonUtils.parseValue(insertPlan.getSchemas()[i].getType(),
-            insertPlan.getValues()[i]);
+      Object value = insertPlan.getValues()[i];
+      memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
 
-        memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
-
-        write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-            insertPlan.getSchemas()[i], insertPlan.getTime(), value);
-      }
-
-      totalPointsNum += insertPlan.getValues().length;
-
-    } catch (QueryProcessException e) {
-      throw new WriteProcessException(e.getMessage());
+      write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
+          insertPlan.getSchemas()[i], insertPlan.getTime(), value);
     }
+
+    totalPointsNum += insertPlan.getValues().length;
   }
 
   @Override
@@ -123,8 +115,7 @@ public abstract class AbstractMemTable implements IMemTable {
       throws WriteProcessException {
     try {
       write(insertTabletPlan, start, end);
-      long recordSizeInByte = MemUtils.getRecordSize(insertTabletPlan, start, end);
-      memSize += recordSizeInByte;
+      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end);
       totalPointsNum += insertTabletPlan.getMeasurements().length * (end - start);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e.getMessage());
@@ -242,12 +233,12 @@ public abstract class AbstractMemTable implements IMemTable {
     this.modifications.add(deletion);
   }
 
-  public void setVersion(long version) {
-    this.version = version;
-  }
-
   public long getVersion() {
     return version;
+  }
+
+  public void setVersion(long version) {
+    this.version = version;
   }
 
   @Override

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.rocketmq;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -37,11 +38,11 @@ import org.slf4j.LoggerFactory;
 
 public class RocketMQConsumer {
 
+  private static final Logger logger = LoggerFactory.getLogger(RocketMQConsumer.class);
+  private static Session session;
   private DefaultMQPushConsumer consumer;
   private String producerGroup;
   private String serverAddresses;
-  private static Session session;
-  private static final Logger logger = LoggerFactory.getLogger(RocketMQConsumer.class);
 
   public RocketMQConsumer(String producerGroup, String serverAddresses, String connectionHost,
       int connectionPort, String user, String password)
@@ -51,6 +52,22 @@ public class RocketMQConsumer {
     this.consumer = new DefaultMQPushConsumer(producerGroup);
     this.consumer.setNamesrvAddr(serverAddresses);
     initIoTDB(connectionHost, connectionPort, user, password);
+  }
+
+  public static void main(String[] args)
+      throws MQClientException, StatementExecutionException, IoTDBConnectionException {
+    /**
+     *Instantiate with specified consumer group name and specify name server addresses.
+     */
+    RocketMQConsumer consumer = new RocketMQConsumer(Constant.CONSUMER_GROUP,
+        Constant.SERVER_ADDRESS,
+        Constant.IOTDB_CONNECTION_HOST,
+        Constant.IOTDB_CONNECTION_PORT,
+        Constant.IOTDB_CONNECTION_USER,
+        Constant.IOTDB_CONNECTION_PASSWORD);
+    consumer.prepareConsume();
+    consumer.addStorageGroup(Constant.ADDITIONAL_STORAGE_GROUP);
+    consumer.start();
   }
 
   private void initIoTDB(String host, int port, String user, String password)
@@ -76,7 +93,8 @@ public class RocketMQConsumer {
     session.setStorageGroup(storageGroup);
   }
 
-  private void createTimeseries(String[] sql) throws StatementExecutionException, IoTDBConnectionException {
+  private void createTimeseries(String[] sql)
+      throws StatementExecutionException, IoTDBConnectionException {
     String timeseries = sql[0];
     TSDataType dataType = TSDataType.valueOf(sql[1]);
     TSEncoding encoding = TSEncoding.valueOf(sql[2]);
@@ -89,8 +107,37 @@ public class RocketMQConsumer {
     String device = dataArray[0];
     long time = Long.parseLong(dataArray[1]);
     List<String> measurements = Arrays.asList(dataArray[2].split(":"));
-    List<String> values = Arrays.asList(dataArray[3].split(":"));
-    session.insertRecord(device, time, measurements, values);
+    List<TSDataType> types = new ArrayList<>();
+    for (String type : dataArray[3].split(":")) {
+      types.add(TSDataType.valueOf(type));
+    }
+
+    List<Object> values = new ArrayList<>();
+    String[] valuesStr = dataArray[4].split(":");
+    for (int i = 0; i < valuesStr.length; i++) {
+      switch (types.get(i)) {
+        case INT64:
+          values.add(Long.parseLong(valuesStr[i]));
+          break;
+        case DOUBLE:
+          values.add(Double.parseDouble(valuesStr[i]));
+          break;
+        case INT32:
+          values.add(Integer.parseInt(valuesStr[i]));
+          break;
+        case TEXT:
+          values.add(valuesStr[i]);
+          break;
+        case FLOAT:
+          values.add(Float.parseFloat(valuesStr[i]));
+          break;
+        case BOOLEAN:
+          values.add(Boolean.parseBoolean(valuesStr[i]));
+          break;
+      }
+    }
+
+    session.insertRecord(device, time, measurements, types, values);
   }
 
   public void start() throws MQClientException {
@@ -99,6 +146,7 @@ public class RocketMQConsumer {
 
   /**
    * Subscribe topic and add register Listener
+   *
    * @throws MQClientException
    */
   public void prepareConsume() throws MQClientException {
@@ -116,8 +164,9 @@ public class RocketMQConsumer {
      */
     consumer.registerMessageListener((MessageListenerOrderly) (msgs, context) -> {
       for (MessageExt msg : msgs) {
-        logger.info(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
-            new String(msg.getBody())));
+        logger
+            .info(String.format("%s Receive New Messages: %s %n", Thread.currentThread().getName(),
+                new String(msg.getBody())));
         try {
           insert(new String(msg.getBody()));
         } catch (Exception e) {
@@ -146,21 +195,5 @@ public class RocketMQConsumer {
 
   public void setServerAddresses(String serverAddresses) {
     this.serverAddresses = serverAddresses;
-  }
-
-  public static void main(String[] args)
-      throws MQClientException, StatementExecutionException, IoTDBConnectionException {
-    /**
-     *Instantiate with specified consumer group name and specify name server addresses.
-     */
-    RocketMQConsumer consumer = new RocketMQConsumer(Constant.CONSUMER_GROUP,
-        Constant.SERVER_ADDRESS,
-        Constant.IOTDB_CONNECTION_HOST,
-        Constant.IOTDB_CONNECTION_PORT,
-        Constant.IOTDB_CONNECTION_USER,
-        Constant.IOTDB_CONNECTION_PASSWORD);
-    consumer.prepareConsume();
-    consumer.addStorageGroup(Constant.ADDITIONAL_STORAGE_GROUP);
-    consumer.start();
   }
 }
