@@ -53,7 +53,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metrics.server.SqlArgument;
+import org.apache.iotdb.db.metrics.SqlArgument;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
@@ -139,7 +139,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
   protected Planner processor;
   protected IPlanExecutor executor;
-  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
+  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableHTTPService();
   // Record the username for every rpc connection (session).
   private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
   private Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
