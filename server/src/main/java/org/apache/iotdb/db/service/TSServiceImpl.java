@@ -1076,6 +1076,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         plan.setTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setValues(new Object[plan.getMeasurements().length]);
         plan.setValues(req.valuesList.get(i));
+        plan.setInferType(req.isInferType());
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           resp.addToStatusList(status);
@@ -1124,6 +1125,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan.setTypes(new TSDataType[plan.getMeasurements().length]);
       plan.setValues(new Object[plan.getMeasurements().length]);
       plan.setValues(req.values);
+      plan.setInferType(req.isInferType());
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       if (status != null) {
