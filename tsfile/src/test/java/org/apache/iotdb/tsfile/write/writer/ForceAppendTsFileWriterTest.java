@@ -65,6 +65,7 @@ public class ForceAppendTsFileWriterTest {
     writer.close();
     ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(file);
     assertEquals(firstMetadataPosition, fwriter.getTruncatePosition());
+    fwriter.doTruncate();
 
     // write more data into this TsFile
     writer = new TsFileWriter(fwriter);
