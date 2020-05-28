@@ -27,7 +27,7 @@ IoTDB official website：https://iotdb.apache.org/
 
 Code library：https://github.com/apache/incubator-iotdb/tree/master
 
-Get started quickly：http://iotdb.apache.org/UserGuide/master/0-Get%20Started/1-QuickStart.html
+Get started quickly：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
 
 ## Subscribe to mailing list
 

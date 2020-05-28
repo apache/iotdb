@@ -255,4 +255,8 @@ public class MergeResource {
     this.measurementSchemaMap = measurementSchemaMap;
   }
 
+  public void clearChunkWriterCache() {
+    this.chunkWriterCache.clear();
+  }
+
 }
