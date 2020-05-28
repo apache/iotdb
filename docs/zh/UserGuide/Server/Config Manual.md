@@ -268,7 +268,7 @@
 |:---:|:---|
 |Description| 内存缓冲区 memtable 阈值|
 |Type|Long|
-|Default| false |
+|Default| 1073741824 |
 |Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
 
 * avg\_series\_point\_number\_threshold
@@ -277,7 +277,7 @@
 |:---:|:---|
 |Description| 内存中平均每个时间序列点数最大值，达到触发flush|
 |Type|Int32|
-|Default| 2048 |
+|Default| 5000 |
 |Effective|重启服务器生效|
 
 * tsfile\_size\_threshold
@@ -286,7 +286,7 @@
 |:---:|:---|
 |Description| 每个 tsfile 大小|
 |Type|Long|
-|Default| false |
+|Default| 536870912 |
 |Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
 
 * enable\_partition

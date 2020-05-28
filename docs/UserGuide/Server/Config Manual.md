@@ -287,7 +287,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| max memtable size|
 |Type|Long|
-|Default| false |
+|Default| 1073741824 |
 |Effective| when enable\_parameter\_adapter is false & After restart system|
 
 * avg\_series\_point\_number\_threshold
@@ -296,7 +296,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| max average number of point of each series in memtable|
 |Type|Int32|
-|Default| 2048 |
+|Default| 5000 |
 |Effective|After restart system|
 
 * tsfile\_size\_threshold
@@ -305,7 +305,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| max tsfile size|
 |Type|Long|
-|Default| false |
+|Default| 536870912 |
 |Effective| when enable\_parameter\_adapter is false & After restart system|
 
 * enable\_partition
