@@ -59,7 +59,7 @@ public interface IMemTable {
   /**
    * @return average number of points in each WritableChunk
    */
-  float getAveragePointNumber();
+  int getAvgSeriesPoints();
 
   void insert(InsertPlan insertPlan) throws WriteProcessException;
 

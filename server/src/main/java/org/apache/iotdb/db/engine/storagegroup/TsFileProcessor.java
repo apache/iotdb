@@ -265,7 +265,7 @@ public class TsFileProcessor {
   boolean shouldFlush() {
     return workMemTable != null &&
         (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()
-            || workMemTable.getAveragePointNumber() >= config.getAvgSeriesPointNumberThreshold());
+            || workMemTable.getAvgSeriesPoints() >= config.getAvgSeriesPointNumberThreshold());
   }
 
   /**

@@ -49,9 +49,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private long memSize = 0;
 
-  private float seriesNumber = 0;
+  private int seriesNumber = 0;
 
-  private float averagePointNumber = 0;
+  private long totalPointsNum = 0;
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -104,7 +104,7 @@ public abstract class AbstractMemTable implements IMemTable {
             insertPlan.getSchemas()[i], insertPlan.getTime(), value);
       }
 
-      averagePointNumber += insertPlan.getValues().length / seriesNumber;
+      totalPointsNum += insertPlan.getValues().length;
 
     } catch (QueryProcessException e) {
       throw new WriteProcessException(e.getMessage());
@@ -118,9 +118,7 @@ public abstract class AbstractMemTable implements IMemTable {
       write(insertTabletPlan, start, end);
       long recordSizeInByte = MemUtils.getRecordSize(insertTabletPlan, start, end);
       memSize += recordSizeInByte;
-      averagePointNumber +=
-          (float) (insertTabletPlan.getMeasurements().length * insertTabletPlan.getRowCount())
-              / seriesNumber;
+      totalPointsNum += insertTabletPlan.getMeasurements().length * insertTabletPlan.getRowCount();
     } catch (RuntimeException e) {
       throw new WriteProcessException(e.getMessage());
     }
@@ -162,8 +160,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public float getAveragePointNumber() {
-    return averagePointNumber;
+  public int getAvgSeriesPoints() {
+    return (int) (totalPointsNum / seriesNumber);
   }
 
   @Override
@@ -217,7 +215,7 @@ public abstract class AbstractMemTable implements IMemTable {
         return;
       }
       int deletedPointsNumber = chunk.delete(timestamp);
-      averagePointNumber -= deletedPointsNumber / seriesNumber;
+      totalPointsNum -= deletedPointsNumber;
     }
   }
 
@@ -237,7 +235,7 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void release() {
     seriesNumber = 0;
-    averagePointNumber = 0;
+    totalPointsNum = 0;
     for (Entry<String, Map<String, IWritableMemChunk>> entry : memTableMap.entrySet()) {
       for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());

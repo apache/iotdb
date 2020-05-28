@@ -232,7 +232,7 @@ public class IoTDBConfig {
   /**
    * When average series point number reaches this, flush the memtable to disk
    */
-  private float avgSeriesPointNumberThreshold = 2048;
+  private int avgSeriesPointNumberThreshold = 2048;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
@@ -1111,11 +1111,11 @@ public class IoTDBConfig {
     this.memtableSizeThreshold = memtableSizeThreshold;
   }
 
-  public float getAvgSeriesPointNumberThreshold() {
+  public int getAvgSeriesPointNumberThreshold() {
     return avgSeriesPointNumberThreshold;
   }
 
-  public void setAvgSeriesPointNumberThreshold(float avgSeriesPointNumberThreshold) {
+  public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
