@@ -232,6 +232,11 @@ public class IoTDBConfig {
   private long memtableSizeThreshold = 128 * 1024 * 1024L;
 
   /**
+   * When average series point number reaches this, flush the memtable to disk
+   */
+  private int avgSeriesPointNumberThreshold = 5000;
+
+  /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
    */
   private boolean metaDataCacheEnable = true;
@@ -1130,6 +1135,13 @@ public class IoTDBConfig {
     this.seqMergeFileStrategy = seqMergeFileStrategy;
   }
 
+  public int getAvgSeriesPointNumberThreshold() {
+    return avgSeriesPointNumberThreshold;
+  }
+
+  public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
+  }
 
   public void setSizeMergeFileStrategy(
       SizeMergeFileStrategy sizeMergeFileStrategy) {

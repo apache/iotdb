@@ -877,7 +877,13 @@ public class PlanExecutor implements IPlanExecutor {
           if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           }
-          TSDataType dataType = TypeInferenceUtils.getPredictedDataType(insertPlan.getValues()[i]);
+          TSDataType dataType;
+          if (insertPlan.getStrValues() != null) {
+            // infer type for insert sql
+            dataType = TypeInferenceUtils.getPredictedDataType(insertPlan.getStrValues()[i]);
+          } else {
+            dataType = TypeInferenceUtils.getPredictedDataType(insertPlan.getValues()[i]);
+          }
           Path path = new Path(deviceId, measurement);
           internalCreateTimeseries(path.toString(), dataType);
         }
@@ -886,7 +892,7 @@ public class PlanExecutor implements IPlanExecutor {
         // reset measurement to common name instead of alias
         measurementList[i] = measurementNode.getName();
 
-        if(insertPlan.getStrValueList() == null) {
+        if(insertPlan.getStrValues() == null) {
           checkType(insertPlan, i, measurementNode.getSchema().getType());
         }
       }

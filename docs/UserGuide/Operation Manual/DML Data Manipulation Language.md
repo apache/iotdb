@@ -280,7 +280,7 @@ Linear fill is not supported in group by fill.
 The SQL statement is:
 
 ```
-SELECT last_value(temperature) as last_temperature FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
 ```
 which means:
 
