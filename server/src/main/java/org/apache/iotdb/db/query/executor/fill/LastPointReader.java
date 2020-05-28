@@ -182,9 +182,9 @@ public class LastPointReader {
     PriorityQueue<TsFileResource> unseqTsFilesSet =
         new PriorityQueue<>(
             (o1, o2) -> {
-              Long minTimeOfO1 = o1.getEndTime(seriesPath.getDevice());
-              Long minTimeOfO2 = o2.getEndTime(seriesPath.getDevice());
-              return Long.compare(minTimeOfO2, minTimeOfO1);
+              Long maxTimeOfO1 = o1.getEndTime(seriesPath.getDevice());
+              Long maxTimeOfO2 = o2.getEndTime(seriesPath.getDevice());
+              return Long.compare(maxTimeOfO2, maxTimeOfO1);
             });
     unseqTsFilesSet.addAll(tsFileResources);
     return unseqTsFilesSet;

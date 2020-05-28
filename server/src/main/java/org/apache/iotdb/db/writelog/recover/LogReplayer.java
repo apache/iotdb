@@ -128,7 +128,7 @@ public class LogReplayer {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = currentTsFileResource.getEndTime(insertTabletPlan.getDeviceId());
-      if (lastEndTime >= 0 && lastEndTime >= insertTabletPlan.getMinTime() &&
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= insertTabletPlan.getMinTime() &&
           !acceptDuplication) {
         return;
       }
@@ -156,7 +156,7 @@ public class LogReplayer {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = currentTsFileResource.getEndTime(insertPlan.getDeviceId());
-      if (lastEndTime >= 0 && lastEndTime >= insertPlan.getTime() &&
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= insertPlan.getTime() &&
           !acceptDuplication) {
         return;
       }

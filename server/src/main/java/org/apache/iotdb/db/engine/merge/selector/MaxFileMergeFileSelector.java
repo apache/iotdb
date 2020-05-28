@@ -222,7 +222,7 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (seqSelected[i] || seqFile.getEndTime(deviceId) < 0) {
+        if (seqSelected[i] || !seqFile.getDeviceToIndexMap().containsKey(deviceId)) {
           continue;
         }
         long seqEndTime = seqFile.getEndTime(deviceId);

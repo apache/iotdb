@@ -1279,7 +1279,7 @@ public class StorageGroupProcessor {
     }
     if (dataTTL != Long.MAX_VALUE) {
       long deviceEndTime = tsFileResource.getEndTime(deviceId);
-      return deviceEndTime < 0 || checkTTL(deviceEndTime);
+      return deviceEndTime == Long.MIN_VALUE || checkTTL(deviceEndTime);
     }
 
     if (timeFilter != null) {

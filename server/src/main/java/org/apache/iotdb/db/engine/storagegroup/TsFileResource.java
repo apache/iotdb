@@ -72,7 +72,8 @@ public class TsFileResource {
   private long[] startTimes;
 
   /**
-   * end times array. The values in this array are -1 if it's an unsealed sequence tsfile
+   * end times array. 
+   * The values in this array are Long.MIN_VALUE if it's an unsealed sequence tsfile
    */
   private long[] endTimes;
 
@@ -167,8 +168,8 @@ public class TsFileResource {
     this.deviceToIndex = new ConcurrentHashMap<>();
     this.startTimes = new long[INIT_ARRAY_SIZE];
     this.endTimes = new long[INIT_ARRAY_SIZE];
-    initTimes(startTimes);
-    initTimes(endTimes);
+    initTimes(startTimes, Long.MAX_VALUE);
+    initTimes(endTimes, Long.MIN_VALUE);
   }
 
   /**
@@ -179,8 +180,8 @@ public class TsFileResource {
     this.deviceToIndex = new ConcurrentHashMap<>();
     this.startTimes = new long[INIT_ARRAY_SIZE];
     this.endTimes = new long[INIT_ARRAY_SIZE];
-    initTimes(startTimes);
-    initTimes(endTimes);
+    initTimes(startTimes, Long.MAX_VALUE);
+    initTimes(endTimes, Long.MIN_VALUE);
     this.processor = processor;
   }
 
@@ -237,8 +238,8 @@ public class TsFileResource {
     }
   }
 
-  private void initTimes(long[] times) {
-    Arrays.fill(times, -1);
+  private void initTimes(long[] times, long defaultTime) {
+    Arrays.fill(times, defaultTime);
   }
 
   public void serialize() throws IOException {
@@ -364,7 +365,7 @@ public class TsFileResource {
 
   public long getStartTime(String deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
-      return -1;
+      return Long.MAX_VALUE;
     }
     return startTimes[deviceToIndex.get(deviceId)];
   }
@@ -375,7 +376,7 @@ public class TsFileResource {
 
   public long getEndTime(String deviceId) {
     if (!deviceToIndex.containsKey(deviceId)) {
-      return -1;
+      return Long.MIN_VALUE;
     }
     return endTimes[deviceToIndex.get(deviceId)];
   }
@@ -386,12 +387,12 @@ public class TsFileResource {
 
   public long getOrDefaultStartTime(String deviceId, long defaultTime) {
     long startTime = getStartTime(deviceId);
-    return startTime >= 0 ? startTime : defaultTime;
+    return startTime != Long.MAX_VALUE ? startTime : defaultTime;
   }
 
   public long getOrDefaultEndTime(String deviceId, long defaultTime) {
     long endTime = getEndTime(deviceId);
-    return endTime >= 0 ? endTime : defaultTime;
+    return endTime != Long.MIN_VALUE ? endTime : defaultTime;
   }
 
   public void putStartTime(String deviceId, long startTime) {
@@ -403,8 +404,8 @@ public class TsFileResource {
       index = deviceToIndex.size();
       deviceToIndex.put(deviceId, index);
       if (startTimes.length <= index) {
-        startTimes = enLargeArray(startTimes);
-        endTimes = enLargeArray(endTimes);
+        startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
+        endTimes = enLargeArray(endTimes, Long.MIN_VALUE);
       }
     }
     startTimes[index] = startTime;
@@ -419,16 +420,16 @@ public class TsFileResource {
       index = deviceToIndex.size();
       deviceToIndex.put(deviceId, index);
       if (endTimes.length <= index) {
-        startTimes = enLargeArray(startTimes);
-        endTimes = enLargeArray(endTimes);
+        startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
+        endTimes = enLargeArray(endTimes, Long.MIN_VALUE);
       }
     }
     endTimes[index] = endTime;
   }
 
-  private long[] enLargeArray(long[] array) {
+  private long[] enLargeArray(long[] array, long defaultValue) {
     long[] tmp = new long[(int) (array.length * 1.5)];
-    initTimes(tmp);
+    initTimes(tmp, defaultValue);
     System.arraycopy(array, 0, tmp, 0, array.length);
     return tmp;
   }
@@ -447,7 +448,7 @@ public class TsFileResource {
 
   public void clearEndTimes() {
     endTimes = new long[endTimes.length];
-    initTimes(endTimes);
+    initTimes(endTimes, Long.MIN_VALUE);
   }
 
   public boolean areEndTimesEmpty() {
