@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
@@ -45,6 +46,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   private List<Modification> modifications = new ArrayList<>();
 
+  private int avgSeriesPointNumThreshold = IoTDBDescriptor.getInstance().getConfig()
+      .getAvgSeriesPointNumberThreshold();
+
   private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
 
   private long memSize = 0;
@@ -52,6 +56,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private int seriesNumber = 0;
 
   private long totalPointsNum = 0;
+
+  private long totalPointsNumThreshold = 0;
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -84,6 +90,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (!memSeries.containsKey(measurement)) {
       memSeries.put(measurement, genMemSeries(schema));
       seriesNumber++;
+      totalPointsNumThreshold += avgSeriesPointNumThreshold;
     }
     return memSeries.get(measurement);
   }
@@ -143,6 +150,14 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
 
+  public int getSeriesNumber() {
+    return seriesNumber;
+  }
+
+  public long getTotalPointsNum() {
+    return totalPointsNum;
+  }
+
   @Override
   public long size() {
     long sum = 0;
@@ -160,8 +175,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public int getAvgSeriesPoints() {
-    return (int) (totalPointsNum / seriesNumber);
+  public boolean reachTotalPointNumThreshold() {
+    return totalPointsNum >= totalPointsNumThreshold;
   }
 
   @Override
@@ -169,6 +184,9 @@ public abstract class AbstractMemTable implements IMemTable {
     memTableMap.clear();
     modifications.clear();
     memSize = 0;
+    seriesNumber = 0;
+    totalPointsNum = 0;
+    totalPointsNumThreshold = 0;
   }
 
   @Override
@@ -234,8 +252,6 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void release() {
-    seriesNumber = 0;
-    totalPointsNum = 0;
     for (Entry<String, Map<String, IWritableMemChunk>> entry : memTableMap.entrySet()) {
       for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());

@@ -226,7 +226,7 @@ public class IoTDBDescriptor {
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold > 0) {
+      if (tsfileSizeThreshold >= 0) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
@@ -587,7 +587,7 @@ public class IoTDBDescriptor {
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
+      if (tsfileSizeThreshold >= 0 && !conf.isEnableParameterAdapter()) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 

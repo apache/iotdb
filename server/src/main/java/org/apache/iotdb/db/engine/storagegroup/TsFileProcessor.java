@@ -263,9 +263,24 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
-    return workMemTable != null &&
-        (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()
-            || workMemTable.getAvgSeriesPoints() >= config.getAvgSeriesPointNumberThreshold());
+    if (workMemTable == null) {
+      return false;
+    }
+
+    if (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
+      logger.info("The memtable size {} of tsfile {} reaches the threshold",
+          workMemTable.memSize(), tsFileResource.getFile().getAbsolutePath());
+      return true;
+    }
+
+    if (workMemTable.reachTotalPointNumThreshold()) {
+      logger.info("The avg series points num {} of tsfile {} reaches the threshold",
+          workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
+          tsFileResource.getFile().getAbsolutePath());
+      return true;
+    }
+
+    return false;
   }
 
   /**
