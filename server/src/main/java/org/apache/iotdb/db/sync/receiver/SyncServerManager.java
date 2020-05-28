@@ -136,9 +136,11 @@ public class SyncServerManager implements IService {
     private Processor<SyncService.Iface> processor;
     private TThreadPoolServer.Args poolArgs;
     private CountDownLatch threadStopLatch;
+    private SyncServiceImpl serviceImpl;
 
     public SyncServiceThread(CountDownLatch stopLatch) {
-      processor = new SyncService.Processor<>(new SyncServiceImpl());
+      serviceImpl = new SyncServiceImpl();
+      processor = new SyncService.Processor<>(serviceImpl);
       this.threadStopLatch = stopLatch;
     }
 
@@ -152,7 +154,6 @@ public class SyncServerManager implements IService {
         } else {
           protocolFactory = new TBinaryProtocol.Factory();
         }
-        processor = new SyncService.Processor<>(new SyncServiceImpl());
         poolArgs = new TThreadPoolServer.Args(serverTransport).stopTimeoutVal(
             IoTDBDescriptor.getInstance().getConfig().getThriftServerAwaitTimeForStopService());
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
@@ -160,6 +161,7 @@ public class SyncServerManager implements IService {
         poolArgs.protocolFactory(protocolFactory);
         poolArgs.processor(processor);
         poolServer = new TThreadPoolServer(poolArgs);
+        poolServer.setServerEventHandler(new SyncServerThriftHandler(serviceImpl));
         poolServer.serve();
       } catch (TTransportException e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,

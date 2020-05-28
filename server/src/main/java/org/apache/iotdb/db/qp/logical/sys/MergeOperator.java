@@ -1,7 +1,3 @@
-package org.apache.iotdb.db.qp.logical.sys;
-
-import org.apache.iotdb.db.qp.logical.RootOperator;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -20,6 +16,10 @@ import org.apache.iotdb.db.qp.logical.RootOperator;
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.logical.sys;
+
+import org.apache.iotdb.db.qp.logical.RootOperator;
+
 public class MergeOperator extends RootOperator {
 
   public MergeOperator(int tokenIntType) {

@@ -265,4 +265,8 @@ public class MergeResource {
     }
   }
 
+  public void clearChunkWriterCache() {
+    this.chunkWriterCache.clear();
+  }
+
 }

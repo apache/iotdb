@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -60,6 +61,12 @@ public class AvgAggrResult extends AggregateResult {
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
     long preCnt = cnt;
+    if (statistics.getType().equals(TSDataType.BOOLEAN)) {
+      throw new StatisticsClassException("Boolean statistics does not support: avg");
+    }
+    if (statistics.getType().equals(TSDataType.TEXT)) {
+      throw new StatisticsClassException("Binary statistics does not support: avg");
+    }
     cnt += statistics.getCount();
     avg = avg * ((double) preCnt / cnt) + ((double) statistics.getCount() / cnt)
         * statistics.getSumValue() / statistics.getCount();

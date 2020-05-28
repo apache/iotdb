@@ -507,6 +507,15 @@ public class IoTDBAggregationIT {
         Assert.assertEquals("500: Unsupported data type in aggregation SUM : BOOLEAN",
             e.getMessage());
       }
+      try {
+        statement.execute("SELECT avg(status) FROM root.ln.wf01.wt01");
+        ResultSet resultSet = statement.getResultSet();
+        resultSet.next();
+        fail();
+      } catch (Exception e) {
+        Assert.assertEquals("500: Boolean statistics does not support: avg",
+            e.getMessage());
+      }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

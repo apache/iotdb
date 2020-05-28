@@ -37,6 +37,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -111,6 +112,24 @@ public class TsFileResource {
   private ReentrantReadWriteLock writeQueryLock = new ReentrantReadWriteLock();
 
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+
+  /**
+   *  generated upgraded TsFile ResourceList
+   *  used for upgrading v0.9.x/v1 -> 0.10/v2
+   */
+  private List<TsFileResource> upgradedResources;
+
+  /**
+   *  load upgraded TsFile Resources to storage group processor
+   *  used for upgrading v0.9.x/v1 -> 0.10/v2
+   */
+  private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
+
+  /**
+   *  indicate if this tsfile resource belongs to a sequence tsfile or not 
+   *  used for upgrading v0.9.x/v1 -> 0.10/v2
+   */
+  private boolean isSeq;
 
   public TsFileResource() {
   }
@@ -367,6 +386,10 @@ public class TsFileResource {
     fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX).delete();
   }
 
+  public void removeResourceFile() {
+    fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();
+  }
+
   void moveTo(File targetDir) {
     fsFactory.moveFile(file, fsFactory.getFile(targetDir, file.getName()));
     fsFactory.moveFile(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX),
@@ -481,6 +504,30 @@ public class TsFileResource {
 
   public TimeseriesMetadata getTimeSeriesMetadata() {
     return timeSeriesMetadata;
+  }
+
+  public void setUpgradedResources(List<TsFileResource> upgradedResources) {
+    this.upgradedResources = upgradedResources;
+  }
+
+  public List<TsFileResource> getUpgradedResources() {
+    return upgradedResources;
+  }
+
+  public void setSeq(boolean isSeq) {
+    this.isSeq = isSeq;
+  }
+
+  public boolean isSeq() {
+    return isSeq;
+  }
+
+  public void setUpgradeTsFileResourceCallBack(UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
+    this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
+  }
+
+  public UpgradeTsFileResourceCallBack getUpgradeTsFileResourceCallBack() {
+    return upgradeTsFileResourceCallBack;
   }
 
   /**

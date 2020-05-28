@@ -72,6 +72,7 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -177,6 +178,7 @@ public class PhysicalGenerator {
           throw new LogicalOperatorException(
               "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
+
         return new InsertPlan(
             paths.get(0).getFullPath(),
             insert.getTime(),
@@ -253,9 +255,6 @@ public class PhysicalGenerator {
                     "not supported operator type %s in show operation.", operator.getType()));
         }
       case LOAD_FILES:
-        if (((LoadFilesOperator) operator).isInvalid()) {
-          throw new LogicalOperatorException(((LoadFilesOperator) operator).getErrMsg());
-        }
         return new OperateFilePlan(
             ((LoadFilesOperator) operator).getFile(),
             OperatorType.LOAD_FILES,
@@ -269,6 +268,8 @@ public class PhysicalGenerator {
             ((MoveFileOperator) operator).getFile(),
             ((MoveFileOperator) operator).getTargetDir(),
             OperatorType.MOVE_FILE);
+      case CLEAR_CACHE:
+        return new ClearCachePlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

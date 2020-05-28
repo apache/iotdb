@@ -39,6 +39,7 @@ import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -178,10 +179,6 @@ public class IoTDBDescriptor {
 
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
-
-      conf.setJmxUser(properties.getProperty("jmx_user", conf.getJmxUser()));
-
-      conf.setJmxPassword(properties.getProperty("jmx_password", conf.getJmxPassword()));
 
       conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
           conf.getTimestampPrecision()));
@@ -377,15 +374,18 @@ public class IoTDBDescriptor {
 
       conf.setDefaultTTL(Long.parseLong(properties.getProperty("default_ttl",
           String.valueOf(conf.getDefaultTTL()))));
+
+//      conf.setEnablePartition(Boolean.parseBoolean(
+//          properties.getProperty("enable_partition", String.valueOf(conf.isEnablePartition()))));
+
       // Time range for dividing storage group
-      conf.setPartitionInterval(
-          Long.parseLong(properties
-              .getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
+//      conf.setPartitionInterval(Long.parseLong(properties
+//              .getProperty("partition_interval", String.valueOf(conf.getPartitionInterval()))));
 
       // the num of memtables in each storage group
-      conf.setMemtableNumInEachStorageGroup(
-          Integer.parseInt(properties.getProperty("memtable_num_in_each_storage_group",
-              String.valueOf(conf.getMemtableNumInEachStorageGroup()))));
+//      conf.setConcurrentWritingTimePartition(
+//          Integer.parseInt(properties.getProperty("concurrent_writing_time_partition",
+//              String.valueOf(conf.getConcurrentWritingTimePartition()))));
 
       // the default fill interval in LinearFill and PreviousFill
       conf.setDefaultFillInterval(
@@ -396,6 +396,9 @@ public class IoTDBDescriptor {
           Integer.parseInt(properties.getProperty("tag_attribute_total_size",
               String.valueOf(conf.getTagAttributeTotalSize())))
       );
+      conf.setPrimitiveArraySize((Integer.parseInt(
+          properties.getProperty(
+              "primitive_array_size", String.valueOf(conf.getPrimitiveArraySize())))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
@@ -481,6 +484,12 @@ public class IoTDBDescriptor {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
             Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
+    conf.setBooleanStringInferType(TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
+        conf.getBooleanStringInferType().toString())));
+    conf.setIntegerStringInferType(TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
+        conf.getIntegerStringInferType().toString())));
+    conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
+        conf.getFloatingStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
         Integer.parseInt(properties.getProperty("default_storage_group_level",
             Integer.toString(conf.getDefaultStorageGroupLevel()))));

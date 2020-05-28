@@ -54,7 +54,7 @@ public class IoTDBSessionIteratorIT {
   }
 
   @Test
-  public void test() {
+  public void test1() {
     String[] retArray = new String[]{
         "0,1,2.0,null",
         "1,1,2.0,null",
@@ -87,6 +87,59 @@ public class IoTDBSessionIteratorIT {
     }
   }
 
+  @Test
+  public void test2() {
+    String[] retArray = new String[]{
+        "9,root.sg1.d1.s1,1",
+        "9,root.sg1.d1.s2,2.0",
+        "9,root.sg1.d2.s1,4.0"
+    };
+
+    try {
+      SessionDataSet sessionDataSet = session.executeQueryStatement("select last * from root.sg1");
+      sessionDataSet.setFetchSize(1024);
+      DataIterator iterator = sessionDataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        String ans = String.format("%s,%s,%s", iterator.getLong(1), iterator.getString(2),
+            iterator.getString(3));
+        assertEquals(retArray[count], ans);
+        count++;
+      }
+      assertEquals(retArray.length, count);
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void test3() {
+    String[] retArray = new String[]{
+        "root.sg1.d1",
+        "root.sg1.d2"
+    };
+
+    try {
+      SessionDataSet sessionDataSet = session.executeQueryStatement("show devices");
+      sessionDataSet.setFetchSize(1024);
+      assertEquals(1, sessionDataSet.getColumnNames().size());
+      DataIterator iterator = sessionDataSet.iterator();
+      int count = 0;
+      while (iterator.next()) {
+        String ans = iterator.getString(1);
+        assertEquals(retArray[count], ans);
+        count++;
+      }
+      assertEquals(retArray.length, count);
+      sessionDataSet.closeOperationHandle();
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
   private void prepareData() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
@@ -100,22 +153,29 @@ public class IoTDBSessionIteratorIT {
         CompressionType.SNAPPY);
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
+    types.add(TSDataType.INT32);
+    types.add(TSDataType.FLOAT);
+
     for (long time = 0; time < 10; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      session.insertRecord(deviceId, time, measurements, values);
+      List<Object> values = new ArrayList<>();
+      values.add(1);
+      values.add(2f);
+      session.insertRecord(deviceId, time, measurements, types, values);
     }
 
     deviceId = "root.sg1.d2";
     measurements = new ArrayList<>();
+    types = new ArrayList<>();
     measurements.add("s1");
+    types.add(TSDataType.DOUBLE);
+
     for (long time = 5; time < 10; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("4");
-      session.insertRecord(deviceId, time, measurements, values);
+      List<Object> values = new ArrayList<>();
+      values.add(4d);
+      session.insertRecord(deviceId, time, measurements, types, values);
     }
   }
 
