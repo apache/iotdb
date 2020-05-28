@@ -18,13 +18,12 @@
 
 package org.apache.iotdb.flink;
 
-import com.google.common.collect.Lists;
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
+import com.google.common.collect.Lists;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.junit.Assert.*;
+import org.junit.Test;
 
 public class DefaultIoTSerializationSchemaTest {
 
@@ -38,12 +37,14 @@ public class DefaultIoTSerializationSchemaTest {
         tuple.put("device", "root.sg.D01");
         tuple.put("timestamp", "1581861293000");
         tuple.put("measurements", "temperature");
+        tuple.put("types", "DOUBLE");
         tuple.put("values", "36.5");
 
         Event event = serializationSchema.serialize(tuple);
         assertEquals(tuple.get("device"), event.getDevice());
         assertEquals(tuple.get("timestamp"), String.valueOf(event.getTimestamp()));
         assertEquals(tuple.get("measurements"), event.getMeasurements().get(0));
-        assertEquals(tuple.get("values"), event.getValues().get(0));
+        assertEquals(tuple.get("types"), event.getTypes().get(0).toString());
+        assertEquals(tuple.get("values"), String.valueOf(event.getValues().get(0)));
     }
 }

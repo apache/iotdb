@@ -32,6 +32,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
@@ -66,6 +67,7 @@ public class WriteLogNodeTest {
 
     InsertPlan bwInsertPlan = new InsertPlan(identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
+        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
 
@@ -96,6 +98,7 @@ public class WriteLogNodeTest {
 
     InsertPlan bwInsertPlan = new InsertPlan(identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
+        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
 
@@ -132,6 +135,7 @@ public class WriteLogNodeTest {
 
     InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
+        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
@@ -157,6 +161,7 @@ public class WriteLogNodeTest {
 
     InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
+        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 
@@ -181,6 +186,7 @@ public class WriteLogNodeTest {
 
     InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice.oversize", 100,
         new String[]{"s1", "s2", "s3", "s4"},
+        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", new String(new char[65 * 1024 * 1024]), "false"});
 
     boolean caught = false;
