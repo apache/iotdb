@@ -307,14 +307,14 @@ public class TsFileResource {
   }
 
   public void updateStartTime(String device, long time) {
-    long startTime = getOrDefaultStartTime(device, Long.MAX_VALUE);
+    long startTime = getStartTime(device);
     if (time < startTime) {
       putStartTime(device, time);
     }
   }
 
   public void updateEndTime(String device, long time) {
-    long endTime = getOrDefaultEndTime(device, Long.MIN_VALUE);
+    long endTime = getEndTime(device);
     if (time > endTime) {
       putEndTime(device, time);
     }
