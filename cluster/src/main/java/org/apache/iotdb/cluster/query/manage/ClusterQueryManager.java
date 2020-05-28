@@ -32,12 +32,8 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ClusterQueryManager {
-
-  private static final Logger logger = LoggerFactory.getLogger(ClusterQueryManager.class);
 
   private AtomicLong idAtom = new AtomicLong();
   private Map<Node, Map<Long, RemoteQueryContext>> queryContextMap = new ConcurrentHashMap<>();
@@ -50,13 +46,8 @@ public class ClusterQueryManager {
   public synchronized RemoteQueryContext getQueryContext(Node node, long queryId) {
     Map<Long, RemoteQueryContext> nodeContextMap = queryContextMap.computeIfAbsent(node,
         n -> new HashMap<>());
-    RemoteQueryContext remoteQueryContext = nodeContextMap.get(queryId);
-    if (remoteQueryContext == null) {
-      remoteQueryContext =
-          new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-      nodeContextMap.put(queryId, remoteQueryContext);
-    }
-    return remoteQueryContext;
+    return nodeContextMap.computeIfAbsent(queryId,
+        qId -> new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true)));
   }
 
   public long registerReader(IBatchReader reader) {

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.query.manage;
 
+import java.util.Objects;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 
 /**
@@ -38,6 +39,25 @@ public class NodeStatus implements Comparable<NodeStatus> {
   @Override
   public int compareTo(NodeStatus o) {
     return Long.compare(this.lastResponseLatency, o.lastResponseLatency);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    NodeStatus that = (NodeStatus) o;
+    return lastUpdateTime == that.lastUpdateTime &&
+        lastResponseLatency == that.lastResponseLatency &&
+        Objects.equals(status, that.status);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(status, lastUpdateTime, lastResponseLatency);
   }
 
   long getLastUpdateTime() {

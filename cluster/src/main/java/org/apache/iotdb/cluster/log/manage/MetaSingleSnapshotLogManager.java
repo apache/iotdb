@@ -49,6 +49,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
     this.metaGroupMember = metaGroupMember;
   }
 
+  @Override
   public void takeSnapshot() {
     storageGroupTTLMap = MManager.getInstance().getStorageGroupsTTL();
     try {

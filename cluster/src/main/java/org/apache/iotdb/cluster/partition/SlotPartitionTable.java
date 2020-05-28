@@ -75,6 +75,8 @@ public class SlotPartitionTable implements PartitionTable {
   private Node thisNode;
   MManager mManager = MManager.getInstance();
 
+  private List<PartitionGroup> globalGroups;
+
   /**
    * only used for deserialize.
    *
@@ -212,18 +214,6 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   @Override
-  public Node routeToHeaderByPartition(String storageGroupName, long partitionId) {
-    synchronized (nodeRing) {
-      int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, partitionId,
-          getTotalSlotNumbers());
-      Node node = slotNodes[slot];
-      logger.debug("The slot of {}#{} is {}, held by {}", storageGroupName, partitionId,
-          slot, node);
-      return node;
-    }
-  }
-
-  @Override
   public PartitionGroup addNode(Node node) {
     synchronized (nodeRing) {
       if (nodeRing.contains(node)) {
@@ -263,6 +253,8 @@ public class SlotPartitionTable implements PartitionTable {
       if (newGroup.contains(thisNode)) {
         localGroups.add(newGroup);
       }
+
+      calculateGlobalGroups();
 
       // the slots movement is only done logically, the new node itself will pull data from the
       // old node
@@ -463,6 +455,8 @@ public class SlotPartitionTable implements PartitionTable {
         result.setNewGroup(newGrp);
       }
 
+      calculateGlobalGroups();
+
       // the slots movement is only done logically, the new node itself will pull data from the
       // old node
       Map<Node, List<Integer>> nodeListMap = retrieveSlots(target);
@@ -486,11 +480,19 @@ public class SlotPartitionTable implements PartitionTable {
 
   @Override
   public List<PartitionGroup> getGlobalGroups() {
-    // TODO-Cluster: cache the AllGroups in PartitionTable?
-    List<PartitionGroup> allGroups = new ArrayList<>();
-    for (Node n : getAllNodes()) {
-      allGroups.add(getHeaderGroup(n));
+    // preventing a thread from getting incomplete globalGroups
+    synchronized (nodeRing) {
+      if (globalGroups == null) {
+        calculateGlobalGroups();
+      }
+      return globalGroups;
     }
-    return allGroups;
+  }
+
+  private void calculateGlobalGroups() {
+    globalGroups = new ArrayList<>();
+    for (Node n : getAllNodes()) {
+      globalGroups.add(getHeaderGroup(n));
+    }
   }
 }

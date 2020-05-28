@@ -144,7 +144,7 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
   }
 
   @Test
-  public void testRemoveOldFile() throws InterruptedException {
+  public void testRemoveOldFile() {
     System.out.println("Start testRemoveOldFile()");
     SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
     List<Log> testLogs2;
@@ -160,9 +160,6 @@ public class SyncLogDequeSerializerTest extends IoTDBTest {
       assertEquals(17, syncLogDequeSerializer.getLogSizeDeque().size());
       assertEquals(2, syncLogDequeSerializer.logFileList.size());
 
-      // sleep to avoid the new file having the same name as the old one
-      // TODO-Cluster: remove when the log file naming is fixed
-      Thread.sleep(10);
       // this will remove first file and build a new file
       syncLogDequeSerializer.removeFirst(8);
 

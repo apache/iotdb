@@ -28,8 +28,6 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
@@ -37,10 +35,6 @@ import org.slf4j.LoggerFactory;
  * currently, we do not support auto-create storage group in the cluster mode.
  */
 public interface PartitionTable {
-
-  // static final is not necessary, it is redundant for an interface
-  Logger logger = LoggerFactory.getLogger(SlotPartitionTable.class);
-  long PARTITION_INTERVAL = StorageEngine.getTimePartitionInterval();
 
   /**
    * Given the storageGroupName and the timestamp, return the list of nodes on which the storage
@@ -63,16 +57,6 @@ public interface PartitionTable {
    * @return
    */
   Node routeToHeaderByTime(String storageGroupName, long timestamp);
-
-  /**
-   * Given the storageGroupName and the partitionId, return the header node of the partitionGroup by
-   * which the storage group and the corresponding time interval is managed.
-   *
-   * @param storageGroupName
-   * @param partitionId
-   * @return
-   */
-  Node routeToHeaderByPartition(String storageGroupName, long partitionId);
 
   /**
    * get a unicode value for a sg and a timestamp.
@@ -157,13 +141,15 @@ public interface PartitionTable {
    */
   default MultiKeyMap<Long, PartitionGroup> partitionByPathRangeTime(String path,
       long startTime, long endTime) throws MetadataException {
+    long partitionInterval = StorageEngine.getTimePartitionInterval();
+
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
     String storageGroup = getMManager().getStorageGroupName(path);
     startTime = StorageEngine.convertMilliWithPrecision(startTime);
     endTime = StorageEngine.convertMilliWithPrecision(endTime);
     while (startTime <= endTime) {
-      long nextTime = (startTime / PARTITION_INTERVAL + 1)
-          * PARTITION_INTERVAL;
+      long nextTime = (startTime / partitionInterval + 1)
+          * partitionInterval;
       timeRangeMapRaftGroup.put(startTime, Math.min(nextTime - 1, endTime),
           this.route(storageGroup, startTime));
       startTime = nextTime;

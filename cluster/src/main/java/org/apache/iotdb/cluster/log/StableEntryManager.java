@@ -27,8 +27,6 @@ public interface StableEntryManager {
 
   void append(List<Log> entries);
 
-  void applyingSnapshot(Snapshot snapshot);
-
   void removeCompactedEntries(long index);
 
   void setHardStateAndFlush(HardState state);

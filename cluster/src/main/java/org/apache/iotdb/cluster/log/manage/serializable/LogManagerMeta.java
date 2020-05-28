@@ -85,10 +85,6 @@ public class LogManagerMeta {
     this.lastLogTerm = lastLogTerm;
   }
 
-  public long getCommitLogTerm() {
-    return commitLogTerm;
-  }
-
   public void setCommitLogTerm(long commitLogTerm) {
     this.commitLogTerm = commitLogTerm;
   }

@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.query.dataset;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;

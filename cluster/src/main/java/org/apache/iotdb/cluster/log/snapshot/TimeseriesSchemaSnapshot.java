@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.log.snapshot;
 
 import java.util.Collection;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 public interface TimeseriesSchemaSnapshot {

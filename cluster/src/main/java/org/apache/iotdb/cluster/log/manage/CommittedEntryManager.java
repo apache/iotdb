@@ -44,9 +44,8 @@ public class CommittedEntryManager {
    * instance is created.
    */
   public CommittedEntryManager() {
-    entries = new ArrayList<Log>() {{
-      add(new EmptyContentLog(-1, -1));
-    }};
+    entries = new ArrayList<>();
+    entries.add(new EmptyContentLog(-1, -1));
   }
 
   /**

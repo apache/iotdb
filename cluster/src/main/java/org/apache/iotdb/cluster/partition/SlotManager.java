@@ -56,6 +56,7 @@ public class SlotManager {
           try {
             slotDescriptor.wait(SLOT_WAIT_INTERVAL_MS);
           } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             logger.error("Unexpected interruption when waiting for slot {}", slotId, e);
           }
         } else {
@@ -78,6 +79,7 @@ public class SlotManager {
           try {
             slotDescriptor.wait(SLOT_WAIT_INTERVAL_MS);
           } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             logger.error("Unexpected interruption when waiting for slot {}", slotId, e);
           }
         } else {

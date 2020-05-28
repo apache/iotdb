@@ -49,13 +49,6 @@ public class SimpleSnapshot extends Snapshot {
     this.lastLogTerm = lastTerm;
   }
 
-  public SimpleSnapshot(List<Log> snapshot) {
-    this.snapshot = snapshot;
-    this.lastLogIndex =
-        snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogIndex();
-    this.lastLogTerm = snapshot.isEmpty() ? -1 : snapshot.get(snapshot.size() - 1).getCurrLogTerm();
-  }
-
   @Override
   public ByteBuffer serialize() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

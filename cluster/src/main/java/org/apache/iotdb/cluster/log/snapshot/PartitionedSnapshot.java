@@ -24,7 +24,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -52,16 +51,11 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     slotSnapshots.put(slot, snapshot);
   }
 
-  private T getPartitionSnapshot(int slot) {
-    return slotSnapshots.get(slot);
-  }
-
   @Override
   public ByteBuffer serialize() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
 
-    try {
+    try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
       dataOutputStream.writeInt(slotSnapshots.size());
       for (Entry<Integer, T> entry : slotSnapshots.entrySet()) {
         dataOutputStream.writeInt(entry.getKey());
@@ -87,15 +81,6 @@ public class PartitionedSnapshot<T extends Snapshot> extends Snapshot {
     }
     setLastLogIndex(buffer.getLong());
     setLastLogTerm(buffer.getLong());
-  }
-
-
-  public PartitionedSnapshot getSubSnapshots(List<Integer> slots) {
-    Map<Integer, Snapshot> subSnapshots = new HashMap<>();
-    for (Integer slot : slots) {
-      subSnapshots.put(slot, getPartitionSnapshot(slot));
-    }
-    return new PartitionedSnapshot(subSnapshots, factory);
   }
 
   public Snapshot getSnapshot(int slot) {

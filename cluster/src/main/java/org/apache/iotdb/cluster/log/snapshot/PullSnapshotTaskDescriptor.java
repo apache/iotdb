@@ -56,10 +56,6 @@ public class PullSnapshotTaskDescriptor {
     return previousHolders;
   }
 
-  public void setPreviousHolders(PartitionGroup previousHolders) {
-    this.previousHolders = previousHolders;
-  }
-
   public List<Integer> getSlots() {
     return slots;
   }
@@ -70,10 +66,6 @@ public class PullSnapshotTaskDescriptor {
 
   public boolean isRequireReadOnly() {
     return requireReadOnly;
-  }
-
-  public void setRequireReadOnly(boolean requireReadOnly) {
-    this.requireReadOnly = requireReadOnly;
   }
 
   public void serialize(DataOutputStream dataOutputStream) throws IOException {

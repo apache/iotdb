@@ -242,9 +242,9 @@ public class RaftLogManagerTest {
       for (RaftLogManagerTester test : tests) {
         boolean answer = instance.maybeCommit(test.leaderCommit, test.term);
         assertEquals(test.testCommittedEntryManagerSize,
-            instance.committedEntryManager.getAllEntries().size());
+            instance.getCommittedEntryManager().getAllEntries().size());
         assertEquals(test.testUnCommittedEntryManagerSize,
-            instance.unCommittedEntryManager.getAllEntries().size());
+            instance.getUnCommittedEntryManager().getAllEntries().size());
         assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
         assertEquals(test.testCommit, answer);
       }
@@ -304,9 +304,9 @@ public class RaftLogManagerTest {
       for (RaftLogManagerTester test : tests) {
         instance.commitTo(test.commitTo, false);
         assertEquals(test.testCommittedEntryManagerSize,
-            instance.committedEntryManager.getAllEntries().size());
+            instance.getCommittedEntryManager().getAllEntries().size());
         assertEquals(test.testUnCommittedEntryManagerSize,
-            instance.unCommittedEntryManager.getAllEntries().size());
+            instance.getUnCommittedEntryManager().getAllEntries().size());
         assertEquals(test.testCommitIndex, instance.getCommitLogIndex());
       }
     } finally {
@@ -619,7 +619,7 @@ public class RaftLogManagerTest {
       try {
         List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);
         assertEquals(test.testEntries, entries);
-        assertEquals(test.testOffset, instance.unCommittedEntryManager.getFirstUnCommittedIndex());
+        assertEquals(test.testOffset, instance.getUnCommittedEntryManager().getFirstUnCommittedIndex());
       } catch (Exception e) {
         fail("An unexpected exception was thrown.");
       } finally {
@@ -680,7 +680,7 @@ public class RaftLogManagerTest {
           List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);
           assertEquals(test.testEntries, entries);
           assertEquals(test.testOffset,
-              instance.unCommittedEntryManager.getFirstUnCommittedIndex());
+              instance.getUnCommittedEntryManager().getFirstUnCommittedIndex());
         } catch (Exception e) {
           fail("An unexpected exception was thrown.");
         }
@@ -772,23 +772,23 @@ public class RaftLogManagerTest {
         entries.add(new EmptyContentLog(index + i, index + i));
       }
       instance.maybeAppend(index, term, index, entries);
-      assertEquals(1, instance.committedEntryManager.getAllEntries().size());
-      assertEquals(10, instance.unCommittedEntryManager.getAllEntries().size());
+      assertEquals(1, instance.getCommittedEntryManager().getAllEntries().size());
+      assertEquals(10, instance.getUnCommittedEntryManager().getAllEntries().size());
       assertEquals(100, instance.getCommitLogIndex());
       instance.commitTo(105, false);
       assertEquals(101, instance.getFirstIndex());
-      assertEquals(6, instance.committedEntryManager.getAllEntries().size());
-      assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());
+      assertEquals(6, instance.getCommittedEntryManager().getAllEntries().size());
+      assertEquals(5, instance.getUnCommittedEntryManager().getAllEntries().size());
       assertEquals(105, instance.getCommitLogIndex());
       instance.applyingSnapshot(new SimpleSnapshot(103, 103));
       assertEquals(104, instance.getFirstIndex());
-      assertEquals(3, instance.committedEntryManager.getAllEntries().size());
-      assertEquals(5, instance.unCommittedEntryManager.getAllEntries().size());
+      assertEquals(3, instance.getCommittedEntryManager().getAllEntries().size());
+      assertEquals(5, instance.getUnCommittedEntryManager().getAllEntries().size());
       assertEquals(105, instance.getCommitLogIndex());
       instance.applyingSnapshot(new SimpleSnapshot(108, 108));
       assertEquals(109, instance.getFirstIndex());
-      assertEquals(1, instance.committedEntryManager.getAllEntries().size());
-      assertEquals(0, instance.unCommittedEntryManager.getAllEntries().size());
+      assertEquals(1, instance.getCommittedEntryManager().getAllEntries().size());
+      assertEquals(0, instance.getUnCommittedEntryManager().getAllEntries().size());
       assertEquals(108, instance.getCommitLogIndex());
     } finally {
       instance.close();

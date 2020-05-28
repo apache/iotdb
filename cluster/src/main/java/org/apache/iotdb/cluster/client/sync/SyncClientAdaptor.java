@@ -24,10 +24,13 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -36,6 +39,7 @@ import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
@@ -47,6 +51,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GetChildNodeNextLevelPath
 import org.apache.iotdb.cluster.server.handlers.caller.GetNodesListHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GetTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.JoinClusterHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -311,5 +316,29 @@ public class SyncClientAdaptor {
       result.wait(RaftServer.getConnectionTimeoutInMS());
     }
     return result.get();
+  }
+
+  public static List<ByteBuffer> getGroupByResult(DataClient client, Node header, long executorId
+      , long curStartTime, long curEndTime) throws InterruptedException, TException {
+    AtomicReference<List<ByteBuffer>> fetchResult = new AtomicReference<>();
+    GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(), fetchResult);
+    synchronized (fetchResult) {
+      fetchResult.set(null);
+      client.getGroupByResult(header, executorId, curStartTime, curEndTime, handler);
+      fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+    return fetchResult.get();
+  }
+
+  public static Map<Integer, Snapshot> pullSnapshot(DataClient client,
+      PullSnapshotRequest request, List<Integer> slots, SnapshotFactory factory)
+      throws TException, InterruptedException {
+    AtomicReference<Map<Integer, Snapshot>> snapshotRef = new AtomicReference<>();
+    synchronized (snapshotRef) {
+      client.pullSnapshot(request, new PullSnapshotHandler<>(snapshotRef,
+          client.getNode(), slots, factory));
+      snapshotRef.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+    return snapshotRef.get();
   }
 }

@@ -75,11 +75,6 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
     }
 
     @Override
-    public Node routeToHeaderByPartition(String storageGroupName, long partitionId) {
-      return null;
-    }
-
-    @Override
     public PartitionGroup addNode(Node node) {
       return null;
     }

@@ -56,7 +56,6 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     logger.info("Taking snapshots, flushing IoTDB");
     StorageEngine.getInstance().syncCloseAllProcessor();
     logger.info("Taking snapshots, IoTDB is flushed");
-    //TODO remove useless logs which have been compacted
     synchronized (slotSnapshots) {
       collectTimeseriesSchemas();
       snapshotLastLogIndex = getCommitLogIndex();
@@ -68,45 +67,61 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
   private void collectTsFiles() throws IOException {
 
-    startCollect:
-    while (true) {
-      slotSnapshots.clear();
-      Map<String, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
-          .getInstance().getAllClosedStorageGroupTsFile();
-      List<TsFileResource> createdHardlinks = new ArrayList<>();
-      // group the TsFiles by their slots
-      for (Entry<String, Map<Long, List<TsFileResource>>> entry :
-          allClosedStorageGroupTsFile.entrySet()) {
-        String storageGroupName = entry.getKey();
-        Map<Long, List<TsFileResource>> storageGroupsFiles = entry.getValue();
-        for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
-          Long partitionNum = storageGroupFiles.getKey();
-          int slotNum = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName,
-              partitionNum, partitionTable.getTotalSlotNumbers());
-          FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
-              s -> new FileSnapshot());
-          if (snapshot.getTimeseriesSchemas().isEmpty()) {
-            snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
-                Collections.emptySet()));
+    slotSnapshots.clear();
+    Map<String, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile = StorageEngine
+        .getInstance().getAllClosedStorageGroupTsFile();
+    List<TsFileResource> createdHardlinks = new ArrayList<>();
+    // group the TsFiles by their slots
+    for (Entry<String, Map<Long, List<TsFileResource>>> entry :
+        allClosedStorageGroupTsFile.entrySet()) {
+      String storageGroupName = entry.getKey();
+      Map<Long, List<TsFileResource>> storageGroupsFiles = entry.getValue();
+      for (Entry<Long, List<TsFileResource>> storageGroupFiles : storageGroupsFiles.entrySet()) {
+        Long partitionNum = storageGroupFiles.getKey();
+        List<TsFileResource> resourceList = storageGroupFiles.getValue();
+        if (!collectTsFiles(partitionNum, resourceList, storageGroupName, createdHardlinks)) {
+          // some file is deleted during the collecting, clean created hardlinks and restart
+          // from the beginning
+          for (TsFileResource createdHardlink : createdHardlinks) {
+            createdHardlink.remove();
           }
-
-          for (TsFileResource tsFileResource : storageGroupFiles.getValue()) {
-            TsFileResource hardlink = tsFileResource.createHardlink();
-            if (hardlink == null) {
-              // some file is deleted during the collecting, clean created hardlinks and restart
-              // from the beginning
-              for (TsFileResource createdHardlink : createdHardlinks) {
-                createdHardlink.remove();
-              }
-              continue startCollect;
-            }
-            createdHardlinks.add(hardlink);
-            logger.debug("File {} is put into snapshot #{}", tsFileResource, slotNum);
-            snapshot.addFile(hardlink, thisNode);
-          }
+          collectTsFiles();
+          return;
         }
       }
-      break;
     }
+  }
+
+  /**
+   * Create hardlinks for files in one partition and add them into the corresponding snapshot.
+   * @param partitionNum
+   * @param resourceList
+   * @param storageGroupName
+   * @param createdHardlinks
+   * @return true if all hardlinks are created successfully or false if some of them failed to
+   * create
+   * @throws IOException
+   */
+  private boolean collectTsFiles(Long partitionNum, List<TsFileResource> resourceList,
+      String storageGroupName, List<TsFileResource> createdHardlinks) throws IOException {
+    int slotNum = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName,
+        partitionNum, partitionTable.getTotalSlotNumbers());
+    FileSnapshot snapshot = slotSnapshots.computeIfAbsent(slotNum,
+        s -> new FileSnapshot());
+    if (snapshot.getTimeseriesSchemas().isEmpty()) {
+      snapshot.setTimeseriesSchemas(slotTimeseries.getOrDefault(slotNum,
+          Collections.emptySet()));
+    }
+
+    for (TsFileResource tsFileResource : resourceList) {
+      TsFileResource hardlink = tsFileResource.createHardlink();
+      if (hardlink == null) {
+        return false;
+      }
+      createdHardlinks.add(hardlink);
+      logger.debug("File {} is put into snapshot #{}", tsFileResource, slotNum);
+      snapshot.addFile(hardlink, thisNode);
+    }
+    return true;
   }
 }
