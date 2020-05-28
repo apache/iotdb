@@ -133,7 +133,7 @@ public class TTLTest {
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
     insertPlan.setValues(new Object[]{1L});
-    insertPlan.setSchemas(
+    insertPlan.setSchemasAndTransferType(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
@@ -160,7 +160,7 @@ public class TTLTest {
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
     insertPlan.setValues(new Object[]{1L});
-    insertPlan.setSchemas(
+    insertPlan.setSchemasAndTransferType(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     long initTime = System.currentTimeMillis();

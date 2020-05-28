@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -90,6 +91,25 @@ public class IoTDBSessionIT {
 
   }
 
+  private void insertByStr() throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+
+    for (long time = 0; time < 100; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+      session.insertRecord(deviceId, time, measurements, values);
+    }
+
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    assertTrue(dataSet.hasNext());
+    RowRecord record = dataSet.next();
+  }
 
     @Test
   public void testInsertByObject() throws IoTDBConnectionException, StatementExecutionException {
@@ -673,22 +693,6 @@ public class IoTDBSessionIT {
       values.add(2L);
       values.add(3L);
       session.insertRecord(deviceId, time, measurements, types, values);
-    }
-  }
-
-  private void insertByStr() throws IoTDBConnectionException, StatementExecutionException {
-    String deviceId = "root.sg1.d1";
-    List<String> measurements = new ArrayList<>();
-    measurements.add("s1");
-    measurements.add("s2");
-    measurements.add("s3");
-
-    for (long time = 0; time < 100; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      values.add("3");
-      session.insertRecord(deviceId, time, measurements, values);
     }
   }
 

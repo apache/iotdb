@@ -52,7 +52,7 @@ public class TypeInferenceUtilsTest {
     };
 
     for (int i = 0; i < values.length; i++) {
-      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i]));
+      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i], true));
     }
   }
 }

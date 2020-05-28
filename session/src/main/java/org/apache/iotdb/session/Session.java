@@ -375,6 +375,7 @@ public class Session {
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
+    request.setInferType(true);
     List<ByteBuffer> buffersList = new ArrayList<>();
     for (int i = 0; i < measurementsList.size(); i++) {
       ByteBuffer buffer = ByteBuffer.allocate(calculateStrLength(valuesList.get(i)));
@@ -433,6 +434,7 @@ public class Session {
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
+    request.setInferType(true);
     ByteBuffer buffer = ByteBuffer.allocate(calculateStrLength(values));
     putStrValues(values, buffer);
     buffer.flip();

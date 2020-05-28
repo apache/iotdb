@@ -153,6 +153,22 @@ public class SessionExample {
     }
   }
 
+  private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+
+    for (long time = 0; time < 10; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+      session.insertRecord(deviceId, time, measurements, values);
+    }
+  }
+
   private static void insertRecordInObject()
       throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
