@@ -148,7 +148,7 @@ public class TimeSeriesMetadataCache {
       if (metadata == null) {
         return null;
       } else {
-        return new TimeseriesMetadata(lruCache.get(key));
+        return new TimeseriesMetadata(metadata);
       }
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", key.filePath);
