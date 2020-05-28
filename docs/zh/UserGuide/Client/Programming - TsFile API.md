@@ -185,7 +185,7 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     
     * config : TsFile 的一些配置项
 
-* 第二部，添加测量值(measurement)
+* 第二步，添加测量值(measurement)
   
     你也可以先创建一个`Schema`类的实例然后把它传递给`TsFileWriter`类的构造函数
     
@@ -262,6 +262,22 @@ TsFile可以通过以下三个步骤生成，完整的代码参见"写入 TsFile
     public void close() throws IOException
     ```
 
+我们也支持将数据写入已关闭的 TsFile 文件中。
+
+* 使用`ForceAppendTsFileWriter`打开已经关闭的文件。
+
+```
+public ForceAppendTsFileWriter(File file) throws IOException
+```
+* 调用 `doTruncate` 去掉文件的Metadata部分
+
+* 然后使用  `ForceAppendTsFileWriter` 构造另一个`TsFileWriter`
+
+```
+public TsFileWriter(TsFileIOWriter fileWriter) throws IOException
+```
+请注意 此时需要重新添加测量值(measurement) 再进行上述写入操作。
+
 #### 写入 TsFile 示例
 
 您需要安装 TsFile 到本地的 Maven 仓库中。
@@ -279,6 +295,7 @@ mvn clean install -pl tsfile -am -DskipTests
 
 更详细的例子可以在`/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileWriteWithTablet.java`中查看
 
+在已关闭的TsFile 文件中写入新数据的详细例子可以在`/example/tsfile/src/main/java/org/apache/iotdb/tsfile/TsFileForceAppendWrite.java`中查看
 
 ### 读取 TsFile 接口
 
