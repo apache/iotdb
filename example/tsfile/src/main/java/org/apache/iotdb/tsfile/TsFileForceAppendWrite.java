@@ -19,16 +19,17 @@
 package org.apache.iotdb.tsfile;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
-import org.apache.iotdb.tsfile.write.record.Tablet;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
+import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,58 +42,65 @@ public class TsFileForceAppendWrite {
       String path = "test.tsfile";
       File f = FSFactoryProducer.getFSFactory().getFile(path);
       if (f.exists()) {
-        if (!f.delete()) {
-          throw new RuntimeException("can not delete " + f.getAbsolutePath());
-        }
+        f.delete();
+      }
+      TsFileWriter tsFileWriter = new TsFileWriter(f);
+
+      // add measurements into file schema
+      for (int i = 0; i < 4; i++) {
+        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
+            new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
+            new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+        tsFileWriter.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
+            new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
       }
 
-      Schema schema = new Schema();
+      // construct TSRecord
+      for (int i = 0; i < 100; i++) {
+        TSRecord tsRecord = new TSRecord(i, Constant.DEVICE_PREFIX + (i % 4));
+        DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, i);
+        DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, i);
+        DataPoint dPoint3 = new LongDataPoint(Constant.SENSOR_3, i);
+        tsRecord.addTuple(dPoint1);
+        tsRecord.addTuple(dPoint2);
+        tsRecord.addTuple(dPoint3);
 
-      // the number of rows to include in the tablet
-      int rowNum = 1000000;
-      // the number of values to include in the tablet
-      int sensorNum = 10;
-
-      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-      // add measurements into file schema (all with INT64 data type)
-      for (int i = 0; i < sensorNum; i++) {
-        measurementSchemas.add(
-            new MeasurementSchema("sensor_" + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
+        // write TSRecord
+        tsFileWriter.write(tsRecord);
       }
-      // add measurements into TSFileWriter
-      try (TsFileWriter tsFileWriter = new TsFileWriter(f, schema)) {
 
-        // construct the tablet
-        Tablet tablet = new Tablet("device_1", measurementSchemas);
+      tsFileWriter.close();
 
-        long[] timestamps = tablet.timestamps;
-        Object[] values = tablet.values;
-
-        long timestamp = 1;
-        long value = 1000000L;
-
-        for (int r = 0; r < rowNum; r++, value++) {
-          int row = tablet.rowSize++;
-          timestamps[row] = timestamp++;
-          for (int i = 0; i < sensorNum; i++) {
-            long[] sensor = (long[]) values[i];
-            sensor[row] = value;
-          }
-          // write Tablet to TsFile
-          if (tablet.rowSize == tablet.getMaxRowNumber()) {
-            tsFileWriter.write(tablet);
-            tablet.reset();
-          }
+      // open the closed file with ForceAppendTsFileWriter
+      ForceAppendTsFileWriter fwriter = new ForceAppendTsFileWriter(f);
+      fwriter.doTruncate();
+      try (TsFileWriter tsFileWriter1 = new TsFileWriter(fwriter)) {
+        // add measurements into file schema
+        for (int i = 0; i < 4; i++) {
+          tsFileWriter1.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_1),
+              new MeasurementSchema(Constant.SENSOR_1, TSDataType.INT64, TSEncoding.RLE));
+          tsFileWriter1.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_2),
+              new MeasurementSchema(Constant.SENSOR_2, TSDataType.INT64, TSEncoding.RLE));
+          tsFileWriter1.registerTimeseries(new Path(Constant.DEVICE_PREFIX + i, Constant.SENSOR_3),
+              new MeasurementSchema(Constant.SENSOR_3, TSDataType.INT64, TSEncoding.RLE));
         }
-        // write Tablet to TsFile
-        if (tablet.rowSize != 0) {
-          tsFileWriter.write(tablet);
-          tablet.reset();
+        // construct TSRecord
+        for (int i = 100; i < 120; i++) {
+          TSRecord tsRecord = new TSRecord(i, Constant.DEVICE_PREFIX + (i % 4));
+          DataPoint dPoint1 = new LongDataPoint(Constant.SENSOR_1, i);
+          DataPoint dPoint2 = new LongDataPoint(Constant.SENSOR_2, i);
+          DataPoint dPoint3 = new LongDataPoint(Constant.SENSOR_3, i);
+          tsRecord.addTuple(dPoint1);
+          tsRecord.addTuple(dPoint2);
+          tsRecord.addTuple(dPoint3);
+
+          // write TSRecord
+          tsFileWriter1.write(tsRecord);
         }
       }
-      
     } catch (Exception e) {
-      logger.error("meet error in TsFileWrite with ForceAppendWriter", e);
+      logger.error("meet error in TsFileWrite ", e);
     }
   }
 }
