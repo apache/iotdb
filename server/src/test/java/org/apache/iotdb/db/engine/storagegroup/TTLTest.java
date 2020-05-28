@@ -126,7 +126,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLWrite() throws WriteProcessException {
+  public void testTTLWrite() throws WriteProcessException, QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -153,7 +153,7 @@ public class TTLTest {
     storageGroupProcessor.insert(insertPlan);
   }
 
-  private void prepareData() throws WriteProcessException {
+  private void prepareData() throws WriteProcessException, QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
@@ -234,7 +234,8 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRemoval() throws StorageEngineException, WriteProcessException {
+  public void testTTLRemoval()
+      throws StorageEngineException, WriteProcessException, QueryProcessException {
     prepareData();
 
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
@@ -345,7 +346,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLCleanFile() throws WriteProcessException {
+  public void testTTLCleanFile() throws WriteProcessException, QueryProcessException {
     prepareData();
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 

@@ -50,16 +50,16 @@ public class InsertPlan extends PhysicalPlan {
   private TSDataType[] types;
   private MeasurementSchema[] schemas;
 
-  public String[] getStrValueList() {
-    return strValueList;
+  public String[] getStrValues() {
+    return strValues;
   }
 
-  public void setStrValueList(String[] strValueList) {
-    this.strValueList = strValueList;
+  public void setStrValues(String[] strValues) {
+    this.strValues = strValues;
   }
 
   // only for sql
-  private String[] strValueList;
+  private String[] strValues;
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
@@ -140,7 +140,7 @@ public class InsertPlan extends PhysicalPlan {
     // build types and values
     this.types = new TSDataType[measurements.length];
     this.values = new Object[measurements.length];
-    this.strValueList = insertValues;
+    this.strValues = insertValues;
     canbeSplit = false;
   }
 
@@ -157,18 +157,14 @@ public class InsertPlan extends PhysicalPlan {
     return schemas;
   }
 
-  public void setSchemas(MeasurementSchema[] schemas) {
+  public void setSchemas(MeasurementSchema[] schemas) throws QueryProcessException {
     this.schemas = schemas;
-    if (strValueList != null) {
+    if (strValues != null) {
       for (int i = 0; i < schemas.length; i++) {
         types[i] = schemas[i].getType();
-        try {
-          values[i] = CommonUtils.parseValue(types[i], strValueList[i]);
-        } catch (QueryProcessException e) {
-          e.printStackTrace();
-        }
+        values[i] = CommonUtils.parseValue(types[i], strValues[i]);
       }
-      strValueList = null;
+      strValues = null;
     }
   }
 
