@@ -48,7 +48,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -457,13 +456,13 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
-      throws StorageEngineException, TsFileProcessorException {
+      throws StorageEngineException, LoadFileException {
     getProcessor(newTsFileResource.getFile().getParentFile().getName())
         .loadNewTsFileForSync(newTsFileResource);
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws StorageEngineException, MetadataException, TsFileProcessorException {
+      throws StorageEngineException, MetadataException, LoadFileException {
     Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
     if (startTimeMap == null || startTimeMap.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
@@ -523,9 +522,10 @@ public class StorageEngine implements IService {
     this.fileFlushPolicy = fileFlushPolicy;
   }
 
-  public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup) {
+  public boolean isFileAlreadyExist(TsFileResource tsFileResource, String storageGroup,
+      long partitionNum) {
     StorageGroupProcessor processor = processorMap.get(storageGroup);
-    return processor != null && processor.isFileAlreadyExist(tsFileResource);
+    return processor != null && processor.isFileAlreadyExist(tsFileResource, partitionNum);
   }
 
   public static long getTimePartitionInterval() {
