@@ -20,6 +20,17 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -56,12 +67,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
-import static org.junit.Assert.*;
 
 public class TTLTest {
 
@@ -121,12 +126,13 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLWrite() throws WriteProcessException {
+  public void testTTLWrite() throws WriteProcessException, QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
-    insertPlan.setValues(new String[]{"1"});
+    insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
+    insertPlan.setValues(new Object[]{1L});
     insertPlan.setSchemas(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
@@ -147,12 +153,13 @@ public class TTLTest {
     storageGroupProcessor.insert(insertPlan);
   }
 
-  private void prepareData() throws WriteProcessException {
+  private void prepareData() throws WriteProcessException, QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
-    insertPlan.setValues(new String[]{"1"});
+    insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
+    insertPlan.setValues(new Object[]{1L});
     insertPlan.setSchemas(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
@@ -227,7 +234,8 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRemoval() throws StorageEngineException, WriteProcessException {
+  public void testTTLRemoval()
+      throws StorageEngineException, WriteProcessException, QueryProcessException {
     prepareData();
 
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
@@ -338,7 +346,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLCleanFile() throws WriteProcessException {
+  public void testTTLCleanFile() throws WriteProcessException, QueryProcessException {
     prepareData();
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 

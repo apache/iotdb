@@ -23,7 +23,7 @@
 
 ## 数据接入
 
-IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../4-Client/1-Command%20Line%20Interface.html)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../4-Client/3-Programming%20-%20JDBC.html)接口）单条或批量执行插入数据的INSERT语句。
+IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../Client/Command%20Line%20Interface.html)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../Client/Programming%20-%20JDBC.html)接口）单条或批量执行插入数据的INSERT语句。
 
 本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](../Operation%20Manual/SQL%20Reference.html)节。
 
@@ -89,7 +89,7 @@ error: The TEXT data type should be covered by " or '
 
 ### 时间切片查询
 
-本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Operation%20Manual/SQL%20Reference.html)。同时，您也可以使用[Java JDBC](../4-Client/3-Programming%20-%20JDBC.html)标准接口来执行相关的查询语句。
+本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Operation%20Manual/SQL%20Reference.html)。同时，您也可以使用[Java JDBC](../Client/Programming%20-%20JDBC.html)标准接口来执行相关的查询语句。
 
 #### 根据一个时间区间选择一列数据
 
@@ -101,7 +101,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](../2-Concept/1-Data%20Model%20and%20Terminology.html)）时间点以前的所有温度传感器的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](../Concept/Data%20Model%20and%20Terminology.html)）时间点以前的所有温度传感器的值。
 
 该SQL语句的执行结果如下：
 
@@ -762,7 +762,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 
 #### 多传感器时间序列值删除    
 
-当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../2-Concept/1-Data%20Model%20and%20Terminology.html)进行删除操作，进行此操作的SQL语句为：
+当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Concept/Data%20Model%20and%20Terminology.html)进行删除操作，进行此操作的SQL语句为：
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;

@@ -37,8 +37,8 @@ The official website of IoTDB has gotten a big upgrade in the last few months, w
 
 The official website has also added Chinese and English design documents, although not yet complete, but basically all the big modules are documented in both languages and the IoTDB Community highly welcomes suggestions how to improve or contributions that do so:
 
-English: http://iotdb.apache.org/SystemDesign/0-Architecture/1-Architecture.html
-Chinese: http://iotdb.apache.org/zh/SystemDesign/0-Architecture/1-Architecture.html
+English: http://iotdb.apache.org/SystemDesign/Architecture/Architecture.html
+Chinese: http://iotdb.apache.org/zh/SystemDesign/Architecture/Architecture.html
 
 
 The Release 0.9.3 is a minor/bugfix release in the 0.9 release series that mainly fixes one serious bug: if the wrong metadata operation is performed, such as deleting a non-existent storage group, the metadata is empty after server restart. This is caused by the metadata module beeing nulled when the metadata log was redone. The fix is to skip the wrong metadata log. In the preparation of version 0.10, we take an execution before logging approach and do not log errors again.

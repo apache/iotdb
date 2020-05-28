@@ -122,7 +122,7 @@ SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 
 - org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet.hasNextWithoutConstraint()
 
-由于按设备对齐查询需要按设备依次组织其查询计划，每个设备查询的路径未必相同，且允许包含常量列以及不存在的时间序列，因此不能简单地与其他查询一起去重。去重时**不仅需要去除重复查询的时间序列路径，还需要去除查询中出现的常量列以及当前设备中不存在的时间序列**。实现方法可以参考 [Align by device query](/SystemDesign/5-DataQuery/8-AlignByDeviceQuery.html).
+由于按设备对齐查询需要按设备依次组织其查询计划，每个设备查询的路径未必相同，且允许包含常量列以及不存在的时间序列，因此不能简单地与其他查询一起去重。去重时**不仅需要去除重复查询的时间序列路径，还需要去除查询中出现的常量列以及当前设备中不存在的时间序列**。实现方法可以参考 [Align by device query](/SystemDesign/DataQuery/AlignByDeviceQuery.html).
 
 在查询计划中的去重路径构造完成后，即可调用 IoTDB 的查询执行器来执行查询，并得到去重后的结果集。
 
