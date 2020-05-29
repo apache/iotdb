@@ -105,13 +105,87 @@ public class IoTDBSessionIT {
       values.add("3");
       session.insertRecord(deviceId, time, measurements, values);
     }
-
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
-    assertTrue(dataSet.hasNext());
-    RowRecord record = dataSet.next();
   }
 
-    @Test
+  @Test
+  public void testInsertByStrAndInferType() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    measurements.add("s4");
+
+    List<String> values = new ArrayList<>();
+    values.add("1");
+    values.add("1.2");
+    values.add("true");
+    values.add("dad");
+    session.insertRecord(deviceId, 1L, measurements, values);
+
+    String[] expected = new String[]{
+        IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType().name(),
+        IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType().name(),
+        IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType().name(),
+        TSDataType.TEXT.name()
+    };
+
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    int i = 0;
+    while (dataSet.hasNext()) {
+      assertEquals(expected[i], dataSet.next().getFields().get(3).getStringValue());
+      i++;
+    }
+
+    session.close();
+  }
+
+  @Test
+  public void testInsertByObjAndNotInferType() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    measurements.add("s4");
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT64);
+    dataTypes.add(TSDataType.DOUBLE);
+    dataTypes.add(TSDataType.TEXT);
+    dataTypes.add(TSDataType.TEXT);
+
+    List<Object> values = new ArrayList<>();
+    values.add(1L);
+    values.add(1.2d);
+    values.add("true");
+    values.add("dad");
+    session.insertRecord(deviceId, 1L, measurements, dataTypes, values);
+
+    String[] expected = new String[]{
+        TSDataType.INT64.name(),
+        TSDataType.DOUBLE.name(),
+        TSDataType.TEXT.name(),
+        TSDataType.TEXT.name()
+    };
+
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root");
+    int i = 0;
+    while (dataSet.hasNext()) {
+      assertEquals(expected[i], dataSet.next().getFields().get(3).getStringValue());
+      i++;
+    }
+
+    session.close();
+  }
+
+  @Test
   public void testInsertByObject() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
