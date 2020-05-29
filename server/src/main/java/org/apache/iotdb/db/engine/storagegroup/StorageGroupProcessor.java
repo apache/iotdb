@@ -600,7 +600,7 @@ public class StorageGroupProcessor {
 
   public void insert(InsertPlan insertPlan) throws WriteProcessException {
     // reject insertions that are out of ttl
-    if (!checkTTL(insertPlan.getTime())) {
+    if (!isAlive(insertPlan.getTime())) {
       throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
     writeLock();
@@ -633,7 +633,7 @@ public class StorageGroupProcessor {
       while (loc < insertTabletPlan.getRowCount()) {
         long currTime = insertTabletPlan.getTimes()[loc];
         // skip points that do not satisfy TTL
-        if (!checkTTL(currTime)) {
+        if (!isAlive(currTime)) {
           results[loc] = RpcUtils.getStatus(TSStatusCode.OUT_OF_TTL_ERROR,
               "time " + currTime + " in current line is out of TTL: " + dataTTL);
           loc++;
@@ -704,7 +704,7 @@ public class StorageGroupProcessor {
   /**
    * @return whether the given time falls in ttl
    */
-  private boolean checkTTL(long time) {
+  private boolean isAlive(long time) {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
 
@@ -1281,8 +1281,8 @@ public class StorageGroupProcessor {
     long startTime = tsFileResource.getStartTime(deviceIndex);
     long endTime = tsFileResource.isClosed() || !isSeq ? tsFileResource.getEndTime(deviceIndex) : Long.MAX_VALUE;
 
-    if (dataTTL != Long.MAX_VALUE) {
-      return checkTTL(endTime);
+    if (!isAlive(endTime)) {
+      return false;
     }
 
     if (timeFilter != null) {

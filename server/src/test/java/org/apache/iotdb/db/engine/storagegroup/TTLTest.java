@@ -170,7 +170,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
@@ -178,7 +178,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }
