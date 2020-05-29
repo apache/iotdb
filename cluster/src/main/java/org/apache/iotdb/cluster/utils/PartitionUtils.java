@@ -87,8 +87,6 @@ public class PartitionUtils {
         || plan instanceof ShowTTLPlan
         || (plan instanceof LoadConfigurationPlan && ((LoadConfigurationPlan) plan)
         .getLoadConfigurationPlanType().equals(LoadConfigurationPlanType.GLOBAL))
-        || plan instanceof DeleteTimeSeriesPlan
-        //delete timeseries plan is global because all nodes may have its data
         || plan instanceof AuthorPlan
         || plan instanceof DeleteStorageGroupPlan
         // DataAuthPlan is global because all nodes must have all user info
@@ -104,7 +102,6 @@ public class PartitionUtils {
    */
   public static boolean isGlobalDataPlan(PhysicalPlan plan) {
     return plan instanceof DeletePlan  // because deletePlan has an infinite time range.
-        || plan instanceof DeleteStorageGroupPlan
         || plan instanceof DeleteTimeSeriesPlan;
   }
 
