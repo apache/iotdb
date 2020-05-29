@@ -666,7 +666,7 @@ public class MManager {
   public List<String> getNodesList(String prefixPath, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getNodesList(prefixPath, nodeLevel);
+      return mtree.getNodesList(prefixPath, nodeLevel, filter);
     } finally {
       lock.readLock().unlock();
     }

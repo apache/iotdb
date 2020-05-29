@@ -380,10 +380,10 @@ public class RaftLogManager {
         try {
           getCommittedEntryManager().append(entries);
           getStableEntryManager().append(entries);
-          applyEntries(entries, ignoreExecutionExceptions);
           Log lastLog = entries.get(entries.size() - 1);
           getUnCommittedEntryManager().stableTo(lastLog.getCurrLogIndex());
           commitIndex = lastLog.getCurrLogIndex();
+          applyEntries(entries, ignoreExecutionExceptions);
         } catch (TruncateCommittedEntryException e) {
           logger.error("Unexpected error:", e);
         }

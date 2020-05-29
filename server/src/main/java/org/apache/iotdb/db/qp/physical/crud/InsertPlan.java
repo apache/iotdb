@@ -380,6 +380,9 @@ public class InsertPlan extends PhysicalPlan {
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
+
+    // the types are lost and should be re-inferred
+    this.inferType = true;
   }
 
   @Override

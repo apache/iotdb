@@ -160,4 +160,5 @@
         <appender-ref ref="FILE_DYNAMIC_PARAMETER"/>
     </logger>
     <logger level="info" name="org.apache.iotdb.cluster.server.heartbeat"/>
+    <logger level="error" name="org.apache.thrift.server.AbstractNonblockingServer"/>
 </configuration>
