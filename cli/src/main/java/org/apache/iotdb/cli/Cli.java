@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.cli;
 
-import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Scanner;
@@ -138,7 +137,7 @@ public class Cli extends AbstractCli {
     }
   }
 
-  private static void receiveCommands(Scanner scanner) throws TException, IOException {
+  private static void receiveCommands(Scanner scanner) throws TException {
     try (IoTDBConnection connection = (IoTDBConnection) DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       String s;
