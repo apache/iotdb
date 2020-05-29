@@ -46,6 +46,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -112,9 +113,13 @@ public class DataLogApplierTest extends IoTDBTest {
     // this series is already created
     insertPlan.setDeviceId(TestUtils.getTestSg(1));
     insertPlan.setTime(1);
-    insertPlan.setSchemas(new MeasurementSchema[] {TestUtils.getTestMeasurementSchema(0)});
+    insertPlan.setInferType(true);
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
-    insertPlan.setValues(new String[] {"1.0"});
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setValues(new Object[] {"1.0"});
+    insertPlan.setInferType(true);
+    insertPlan.setSchemasAndTransferType(new MeasurementSchema[] {TestUtils.getTestMeasurementSchema(0)});
+
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
     assertTrue(dataSet.hasNext());

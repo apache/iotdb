@@ -33,7 +33,6 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -112,7 +111,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
-import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -407,11 +405,13 @@ public class MetaGroupMemberTest extends MemberTest {
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+    insertPlan.setInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[]{String.valueOf(i)});
+      insertPlan.setValues(new Object[]{String.valueOf(i)});
+      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
@@ -427,7 +427,7 @@ public class MetaGroupMemberTest extends MemberTest {
       System.out.println("Create the first file");
       for (int i = 20; i < 30; i++) {
         insertPlan.setTime(i);
-        insertPlan.setValues(new String[]{String.valueOf(i)});
+        insertPlan.setValues(new Object[]{String.valueOf(i)});
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -462,7 +462,7 @@ public class MetaGroupMemberTest extends MemberTest {
       System.out.println("Create the second file");
       for (int i = 30; i < 40; i++) {
         insertPlan.setTime(i);
-        insertPlan.setValues(new String[]{String.valueOf(i)});
+        insertPlan.setValues(new Object[]{String.valueOf(i)});
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -706,8 +706,9 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testGetReaderByTimestamp()");
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema( 0)});
+    insertPlan.setInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
       MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
@@ -719,7 +720,8 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
-        insertPlan.setValues(new String[]{String.valueOf(j)});
+        insertPlan.setValues(new Object[]{String.valueOf(j)});
+        insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema( 0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }
@@ -748,8 +750,10 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+    insertPlan.setInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
       MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
@@ -761,7 +765,8 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
-        insertPlan.setValues(new String[]{String.valueOf(j)});
+        insertPlan.setValues(new Object[]{String.valueOf(j)});
+        insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }

@@ -892,19 +892,17 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessException {
     try {
-      String[] measurementList = insertPlan.getMeasurements();
-      String deviceId = insertPlan.getDeviceId();
-      String[] strValues = insertPlan.getValues();
-      MeasurementSchema[] schemas = getSeriesSchemas(measurementList, deviceId, strValues);
-      insertPlan.setSchemas(schemas);
+      MeasurementSchema[] schemas = getSeriesSchemas(insertPlan);
+      insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
   }
 
-  protected MeasurementSchema[] getSeriesSchemas(String[] measurementList, String deviceId,
-      String[] strValues) throws MetadataException {
+  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
+    String[] measurementList = insertPlan.getMeasurements();
+    String deviceId = insertPlan.getDeviceId();
     MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
     MNode node = null;
@@ -915,8 +913,7 @@ public class PlanExecutor implements IPlanExecutor {
     }
     try {
       for (int i = 0; i < measurementList.length; i++) {
-        String measurement = measurementList[i];
-        schemas[i] = getSeriesSchema(node, measurement, deviceId, strValues[i]);
+        schemas[i] = getSeriesSchema(node, insertPlan, i);
         measurementList[i] = schemas[i].getMeasurementId();
       }
     } finally {
@@ -927,8 +924,12 @@ public class PlanExecutor implements IPlanExecutor {
     return schemas;
   }
 
-  private MeasurementSchema getSeriesSchema(MNode deviceNode, String measurement, String deviceId
-      , String strValue) throws MetadataException {
+  private MeasurementSchema getSeriesSchema(MNode deviceNode, InsertPlan insertPlan, int loc) throws MetadataException {
+    String measurement = insertPlan.getMeasurements()[loc];
+    String deviceId = insertPlan.getDeviceId();
+    Object value = insertPlan.getValues()[loc];
+    boolean isInferType = insertPlan.isInferType();
+
     MeasurementSchema measurementSchema;
     if (deviceNode != null && !deviceNode.hasChild(measurement)) {
       // devices exists in MTree
@@ -941,12 +942,15 @@ public class PlanExecutor implements IPlanExecutor {
         }
       } else {
         // auto-create
-        TSDataType dataType = TypeInferenceUtils.getPredictedDataType(strValue);
+        TSDataType dataType = TypeInferenceUtils.getPredictedDataType(value, isInferType);
         Path path = new Path(deviceId, measurement);
-
         internalCreateTimeseries(path.toString(), dataType);
+
         LeafMNode measurementNode = (LeafMNode) deviceNode.getChild(measurement);
         measurementSchema = measurementNode.getSchema();
+        if(!isInferType) {
+          checkType(insertPlan, loc, measurementNode.getSchema().getType());
+        }
       }
     } else if (deviceNode != null) {
       // device and measurement exists in MTree
@@ -957,6 +961,50 @@ public class PlanExecutor implements IPlanExecutor {
       measurementSchema = MManager.getInstance().getSeriesSchema(deviceId, measurement);
     }
     return measurementSchema;
+  }
+
+  private void checkType(InsertPlan plan, int loc, TSDataType type) {
+    plan.getTypes()[loc] = type;
+    try {
+      switch (type) {
+        case INT32:
+          if (!(plan.getValues()[loc] instanceof Integer)) {
+            plan.getValues()[loc] =
+                Integer.parseInt(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case INT64:
+          if (!(plan.getValues()[loc] instanceof Long)) {
+            plan.getValues()[loc] =
+                Long.parseLong(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case DOUBLE:
+          if (!(plan.getValues()[loc] instanceof Double)) {
+            plan.getValues()[loc] =
+                Double.parseDouble(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case FLOAT:
+          if (!(plan.getValues()[loc] instanceof Float)) {
+            plan.getValues()[loc] =
+                Float.parseFloat(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case BOOLEAN:
+          if (!(plan.getValues()[loc] instanceof Boolean)) {
+            plan.getValues()[loc] =
+                Boolean.parseBoolean(((Binary) plan.getValues()[loc]).getStringValue());
+          }
+          break;
+        case TEXT:
+          // need to do nothing
+          break;
+      }
+    }
+    catch (ClassCastException e){
+      logger.error("inconsistent type between client and server");
+    }
   }
 
 

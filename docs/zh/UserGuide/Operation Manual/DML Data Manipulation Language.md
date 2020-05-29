@@ -23,7 +23,7 @@
 
 ## 数据接入
 
-IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../4-Client/1-Command%20Line%20Interface.html)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../4-Client/3-Programming%20-%20JDBC.html)接口）单条或批量执行插入数据的INSERT语句。
+IoTDB为用户提供多种插入实时数据的方式，例如在[Cli/Shell工具](../Client/Command%20Line%20Interface.html)中直接输入插入数据的INSERT语句，或使用Java API（标准[Java JDBC](../Client/Programming%20-%20JDBC.html)接口）单条或批量执行插入数据的INSERT语句。
 
 本节主要为您介绍实时数据接入的INSERT语句在场景中的实际使用示例，有关INSERT SQL语句的详细语法请参见本文[INSERT语句](../Operation%20Manual/SQL%20Reference.html)节。
 
@@ -89,7 +89,7 @@ error: The TEXT data type should be covered by " or '
 
 ### 时间切片查询
 
-本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Operation%20Manual/SQL%20Reference.html)。同时，您也可以使用[Java JDBC](../4-Client/3-Programming%20-%20JDBC.html)标准接口来执行相关的查询语句。
+本节主要介绍时间切片查询的相关示例，主要使用的是[IoTDB SELECT语句](../Operation%20Manual/SQL%20Reference.html)。同时，您也可以使用[Java JDBC](../Client/Programming%20-%20JDBC.html)标准接口来执行相关的查询语句。
 
 #### 根据一个时间区间选择一列数据
 
@@ -101,7 +101,7 @@ select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 
 其含义为：
 
-被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](../2-Concept/1-Data%20Model%20and%20Terminology.html)）时间点以前的所有温度传感器的值。
+被选择的设备为ln集团wf01子站wt01设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看[2.1节](../Concept/Data%20Model%20and%20Terminology.html)）时间点以前的所有温度传感器的值。
 
 该SQL语句的执行结果如下：
 
@@ -301,8 +301,6 @@ SQL执行后的结果集如下所示：
 
 不允许设置滑动步长，默认为聚合时间区间，实际为定长采样。现在只支持 last_value 聚合函数。
 
-补空值的时间段为正无穷。
-
 目前不支持线性插值补空值。
 
 
@@ -314,7 +312,8 @@ SQL执行后的结果集如下所示：
 SQL 示例:
 
 ```
-SELECT last_value(temperature) as last_temperature FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST])
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([8, 39), 5m) FILL (int32[PREVIOUSUNTILLAST, 3m])
 ```
 
 解释:
@@ -488,7 +487,7 @@ select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000
 
 </center>
 
-> 注意：在版本0.7.0中，应在Fill语句中至少指定一种填充方法。
+> 注意：应在Fill语句中至少指定一种填充方法。
 
 ### 对查询结果的行和列控制
 
@@ -497,7 +496,7 @@ IoTDB提供 [LIMIT/SLIMIT](../Operation%20Manual/SQL%20Reference.html) 子句和
 
 请注意，按组查询不支持LIMIT和OFFSET。
 
-本章主要介绍查询结果的行和列控制的相关示例。你还可以使用 [Java JDBC](../4-Client/3-Programming%20-%20JDBC.html) 标准接口执行查询。
+本章主要介绍查询结果的行和列控制的相关示例。你还可以使用 [Java JDBC](../Client/Programming%20-%20JDBC.html) 标准接口执行查询。
 
 #### 查询结果的行控制
 
@@ -556,7 +555,7 @@ select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:0
 SQL语句是：
 
 ```
-select count(status), max_value(temperature) from root.ln.wf01.wt01 group by (1d,[2017-11-01T00:00:00, 2017-11-07T23:00:00]) limit 5 offset 3
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) limit 5 offset 3
 ```
 
 意思是：
@@ -618,7 +617,7 @@ select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 
 SQL语句是：
 
 ```
-select max_value(*) from root.ln.wf01.wt01 group by (1d, [2017-11-01T00:00:00, 2017-11-07T23:00:00]) slimit 1 soffset 1
+select max_value(*) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) slimit 1 soffset 1
 
 ```
 
@@ -763,7 +762,7 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 
 #### 多传感器时间序列值删除    
 
-当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../2-Concept/1-Data%20Model%20and%20Terminology.html)进行删除操作，进行此操作的SQL语句为：
+当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Concept/Data%20Model%20and%20Terminology.html)进行删除操作，进行此操作的SQL语句为：
 
 ```
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;

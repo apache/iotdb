@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster;
 
 import static org.apache.iotdb.db.tools.logvisual.VisualUtils.parseIntArray;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -50,7 +51,9 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -342,7 +345,13 @@ public class ClientMain {
             break;
         }
       }
-      insertReq.setValues(Arrays.asList(values));
+
+      insertReq.setInferType(true);
+      ByteBuffer buffer = ByteBuffer.allocate(calculateStrLength(Arrays.asList(values)));
+      putStrValues(Arrays.asList(values), buffer);
+      buffer.flip();
+      insertReq.setValues(buffer);
+
       for (String device : DEVICES) {
         insertReq.setDeviceId(device);
         if (logger.isInfoEnabled()) {
@@ -361,5 +370,27 @@ public class ClientMain {
       }
     }
     client.deleteTimeseries(sessionId, paths);
+  }
+
+  private static int calculateStrLength(List<String> values) {
+    int res = 0;
+
+    for (String value : values) {
+      // types
+      res += Short.BYTES;
+      res += Integer.BYTES;
+      res += value.getBytes(TSFileConfig.STRING_CHARSET).length;
+    }
+
+    return res;
+  }
+
+  private static void putStrValues(List<String> values, ByteBuffer buffer) {
+    for (String value : values) {
+      ReadWriteIOUtils.write(TSDataType.TEXT, buffer);
+      byte[] bytes = value.getBytes(TSFileConfig.STRING_CHARSET);
+      ReadWriteIOUtils.write(bytes.length, buffer);
+      buffer.put(bytes);
+    }
   }
 }

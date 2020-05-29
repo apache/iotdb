@@ -53,10 +53,10 @@ public class TypeInferenceUtils {
   /**
    * Get predicted DataType of the given value
    */
-  public static TSDataType getPredictedDataType(Object value) {
+  public static TSDataType getPredictedDataType(Object value, boolean inferType) {
 
-    if (value instanceof String) {
-      String strValue = (String) value;
+    if (inferType) {
+      String strValue = value.toString();
       if (isBoolean(strValue)) {
         return booleanStringInferType;
       } else if (isNumber(strValue)){
@@ -78,8 +78,6 @@ public class TypeInferenceUtils {
       return TSDataType.FLOAT;
     } else if (value instanceof Double) {
       return TSDataType.DOUBLE;
-    } else if (value instanceof Binary) {
-      return TSDataType.TEXT;
     }
 
     return TSDataType.TEXT;

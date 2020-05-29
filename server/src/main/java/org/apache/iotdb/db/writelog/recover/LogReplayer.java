@@ -172,7 +172,7 @@ public class LogReplayer {
     try {
       MeasurementSchema[] schemas =
           MManager.getInstance().getSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements());
-      insertPlan.setSchemas(schemas);
+      insertPlan.setSchemasAndTransferType(schemas);
       recoverMemTable.insert(insertPlan);
     } catch (Exception e) {
       logger.error(

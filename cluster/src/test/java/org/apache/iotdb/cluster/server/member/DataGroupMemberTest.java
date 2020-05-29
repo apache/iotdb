@@ -387,7 +387,7 @@ public class DataGroupMemberTest extends MemberTest {
 
   @Test
   public void testApplySnapshot()
-      throws StorageEngineException, IOException, WriteProcessException, SnapshotApplicationException {
+      throws StorageEngineException, IOException, WriteProcessException, SnapshotApplicationException, QueryProcessException {
     System.out.println("Start testStartElection()");
     FileSnapshot snapshot = new FileSnapshot();
     List<TimeseriesSchema> schemaList = new ArrayList<>();
@@ -421,8 +421,10 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[]{"s0"});
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
-    insertPlan.setValues(new String[]{"1.0"});
+    insertPlan.setInferType(true);
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setValues(new Object[]{"1.0"});
+    insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     processor.insert(insertPlan);
     processor.syncCloseAllWorkingTsFileProcessors();
 
@@ -549,11 +551,13 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeries()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+    insertPlan.setInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[]{String.valueOf(i)});
+      insertPlan.setValues(new Object[]{String.valueOf(i)});
+      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -603,11 +607,13 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+    insertPlan.setInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[]{String.valueOf(i)});
+      insertPlan.setValues(new Object[]{String.valueOf(i)});
+      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -657,11 +663,13 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+    insertPlan.setInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[]{String.valueOf(i)});
+      insertPlan.setValues(new Object[]{String.valueOf(i)});
+      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }
@@ -708,11 +716,13 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+    insertPlan.setInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
-      insertPlan.setValues(new String[]{String.valueOf(i)});
+      insertPlan.setValues(new Object[]{String.valueOf(i)});
+      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor PlanExecutor = new PlanExecutor();
       PlanExecutor.processNonQuery(insertPlan);
     }

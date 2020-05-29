@@ -284,18 +284,18 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterLoadFiles(ctx);
     if(ctx.autoCreateSchema() != null) {
       if(ctx.autoCreateSchema().INT() != null) {
-        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()),
+        initializedOperator = new LoadFilesOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
             Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
             Integer.parseInt(ctx.autoCreateSchema().INT().getText())
         );
       } else {
-        initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()),
+        initializedOperator = new LoadFilesOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
             Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
         );
       }
     } else {
-      initializedOperator = new LoadFilesOperator(new File(ctx.FILE().getText()),
+      initializedOperator = new LoadFilesOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
           true,
           IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
       );
@@ -305,14 +305,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterMoveFile(MoveFileContext ctx) {
     super.enterMoveFile(ctx);
-    initializedOperator = new MoveFileOperator(new File(ctx.FILE(0).getText()),
-        new File(ctx.FILE(1).getText()));
+    initializedOperator = new MoveFileOperator(new File(removeStringQuote(ctx.STRING_LITERAL(0).getText())),
+        new File(removeStringQuote(ctx.STRING_LITERAL(1).getText())));
   }
 
   @Override
   public void enterRemoveFile(RemoveFileContext ctx) {
     super.enterRemoveFile(ctx);
-    initializedOperator = new RemoveFileOperator(new File(ctx.FILE().getText()));
+    initializedOperator = new RemoveFileOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())));
   }
 
   @Override
@@ -816,9 +816,21 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       if (SQLConstant.ALL.equalsIgnoreCase(typeClause.dataType().getText())) {
         IFill fill;
         if (typeClause.previousUntilLastClause() != null) {
-          fill = new PreviousFill(-1, true);
+          long preRange;
+          if (typeClause.previousUntilLastClause().DURATION() != null) {
+            preRange = parseDuration(typeClause.previousUntilLastClause().DURATION().getText());
+          } else {
+            preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+          }
+          fill = new PreviousFill(preRange, true);
         } else {
-          fill = new PreviousFill(-1);
+          long preRange;
+          if (typeClause.previousClause().DURATION() != null) {
+            preRange = parseDuration(typeClause.previousClause().DURATION().getText());
+          } else {
+            preRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+          }
+          fill = new PreviousFill(preRange);
         }
         for (TSDataType tsDataType : TSDataType.values()) {
           fillTypes.put(tsDataType, fill.copy());
@@ -916,7 +928,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       }
     } else { // previous until last
       if (ctx.previousUntilLastClause().DURATION() != null) {
-        long preRange = parseDuration(ctx.previousClause().DURATION().getText());
+        long preRange = parseDuration(ctx.previousUntilLastClause().DURATION().getText());
         fillTypes.put(dataType, new PreviousFill(preRange, true));
       } else {
         fillTypes.put(dataType, new PreviousFill(defaultFillInterval, true));

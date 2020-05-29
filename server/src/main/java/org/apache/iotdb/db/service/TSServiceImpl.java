@@ -136,13 +136,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int DELETE_SIZE = 20;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
-
-  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
-
   protected Planner processor;
   protected IPlanExecutor executor;
-
+  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
   // Record the username for every rpc connection (session).
   private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
   private Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
@@ -168,6 +165,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
     executor = new PlanExecutor();
+  }
+
+  public static List<SqlArgument> getSqlArgumentList() {
+    return sqlArgumentList;
   }
 
   @Override
@@ -1068,15 +1069,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     InsertPlan plan = new InsertPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
-      plan.setDeviceId(req.getDeviceIds().get(i));
-      plan.setTime(req.getTimestamps().get(i));
-      plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
-      plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
-      TSStatus status = checkAuthority(plan, req.getSessionId());
-      if (status != null) {
-        resp.addToStatusList(status);
-      } else {
-        resp.addToStatusList(executeNonQueryPlan(plan));
+      try {
+        plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setTime(req.getTimestamps().get(i));
+        plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+        plan.setTypes(new TSDataType[plan.getMeasurements().length]);
+        plan.setValues(new Object[plan.getMeasurements().length]);
+        plan.setValues(req.valuesList.get(i));
+        plan.setInferType(req.isInferType());
+        TSStatus status = checkAuthority(plan, req.getSessionId());
+        if (status != null) {
+          resp.addToStatusList(status);
+        } else {
+          resp.addToStatusList(executeNonQueryPlan(plan));
+        }
+      } catch (Exception e) {
+        logger.error("meet error when insert in batch", e);
+        resp.addToStatusList(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
 
@@ -1113,7 +1122,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan.setDeviceId(req.getDeviceId());
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
-      plan.setValues(req.getValues().toArray(new String[0]));
+      plan.setTypes(new TSDataType[plan.getMeasurements().length]);
+      plan.setValues(new Object[plan.getMeasurements().length]);
+      plan.setValues(req.values);
+      plan.setInferType(req.isInferType());
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       if (status != null) {
@@ -1433,10 +1445,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } else {
       return null;
     }
-  }
-
-  public static List<SqlArgument> getSqlArgumentList() {
-    return sqlArgumentList;
   }
 
   private long generateQueryId(boolean isDataQuery) {

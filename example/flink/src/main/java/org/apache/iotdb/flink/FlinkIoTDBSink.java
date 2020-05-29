@@ -64,6 +64,7 @@ public class FlinkIoTDBSink {
                 tuple.put("device", "root.sg.d1");
                 tuple.put("timestamp", String.valueOf(System.currentTimeMillis()));
                 tuple.put("measurements", "s1");
+                tuple.put("types", "DOUBLE");
                 tuple.put("values", String.valueOf(random.nextDouble()));
 
                 context.collect(tuple);

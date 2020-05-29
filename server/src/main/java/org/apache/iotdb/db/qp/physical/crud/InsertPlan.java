@@ -25,16 +25,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -44,8 +46,14 @@ public class InsertPlan extends PhysicalPlan {
   private long time;
   private String deviceId;
   private String[] measurements;
-  private String[] values;
+  private Object[] values;
+  private TSDataType[] types;
   private MeasurementSchema[] schemas;
+
+  // if inferType is false, use the type of values directly
+  // if inferType is true, values is String[], and infer types from them
+  private boolean inferType = false;
+
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
@@ -53,12 +61,38 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @TestOnly
-  public InsertPlan(String deviceId, long insertTime, String measurement, String insertValue) {
+  public InsertPlan(String deviceId, long insertTime, String[] measurements, TSDataType[] types,
+      String[] insertValues) {
     super(false, OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = deviceId;
-    this.measurements = new String[] {measurement};
-    this.values = new String[] {insertValue};
+    this.measurements = measurements;
+
+    this.types = types;
+    this.values = new Object[measurements.length];
+    for (int i = 0; i < measurements.length; i++) {
+      try {
+        values[i] = CommonUtils.parseValueForTest(types[i], insertValues[i]);
+      } catch (QueryProcessException e) {
+        e.printStackTrace();
+      }
+    }
+    canBeSplit = false;
+  }
+
+  @TestOnly
+  public InsertPlan(String deviceId, long insertTime, String measurement, TSDataType type, String insertValue) {
+    super(false, OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.measurements = new String[]{measurement};
+    this.types = new TSDataType[]{type};
+    this.values = new Object[1];
+    try {
+      values[0] = CommonUtils.parseValueForTest(types[0], insertValue);
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
+    }
     canBeSplit = false;
   }
 
@@ -68,12 +102,26 @@ public class InsertPlan extends PhysicalPlan {
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
     this.schemas = new MeasurementSchema[tsRecord.dataPointList.size()];
-    this.values = new String[tsRecord.dataPointList.size()];
+    this.types = new TSDataType[tsRecord.dataPointList.size()];
+    this.values = new Object[tsRecord.dataPointList.size()];
     for (int i = 0; i < tsRecord.dataPointList.size(); i++) {
       measurements[i] = tsRecord.dataPointList.get(i).getMeasurementId();
-      schemas[i] = new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(), TSEncoding.PLAIN);
-      values[i] = tsRecord.dataPointList.get(i).getValue().toString();
+      schemas[i] = new MeasurementSchema(measurements[i], tsRecord.dataPointList.get(i).getType(),
+          TSEncoding.PLAIN);
+      types[i] = tsRecord.dataPointList.get(i).getType();
+      values[i] = tsRecord.dataPointList.get(i).getValue();
     }
+    canBeSplit = false;
+  }
+
+  public InsertPlan(String deviceId, long insertTime, String[] measurementList, TSDataType[] types,
+      Object[] insertValues) {
+    super(false, Operator.OperatorType.INSERT);
+    this.time = insertTime;
+    this.deviceId = deviceId;
+    this.measurements = measurementList;
+    this.types = types;
+    this.values = insertValues;
     canBeSplit = false;
   }
 
@@ -83,9 +131,14 @@ public class InsertPlan extends PhysicalPlan {
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = measurementList;
-    this.values = insertValues;
+    // build types and values
+    this.types = new TSDataType[measurements.length];
+    this.values = new Object[measurements.length];
+    System.arraycopy(insertValues, 0, values, 0, measurements.length);
+    inferType = true;
     canBeSplit = false;
   }
+
 
   public long getTime() {
     return time;
@@ -95,12 +148,30 @@ public class InsertPlan extends PhysicalPlan {
     this.time = time;
   }
 
+  public boolean isInferType() {
+    return inferType;
+  }
+
+  public void setInferType(boolean inferType) {
+    this.inferType = inferType;
+  }
+
   public MeasurementSchema[] getSchemas() {
     return schemas;
   }
 
-  public void setSchemas(MeasurementSchema[] schemas) {
+  /**
+   * if inferType is true,
+   * transfer String[] values to specific data types (Integer, Long, Float, Double, Binary)
+   */
+  public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
     this.schemas = schemas;
+    if (inferType) {
+      for (int i = 0; i < schemas.length; i++) {
+        types[i] = schemas[i].getType();
+        values[i] = CommonUtils.parseValue(types[i], values[i].toString());
+      }
+    }
   }
 
   @Override
@@ -129,11 +200,11 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = measurements;
   }
 
-  public String[] getValues() {
+  public Object[] getValues() {
     return this.values;
   }
 
-  public void setValues(String[] values) {
+  public void setValues(Object[] values) {
     this.values = values;
   }
 
@@ -170,8 +241,102 @@ public class InsertPlan extends PhysicalPlan {
       putString(stream, m);
     }
 
-    for (String m : values) {
-      putString(stream, m);
+    try {
+      putValues(stream);
+    } catch (QueryProcessException e) {
+      throw new IOException(e);
+    }
+  }
+
+  private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
+    for (int i = 0; i < values.length; i++) {
+      ReadWriteIOUtils.write(types[i], outputStream);
+      switch (types[i]) {
+        case BOOLEAN:
+          ReadWriteIOUtils.write((Boolean) values[i], outputStream);
+          break;
+        case INT32:
+          ReadWriteIOUtils.write((Integer) values[i], outputStream);
+          break;
+        case INT64:
+          ReadWriteIOUtils.write((Long) values[i], outputStream);
+          break;
+        case FLOAT:
+          ReadWriteIOUtils.write((Float) values[i], outputStream);
+          break;
+        case DOUBLE:
+          ReadWriteIOUtils.write((Double) values[i], outputStream);
+          break;
+        case TEXT:
+          ReadWriteIOUtils.write((Binary) values[i], outputStream);
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + types[i]);
+      }
+    }
+  }
+
+  private void putValues(ByteBuffer buffer) throws QueryProcessException {
+    for (int i = 0; i < values.length; i++) {
+      ReadWriteIOUtils.write(types[i], buffer);
+      switch (types[i]) {
+        case BOOLEAN:
+          ReadWriteIOUtils.write((Boolean) values[i], buffer);
+          break;
+        case INT32:
+          ReadWriteIOUtils.write((Integer) values[i], buffer);
+          break;
+        case INT64:
+          ReadWriteIOUtils.write((Long) values[i], buffer);
+          break;
+        case FLOAT:
+          ReadWriteIOUtils.write((Float) values[i], buffer);
+          break;
+        case DOUBLE:
+          ReadWriteIOUtils.write((Double) values[i], buffer);
+          break;
+        case TEXT:
+          ReadWriteIOUtils.write((Binary) values[i], buffer);
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + types[i]);
+      }
+    }
+  }
+
+  public TSDataType[] getTypes() {
+    return types;
+  }
+
+  public void setTypes(TSDataType[] types) {
+    this.types = types;
+  }
+
+  public void setValues(ByteBuffer buffer) throws QueryProcessException {
+    for (int i = 0; i < measurements.length; i++) {
+      types[i] = ReadWriteIOUtils.readDataType(buffer);
+      switch (types[i]) {
+        case BOOLEAN:
+          values[i] = ReadWriteIOUtils.readBool(buffer);
+          break;
+        case INT32:
+          values[i] = ReadWriteIOUtils.readInt(buffer);
+          break;
+        case INT64:
+          values[i] = ReadWriteIOUtils.readLong(buffer);
+          break;
+        case FLOAT:
+          values[i] = ReadWriteIOUtils.readFloat(buffer);
+          break;
+        case DOUBLE:
+          values[i] = ReadWriteIOUtils.readDouble(buffer);
+          break;
+        case TEXT:
+          values[i] = ReadWriteIOUtils.readBinary(buffer);
+          break;
+        default:
+          throw new QueryProcessException("Unsupported data type:" + types[i]);
+      }
     }
   }
 
@@ -189,8 +354,10 @@ public class InsertPlan extends PhysicalPlan {
       putString(buffer, m);
     }
 
-    for (String m : values) {
-      putString(buffer, m);
+    try {
+      putValues(buffer);
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
     }
   }
 
@@ -206,9 +373,12 @@ public class InsertPlan extends PhysicalPlan {
       measurements[i] = readString(buffer);
     }
 
-    this.values = new String[measurementSize];
-    for (int i = 0; i < measurementSize; i++) {
-      values[i] = readString(buffer);
+    this.types = new TSDataType[measurementSize];
+    this.values = new Object[measurementSize];
+    try {
+      setValues(buffer);
+    } catch (QueryProcessException e) {
+      e.printStackTrace();
     }
   }
 
@@ -221,7 +391,8 @@ public class InsertPlan extends PhysicalPlan {
     if (measurementIndex >= values.length) {
       return null;
     }
-    Object value = CommonUtils.parseValue(schemas[measurementIndex].getType(), values[measurementIndex]);
-    return new TimeValuePair(time, TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
+    Object value = values[measurementIndex];
+    return new TimeValuePair(time,
+        TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
   }
 }

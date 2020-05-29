@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -43,7 +44,7 @@ import org.junit.Test;
 public class SerializeLogTest {
 
   @Test
-  public void testPhysicalPlanLog() throws UnknownLogTypeException {
+  public void testPhysicalPlanLog() throws UnknownLogTypeException, QueryProcessException {
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPreviousLogIndex(1);
     log.setPreviousLogTerm(1);
@@ -52,9 +53,15 @@ public class SerializeLogTest {
     InsertPlan plan = new InsertPlan();
     plan.setDeviceId("root.d1");
     plan.setMeasurements(new String[]{"s1", "s2", "s3"});
-    plan.setSchemas(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(1),
-        TestUtils.getTestMeasurementSchema(2), TestUtils.getTestMeasurementSchema(3)});
-    plan.setValues(new String[]{"0.1", "1", "\"dd\""});
+    plan.setInferType(true);
+    plan.setTypes(new TSDataType[plan.getMeasurements().length]);
+    plan.setValues(new Object[]{"0.1", "1", "\"dd\""});
+    MeasurementSchema[] schemas = {TestUtils.getTestMeasurementSchema(1),
+        TestUtils.getTestMeasurementSchema(2), TestUtils.getTestMeasurementSchema(3)};
+    schemas[0].setType(TSDataType.DOUBLE);
+    schemas[1].setType(TSDataType.INT32);
+    schemas[2].setType(TSDataType.TEXT);
+    plan.setSchemasAndTransferType(schemas);
     plan.setTime(1);
     log.setPlan(plan);
 

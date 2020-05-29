@@ -42,9 +42,10 @@ public class TypeInferenceUtilsTest {
   }
 
   @Test
-  public void getPredictedDataTypeTest() {
+  public void testInferType() {
     Object[] values = {123, "abc", 123.123d, true, 123.1f, "123", "12.2", "true"};
-    TSDataType[] encodings = {TSDataType.INT32, TSDataType.TEXT, TSDataType.DOUBLE,
+    TSDataType[] encodings = {IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+        TSDataType.TEXT, IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
         TSDataType.BOOLEAN, TSDataType.FLOAT,
         IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
         IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
@@ -52,7 +53,19 @@ public class TypeInferenceUtilsTest {
     };
 
     for (int i = 0; i < values.length; i++) {
-      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i]));
+      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i], true));
+    }
+  }
+
+  @Test
+  public void testNotInferType() {
+    Object[] values = {123, "abc", 123.123d, true, 123.1f, "123", "12.2", "true"};
+    TSDataType[] encodings = {TSDataType.INT32, TSDataType.TEXT, TSDataType.DOUBLE,
+        TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT
+    };
+
+    for (int i = 0; i < values.length; i++) {
+      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i], false));
     }
   }
 }

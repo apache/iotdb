@@ -250,15 +250,17 @@ public class TestUtils {
         schemas[i] = TestUtils.getTestMeasurementSchema(i);
       }
       insertPlan.setMeasurements(measurements);
-      insertPlan.setSchemas(schemas);
+      insertPlan.setInferType(true);
+      insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
       // the first sequential file
       for (int i = 10; i < 20; i++) {
         insertPlan.setTime(i);
-        String[] values = new String[10];
+        Object[] values = new Object[10];
         for (int k = 0; k < 10; k++) {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
+        insertPlan.setSchemasAndTransferType(schemas);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -266,11 +268,12 @@ public class TestUtils {
       // the first unsequential file, not overlapped with the sequential file
       for (int i = 0; i < 10; i++) {
         insertPlan.setTime(i);
-        String[] values = new String[10];
+        Object[] values = new Object[10];
         for (int k = 0; k < 10; k++) {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
+        insertPlan.setSchemasAndTransferType(schemas);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -278,11 +281,12 @@ public class TestUtils {
       // the second unsequential file, overlapped with the sequential file
       for (int i = 10; i < 20; i++) {
         insertPlan.setTime(i);
-        String[] values = new String[10];
+        Object[] values = new Object[10];
         for (int k = 0; k < 10; k++) {
           values[k] = String.valueOf(i);
         }
         insertPlan.setValues(values);
+        insertPlan.setSchemasAndTransferType(schemas);
         PlanExecutor planExecutor = new PlanExecutor();
         planExecutor.processNonQuery(insertPlan);
       }
@@ -294,11 +298,13 @@ public class TestUtils {
     String[] measurements = new String[]{getTestMeasurement(10)};
     MeasurementSchema[] schemas = new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(10)};
     insertPlan.setMeasurements(measurements);
-    insertPlan.setSchemas(schemas);
+    insertPlan.setInferType(true);
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i : new int[]{0, 10}) {
       insertPlan.setTime(i);
-      String[] values = new String[]{String.valueOf(i)};
+      Object[] values = new Object[]{String.valueOf(i)};
       insertPlan.setValues(values);
+      insertPlan.setSchemasAndTransferType(schemas);
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }

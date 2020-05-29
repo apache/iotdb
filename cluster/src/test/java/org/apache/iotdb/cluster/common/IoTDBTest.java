@@ -105,13 +105,15 @@ public class IoTDBTest {
       schemas[i] = TestUtils.getTestMeasurementSchema(i);
     }
     insertPlan.setMeasurements(measurements);
-    insertPlan.setSchemas(schemas);
+    insertPlan.setInferType(true);
+    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
 
-    String[] values = new String[10];
+    Object[] values = new Object[10];
     for (int i = timeOffset; i < timeOffset + size; i++) {
       insertPlan.setTime(i);
       Arrays.fill(values, String.valueOf(i * 1.0));
       insertPlan.setValues(values);
+      insertPlan.setSchemasAndTransferType(schemas);
       planExecutor.insert(insertPlan);
     }
   }

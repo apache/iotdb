@@ -52,6 +52,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -185,8 +186,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Set<String> getPathNextChildren(String path)
-          throws MetadataException {
+  protected Set<String> getPathNextChildren(String path) {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
@@ -254,14 +254,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
-          throws MetadataException {
+  protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan) {
     return showTimeseries(plan);
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
-          throws MetadataException {
+  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan) {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
@@ -341,8 +339,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected MeasurementSchema[] getSeriesSchemas(String[] measurementList, String deviceId,
-                                                 String[] strValues) throws MetadataException {
+  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
+    String[] measurementList = insertPlan.getMeasurements();
+    String deviceId = insertPlan.getDeviceId();
 
     MNode node = null;
     boolean allSeriesExists = true;
@@ -368,7 +367,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
 
     if (allSeriesExists) {
-      return super.getSeriesSchemas(measurementList, deviceId, strValues);
+      return super.getSeriesSchemas(insertPlan);
     }
 
     // some schemas does not exist locally, fetch them from the remote side
@@ -383,13 +382,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
 
-    if (schemas.size() == measurementList.length) {
-      // all schemas can be fetched from the remote side
-      return schemas.toArray(new MeasurementSchema[0]);
-    } else {
-      // some schemas does not exist in the remote side, check if we can use auto-creation
-      return super.getSeriesSchemas(measurementList, deviceId, strValues);
-    }
+    // we have pulled schemas as much as we can, those not pulled will depend on whether
+    // auto-creation is enabled
+    return super.getSeriesSchemas(insertPlan);
   }
 
   @Override
