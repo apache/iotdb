@@ -277,7 +277,7 @@
 |:---:|:---|
 |Description| 内存中平均每个时间序列点数最大值，达到触发flush|
 |Type|Int32|
-|Default| 5000 |
+|Default| 10000 |
 |Effective|重启服务器生效|
 
 * tsfile\_size\_threshold

@@ -232,7 +232,7 @@ public class IoTDBConfig {
   /**
    * When average series point number reaches this, flush the memtable to disk
    */
-  private int avgSeriesPointNumberThreshold = 5000;
+  private int avgSeriesPointNumberThreshold = 10000;
 
   /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
