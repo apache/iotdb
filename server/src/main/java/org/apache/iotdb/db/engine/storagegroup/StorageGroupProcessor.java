@@ -1180,9 +1180,9 @@ public class StorageGroupProcessor {
     mergeLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
-          upgradeSeqFileList, deviceId, measurementId, context, timeFilter);
+          upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
-          upgradeUnseqFileList, deviceId, measurementId, context, timeFilter);
+          upgradeUnseqFileList, deviceId, measurementId, context, timeFilter, false);
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
@@ -1216,7 +1216,7 @@ public class StorageGroupProcessor {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources, List<TsFileResource> upgradeTsFileResources,
-      String deviceId, String measurementId, QueryContext context, Filter timeFilter)
+      String deviceId, String measurementId, QueryContext context, Filter timeFilter, boolean isSeq)
       throws MetadataException {
 
     MeasurementSchema schema = MManager.getInstance().getSeriesSchema(deviceId, measurementId);
@@ -1227,7 +1227,7 @@ public class StorageGroupProcessor {
     context.setQueryTimeLowerBound(timeLowerBound);
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter, isSeq)) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1255,7 +1255,7 @@ public class StorageGroupProcessor {
     }
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter, isSeq)) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1272,14 +1272,14 @@ public class StorageGroupProcessor {
    * @return true if the device is contained in the TsFile and it lives beyond TTL
    */
   private boolean isTsFileResourceSatisfied(TsFileResource tsFileResource, String deviceId,
-      Filter timeFilter) {
+      Filter timeFilter, boolean isSeq) {
     if (!tsFileResource.containsDevice(deviceId)) {
       return false;
     }
 
     int deviceIndex = tsFileResource.getDeviceToIndexMap().get(deviceId);
     long startTime = tsFileResource.getStartTime(deviceIndex);
-    long endTime = tsFileResource.isClosed() ? tsFileResource.getEndTime(deviceIndex) : Long.MAX_VALUE;
+    long endTime = tsFileResource.isClosed() || !isSeq ? tsFileResource.getEndTime(deviceIndex) : Long.MAX_VALUE;
 
     if (dataTTL != Long.MAX_VALUE) {
       return checkTTL(endTime);
