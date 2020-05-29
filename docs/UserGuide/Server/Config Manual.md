@@ -553,6 +553,27 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|your principal |
 |Effective|After restart system|
 
+
+* authorizer\_provider\_class
+
+|Name| authorizer\_provider\_class |
+|:---:|:---|
+|Description| the class name of the authorization service|
+|Type| String |
+|Default|org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|Effective|After restart system|
+|Other available values| org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer |
+
+* openID\_url
+
+|Name| openID\_url |
+|:---:|:---|
+|Description| the openID server if OpenIdAuthorizer is enabled|
+|Type| String (a http url) |
+|Default|no |
+|Effective|After restart system|
+
+
 ## Enable GC log
 GC log is off by default.
 For performance tuning, you may want to collect the GC info. 

@@ -569,6 +569,13 @@ public class IoTDBConfig {
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  // Open ID Secret
+  private String openIdProviderUrl = null;
+
+  // the authorizer provider class which extends BasicAuthorizer
+  private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
+
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1559,5 +1566,21 @@ public class IoTDBConfig {
 
   public void setPrimitiveArraySize(int primitiveArraySize) {
     this.primitiveArraySize = primitiveArraySize;
+  }
+
+  public String getOpenIdProviderUrl() {
+    return openIdProviderUrl;
+  }
+
+  public void setOpenIdProviderUrl(String openIdProviderUrl) {
+    this.openIdProviderUrl = openIdProviderUrl;
+  }
+
+  public String getAuthorizerProvider() {
+    return authorizerProvider;
+  }
+
+  public void setAuthorizerProvider(String authorizerProvider) {
+    this.authorizerProvider = authorizerProvider;
   }
 }
