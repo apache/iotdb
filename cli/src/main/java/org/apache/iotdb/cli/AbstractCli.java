@@ -99,7 +99,7 @@ public abstract class AbstractCli {
   static int maxValueLength = 15;
   static String TIMESTAMP_PRECISION = "ms";
   private static int lineCount = 0;
-  private static final String SUCCESS_MESSAGE = "The statement is executed.";
+  private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
 
   private static boolean isReachEnd = false;
 
@@ -536,7 +536,6 @@ public abstract class AbstractCli {
       ZoneId zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
-      println("Msg: " + SUCCESS_MESSAGE);
       if (hasResultSet) {
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
@@ -567,6 +566,8 @@ public abstract class AbstractCli {
             }
           }
         }
+      } else {
+        println("Msg: " + SUCCESS_MESSAGE);
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
