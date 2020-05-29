@@ -82,26 +82,30 @@ public class LogReplayer {
    * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the WALs from
    * the logNode and redoes them into a given MemTable and ModificationFile.
    */
-  public void replayLogs() throws StorageGroupProcessorException {
+  public void replayLogs() {
     WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
         logNodePrefix + FSFactoryProducer.getFSFactory().getFile(insertFilePath).getName());
 
     ILogReader logReader = logNode.getLogReader();
     try {
       while (logReader.hasNext()) {
-        PhysicalPlan plan = logReader.next();
-        if (plan instanceof InsertPlan) {
-          replayInsert((InsertPlan) plan);
-        } else if (plan instanceof DeletePlan) {
-          replayDelete((DeletePlan) plan);
-        } else if (plan instanceof UpdatePlan) {
-          replayUpdate((UpdatePlan) plan);
-        } else if (plan instanceof InsertTabletPlan) {
-          replayBatchInsert((InsertTabletPlan) plan);
+        try {
+          PhysicalPlan plan = logReader.next();
+          if (plan instanceof InsertPlan) {
+            replayInsert((InsertPlan) plan);
+          } else if (plan instanceof DeletePlan) {
+            replayDelete((DeletePlan) plan);
+          } else if (plan instanceof UpdatePlan) {
+            replayUpdate((UpdatePlan) plan);
+          } else if (plan instanceof InsertTabletPlan) {
+            replayBatchInsert((InsertTabletPlan) plan);
+          }
+        } catch (Exception e) {
+          logger.error("recover wal of {} failed", insertFilePath, e);
         }
       }
-    } catch (IOException | WriteProcessException | QueryProcessException e) {
-      throw new StorageGroupProcessorException(e);
+    } catch (IOException e) {
+      logger.error("meet error when redo wal of {}", insertFilePath, e);
     } finally {
       logReader.close();
       try {
