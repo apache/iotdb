@@ -538,7 +538,6 @@ public class StorageGroupProcessor {
         workSequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
-        tsFileResource.clearEndTimes();
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
@@ -1277,14 +1276,16 @@ public class StorageGroupProcessor {
     if (!tsFileResource.containsDevice(deviceId)) {
       return false;
     }
+
+    int deviceIndex = tsFileResource.getDeviceToIndexMap().get(deviceId);
+    long startTime = tsFileResource.getStartTime(deviceIndex);
+    long endTime = tsFileResource.isClosed() ? tsFileResource.getEndTime(deviceIndex) : Long.MAX_VALUE;
+
     if (dataTTL != Long.MAX_VALUE) {
-      long deviceEndTime = tsFileResource.getEndTime(deviceId);
-      return deviceEndTime == Long.MIN_VALUE || checkTTL(deviceEndTime);
+      return checkTTL(endTime);
     }
 
     if (timeFilter != null) {
-      long startTime = tsFileResource.getStartTime(deviceId);
-      long endTime = tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE);
       return timeFilter.satisfyStartEndTime(startTime, endTime);
     }
     return true;
