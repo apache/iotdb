@@ -138,11 +138,11 @@ public class LogReplayerTest {
       assertEquals(1, mods.length);
       assertEquals(new Deletion(new Path("root.sg.device0", "sensor0"), 5, 200), mods[0]);
 
-      assertEquals(2, (long) tsFileResource.getStartTimeMap().get("root.sg.device0"));
-      assertEquals(100, (long) tsFileResource.getEndTimeMap().get("root.sg.device0"));
+      assertEquals(2, (long) tsFileResource.getStartTime("root.sg.device0"));
+      assertEquals(100, (long) tsFileResource.getEndTime("root.sg.device0"));
       for (int i = 1; i < 5; i++) {
-        assertEquals(i, (long) tsFileResource.getStartTimeMap().get("root.sg.device" + i));
-        assertEquals(i, (long) tsFileResource.getEndTimeMap().get("root.sg.device" + i));
+        assertEquals(i, (long) tsFileResource.getStartTime("root.sg.device" + i));
+        assertEquals(i, (long) tsFileResource.getEndTime("root.sg.device" + i));
       }
     } finally {
       modFile.close();

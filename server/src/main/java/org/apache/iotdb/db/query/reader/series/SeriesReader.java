@@ -573,7 +573,7 @@ class SeriesReader {
     return tsFileResources.stream()
         .sorted(
             Comparator.comparingLong(
-                tsFileResource -> tsFileResource.getStartTimeMap().get(seriesPath.getDevice())))
+                tsFileResource -> tsFileResource.getStartTime(seriesPath.getDevice())))
         .collect(Collectors.toCollection(LinkedList::new));
   }
 
@@ -660,7 +660,7 @@ class SeriesReader {
 
   private void unpackAllOverlappedTsFilesToTimeSeriesMetadata(long endTime) throws IOException {
     while (!unseqFileResource.isEmpty()
-        && endTime >= unseqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
+        && endTime >= unseqFileResource.get(0).getStartTime(seriesPath.getDevice())) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
@@ -670,7 +670,7 @@ class SeriesReader {
       }
     }
     while (!seqFileResource.isEmpty()
-        && endTime >= seqFileResource.get(0).getStartTimeMap().get(seriesPath.getDevice())) {
+        && endTime >= seqFileResource.get(0).getStartTime(seriesPath.getDevice())) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               seqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
