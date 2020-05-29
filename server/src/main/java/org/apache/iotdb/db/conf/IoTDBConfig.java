@@ -748,7 +748,7 @@ public class IoTDBConfig {
     return timestampPrecision;
   }
 
-  void setTimestampPrecision(String timestampPrecision) {
+  public void setTimestampPrecision(String timestampPrecision) {
     if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
         || timestampPrecision.equals("ns"))) {
       logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
