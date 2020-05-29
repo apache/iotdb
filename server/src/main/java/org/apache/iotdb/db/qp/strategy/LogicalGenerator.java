@@ -1475,7 +1475,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       throw new SQLParserException("input timestamp cannot be empty");
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
-      return System.currentTimeMillis();
+      String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+      switch (timePrecision) {
+        case "ns":
+          return System.currentTimeMillis() * 1000_000L;
+        case "us":
+          return System.currentTimeMillis() * 1000L;
+        default:
+          return System.currentTimeMillis();
+      }
     }
     try {
       return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
