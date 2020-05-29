@@ -296,7 +296,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| max average number of point of each series in memtable|
 |Type|Int32|
-|Default| 5000 |
+|Default| 10000 |
 |Effective|After restart system|
 
 * tsfile\_size\_threshold
