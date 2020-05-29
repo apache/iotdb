@@ -235,7 +235,7 @@ public class IoTDBConfigCheck {
 
   private void checkProperties() throws IOException {
     for (Entry<String, String> entry : systemProperties.entrySet()) {
-      if (!properties.contains(entry.getKey())) {
+      if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
         logger.info("repair system.properties, lack {}", entry.getKey());
       }
