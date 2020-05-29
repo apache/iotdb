@@ -108,6 +108,7 @@ public class TTLTest {
   public void testSetMetaTTL() throws IOException, MetadataException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
+
     try {
       MManager.getInstance().setTTL(sg1 + ".notExist", ttl);
     } catch (MetadataException e) {
