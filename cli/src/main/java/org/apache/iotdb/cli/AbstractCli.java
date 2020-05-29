@@ -99,7 +99,7 @@ public abstract class AbstractCli {
   static int maxValueLength = 15;
   static String TIMESTAMP_PRECISION = "ms";
   private static int lineCount = 0;
-  private static final String SUCCESS_MESSAGE = "The statement is executed.";
+  private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
 
   private static boolean isReachEnd = false;
 
