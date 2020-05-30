@@ -20,6 +20,7 @@
 package org.apache.iotdb.tsfile.file.header;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.serialization.ChunkHeaderSerializer;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -76,20 +77,8 @@ public class ChunkHeader {
    * @param markerRead Whether the marker of the CHUNK_HEADER has been read
    */
   public static ChunkHeader deserializeFrom(InputStream inputStream, boolean markerRead) throws IOException {
-    if (!markerRead) {
-      byte marker = (byte) inputStream.read();
-      if (marker != MetaMarker.CHUNK_HEADER) {
-        MetaMarker.handleUnexpectedMarker(marker);
-      }
-    }
-
-    String measurementID = ReadWriteIOUtils.readString(inputStream);
-    int dataSize = ReadWriteIOUtils.readInt(inputStream);
-    TSDataType dataType = TSDataType.deserialize(ReadWriteIOUtils.readShort(inputStream));
-    int numOfPages = ReadWriteIOUtils.readInt(inputStream);
-    CompressionType type = ReadWriteIOUtils.readCompressionType(inputStream);
-    TSEncoding encoding = ReadWriteIOUtils.readEncoding(inputStream);
-    return new ChunkHeader(measurementID, dataSize, dataType, type, encoding, numOfPages);
+    ChunkHeaderSerializer serializer = new ChunkHeaderSerializer(); 
+    return serializer.deserializeFrom(inputStream, markerRead);
   }
 
   /**
@@ -113,16 +102,8 @@ public class ChunkHeader {
     ByteBuffer buffer = ByteBuffer.allocate(chunkHeaderSize);
     input.read(buffer, offsetVar);
     buffer.flip();
-
-    // read measurementID
-    int size = buffer.getInt();
-    String measurementID = ReadWriteIOUtils.readStringWithLength(buffer, size);
-    int dataSize = ReadWriteIOUtils.readInt(buffer);
-    TSDataType dataType = TSDataType.deserialize(ReadWriteIOUtils.readShort(buffer));
-    int numOfPages = ReadWriteIOUtils.readInt(buffer);
-    CompressionType type = ReadWriteIOUtils.readCompressionType(buffer);
-    TSEncoding encoding = ReadWriteIOUtils.readEncoding(buffer);
-    return new ChunkHeader(measurementID, dataSize, chunkHeaderSize, dataType, type, encoding, numOfPages);
+    ChunkHeaderSerializer serializer = new ChunkHeaderSerializer(); 
+    return serializer.deserializeFrom(buffer, markerRead);
   }
 
   public int getSerializedSize() {
@@ -149,15 +130,8 @@ public class ChunkHeader {
    * @throws IOException IOException
    */
   public int serializeTo(OutputStream outputStream) throws IOException {
-    int length = 0;
-    length += ReadWriteIOUtils.write(MetaMarker.CHUNK_HEADER, outputStream);
-    length += ReadWriteIOUtils.write(measurementID, outputStream);
-    length += ReadWriteIOUtils.write(dataSize, outputStream);
-    length += ReadWriteIOUtils.write(dataType, outputStream);
-    length += ReadWriteIOUtils.write(numOfPages, outputStream);
-    length += ReadWriteIOUtils.write(compressionType, outputStream);
-    length += ReadWriteIOUtils.write(encodingType, outputStream);
-    return length;
+    ChunkHeaderSerializer serializer = new ChunkHeaderSerializer(); 
+    return serializer.serializeTo(this, outputStream);
   }
 
   /**
@@ -167,15 +141,8 @@ public class ChunkHeader {
    * @return length
    */
   public int serializeTo(ByteBuffer buffer) {
-    int length = 0;
-    length += ReadWriteIOUtils.write(MetaMarker.CHUNK_HEADER, buffer);
-    length += ReadWriteIOUtils.write(measurementID, buffer);
-    length += ReadWriteIOUtils.write(dataSize, buffer);
-    length += ReadWriteIOUtils.write(dataType, buffer);
-    length += ReadWriteIOUtils.write(numOfPages, buffer);
-    length += ReadWriteIOUtils.write(compressionType, buffer);
-    length += ReadWriteIOUtils.write(encodingType, buffer);
-    return length;
+    ChunkHeaderSerializer serializer = new ChunkHeaderSerializer(); 
+    return serializer.serializeTo(this, buffer);
   }
 
   public int getNumOfPages() {

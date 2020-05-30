@@ -24,9 +24,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
+import org.apache.iotdb.tsfile.common.serialization.PageHeaderSerializer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class PageHeader {
 
@@ -47,17 +47,13 @@ public class PageHeader {
 
   public static PageHeader deserializeFrom(InputStream inputStream, TSDataType dataType)
       throws IOException {
-    int uncompressedSize = ReadWriteIOUtils.readInt(inputStream);
-    int compressedSize = ReadWriteIOUtils.readInt(inputStream);
-    Statistics statistics = Statistics.deserialize(inputStream, dataType);
-    return new PageHeader(uncompressedSize, compressedSize, statistics);
+        PageHeaderSerializer serializer = new PageHeaderSerializer();
+        return serializer.deserializeFrom(inputStream, dataType);
   }
 
   public static PageHeader deserializeFrom(ByteBuffer buffer, TSDataType dataType) {
-    int uncompressedSize = ReadWriteIOUtils.readInt(buffer);
-    int compressedSize = ReadWriteIOUtils.readInt(buffer);
-    Statistics statistics = Statistics.deserialize(buffer, dataType);
-    return new PageHeader(uncompressedSize, compressedSize, statistics);
+    PageHeaderSerializer serializer = new PageHeaderSerializer();
+    return serializer.deserializeFrom(buffer, dataType);
   }
 
   public int getUncompressedSize() {
@@ -93,9 +89,8 @@ public class PageHeader {
   }
 
   public void serializeTo(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(uncompressedSize, outputStream);
-    ReadWriteIOUtils.write(compressedSize, outputStream);
-    statistics.serialize(outputStream);
+    PageHeaderSerializer serializer = new PageHeaderSerializer();
+    serializer.serializeTo(this, outputStream);
   }
 
   @Override
