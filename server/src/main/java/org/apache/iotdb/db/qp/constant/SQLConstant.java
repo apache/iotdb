@@ -141,6 +141,12 @@ public class SQLConstant {
 
   public static final int TOK_METADATA_ALTER = 80;
 
+  public static final int TOK_FLUSH = 81;
+  public static final int TOK_MERGE = 82;
+  public static final int TOK_FULL_MERGE = 83;
+
+  public static final int TOK_CLEAR_CACHE = 84;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();

@@ -291,17 +291,13 @@ public class MManager {
         setStorageGroup(storageGroupName);
       }
 
+      // check memory
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+
       // create time series in MTree
       LeafMNode leafMNode = mtree
           .createTimeseries(path, plan.getDataType(), plan.getEncoding(), plan.getCompressor(),
               plan.getProps(), plan.getAlias());
-      try {
-        // check memory
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
-      } catch (ConfigAdjusterException e) {
-        removeFromTagInvertedIndex(mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path).right);
-        throw e;
-      }
 
       // update tag index
       if (plan.getTags() != null) {
@@ -674,6 +670,20 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesName(prefixPath);
+    } catch (MetadataException e) {
+      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include alias.
+   */
+  public List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesPath(prefixPath);
     } catch (MetadataException e) {
       throw new MetadataException(e);
     } finally {

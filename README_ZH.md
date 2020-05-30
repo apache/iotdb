@@ -65,7 +65,7 @@ IoTDB的主要特点如下:
        - 基本的 IoTDB 命令
     - 停止 IoTDB
  - 只编译 server
- - 只编译 client
+ - 只编译 cli
  - 使用 import-csv.sh
     - 创建元数据
     - 从 csv 文件导入数据的示例
@@ -160,7 +160,7 @@ git checkout release/x.x.x
 IoTDB提供了与服务器交互的不同方式，这里我们将介绍使用 Cli 工具插入和查询数据的基本步骤。
 
 安装 IoTDB 后，有一个默认的用户`root`，它的默认密码也是`root`。用户可以使用这个
-默认用户登录 Cli 并使用 IoTDB。Cli 的启动脚本是 sbin 文件夹中的 start-client 脚本。
+默认用户登录 Cli 并使用 IoTDB。Cli 的启动脚本是 sbin 文件夹中的 start-cli 脚本。
 在执行脚本时，用户应该指定 IP，端口，USER_NAME 和 密码。默认参数为`-h 127.0.0.1 -p 6667 -u root -pw root`。
 
 
@@ -168,10 +168,10 @@ IoTDB提供了与服务器交互的不同方式，这里我们将介绍使用 Cl
 
 ```
 # Unix/OS X
-> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
-> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
 命令行客户端是交互式的，所以如果一切就绪，您应该看到欢迎标志和声明:
@@ -317,15 +317,15 @@ server 可以使用 "ctrl-C" 或者执行下面的脚本:
 编译完成后, IoTDB server 将生成在: "server/target/iotdb-server-{project.version}".
 
 
-## 只编译 client
+## 只编译 cli
 
 在 incubator-iotdb 根目录下执行:
 
 ```
-> mvn clean package -pl client -am -DskipTests
+> mvn clean package -pl cli -am -DskipTests
 ```
 
-编译完成后, IoTDB client 将生成在 "client/target/iotdb-client-{project.version}".
+编译完成后, IoTDB cli 将生成在 "cli/target/iotdb-cli-{project.version}".
 
 ## 使用 import-csv.sh
 

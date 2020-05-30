@@ -92,7 +92,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     alignByTime = align;
   }
 
-  public void addColumn(String columnName, Integer index) {
+  public void addPathToIndex(String columnName, Integer index) {
     pathToIndex.put(columnName, index);
   }
 

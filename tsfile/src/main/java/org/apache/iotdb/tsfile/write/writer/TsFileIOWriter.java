@@ -87,6 +87,9 @@ public class TsFileIOWriter {
   private String currentChunkGroupDeviceId;
   private long currentChunkGroupStartOffset;
   protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+  
+  // for upgrade tool
+  Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
   /**
    * empty construct function.
@@ -283,7 +286,7 @@ public class TsFileIOWriter {
       Map<Path, List<ChunkMetadata>> chunkMetadataListMap) throws IOException {
 
     // convert ChunkMetadataList to this field
-    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap = new LinkedHashMap<>();
+    deviceTimeseriesMetadataMap = new LinkedHashMap<>();
     // create device -> TimeseriesMetaDataList Map
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
@@ -434,5 +437,14 @@ public class TsFileIOWriter {
    */
   public TsFileOutput getIOWriterOut() {
     return out;
+  }
+
+  /**
+   * this function is only for Upgrade Tool.
+   *
+   * @return DeviceTimeseriesMetadataMap
+   */
+  public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
+    return deviceTimeseriesMetadataMap;
   }
 }

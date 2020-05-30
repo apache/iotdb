@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -35,14 +36,22 @@ public class MetadataIndexNode {
   private List<MetadataIndexEntry> children;
   private long endOffset;
 
-  public MetadataIndexNode() {
+  /**
+   * type of the child node at offset
+   */
+  private MetadataIndexNodeType nodeType;
+
+  public MetadataIndexNode(MetadataIndexNodeType nodeType) {
     children = new ArrayList<>();
     endOffset = -1L;
+    this.nodeType = nodeType;
   }
 
-  public MetadataIndexNode(List<MetadataIndexEntry> children, long endOffset) {
+  public MetadataIndexNode(List<MetadataIndexEntry> children, long endOffset,
+      MetadataIndexNodeType nodeType) {
     this.children = children;
     this.endOffset = endOffset;
+    this.nodeType = nodeType;
   }
 
   public List<MetadataIndexEntry> getChildren() {
@@ -55,6 +64,10 @@ public class MetadataIndexNode {
 
   public void setEndOffset(long endOffset) {
     this.endOffset = endOffset;
+  }
+
+  public MetadataIndexNodeType getNodeType() {
+    return nodeType;
   }
 
   public void addEntry(MetadataIndexEntry metadataIndexEntry) {
@@ -79,6 +92,7 @@ public class MetadataIndexNode {
       byteLen += metadataIndexEntry.serializeTo(outputStream);
     }
     byteLen += ReadWriteIOUtils.write(endOffset, outputStream);
+    byteLen += ReadWriteIOUtils.write(nodeType.serialize(), outputStream);
     return byteLen;
   }
 
@@ -89,7 +103,8 @@ public class MetadataIndexNode {
       children.add(MetadataIndexEntry.deserializeFrom(buffer));
     }
     long offset = ReadWriteIOUtils.readLong(buffer);
-    return new MetadataIndexNode(children, offset);
+    MetadataIndexNodeType nodeType =  MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
+    return new MetadataIndexNode(children, offset, nodeType);
   }
 
   public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key) {
@@ -120,6 +135,6 @@ public class MetadataIndexNode {
         return mid; // key found
       }
     }
-    return low - 1;  // key not found
+    return low == 0 ? low : low - 1;  // key not found
   }
 }

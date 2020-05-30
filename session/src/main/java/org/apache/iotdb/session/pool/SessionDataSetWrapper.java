@@ -23,6 +23,8 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 public class SessionDataSetWrapper {
@@ -43,11 +45,11 @@ public class SessionDataSetWrapper {
   }
 
   public int getBatchSize() {
-    return sessionDataSet.getBatchSize();
+    return sessionDataSet.getFetchSize();
   }
 
   public void setBatchSize(int batchSize) {
-    sessionDataSet.setBatchSize(batchSize);
+    sessionDataSet.setFetchSize(batchSize);
   }
 
   /**
@@ -75,7 +77,18 @@ public class SessionDataSetWrapper {
     return sessionDataSet.next();
   }
 
+  /**
+   * retrieve data set like jdbc
+   */
+  public DataIterator iterator() {
+    return sessionDataSet.iterator();
+  }
+
   public List<String> getColumnNames() {
     return sessionDataSet.getColumnNames();
+  }
+
+  public List<TSDataType> getColumnTypes() {
+    return sessionDataSet.getColumnTypes();
   }
 }

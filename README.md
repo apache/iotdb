@@ -31,10 +31,11 @@
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/incubator-iotdb) 
 
 # Overview
 
-IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input and complex data analysis in the industrial IoTDB field.
+IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
 
 # Main Features
 
@@ -66,7 +67,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
        - Basic commands for IoTDB
     - Stop IoTDB
  - Only build server
- - Only build client
+ - Only build cli
  - Usage of import-csv.sh
     - Create metadata
     - An Example of import csv file
@@ -122,7 +123,7 @@ Under the root path of incubator-iotdb:
 > mvn clean package -DskipTests
 ```
 
-Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
+Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
 
 > NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
 
@@ -165,20 +166,20 @@ Users can start IoTDB by the start-server script under the sbin folder.
 IoTDB offers different ways to interact with server, here we introduce the basic steps of using Cli tool to insert and query data.
 
 After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
-default user to login Cli to use IoTDB. The startup script of Cli is the start-client script in the folder sbin. When executing the script, user should assign
+default user to login Cli to use IoTDB. The startup script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
 IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
 
 Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
-> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
-The command line client is interactive, so you should see the welcome logo and statements if everything is ready:
+The command line cli is interactive, so you should see the welcome logo and statements if everything is ready:
 
 ```
  _____       _________  ______   ______
@@ -315,15 +316,15 @@ Under the root path of incubator-iotdb:
 After being built, the IoTDB server is located at the folder: "server/target/iotdb-server-{project.version}".
 
 
-## Only build client
+## Only build cli
 
 Under the root path of incubator-iotdb:
 
 ```
-> mvn clean package -pl client -am -DskipTests
+> mvn clean package -pl cli -am -DskipTests
 ```
 
-After being built, the IoTDB client is located at the folder "client/target/iotdb-client-{project.version}".
+After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
 
 ## Usage of import-csv.sh
 

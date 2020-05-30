@@ -43,10 +43,9 @@ public class TestHelper {
   }
 
   private static MetadataIndexNode generateMetaDataIndex() {
-    MetadataIndexNode metaDataIndex = new MetadataIndexNode();
+    MetadataIndexNode metaDataIndex = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
     for (int i = 0; i < 5; i++) {
-      metaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5,
-          MetadataIndexNodeType.LEAF_MEASUREMENT));
+      metaDataIndex.addEntry(new MetadataIndexEntry("d" + i, (long) i * 5));
     }
     return metaDataIndex;
   }
