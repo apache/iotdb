@@ -90,6 +90,7 @@ public class PublishHandler extends AbstractInterceptHandler {
             plan.setTime(event.getTimestamp());
             plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
             plan.setValues(event.getValues().toArray(new String[event.getValues().size()]));
+            plan.setInferType(true);
 
             boolean status;
             try {
