@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.io.File;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -162,6 +163,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
@@ -1476,11 +1478,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
       String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+      Instant instant = Instant.now();
       switch (timePrecision) {
         case "ns":
-          return System.currentTimeMillis() * 1000_000L;
+          return instant.getEpochSecond() * 1000_000_000 + instant.getNano();
         case "us":
-          return System.currentTimeMillis() * 1000L;
+          return (instant.getEpochSecond() * 1000_000_000 + instant.getNano()) / 1000;
         default:
           return System.currentTimeMillis();
       }
