@@ -224,7 +224,7 @@ public class StorageEngine implements IService {
   public void testStop() {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
-      processor.testSyncCloseAllWorkingTsFileProcessors();
+      processor.testAsyncCloseAllWorkingTsFileProcessors();
     }
     if (ttlCheckThread != null) {
       ttlCheckThread.shutdownNow();
