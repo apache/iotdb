@@ -221,7 +221,11 @@ public class IoTDBConfigCheck {
     }
 
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
-      systemProperties.forEach((k, v) -> properties.setProperty(k, v));
+      systemProperties.forEach((k, v) -> {
+        if (!properties.containsKey(k)) {
+          properties.setProperty(k, v);
+        }
+      });
 
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
       // upgrade finished, delete old system.properties file
@@ -235,7 +239,7 @@ public class IoTDBConfigCheck {
 
   private void checkProperties() throws IOException {
     for (Entry<String, String> entry : systemProperties.entrySet()) {
-      if (!properties.contains(entry.getKey())) {
+      if (!properties.containsKey(entry.getKey())) {
         upgradePropertiesFileFromBrokenFile();
         logger.info("repair system.properties, lack {}", entry.getKey());
       }

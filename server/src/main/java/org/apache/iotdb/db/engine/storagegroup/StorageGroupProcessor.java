@@ -538,7 +538,6 @@ public class StorageGroupProcessor {
         workSequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
-        tsFileResource.clearEndTimes();
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
@@ -601,7 +600,7 @@ public class StorageGroupProcessor {
 
   public void insert(InsertPlan insertPlan) throws WriteProcessException {
     // reject insertions that are out of ttl
-    if (!checkTTL(insertPlan.getTime())) {
+    if (!isAlive(insertPlan.getTime())) {
       throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
     writeLock();
@@ -634,7 +633,7 @@ public class StorageGroupProcessor {
       while (loc < insertTabletPlan.getRowCount()) {
         long currTime = insertTabletPlan.getTimes()[loc];
         // skip points that do not satisfy TTL
-        if (!checkTTL(currTime)) {
+        if (!isAlive(currTime)) {
           results[loc] = RpcUtils.getStatus(TSStatusCode.OUT_OF_TTL_ERROR,
               "time " + currTime + " in current line is out of TTL: " + dataTTL);
           loc++;
@@ -705,7 +704,7 @@ public class StorageGroupProcessor {
   /**
    * @return whether the given time falls in ttl
    */
-  private boolean checkTTL(long time) {
+  private boolean isAlive(long time) {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
 
@@ -1181,9 +1180,9 @@ public class StorageGroupProcessor {
     mergeLock.readLock().lock();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
-          upgradeSeqFileList, deviceId, measurementId, context, timeFilter);
+          upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
       List<TsFileResource> unseqResources = getFileResourceListForQuery(unSequenceFileList,
-          upgradeUnseqFileList, deviceId, measurementId, context, timeFilter);
+          upgradeUnseqFileList, deviceId, measurementId, context, timeFilter, false);
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
       // used files should be added before mergeLock is unlocked, or they may be deleted by
@@ -1217,7 +1216,7 @@ public class StorageGroupProcessor {
    */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources, List<TsFileResource> upgradeTsFileResources,
-      String deviceId, String measurementId, QueryContext context, Filter timeFilter)
+      String deviceId, String measurementId, QueryContext context, Filter timeFilter, boolean isSeq)
       throws MetadataException {
 
     MeasurementSchema schema = MManager.getInstance().getSeriesSchema(deviceId, measurementId);
@@ -1228,7 +1227,7 @@ public class StorageGroupProcessor {
     context.setQueryTimeLowerBound(timeLowerBound);
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter, isSeq)) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1256,7 +1255,7 @@ public class StorageGroupProcessor {
     }
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter)) {
+      if (!isTsFileResourceSatisfied(tsFileResource, deviceId, timeFilter, isSeq)) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1273,18 +1272,20 @@ public class StorageGroupProcessor {
    * @return true if the device is contained in the TsFile and it lives beyond TTL
    */
   private boolean isTsFileResourceSatisfied(TsFileResource tsFileResource, String deviceId,
-      Filter timeFilter) {
+      Filter timeFilter, boolean isSeq) {
     if (!tsFileResource.containsDevice(deviceId)) {
       return false;
     }
-    if (dataTTL != Long.MAX_VALUE) {
-      long deviceEndTime = tsFileResource.getEndTime(deviceId);
-      return deviceEndTime == Long.MIN_VALUE || checkTTL(deviceEndTime);
+
+    int deviceIndex = tsFileResource.getDeviceToIndexMap().get(deviceId);
+    long startTime = tsFileResource.getStartTime(deviceIndex);
+    long endTime = tsFileResource.isClosed() || !isSeq ? tsFileResource.getEndTime(deviceIndex) : Long.MAX_VALUE;
+
+    if (!isAlive(endTime)) {
+      return false;
     }
 
     if (timeFilter != null) {
-      long startTime = tsFileResource.getStartTime(deviceId);
-      long endTime = tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE);
       return timeFilter.satisfyStartEndTime(startTime, endTime);
     }
     return true;
