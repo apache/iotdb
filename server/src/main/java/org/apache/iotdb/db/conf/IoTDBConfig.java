@@ -93,6 +93,12 @@ public class IoTDBConfig {
   private String mqttPayloadFormatter = "json";
 
   /**
+   * max mqtt message size
+   */
+  private int maxMqttMessageSize = 1048576;
+
+
+  /**
    * Rpc binding address.
    */
   private String rpcAddress = "0.0.0.0";
@@ -1552,6 +1558,14 @@ public class IoTDBConfig {
 
   public void setMqttPayloadFormatter(String mqttPayloadFormatter) {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
+  }
+
+  public int getMaxMqttMessageSize() {
+    return maxMqttMessageSize;
+  }
+
+  public void setMaxMqttMessageSize(int maxMqttMessageSize) {
+    this.maxMqttMessageSize = maxMqttMessageSize;
   }
 
   public int getTagAttributeTotalSize() {

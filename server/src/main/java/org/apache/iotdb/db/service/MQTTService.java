@@ -56,6 +56,10 @@ public class MQTTService implements IService {
     public void startup() {
         IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
         IConfig config = createBrokerConfig(iotDBConfig);
+
+        config.setProperty(BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,
+            String.valueOf(IoTDBDescriptor.getInstance().getConfig().getMaxMqttMessageSize()));
+
         List<InterceptHandler> handlers = Lists.newArrayList(new PublishHandler(iotDBConfig));
         IAuthenticator authenticator = new BrokerAuthenticator();
 

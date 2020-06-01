@@ -411,6 +411,10 @@ public class IoTDBDescriptor {
         conf.setEnableMQTTService(
             Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
       }
+      if (properties.getProperty(IoTDBConstant.MAX_MQTT_MESSAGE_SIZE) != null) {
+        conf.setMaxMqttMessageSize(
+            Integer.parseInt(properties.getProperty(IoTDBConstant.MAX_MQTT_MESSAGE_SIZE)));
+      }
 
       conf.setAuthorizerProvider(properties.getProperty("authorizer_provider_class",
           "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer"));
