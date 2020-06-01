@@ -112,13 +112,13 @@ public class IndependenceMergeTask implements Callable<Void> {
     mergeLogger = new IndependenceMergeLogger(storageGroupSysDir);
 
     Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
-    Map<Path, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
+    Map<Path, MeasurementSchema> chunkWriterCacheMap = new HashMap<>();
     for (String device : devices) {
       InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
         MeasurementSchema measurementSchema = ((LeafMNode) entry.getValue()).getSchema();
         chunkWriterCacheMap
-            .put(new Path(device, entry.getKey()), new ChunkWriterImpl(measurementSchema));
+            .put(new Path(device, entry.getKey()), measurementSchema);
       }
     }
     resource.setChunkWriterCache(chunkWriterCacheMap);

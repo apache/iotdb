@@ -31,9 +31,9 @@ import java.util.Set;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -42,8 +42,6 @@ import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,13 +107,13 @@ public class InplaceMergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
-    Map<Path, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
+    Map<Path, MeasurementSchema> chunkWriterCacheMap = new HashMap<>();
     for (String device : devices) {
       InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
         MeasurementSchema measurementSchema = ((LeafMNode) entry.getValue()).getSchema();
         chunkWriterCacheMap
-            .put(new Path(device, entry.getKey()), new ChunkWriterImpl(measurementSchema));
+            .put(new Path(device, entry.getKey()), measurementSchema);
       }
     }
     resource.setChunkWriterCache(chunkWriterCacheMap);

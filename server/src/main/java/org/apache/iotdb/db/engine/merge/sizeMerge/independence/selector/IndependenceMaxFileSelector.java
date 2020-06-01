@@ -42,8 +42,8 @@ public class IndependenceMaxFileSelector extends BaseSizeFileSelector {
   }
 
   protected boolean isSmallFile(TsFileResource seqFile) throws IOException {
-    Map<String, Long> endTimeMap = seqFile.getEndTimeMap();
-    if (endTimeMap.size() > 1) {
+    Map<String, Integer> deviceMap = seqFile.getDeviceToIndexMap();
+    if (deviceMap.size() > 1) {
       return true;
     }
     for (ChunkMetadata chunkMetadata : resource.queryChunkMetadata(seqFile)) {

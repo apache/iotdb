@@ -80,18 +80,19 @@ public class InplaceMaxFileSelector extends BaseFileSelector {
       if (tmpSelectedSeqFiles.size() != seqFiles.size() && !UpgradeUtils
           .isNeedUpgrade(unseqFile)) {
         int tmpSelectedNum = 0;
-        for (Entry<String, Long> deviceStartTimeEntry : unseqFile.getStartTimeMap().entrySet()) {
+        for (Entry<String, Integer> deviceStartTimeEntry : unseqFile.getDeviceToIndexMap().entrySet()) {
           String deviceId = deviceStartTimeEntry.getKey();
-          Long unseqStartTime = deviceStartTimeEntry.getValue();
-          Long unseqEndTime = unseqFile.getEndTimeMap().get(deviceId);
+          int deviceIndex = deviceStartTimeEntry.getValue();
+          long unseqStartTime = unseqFile.getStartTime(deviceIndex);
+          long unseqEndTime = unseqFile.getEndTime(deviceIndex);
 
           boolean noMoreOverlap = false;
           for (int i = 0; i < seqFiles.size() && !noMoreOverlap; i++) {
             TsFileResource seqFile = seqFiles.get(i);
-            if (selectedSeqFileIdxs.contains(i) || !seqFile.getEndTimeMap().containsKey(deviceId)) {
+            if (selectedSeqFileIdxs.contains(i) || !seqFile.getDeviceToIndexMap().containsKey(deviceId)) {
               continue;
             }
-            long seqEndTime = seqFile.getEndTimeMap().get(deviceId);
+            long seqEndTime = seqFile.getEndTime(deviceId);
             if (unseqEndTime <= seqEndTime) {
               // the unseqFile overlaps current seqFile
               tmpSelectedSeqFiles.add(i);

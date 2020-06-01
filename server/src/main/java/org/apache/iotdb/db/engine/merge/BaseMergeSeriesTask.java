@@ -26,7 +26,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -38,13 +37,11 @@ import org.apache.iotdb.db.engine.merge.sizeMerge.MergeSizeSelectorStrategy;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -123,12 +120,12 @@ public abstract class BaseMergeSeriesTask {
     List<TsFileResource> currUnseqFiles = new ArrayList<>();
     String deviceId = pathList.get(0).getDevice();
     for (TsFileResource unseqFile : resource.getUnseqFiles()) {
-      if (unseqFile.getStartTimeMap().containsKey(deviceId)) {
+      if (unseqFile.getDeviceToIndexMap().containsKey(deviceId)) {
         currUnseqFiles.add(unseqFile);
       }
     }
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      if (seqFile.getStartTimeMap().containsKey(deviceId)) {
+      if (seqFile.getDeviceToIndexMap().containsKey(deviceId)) {
         currSeqFiles.add(seqFile);
       }
     }
@@ -159,7 +156,7 @@ public abstract class BaseMergeSeriesTask {
         throw new IOException(e);
       }
     }
-    resource.flushChunks(newFileWriter);
+    newFileWriter.writeVersion(0L);
     newFileWriter.endChunkGroup();
   }
 
@@ -192,9 +189,10 @@ public abstract class BaseMergeSeriesTask {
           synchronized (newFileWriter) {
             chunkWriter.writeToFileWriter(newFileWriter);
           }
-          chunkWriter = new ChunkWriterImpl(chunkWriter.getMeasurementSchema());
-          resource.putChunkWriter(path, chunkWriter);
         }
+      }
+      synchronized (newFileWriter) {
+        chunkWriter.writeToFileWriter(newFileWriter);
       }
       newResource.updateStartTime(path.getDevice(), currMinTime);
       newResource.updateEndTime(path.getDevice(), currMaxTime);

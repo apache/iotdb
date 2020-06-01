@@ -41,9 +41,10 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 /**
  * MergeResource manages files and caches of readers, writers, MeasurementSchemas and modifications
@@ -57,7 +58,7 @@ public class MergeResource {
   private Map<TsFileResource, TsFileSequenceReader> fileReaderCache = new HashMap<>();
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
-  private Map<Path, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+  private Map<Path, MeasurementSchema> chunkWriterCache = new ConcurrentHashMap<>();
 
   private boolean cacheDeviceMeta = false;
 
@@ -90,7 +91,7 @@ public class MergeResource {
   }
 
   public IChunkWriter getChunkWriter(Path path) {
-    return chunkWriterCache.get(path);
+    return new ChunkWriterImpl(chunkWriterCache.get(path));
   }
 
   /**
@@ -251,22 +252,8 @@ public class MergeResource {
     this.cacheDeviceMeta = cacheDeviceMeta;
   }
 
-  public void setChunkWriterCache(Map<Path, IChunkWriter> chunkWriterCache) {
+  public void setChunkWriterCache(Map<Path, MeasurementSchema> chunkWriterCache) {
     this.chunkWriterCache = chunkWriterCache;
-  }
-
-  public void putChunkWriter(Path path, IChunkWriter chunkWriter) {
-    this.chunkWriterCache.put(path, chunkWriter);
-  }
-
-  public void flushChunks(TsFileIOWriter writer) throws IOException {
-    for (IChunkWriter chunkWriter : chunkWriterCache.values()) {
-      chunkWriter.writeToFileWriter(writer);
-    }
-  }
-
-  public void clearChunkWriterCache() {
-    this.chunkWriterCache.clear();
   }
 
 }
