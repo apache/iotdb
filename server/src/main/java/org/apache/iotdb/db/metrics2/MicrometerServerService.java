@@ -50,12 +50,16 @@ import java.util.Arrays;
  * First, exposes a Prometheus Endpoint on :8080/metrics.
  * Second, it logs all collected metrics into IoTDB in the storage group root._metrics.
  */
+// The warning about com.sun.* package can be ignored
+// See command here https://stackoverflow.com/questions/3732109/simple-http-server-in-java-using-only-java-se-api
+@SuppressWarnings({"squid:S1191", "java:S1191"})
 public class MicrometerServerService implements IService {
 
     private static final MicrometerServerService INSTANCE = new MicrometerServerService();
 
     private HttpServer server;
     private final PrometheusMeterRegistry prometheusMeterRegistry;
+    private JvmGcMetrics jvmGcMetrics;
 
     public MicrometerServerService() {
         prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
@@ -75,7 +79,8 @@ public class MicrometerServerService implements IService {
         // Wire up JVM and Other Default Bindings
         new ClassLoaderMetrics().bindTo(registry);
         new JvmMemoryMetrics().bindTo(registry);
-        new JvmGcMetrics().bindTo(registry);
+        jvmGcMetrics = new JvmGcMetrics();
+        jvmGcMetrics.bindTo(registry);
         new ProcessorMetrics().bindTo(registry);
         new JvmThreadMetrics().bindTo(registry);
         new ProcessMemoryMetrics().bindTo(registry);
@@ -96,12 +101,13 @@ public class MicrometerServerService implements IService {
 
             new Thread(server::start).start();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("Unable to start server", e);
         }
     }
 
     @Override
     public void stop() {
+        jvmGcMetrics.close();
         server.stop(0);
     }
 

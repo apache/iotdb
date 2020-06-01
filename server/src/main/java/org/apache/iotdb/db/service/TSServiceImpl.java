@@ -121,12 +121,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
+  private static final String METRIC_STATUS_TAG = "status";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
+  public static final String OPEN_SESSION_REQUEST_COUNTER = "open.session.request";
   protected Planner processor;
   protected IPlanExecutor executor;
   private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
@@ -174,7 +176,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      Metrics.counter("open.session.request", "status", "INTERNAL_EXCEPTION").increment();
+      Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "INTERNAL_EXCEPTION").increment();
       throw new TException(e);
     }
     String loginMessage = null;
@@ -182,7 +184,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       status = authorizer.login(req.getUsername(), req.getPassword());
     } catch (AuthException e) {
       logger.info("meet error while logging in.", e);
-      Metrics.counter("open.session.request", "status", "INTERNAL_EXCEPTION").increment();
+      Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "INTERNAL_EXCEPTION").increment();
       status = false;
       loginMessage = e.getMessage();
     }
@@ -198,19 +200,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
             TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
         resp.setSessionId(sessionId);
-        Metrics.counter("open.session.request", "status", "VERSION_INCOMPATIBLE").increment();
+        Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "VERSION_INCOMPATIBLE").increment();
         return resp;
       }
 
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
-      Metrics.counter("open.session.request", "status", "SUCCESS").increment();
+      Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "SUCCESS").increment();
       sessionId = sessionIdGenerator.incrementAndGet();
       sessionIdUsernameMap.put(sessionId, req.getUsername());
       sessionIdZoneIdMap.put(sessionId, config.getZoneID());
       currSessionId.set(sessionId);
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
-      Metrics.counter("open.session.request", "status", "LOGIN_FAILED").increment();
+      Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "LOGIN_FAILED").increment();
       tsStatus.setMessage(loginMessage);
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,

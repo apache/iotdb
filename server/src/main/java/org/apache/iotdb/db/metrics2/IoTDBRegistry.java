@@ -81,7 +81,7 @@ public class IoTDBRegistry extends PushMeterRegistry {
         try {
             executor = new PlanExecutor();
         } catch (QueryProcessException e) {
-            throw new RuntimeException("Unable to instantiate IoTDB Metric Backend", e);
+            throw new IllegalStateException("Unable to instantiate IoTDB Metric Backend", e);
         }
 
         // Prepare a metric for here...
@@ -193,7 +193,7 @@ public class IoTDBRegistry extends PushMeterRegistry {
         final String query;
         if (tagKeys.isEmpty()) {
             // In this case we use the last part as measurement
-            final int idx = escapedPath.lastIndexOf(".");
+            final int idx = escapedPath.lastIndexOf('.');
             String path = escapedPath.substring(0, idx);
             String name = escapedPath.substring(idx + 1);
             query = String.format(Locale.ENGLISH, "INSERT INTO root._metrics.%s.%s (timestamp, value) VALUES (NOW(), %f)", path, name, value);

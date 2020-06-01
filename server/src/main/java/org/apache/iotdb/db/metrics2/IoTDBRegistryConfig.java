@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metrics2;
 
 import io.micrometer.core.instrument.push.PushRegistryConfig;
 
+@SuppressWarnings({"java:S1214", "squid:S1214"}) // Structure is defined by Micrometer
 public interface IoTDBRegistryConfig extends PushRegistryConfig {
 
     IoTDBRegistryConfig DEFAULT = k -> null;
