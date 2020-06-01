@@ -56,10 +56,6 @@ public class MQTTService implements IService {
     public void startup() {
         IoTDBConfig iotDBConfig = IoTDBDescriptor.getInstance().getConfig();
         IConfig config = createBrokerConfig(iotDBConfig);
-
-        config.setProperty(BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME,
-            String.valueOf(IoTDBDescriptor.getInstance().getConfig().getMaxMqttMessageSize()));
-
         List<InterceptHandler> handlers = Lists.newArrayList(new PublishHandler(iotDBConfig));
         IAuthenticator authenticator = new BrokerAuthenticator();
 
@@ -81,6 +77,7 @@ public class MQTTService implements IService {
         properties.setProperty(BrokerConstants.PORT_PROPERTY_NAME, String.valueOf(iotDBConfig.getMqttPort()));
         properties.setProperty(BrokerConstants.BROKER_INTERCEPTOR_THREAD_POOL_SIZE, String.valueOf(iotDBConfig.getMqttHandlerPoolSize()));
         properties.setProperty(BrokerConstants.IMMEDIATE_BUFFER_FLUSH_PROPERTY_NAME, "true");
+        properties.setProperty(BrokerConstants.NETTY_MAX_BYTES_PROPERTY_NAME, String.valueOf(iotDBConfig.getMaxMqttMessageSize()));
         return new MemoryConfig(properties);
     }
 
