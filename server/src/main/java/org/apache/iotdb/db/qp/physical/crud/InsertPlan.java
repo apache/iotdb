@@ -50,16 +50,10 @@ public class InsertPlan extends PhysicalPlan {
   private TSDataType[] types;
   private MeasurementSchema[] schemas;
 
-  public String[] getStrValues() {
-    return strValues;
-  }
+  // if inferType is false, use the type of values directly
+  // if inferType is true, values is String[], and infer types from them
+  private boolean inferType = false;
 
-  public void setStrValues(String[] strValues) {
-    this.strValues = strValues;
-  }
-
-  // only for sql
-  private String[] strValues;
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
@@ -140,7 +134,8 @@ public class InsertPlan extends PhysicalPlan {
     // build types and values
     this.types = new TSDataType[measurements.length];
     this.values = new Object[measurements.length];
-    this.strValues = insertValues;
+    System.arraycopy(insertValues, 0, values, 0, measurements.length);
+    inferType = true;
     canbeSplit = false;
   }
 
@@ -153,18 +148,29 @@ public class InsertPlan extends PhysicalPlan {
     this.time = time;
   }
 
+  public boolean isInferType() {
+    return inferType;
+  }
+
+  public void setInferType(boolean inferType) {
+    this.inferType = inferType;
+  }
+
   public MeasurementSchema[] getSchemas() {
     return schemas;
   }
 
-  public void setSchemas(MeasurementSchema[] schemas) throws QueryProcessException {
+  /**
+   * if inferType is true,
+   * transfer String[] values to specific data types (Integer, Long, Float, Double, Binary)
+   */
+  public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
     this.schemas = schemas;
-    if (strValues != null) {
+    if (inferType) {
       for (int i = 0; i < schemas.length; i++) {
         types[i] = schemas[i].getType();
-        values[i] = CommonUtils.parseValue(types[i], strValues[i]);
+        values[i] = CommonUtils.parseValue(types[i], values[i].toString());
       }
-      strValues = null;
     }
   }
 

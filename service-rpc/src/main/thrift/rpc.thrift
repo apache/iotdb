@@ -171,6 +171,7 @@ struct TSInsertRecordReq {
     3: required list<string> measurements
     4: required binary values
     5: required i64 timestamp
+    6: optional bool inferType
 }
 
 struct TSInsertTabletReq {
@@ -199,6 +200,7 @@ struct TSInsertRecordsReq {
     3: required list<list<string>> measurementsList
     4: required list<binary> valuesList
     5: required list<i64> timestamps
+    6: optional bool inferType
 }
 
 struct TSDeleteDataReq {

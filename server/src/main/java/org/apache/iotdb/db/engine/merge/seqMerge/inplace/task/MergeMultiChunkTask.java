@@ -26,17 +26,16 @@ import static org.apache.iotdb.db.utils.QueryUtils.modifyChunkMetaData;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.seqMerge.inplace.recover.InplaceMergeLogger;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -143,7 +142,7 @@ class MergeMultiChunkTask {
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     String deviceId = currMergingPaths.get(0).getDevice();
-    Long currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
+    Long currDeviceMinTime = currTsFile.getStartTime(deviceId);
     //COMMENTS: is this correct? how about if there are other devices (in the currMergingPaths) that have unseq data?
     if (currDeviceMinTime == null) {
       return;
@@ -189,7 +188,7 @@ class MergeMultiChunkTask {
       mergeFileWriter.writeVersion(0L);
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
-      currTsFile.getStartTimeMap().put(deviceId, currDeviceMinTime);
+      currTsFile.putStartTime(deviceId, currDeviceMinTime);
     }
   }
 

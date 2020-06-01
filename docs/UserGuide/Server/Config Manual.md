@@ -296,7 +296,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |:---:|:---|
 |Description| max average number of point of each series in memtable|
 |Type|Int32|
-|Default| 5000 |
+|Default| 10000 |
 |Effective|After restart system|
 
 * tsfile\_size\_threshold
@@ -552,6 +552,27 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| String |
 |Default|your principal |
 |Effective|After restart system|
+
+
+* authorizer\_provider\_class
+
+|Name| authorizer\_provider\_class |
+|:---:|:---|
+|Description| the class name of the authorization service|
+|Type| String |
+|Default|org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|Effective|After restart system|
+|Other available values| org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer |
+
+* openID\_url
+
+|Name| openID\_url |
+|:---:|:---|
+|Description| the openID server if OpenIdAuthorizer is enabled|
+|Type| String (a http url) |
+|Default|no |
+|Effective|After restart system|
+
 
 ## Enable GC log
 GC log is off by default.

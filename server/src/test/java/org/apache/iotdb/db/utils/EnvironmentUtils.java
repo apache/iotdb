@@ -29,7 +29,7 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
@@ -255,7 +255,7 @@ public class EnvironmentUtils {
     }
     //create user and roles folder
     try {
-      LocalFileAuthorizer.getInstance().reset();
+      BasicAuthorizer.getInstance().reset();
     } catch (AuthException e) {
       logger.error("create user and role folders failed", e);
       fail(e.getMessage());

@@ -277,7 +277,7 @@
 |:---:|:---|
 |Description| 内存中平均每个时间序列点数最大值，达到触发flush|
 |Type|Int32|
-|Default| 5000 |
+|Default| 10000 |
 |Effective|重启服务器生效|
 
 * tsfile\_size\_threshold
@@ -496,6 +496,26 @@
 |描述| Kerberos 认证原则|
 |类型| String |
 |默认值|your principal |
+|改后生效方式|重启服务器生效|
+
+
+* authorizer\_provider\_class
+
+|名字| authorizer\_provider\_class |
+|:---:|:---|
+|描述| 权限服务的类名|
+|类型| String |
+|默认值|org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|改后生效方式|重启服务器生效|
+|其他可选值| org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer |
+
+* openID\_url
+
+|名字| openID\_url |
+|:---:|:---|
+|描述| openID 服务器地址 （当OpenIdAuthorizer被启用时必须设定）|
+|类型| String （一个http地址） |
+|默认值| 无 |
 |改后生效方式|重启服务器生效|
 
 

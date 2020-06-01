@@ -58,16 +58,16 @@ public class TsFileResourcePrinter {
 
     System.out.println("historicalVersions: " + resource.getHistoricalVersions());
 
-    for (String device : resource.getStartTimeMap().keySet()) {
+    for (String device : resource.getDeviceToIndexMap().keySet()) {
       System.out.println(String.format(
           "device %s, "
               + "start time %d (%s), "
               + "end time %d (%s)",
           device,
-          resource.getStartTimeMap().get(device),
-          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTimeMap().get(device)),
-          resource.getEndTimeMap().get(device),
-          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTimeMap().get(device))));
+          resource.getStartTime(device),
+          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getStartTime(device)),
+          resource.getEndTime(device),
+          DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device))));
     }
   }
 }

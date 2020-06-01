@@ -108,6 +108,7 @@ public class TTLTest {
   public void testSetMetaTTL() throws IOException, MetadataException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
+
     try {
       MManager.getInstance().setTTL(sg1 + ".notExist", ttl);
     } catch (MetadataException e) {
@@ -133,7 +134,7 @@ public class TTLTest {
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
     insertPlan.setValues(new Object[]{1L});
-    insertPlan.setSchemas(
+    insertPlan.setSchemasAndTransferType(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
@@ -160,7 +161,7 @@ public class TTLTest {
     insertPlan.setMeasurements(new String[]{"s1"});
     insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
     insertPlan.setValues(new Object[]{1L});
-    insertPlan.setSchemas(
+    insertPlan.setSchemasAndTransferType(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     long initTime = System.currentTimeMillis();
@@ -169,7 +170,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
@@ -177,7 +178,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }

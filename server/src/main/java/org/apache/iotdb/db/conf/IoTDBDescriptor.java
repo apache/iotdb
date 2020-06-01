@@ -423,6 +423,12 @@ public class IoTDBDescriptor {
             Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
       }
 
+      conf.setAuthorizerProvider(properties.getProperty("authorizer_provider_class",
+          "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer"));
+      //if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
+      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
+
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(FSType.valueOf(

@@ -21,7 +21,7 @@ import io.moquette.broker.security.IAuthenticator;
 import org.apache.commons.lang.StringUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +38,7 @@ public class BrokerAuthenticator implements IAuthenticator {
         }
 
         try {
-            IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+            IAuthorizer authorizer = BasicAuthorizer.getInstance();
             return authorizer.login(username, new String(password));
         } catch (AuthException e) {
             LOG.info("meet error while logging in.", e);

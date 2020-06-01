@@ -863,7 +863,7 @@ var config = {
 						]
 					},
 					{
-						title: '5-数据查询',
+						title: '数据查询',
 						children: [
 							['DataQuery/DataQuery','数据查询'],
 							['DataQuery/QueryFundamentals','查询基础介绍'],

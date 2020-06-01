@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.auth;
 
 import java.util.List;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -76,7 +76,7 @@ public class AuthorityChecker {
 
   private static boolean checkOnePath(String username, Path path, int permission)
       throws AuthException {
-    IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+    IAuthorizer authorizer = BasicAuthorizer.getInstance();
     try {
       String fullPath = path == null ? IoTDBConstant.PATH_ROOT : path.getFullPath();
       if (authorizer.checkUserPrivileges(username, fullPath, permission)) {

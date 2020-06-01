@@ -183,11 +183,11 @@ public class UnseqTsFileRecoverTest {
         .init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();
 
-    assertEquals(1, (long) resource.getStartTimeMap().get("root.sg.device99"));
-    assertEquals(300, (long) resource.getEndTimeMap().get("root.sg.device99"));
+    assertEquals(1, (long) resource.getStartTime("root.sg.device99"));
+    assertEquals(300, (long) resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTimeMap().get("root.sg.device" + i));
-      assertEquals(9, (long) resource.getEndTimeMap().get("root.sg.device" + i));
+      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
+      assertEquals(9, (long) resource.getEndTime("root.sg.device" + i));
     }
 
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsF.getPath(), true);

@@ -52,7 +52,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
@@ -159,7 +159,7 @@ public class PlanExecutor implements IPlanExecutor {
     queryRouter = new QueryRouter();
     mManager = MManager.getInstance();
     try {
-      authorizer = LocalFileAuthorizer.getInstance();
+      authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new QueryProcessException(e.getMessage());
     }
@@ -877,13 +877,8 @@ public class PlanExecutor implements IPlanExecutor {
           if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
             throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
           }
-          TSDataType dataType;
-          if (insertPlan.getStrValues() != null) {
-            // infer type for insert sql
-            dataType = TypeInferenceUtils.getPredictedDataType(insertPlan.getStrValues()[i]);
-          } else {
-            dataType = TypeInferenceUtils.getPredictedDataType(insertPlan.getValues()[i]);
-          }
+          TSDataType dataType = TypeInferenceUtils
+              .getPredictedDataType(insertPlan.getValues()[i], insertPlan.isInferType());
           Path path = new Path(deviceId, measurement);
           internalCreateTimeseries(path.toString(), dataType);
         }
@@ -892,13 +887,13 @@ public class PlanExecutor implements IPlanExecutor {
         // reset measurement to common name instead of alias
         measurementList[i] = measurementNode.getName();
 
-        if(insertPlan.getStrValues() == null) {
+        if(!insertPlan.isInferType()) {
           checkType(insertPlan, i, measurementNode.getSchema().getType());
         }
       }
 
       insertPlan.setMeasurements(measurementList);
-      insertPlan.setSchemas(schemas);
+      insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
