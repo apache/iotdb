@@ -488,6 +488,28 @@ public class SessionPool {
   }
 
   /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertRecord(String deviceId, long time, List<String> measurements,
+      List<TSDataType> types, List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertRecord(deviceId, time, measurements, types, values);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
    * delete a timeseries, including data and schema
    *
    * @param path timeseries to delete, should be a whole path
