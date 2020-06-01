@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -40,8 +42,12 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class InsertPlan extends PhysicalPlan {
+
+  private static final Logger logger = LoggerFactory.getLogger(InsertPlan.class);
 
   private long time;
   private String deviceId;
@@ -54,6 +60,8 @@ public class InsertPlan extends PhysicalPlan {
   // if inferType is true, values is String[], and infer types from them
   private boolean inferType = false;
 
+  // record the failed measurements
+  private List<String> failedMeasurements;
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
@@ -168,10 +176,33 @@ public class InsertPlan extends PhysicalPlan {
     this.schemas = schemas;
     if (inferType) {
       for (int i = 0; i < schemas.length; i++) {
+        if (schemas[i] == null) {
+          continue;
+        }
         types[i] = schemas[i].getType();
-        values[i] = CommonUtils.parseValue(types[i], values[i].toString());
+        try {
+          values[i] = CommonUtils.parseValue(types[i], values[i].toString());
+        } catch (Exception e) {
+          logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
+              measurements[i], values[i], types[i]);
+          markMeasurementInsertionFailed(i);
+        }
       }
     }
+  }
+
+  /**
+   * @param index failed measurement index
+   */
+  public void markMeasurementInsertionFailed(int index) {
+    if (failedMeasurements == null) {
+      failedMeasurements = new ArrayList<>();
+    }
+    failedMeasurements.add(measurements[index]);
+    schemas[index] = null;
+    measurements[index] = null;
+    types[index] = null;
+    values[index] = null;
   }
 
   @Override
@@ -235,10 +266,12 @@ public class InsertPlan extends PhysicalPlan {
 
     putString(stream, deviceId);
 
-    stream.writeInt(measurements.length);
+    stream.writeInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
     for (String m : measurements) {
-      putString(stream, m);
+      if (m != null) {
+        putString(stream, m);
+      }
     }
 
     for (MeasurementSchema schema : schemas) {
@@ -254,6 +287,9 @@ public class InsertPlan extends PhysicalPlan {
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
+      if (types[i] == null) {
+        continue;
+      }
       ReadWriteIOUtils.write(types[i], outputStream);
       switch (types[i]) {
         case BOOLEAN:
@@ -282,6 +318,9 @@ public class InsertPlan extends PhysicalPlan {
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
+      if (types[i] == null) {
+        continue;
+      }
       ReadWriteIOUtils.write(types[i], buffer);
       switch (types[i]) {
         case BOOLEAN:
@@ -306,6 +345,10 @@ public class InsertPlan extends PhysicalPlan {
           throw new QueryProcessException("Unsupported data type:" + types[i]);
       }
     }
+  }
+
+  public List<String> getFailedMeasurements() {
+    return failedMeasurements;
   }
 
   public TSDataType[] getTypes() {
@@ -352,10 +395,12 @@ public class InsertPlan extends PhysicalPlan {
 
     putString(buffer, deviceId);
 
-    buffer.putInt(measurements.length);
+    buffer.putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
-    for (String m : measurements) {
-      putString(buffer, m);
+    for (String measurement : measurements) {
+      if (measurement != null) {
+        putString(buffer, measurement);
+      }
     }
 
     try {
@@ -391,7 +436,7 @@ public class InsertPlan extends PhysicalPlan {
     return "deviceId: " + deviceId + ", time: " + time;
   }
 
-  public TimeValuePair composeTimeValuePair(int measurementIndex) throws QueryProcessException {
+  public TimeValuePair composeTimeValuePair(int measurementIndex) {
     if (measurementIndex >= values.length) {
       return null;
     }
