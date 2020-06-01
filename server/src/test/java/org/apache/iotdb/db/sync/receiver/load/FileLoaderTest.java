@@ -114,8 +114,8 @@ public class FileLoaderTest {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
-        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
         tsFileResource.serialize();
       }
     }
@@ -209,8 +209,8 @@ public class FileLoaderTest {
           LOGGER.error("Can not create new file {}", syncFile.getPath());
         }
         TsFileResource tsFileResource = new TsFileResource(syncFile);
-        tsFileResource.getStartTimeMap().put(String.valueOf(i), (long) j * 10);
-        tsFileResource.getEndTimeMap().put(String.valueOf(i), (long) j * 10 + 5);
+        tsFileResource.putStartTime(String.valueOf(i), (long) j * 10);
+        tsFileResource.putEndTime(String.valueOf(i), (long) j * 10 + 5);
         tsFileResource.serialize();
       }
     }

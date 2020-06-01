@@ -130,7 +130,7 @@ shasum -a512 apache-iotdb-0.9.0-incubating-bin.zip
 * 验证是否能启动以及示例语句是否正确执行
 
 ```
-./sbin/start-server.sh
+nohup ./sbin/start-server.sh >/dev/null 2>&1 &
 
 ./sbin/start-client.sh
 

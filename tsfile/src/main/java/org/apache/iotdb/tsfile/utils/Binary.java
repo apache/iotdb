@@ -24,13 +24,12 @@ import java.util.Arrays;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 
 /**
- * Override compareTo() and equals() function to Binary class. This class is
- * used to accept Java String type
+ * Override compareTo() and equals() function to Binary class. This class is used to accept Java
+ * String type
  */
 public class Binary implements Comparable<Binary>, Serializable {
 
   private static final long serialVersionUID = 6394197743397020735L;
-
   private byte[] values;
 
   /**
@@ -116,5 +115,9 @@ public class Binary implements Comparable<Binary>, Serializable {
 
   public byte[] getValues() {
     return values;
+  }
+
+  public void setValues(byte[] values) {
+    this.values = values;
   }
 }

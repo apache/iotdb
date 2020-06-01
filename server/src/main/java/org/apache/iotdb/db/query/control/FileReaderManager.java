@@ -23,8 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.UnClosedTsFileReader;
+import org.apache.iotdb.tsfile.v1.read.TsFileSequenceReaderForV1;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -147,6 +149,7 @@ public class FileReaderManager implements IService {
    * @return the reader of the file specified by filePath.
    * @throws IOException when reader cannot be created.
    */
+  @SuppressWarnings("squid:S2095")
   public synchronized TsFileSequenceReader get(String filePath, boolean isClosed)
       throws IOException {
 
@@ -158,9 +161,24 @@ public class FileReaderManager implements IService {
         logger.warn("Query has opened {} files !", readerMap.size());
       }
 
-      TsFileSequenceReader tsFileReader = !isClosed ? new UnClosedTsFileReader(filePath)
-          : new TsFileSequenceReader(filePath);
-
+      TsFileSequenceReader tsFileReader = null;
+      // check if the file is old version
+      if (!isClosed) {
+        tsFileReader = new UnClosedTsFileReader(filePath);
+      }
+      else {
+        tsFileReader = new TsFileSequenceReader(filePath);
+        switch (tsFileReader.readVersionNumber()) {
+          case TSFileConfig.VERSION_NUMBER_V1:
+            tsFileReader.close();
+            tsFileReader = new TsFileSequenceReaderForV1(filePath);
+            break;
+          case TSFileConfig.VERSION_NUMBER:
+            break;
+          default:
+            throw new IOException("The version of this TsFile is not corrent. ");
+        }
+      }
       readerMap.put(filePath, tsFileReader);
       return tsFileReader;
     }

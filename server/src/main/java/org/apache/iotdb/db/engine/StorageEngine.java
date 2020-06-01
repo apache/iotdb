@@ -113,24 +113,37 @@ public class StorageEngine implements IService {
   @ServerConfigConsistent
   private static long timePartitionInterval;
 
+  /**
+   * whether enable data partition
+   * if disabled, all data belongs to partition 0
+   */
+  @ServerConfigConsistent
+  private static boolean enablePartition =
+      IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
-    // build time Interval to divide time partition
-    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-    switch (timePrecision) {
-      case "ns":
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000_000_000L;
-        break;
-      case "us":
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000_000L;
-        break;
-      default:
-        timePartitionInterval = IoTDBDescriptor.getInstance().
-            getConfig().getPartitionInterval() * 1000;
-        break;
+
+    if (!enablePartition) {
+      timePartitionInterval = Long.MAX_VALUE;
+    } else {
+      // build time Interval to divide time partition
+      String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+      switch (timePrecision) {
+        case "ns":
+          timePartitionInterval = IoTDBDescriptor.getInstance().
+              getConfig().getPartitionInterval() * 1000_000_000L;
+          break;
+        case "us":
+          timePartitionInterval = IoTDBDescriptor.getInstance().
+              getConfig().getPartitionInterval() * 1000_000L;
+          break;
+        default:
+          timePartitionInterval = IoTDBDescriptor.getInstance().
+              getConfig().getPartitionInterval() * 1000;
+          break;
+      }
     }
     // create systemDir
     try {
@@ -140,20 +153,24 @@ public class StorageEngine implements IService {
     }
     // recover upgrade process
     UpgradeUtils.recoverUpgrade();
+
     /*
      * recover all storage group processors.
      */
-
     List<StorageGroupMNode> sgNodes = MManager.getInstance().getAllStorageGroupNodes();
     List<Future> futures = new ArrayList<>();
     for (StorageGroupMNode storageGroup : sgNodes) {
       futures.add(recoveryThreadPool.submit((Callable<Void>) () -> {
-        StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
-            storageGroup.getFullPath(), fileFlushPolicy);
-        processor.setDataTTL(storageGroup.getDataTTL());
-        processorMap.put(storageGroup.getFullPath(), processor);
-        logger.info("Storage Group Processor {} is recovered successfully",
-            storageGroup.getFullPath());
+        try {
+          StorageGroupProcessor processor = new StorageGroupProcessor(systemDir,
+              storageGroup.getFullPath(), fileFlushPolicy);
+          processor.setDataTTL(storageGroup.getDataTTL());
+          processorMap.put(storageGroup.getFullPath(), processor);
+          logger.info("Storage Group Processor {} is recovered successfully",
+              storageGroup.getFullPath());
+        } catch (Exception e) {
+          logger.error("meet error when recovering storage group: {}", storageGroup, e);
+        }
         return null;
       }));
     }
@@ -164,6 +181,7 @@ public class StorageEngine implements IService {
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
+    recoveryThreadPool.shutdown();
   }
 
   @Override
@@ -259,7 +277,7 @@ public class StorageEngine implements IService {
   }
 
   /**
-   * insert a BatchInsertPlan to a storage group
+   * insert a InsertTabletPlan to a storage group
    *
    * @return result of each row
    */
@@ -446,11 +464,11 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws LoadFileException, StorageEngineException, MetadataException {
-    Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
-    if (startTimeMap == null || startTimeMap.isEmpty()) {
+    Map<String, Integer> deviceMap = newTsFileResource.getDeviceToIndexMap();
+    if (deviceMap == null || deviceMap.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
-    String device = startTimeMap.keySet().iterator().next();
+    String device = deviceMap.keySet().iterator().next();
     String storageGroupName = MManager.getInstance().getStorageGroupName(device);
     getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }
@@ -516,6 +534,6 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartition(long time) {
-    return time / timePartitionInterval;
+    return enablePartition ? time / timePartitionInterval : 0;
   }
 }

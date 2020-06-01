@@ -130,7 +130,7 @@ Compared with the corresponding .sha512, the same is fine.
 * Verify that it starts and the sample statements execute correctly
 
 ```
-./sbin/start-server.sh
+nohup ./sbin/start-server.sh >/dev/null 2>&1 &
 
 ./sbin/start-client.sh
 

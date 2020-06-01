@@ -99,6 +99,7 @@ public abstract class AbstractCli {
   static int maxValueLength = 15;
   static String TIMESTAMP_PRECISION = "ms";
   private static int lineCount = 0;
+  private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
 
   private static boolean isReachEnd = false;
 
@@ -564,11 +565,14 @@ public abstract class AbstractCli {
               e.printStackTrace();
             }
           }
-          resetArgs();
         }
+      } else {
+        println("Msg: " + SUCCESS_MESSAGE);
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
+    } finally {
+      resetArgs();
     }
   }
 
@@ -606,8 +610,8 @@ public abstract class AbstractCli {
       }
     }
     int j = 0;
-    isReachEnd = !resultSet.next();
     if (cursorBeforeFirst) {
+      isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
     }
     if (resultSet instanceof IoTDBJDBCResultSet) {

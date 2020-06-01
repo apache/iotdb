@@ -25,6 +25,7 @@ import java.util.Map;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
@@ -46,9 +47,8 @@ public class SessionExample {
     try {
       session.setStorageGroup("root.sg1");
     } catch (StatementExecutionException e) {
-      if (!e.getMessage().contains("StorageGroupAlreadySetException")) {
+      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode())
         throw e;
-      }
     }
 
     createTimeseries();
@@ -93,7 +93,7 @@ public class SessionExample {
   }
 
   private static void createMultiTimeseries()
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, BatchExecutionException, StatementExecutionException {
 
     if (!session.checkTimeseriesExists("root.sg1.d2.s1") && !session
         .checkTimeseriesExists("root.sg1.d2.s2")) {
@@ -136,10 +136,31 @@ public class SessionExample {
   private static void insertRecord() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
     for (long time = 0; time < 100; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      session.insertRecord(deviceId, time, measurements, types, values);
+    }
+  }
+
+  private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+
+    for (long time = 0; time < 10; time++) {
       List<String> values = new ArrayList<>();
       values.add("1");
       values.add("2");
@@ -152,11 +173,16 @@ public class SessionExample {
       throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
     for (long time = 0; time < 100; time++) {
-      session.insertRecord(deviceId, time, measurements, 1L, 1L, 1L);
+      session.insertRecord(deviceId, time, measurements, types, 1L, 1L, 1L);
     }
   }
 
@@ -168,21 +194,27 @@ public class SessionExample {
     measurements.add("s3");
     List<String> deviceIds = new ArrayList<>();
     List<List<String>> measurementsList = new ArrayList<>();
-    List<List<String>> valuesList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
     List<Long> timestamps = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
 
     for (long time = 0; time < 500; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      values.add("3");
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
 
       deviceIds.add(deviceId);
       measurementsList.add(measurements);
       valuesList.add(values);
+      typesList.add(types);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.insertRecords(deviceIds, timestamps, measurementsList, valuesList);
+        session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -190,9 +222,8 @@ public class SessionExample {
       }
     }
 
-    session.insertRecords(deviceIds, timestamps, measurementsList, valuesList);
+    session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
-
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *

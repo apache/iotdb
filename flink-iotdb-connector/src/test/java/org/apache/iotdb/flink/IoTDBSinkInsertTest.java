@@ -18,49 +18,51 @@
 
 package org.apache.iotdb.flink;
 
-import com.google.common.collect.Lists;
-import org.apache.iotdb.session.pool.SessionPool;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.google.common.collect.Lists;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.session.pool.SessionPool;
+import org.junit.Before;
+import org.junit.Test;
+
 public class IoTDBSinkInsertTest {
 
-    private IoTDBSink ioTDBSink;
-    private SessionPool pool;
+  private IoTDBSink ioTDBSink;
+  private SessionPool pool;
 
-    @Before
-    public void setUp() throws Exception {
-        IoTDBOptions options = new IoTDBOptions();
-        options.setTimeseriesOptionList(Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
-        ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
+  @Before
+  public void setUp() throws Exception {
+    IoTDBOptions options = new IoTDBOptions();
+    options.setTimeseriesOptionList(
+        Lists.newArrayList(new IoTDBOptions.TimeseriesOption("root.sg.D01.temperature")));
+    ioTDBSink = new IoTDBSink(options, new DefaultIoTSerializationSchema());
 
-        pool = mock(SessionPool.class);
-        ioTDBSink.setSessionPool(pool);
-    }
+    pool = mock(SessionPool.class);
+    ioTDBSink.setSessionPool(pool);
+  }
 
-    @Test
-    public void testInsert() throws Exception {
-        Map<String,String> tuple = new HashMap();
-        tuple.put("device", "root.sg.D01");
-        tuple.put("timestamp", "1581861293000");
-        tuple.put("measurements", "temperature");
-        tuple.put("values", "36.5");
+  @Test
+  public void testInsert() throws Exception {
+    Map<String, String> tuple = new HashMap();
+    tuple.put("device", "root.sg.D01");
+    tuple.put("timestamp", "1581861293000");
+    tuple.put("measurements", "temperature");
+    tuple.put("types", "DOUBLE");
+    tuple.put("values", "36.5");
 
-        ioTDBSink.invoke(tuple, null);
-        verify(pool).insertRecord(any(String.class), any(Long.class), any(List.class), any(List.class));
-    }
+    ioTDBSink.invoke(tuple, null);
+    verify(pool).insertRecord(any(String.class), any(Long.class), any(List.class), any(List.class),
+        any(List.class));
+  }
 
-    @Test
-    public void close() throws Exception {
-        ioTDBSink.close();
-        verify(pool).close();
-    }
+  @Test
+  public void close() throws Exception {
+    ioTDBSink.close();
+    verify(pool).close();
+  }
 }
