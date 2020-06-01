@@ -151,28 +151,13 @@ public class IoTDBRecoverUnclosedIT {
       fail(e.getMessage());
     }
 
-    // we want to recover
-    EnvironmentUtils.stopDaemon();
-    // wait for close
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
+    EnvironmentUtils.stopWithoutCloseFilesDaemon();
     EnvironmentUtils.reactiveDaemon();
     
     insertMoreData();
 
-    // we want to recover
-    EnvironmentUtils.stopDaemon();
-    // wait for close
-    try {
-      Thread.sleep(1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-
-    EnvironmentUtils.activeDaemon();
+    EnvironmentUtils.stopWithoutCloseFilesDaemon();
+    EnvironmentUtils.reactiveDaemon();
 
     // maxminValueTest
 

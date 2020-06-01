@@ -146,6 +146,16 @@ public class IoTDB implements IoTDBMBean {
     deactivate();
   }
 
+  /**
+   *  For test only
+   */
+  public void testStop() {
+    logger.info("Deactivating IoTDB...");
+    registerManager.testDeregisterAll();
+    JMXService.deregisterMBean(mbeanName);
+    logger.info("IoTDB is deactivated.");
+  }
+
   private void setUncaughtExceptionHandler() {
     Thread.setDefaultUncaughtExceptionHandler(new IoTDBDefaultThreadExceptionHandler());
   }
