@@ -462,7 +462,7 @@ public class StorageEngine implements IService {
   }
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
-      throws StorageEngineException, MetadataException, LoadFileException {
+      throws LoadFileException, StorageEngineException, MetadataException {
     Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
     if (startTimeMap == null || startTimeMap.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");

@@ -84,7 +84,6 @@ public class IoTDBDeletionIT {
       try (ResultSet set = statement.executeQuery("SELECT * FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
-          System.out.println(set.getTimestamp(1));
           cnt++;
         }
         assertEquals(250, cnt);

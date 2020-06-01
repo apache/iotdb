@@ -304,15 +304,14 @@ public class IoTDBDescriptor {
       conf.setMergeFileSelectionTimeBudget(Long.parseLong(properties.getProperty
           ("merge_fileSelection_time_budget",
               Long.toString(conf.getMergeFileSelectionTimeBudget()))));
-      conf.setMergeFileTimeBlock(Long.parseLong(properties.getProperty
-          ("merge_file_time_block",
-              Long.toString(conf.getMergeFileSelectionTimeBudget()))));
       conf.setMergeIntervalSec(Long.parseLong(properties.getProperty("merge_interval_sec",
           Long.toString(conf.getMergeIntervalSec()))));
       conf.setForceFullMerge(Boolean.parseBoolean(properties.getProperty("force_full_merge",
           Boolean.toString(conf.isForceFullMerge()))));
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
+      conf.setMergeFileTimeBlock(Long.parseLong(properties.getProperty
+          ("merge_file_time_block", Long.toString(conf.getMergeFileSelectionTimeBudget()))));
       conf.setSeqMergeFileStrategy(SeqMergeFileStrategy.valueOf(properties.getProperty(
           "seq_merge_file_strategy", conf.getSeqMergeFileStrategy().toString())));
       conf.setSizeMergeFileStrategy(SizeMergeFileStrategy.valueOf(properties.getProperty(
