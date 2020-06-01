@@ -58,6 +58,10 @@ public class UpgradeSevice implements IService {
         r -> new Thread(r, "UpgradeThread-" + threadCnt.getAndIncrement()));
     UpgradeLog.createUpgradeLog();
     countUpgradeFiles();
+    if (cntUpgradeFileNum == 0) {
+      stop();
+      return;
+    }
     upgradeAll();
   }
 
