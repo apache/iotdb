@@ -26,7 +26,8 @@ import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.metadata.MManager;
@@ -53,7 +54,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   public void takeSnapshot() {
     storageGroupTTLMap = MManager.getInstance().getStorageGroupsTTL();
     try {
-      LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+      IAuthorizer authorizer = BasicAuthorizer.getInstance();
       userMap = authorizer.getAllUsers();
       roleMap = authorizer.getAllRoles();
 

@@ -23,9 +23,7 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
@@ -43,8 +41,11 @@ public class RemoteTsFileResource extends TsFileResource {
 
   public RemoteTsFileResource() {
     setClosed(true);
-    this.startTimeMap = new ConcurrentHashMap<>();
-    this.endTimeMap = new ConcurrentHashMap<>();
+    this.deviceToIndex = new ConcurrentHashMap<>();
+    this.startTimes = new long[INIT_ARRAY_SIZE];
+    this.endTimes = new long[INIT_ARRAY_SIZE];
+    initTimes(startTimes, Long.MAX_VALUE);
+    initTimes(endTimes, Long.MIN_VALUE);
   }
 
   private RemoteTsFileResource(TsFileResource other) throws IOException {
@@ -93,17 +94,19 @@ public class RemoteTsFileResource extends TsFileResource {
       // the path here is only for the remote node to get a download link, so it does not matter
       // if it is absolute
       SerializeUtils.serialize(getFile().getPath(), dataOutputStream);
-      Map<String, Long> startTimeMap = getStartTimeMap();
-      Map<String, Long> endTimeMap = getEndTimeMap();
-      dataOutputStream.writeInt(startTimeMap.size());
-      for (Entry<String, Long> entry : startTimeMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        dataOutputStream.writeLong(entry.getValue());
+
+      int deviceNum = startTimes.length;
+      dataOutputStream.writeInt(startTimes.length);
+      for (int i = 0; i < deviceNum; i++) {
+        dataOutputStream.writeLong(startTimes[i]);
+        dataOutputStream.writeLong(endTimes[i]);
       }
-      dataOutputStream.writeInt(endTimeMap.size());
-      for (Entry<String, Long> entry : endTimeMap.entrySet()) {
-        SerializeUtils.serialize(entry.getKey(), dataOutputStream);
-        dataOutputStream.writeLong(entry.getValue());
+
+      for (Entry<String, Integer> stringIntegerEntry : deviceToIndex.entrySet()) {
+        String deviceName = stringIntegerEntry.getKey();
+        int index = stringIntegerEntry.getValue();
+        SerializeUtils.serialize(deviceName, dataOutputStream);
+        dataOutputStream.writeInt(index);
       }
 
       dataOutputStream.writeBoolean(withModification);
@@ -125,21 +128,23 @@ public class RemoteTsFileResource extends TsFileResource {
     buffer.get(md5);
     setFile(new File(SerializeUtils.deserializeString(buffer)));
 
-    Map<String, Long> startTimeMap = new HashMap<>();
-    Map<String, Long> endTimeMap = new HashMap<>();
-    int startMapSize = buffer.getInt();
-    for (int i = 0; i < startMapSize; i++) {
-      startTimeMap.put(SerializeUtils.deserializeString(buffer), buffer.getLong());
+    int deviceNum = buffer.getInt();
+    startTimes = new long[deviceNum];
+    endTimes = new long[deviceNum];
+    deviceToIndex = new ConcurrentHashMap<>(deviceNum);
+
+    for (int i = 0; i < deviceNum; i++) {
+      startTimes[i] = buffer.getLong();
+      endTimes[i] = buffer.getLong();
     }
-    int endMapSize = buffer.getInt();
-    for (int i = 0; i < endMapSize; i++) {
-      endTimeMap.put(SerializeUtils.deserializeString(buffer), buffer.getLong());
+
+    for (int i = 0; i < deviceNum; i++) {
+      String deviceName = SerializeUtils.deserializeString(buffer);
+      int index = buffer.getInt();
+      deviceToIndex.put(deviceName, index);
     }
 
     withModification = buffer.get() == 1;
-
-    setStartTimeMap(startTimeMap);
-    setEndTimeMap(endTimeMap);
 
     Set<Long> historicalVersions = new HashSet<>();
     int size = buffer.getInt();

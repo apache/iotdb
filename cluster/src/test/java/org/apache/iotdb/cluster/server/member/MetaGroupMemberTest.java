@@ -80,6 +80,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
@@ -556,7 +557,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
     try {
 
-      LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+      IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
 
       // 2. prepare the role info
       authorizer.createRole("role_1");
@@ -609,7 +610,7 @@ public class MetaGroupMemberTest extends MemberTest {
     assertEquals(storageGroupTTL, localStorageGroupTTL);
 
     try {
-      LocalFileAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+      IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
 
       assertTrue(authorizer.checkUserPrivileges("user_1", TestUtils.getTestSg(1), 1));
       assertTrue(authorizer.checkUserPrivileges("user_1", TestUtils.getTestSg(3), 1));

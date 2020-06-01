@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -30,12 +31,17 @@ import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.auth.role.IRoleManager;
 import org.apache.iotdb.db.auth.user.IUserManager;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
@@ -51,8 +57,8 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
   }
 
-  private IUserManager userManager;
-  private IRoleManager roleManager;
+  IUserManager userManager;
+  IRoleManager roleManager;
 
   BasicAuthorizer(IUserManager userManager, IRoleManager roleManager) throws AuthException {
     this.userManager = userManager;
@@ -65,6 +71,38 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     roleManager.reset();
     logger.info("Initialization of Authorizer completes");
   }
+
+  /**
+   * function for getting the instance of the local file authorizer.
+   */
+  public static IAuthorizer getInstance() throws AuthException {
+    if (InstanceHolder.instance == null) {
+      throw new AuthException("Authorizer uninitialized");
+    }
+    return InstanceHolder.instance;
+  }
+
+  private static class InstanceHolder {
+    private static IAuthorizer instance;
+
+    static {
+        Class<BasicAuthorizer> c = null;
+        try {
+          c = (Class<BasicAuthorizer>) Class.forName(IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+          logger.info("Authorizer provider class: {}", IoTDBDescriptor.getInstance().getConfig().getAuthorizerProvider());
+          instance = c.getDeclaredConstructor().newInstance();
+        } catch (Exception e) {
+          instance = null;
+          //startup failed.
+          throw new IllegalStateException("Authorizer could not be initialized!", e);
+        }
+    }
+  }
+
+
+
+  /** Checks if a user has admin privileges */
+  abstract boolean isAdmin(String username);
 
   @Override
   public boolean login(String username, String password) throws AuthException {
@@ -81,7 +119,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public void deleteUser(String username) throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Default administrator cannot be deleted");
     }
     if (!userManager.deleteUser(username)) {
@@ -93,7 +131,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   public void grantPrivilegeToUser(String username, String path, int privilegeId)
       throws AuthException {
     String newPath = path;
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator already has all privileges");
     }
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
@@ -108,7 +146,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void revokePrivilegeFromUser(String username, String path, int privilegeId)
       throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       throw new AuthException("Invalid operation, administrator must have all privileges");
     }
     String p = path;
@@ -207,7 +245,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   @Override
   public Set<Integer> getPrivileges(String username, String path) throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       return ADMIN_PRIVILEGES;
     }
     User user = userManager.getUser(username);
@@ -236,7 +274,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public boolean checkUserPrivileges(String username, String path, int privilegeId)
       throws AuthException {
-    if (IoTDBConstant.ADMIN_NAME.equals(username)) {
+    if (isAdmin(username)) {
       return true;
     }
     User user = userManager.getUser(username);

@@ -152,9 +152,9 @@ class MergeMultiChunkTask {
       throws IOException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     String deviceId = currMergingPaths.get(0).getDevice();
-    Long currDeviceMinTime = currTsFile.getStartTimeMap().get(deviceId);
+    long currDeviceMinTime = currTsFile.getStartTime(deviceId);
     //COMMENTS: is this correct? how about if there are other devices (in the currMergingPaths) that have unseq data?
-    if (currDeviceMinTime == null) {
+    if (currDeviceMinTime == Long.MAX_VALUE) {
       return;
     }
 
@@ -198,7 +198,7 @@ class MergeMultiChunkTask {
       mergeFileWriter.writeVersion(0L);
       mergeFileWriter.endChunkGroup();
       mergeLogger.logFilePosition(mergeFileWriter.getFile());
-      currTsFile.getStartTimeMap().put(deviceId, currDeviceMinTime);
+      currTsFile.putStartTime(deviceId, currDeviceMinTime);
     }
   }
 

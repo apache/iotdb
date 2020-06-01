@@ -268,6 +268,13 @@
           date: '2018/11/18'
         }, 
         {
+          avatar: 'https://avatars0.githubusercontent.com/u/6711230?s=460&u=b8f03cad5891dbe4eab23ca75df3d97358b23b0c&v=4',
+          name: 'Xin Wang',
+          role: 'Committer',
+          id: 'xinwang',
+          date: '2020/05/18'
+        },
+        {
           avatar: '/img/contributor-avatar/kfx.jpeg',
           name: 'Kaifeng Xue',
           role: 'Committer',
