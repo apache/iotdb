@@ -524,7 +524,7 @@ GC日志默认是关闭的。为了性能调优，用户可能会需要手机GC�
 若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：
 
 ```bash
-sbin/start-server.sh printgc
+nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
 ```
 或者
 

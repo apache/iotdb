@@ -581,7 +581,7 @@ For performance tuning, you may want to collect the GC info.
 To enable GC log, just add a paramenter "printgc" when you start the server.
 
 ```bash
-sbin/start-server.sh printgc
+nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
 ```
 Or
 ```bash
