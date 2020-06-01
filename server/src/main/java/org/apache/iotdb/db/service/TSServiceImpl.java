@@ -204,7 +204,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSCloseOperationResp closeOperation(TSCloseOperationReq req) {
-    logger.info("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
     try {
 
       if (req != null && req.isSetStmtId()) {
