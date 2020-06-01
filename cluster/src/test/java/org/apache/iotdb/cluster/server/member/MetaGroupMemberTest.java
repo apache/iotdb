@@ -423,7 +423,7 @@ public class MetaGroupMemberTest extends MemberTest {
     assertTrue(processor.getWorkSequenceTsFileProcessors().isEmpty());
 
     int prevTimeout = RaftServer.getConnectionTimeoutInMS();
-    RaftServer.setConnectionTimeoutInMS(1);
+    RaftServer.setConnectionTimeoutInMS(100);
     try {
       System.out.println("Create the first file");
       for (int i = 20; i < 30; i++) {

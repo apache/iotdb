@@ -76,7 +76,6 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
           receiverTerm.set(resp);
         }
         leaderShipStale.set(true);
-        setPeerNotCatchUp();
         voteCounter.notifyAll();
       } else {
         //e.g., Response.RESPONSE_LOG_MISMATCH
