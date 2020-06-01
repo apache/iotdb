@@ -33,6 +33,8 @@ public interface IService {
    */
   void stop();
 
+  default void testStop() {stop();}
+
   default void waitAndStop(long millseconds) {stop();}
 
   /**

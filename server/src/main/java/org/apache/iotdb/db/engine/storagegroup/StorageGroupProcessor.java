@@ -1173,6 +1173,50 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * This method will be blocked until all tsfile processors are closed.
+   */
+  public void testSyncCloseAllWorkingTsFileProcessors() {
+    synchronized (closeStorageGroupCondition) {
+      try {
+        testAsyncCloseAllWorkingTsFileProcessors();
+        long startTime = System.currentTimeMillis();
+        while (!closingSequenceTsFileProcessor.isEmpty() || !closingUnSequenceTsFileProcessor
+            .isEmpty()) {
+          closeStorageGroupCondition.wait(60_000);
+          if (System.currentTimeMillis() - startTime > 60_000) {
+            logger.warn("{} has spent {}s to wait for closing all TsFiles.", this.storageGroupName,
+                (System.currentTimeMillis() - startTime) / 1000);
+          }
+        }
+      } catch (InterruptedException e) {
+        logger.error("CloseFileNodeCondition error occurs while waiting for closing the storage "
+            + "group {}", storageGroupName, e);
+      }
+    }
+  }
+
+  public void testAsyncCloseAllWorkingTsFileProcessors() {
+    writeLock();
+    try {
+      logger.info("async force close all files in storage group: {}", storageGroupName);
+      // to avoid concurrent modification problem, we need a new array list
+      for (TsFileProcessor tsFileProcessor : new ArrayList<>(
+          workSequenceTsFileProcessors.values())) {
+        tsFileProcessor.testClose();
+      }
+      // to avoid concurrent modification problem, we need a new array list
+      for (TsFileProcessor tsFileProcessor : new ArrayList<>(
+          workUnsequenceTsFileProcessors.values())) {
+        tsFileProcessor.testClose();
+      }
+    } catch (IOException e) {
+      logger.error("error when closing TsFileProcessors in storage group: {}", storageGroupName, e);
+    } finally {
+      writeUnlock();
+    }
+  }
+
   // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(String deviceId, String measurementId, QueryContext context,
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {

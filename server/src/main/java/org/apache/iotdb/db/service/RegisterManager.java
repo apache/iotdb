@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StartupException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,12 +74,7 @@ public class RegisterManager {
     Collections.reverse(iServices);
     for (IService service : iServices) {
       try {
-        if (service instanceof StorageEngine) {
-          ((StorageEngine) service).testStop();
-        }
-        else {
-          service.waitAndStop(10000);
-        }
+        service.testStop();
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
       }

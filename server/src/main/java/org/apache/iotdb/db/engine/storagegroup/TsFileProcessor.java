@@ -777,4 +777,16 @@ public class TsFileProcessor {
   public void setTimeRangeId(long timeRangeId) {
     this.timeRangeId = timeRangeId;
   }
+
+  /**
+   * For test only
+   * @throws IOException 
+   */
+  public void testClose() throws IOException {
+    for (IMemTable memTable : flushingMemTables) {
+      MemTablePool.getInstance().putBack(memTable, storageGroupName);
+    }
+    writer.close();
+    writer = null;
+  }
 }
