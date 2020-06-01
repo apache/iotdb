@@ -27,13 +27,11 @@ public class TestLog extends Log {
 
   @Override
   public ByteBuffer serialize() {
-    int totalSize = Long.BYTES * 4;
+    int totalSize = Long.BYTES * 2;
     byte[] buffer = new byte[totalSize];
 
     ByteBuffer byteBuffer = ByteBuffer.wrap(buffer);
 
-    byteBuffer.putLong(getPreviousLogIndex());
-    byteBuffer.putLong(getPreviousLogTerm());
     byteBuffer.putLong(getCurrLogIndex());
     byteBuffer.putLong(getCurrLogTerm());
 
@@ -43,8 +41,6 @@ public class TestLog extends Log {
 
   @Override
   public void deserialize(ByteBuffer buffer) {
-    setPreviousLogIndex(buffer.getLong());
-    setPreviousLogTerm(buffer.getLong());
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
   }
@@ -56,15 +52,12 @@ public class TestLog extends Log {
     }
     TestLog obj1 = (TestLog) obj;
     return getCurrLogIndex() == obj1.getCurrLogIndex() &&
-        getCurrLogTerm() == obj1.getCurrLogTerm() &&
-        getPreviousLogIndex() == obj1.getPreviousLogIndex() &&
-        getPreviousLogTerm() == obj1.getPreviousLogTerm();
+        getCurrLogTerm() == obj1.getCurrLogTerm();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(getCurrLogIndex(), getCurrLogTerm(), getPreviousLogIndex(),
-        getPreviousLogTerm());
+    return Objects.hash(getCurrLogIndex(), getCurrLogTerm());
   }
 
 }

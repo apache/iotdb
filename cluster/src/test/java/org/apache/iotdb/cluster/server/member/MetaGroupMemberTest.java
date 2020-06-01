@@ -865,8 +865,6 @@ public class MetaGroupMemberTest extends MemberTest {
     CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(0), 0, true);
     log.setCurrLogIndex(0);
     log.setCurrLogTerm(0);
-    log.setPreviousLogIndex(-1);
-    log.setPreviousLogTerm(-1);
     AppendEntryRequest request = new AppendEntryRequest();
     request.setEntry(log.serialize());
     request.setTerm(0);

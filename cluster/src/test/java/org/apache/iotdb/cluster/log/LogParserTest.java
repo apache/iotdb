@@ -43,8 +43,6 @@ public class LogParserTest {
     log.setNewNode(TestUtils.getNode(5));
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
-    log.setPreviousLogIndex(7);
-    log.setPreviousLogTerm(7);
 
     ByteBuffer buffer = log.serialize();
     Log serialized = logParser.parse(buffer);
@@ -59,8 +57,6 @@ public class LogParserTest {
     log.setPlan(setStorageGroupPlan);
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
-    log.setPreviousLogIndex(7);
-    log.setPreviousLogTerm(7);
 
     ByteBuffer buffer = log.serialize();
     Log serialized = logParser.parse(buffer);
@@ -72,8 +68,6 @@ public class LogParserTest {
     CloseFileLog log = new CloseFileLog(TestUtils.getTestSg(5), 0, false);
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
-    log.setPreviousLogIndex(7);
-    log.setPreviousLogTerm(7);
 
     ByteBuffer buffer = log.serialize();
     Log serialized = logParser.parse(buffer);
@@ -86,8 +80,6 @@ public class LogParserTest {
     log.setRemovedNode(TestUtils.getNode(0));
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
-    log.setPreviousLogIndex(7);
-    log.setPreviousLogTerm(7);
 
     ByteBuffer buffer = log.serialize();
     Log serialized = logParser.parse(buffer);
@@ -99,8 +91,6 @@ public class LogParserTest {
     EmptyContentLog log = new EmptyContentLog();
     log.setCurrLogIndex(8);
     log.setCurrLogTerm(8);
-    log.setPreviousLogIndex(7);
-    log.setPreviousLogTerm(7);
     ByteBuffer byteBuffer = log.serialize();
     Log serialized = logParser.parse(byteBuffer);
     assertEquals(log, serialized);

@@ -54,8 +54,6 @@ public class PhysicalPlanLog extends Log {
     try {
       dataOutputStream.writeByte((byte) PHYSICAL_PLAN.ordinal());
 
-      dataOutputStream.writeLong(getPreviousLogIndex());
-      dataOutputStream.writeLong(getPreviousLogTerm());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());
 
@@ -70,8 +68,6 @@ public class PhysicalPlanLog extends Log {
   @Override
   public void deserialize(ByteBuffer buffer) {
 
-    setPreviousLogIndex(buffer.getLong());
-    setPreviousLogTerm(buffer.getLong());
     setCurrLogIndex(buffer.getLong());
     setCurrLogTerm(buffer.getLong());
 
@@ -92,8 +88,7 @@ public class PhysicalPlanLog extends Log {
 
   @Override
   public String toString() {
-    return plan.toString() + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex() +
-        ",prevTerm:" + getPreviousLogTerm() + ",prevIndex:" + getPreviousLogIndex();
+    return plan.toString() + ",term:" + getCurrLogTerm() + ",index:" + getCurrLogIndex();
   }
 
   @Override
