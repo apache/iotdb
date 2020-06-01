@@ -26,6 +26,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Metrics;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -64,6 +66,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private long lastFlushedId = 0;
 
   private int bufferedLogNum = 0;
+  private final Counter syncCounter;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -77,6 +80,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}." + logDirectory);
     }
+    syncCounter = Metrics.counter("wal.sync.count", "_group", identifier.substring(0, identifier.indexOf("-")));
   }
 
   @Override
@@ -215,6 +219,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void sync() {
+    syncCounter.increment();
     lock.writeLock().lock();
     try {
       if (bufferedLogNum == 0) {

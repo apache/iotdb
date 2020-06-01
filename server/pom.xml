@@ -180,6 +180,17 @@
             <artifactId>oauth2-oidc-sdk</artifactId>
             <version>8.3</version>
         </dependency>
+        <!-- Micrometer Metrics -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <version>1.1.11</version>
+        </dependency>
+        <dependency>
+            <groupId>io.github.mweirauch</groupId>
+            <artifactId>micrometer-jvm-extras</artifactId>
+            <version>0.2.0</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

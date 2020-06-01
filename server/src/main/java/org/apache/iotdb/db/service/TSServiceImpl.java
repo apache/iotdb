@@ -29,6 +29,7 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import io.micrometer.core.instrument.Metrics;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
@@ -167,11 +168,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         IoTDBConstant.GLOBAL_DB_NAME,
         req.getUsername());
 
+
     boolean status;
     IAuthorizer authorizer;
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
+      Metrics.counter("open.session.request", "status", "INTERNAL_EXCEPTION").increment();
       throw new TException(e);
     }
     String loginMessage = null;
@@ -179,6 +182,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       status = authorizer.login(req.getUsername(), req.getPassword());
     } catch (AuthException e) {
       logger.info("meet error while logging in.", e);
+      Metrics.counter("open.session.request", "status", "INTERNAL_EXCEPTION").increment();
       status = false;
       loginMessage = e.getMessage();
     }
@@ -194,16 +198,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
             TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
         resp.setSessionId(sessionId);
+        Metrics.counter("open.session.request", "status", "VERSION_INCOMPATIBLE").increment();
         return resp;
       }
 
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
+      Metrics.counter("open.session.request", "status", "SUCCESS").increment();
       sessionId = sessionIdGenerator.incrementAndGet();
       sessionIdUsernameMap.put(sessionId, req.getUsername());
       sessionIdZoneIdMap.put(sessionId, config.getZoneID());
       currSessionId.set(sessionId);
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
+      Metrics.counter("open.session.request", "status", "LOGIN_FAILED").increment();
       tsStatus.setMessage(loginMessage);
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
