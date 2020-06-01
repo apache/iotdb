@@ -575,6 +575,8 @@ public class IoTDBConfig {
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
+  // time in nanosecond precision when starting up
+  private long startUpNanosecond = System.nanoTime();
 
   public IoTDBConfig() {
     // empty constructor
@@ -1582,5 +1584,9 @@ public class IoTDBConfig {
 
   public void setAuthorizerProvider(String authorizerProvider) {
     this.authorizerProvider = authorizerProvider;
+  }
+
+  public long getStartUpNanosecond() {
+    return startUpNanosecond;
   }
 }

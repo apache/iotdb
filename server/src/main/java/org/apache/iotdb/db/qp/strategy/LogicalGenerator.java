@@ -1476,14 +1476,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new SQLParserException("input timestamp cannot be empty");
     }
+    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
       String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-      Instant instant = Instant.now();
       switch (timePrecision) {
         case "ns":
-          return instant.getEpochSecond() * 1000_000_000 + instant.getNano();
+          return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
         case "us":
-          return (instant.getEpochSecond() * 1000_000_000 + instant.getNano()) / 1000;
+          return System.currentTimeMillis() * 1000 + (System.nanoTime() - startupNano) % 1000;
         default:
           return System.currentTimeMillis();
       }
