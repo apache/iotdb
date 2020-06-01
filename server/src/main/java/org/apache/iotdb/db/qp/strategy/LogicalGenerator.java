@@ -1483,7 +1483,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         case "ns":
           return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
         case "us":
-          return System.currentTimeMillis() * 1000 + (System.nanoTime() - startupNano) % 1000;
+          return System.currentTimeMillis() * 1000 + (System.nanoTime() - startupNano) / 1000 % 1000;
         default:
           return System.currentTimeMillis();
       }
