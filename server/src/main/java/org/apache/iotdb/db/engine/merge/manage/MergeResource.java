@@ -149,7 +149,7 @@ public class MergeResource {
   }
 
   /**
-   * Construct UnseqResourceMergeReaders of for each timeseries over all seqFiles. The readers are
+   * Construct UnseqResourceMergeReaders of for each timeseries over all unseqFiles. The readers are
    * not cached since the method is only called once for each timeseries.
    *
    * @param paths names of the timeseries

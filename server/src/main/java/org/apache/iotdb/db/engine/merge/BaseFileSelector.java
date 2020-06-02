@@ -45,9 +45,6 @@ public abstract class BaseFileSelector implements IMergeFileSelector {
   protected List<TsFileResource> seqFiles;
   protected List<TsFileResource> unseqFiles;
 
-  protected BaseFileSelector() {
-  }
-
   protected BaseFileSelector(Collection<TsFileResource> seqFiles,
       Collection<TsFileResource> unseqFiles, long budget, long timeLowerBound) {
     this.selectorContext = new SelectorContext();
