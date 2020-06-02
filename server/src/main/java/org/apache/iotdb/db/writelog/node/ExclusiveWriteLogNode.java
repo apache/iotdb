@@ -111,6 +111,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   public void close() {
     sync();
     forceWal();
+
     lock.writeLock().lock();
     try {
       if (this.currentFileWriter != null) {

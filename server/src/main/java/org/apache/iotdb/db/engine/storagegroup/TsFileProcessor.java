@@ -48,7 +48,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseTsFile
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -178,12 +177,9 @@ public class TsFileProcessor {
     }
 
     // insert insertPlan to the work memtable
-    long time = System.currentTimeMillis();
     workMemTable.insertBatch(batchInsertPlan, indexes);
-    PerfMonitor.add("TsFileProcessor.insertBatch", System.currentTimeMillis() - time);
 
     if (!useNVM && IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      time = System.currentTimeMillis();
       try {
         batchInsertPlan.setIndex(new HashSet<>(indexes));
         getLogNode().write(batchInsertPlan);
@@ -194,7 +190,6 @@ public class TsFileProcessor {
         }
         return false;
       }
-      PerfMonitor.add("TsFileProcessor.WAL", System.currentTimeMillis() - time);
     }
 
     tsFileResource.updateStartTime(batchInsertPlan.getDeviceId(), batchInsertPlan.getMinTime());
@@ -236,6 +231,7 @@ public class TsFileProcessor {
 
 
   boolean shouldFlush() {
+//    return false;
     return workMemTable != null
         && workMemTable.memSize() > getMemtableSizeThresholdBasedOnSeriesNum();
   }

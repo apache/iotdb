@@ -57,7 +57,6 @@
         <module>hadoop</module>
         <module>spark-iotdb-connector</module>
         <module>distribution</module>
-        <module>hive-connector</module>
     </modules>
     <!-- Properties Management -->
     <properties>

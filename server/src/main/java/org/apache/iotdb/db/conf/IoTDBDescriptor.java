@@ -355,9 +355,6 @@ public class IoTDBDescriptor {
         Boolean.toString(conf.isEnableNVM()))));
 
     conf.setNvmDir(properties.getProperty("nvm_dir", conf.getNvmDir()));
-
-    conf.setArraySize(Integer.parseInt(properties.getProperty("array_size",
-        Integer.toString(conf.getArraySize()))));
   }
 
   private void loadAutoCreateSchemaProps(Properties properties){

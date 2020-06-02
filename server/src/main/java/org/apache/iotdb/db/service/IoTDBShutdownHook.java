@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,8 +28,6 @@ public class IoTDBShutdownHook extends Thread{
 
   @Override
   public void run() {
-    PerfMonitor.output();
-
     if(logger.isInfoEnabled()) {
       logger.info("IoTDB exits. Jvm memory usage: {}", MemUtils.bytesCntToStr(
           Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()));

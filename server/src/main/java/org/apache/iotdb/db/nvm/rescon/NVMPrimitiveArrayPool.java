@@ -3,7 +3,6 @@ package org.apache.iotdb.db.nvm.rescon;
 import java.util.ArrayDeque;
 import java.util.EnumMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.exception.NVMSpaceManagerException;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
@@ -16,7 +15,7 @@ public class NVMPrimitiveArrayPool {
    */
   private static final EnumMap<TSDataType, ArrayDeque<NVMDataSpace>> primitiveArraysMap = new EnumMap<>(TSDataType.class);
 
-  public static final int ARRAY_SIZE = IoTDBDescriptor.getInstance().getConfig().getArraySize();
+  public static final int ARRAY_SIZE = 128;
 
   static {
     primitiveArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque());
@@ -36,20 +35,19 @@ public class NVMPrimitiveArrayPool {
   private NVMPrimitiveArrayPool() {}
 
   public synchronized NVMDataSpace getPrimitiveDataListByType(TSDataType dataType, boolean isTime) {
-    long time = System.currentTimeMillis();
     ArrayDeque<NVMDataSpace> dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
     NVMDataSpace nvmSpace = dataListQueue.poll();
 
-    long size = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
     if (nvmSpace == null) {
       try {
+        long size = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
         nvmSpace = NVMSpaceManager.getInstance().allocateDataSpace(size * ARRAY_SIZE, dataType, isTime);
       } catch (NVMSpaceManagerException e) {
+        e.printStackTrace();
+        System.exit(0);
         // TODO
       }
     }
-
-    PerfMonitor.add("NVM.getDataList" + (isTime ? "Time" : "Value"), System.currentTimeMillis() - time);
     return nvmSpace;
   }
 

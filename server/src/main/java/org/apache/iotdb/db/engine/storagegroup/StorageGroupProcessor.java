@@ -65,7 +65,6 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -208,9 +207,8 @@ public class StorageGroupProcessor {
       throw new StorageGroupProcessorException(e);
     }
 
-    long time = System.currentTimeMillis();
     recover();
-    PerfMonitor.add("StoragaGroupProcessor.recocer", System.currentTimeMillis() - time);
+    System.out.println("recover:" + storageGroupName);
   }
 
   private void recover() throws StorageGroupProcessorException {
@@ -224,6 +222,7 @@ public class StorageGroupProcessor {
           getAllFiles(DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
       recoverSeqFiles(seqTsFiles);
+
       recoverUnseqFiles(unseqTsFiles);
 
       String taskName = storageGroupName + "-" + System.currentTimeMillis();
@@ -733,6 +732,7 @@ public class StorageGroupProcessor {
           deviceId, measurementId, context);
       QueryDataSource dataSource = new QueryDataSource(new Path(deviceId, measurementId),
           seqResources, unseqResources);
+
       // used files should be added before mergeLock is unlocked, or they may be deleted by
       // running merge
       // is null only in tests

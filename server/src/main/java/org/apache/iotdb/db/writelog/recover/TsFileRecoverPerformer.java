@@ -29,13 +29,11 @@ import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
-import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
-import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.memtable.NVMPrimitiveMemTable;
 import org.apache.iotdb.db.nvm.recover.NVMMemtableRecoverPerformer;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -146,18 +144,12 @@ public class TsFileRecoverPerformer {
     }
 
     // recover data in memory
-    long time;
     if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
-      time = System.currentTimeMillis();
       reloadNVMData(restorableTsFileIOWriter);
-      PerfMonitor.add("TsFileRecoverPerformer.reloadNVMData", System.currentTimeMillis() - time);
     } else {
-      time = System.currentTimeMillis();
       redoLogs(restorableTsFileIOWriter);
-      PerfMonitor.add("TsFileRecoverPerformer.redoLogs", System.currentTimeMillis() - time);
 
       // clean logs
-      time = System.currentTimeMillis();
       try {
         MultiFileLogNodeManager.getInstance()
             .deleteNode(
@@ -165,7 +157,6 @@ public class TsFileRecoverPerformer {
       } catch (IOException e) {
         throw new StorageGroupProcessorException(e);
       }
-      PerfMonitor.add("TsFileRecoverPerformer.redoAndCleanLogs", System.currentTimeMillis() - time);
     }
   }
 
@@ -221,10 +212,7 @@ public class TsFileRecoverPerformer {
         versionController,
         tsFileResource, schema, recoverMemTable, acceptUnseq);
 
-    long time = System.currentTimeMillis();
     logReplayer.replayLogs();
-    PerfMonitor.add("LogReplayer.replayLogs-ALL", System.currentTimeMillis() - time);
-
     flushRecoverdMemtable(recoverMemTable, restorableTsFileIOWriter);
   }
 
@@ -232,30 +220,22 @@ public class TsFileRecoverPerformer {
       throws StorageGroupProcessorException {
     NVMPrimitiveMemTable recoverMemTable = new NVMPrimitiveMemTable(storageGroupId);
 
-    long time = System.currentTimeMillis();
     NVMMemtableRecoverPerformer.getInstance().reconstructMemtable(recoverMemTable, tsFileResource);
-    PerfMonitor.add("NVMMemtableRecoverPerformer.reconstructMemtable", System.currentTimeMillis() - time);
-
     flushRecoverdMemtable(recoverMemTable, restorableTsFileIOWriter);
   }
 
   private void flushRecoverdMemtable(IMemTable recoverMemTable, RestorableTsFileIOWriter restorableTsFileIOWriter)
       throws StorageGroupProcessorException {
-    long time;
     try {
       if (!recoverMemTable.isEmpty()) {
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable, schema,
             restorableTsFileIOWriter, tsFileResource.getFile().getParentFile().getName());
 
-        time = System.currentTimeMillis();
         tableFlushTask.syncFlushMemTable();
-        PerfMonitor.add("MemTableFlushTask.syncFlushMemTable", System.currentTimeMillis() - time);
       }
       // close file
-      time = System.currentTimeMillis();
       restorableTsFileIOWriter.endFile(schema);
       tsFileResource.serialize();
-      PerfMonitor.add("TsFileRecoverPerformer.closeFile", System.currentTimeMillis() - time);
     } catch (IOException | InterruptedException | ExecutionException e) {
       throw new StorageGroupProcessorException(e);
     }

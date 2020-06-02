@@ -4,7 +4,6 @@ import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.db.nvm.PerfMonitor;
 import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
@@ -87,6 +86,7 @@ public abstract class NVMTVList extends AbstractTVList {
   protected NVMDataSpace expandValues() {
     NVMDataSpace dataSpace = NVMPrimitiveArrayPool
         .getInstance().getPrimitiveDataListByType(dataType, false);
+
     values.add(dataSpace);
     return dataSpace;
   }
@@ -165,12 +165,12 @@ public abstract class NVMTVList extends AbstractTVList {
   @Override
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
-      long time = System.currentTimeMillis();
       NVMDataSpace valueSpace = expandValues();
+
       NVMDataSpace timeSpace = NVMPrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64, true);
       timestamps.add(timeSpace);
+
       NVMSpaceMetadataManager.getInstance().registerTVSpace(timeSpace, valueSpace, sgId, deviceId, measurementId);
-      PerfMonitor.add("NVMTVList.expand", System.currentTimeMillis() - time);
     }
   }
 
@@ -236,26 +236,16 @@ public abstract class NVMTVList extends AbstractTVList {
 
   @Override
   public void sort() {
-    long time = System.currentTimeMillis();
     initTempArrays();
-    PerfMonitor.add("sort-initarr", System.currentTimeMillis() - time);
 
-    time = System.currentTimeMillis();
     copyTVToTempArrays();
-    PerfMonitor.add("sort-copytoarr", System.currentTimeMillis() - time);
 
-    time = System.currentTimeMillis();
     sort(0, size);
-    PerfMonitor.add("sort-sort", System.currentTimeMillis() - time);
 
-    time = System.currentTimeMillis();
     copyTVFromTempArrays();
-    PerfMonitor.add("sort-copyfromarr", System.currentTimeMillis() - time);
 
-    time = System.currentTimeMillis();
     clearSortedValue();
     clearSortedTime();
-    PerfMonitor.add("sort-cleararr", System.currentTimeMillis() - time);
 
     sorted = true;
   }

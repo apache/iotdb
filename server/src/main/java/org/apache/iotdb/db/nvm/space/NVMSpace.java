@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.nvm.space;
 
 import java.nio.ByteBuffer;
+import java.nio.MappedByteBuffer;
 
 public class NVMSpace {
 
@@ -60,5 +61,9 @@ public class NVMSpace {
 
   public void get(byte[] src) {
     byteBuffer.get(src);
+  }
+
+  public void force() {
+    ((MappedByteBuffer) byteBuffer).force();
   }
 }

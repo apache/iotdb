@@ -82,6 +82,7 @@ public class NVMSpaceManager {
             index, dataType, isTime);
       }
       curOffset += size;
+
       return nvmSpace;
     } catch (IOException e) {
       logger.error("Fail to allocate {} nvm space at {}.", size, curOffset);

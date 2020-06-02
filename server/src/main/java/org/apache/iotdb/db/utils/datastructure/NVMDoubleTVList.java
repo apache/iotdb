@@ -20,6 +20,7 @@ public class NVMDoubleTVList extends NVMTVList {
   @Override
   public void putDouble(long timestamp, double value) {
     checkExpansion();
+
     int arrayIndex = size / ARRAY_SIZE;
     int elementIndex = size % ARRAY_SIZE;
     minTime = minTime <= timestamp ? minTime : timestamp;
@@ -156,13 +157,22 @@ public class NVMDoubleTVList extends NVMTVList {
 
   @Override
   public void putDoubles(long[] time, double[] value) {
-    checkExpansion();
+//    checkExpansion();
     int idx = 0;
     int length = time.length;
 
     for (int i = 0; i < length; i++) {
       putDouble(time[i], value[i]);
     }
+
+//    long startTime = System.currentTimeMillis();
+//    for (NVMDataSpace timeSpace : timestamps) {
+//      timeSpace.force();
+//    }
+//    for (NVMDataSpace valueSpace : values) {
+//      valueSpace.force();
+//    }
+//    PerfMonitor.add("NVMTVList.force", System.currentTimeMillis() - startTime);
 
 //    updateMinTimeAndSorted(time);
 //

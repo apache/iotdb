@@ -25,6 +25,7 @@ import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.*;
@@ -77,24 +78,29 @@ public class IoTDBAggregationIT {
 
   @Before
   public void setUp() throws Exception {
+    System.out.println("set up start");
     EnvironmentUtils.closeStatMonitor();
     daemon = IoTDB.getInstance();
     daemon.active();
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
+    System.out.println("set up end");
   }
 
   @After
   public void tearDown() throws Exception {
+    System.out.println("tear down start");
     daemon.stop();
     EnvironmentUtils.cleanEnv();
+    System.out.println("tear down end");
   }
 
   //add test for part of points in page don't satisfy filter
   //details in: https://issues.apache.org/jira/projects/IOTDB/issues/IOTDB-54
   @Test
   public void test() throws SQLException {
+    System.out.println("test start");
     String[] retArray = new String[]{
         "0,2",
         "0,4",
@@ -156,6 +162,7 @@ public class IoTDBAggregationIT {
 
   @Test
   public void countTest() throws SQLException {
+    System.out.println("countTest start");
     String[] retArray = new String[]{
         "0,2001,2001,2001,2001",
         "0,7500,7500,7500,7500"
@@ -202,6 +209,7 @@ public class IoTDBAggregationIT {
 
   @Test
   public void firstTest() {
+    System.out.println("firstTest start");
     String[] retArray = new String[]{
         "0,2000,2000,2000.0,2000",
         "0,500,500,500.0,500"
@@ -250,6 +258,7 @@ public class IoTDBAggregationIT {
 
   @Test
   public void lastTest() throws SQLException {
+    System.out.println("lastTest start");
     String[] retArray = new String[]{
         "0,8499,8499.0",
         "0,1499,1499.0",
@@ -310,6 +319,7 @@ public class IoTDBAggregationIT {
 
   @Test
   public void maxminTimeTest() throws SQLException {
+    System.out.println("maxminTimeTest start");
     String[] retArray = new String[]{
         "0,8499,500",
         "0,2499,2000"
@@ -404,6 +414,7 @@ public class IoTDBAggregationIT {
 
   @Test
   public void avgSumTest() {
+    System.out.println("avgSumTest start");
     String[] retArray = new String[]{
         "0,1.4508E7,7250.374812593703",
         "0,626750.0,1250.998003992016"
