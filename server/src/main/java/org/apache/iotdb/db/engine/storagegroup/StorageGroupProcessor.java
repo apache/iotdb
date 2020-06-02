@@ -763,12 +763,12 @@ public class StorageGroupProcessor {
       throws WriteProcessException {
     MNode node = null;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
+      MManager manager = MManager.getInstance();
+      node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
-        MNode measurementNode = node.getChild(measurementList[i]);
-        ((LeafMNode) measurementNode)
+        ((LeafMNode) manager.getChild(node, measurementList[i], plan.getDeviceId()))
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
@@ -815,16 +815,15 @@ public class StorageGroupProcessor {
       throws WriteProcessException {
     MNode node = null;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
+      MManager manager = MManager.getInstance();
+      node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         if (plan.getSchemas()[i] == null) {
           continue;
         }
         // Update cached last value with high priority
-        MNode measurementNode = node.getChild(measurementList[i]);
-
-        ((LeafMNode) measurementNode)
+        ((LeafMNode) manager.getChild(node, measurementList[i], plan.getDeviceId()))
             .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {

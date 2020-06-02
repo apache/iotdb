@@ -131,7 +131,9 @@ public class IoTDBConfig {
   /**
    * Is dynamic parameter adapter enable.
    */
-  private boolean enableParameterAdapter = true;
+  //the default value of this parameter should be kept true in iotdb-engine.properties,
+  //we set it as false here for convenient testing.
+  private boolean enableParameterAdapter = false;
 
   /**
    * Is the write ahead log enable.
