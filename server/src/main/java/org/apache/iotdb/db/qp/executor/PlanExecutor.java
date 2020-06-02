@@ -886,16 +886,7 @@ public class PlanExecutor implements IPlanExecutor {
             Path path = new Path(deviceId, measurement);
             internalCreateTimeseries(path.toString(), dataType);
           }
-          LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
-
-          int tempCount = 0;
-          while (measurementNode == null) {
-            tempCount ++;
-            if (tempCount % 10000 == 0) {
-              logger.warn("try to get child {} 10000 times from {}", measurement, deviceId);
-            }
-            measurementNode = (LeafMNode) node.getChild(measurement);
-          }
+          LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(node, measurement, deviceId);
 
           schemas[i] = measurementNode.getSchema();
           // reset measurement to common name instead of alias
@@ -1042,16 +1033,7 @@ public class PlanExecutor implements IPlanExecutor {
           TSDataType dataType = dataTypes[i];
           internalCreateTimeseries(path.getFullPath(), dataType);
         }
-        LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
-
-        int tempCount = 0;
-        while (measurementNode == null) {
-          tempCount ++;
-          if (tempCount % 10000 == 0) {
-            logger.warn("try to get child {} 10000 times from {}", measurementList[i], deviceId);
-          }
-          measurementNode = (LeafMNode) node.getChild(measurementList[i]);
-        }
+        LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(node, measurementList[i], deviceId);
 
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {

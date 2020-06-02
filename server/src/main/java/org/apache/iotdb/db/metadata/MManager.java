@@ -863,6 +863,19 @@ public class MManager {
     }
   }
 
+  public MNode getChild(MNode parent, String child, String info) {
+    MNode childNode = parent.getChild(child);
+    int tempCount = 0;
+    while (childNode == null) {
+      tempCount ++;
+      if (tempCount % 10000 == 0) {
+        logger.warn("try to get child {} 10000 times from {}", child, info);
+      }
+      childNode = parent.getChild(child);
+    }
+    return childNode;
+  }
+
   /**
    * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
    * be thrown
