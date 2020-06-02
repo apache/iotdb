@@ -308,6 +308,10 @@ public class IoTDBDescriptor {
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
 
+      conf.setEnablePartialInsert(
+          Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
+              String.valueOf(conf.isEnablePartialInsert()))));
+
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
               Boolean.toString(conf.isEnablePerformanceStat())).trim()));

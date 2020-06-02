@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -185,7 +186,11 @@ public class InsertPlan extends PhysicalPlan {
         } catch (Exception e) {
           logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
               measurements[i], values[i], types[i]);
-          markMeasurementInsertionFailed(i);
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            markMeasurementInsertionFailed(i);
+          } else {
+            throw e;
+          }
         }
       }
     }

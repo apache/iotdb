@@ -155,6 +155,9 @@ public class PlanExecutor implements IPlanExecutor {
   // for administration
   private IAuthorizer authorizer;
 
+  private boolean enablePartialInsert = IoTDBDescriptor.getInstance().getConfig()
+      .isEnablePartialInsert();
+
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
     mManager = MManager.getInstance();
@@ -893,7 +896,11 @@ public class PlanExecutor implements IPlanExecutor {
           }
         } catch (MetadataException e) {
           logger.warn("meet error when check {}.{}", deviceId, measurement, e);
-          insertPlan.markMeasurementInsertionFailed(i);
+          if (enablePartialInsert) {
+            insertPlan.markMeasurementInsertionFailed(i);
+          } else {
+            throw e;
+          }
         }
       }
 
