@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.io.File;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -163,6 +164,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
@@ -1479,8 +1481,17 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (timestampStr == null || timestampStr.trim().equals("")) {
       throw new SQLParserException("input timestamp cannot be empty");
     }
+    long startupNano = IoTDBDescriptor.getInstance().getConfig().getStartUpNanosecond();
     if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
-      return System.currentTimeMillis();
+      String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+      switch (timePrecision) {
+        case "ns":
+          return System.currentTimeMillis() * 1000_000 + (System.nanoTime() - startupNano) % 1000_000;
+        case "us":
+          return System.currentTimeMillis() * 1000 + (System.nanoTime() - startupNano) / 1000 % 1000;
+        default:
+          return System.currentTimeMillis();
+      }
     }
     try {
       return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);

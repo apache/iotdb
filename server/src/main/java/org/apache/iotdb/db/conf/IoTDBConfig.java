@@ -580,6 +580,8 @@ public class IoTDBConfig {
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
+  // time in nanosecond precision when starting up
+  private long startUpNanosecond = System.nanoTime();
 
   public IoTDBConfig() {
     // empty constructor
@@ -753,7 +755,7 @@ public class IoTDBConfig {
     return timestampPrecision;
   }
 
-  void setTimestampPrecision(String timestampPrecision) {
+  public void setTimestampPrecision(String timestampPrecision) {
     if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
         || timestampPrecision.equals("ns"))) {
       logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
@@ -1595,5 +1597,9 @@ public class IoTDBConfig {
 
   public void setAuthorizerProvider(String authorizerProvider) {
     this.authorizerProvider = authorizerProvider;
+  }
+
+  public long getStartUpNanosecond() {
+    return startUpNanosecond;
   }
 }

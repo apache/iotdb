@@ -166,6 +166,7 @@ public class StorageEngine implements IService {
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
+    recoveryThreadPool.shutdown();
   }
 
   private static void initTimePartition() {
