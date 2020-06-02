@@ -44,6 +44,8 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,13 +107,13 @@ public class SqueezeMergeTask implements Callable<Void> {
     mergeLogger.logFiles(resource);
 
     Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
-    Map<Path, MeasurementSchema> chunkWriterCacheMap = new HashMap<>();
+    Map<Path, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
     for (String device : devices) {
       InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
         MeasurementSchema measurementSchema = ((LeafMNode) entry.getValue()).getSchema();
         chunkWriterCacheMap
-            .put(new Path(device, entry.getKey()), measurementSchema);
+            .put(new Path(device, entry.getKey()), new ChunkWriterImpl(measurementSchema));
       }
     }
     resource.setChunkWriterCache(chunkWriterCacheMap);
