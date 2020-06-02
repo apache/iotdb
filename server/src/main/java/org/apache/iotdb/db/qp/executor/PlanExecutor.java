@@ -155,6 +155,9 @@ public class PlanExecutor implements IPlanExecutor {
   // for administration
   private IAuthorizer authorizer;
 
+  private boolean enablePartialInsert = IoTDBDescriptor.getInstance().getConfig()
+      .isEnablePartialInsert();
+
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
     mManager = MManager.getInstance();
@@ -873,28 +876,40 @@ public class PlanExecutor implements IPlanExecutor {
 
       for (int i = 0; i < measurementList.length; i++) {
         String measurement = measurementList[i];
-        if (!node.hasChild(measurement)) {
-          if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-            throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+        try {
+          if (!node.hasChild(measurement)) {
+            if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+              throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
+            }
+            TSDataType dataType = TypeInferenceUtils
+                .getPredictedDataType(insertPlan.getValues()[i], insertPlan.isInferType());
+            Path path = new Path(deviceId, measurement);
+            internalCreateTimeseries(path.toString(), dataType);
           }
-          TSDataType dataType = TypeInferenceUtils
-              .getPredictedDataType(insertPlan.getValues()[i], insertPlan.isInferType());
-          Path path = new Path(deviceId, measurement);
-          internalCreateTimeseries(path.toString(), dataType);
-        }
-        LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
-        schemas[i] = measurementNode.getSchema();
-        // reset measurement to common name instead of alias
-        measurementList[i] = measurementNode.getName();
+          LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
+          schemas[i] = measurementNode.getSchema();
+          // reset measurement to common name instead of alias
+          measurementList[i] = measurementNode.getName();
 
-        if(!insertPlan.isInferType()) {
-          checkType(insertPlan, i, measurementNode.getSchema().getType());
+          if (!insertPlan.isInferType()) {
+            checkType(insertPlan, i, measurementNode.getSchema().getType());
+          }
+        } catch (MetadataException e) {
+          logger.warn("meet error when check {}.{}", deviceId, measurement, e);
+          if (enablePartialInsert) {
+            insertPlan.markMeasurementInsertionFailed(i);
+          } else {
+            throw e;
+          }
         }
       }
 
       insertPlan.setMeasurements(measurementList);
       insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
+      if (insertPlan.getFailedMeasurements() != null) {
+        throw new StorageEngineException("failed to insert points " + insertPlan.getFailedMeasurements());
+      }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {

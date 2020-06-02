@@ -217,6 +217,15 @@
 |默认值| 700 |
 |改后生效方式|重启服务器生效|
 
+* enable\_partial\_insert
+
+|Name| enable\_partial\_insert |
+|:---:|:---|
+|Description| 在一次insert请求中，如果部分测点写入失败，是否继续写入其他测点|
+|Type| Bool |
+|Default| true |
+|Effective|重启服务器生效|
+
 * fetch\_size
 
 |名字| fetch\_size |

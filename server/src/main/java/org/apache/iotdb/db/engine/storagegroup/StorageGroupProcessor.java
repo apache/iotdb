@@ -818,13 +818,16 @@ public class StorageGroupProcessor {
       node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
+        if (plan.getSchemas()[i] == null) {
+          continue;
+        }
         // Update cached last value with high priority
         MNode measurementNode = node.getChild(measurementList[i]);
 
         ((LeafMNode) measurementNode)
             .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
-    } catch (MetadataException | QueryProcessException e) {
+    } catch (MetadataException e) {
       throw new WriteProcessException(e);
     } finally {
       if (node != null) {
