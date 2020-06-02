@@ -1222,7 +1222,8 @@
         <!-- upload code coverage report to coveralls.io-->
         <!-- to enable coveralls locally, you need to get the repoToken from https://coveralls.io/github/apache/incubator-iotdb.
              use `mvn post-integration-test -Pcode-coverage -DrepoToken=TOKEN`-->
-        <!-- enable site--><!-- use `mvn package -P site -pl site` to compile the site module only -->
+        <!-- enable site-->
+        <!-- use `mvn package -P site -pl site` to compile the site module only -->
         <profile>
             <id>site</id>
             <modules>
