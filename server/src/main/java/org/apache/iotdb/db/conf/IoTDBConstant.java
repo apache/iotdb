@@ -93,5 +93,5 @@ public class IoTDBConstant {
   public static final String MQTT_PORT_NAME = "mqtt_port";
   public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
-  public static final String MAX_MQTT_MESSAGE_SIZE = "max_mqtt_message_size";
+  public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 }

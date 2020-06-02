@@ -95,7 +95,7 @@ public class IoTDBConfig {
   /**
    * max mqtt message size
    */
-  private int maxMqttMessageSize = 1048576;
+  private int mqttMaxMessageSize = 1048576;
 
 
   /**
@@ -1560,12 +1560,12 @@ public class IoTDBConfig {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
   }
 
-  public int getMaxMqttMessageSize() {
-    return maxMqttMessageSize;
+  public int getMqttMaxMessageSize() {
+    return mqttMaxMessageSize;
   }
 
-  public void setMaxMqttMessageSize(int maxMqttMessageSize) {
-    this.maxMqttMessageSize = maxMqttMessageSize;
+  public void setMqttMaxMessageSize(int mqttMaxMessageSize) {
+    this.mqttMaxMessageSize = mqttMaxMessageSize;
   }
 
   public int getTagAttributeTotalSize() {

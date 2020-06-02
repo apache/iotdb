@@ -69,7 +69,7 @@ Configurations are as following:
 | mqtt_port      | the mqtt service binding port    |   1883 |
 | mqtt_handler_pool_size | the handler pool size for handing the mqtt messages      |    1 |
 | mqtt_payload_formatter | the mqtt message payload formatter     |    json |
-| max_mqtt_message_size | the max mqtt message size in byte|   1048576 |
+| mqtt_max_message_size | the max mqtt message size in byte|   1048576 |
 
 
 ## Examples
