@@ -40,6 +40,7 @@ Last Updated on 2020-5-25 by Kaifeng Xue.
 | Add struct TSQueryNonAlignDataSet                            | Haonan Hou|
 | Add struct TSInsertTabletsReq                            | Jialin Qiao|
 | Add method insertTablets                            | Jialin Qiao|
+| Add method testInsertTablets                            | Xiangdong Huang |
 
 ## 3. Update
 
