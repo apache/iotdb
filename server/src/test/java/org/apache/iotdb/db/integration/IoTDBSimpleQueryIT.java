@@ -194,8 +194,8 @@ public class IoTDBSimpleQueryIT {
       ResultSet resultSet = statement.executeQuery("select s0, s1 from root.sg1.d0");
 
       while(resultSet.next()) {
-        assertEquals(resultSet.getInt("root.sg1.d0.s0"), 1);
-        assertEquals(resultSet.getString("root.sg1.d0.s1"), null);
+        assertEquals(1, resultSet.getInt("root.sg1.d0.s0"));
+        assertEquals(null, resultSet.getString("root.sg1.d0.s1"));
       }
     }
   }
