@@ -78,9 +78,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     this.logDirectory =
         DirectoryManager.getInstance().getWALFolder() + File.separator + this.identifier;
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
-      logger.info("create the WAL folder {}." + logDirectory);
+      logger.info("create the WAL folder {}.", logDirectory);
     }
-    syncCounter = Metrics.counter("wal.sync.count", "_group", identifier.substring(0, identifier.indexOf("-")));
+    syncCounter = Metrics.counter("wal.sync.count", "_group", identifier.contains("-") ? identifier.substring(0, identifier.indexOf("-")) : identifier);
   }
 
   @Override

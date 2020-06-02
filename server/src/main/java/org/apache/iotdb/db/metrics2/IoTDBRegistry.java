@@ -45,6 +45,7 @@ import io.micrometer.core.instrument.internal.DefaultMeter;
 import io.micrometer.core.instrument.push.PushMeterRegistry;
 import io.micrometer.core.instrument.util.NamedThreadFactory;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -141,12 +142,13 @@ public class IoTDBRegistry extends PushMeterRegistry {
 
     @Override
     protected void publish() {
-        Metrics.timer("metrics.write.timer").record(this::writeMetrics);
+        if (!IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+            Metrics.timer("metrics.write.timer").record(this::writeMetrics);
+        }
     }
 
     private void writeMetrics() {
         for (Meter meter : getMeters()) {
-
 
             // Add this to an IoTDB Timeseries now
             final String conventionName = meter.getId().getConventionName(NamingConvention.dot);
@@ -163,12 +165,19 @@ public class IoTDBRegistry extends PushMeterRegistry {
                 fc -> createQuery(conventionName, conventionTags, fc.count()),
                 a -> {throw new NotImplementedException("");},
                 a -> {throw new NotImplementedException("");});
+            
+            // Currently there is no Support for Double.NaN thus we skip it
+            if (query.contains("NaN")) {
+                continue;
+            }
 
             try {
-                final PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(query);
-                final boolean success = executor.processNonQuery(physicalPlan);
-                if (!success) {
-                    logger.warn("Unable to process metrics query '{}'!", query);
+                if (!IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
+                    final PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(query);
+                    final boolean success = executor.processNonQuery(physicalPlan);
+                    if (!success) {
+                        logger.warn("Unable to process metrics query '{}'!", query);
+                    }
                 }
             } catch (QueryProcessException | StorageEngineException | StorageGroupNotSetException e) {
                 logger.error("Unable to store metrics", e);
@@ -192,11 +201,7 @@ public class IoTDBRegistry extends PushMeterRegistry {
 
         final String query;
         if (tagKeys.isEmpty()) {
-            // In this case we use the last part as measurement
-            final int idx = escapedPath.lastIndexOf('.');
-            String path = escapedPath.substring(0, idx);
-            String name = escapedPath.substring(idx + 1);
-            query = String.format(Locale.ENGLISH, "INSERT INTO root._metrics.%s.%s (timestamp, value) VALUES (NOW(), %f)", path, name, value);
+            query = String.format(Locale.ENGLISH, "INSERT INTO root._metrics.%s (timestamp, value) VALUES (NOW(), %f)", escapedPath, value);
         } else {
             query = String.format(Locale.ENGLISH, "INSERT INTO root._metrics.%s (timestamp, %s, value) VALUES (NOW(), %s, %f)", escapedPath, tagKeys, tagValues, value);
         }
