@@ -768,6 +768,16 @@ public class StorageGroupProcessor {
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
         MNode measurementNode = node.getChild(measurementList[i]);
+
+        int tempCount = 0;
+        while (measurementNode == null) {
+          tempCount ++;
+          if (tempCount % 10000 == 0) {
+            logger.warn("try to get child {} 10000 times from {}", measurementList[i], plan.getDeviceId());
+          }
+          measurementNode = node.getChild(measurementList[i]);
+        }
+
         ((LeafMNode) measurementNode)
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
@@ -823,6 +833,15 @@ public class StorageGroupProcessor {
         }
         // Update cached last value with high priority
         MNode measurementNode = node.getChild(measurementList[i]);
+
+        int tempCount = 0;
+        while (measurementNode == null) {
+          tempCount ++;
+          if (tempCount % 10000 == 0) {
+            logger.warn("try to get child {} 10000 times from {}", measurementList[i], plan.getDeviceId());
+          }
+          measurementNode = node.getChild(measurementList[i]);
+        }
 
         ((LeafMNode) measurementNode)
             .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
