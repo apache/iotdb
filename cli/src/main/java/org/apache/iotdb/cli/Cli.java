@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.cli;
 
+import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Scanner;
+import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -107,15 +108,16 @@ public class Cli extends AbstractCli {
   }
 
   private static void serve() {
-    try (Scanner scanner = new Scanner(System.in)) {
+    try (ConsoleReader reader = new ConsoleReader()) {
+      reader.setExpandEvents(false);
+
       host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
 
       password = commandLine.getOptionValue(PASSWORD_ARGS);
       if (password == null) {
-        print("please input your password:");
-        password = scanner.nextLine();
+        password = reader.readLine("please input your password:", '\0');
       }
       if (hasExecuteSQL) {
         try (IoTDBConnection connection = (IoTDBConnection) DriverManager
@@ -129,7 +131,7 @@ public class Cli extends AbstractCli {
         }
       }
 
-      receiveCommands(scanner);
+      receiveCommands(reader);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
     } catch (Exception e) {
@@ -137,7 +139,7 @@ public class Cli extends AbstractCli {
     }
   }
 
-  private static void receiveCommands(Scanner scanner) throws TException {
+  private static void receiveCommands(ConsoleReader reader) throws TException, IOException {
     try (IoTDBConnection connection = (IoTDBConnection) DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       String s;
@@ -149,8 +151,7 @@ public class Cli extends AbstractCli {
       displayLogo(properties.getVersion());
       println(IOTDB_CLI_PREFIX + "> login successfully");
       while (true) {
-        print(IOTDB_CLI_PREFIX + "> ");
-        s = scanner.nextLine();
+        s = reader.readLine(IOTDB_CLI_PREFIX + "> ", null);
         boolean continues = processCommand(s, connection);
         if (!continues) {
           break;
