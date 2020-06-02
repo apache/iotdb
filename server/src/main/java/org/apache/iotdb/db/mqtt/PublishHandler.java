@@ -94,11 +94,13 @@ public class PublishHandler extends AbstractInterceptHandler {
             plan.setTypes(new TSDataType[event.getValues().size()]);
             plan.setInferType(true);
 
-            boolean status;
+            boolean status = false;
             try {
                 status = executeNonQuery(plan);
             } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e ) {
-                throw new RuntimeException(e);
+                LOG.warn(
+                    "meet error when inserting device {}, measurements {}, at time {}, because ",
+                    event.getDevice(), event.getMeasurements(), event.getTimestamp(), e);
             }
 
             LOG.debug("event process result: {}", status);
