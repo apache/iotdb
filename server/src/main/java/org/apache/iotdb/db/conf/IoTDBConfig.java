@@ -834,10 +834,6 @@ public class IoTDBConfig {
     this.walFolder = walFolder;
   }
 
-  void setDataDirs(String[] dataDirs) {
-    this.dataDirs = dataDirs;
-  }
-
   public boolean isEnableNVM() {
     return enableNVM;
   }

@@ -1,5 +1,9 @@
 package org.apache.iotdb.db.utils.datastructure;
 
+import java.io.IOException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class AbstractTVList {
@@ -123,7 +127,7 @@ public abstract class AbstractTVList {
 
   protected abstract void releaseLastTimeArray();
 
-  public abstract void delete(long upperBound);
+  public abstract int delete(long upperBound);
 
   protected abstract void cloneAs(AbstractTVList abstractCloneList);
 
@@ -197,7 +201,6 @@ public abstract class AbstractTVList {
 
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
-   * @return
    */
   public long getTimeOffset() {
     return timeOffset;
@@ -207,9 +210,9 @@ public abstract class AbstractTVList {
     this.timeOffset = timeOffset;
   }
 
-  protected int compareForSort(int idx1, int idx2) {
-    long t1 = getTimeForSort(idx1);
-    long t2 = getTimeForSort(idx2);
+  protected int compare(int idx1, int idx2) {
+    long t1 = getTime(idx1);
+    long t2 = getTime(idx2);
     return Long.compare(t1, t2);
   }
 
@@ -225,7 +228,7 @@ public abstract class AbstractTVList {
     if (start == lo) {
       start++;
     }
-    for ( ; start < hi; start++) {
+    for (; start < hi; start++) {
 
       saveAsPivot(start);
       // Set left (and right) to the index where a[start] (pivot) belongs
@@ -239,7 +242,7 @@ public abstract class AbstractTVList {
        */
       while (left < right) {
         int mid = (left + right) >>> 1;
-        if (compareForSort(start, mid) < 0) {
+        if (compare(start, mid) < 0) {
           right = mid;
         } else {
           left = mid + 1;
@@ -256,7 +259,7 @@ public abstract class AbstractTVList {
        */
       int n = start - left;  // The number of elements to move
       for (int i = n; i >= 1; i--) {
-        setForSort(left + i - 1, left + i);
+        set(left + i - 1, left + i);
       }
       setPivotTo(left);
     }
@@ -264,14 +267,6 @@ public abstract class AbstractTVList {
       setToSorted(i, i);
     }
   }
-
-  private void setForSort(int src, int dest) {
-    long srcT = getTimeForSort(src);
-    Object srcV = getValueForSort(src);
-    setForSort(dest, srcT, srcV);
-  }
-
-  protected abstract Object getValueForSort(int index);
 
   protected void merge(int lo, int mid, int hi) {
     // end of sorting buffer
@@ -284,17 +279,17 @@ public abstract class AbstractTVList {
     // copy the minimum elements to sorting buffer until one sequence is exhausted
     int endSide = 0;
     while (endSide == 0) {
-      if (compareForSort(leftIdx, rightIdx) <= 0) {
+      if (compare(leftIdx, rightIdx) <= 0) {
         setToSorted(leftIdx, lo + tmpIdx);
-        tmpIdx ++;
-        leftIdx ++;
+        tmpIdx++;
+        leftIdx++;
         if (leftIdx == mid) {
           endSide = 1;
         }
       } else {
         setToSorted(rightIdx, lo + tmpIdx);
-        tmpIdx ++;
-        rightIdx ++;
+        tmpIdx++;
+        rightIdx++;
         if (rightIdx == hi) {
           endSide = 2;
         }
@@ -313,7 +308,7 @@ public abstract class AbstractTVList {
     }
     for (; start < end; start++) {
       setToSorted(start, lo + tmpIdx);
-      tmpIdx ++;
+      tmpIdx++;
     }
 
     // copy from sorting buffer to the original arrays so that they can be further sorted
@@ -324,17 +319,94 @@ public abstract class AbstractTVList {
     }
   }
 
-  protected void updateMinTimeAndSorted(long[] time) {
+  void updateMinTimeAndSorted(long[] time) {
+    updateMinTimeAndSorted(time, 0, time.length);
+  }
+
+  void updateMinTimeAndSorted(long[] time, int start, int end) {
     int length = time.length;
     long inPutMinTime = Long.MAX_VALUE;
     boolean inputSorted = true;
-    for (int i = 0; i < length; i++) {
+    for (int i = start; i < end; i++) {
       inPutMinTime = inPutMinTime <= time[i] ? inPutMinTime : time[i];
-      if (inputSorted && i < length - 1 && time[i] > time[i+1]) {
+      if (inputSorted && i < length - 1 && time[i] > time[i + 1]) {
         inputSorted = false;
       }
     }
     minTime = inPutMinTime < minTime ? inPutMinTime : minTime;
     sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
+  }
+
+  /**
+   * for log
+   */
+  public abstract TimeValuePair getTimeValuePair(int index);
+
+  protected abstract TimeValuePair getTimeValuePair(int index, long time,
+      Integer floatPrecision, TSEncoding encoding);
+
+  public IPointReader getIterator() {
+    return new Ite();
+  }
+
+  public IPointReader getIterator(int floatPrecision, TSEncoding encoding) {
+    return new Ite(floatPrecision, encoding);
+  }
+
+  private class Ite implements IPointReader {
+
+    private TimeValuePair cachedTimeValuePair;
+    private boolean hasCachedPair;
+    private int cur;
+    private Integer floatPrecision;
+    private TSEncoding encoding;
+
+    public Ite() {
+    }
+
+    public Ite(int floatPrecision, TSEncoding encoding) {
+      this.floatPrecision = floatPrecision;
+      this.encoding = encoding;
+    }
+
+    @Override
+    public boolean hasNextTimeValuePair() {
+      if (hasCachedPair) {
+        return true;
+      }
+
+      while (cur < size) {
+        long time = getTime(cur);
+        if (time < getTimeOffset() || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+          cur++;
+          continue;
+        }
+        cachedTimeValuePair = getTimeValuePair(cur, time, floatPrecision, encoding);
+        hasCachedPair = true;
+        cur++;
+        return true;
+      }
+      return hasCachedPair;
+    }
+
+    @Override
+    public TimeValuePair nextTimeValuePair() throws IOException {
+      if (hasCachedPair || hasNextTimeValuePair()) {
+        hasCachedPair = false;
+        return cachedTimeValuePair;
+      } else {
+        throw new IOException("no next time value pair");
+      }
+    }
+
+    @Override
+    public TimeValuePair currentTimeValuePair() {
+      return cachedTimeValuePair;
+    }
+
+    @Override
+    public void close() throws IOException {
+      // Do nothing because of this is an in memory object
+    }
   }
 }

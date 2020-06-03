@@ -33,10 +33,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class TVList extends AbstractTVList {
 
-  private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
-
-  protected static final int SMALL_ARRAY_LENGTH = 32;
-
   protected List<long[]> timestamps;
 
   public TVList() {
@@ -66,7 +62,7 @@ public abstract class TVList extends AbstractTVList {
   }
 
   @Override
-  public void delete(long upperBound) {
+  public int delete(long upperBound) {
     int newSize = 0;
     minTime = Long.MAX_VALUE;
     for (int i = 0; i < size; i++) {

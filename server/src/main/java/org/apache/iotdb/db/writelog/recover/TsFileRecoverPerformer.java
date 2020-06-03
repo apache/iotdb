@@ -36,7 +36,7 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.nvm.memtable.NVMPrimitiveMemTable;
 import org.apache.iotdb.db.nvm.recover.NVMMemtableRecoverPerformer;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -139,6 +139,7 @@ public class TsFileRecoverPerformer {
       reloadNVMData(restorableTsFileIOWriter);
     } else {
       redoLogs(restorableTsFileIOWriter);
+    }
 
     // clean logs
     try {
@@ -209,7 +210,7 @@ public class TsFileRecoverPerformer {
       throws StorageGroupProcessorException {
     NVMPrimitiveMemTable recoverMemTable = new NVMPrimitiveMemTable(storageGroupId);
 
-    NVMMemtableRecoverPerformer.getInstance().reconstructMemtable(recoverMemTable, tsFileResource);
+    NVMMemtableRecoverPerformer.getInstance().reconstructMemtable(recoverMemTable, resource);
     flushRecoverdMemtable(recoverMemTable, restorableTsFileIOWriter);
   }
 
