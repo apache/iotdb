@@ -80,7 +80,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}.", logDirectory);
     }
-    syncCounter = Metrics.counter("wal.sync.count", "_group", identifier.contains("-") ? identifier.substring(0, identifier.indexOf("-")) : identifier);
+    syncCounter = Metrics.counter("iotdb.wal.sync.count", "_group", identifier.contains("-") ? identifier.substring(0, identifier.indexOf("-")) : identifier);
   }
 
   @Override

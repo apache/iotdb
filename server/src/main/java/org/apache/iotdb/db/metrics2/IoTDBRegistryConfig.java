@@ -21,6 +21,9 @@ package org.apache.iotdb.db.metrics2;
 
 import io.micrometer.core.instrument.push.PushRegistryConfig;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+
 @SuppressWarnings({"java:S1214", "squid:S1214"}) // Structure is defined by Micrometer
 public interface IoTDBRegistryConfig extends PushRegistryConfig {
 
@@ -31,4 +34,8 @@ public interface IoTDBRegistryConfig extends PushRegistryConfig {
         return "iotdb";
     }
 
+    @Override
+    default Duration step() {
+        return Duration.of(1, ChronoUnit.SECONDS);
+    }
 }

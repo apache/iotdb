@@ -34,6 +34,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import io.micrometer.core.instrument.LongTaskTimer;
+import io.micrometer.core.instrument.Metrics;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -277,11 +280,28 @@ public class StorageEngine implements IService {
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
 
     // TODO monitor: update statistics
+    String storageGroupName = getStorageGroupName(insertPlan.getDeviceId());
+    Metrics.counter("iotdb.storage.insert.count", "_group", storageGroupName).increment();
     try {
+      long start = System.nanoTime();
       storageGroupProcessor.insert(insertPlan);
+      long stop = System.nanoTime();
+      Metrics.timer("iotdb.storage.insert.duration", "_group", storageGroupName).record(stop - start, TimeUnit.NANOSECONDS);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
+    } finally {
     }
+  }
+
+  private String getStorageGroupName(String deviceId) {
+    String storageGroupName;
+    try {
+      storageGroupName = MManager.getInstance().getStorageGroupName(deviceId);
+    } catch (MetadataException e) {
+      // Do nothing
+      storageGroupName = "unknown";
+    }
+    return storageGroupName;
   }
 
   /**
@@ -301,10 +321,15 @@ public class StorageEngine implements IService {
     }
 
     // TODO monitor: update statistics
+    String storageGroupName = getStorageGroupName(insertTabletPlan.getDeviceId());
+    Metrics.summary("iotdb.storage.insert.batch.size", "_group", storageGroupName).record(insertTabletPlan.getRowCount());
+    LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.storage.insert.batch.duration", "_group", storageGroupName).start();
     try {
       return storageGroupProcessor.insertTablet(insertTabletPlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
+    } finally {
+      sample.stop();
     }
   }
 

@@ -46,15 +46,26 @@ import io.micrometer.core.instrument.push.PushMeterRegistry;
 import io.micrometer.core.instrument.util.NamedThreadFactory;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -143,7 +154,7 @@ public class IoTDBRegistry extends PushMeterRegistry {
     @Override
     protected void publish() {
         if (!IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-            Metrics.timer("metrics.write.timer").record(this::writeMetrics);
+            Metrics.timer("iotdb.metrics.write.timer").record(this::writeMetrics);
         }
     }
 
@@ -160,7 +171,7 @@ public class IoTDBRegistry extends PushMeterRegistry {
                 c -> createQuery(conventionName, conventionTags, c.count()),
                 t -> createQueryForTimer(conventionName, conventionTags, t),
                 a -> {throw new NotImplementedException("");},
-                a -> {throw new NotImplementedException("");},
+                ltt -> createQueryForLTT(conventionName, conventionTags, ltt),
                 tg -> createQuery(conventionName, conventionTags, tg.value(TimeUnit.MILLISECONDS)),
                 fc -> createQuery(conventionName, conventionTags, fc.count()),
                 a -> {throw new NotImplementedException("");},
@@ -174,6 +185,12 @@ public class IoTDBRegistry extends PushMeterRegistry {
             try {
                 if (!IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
                     final PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(query);
+
+                    // To avoid parsing and auto generation of the measurements we could use the following commands:
+                    // MManager.getInstance().createTimeseries(new CreateTimeSeriesPlan(new Path(new String[]{ conventionName, "value"}), TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.GZIP, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), ""));
+                    // InsertPlan plan = new InsertPlan(conventionName, Instant.now().toEpochMilli(), new String[]{"value"}, new TSDataType[]{TSDataType.DOUBLE}, new Object[]{Double.NaN});
+                    // executor.processNonQuery(plan);
+
                     final boolean success = executor.processNonQuery(physicalPlan);
                     if (!success) {
                         logger.warn("Unable to process metrics query '{}'!", query);
@@ -194,10 +211,7 @@ public class IoTDBRegistry extends PushMeterRegistry {
             .map(s -> "\"" + s + "\"")
             .collect(Collectors.joining(","));
 
-        final String escapedPath = conventionName
-            .replace("load", "_load")
-            .replace("count", "_count")
-            .replace("time", "_time");
+        final String escapedPath = escapeName(conventionName);
 
         final String query;
         if (tagKeys.isEmpty()) {
@@ -217,10 +231,7 @@ public class IoTDBRegistry extends PushMeterRegistry {
             .map(s -> "\"" + s + "\"")
             .collect(Collectors.joining(","));
 
-        final String escapedPath = conventionName
-            .replace("load", "_load")
-            .replace("count", "_count")
-            .replace("time", "_time");
+        final String escapedPath = escapeName(conventionName);
 
         final String query;
         if (tagKeys.isEmpty()) {
@@ -229,6 +240,35 @@ public class IoTDBRegistry extends PushMeterRegistry {
             query = String.format(Locale.ENGLISH, "INSERT INTO root._metrics.%s (timestamp, %s, _count, _mean, _max, _total) VALUES (NOW(), %s, %d, %f, %f, %f)", escapedPath, tagKeys, tagValues, timer.count(), timer.mean(TimeUnit.MILLISECONDS), timer.max(TimeUnit.MILLISECONDS), timer.totalTime(TimeUnit.MILLISECONDS));
         }
         return query;
+    }
+
+    private String createQueryForLTT(String conventionName, List<Tag> conventionTags, LongTaskTimer timer) {
+        final String tagKeys = conventionTags.stream()
+                .map(Tag::getKey)
+                .collect(Collectors.joining(","));
+        final String tagValues = conventionTags.stream()
+                .map(Tag::getValue)
+                .map(s -> "\"" + s + "\"")
+                .collect(Collectors.joining(","));
+
+        final String escapedPath = escapeName(conventionName);
+
+        final String query;
+        if (tagKeys.isEmpty()) {
+            query = String.format(Locale.ENGLISH, "INSERT INTO root._metrics.%s (timestamp, _active, _duration) VALUES (NOW(), %d, %f)", conventionName, timer.activeTasks(), timer.duration(TimeUnit.MILLISECONDS));
+        } else {
+            query = String.format(Locale.ENGLISH, "INSERT INTO root._metrics.%s (timestamp, %s, _active, _duration) VALUES (NOW(), %s, %d, %f)", escapedPath, tagKeys, tagValues, timer.activeTasks(), timer.duration(TimeUnit.MILLISECONDS));
+        }
+        return query;
+    }
+
+    private String escapeName(String conventionName) {
+        return conventionName
+                .replace("load", "_load")
+                .replace("count", "_count")
+                .replace("time", "_time")
+                .replace("storage", "_storage")
+                .replace("insert", "_insert");
     }
 
 }

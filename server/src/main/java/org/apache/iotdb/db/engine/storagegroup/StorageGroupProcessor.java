@@ -38,8 +38,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import io.micrometer.core.instrument.LongTaskTimer;
+import io.micrometer.core.instrument.Metrics;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -1183,6 +1187,8 @@ public class StorageGroupProcessor {
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
+    LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.processor.query.active", "_group", storageGroupName).start();
+    long start = System.nanoTime();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
           upgradeSeqFileList, deviceId, measurementId, context, timeFilter, true);
@@ -1201,6 +1207,8 @@ public class StorageGroupProcessor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
+      Metrics.timer("iotdb.processor.query.duration", "_group", storageGroupName).record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+      sample.stop();
       insertLock.readLock().unlock();
       mergeLock.readLock().unlock();
     }
