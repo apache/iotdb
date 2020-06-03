@@ -42,7 +42,7 @@ public class SessionExample {
   public static void main(String[] args)
       throws IoTDBConnectionException, StatementExecutionException, BatchExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open(true);
+    session.open(false);
 
     try {
       session.setStorageGroup("root.sg1");

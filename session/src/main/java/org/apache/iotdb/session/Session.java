@@ -106,7 +106,7 @@ public class Session {
   }
 
   public synchronized void open() throws IoTDBConnectionException {
-    open(true, Config.DEFAULT_TIMEOUT_MS);
+    open(false, Config.DEFAULT_TIMEOUT_MS);
   }
 
   public synchronized void open(boolean enableRPCCompression) throws IoTDBConnectionException {
