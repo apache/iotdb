@@ -111,21 +111,21 @@ public class MManager {
     writeToLog = false;
 
     int cacheSize = config.getmManagerCacheSize();
-//    mNodeCache =
-//        new RandomDeleteCache<String, MNode>(cacheSize) {
-//
-//          @Override
-//          public MNode loadObjectByKey(String key) throws CacheException {
-//            lock.readLock().lock();
-//            try {
-//              return mtree.getNodeByPathWithStorageGroupCheck(key);
-//            } catch (MetadataException e) {
-//              throw new CacheException(e);
-//            } finally {
-//              lock.readLock().unlock();
-//            }
-//          }
-//        };
+    mNodeCache =
+        new RandomDeleteCache<String, MNode>(cacheSize) {
+
+          @Override
+          public MNode loadObjectByKey(String key) throws CacheException {
+            lock.readLock().lock();
+            try {
+              return mtree.getNodeByPathWithStorageGroupCheck(key);
+            } catch (MetadataException e) {
+              throw new CacheException(e);
+            } finally {
+              lock.readLock().unlock();
+            }
+          }
+        };
   }
 
   public static MManager getInstance() {
@@ -189,7 +189,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       this.mtree = new MTree();
-//      this.mNodeCache.clear();
+      this.mNodeCache.clear();
       this.tagIndex.clear();
       this.seriesNumberInStorageGroups.clear();
       this.maxSeriesNumberAmongStorageGroup = 0;
@@ -379,7 +379,7 @@ public class MManager {
         }
       }
 
-//      mNodeCache.clear();
+      mNodeCache.clear();
     }
     try {
       Set<String> emptyStorageGroups = new HashSet<>();
@@ -445,7 +445,7 @@ public class MManager {
       String storageGroupName = pair.left;
 
       // TODO: delete the path node and all its ancestors
-//      mNodeCache.clear();
+      mNodeCache.clear();
       try {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
       } catch (ConfigAdjusterException e) {
@@ -513,7 +513,7 @@ public class MManager {
         for (LeafMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
         }
-//        mNodeCache.clear();
+        mNodeCache.clear();
 
         if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
@@ -930,9 +930,9 @@ public class MManager {
     MNode node = null;
     boolean shouldSetStorageGroup;
     try {
-      node = mtree.getNodeByPathWithStorageGroupCheck(path);
+      node = mNodeCache.get(path);
       return node;
-    } catch (MetadataException e) {
+    } catch (CacheException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path);
       }
@@ -946,9 +946,9 @@ public class MManager {
     lock.writeLock().lock();
     try {
       try {
-        node = mtree.getNodeByPathWithStorageGroupCheck(path);
+        node = mNodeCache.get(path);
         return node;
-      } catch (MetadataException e) {
+      } catch (CacheException e) {
         shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
       }
 
