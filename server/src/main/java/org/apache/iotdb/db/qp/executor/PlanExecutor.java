@@ -890,7 +890,7 @@ public class PlanExecutor implements IPlanExecutor {
 
           schemas[i] = measurementNode.getSchema();
           // reset measurement to common name instead of alias
-          measurementList[i] = measurement;
+          measurementList[i] = measurementNode.getName();
 
           if (!insertPlan.isInferType()) {
             checkType(insertPlan, i, measurementNode.getSchema().getType());
