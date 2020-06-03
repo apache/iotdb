@@ -138,7 +138,7 @@ public class MTree implements Serializable {
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
    */
-  MNode getDeviceNodeWithAutoCreating(String deviceId) throws MetadataException {
+  MNode getDeviceNodeWithAutoCreating(String deviceId, int sgLevel) throws MetadataException {
     String[] nodeNames = MetaUtils.getNodeNames(deviceId);
     if (nodeNames.length <= 1 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(deviceId);
@@ -146,7 +146,12 @@ public class MTree implements Serializable {
     MNode cur = root;
     for (int i = 1; i < nodeNames.length; i++) {
       if (!cur.hasChild(nodeNames[i])) {
-        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        if (i == sgLevel) {
+          cur.addChild(nodeNames[i], new StorageGroupMNode(cur, nodeNames[i],
+              IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
+        } else {
+          cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        }
       }
       cur = cur.getChild(nodeNames[i]);
     }
@@ -205,7 +210,7 @@ public class MTree implements Serializable {
     } else {
       StorageGroupMNode storageGroupMNode =
           new StorageGroupMNode(
-              cur, nodeNames[i], path, IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
+              cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
       cur.addChild(nodeNames[i], storageGroupMNode);
     }
   }

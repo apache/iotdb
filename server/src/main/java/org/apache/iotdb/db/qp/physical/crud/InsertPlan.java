@@ -204,7 +204,6 @@ public class InsertPlan extends PhysicalPlan {
       failedMeasurements = new ArrayList<>();
     }
     failedMeasurements.add(measurements[index]);
-    schemas[index] = null;
     measurements[index] = null;
     types[index] = null;
     values[index] = null;
@@ -279,8 +278,10 @@ public class InsertPlan extends PhysicalPlan {
       }
     }
 
-    for (MeasurementSchema schema : schemas) {
-      schema.serializeTo(stream);
+    for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] != null) {
+        schemas[i].serializeTo(stream);
+      }
     }
 
     try {
