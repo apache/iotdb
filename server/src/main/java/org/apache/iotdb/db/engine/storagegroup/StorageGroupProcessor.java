@@ -819,7 +819,7 @@ public class StorageGroupProcessor {
       node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
-        if (plan.getSchemas()[i] == null) {
+        if (plan.getValues()[i] == null) {
           continue;
         }
         // Update cached last value with high priority

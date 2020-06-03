@@ -18,10 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.LinkedHashMap;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -40,8 +39,8 @@ public class InternalMNode extends MNode {
 
   public InternalMNode(MNode parent, String name) {
     super(parent, name);
-    this.children = new ConcurrentHashMap<>();
-    this.aliasChildren = new ConcurrentHashMap<>();
+    this.children = new LinkedHashMap<>();
+    this.aliasChildren = new LinkedHashMap<>();
   }
 
   @Override
@@ -50,7 +49,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void addChild(String name, MNode child) {
+  public synchronized void addChild(String name, MNode child) {
     children.put(name, child);
   }
 
@@ -90,7 +89,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public MNode getChild(String name) {
+  public synchronized MNode getChild(String name) {
     return children.containsKey(name) ? children.get(name) : aliasChildren.get(name);
   }
 

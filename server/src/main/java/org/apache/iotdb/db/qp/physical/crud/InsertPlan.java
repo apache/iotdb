@@ -188,6 +188,7 @@ public class InsertPlan extends PhysicalPlan {
               measurements[i], values[i], types[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markMeasurementInsertionFailed(i);
+            schemas[i] = null;
           } else {
             throw e;
           }
