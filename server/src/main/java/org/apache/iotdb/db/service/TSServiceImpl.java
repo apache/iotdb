@@ -1102,6 +1102,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public TSExecuteBatchStatementResp testInsertTablets(TSInsertTabletsReq req) throws TException {
+    logger.debug("Test insert batch request receive.");
+    return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   public TSStatus testInsertRecord(TSInsertRecordReq req) {
     logger.debug("Test insert row request receive.");
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);

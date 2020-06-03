@@ -157,6 +157,9 @@ public class PlanExecutor implements IPlanExecutor {
   // for administration
   private IAuthorizer authorizer;
 
+  private boolean enablePartialInsert = IoTDBDescriptor.getInstance().getConfig()
+      .isEnablePartialInsert();
+
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
     mManager = MManager.getInstance();
@@ -895,6 +898,9 @@ public class PlanExecutor implements IPlanExecutor {
       MeasurementSchema[] schemas = getSeriesSchemas(insertPlan);
       insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
+      if (insertPlan.getFailedMeasurements() != null) {
+        throw new StorageEngineException("failed to insert points " + insertPlan.getFailedMeasurements());
+      }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -946,7 +952,8 @@ public class PlanExecutor implements IPlanExecutor {
         Path path = new Path(deviceId, measurement);
         internalCreateTimeseries(path.toString(), dataType);
 
-        LeafMNode measurementNode = (LeafMNode) deviceNode.getChild(measurement);
+        LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(deviceNode, measurement,
+            deviceId);
         measurementSchema = measurementNode.getSchema();
         if(!isInferType) {
           checkType(insertPlan, loc, measurementNode.getSchema().getType());
@@ -954,7 +961,8 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } else if (deviceNode != null) {
       // device and measurement exists in MTree
-      LeafMNode measurementNode = (LeafMNode) deviceNode.getChild(measurement);
+      LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(deviceNode, measurement,
+          deviceId);
       measurementSchema = measurementNode.getSchema();
     } else {
       // device in not in MTree, try the cache
@@ -1077,7 +1085,7 @@ public class PlanExecutor implements IPlanExecutor {
           TSDataType dataType = dataTypes[i];
           internalCreateTimeseries(path.getFullPath(), dataType);
         }
-        LeafMNode measurementNode = (LeafMNode) node.getChild(measurementList[i]);
+        LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(node, measurementList[i], deviceId);
 
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {

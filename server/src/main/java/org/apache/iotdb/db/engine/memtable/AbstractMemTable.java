@@ -100,6 +100,10 @@ public abstract class AbstractMemTable implements IMemTable {
   public void insert(InsertPlan insertPlan) {
     for (int i = 0; i < insertPlan.getValues().length; i++) {
 
+      if (insertPlan.getSchemas()[i] == null) {
+        continue;
+      }
+
       Object value = insertPlan.getValues()[i];
       memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
 

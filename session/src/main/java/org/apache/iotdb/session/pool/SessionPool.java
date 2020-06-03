@@ -446,6 +446,28 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  public void testInsertTablets(Map<String, Tablet> tablets)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertTablets(tablets);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
   public void testInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, BatchExecutionException {
@@ -469,12 +491,58 @@ public class SessionPool {
    * This method NOT insert data into database and the server just return after accept the request,
    * this method should be used to test other time cost in client
    */
+  public void testInsertRecords(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList)
+      throws IoTDBConnectionException, BatchExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (BatchExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
   public void testInsertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
         session.testInsertRecord(deviceId, time, measurements, values);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * This method NOT insert data into database and the server just return after accept the request,
+   * this method should be used to test other time cost in client
+   */
+  public void testInsertRecord(String deviceId, long time, List<String> measurements,
+      List<TSDataType> types, List<Object> values) throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.testInsertRecord(deviceId, time, measurements, types, values);
         putBack(session);
         return;
       } catch (IoTDBConnectionException e) {
