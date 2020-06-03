@@ -1041,6 +1041,7 @@ public class PlanExecutor implements IPlanExecutor {
                   measurementNode.getSchema().getType()));
         }
         schemas[i] = measurementNode.getSchema();
+        // reset measurement to common name instead of alias
         measurementList[i] = measurementNode.getName();
       }
       insertTabletPlan.setSchemas(schemas);
