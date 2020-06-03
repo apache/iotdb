@@ -868,8 +868,14 @@ public class MManager {
     int tempCount = 0;
     while (childNode == null) {
       tempCount ++;
-      if (tempCount % 10000 == 0) {
-        logger.warn("try to get child {} 10000 times from {}", child, info);
+      try {
+        Thread.sleep(1);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Current thread is interrupted, ignore");
+      }
+      if (tempCount % 1000 == 0) {
+        logger.warn("try to get child {} for {} times from {}", child, tempCount, info);
       }
       childNode = parent.getChild(child);
     }
