@@ -33,7 +33,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
  * ModificationFile stores the Modifications of a TsFile or unseq file in another file in the same
  * directory. Methods in this class are highly synchronized for concurrency safety.
  */
-public class ModificationFile {
+public class ModificationFile implements AutoCloseable {
 
   public static final String FILE_SUFFIX = ".mods";
 

@@ -20,29 +20,25 @@ package org.apache.iotdb.tsfile.read.query.dataset;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public abstract class QueryDataSet {
 
   protected List<Path> paths;
   protected List<TSDataType> dataTypes;
 
-  private int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
-  private int rowOffset = 0;
-  private int alreadyReturnedRowNum = 0;
+  protected int rowLimit = 0; // rowLimit > 0 means the LIMIT constraint exists
+  protected int rowOffset = 0;
+  protected int alreadyReturnedRowNum = 0;
+
+  public QueryDataSet() {
+  }
 
   public QueryDataSet(List<Path> paths, List<TSDataType> dataTypes) {
     this.paths = paths;
     this.dataTypes = dataTypes;
-  }
-
-  public QueryDataSet(List<Path> paths) {
-    this.paths = paths;
   }
 
   public boolean hasNext() throws IOException {
@@ -90,37 +86,6 @@ public abstract class QueryDataSet {
 
   public void setDataTypes(List<TSDataType> dataTypes) {
     this.dataTypes = dataTypes;
-  }
-
-  protected Field getField(Object value, TSDataType dataType) {
-    if (value == null) {
-      return new Field(null);
-    }
-
-    Field field = new Field(dataType);
-    switch (dataType) {
-      case DOUBLE:
-        field.setDoubleV((double) value);
-        break;
-      case FLOAT:
-        field.setFloatV((float) value);
-        break;
-      case INT64:
-        field.setLongV((long) value);
-        break;
-      case INT32:
-        field.setIntV((int) value);
-        break;
-      case BOOLEAN:
-        field.setBoolV((boolean) value);
-        break;
-      case TEXT:
-        field.setBinaryV((Binary) value);
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + dataType);
-    }
-    return field;
   }
 
   public int getRowLimit() {

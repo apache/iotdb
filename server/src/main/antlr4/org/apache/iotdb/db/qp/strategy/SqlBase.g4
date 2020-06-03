@@ -24,25 +24,24 @@ singleStatement
     ;
 
 statement
-    : CREATE TIMESERIES timeseriesPath WITH attributeClauses #createTimeseries
+    : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
-    | INSERT INTO timeseriesPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | ALTER TIMESERIES fullPath alterClause #alterTimeseries
+    | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
-    | SET STORAGE GROUP TO prefixPath #setStorageGroup
-    | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
-    | CREATE PROPERTY ID #createProperty
-    | ADD LABEL label=ID TO PROPERTY propertyName=ID #addLabel
-    | DELETE LABEL label=ID FROM PROPERTY propertyName=ID #deleteLabel
-    | LINK prefixPath TO propertyLabelPair #linkPath
-    | UNLINK prefixPath FROM propertyLabelPair #unlinkPath
+    | SET STORAGE GROUP TO fullPath #setStorageGroup
+    | DELETE STORAGE GROUP fullPath (COMMA fullPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
-    | CREATE INDEX ON timeseriesPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
-    | DROP INDEX function=ID ON timeseriesPath #dropIndex //not support yet
-    | MERGE #merge //not support yet
+    | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
+    | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
+    | MERGE #merge
+    | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
+    | FULL MERGE #fullMerge
+    | CLEAR CACHE #clearcache
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=ID SET PASSWORD password=STRING_LITERAL #alterUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
@@ -70,13 +69,19 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
+    | SHOW TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
+    | SHOW STORAGE GROUP #showStorageGroup
+    | SHOW CHILD PATHS prefixPath? #showChildPaths
+    | SHOW DEVICES prefixPath? #showDevices
+    | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION #loadConfigurationStatement
-    | LOAD FILE autoCreateSchema? #loadFiles
-    | REMOVE FILE #removeFile
-    | MOVE FILE FILE #moveFile
+    | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
+    | REMOVE STRING_LITERAL #removeFile
+    | MOVE STRING_LITERAL STRING_LITERAL #moveFile
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
-    p1=timeseriesPath COMMA p2=timeseriesPath COMMA n1=timeValue COMMA n2=timeValue COMMA
+    p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
     epsilon=constant (COMMA alpha=constant COMMA beta=constant)?
     RR_BRACKET
     fromClause
@@ -91,14 +96,57 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
+    | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
+    | lastClause #lastElement
     ;
 
 functionCall
-    : ID LR_BRACKET suffixPath RR_BRACKET
+    : functionName LR_BRACKET suffixPath RR_BRACKET
+    ;
+
+functionName
+    : MIN_TIME
+    | MAX_TIME
+    | MIN_VALUE
+    | MAX_VALUE
+    | COUNT
+    | AVG
+    | FIRST_VALUE
+    | SUM
+    | LAST_VALUE
+    ;
+
+lastClause
+    : LAST suffixPath (COMMA suffixPath)*
+    ;
+
+alias
+    : LR_BRACKET ID RR_BRACKET
+    ;
+
+alterClause
+    : RENAME beforeName=ID TO currentName=ID
+    | SET property (COMMA property)*
+    | DROP ID (COMMA ID)*
+    | ADD TAGS property (COMMA property)*
+    | ADD ATTRIBUTES property (COMMA property)*
+    | UPSERT tagClause attributeClause
     ;
 
 attributeClauses
-    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding (COMMA COMPRESSOR OPERATOR_EQ compressor=propertyValue)? (COMMA property)*
+    : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA property)*
+    tagClause
+    attributeClause
+    ;
+
+attributeClause
+    : (ATTRIBUTES LR_BRACKET property (COMMA property)* RR_BRACKET)?
+    ;
+
+tagClause
+    : (TAGS LR_BRACKET property (COMMA property)* RR_BRACKET)?
     ;
 
 setClause
@@ -107,6 +155,13 @@ setClause
 
 whereClause
     : WHERE orExpression
+    ;
+
+showWhereClause
+    : WHERE (property | containsExpression)
+    ;
+containsExpression
+    : name=ID OPERATOR_CONTAINS value=propertyValue
     ;
 
 orExpression
@@ -118,10 +173,14 @@ andExpression
     ;
 
 predicate
-    : (suffixPath | prefixPath) comparisonOperator constant
+    : (TIME | TIMESTAMP | suffixPath | fullPath) comparisonOperator constant
+    | (TIME | TIMESTAMP | suffixPath | fullPath) inClause
     | OPERATOR_NOT? LR_BRACKET orExpression RR_BRACKET
     ;
 
+inClause
+    : OPERATOR_NOT? OPERATOR_IN LR_BRACKET constant (COMMA constant)* RR_BRACKET
+    ;
 
 fromClause
     : FROM prefixPath (COMMA prefixPath)*
@@ -130,17 +189,20 @@ fromClause
 specialClause
     : specialLimit
     | groupByClause specialLimit?
-    | fillClause slimitClause? groupByDeviceClause?
+    | groupByFillClause
+    | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
+    | alignByDeviceClauseOrDisableAlign
     ;
 
 specialLimit
-    : limitClause slimitClause? groupByDeviceClause?
-    | slimitClause limitClause? groupByDeviceClause?
-    | groupByDeviceClause
+    : limitClause slimitClause? alignByDeviceClauseOrDisableAlign?
+    | slimitClause limitClause? alignByDeviceClauseOrDisableAlign?
+    | alignByDeviceClauseOrDisableAlign
     ;
 
 limitClause
     : LIMIT INT offsetClause?
+    | offsetClause? LIMIT INT
     ;
 
 offsetClause
@@ -149,15 +211,25 @@ offsetClause
 
 slimitClause
     : SLIMIT INT soffsetClause?
+    | soffsetClause? SLIMIT INT
     ;
 
 soffsetClause
     : SOFFSET INT
     ;
 
-groupByDeviceClause
-    :
-    GROUP BY DEVICE
+alignByDeviceClause
+    : ALIGN BY DEVICE
+    | GROUP BY DEVICE
+    ;
+
+disableAlign
+    : DISABLE ALIGN
+    ;
+
+alignByDeviceClauseOrDisableAlign
+    : alignByDeviceClause
+    | disableAlign
     ;
 
 fillClause
@@ -172,9 +244,18 @@ groupByClause
       RR_BRACKET
     ;
 
+groupByFillClause
+    : GROUP BY LR_BRACKET
+      timeInterval
+      COMMA DURATION
+      RR_BRACKET
+      FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
+     ;
+
 typeClause
     : dataType LS_BRACKET linearClause RS_BRACKET
-    | dataType LS_BRACKET  previousClause RS_BRACKET
+    | dataType LS_BRACKET previousClause RS_BRACKET
+    | dataType LS_BRACKET previousUntilLastClause RS_BRACKET
     ;
 
 linearClause
@@ -183,6 +264,10 @@ linearClause
 
 previousClause
     : PREVIOUS (COMMA DURATION)?
+    ;
+
+previousUntilLastClause
+    : PREVIOUSUNTILLAST (COMMA DURATION)?
     ;
 
 indexWithClause
@@ -204,7 +289,7 @@ comparisonOperator
     ;
 
 insertColumnSpec
-    : LR_BRACKET TIMESTAMP (COMMA nodeNameWithoutStar)* RR_BRACKET
+    : LR_BRACKET (TIMESTAMP|TIME) (COMMA nodeNameWithoutStar)* RR_BRACKET
     ;
 
 insertValuesSpec
@@ -226,25 +311,24 @@ rootOrId
     ;
 
 timeInterval
-    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
+    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
+    | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
 
 timeValue
     : dateFormat
+    | dateExpression
     | INT
     ;
 
 propertyValue
-    : ID
-    | MINUS? INT
-    | MINUS? realLiteral
+    : INT
+    | ID
+    | STRING_LITERAL
+    | constant
     ;
 
-propertyLabelPair
-    : propertyName=ID DOT labelName=ID
-    ;
-
-timeseriesPath
+fullPath
     : ROOT (DOT nodeNameWithoutStar)*
     ;
 
@@ -258,19 +342,34 @@ suffixPath
 
 nodeName
     : ID
-    | INT
     | STAR
     | STRING_LITERAL
+    | ID STAR
+    | DURATION
+    | encoding
+    | dataType
+    | dateExpression
+    | MINUS? EXPONENT
+    | MINUS? INT
+    | booleanClause
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     ;
 
 nodeNameWithoutStar
-    : INT
-    | ID
+    : ID
     | STRING_LITERAL
+    | DURATION
+    | encoding
+    | dataType
+    | dateExpression
+    | MINUS? EXPONENT
+    | MINUS? INT
+    | booleanClause
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     ;
 
 dataType
-    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT
+    : INT32 | INT64 | FLOAT | DOUBLE | BOOLEAN | TEXT | ALL
     ;
 
 dateFormat
@@ -280,10 +379,15 @@ dateFormat
 
 constant
     : dateExpression
-    | ID
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
+    | booleanClause
+    ;
+
+booleanClause
+    : TRUE
+    | FALSE
     ;
 
 dateExpression
@@ -305,8 +409,8 @@ property
     ;
 
 autoCreateSchema
-    : ID
-    | ID INT
+    : booleanClause
+    | booleanClause INT
     ;
 
 //============================
@@ -406,6 +510,10 @@ LINEAR
 
 PREVIOUS
     : P R E V I O U S
+    ;
+
+PREVIOUSUNTILLAST
+    : P R E V I O U S U N T I L L A S T
     ;
 
 METADATA
@@ -515,6 +623,10 @@ BITMAP
 
 ADD
     : A D D
+    ;
+
+UPSERT
+    : U P S E R T
     ;
 
 VALUES
@@ -633,6 +745,113 @@ MOVE
     : M O V E
     ;
 
+CHILD
+    : C H I L D
+    ;
+
+PATHS
+    : P A T H S
+    ;
+
+DEVICES
+    : D E V I C E S
+    ;
+
+COUNT
+    : C O U N T
+    ;
+
+NODES
+    : N O D E S
+    ;
+
+LEVEL
+    : L E V E L
+    ;
+
+MIN_TIME
+    : M I N UNDERLINE T I M E
+    ;
+
+MAX_TIME
+    : M A X UNDERLINE T I M E
+    ;
+
+MIN_VALUE
+    : M I N UNDERLINE V A L U E
+    ;
+
+MAX_VALUE
+    : M A X UNDERLINE V A L U E
+    ;
+
+AVG
+    : A V G
+    ;
+
+FIRST_VALUE
+    : F I R S T UNDERLINE V A L U E
+    ;
+
+SUM
+    : S U M
+    ;
+
+LAST_VALUE
+    : L A S T UNDERLINE V A L U E
+    ;
+
+LAST
+    : L A S T
+    ;
+
+DISABLE
+    : D I S A B L E
+    ;
+
+ALIGN
+    : A L I G N
+    ;
+
+COMPRESSION
+    : C O M P R E S S I O N
+    ;
+
+TIME
+    : T I M E
+    ;
+
+ATTRIBUTES
+    : A T T R I B U T E S
+    ;
+
+TAGS
+    : T A G S
+    ;
+
+RENAME
+    : R E N A M E
+    ;
+
+FULL
+    : F U L L
+    ;
+
+CLEAR
+    : C L E A R
+    ;
+
+CACHE
+    : C A C H E
+    ;
+
+TRUE
+    : T R U E
+    ;
+
+FALSE
+    : F A L S E
+    ;
 //============================
 // End of the keywords list
 //============================
@@ -652,6 +871,8 @@ OPERATOR_LTE : '<=';
 
 OPERATOR_NEQ : '!=' | '<>';
 
+OPERATOR_IN : I N;
+
 OPERATOR_AND
     : A N D
     | '&'
@@ -666,6 +887,10 @@ OPERATOR_OR
 
 OPERATOR_NOT
     : N O T | '!'
+    ;
+
+OPERATOR_CONTAINS
+    : C O N T A I N S
     ;
 
 MINUS : '-';
@@ -686,6 +911,8 @@ L_BRACKET : '{';
 
 R_BRACKET : '}';
 
+UNDERLINE : '_';
+
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL
    | SINGLE_QUOTE_STRING_LITERAL
@@ -702,159 +929,163 @@ DURATION
 
 DATETIME
     : INT ('-'|'/') INT ('-'|'/') INT
-      (T | WS)
+      ((T | WS)
       INT ':' INT ':' INT (DOT INT)?
-      (('+' | '-') INT ':' INT)?
+      (('+' | '-') INT ':' INT)?)?
     ;
+
 /** Allow unicode rule/token names */
-ID			:	NameStartChar NameChar*;
+ID : FIRST_NAME_CHAR NAME_CHAR*;
 
-FILE
-    :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
+fragment
+NAME_CHAR
+    :   'A'..'Z'
+    |   'a'..'z'
+    |   '0'..'9'
+    |   '_'
+    |   '-'
+    |   ':'
+    |   '/'
+    |   '@'
+    |   '#'
+    |   '$'
+    |   '%'
+    |   '&'
+    |   '+'
+    |   CN_CHAR
     ;
 
 fragment
-NameChar
-	:   NameStartChar
-	|   '0'..'9'
-	|   '_'
-	|   '\u00B7'
-	|   '\u0300'..'\u036F'
-	|   '\u203F'..'\u2040'
-	;
+FIRST_NAME_CHAR
+    :   'A'..'Z'
+    |   'a'..'z'
+    |   '0'..'9'
+    |   '_'
+    |   '/'
+    |   '@'
+    |   '#'
+    |   '$'
+    |   '%'
+    |   '&'
+    |   '+'
+    |   CN_CHAR
+    ;
 
-fragment
-NameStartChar
-	:   'A'..'Z'
-	|   'a'..'z'
-	|   '\u00C0'..'\u00D6'
-	|   '\u00D8'..'\u00F6'
-	|   '\u00F8'..'\u02FF'
-	|   '\u0370'..'\u037D'
-	|   '\u037F'..'\u1FFF'
-	|   '\u200C'..'\u200D'
-	|   '\u2070'..'\u218F'
-	|   '\u2C00'..'\u2FEF'
-	|   '\u3001'..'\uD7FF'
-	|   '\uF900'..'\uFDCF'
-	|   '\uFDF0'..'\uFFFD'
-	; // ignores | ['\u10000-'\uEFFFF] ;
+fragment CN_CHAR
+  : '\u2E80'..'\u9FFF'
+  ;
 
 fragment DOUBLE_QUOTE_STRING_LITERAL
-	:	'"' ('\\' . | ~'"' )*? '"'
-	;
+    : '"' ('\\' . | ~'"' )*? '"'
+    ;
 
 fragment SINGLE_QUOTE_STRING_LITERAL
-  : '\'' ('\\' . | ~'\'' )*? '\''
-  ;
+    : '\'' ('\\' . | ~'\'' )*? '\''
+    ;
 
 //Characters and write it this way for case sensitivity
 fragment A
-  : 'a' | 'A'
-  ;
+    : 'a' | 'A'
+    ;
 
 fragment B
-  : 'b' | 'B'
-  ;
+    : 'b' | 'B'
+    ;
 
 fragment C
-	: 'c' | 'C'
-	;
+    : 'c' | 'C'
+    ;
 
 fragment D
-	: 'd' | 'D'
-	;
+    : 'd' | 'D'
+    ;
 
 fragment E
-	: 'e' | 'E'
-	;
+    : 'e' | 'E'
+    ;
 
 fragment F
-	: 'f' | 'F'
-	;
+    : 'f' | 'F'
+    ;
 
 fragment G
-	: 'g' | 'G'
-	;
+    : 'g' | 'G'
+    ;
 
 fragment H
-	: 'h' | 'H'
-	;
+    : 'h' | 'H'
+    ;
 
 fragment I
-	: 'i' | 'I'
-	;
+    : 'i' | 'I'
+    ;
 
 fragment J
-	: 'j' | 'J'
-	;
+    : 'j' | 'J'
+    ;
 
 fragment K
-	: 'k' | 'K'
-	;
+    : 'k' | 'K'
+    ;
 
 fragment L
-	: 'l' | 'L'
-	;
+    : 'l' | 'L'
+    ;
 
 fragment M
-	: 'm' | 'M'
-	;
+    : 'm' | 'M'
+    ;
 
 fragment N
-	: 'n' | 'N'
-	;
+    : 'n' | 'N'
+    ;
 
 fragment O
-	: 'o' | 'O'
-	;
+    : 'o' | 'O'
+    ;
 
 fragment P
-	: 'p' | 'P'
-	;
+    : 'p' | 'P'
+    ;
 
 fragment Q
-	: 'q' | 'Q'
-	;
+    : 'q' | 'Q'
+    ;
 
 fragment R
-	: 'r' | 'R'
-	;
+    : 'r' | 'R'
+    ;
 
 fragment S
-	: 's' | 'S'
-	;
+    : 's' | 'S'
+    ;
 
 fragment T
-	: 't' | 'T'
-	;
+    : 't' | 'T'
+    ;
 
 fragment U
-	: 'u' | 'U'
-	;
+    : 'u' | 'U'
+    ;
 
 fragment V
-	: 'v' | 'V'
-	;
+    : 'v' | 'V'
+    ;
 
 fragment W
-	: 'w' | 'W'
-	;
+    : 'w' | 'W'
+    ;
 
 fragment X
-	: 'x' | 'X'
-	;
+    : 'x' | 'X'
+    ;
 
 fragment Y
-	: 'y' | 'Y'
-	;
+    : 'y' | 'Y'
+    ;
 
 fragment Z
-	: 'z' | 'Z'
-	;
-
-fragment PATH_FRAGMENT
-    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
+    : 'z' | 'Z'
     ;
 
 WS

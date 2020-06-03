@@ -25,7 +25,7 @@ import java.util.Map;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public class PrimitiveMemTable extends AbstractMemTable {
 
@@ -38,9 +38,9 @@ public class PrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  protected IWritableMemChunk genMemSeries(String deviceId, String measurementId, TSDataType dataType) {
-    return new WritableMemChunk(dataType,
-        (TVList) TVListAllocator.getInstance().allocate(dataType, false));
+  protected IWritableMemChunk genMemSeries(String deviceId, String measurementId, MeasurementSchema schema) {
+    return new WritableMemChunk(schema,
+        (TVList) TVListAllocator.getInstance().allocate(schema.getType(), false));
   }
 
   @Override

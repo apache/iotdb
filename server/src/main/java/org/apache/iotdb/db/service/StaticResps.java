@@ -19,19 +19,27 @@
 
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VERSION;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -61,6 +69,39 @@ class StaticResps {
       Collections.singletonList(COLUMN_VERSION),
       Collections.singletonList(TSDataType.TEXT.toString()));
 
+  static final TSExecuteStatementResp SHOW_TIMESERIES_RESP = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_TIMESERIES, COLUMN_STORAGE_GROUP, COLUMN_TIMESERIES_DATATYPE,
+          COLUMN_TIMESERIES_ENCODING, COLUMN_TIMESERIES_COMPRESSION),
+      Arrays.asList(TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString(),
+          TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp SHOW_DEVICES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_DEVICES),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp SHOW_STORAGE_GROUP = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_STORAGE_GROUP),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp SHOW_CHILD_PATHS = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_CHILD_PATHS),
+      Collections.singletonList(TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp COUNT_TIMESERIES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
+
+  static final TSExecuteStatementResp COUNT_NODE_TIMESERIES = getNoTimeExecuteResp(
+      Arrays.asList(COLUMN_COLUMN, COLUMN_COUNT),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()));
+
+  static final TSExecuteStatementResp COUNT_NODES = getNoTimeExecuteResp(
+      Collections.singletonList(COLUMN_COUNT),
+      Collections.singletonList(TSDataType.INT32.toString()));
+
   static final TSExecuteStatementResp LIST_ROLE_RESP = getNoTimeExecuteResp(
       Collections.singletonList(COLUMN_ROLE),
       Collections.singletonList(TSDataType.TEXT.toString()));
@@ -77,11 +118,21 @@ class StaticResps {
       Collections.singletonList(COLUMN_PRIVILEGE),
       Collections.singletonList(TSDataType.TEXT.toString()));
 
+  static final TSExecuteStatementResp LAST_RESP = getExecuteResp(
+      Arrays.asList(COLUMN_TIMESERIES, COLUMN_VALUE),
+      Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()), false
+  );
+
   private static TSExecuteStatementResp getNoTimeExecuteResp(List<String> columns,
       List<String> dataTypes) {
+    return getExecuteResp(columns, dataTypes, true);
+  }
+
+  private static TSExecuteStatementResp getExecuteResp(List<String> columns,
+      List<String> dataTypes, boolean ignoreTimeStamp) {
     TSExecuteStatementResp resp =
-        TSServiceImpl.getTSExecuteStatementResp(TSServiceImpl.getStatus(TSStatusCode.SUCCESS_STATUS));
-    resp.setIgnoreTimeStamp(true);
+        RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+    resp.setIgnoreTimeStamp(ignoreTimeStamp);
     resp.setColumns(columns);
     resp.setDataTypeList(dataTypes);
     return resp;

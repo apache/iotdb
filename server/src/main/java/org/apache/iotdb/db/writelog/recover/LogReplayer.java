@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,20 +28,22 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.exception.storageGroup.StorageGroupProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,14 +52,12 @@ import org.slf4j.LoggerFactory;
  * WALs from the logNode and redoes them into a given MemTable and ModificationFile.
  */
 public class LogReplayer {
-  Logger logger = LoggerFactory.getLogger(LogReplayer.class);
+  private Logger logger = LoggerFactory.getLogger(LogReplayer.class);
   private String logNodePrefix;
   private String insertFilePath;
   private ModificationFile modFile;
   private VersionController versionController;
   private TsFileResource currentTsFileResource;
-  // schema is used to get the measurement data type
-  private Schema schema;
   private IMemTable recoverMemTable;
 
   // unsequence file tolerates duplicated data
@@ -67,17 +66,14 @@ public class LogReplayer {
   private Map<String, Long> tempStartTimeMap = new HashMap<>();
   private Map<String, Long> tempEndTimeMap = new HashMap<>();
 
-  public LogReplayer(String logNodePrefix, String insertFilePath,
-      ModificationFile modFile,
-      VersionController versionController,
-      TsFileResource currentTsFileResource,
-      Schema schema, IMemTable memTable, boolean acceptDuplication) {
+  public LogReplayer(String logNodePrefix, String insertFilePath, ModificationFile modFile,
+      VersionController versionController, TsFileResource currentTsFileResource,
+      IMemTable memTable, boolean acceptDuplication) {
     this.logNodePrefix = logNodePrefix;
     this.insertFilePath = insertFilePath;
     this.modFile = modFile;
     this.versionController = versionController;
     this.currentTsFileResource = currentTsFileResource;
-    this.schema = schema;
     this.recoverMemTable = memTable;
     this.acceptDuplication = acceptDuplication;
   }
@@ -86,32 +82,37 @@ public class LogReplayer {
    * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the WALs from
    * the logNode and redoes them into a given MemTable and ModificationFile.
    */
-  public void replayLogs() throws StorageGroupProcessorException {
+  public void replayLogs() {
     WriteLogNode logNode = MultiFileLogNodeManager.getInstance().getNode(
         logNodePrefix + FSFactoryProducer.getFSFactory().getFile(insertFilePath).getName());
 
     ILogReader logReader = logNode.getLogReader();
     try {
       while (logReader.hasNext()) {
-        PhysicalPlan plan = logReader.next();
-
-        if (plan instanceof InsertPlan) {
-          replayInsert((InsertPlan) plan);
-        } else if (plan instanceof DeletePlan) {
-          replayDelete((DeletePlan) plan);
-        } else if (plan instanceof UpdatePlan) {
-          replayUpdate((UpdatePlan) plan);
-        } else if (plan instanceof BatchInsertPlan) {
-          replayBatchInsert((BatchInsertPlan) plan);
+        try {
+          PhysicalPlan plan = logReader.next();
+          if (plan instanceof InsertPlan) {
+            replayInsert((InsertPlan) plan);
+          } else if (plan instanceof DeletePlan) {
+            replayDelete((DeletePlan) plan);
+          } else if (plan instanceof UpdatePlan) {
+            replayUpdate((UpdatePlan) plan);
+          } else if (plan instanceof InsertTabletPlan) {
+            replayBatchInsert((InsertTabletPlan) plan);
+          }
+        } catch (Exception e) {
+          logger.error("recover wal of {} failed", insertFilePath, e);
         }
       }
     } catch (IOException e) {
-      throw new StorageGroupProcessorException("Cannot replay logs" + e.getMessage());
-    } catch (QueryProcessException e) {
-      throw new StorageGroupProcessorException(
-          "Cannot replay logs for query processor exception" + e.getMessage());
+      logger.error("meet error when redo wal of {}", insertFilePath, e);
     } finally {
       logReader.close();
+      try {
+        modFile.close();
+      } catch (IOException e) {
+        logger.error("Canno close the modifications file {}", modFile.getFilePath(), e);
+      }
     }
     tempStartTimeMap.forEach((k, v) -> currentTsFileResource.updateStartTime(k, v));
     tempEndTimeMap.forEach((k, v) -> currentTsFileResource.updateEndTime(k, v));
@@ -126,35 +127,40 @@ public class LogReplayer {
     }
   }
 
-  private void replayBatchInsert(BatchInsertPlan batchInsertPlan) throws QueryProcessException {
+  private void replayBatchInsert(InsertTabletPlan insertTabletPlan)
+      throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      Long lastEndTime = currentTsFileResource.getEndTimeMap().get(batchInsertPlan.getDeviceId());
-      if (lastEndTime != null && lastEndTime >= batchInsertPlan.getMinTime() &&
+      long lastEndTime = currentTsFileResource.getEndTime(insertTabletPlan.getDeviceId());
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= insertTabletPlan.getMinTime() &&
           !acceptDuplication) {
         return;
       }
-      Long startTime = tempStartTimeMap.get(batchInsertPlan.getDeviceId());
-      if (startTime == null || startTime > batchInsertPlan.getMinTime()) {
-        tempStartTimeMap.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMinTime());
+      Long startTime = tempStartTimeMap.get(insertTabletPlan.getDeviceId());
+      if (startTime == null || startTime > insertTabletPlan.getMinTime()) {
+        tempStartTimeMap.put(insertTabletPlan.getDeviceId(), insertTabletPlan.getMinTime());
       }
-      Long endTime = tempEndTimeMap.get(batchInsertPlan.getDeviceId());
-      if (endTime == null || endTime < batchInsertPlan.getMaxTime()) {
-        tempEndTimeMap.put(batchInsertPlan.getDeviceId(), batchInsertPlan.getMaxTime());
+      Long endTime = tempEndTimeMap.get(insertTabletPlan.getDeviceId());
+      if (endTime == null || endTime < insertTabletPlan.getMaxTime()) {
+        tempEndTimeMap.put(insertTabletPlan.getDeviceId(), insertTabletPlan.getMaxTime());
       }
     }
-    ArrayList<Integer> index = new ArrayList<>();
-    for (int i = 0; i < batchInsertPlan.getRowCount(); i++) {
-      index.add(i);
+    MeasurementSchema[] schemas;
+    try {
+      schemas = MManager.getInstance().getSchemas(insertTabletPlan.getDeviceId(), insertTabletPlan
+          .getMeasurements());
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
-    recoverMemTable.insertBatch(batchInsertPlan, index);
+    insertTabletPlan.setSchemas(schemas);
+    recoverMemTable.insertTablet(insertTabletPlan, 0, insertTabletPlan.getRowCount());
   }
 
-  private void replayInsert(InsertPlan insertPlan) throws QueryProcessException {
+  private void replayInsert(InsertPlan insertPlan) {
     if (currentTsFileResource != null) {
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
-      Long lastEndTime = currentTsFileResource.getEndTimeMap().get(insertPlan.getDeviceId());
-      if (lastEndTime != null && lastEndTime >= insertPlan.getTime() &&
+      long lastEndTime = currentTsFileResource.getEndTime(insertPlan.getDeviceId());
+      if (lastEndTime != Long.MIN_VALUE && lastEndTime >= insertPlan.getTime() &&
           !acceptDuplication) {
         return;
       }
@@ -167,13 +173,10 @@ public class LogReplayer {
         tempEndTimeMap.put(insertPlan.getDeviceId(), insertPlan.getTime());
       }
     }
-    String[] measurementList = insertPlan.getMeasurements();
-    TSDataType[] dataTypes = new TSDataType[measurementList.length];
-    for (int i = 0; i < measurementList.length; i++) {
-      dataTypes[i] = schema.getMeasurementDataType(measurementList[i]);
-    }
-    insertPlan.setDataTypes(dataTypes);
     try {
+      MeasurementSchema[] schemas =
+          MManager.getInstance().getSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements());
+      insertPlan.setSchemasAndTransferType(schemas);
       recoverMemTable.insert(insertPlan);
       // TODO how about NVM
     } catch (Exception e) {

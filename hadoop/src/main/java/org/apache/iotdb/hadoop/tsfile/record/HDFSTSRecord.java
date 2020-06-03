@@ -33,9 +33,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * @author Yuan Tian
- */
 public class HDFSTSRecord implements Writable {
 
 

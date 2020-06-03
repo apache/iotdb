@@ -1,33 +1,34 @@
-#  Licensed to the Apache Software Foundation (ASF) under one
-#  or more contributor license agreements.  See the NOTICE file
-#  distributed with this work for additional information
-#  regarding copyright ownership.  The ASF licenses this file
-#  to you under the Apache License, Version 2.0 (the
-#  "License"); you may not use this file except in compliance
-#  with the License.  You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#     http://www.apache.org/licenses/LICENSE-2.0
 #
-#  Unless required by applicable law or agreed to in writing,
-#  software distributed under the License is distributed on an
-#  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-#  KIND, either express or implied.  See the License for the
-#  specific language governing permissions and limitations
-#  under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 #
 
 import sys, struct
 
+# If you generate IoTDB python library manually, add it to your python path
 sys.path.append("../target")
 
 from thrift.protocol import TBinaryProtocol
 from thrift.transport import TSocket, TTransport
 
-from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertionReq, \
-    TSBatchInsertionReq, TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, \
+from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, \
+    TSInsertTabletReq, TSExecuteStatementReq, TSOpenSessionReq, TSQueryDataSet, \
     TSFetchResultsReq, TSCloseOperationReq, \
     TSCloseSessionReq
-from iotdb.rpc.ttypes import TSProtocolVersion
+from iotdb.rpc.ttypes import TSProtocolVersion, TSFetchMetadataReq
 
 TSDataType = {
     'BOOLEAN': 0,
@@ -58,6 +59,20 @@ Compressor = {
     'PAA': 5,
     'PLA': 6
 }
+
+
+class Enum:
+    def __init__(self):
+        pass
+
+
+MetaQueryTypes = Enum()
+MetaQueryTypes.CATALOG_COLUMN = "COLUMN"
+MetaQueryTypes.CATALOG_TIMESERIES = "SHOW_TIMESERIES"
+MetaQueryTypes.CATALOG_STORAGE_GROUP = "SHOW_STORAGE_GROUP"
+MetaQueryTypes.CATALOG_DEVICES = "SHOW_DEVICES"
+MetaQueryTypes.CATALOG_CHILD_PATHS = "SHOW_CHILD_PATHS"
+
 
 # used to do `and` operation with bitmap to judge whether the value is null
 flag = 0x80
@@ -149,14 +164,15 @@ if __name__ == '__main__':
     transport.open()
 
     # Authentication
-    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
+    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
     resp = client.openSession(TSOpenSessionReq(client_protocol=clientProtocol,
                                                username=username,
                                                password=password))
     if resp.serverProtocolVersion != clientProtocol:
         print('Inconsistent protocol, server version: %d, client version: %d'
               % (resp.serverProtocolVersion, clientProtocol))
-        exit()
+        if resp.serverProtocolVersion > clientProtocol:
+          exit()
     sessionId = resp.sessionId
 
     # This is necessary for resource control
@@ -210,7 +226,7 @@ if __name__ == '__main__':
     # insert a single row
     values = ["1", "11", "1.1", "11.1", "TRUE", "\'text0\'"]
     timestamp = 1
-    status = client.insert(TSInsertionReq(sessionId, deviceId, measurements,
+    status = client.insert(TSInsertRecordReq(sessionId, deviceId, measurements,
                                           values, timestamp))
     print(status.status)
 
@@ -237,8 +253,9 @@ if __name__ == '__main__':
                               bytes('\'text2\'', encoding),
                               len(bytes('\'text3\'', encoding)),
                               bytes('\'text3\'', encoding)))
+    # warning: the data in batch must be sorted by time
     times.extend(struct.pack(time_pack_str, 2, 3, 4))
-    resp = client.insertBatch(TSBatchInsertionReq(sessionId,deviceId,
+    resp = client.insertTablet(TSInsertTabletReq(sessionId,deviceId,
                                                   measurements, values,
                                                   times, dataTypes, rowCnt))
     status = resp.status
@@ -277,6 +294,28 @@ if __name__ == '__main__':
     closeReq = TSCloseOperationReq(sessionId)
     closeReq.queryId = queryId
     client.closeOperation(closeReq)
+
+    # query metadata
+    metaReq = TSFetchMetadataReq(sessionId=sessionId, type=MetaQueryTypes.CATALOG_DEVICES)
+    print(client.fetchMetadata(metaReq).devices)
+
+    metaReq = TSFetchMetadataReq(sessionId=sessionId,
+                                 type=MetaQueryTypes.CATALOG_TIMESERIES,
+                                 columnPath='root')
+    print(client.fetchMetadata(metaReq).timeseriesList)
+
+    metaReq = TSFetchMetadataReq(sessionId=sessionId,
+                                 type=MetaQueryTypes.CATALOG_CHILD_PATHS,
+                                 columnPath='root')
+    print(client.fetchMetadata(metaReq).childPaths)
+
+    metaReq = TSFetchMetadataReq(sessionId=sessionId, type=MetaQueryTypes.CATALOG_STORAGE_GROUP)
+    print(client.fetchMetadata(metaReq).storageGroups)
+
+    metaReq = TSFetchMetadataReq(sessionId=sessionId,
+                                 type=MetaQueryTypes.CATALOG_COLUMN,
+                                 columnPath='root.group1.s1')
+    print(client.fetchMetadata(metaReq).dataType)
 
     # and do not forget to close the session before exiting
     client.closeSession(TSCloseSessionReq(sessionId))

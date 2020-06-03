@@ -19,18 +19,19 @@
 package org.apache.iotdb.db.qp.strategy.optimizer;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromOperator;
+import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectOperator;
@@ -47,11 +48,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
   private static final String WARNING_NO_SUFFIX_PATHS = "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
   private static final String WARNING_NO_PREFIX_PATHS = "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
 
-  private IQueryProcessExecutor executor;
-
-  public ConcatPathOptimizer(IQueryProcessExecutor executor) {
-    this.executor = executor;
-  }
 
   @Override
   public Operator transform(Operator operator) throws LogicalOptimizeException {
@@ -87,8 +83,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     checkAggrOfSelectOperator(select);
 
+    boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (!((QueryOperator) operator).isGroupByDevice()) {
+      if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator).isLastQuery()) {
         concatSelect(prefixPaths, select); // concat and remove star
 
         if (((QueryOperator) operator).hasSlimit()) {
@@ -96,28 +93,34 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           int seriesOffset = ((QueryOperator) operator).getSeriesOffset();
           slimitTrim(select, seriesLimit, seriesOffset);
         }
-
       } else {
+        isAlignByDevice = true;
         for (Path path : initialSuffixPaths) {
           String device = path.getDevice();
           if (!device.isEmpty()) {
             throw new LogicalOptimizeException(
-                "The paths of the SELECT clause can only be single level. In other words, "
-                    + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
-                    + " For more details please refer to the SQL document.");
+                    "The paths of the SELECT clause can only be single level. In other words, "
+                            + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                            + " For more details please refer to the SQL document.");
           }
         }
-        // GROUP_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
+        // ALIGN_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
         // i.e., PhysicalGenerator.transformQuery
       }
     }
 
     // concat filter
     FilterOperator filter = sfwOperator.getFilterOperator();
+    Set<Path> filterPaths = new HashSet<>();
     if (filter == null) {
       return operator;
     }
-    sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter));
+    if(!isAlignByDevice){
+      sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter, filterPaths));
+    }
+    sfwOperator.getFilterOperator().setPathSet(filterPaths);
+    // GROUP_BY_DEVICE leaves the concatFilter to PhysicalGenerator to optimize filter without prefix first
+
     return sfwOperator;
   }
 
@@ -181,7 +184,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * @param seriesLimit is ensured to be positive integer
    * @param seriesOffset is ensured to be non-negative integer
    */
-  public void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset)
+  private void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset)
       throws LogicalOptimizeException {
     List<Path> suffixList = select.getSuffixPaths();
     List<String> aggregations = select.getAggregations();
@@ -208,29 +211,32 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
   }
 
-  private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator)
+  private FilterOperator concatFilter(List<Path> fromPaths, FilterOperator operator,
+      Set<Path> filterPaths)
       throws LogicalOptimizeException {
     if (!operator.isLeaf()) {
       List<FilterOperator> newFilterList = new ArrayList<>();
       for (FilterOperator child : operator.getChildren()) {
-        newFilterList.add(concatFilter(fromPaths, child));
+        newFilterList.add(concatFilter(fromPaths, child, filterPaths));
       }
       operator.setChildren(newFilterList);
       return operator;
     }
-    BasicFunctionOperator basicOperator = (BasicFunctionOperator) operator;
-    Path filterPath = basicOperator.getSinglePath();
+    FunctionOperator functionOperator = (FunctionOperator) operator;
+    Path filterPath = functionOperator.getSinglePath();
     // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
     if (SQLConstant.isReservedPath(filterPath) || filterPath.startWith(SQLConstant.ROOT)) {
+      filterPaths.add(filterPath);
       return operator;
     }
     List<Path> concatPaths = new ArrayList<>();
     fromPaths.forEach(fromPath -> concatPaths.add(Path.addPrefixPath(filterPath, fromPath)));
     List<Path> noStarPaths = removeStarsInPathWithUnique(concatPaths);
+    filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
       // Transform "select s1 from root.car.* where s1 > 10" to
       // "select s1 from root.car.* where root.car.*.s1 > 10"
-      basicOperator.setSinglePath(noStarPaths.get(0));
+      functionOperator.setSinglePath(noStarPaths.get(0));
       return operator;
     } else {
       // Transform "select s1 from root.car.d1, root.car.d2 where s1 > 10" to
@@ -238,15 +244,15 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // Note that,
       // two fork tree has to be maintained while removing stars in paths for DnfFilterOptimizer
       // requirement.
-      return constructTwoForkFilterTreeWithAnd(noStarPaths, operator);
+      return constructBinaryFilterTreeWithAnd(noStarPaths, operator);
     }
   }
 
-  private FilterOperator constructTwoForkFilterTreeWithAnd(List<Path> noStarPaths,
+  private FilterOperator constructBinaryFilterTreeWithAnd(List<Path> noStarPaths,
       FilterOperator operator)
       throws LogicalOptimizeException {
-    FilterOperator filterTwoFolkTree = new FilterOperator(SQLConstant.KW_AND);
-    FilterOperator currentNode = filterTwoFolkTree;
+    FilterOperator filterBinaryTree = new FilterOperator(SQLConstant.KW_AND);
+    FilterOperator currentNode = filterBinaryTree;
     for (int i = 0; i < noStarPaths.size(); i++) {
       if (i > 0 && i < noStarPaths.size() - 1) {
         FilterOperator newInnerNode = new FilterOperator(SQLConstant.KW_AND);
@@ -261,7 +267,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         throw new LogicalOptimizeException(e.getMessage());
       }
     }
-    return filterTwoFolkTree;
+    return filterBinaryTree;
   }
 
   /**
@@ -272,23 +278,16 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    */
   private List<Path> removeStarsInPathWithUnique(List<Path> paths) throws LogicalOptimizeException {
     List<Path> retPaths = new ArrayList<>();
-    LinkedHashMap<String, Integer> pathMap = new LinkedHashMap<>();
+    HashSet<String> pathSet = new HashSet<>();
     try {
       for (Path path : paths) {
-        List<String> all;
-        all = executor.getAllPaths(path.getFullPath());
-        if (all.isEmpty()) {
-          throw new LogicalOptimizeException(
-              "Path: \"" + path + "\" doesn't correspond to any known time series");
-        }
-        for (String subPath : all) {
-          if (!pathMap.containsKey(subPath)) {
-            pathMap.put(subPath, 1);
+        List<Path> all = removeWildcard(path.getFullPath());
+        for (Path subPath : all) {
+          if (!pathSet.contains(subPath.getFullPath())) {
+            pathSet.add(subPath.getFullPath());
+            retPaths.add(subPath);
           }
         }
-      }
-      for (String pathStr : pathMap.keySet()) {
-        retPaths.add(new Path(pathStr));
       }
     } catch (MetadataException e) {
       throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
@@ -302,13 +301,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<String> actualPaths = executor.getAllPaths(paths.get(i).getFullPath());
-        if (actualPaths.isEmpty()) {
-          throw new LogicalOptimizeException(
-              "Path: \"" + paths.get(i) + "\" doesn't correspond to any known time series");
-        }
-        for (String actualPath : actualPaths) {
-          retPaths.add(new Path(actualPath));
+        List<Path> actualPaths = removeWildcard(paths.get(i).getFullPath());
+        for (Path actualPath : actualPaths) {
+          retPaths.add(actualPath);
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
             newAggregations.add(afterConcatAggregations.get(i));
           }
@@ -319,5 +314,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     selectOperator.setSuffixPathList(retPaths);
     selectOperator.setAggregations(newAggregations);
+  }
+
+  protected List<Path> removeWildcard(String path) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesPath(path);
   }
 }

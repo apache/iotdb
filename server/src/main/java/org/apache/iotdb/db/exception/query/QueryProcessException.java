@@ -19,18 +19,22 @@
 
 package org.apache.iotdb.db.exception.query;
 
-import org.apache.iotdb.db.exception.ProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class QueryProcessException extends ProcessException {
+public class QueryProcessException extends IoTDBException {
 
   private static final long serialVersionUID = -683191083844850054L;
 
   public QueryProcessException(String message) {
-    super(message);
+    super(message, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
   }
 
-  public QueryProcessException(ProcessException e) {
-    super(e.getMessage());
-    errorCode = e.getErrorCode();
+  public QueryProcessException(String message, int errorCode) {
+    super(message, errorCode);
+  }
+
+  public QueryProcessException(IoTDBException e) {
+    super(e, e.getErrorCode());
   }
 }

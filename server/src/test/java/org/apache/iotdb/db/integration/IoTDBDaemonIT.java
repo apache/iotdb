@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.AfterClass;
@@ -28,7 +27,7 @@ import org.junit.Test;
 
 import java.sql.*;
 
-import static org.apache.iotdb.db.integration.Constant.*;
+import static org.apache.iotdb.db.constant.TestConstant.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -38,7 +37,6 @@ import static org.junit.Assert.fail;
  */
 public class IoTDBDaemonIT {
 
-  private static IoTDB daemon;
   private static String[] sqls = new String[]{
 
       "SET STORAGE GROUP TO root.vehicle.d0", "SET STORAGE GROUP TO root.vehicle.d1",
@@ -102,8 +100,6 @@ public class IoTDBDaemonIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -112,7 +108,7 @@ public class IoTDBDaemonIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
+
     EnvironmentUtils.cleanEnv();
   }
 
@@ -161,7 +157,7 @@ public class IoTDBDaemonIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,root.vehicle.d0.s0,root.vehicle.d0.s0,root.vehicle.d0.s1,",
+        assertEquals("Time,root.vehicle.d0.s0,root.vehicle.d0.s0,root.vehicle.d0.s1,",
             header.toString());
 
         int cnt = 0;
@@ -170,10 +166,10 @@ public class IoTDBDaemonIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        Assert.assertEquals(12, cnt);
+        assertEquals(12, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -184,7 +180,7 @@ public class IoTDBDaemonIT {
   @Test
   public void selectWithDuplicatedColumnsTest2() throws ClassNotFoundException {
     String[] retArray = new String[]{
-        "0,11,11,42988.0,11,"
+        "11,11,42988.0,11,"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -201,7 +197,7 @@ public class IoTDBDaemonIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
+        assertEquals("count(root.vehicle.d0.s0),count(root.vehicle.d0.s0),"
             + "sum(root.vehicle.d0.s0),count(root.vehicle.d0.s1),", header.toString());
 
         int cnt = 0;
@@ -210,10 +206,10 @@ public class IoTDBDaemonIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -247,10 +243,10 @@ public class IoTDBDaemonIT {
               + resultSet.getString(d0s1) + "," + resultSet.getString(d0s2) + "," + resultSet
               .getString(d0s3)
               + "," + resultSet.getString(d1s0);
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(17, cnt);
+        assertEquals(17, cnt);
       }
 
       retArray = new String[]{"100,true"};
@@ -261,10 +257,10 @@ public class IoTDBDaemonIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s4);
-          Assert.assertEquals(ans, retArray[cnt]);
+          assertEquals(ans, retArray[cnt]);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -288,10 +284,10 @@ public class IoTDBDaemonIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s2);
-          Assert.assertEquals(ans, retArray[cnt]);
+          assertEquals(ans, retArray[cnt]);
           cnt++;
         }
-        Assert.assertEquals(6, cnt);
+        assertEquals(6, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -322,7 +318,7 @@ public class IoTDBDaemonIT {
           assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(9, cnt);
+        assertEquals(9, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -348,10 +344,10 @@ public class IoTDBDaemonIT {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
               + resultSet.getString(d0s1) + "," + resultSet.getString(d1s0);
-          Assert.assertEquals(ans, retArray[cnt]);
+          assertEquals(ans, retArray[cnt]);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -377,10 +373,10 @@ public class IoTDBDaemonIT {
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s0) + ","
               + resultSet.getString(d0s1);
-          Assert.assertEquals(ans, retArray[cnt]);
+          assertEquals(ans, retArray[cnt]);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
+        assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -405,9 +401,9 @@ public class IoTDBDaemonIT {
         int cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(d0s1);
-          Assert.assertEquals(retArray[cnt++], ans);
+          assertEquals(retArray[cnt++], ans);
         }
-        Assert.assertEquals(3, cnt);
+        assertEquals(3, cnt);
       }
 
     } catch (Exception e) {

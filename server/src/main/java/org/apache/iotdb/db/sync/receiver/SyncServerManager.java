@@ -20,6 +20,7 @@ package org.apache.iotdb.db.sync.receiver;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -34,7 +35,6 @@ import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncService.Processor;
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
@@ -53,7 +53,10 @@ public class SyncServerManager implements IService {
 
   private IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
 
-  private Thread syncServerThread;
+  private SyncServiceThread syncServerThread;
+
+  //stopLatch is also for letting the IT know whether the socket is closed.
+  private CountDownLatch stopLatch;
 
   private SyncServerManager() {
   }
@@ -81,10 +84,20 @@ public class SyncServerManager implements IService {
           "Sync server failed to start because IP white list is null, please set IP white list.");
       return;
     }
+    stopLatch = new CountDownLatch(1);
     conf.setIpWhiteList(conf.getIpWhiteList().replaceAll(" ", ""));
-    syncServerThread = new SyncServiceThread();
+    syncServerThread = new SyncServiceThread(stopLatch);
     syncServerThread.setName(ThreadName.SYNC_SERVER.getName());
     syncServerThread.start();
+    try {
+      while (!syncServerThread.isServing()) {
+        //sleep 100ms for waiting the sync server start.
+        Thread.sleep(100);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new StartupException(this.getID().getName(), e.getMessage());
+    }
     logger.info("Sync server has started.");
   }
 
@@ -95,7 +108,13 @@ public class SyncServerManager implements IService {
   public void stop() {
     if (conf.isSyncEnable()) {
       FileLoaderManager.getInstance().stop();
-      ((SyncServiceThread) syncServerThread).close();
+      syncServerThread.close();
+      try {
+        stopLatch.await();
+      } catch (InterruptedException e) {
+        logger.error(e.getMessage(), e);
+        Thread.currentThread().interrupt();
+      }
     }
   }
 
@@ -116,9 +135,13 @@ public class SyncServerManager implements IService {
     private TProtocolFactory protocolFactory;
     private Processor<SyncService.Iface> processor;
     private TThreadPoolServer.Args poolArgs;
+    private CountDownLatch threadStopLatch;
+    private SyncServiceImpl serviceImpl;
 
-    public SyncServiceThread() {
-      processor = new SyncService.Processor<>(new SyncServiceImpl());
+    public SyncServiceThread(CountDownLatch stopLatch) {
+      serviceImpl = new SyncServiceImpl();
+      processor = new SyncService.Processor<>(serviceImpl);
+      this.threadStopLatch = stopLatch;
     }
 
     @Override
@@ -126,19 +149,19 @@ public class SyncServerManager implements IService {
       try {
         serverTransport = new TServerSocket(
             new InetSocketAddress(conf.getRpcAddress(), conf.getSyncServerPort()));
-        if(conf.isRpcThriftCompressionEnable()) {
+        if (conf.isRpcThriftCompressionEnable()) {
           protocolFactory = new TCompactProtocol.Factory();
-        }
-        else {
+        } else {
           protocolFactory = new TBinaryProtocol.Factory();
         }
-        processor = new SyncService.Processor<>(new SyncServiceImpl());
-        poolArgs = new TThreadPoolServer.Args(serverTransport);
+        poolArgs = new TThreadPoolServer.Args(serverTransport).stopTimeoutVal(
+            IoTDBDescriptor.getInstance().getConfig().getThriftServerAwaitTimeForStopService());
         poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
             ThreadName.SYNC_CLIENT.getName());
         poolArgs.protocolFactory(protocolFactory);
         poolArgs.processor(processor);
         poolServer = new TThreadPoolServer(poolArgs);
+        poolServer.setServerEventHandler(new SyncServerThriftHandler(serviceImpl));
         poolServer.serve();
       } catch (TTransportException e) {
         logger.error("{}: failed to start {}, because ", IoTDBConstant.GLOBAL_DB_NAME,
@@ -147,8 +170,12 @@ public class SyncServerManager implements IService {
         logger.error("{}: {} exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName(), e);
       } finally {
         close();
+        if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
+          threadStopLatch.countDown();
+        }
         logger.info("{}: close TThreadPoolServer and TServerSocket for {}",
             IoTDBConstant.GLOBAL_DB_NAME, getID().getName());
+
       }
     }
 
@@ -161,6 +188,13 @@ public class SyncServerManager implements IService {
         serverTransport.close();
         serverTransport = null;
       }
+    }
+
+    boolean isServing() {
+      if (poolServer != null) {
+        return  poolServer.isServing();
+      }
+      return false;
     }
   }
 }

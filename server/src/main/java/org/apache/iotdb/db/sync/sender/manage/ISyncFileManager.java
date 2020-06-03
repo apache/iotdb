@@ -55,13 +55,13 @@ public interface ISyncFileManager {
    */
   void getValidFiles(String dataDir) throws IOException;
 
-  Map<String, Set<File>> getCurrentSealedLocalFilesMap();
+  Map<String, Map<Long, Set<File>>> getCurrentSealedLocalFilesMap();
 
-  Map<String, Set<File>> getLastLocalFilesMap();
+  Map<String, Map<Long, Set<File>>> getLastLocalFilesMap();
 
-  Map<String, Set<File>> getDeletedFilesMap();
+  Map<String, Map<Long, Set<File>>> getDeletedFilesMap();
 
-  Map<String, Set<File>> getToBeSyncedFilesMap();
+  Map<String, Map<Long, Set<File>>> getToBeSyncedFilesMap();
 
-  Set<String> getAllSGs();
+  Map<String, Set<Long>> getAllSGs();
 }

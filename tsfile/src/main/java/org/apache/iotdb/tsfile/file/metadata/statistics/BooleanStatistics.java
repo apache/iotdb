@@ -18,19 +18,23 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+
 public class BooleanStatistics extends Statistics<Boolean> {
 
   private boolean firstValue;
   private boolean lastValue;
+
+  private static final int BOOLEAN_STATISTICS_FIXED_RAM_SIZE = 48;
+
 
   @Override
   public TSDataType getType() {
@@ -46,15 +50,27 @@ public class BooleanStatistics extends Statistics<Boolean> {
    * initialize boolean Statistics.
    *
    * @param firstValue first boolean value
-   * @param lastValue last boolean value
+   * @param lastValue  last boolean value
    */
-  private void initializeStats(boolean firstValue, boolean lastValue) {
+  public void initializeStats(boolean firstValue, boolean lastValue) {
     this.firstValue = firstValue;
     this.lastValue = lastValue;
   }
 
   private void updateStats(boolean firstValue, boolean lastValue) {
     this.lastValue = lastValue;
+  }
+
+  private void updateStats(boolean firstValue, boolean lastValue, long startTime, long endTime) {
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = firstValue;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = lastValue;
+    }
   }
 
   @Override
@@ -72,6 +88,11 @@ public class BooleanStatistics extends Statistics<Boolean> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return BOOLEAN_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override
@@ -135,7 +156,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
       initializeStats(boolStats.getFirstValue(), boolStats.getLastValue());
       isEmpty = false;
     } else {
-      updateStats(boolStats.getFirstValue(), boolStats.getLastValue());
+      updateStats(boolStats.getFirstValue(), boolStats.getLastValue(), stats.getStartTime(), stats.getEndTime());
     }
   }
 
@@ -186,6 +207,6 @@ public class BooleanStatistics extends Statistics<Boolean> {
 
   @Override
   public String toString() {
-    return "[firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
+    return super.toString() + " [firstValue:" + firstValue + ",lastValue:" + lastValue + "]";
   }
 }

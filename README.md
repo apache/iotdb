@@ -18,10 +18,11 @@
     under the License.
 
 -->
+[English](./README.md) | [中文](./README_ZH.md)
 
 # IoTDB
 [![Build Status](https://www.travis-ci.org/apache/incubator-iotdb.svg?branch=master)](https://www.travis-ci.org/apache/incubator-iotdb)
-[![codecov](https://codecov.io/gh/thulab/incubator-iotdb/branch/master/graph/badge.svg)](https://codecov.io/gh/thulab/incubator-iotdb)
+[![coveralls](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)](https://coveralls.io/repos/github/apache/incubator-iotdb/badge.svg?branch=master)
 [![GitHub release](https://img.shields.io/github/release/apache/incubator-iotdb.svg)](https://github.com/apache/incubator-iotdb/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-4EB1BA.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 ![](https://github-size-badge.herokuapp.com/apache/incubator-iotdb.svg)
@@ -29,24 +30,26 @@
 ![](https://img.shields.io/badge/platform-win10%20%7C%20macox%20%7C%20linux-yellow.svg)
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
+[![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/incubator-iotdb) 
 
 # Overview
 
-IoTDB (Internet of Things Database) is an integrated data management engine designed for time series data, which can provide users specific services for data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its intense integration with Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high-speed data input and complex data analysis in the IoT industrial field.
+IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
 
 # Main Features
 
-IoTDB's features are as following:
+Main features of IoTDB are as follows:
 
-1. Flexible deployment. IoTDB provides users one-click installation tool on the cloud, once-decompressed-used terminal tool and the bridge tool between cloud platform and terminal tool (Data Synchronization Tool).
-2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage
+1. Flexible deployment strategy. IoTDB provides users a one-click installation tool on either the cloud platform or the terminal devices, and a data synchronization tool bridging the data on cloud platform and terminals.
+2. Low cost on hardware. IoTDB can reach a high compression ratio of disk storage.
 3. Efficient directory structure. IoTDB supports efficient organization for complex time series data structure from intelligent networking devices, organization for time series data from devices of the same type, fuzzy searching strategy for massive and complex directory of time series data.
 4. High-throughput read and write. IoTDB supports millions of low-power devices' strong connection data access, high-speed data read and write for intelligent networking devices and mixed devices mentioned above.
-5. Rich query semantics. IoTDB supports time alignment for time series data across devices and sensors, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
-6. Easy to get start. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
-7. Intense integration with Open Source Ecosystem. IoTDB supports Hadoop, Spark, etc. analysis ecosystems and Grafana visualization tool.
+5. Rich query semantics. IoTDB supports time alignment for time series data across devices and measurements, computation in time series field (frequency domain transformation) and rich aggregation function support in time dimension.
+6. Easy to get started. IoTDB supports SQL-Like language, JDBC standard API and import/export tools which is easy to use.
+7. Seamless integration with state-of-the-practice Open Source Ecosystem. IoTDB supports analysis ecosystems such as, Hadoop, Spark, and visualization tool, such as, Grafana.
 
-For the latest information about IoTDB, please visit our [IoTDB official website](https://iotdb.apache.org/).
+For the latest information about IoTDB, please visit [IoTDB official website](https://iotdb.apache.org/). If you encounter any problems or identify any bugs while using IoTDB, please report an issue in [jira](https://issues.apache.org/jira/projects/IOTDB/issues).
 
 <!-- TOC -->
 
@@ -64,7 +67,7 @@ For the latest information about IoTDB, please visit our [IoTDB official website
        - Basic commands for IoTDB
     - Stop IoTDB
  - Only build server
- - Only build client
+ - Only build cli
  - Usage of import-csv.sh
     - Create metadata
     - An Example of import csv file
@@ -78,26 +81,26 @@ For the latest information about IoTDB, please visit our [IoTDB official website
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more-complete guide, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.10.0/chap1/sec1).
+This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.9.x/chap1/sec1).
 
 ## Prerequisites
 
 To use IoTDB, you need to have:
 
-1. Java >= 1.8 (1.8, 11, and 13 are verified. Please make sure the environment path has been set)
-2. Maven >= 3.1 (If you want to compile and install IoTDB from source code)
-3. Set the max open files num as 65535 to avoid "too many open files" problem.
+1. Java >= 1.8 (1.8, 11, and 13 are verified. Please make sure the environment path has been set accordingly).
+2. Maven >= 3.1 (If you want to compile and install IoTDB from source code).
+3. Set the max open files num as 65535 to avoid "too many open files" error.
 
 ## Installation
 
-IoTDB provides you three installation methods, you can refer to the following suggestions, choose one of them:
+IoTDB provides three installation methods, you can refer to the following suggestions, choose the one fits you best:
 
 * Installation from source code. If you need to modify the code yourself, you can use this method.
 * Installation from binary files. Download the binary files from the official website. This is the recommended method, in which you will get a binary released package which is out-of-the-box.(Comming Soon...)
-* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/blob/master/docker/Dockerfile
+* Using Docker：The path to the dockerfile is https://github.com/apache/incubator-iotdb/tree/master/docker/src/main
 
 
-Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 4 of the User Guide.
+Here in the Quick Start, we give a brief introduction of using source code to install IoTDB. For further information, please refer to Chapter 3 of the User Guide.
 
 ## Build from source
 
@@ -107,29 +110,36 @@ You can download the source code from:
 git clone https://github.com/apache/incubator-iotdb.git
 ```
 
+The default master branch is the dev branch, If you want to use a released version x.x.x:
+
+```
+git checkout release/x.x.x
+```
+
+
 Under the root path of incubator-iotdb:
 
 ```
 > mvn clean package -DskipTests
 ```
 
-Then the binary version (including both server and client) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
+Then the binary version (including both server and cli) can be found at **distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**
 
-> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr3" need to be added to sources roots to avoid compilation errors in IDE.
+> NOTE: Directories "service-rpc/target/generated-sources/thrift" and "server/target/generated-sources/antlr4" need to be added to sources roots to avoid compilation errors in the IDE.
 
 ### Configurations
 
 configuration files are under "conf" folder
 
   * environment config module (`iotdb-env.bat`, `iotdb-env.sh`),
-  * system config module (`tsfile-format.properties`, `iotdb-engine.properties`)
+  * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
-For more, see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.
+For more information, please see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.
 
 ## Start
 
-You can go through the following step to test the installation, if there is no error after execution, the installation is completed.
+You can go through the following steps to test the installation, if there is no error returned after execution, the installation is completed.
 
 ### Start IoTDB
 
@@ -137,34 +147,41 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> sbin/start-server.sh
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+or
+> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
 
 # Windows
-> sbin\start-server.bat
+> sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
 ```
+
+- "-c" and "-rpc_port" are optional.
+- option "-c" specifies the system configuration file directory.
+- option "-rpc_port" specifies the rpc port.
+- if both option specified, the *rpc_port* will overrides the rpc_port in *conf_path*.
 
 
 ### Use IoTDB
 
 #### Use Cli
 
-IoTDB offers different ways to interact with server, here we introduce basic steps of using Cli tool to insrert and query data.
+IoTDB offers different ways to interact with server, here we introduce the basic steps of using Cli tool to insert and query data.
 
 After installing IoTDB, there is a default user 'root', its default password is also 'root'. Users can use this
-default user to login Cli to use IoTDB. The startup script of Cli is the start-client script in the folder sbin. When executing the script, user should assign
+default user to login Cli to use IoTDB. The startup script of Cli is the start-cli script in the folder sbin. When executing the script, user should assign
 IP, PORT, USER_NAME and PASSWORD. The default parameters are "-h 127.0.0.1 -p 6667 -u root -pw -root".
 
 Here is the command for starting the Cli:
 
 ```
 # Unix/OS X
-> sbin/start-client.sh -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin/start-cli.sh -h 127.0.0.1 -p 6667 -u root -pw root
 
 # Windows
-> sbin\start-client.bat -h 127.0.0.1 -p 6667 -u root -pw root
+> sbin\start-cli.bat -h 127.0.0.1 -p 6667 -u root -pw root
 ```
 
-The command line client is interactive so if everything is ready you should see the welcome logo and statements:
+The command line cli is interactive, so you should see the welcome logo and statements if everything is ready:
 
 ```
  _____       _________  ______   ______
@@ -183,13 +200,13 @@ IoTDB>
 
 Now, let us introduce the way of creating timeseries, inserting data and querying data.
 
-The data in IoTDB is organized as timeseries, in each timeseries there are some data-time pairs, and every timeseries is owned by a storage group. Before defining a timeseries, we should difine a storage group using SET STORAGE GROUP, and here is an example:
+The data in IoTDB is organized as timeseries. Each timeseries includes multiple data-time pairs, and is owned by a storage group. Before defining a timeseries, we should define a storage group using SET STORAGE GROUP first, and here is an example:
 
 ```
 IoTDB> SET STORAGE GROUP TO root.ln
 ```
 
-We can also use SHOW STORAGE GROUP to check created storage group:
+We can also use SHOW STORAGE GROUP to check the storage group being created:
 
 ```
 IoTDB> SHOW STORAGE GROUP
@@ -201,14 +218,14 @@ IoTDB> SHOW STORAGE GROUP
 storage group number = 1
 ```
 
-After the storage group is set, we can use CREATE TIMESERIES to create new timeseries. When we create a timeseries, we should define its data type and the encoding scheme. We create two timeseries as follow:
+After the storage group is set, we can use CREATE TIMESERIES to create a new timeseries. When creating a timeseries, we should define its data type and the encoding scheme. Here We create two timeseries:
 
 ```
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN
 IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE
 ```
 
-Inorder to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the path of the timeseries. Its default value is null, which means quering all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are the examples:
+In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <Path> represent the location of the timeseries. The default value is "null", which queries all the timeseries in the system(the same as using "SHOW TIMESERIES root"). Here are some examples:
 
 1. Querying all timeseries in the system:
 
@@ -235,14 +252,14 @@ IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
 Total timeseries number = 1
 ```
 
-Insert timeseries data is the basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before inserting you should assign the timestamp and the suffix path name:
+Insert timeseries data is a basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before insertion, you should assign the timestamp and the suffix path name:
 
 ```
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status) values(100,true);
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,false,20.71)
 ```
 
-The data we’ve just inserted displays like this:
+The data that you have just inserted will display as follows:
 
 ```
 IoTDB> SELECT status FROM root.ln.wf01.wt01
@@ -255,7 +272,7 @@ IoTDB> SELECT status FROM root.ln.wf01.wt01
 Total line number = 2
 ```
 
-We can also query several timeseries data at once like this:
+You can also query several timeseries data using one SQL statement:
 
 ```
 IoTDB> SELECT * FROM root.ln.wf01.wt01
@@ -268,7 +285,7 @@ IoTDB> SELECT * FROM root.ln.wf01.wt01
 Total line number = 2
 ```
 
-The commands to exit the Cli is:
+The commands to exit the Cli are:
 
 ```
 IoTDB> quit
@@ -276,11 +293,11 @@ or
 IoTDB> exit
 ```
 
-For more on what commands are supported by IoTDB SQL, see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.10.0/chap5/sec1).
+For more information about the commands supported by IoTDB SQL, please see [Chapter 5: IoTDB SQL Documentation](https://iotdb.apache.org/#/Documents/0.10.0/chap5/sec1).
 
 ### Stop IoTDB
 
-The server can be stopped with ctrl-C or the following script:
+The server can be stopped with "ctrl-C" or the following script:
 
 ```
 # Unix/OS X
@@ -298,18 +315,18 @@ Under the root path of incubator-iotdb:
 > mvn clean package -pl server -am -DskipTests
 ```
 
-After build, the IoTDB server will be at the folder "server/target/iotdb-server-{project.version}".
+After being built, the IoTDB server is located at the folder: "server/target/iotdb-server-{project.version}".
 
 
-## Only build client
+## Only build cli
 
 Under the root path of incubator-iotdb:
 
 ```
-> mvn clean package -pl client -am -DskipTests
+> mvn clean package -pl cli -am -DskipTests
 ```
 
-After build, the IoTDB client will be at the folder "client/target/iotdb-client-{project.version}".
+After being built, the IoTDB cli is located at the folder "cli/target/iotdb-cli-{project.version}".
 
 ## Usage of import-csv.sh
 

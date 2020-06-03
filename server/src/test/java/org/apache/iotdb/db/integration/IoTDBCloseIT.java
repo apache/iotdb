@@ -26,7 +26,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -41,8 +41,6 @@ import org.junit.Test;
  * defined as integration test.
  */
 public class IoTDBCloseIT {
-
-  private static IoTDB daemon;
 
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
   private static int maxNumberOfPointsInPage;
@@ -66,8 +64,6 @@ public class IoTDBCloseIT {
     tsFileConfig.setGroupSizeInByte(1024 * 1000);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -75,7 +71,6 @@ public class IoTDBCloseIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
@@ -91,7 +86,7 @@ public class IoTDBCloseIT {
             .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
 
-      for (String sql : Constant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
@@ -145,7 +140,7 @@ public class IoTDBCloseIT {
       int cnt1 = 0;
       while (resultSet1.next() && cnt1 < 5) {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet1.getString(Constant.TIMESTAMP_STR))
+        builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
                 .append(",")
                 .append(resultSet1.getString("root.fans.d0.s0"))
                 .append(",")
@@ -161,7 +156,7 @@ public class IoTDBCloseIT {
       int cnt2 = 0;
       while (resultSet2.next()) {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet2.getString(Constant.TIMESTAMP_STR))
+        builder.append(resultSet2.getString(TestConstant.TIMESTAMP_STR))
                 .append(",")
                 .append(resultSet2.getString("root.fans.d0.s0"))
                 .append(",")
@@ -181,7 +176,7 @@ public class IoTDBCloseIT {
       // and the cursor has been moved to the next position, so we should fetch that value first.
       do {
         StringBuilder builder = new StringBuilder();
-        builder.append(resultSet1.getString(Constant.TIMESTAMP_STR))
+        builder.append(resultSet1.getString(TestConstant.TIMESTAMP_STR))
                 .append(",")
                 .append(resultSet1.getString("root.fans.d0.s0"))
                 .append(",")

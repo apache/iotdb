@@ -26,8 +26,8 @@ import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeseria
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileSerializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthIExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.externalsort.serialize.impl.FixLengthTimeValuePairSerializer;
-import org.apache.iotdb.db.utils.TimeValuePair;
-import org.apache.iotdb.db.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.Assert;
@@ -83,8 +83,8 @@ public class IExternalSortFileSerializerDeserializerTest {
     }
 
     int idx = 0;
-    while (deserializer.hasNext()) {
-      TimeValuePair timeValuePair = deserializer.next();
+    while (deserializer.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = deserializer.nextTimeValuePair();
       Assert.assertEquals(timeValuePairs[idx].getValue(), timeValuePair.getValue());
       Assert.assertEquals(timeValuePairs[idx].getTimestamp(), timeValuePair.getTimestamp());
       idx++;

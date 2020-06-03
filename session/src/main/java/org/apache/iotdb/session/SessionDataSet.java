@@ -18,9 +18,17 @@
  */
 package org.apache.iotdb.session;
 
-import org.apache.iotdb.rpc.IoTDBRPCException;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.service.rpc.thrift.*;
+import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
+
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.apache.iotdb.rpc.IoTDBRpcDataSet;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
+import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -29,171 +37,200 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
 
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 public class SessionDataSet {
 
-  private boolean getFlag = false;
-  private String sql;
-  private long queryId;
-  private long sessionId;
-  private TSIService.Iface client;
-  private int batchSize = 512;
-  private List<String> columnTypeDeduplicatedList;
-
-  private int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
-  private TSQueryDataSet tsQueryDataSet = null;
-  private RowRecord rowRecord = null;
-  private byte[] currentBitmap; // used to cache the current bitmap for every column
-  private static final int flag = 0x80; // used to do `or` operation with bitmap to judge whether the value is null
-
+  private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
-      long queryId, TSIService.Iface client, long sessionId) {
-    this.sessionId = sessionId;
-    this.sql = sql;
-    this.queryId = queryId;
-    this.client = client;
-    currentBitmap = new byte[columnNameList.size()];
-
-    // deduplicate columnTypeList according to columnNameList
-    this.columnTypeDeduplicatedList = new ArrayList<>();
-    Set<String> columnSet = new HashSet<>(); // for deduplication
-    for (int i = 0; i < columnNameList.size(); i++) {
-      String name = columnNameList.get(i);
-      if (!columnSet.contains(name)) {
-        columnSet.add(name);
-        columnTypeDeduplicatedList.add(columnTypeList.get(i));
-      }
-    }
+      Map<String, Integer> columnNameIndex,
+      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
+      boolean ignoreTimeStamp) {
+    this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
+        columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, queryDataSet, 1024);
   }
 
-  public int getBatchSize() {
-    return batchSize;
+  public int getFetchSize() {
+    return ioTDBRpcDataSet.fetchSize;
   }
 
-  public void setBatchSize(int batchSize) {
-    this.batchSize = batchSize;
+  public void setFetchSize(int fetchSize) {
+    ioTDBRpcDataSet.fetchSize = fetchSize;
   }
 
-  public boolean hasNext() throws SQLException, IoTDBRPCException {
-    if (getFlag)
-      return true;
-    if (tsQueryDataSet == null || !tsQueryDataSet.time.hasRemaining()) {
-      TSFetchResultsReq req = new TSFetchResultsReq(sessionId, sql, batchSize, queryId);
-      try {
-        TSFetchResultsResp resp = client.fetchResults(req);
-        RpcUtils.verifySuccess(resp.getStatus());
-
-        if (!resp.hasResultSet) {
-          return false;
-        } else {
-          tsQueryDataSet = resp.getQueryDataSet();
-          rowsIndex = 0;
-        }
-      } catch (TException e) {
-        throw new SQLException(
-                "Cannot fetch result from server, because of network connection: {} ", e);
-      }
-
-    }
-
-    constructOneRow();
-    getFlag = true;
-    return true;
+  public List<String> getColumnNames() {
+    return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
   }
 
-  private void constructOneRow() {
-    rowRecord = new RowRecord(tsQueryDataSet.time.getLong());
+  public List<TSDataType> getColumnTypes() {
+    return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
+  }
 
-    for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
-      ByteBuffer bitmapBuffer = tsQueryDataSet.bitmapList.get(i);
-      // another new 8 row, should move the bitmap buffer position to next byte
-      if (rowsIndex % 8 == 0) {
-        currentBitmap[i] = bitmapBuffer.get();
-      }
+
+  public boolean hasNext() throws StatementExecutionException, IoTDBConnectionException {
+    return ioTDBRpcDataSet.next();
+  }
+
+
+  private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
+    List<Field> outFields = new ArrayList<>();
+    for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
       Field field;
-      if (!isNull(i, rowsIndex)) {
-        ByteBuffer valueBuffer = tsQueryDataSet.valueList.get(i);
-        TSDataType dataType = TSDataType.valueOf(columnTypeDeduplicatedList.get(i));
+
+      int index = i + 1;
+      int datasetColumnIndex = i + START_INDEX;
+      if (ioTDBRpcDataSet.ignoreTimeStamp) {
+        index--;
+        datasetColumnIndex--;
+      }
+      int loc =
+          ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(index))
+              - START_INDEX;
+
+      if (!ioTDBRpcDataSet.isNull(datasetColumnIndex)) {
+        byte[] valueBytes = ioTDBRpcDataSet.values[loc];
+        TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(loc);
         field = new Field(dataType);
         switch (dataType) {
           case BOOLEAN:
-            boolean booleanValue = BytesUtils.byteToBool(valueBuffer.get());
+            boolean booleanValue = BytesUtils.bytesToBool(valueBytes);
             field.setBoolV(booleanValue);
             break;
           case INT32:
-            int intValue = valueBuffer.getInt();
+            int intValue = BytesUtils.bytesToInt(valueBytes);
             field.setIntV(intValue);
             break;
           case INT64:
-            long longValue = valueBuffer.getLong();
+            long longValue = BytesUtils.bytesToLong(valueBytes);
             field.setLongV(longValue);
             break;
           case FLOAT:
-            float floatValue = valueBuffer.getFloat();
+            float floatValue = BytesUtils.bytesToFloat(valueBytes);
             field.setFloatV(floatValue);
             break;
           case DOUBLE:
-            double doubleValue = valueBuffer.getDouble();
+            double doubleValue = BytesUtils.bytesToDouble(valueBytes);
             field.setDoubleV(doubleValue);
             break;
           case TEXT:
-            int binarySize = valueBuffer.getInt();
-            byte[] binaryValue = new byte[binarySize];
-            valueBuffer.get(binaryValue);
-            field.setBinaryV(new Binary(binaryValue));
+            field.setBinaryV(new Binary(valueBytes));
             break;
           default:
-            throw new UnSupportedDataTypeException(
-                    String.format("Data type %s is not supported.", columnTypeDeduplicatedList.get(i)));
+            throw new UnSupportedDataTypeException(String
+                .format("Data type %s is not supported.",
+                    ioTDBRpcDataSet.columnTypeDeduplicatedList.get(i)));
         }
-      }
-      else {
+      } else {
         field = new Field(null);
       }
-      rowRecord.addField(field);
+      outFields.add(field);
     }
-    rowsIndex++;
+    return new RowRecord(BytesUtils.bytesToLong(ioTDBRpcDataSet.time), outFields);
   }
 
-  /**
-   * judge whether the specified column value is null in the current position
-   * @param index column index
-   * @return
-   */
-  private boolean isNull(int index, int rowNum) {
-    byte bitmap = currentBitmap[index];
-    int shift = rowNum % 8;
-    return ((flag >>> shift) & bitmap) == 0;
-  }
 
-  public RowRecord next() throws SQLException, IoTDBRPCException {
-    if (!getFlag) {
-      if (!hasNext())
+  public RowRecord next() throws StatementExecutionException, IoTDBConnectionException {
+    if (!ioTDBRpcDataSet.hasCachedRecord) {
+      if (!hasNext()) {
         return null;
+      }
     }
+    ioTDBRpcDataSet.hasCachedRecord = false;
 
-    getFlag = false;
-    return rowRecord;
+    return constructRowRecordFromValueArray();
   }
 
-  public void closeOperationHandle() throws SQLException {
+  public void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException {
     try {
-      TSCloseOperationReq closeReq = new TSCloseOperationReq(sessionId);
-      closeReq.setQueryId(queryId);
-      TSStatus closeResp = client.closeOperation(closeReq);
-      RpcUtils.verifySuccess(closeResp);
-    } catch (IoTDBRPCException e) {
-      throw new SQLException("Error occurs for close opeation in server side. The reason is " + e);
+      ioTDBRpcDataSet.close();
     } catch (TException e) {
-      throw new SQLException(
-          "Error occurs when connecting to server for close operation, because: " + e);
+      throw new IoTDBConnectionException(e.getMessage());
+    }
+  }
+
+  public DataIterator iterator() {
+    return new DataIterator();
+  }
+
+  public class DataIterator {
+
+    public boolean next() throws StatementExecutionException, IoTDBConnectionException {
+      return ioTDBRpcDataSet.next();
+    }
+
+    public boolean isNull(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.isNull(columnIndex);
+    }
+
+    public boolean isNull(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.isNull(columnName);
+    }
+
+    public boolean getBoolean(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getBoolean(columnIndex);
+    }
+
+    public boolean getBoolean(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getBoolean(columnName);
+    }
+
+    public double getDouble(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getDouble(columnIndex);
+    }
+
+    public double getDouble(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getDouble(columnName);
+    }
+
+    public float getFloat(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getFloat(columnIndex);
+    }
+
+    public float getFloat(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getFloat(columnName);
+    }
+
+    public int getInt(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getInt(columnIndex);
+    }
+
+    public int getInt(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getInt(columnName);
+    }
+
+    public long getLong(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getLong(columnIndex);
+    }
+
+    public long getLong(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getLong(columnName);
+    }
+
+    public Object getObject(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getObject(columnIndex);
+    }
+
+    public Object getObject(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getObject(columnName);
+    }
+
+    public String getString(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getString(columnIndex);
+    }
+
+    public String getString(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getString(columnName);
+    }
+
+    public Timestamp getTimestamp(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getTimestamp(columnIndex);
+    }
+
+    public Timestamp getTimestamp(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.getTimestamp(columnName);
+    }
+
+    public int findColumn(String columnName) {
+      return ioTDBRpcDataSet.findColumn(columnName);
     }
   }
 }

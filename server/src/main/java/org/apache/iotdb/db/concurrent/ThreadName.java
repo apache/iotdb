@@ -20,8 +20,8 @@ package org.apache.iotdb.db.concurrent;
 
 public enum ThreadName {
   METRICS_SERVICE("Metrics-ServerServiceImpl"),
-  JDBC_SERVICE("JDBC-ServerServiceImpl"),
-  JDBC_CLIENT("JDBC-Client"),
+  RPC_SERVICE("RPC-ServerServiceImpl"),
+  RPC_CLIENT("RPC-Client"),
   MERGE_SERVICE("Merge-ServerServiceImpl"),
   CLOSE_MERGE_SERVICE("Close-Merge-ServerServiceImpl"),
   CLOSE_MERGE_DAEMON("Close-Merge-Daemon-Thread"),
@@ -41,7 +41,8 @@ public enum ThreadName {
   SYNC_SERVER("Sync-Server"),
   SYNC_MONITOR("Sync-Monitor"),
   LOAD_TSFILE("Load TsFile"),
-  TIME_COST_STATSTIC("TIME_COST_STATSTIC");
+  TIME_COST_STATSTIC("TIME_COST_STATSTIC"),
+  QUERY_SERVICE("Query-ServerServiceImpl");
 
   private String name;
 

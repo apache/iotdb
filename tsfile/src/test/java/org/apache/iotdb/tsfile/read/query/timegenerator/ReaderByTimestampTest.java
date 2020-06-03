@@ -23,14 +23,14 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.controller.ChunkLoaderImpl;
+import org.apache.iotdb.tsfile.read.controller.CachedChunkLoaderImpl;
 import org.apache.iotdb.tsfile.read.controller.MetadataQuerierByFileImpl;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
 import org.junit.After;
 import org.junit.Assert;
@@ -61,11 +61,11 @@ public class ReaderByTimestampTest {
 
   @Test
   public void readByTimestamp() throws IOException {
-    ChunkLoaderImpl seriesChunkLoader = new ChunkLoaderImpl(fileReader);
-    List<ChunkMetaData> chunkMetaDataList = metadataQuerierByFile
+    CachedChunkLoaderImpl seriesChunkLoader = new CachedChunkLoaderImpl(fileReader);
+    List<ChunkMetadata> chunkMetadataList = metadataQuerierByFile
         .getChunkMetaDataList(new Path("d1.s1"));
-    FileSeriesReader seriesReader = new FileSeriesReaderWithoutFilter(seriesChunkLoader,
-        chunkMetaDataList);
+    AbstractFileSeriesReader seriesReader = new FileSeriesReader(seriesChunkLoader,
+        chunkMetadataList, null);
 
     List<Long> timeList = new ArrayList<>();
     List<Object> valueList = new ArrayList<>();
@@ -74,7 +74,7 @@ public class ReaderByTimestampTest {
 
     while (seriesReader.hasNextBatch()) {
       data = seriesReader.nextBatch();
-      while (data.hasNext()) {
+      while (data.hasCurrent()) {
         timeList.add(data.currentTime() - 1);
         valueList.add(null);
         timeList.add(data.currentTime());
@@ -89,7 +89,7 @@ public class ReaderByTimestampTest {
 
     FileSeriesReaderByTimestamp seriesReaderFromSingleFileByTimestamp = new FileSeriesReaderByTimestamp(
         seriesChunkLoader,
-        chunkMetaDataList);
+        chunkMetadataList);
 
     for (long time : timeList) {
       Object value = seriesReaderFromSingleFileByTimestamp.getValueInTimestamp(time);

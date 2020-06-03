@@ -18,33 +18,45 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public abstract class AbstractMemTable implements IMemTable {
 
-  private long version;
+  private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
+
+  private long version = Long.MAX_VALUE;
 
   private List<Modification> modifications = new ArrayList<>();
 
-  protected final Map<String, Map<String, IWritableMemChunk>> memTableMap;
+  private int avgSeriesPointNumThreshold = IoTDBDescriptor.getInstance().getConfig()
+      .getAvgSeriesPointNumberThreshold();
 
   private long memSize = 0;
+
+  private int seriesNumber = 0;
+
+  private long totalPointsNum = 0;
+
+  private long totalPointsNumThreshold = 0;
 
   protected String storageGroupId;
 
@@ -72,103 +84,73 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   protected IWritableMemChunk createIfNotExistAndGet(String deviceId, String measurement,
-      TSDataType dataType) {
+      MeasurementSchema schema) {
     if (!memTableMap.containsKey(deviceId)) {
       memTableMap.put(deviceId, new HashMap<>());
     }
     Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
     if (!memSeries.containsKey(measurement)) {
-      memSeries.put(measurement, genMemSeries(deviceId, measurement, dataType));
+      memSeries.put(measurement, genMemSeries(deviceId, measurement, schema));
+      seriesNumber++;
+      totalPointsNumThreshold += avgSeriesPointNumThreshold;
     }
     return memSeries.get(measurement);
   }
 
-  protected abstract IWritableMemChunk genMemSeries(String deviceId, String measurementId, TSDataType dataType);
+  protected abstract IWritableMemChunk genMemSeries(String deviceId, String measurementId, MeasurementSchema schema);
 
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
-    try {
-      for (int i = 0; i < insertPlan.getValues().length; i++) {
+  public void insert(InsertPlan insertPlan) {
+    for (int i = 0; i < insertPlan.getValues().length; i++) {
 
-        Object value = parseValue(insertPlan.getDataTypes()[i], insertPlan.getValues()[i]);
-        write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-            insertPlan.getDataTypes()[i], insertPlan.getTime(), value);
-      }
-      long recordSizeInByte = MemUtils.getRecordSize(insertPlan);
-      memSize += recordSizeInByte;
+      Object value = insertPlan.getValues()[i];
+      memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
+
+      write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
+          insertPlan.getSchemas()[i], insertPlan.getTime(), value);
+    }
+
+    totalPointsNum += insertPlan.getValues().length;
+  }
+
+  @Override
+  public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+      throws WriteProcessException {
+    try {
+      write(insertTabletPlan, start, end);
+      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end);
+      totalPointsNum += insertTabletPlan.getMeasurements().length * (end - start);
     } catch (RuntimeException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
-  }
-
-  private static Object parseValue(TSDataType dataType, String value) throws QueryProcessException {
-    try {
-      switch (dataType) {
-        case BOOLEAN:
-          value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE.equals(value)) {
-            return false;
-          } else if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
-            return true;
-          } else {
-            throw new QueryProcessException(
-                "The BOOLEAN data type should be true/TRUE, false/FALSE or 0/1");
-          }
-        case INT32:
-          return Integer.parseInt(value);
-        case INT64:
-          return Long.parseLong(value);
-        case FLOAT:
-          return Float.parseFloat(value);
-        case DOUBLE:
-          return Double.parseDouble(value);
-        case TEXT:
-          if ((value.startsWith(SQLConstant.QUOTE) && value.endsWith(SQLConstant.QUOTE))
-              || (value.startsWith(SQLConstant.DQUOTE) && value.endsWith(SQLConstant.DQUOTE))) {
-            if (value.length() == 1) {
-              return new Binary(value);
-            } else {
-              return new Binary(value.substring(1, value.length() - 1));
-            }
-          } else {
-            throw new QueryProcessException("The TEXT data type should be covered by \" or '");
-          }
-        default:
-          throw new QueryProcessException("Unsupported data type:" + dataType);
-      }
-    } catch (NumberFormatException e) {
-      throw new QueryProcessException(e.getMessage());
-    }
-  }
-
-  @Override
-  public void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessException {
-    try {
-      write(batchInsertPlan, indexes);
-      long recordSizeInByte = MemUtils.getRecordSize(batchInsertPlan);
-      memSize += recordSizeInByte;
-    } catch (RuntimeException e) {
-      throw new QueryProcessException(e.getMessage());
+      throw new WriteProcessException(e.getMessage());
     }
   }
 
 
   @Override
-  public void write(String deviceId, String measurement, TSDataType dataType, long insertTime,
+  public void write(String deviceId, String measurement, MeasurementSchema schema, long insertTime,
       Object objectValue) {
-    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, dataType);
+    IWritableMemChunk memSeries = createIfNotExistAndGet(deviceId, measurement, schema);
     memSeries.write(insertTime, objectValue);
   }
 
   @Override
-  public void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes) {
-    for (int i = 0; i < batchInsertPlan.getMeasurements().length; i++) {
-      IWritableMemChunk memSeries = createIfNotExistAndGet(batchInsertPlan.getDeviceId(),
-          batchInsertPlan.getMeasurements()[i], batchInsertPlan.getDataTypes()[i]);
-      memSeries.write(batchInsertPlan.getTimes(), batchInsertPlan.getColumns()[i], batchInsertPlan.getDataTypes()[i], indexes);
+  public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      IWritableMemChunk memSeries = createIfNotExistAndGet(insertTabletPlan.getDeviceId(),
+          insertTabletPlan.getMeasurements()[i], insertTabletPlan.getSchemas()[i]);
+      memSeries.write(insertTabletPlan.getTimes(), insertTabletPlan.getColumns()[i],
+          insertTabletPlan.getDataTypes()[i], start, end);
     }
   }
 
+
+  public int getSeriesNumber() {
+    return seriesNumber;
+  }
+
+  public long getTotalPointsNum() {
+    return totalPointsNum;
+  }
 
   @Override
   public long size() {
@@ -187,10 +169,18 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
+  public boolean reachTotalPointNumThreshold() {
+    return totalPointsNum >= totalPointsNumThreshold;
+  }
+
+  @Override
   public void clear() {
     memTableMap.clear();
     modifications.clear();
     memSize = 0;
+    seriesNumber = 0;
+    totalPointsNum = 0;
+    totalPointsNumThreshold = 0;
   }
 
   @Override
@@ -200,19 +190,17 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound) {
-    TimeValuePairSorter sorter;
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound)
+      throws IOException, QueryProcessException {
     if (!checkPath(deviceId, measurement)) {
       return null;
-    } else {
-      long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
-      IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType,
-          (TVList) memChunk.getTVList().clone());
-      chunkCopy.setTimeOffset(undeletedTime);
-      sorter = chunkCopy;
     }
-    return new ReadOnlyMemChunk(dataType, sorter, props);
+    long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
+    IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
+    TVList chunkCopy = memChunk.getTVList().clone();
+
+    chunkCopy.setTimeOffset(undeletedTime);
+    return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());
   }
 
   protected long findUndeletedTime(String deviceId, String measurement, long timeLowerBound) {
@@ -237,7 +225,8 @@ public abstract class AbstractMemTable implements IMemTable {
       if (chunk == null) {
         return;
       }
-      chunk.delete(timestamp);
+      int deletedPointsNumber = chunk.delete(timestamp);
+      totalPointsNum -= deletedPointsNumber;
     }
   }
 
@@ -258,8 +247,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void release() {
-    for (Entry<String, Map<String, IWritableMemChunk>> entry: memTableMap.entrySet()) {
-      for (Entry<String, IWritableMemChunk> subEntry: entry.getValue().entrySet()) {
+    for (Entry<String, Map<String, IWritableMemChunk>> entry : memTableMap.entrySet()) {
+      for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
         TVListAllocator.getInstance().release(subEntry.getValue().getTVList());
       }
     }

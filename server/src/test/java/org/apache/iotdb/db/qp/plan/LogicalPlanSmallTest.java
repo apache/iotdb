@@ -18,21 +18,22 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+import java.util.ArrayList;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SFWOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
-import org.apache.iotdb.db.qp.utils.MemIntQpExecutor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -94,6 +95,18 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(100, ((QueryOperator) operator).getSeriesOffset());
   }
 
+  @Test
+  public void testSOffsetTimestamp() {
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and timestamp <= now() limit 50 slimit 10 soffset 100";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertEquals(50, ((QueryOperator) operator).getRowLimit());
+    Assert.assertEquals(0, ((QueryOperator) operator).getRowOffset());
+    Assert.assertEquals(10, ((QueryOperator) operator).getSeriesLimit());
+    Assert.assertEquals(100, ((QueryOperator) operator).getSeriesOffset());
+  }
+
   @Test(expected = SQLParserException.class)
   public void testLimitOutOfRange() {
     String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1111111111111111111111";
@@ -119,12 +132,12 @@ public class LogicalPlanSmallTest {
     // expected to throw SQLParserException: Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.
   }
 
-  @Test(expected = SQLParserException.class)
+  @Test(expected = ParseCancellationException.class)
   public void testOffsetNotPositive() {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1 offset 0";
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() limit 1 offset -1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    // expected to throw SQLParserException: OFFSET <OFFSETValue>: OFFSETValue should be greater than 0.
+    // expected to throw SQLParserException: OFFSET <OFFSETValue>: OFFSETValue should >= 0.
   }
 
   @Test(expected = SQLParserException.class)
@@ -152,12 +165,13 @@ public class LogicalPlanSmallTest {
     // expected to throw SQLParserException: Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.
   }
 
-  @Test(expected = SQLParserException.class)
+  @Test
   public void testSoffsetNotPositive() {
-    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1 soffset 0";
+    String sqlStr = "select * from root.vehicle.d1 where s1 < 20 and time <= now() slimit 1 soffset 1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    // expected to throw SQLParserException: SOFFSET <SOFFSETValue>: SOFFSETValue should be greater than 0.
+    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesOffset());
+    Assert.assertEquals(1, ((QueryOperator) operator).getSeriesLimit());
   }
 
   @Test(expected = LogicalOptimizeException.class)
@@ -165,26 +179,10 @@ public class LogicalPlanSmallTest {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-
-    MemIntQpExecutor executor = new MemIntQpExecutor();
-    Path path1 = new Path(
-        new StringContainer(new String[]{"root", "vehicle", "d1", "s1"},
-            TsFileConstant.PATH_SEPARATOR));
-    Path path2 = new Path(
-        new StringContainer(new String[]{"root", "vehicle", "d2", "s1"},
-            TsFileConstant.PATH_SEPARATOR));
-    Path path3 = new Path(
-        new StringContainer(new String[]{"root", "vehicle", "d3", "s1"},
-            TsFileConstant.PATH_SEPARATOR));
-    Path path4 = new Path(
-        new StringContainer(new String[]{"root", "vehicle", "d4", "s1"},
-            TsFileConstant.PATH_SEPARATOR));
-    executor.insert(new InsertPlan(path1.getDevice(), 10, path1.getMeasurement(), "10"));
-    executor.insert(new InsertPlan(path2.getDevice(), 10, path2.getMeasurement(), "10"));
-    executor.insert(new InsertPlan(path3.getDevice(), 10, path3.getMeasurement(), "10"));
-    executor.insert(new InsertPlan(path4.getDevice(), 10, path4.getMeasurement(), "10"));
-    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer(executor);
-    operator = (SFWOperator) concatPathOptimizer.transform(operator);
+    MManager.getInstance().init();
+    ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
+    concatPathOptimizer.transform(operator);
+    MManager.getInstance().clear();
     // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
   }
 
@@ -197,5 +195,48 @@ public class LogicalPlanSmallTest {
     Path path = new Path("root.vehicle.d1");
     Assert.assertEquals(path, ((DeleteStorageGroupOperator) operator).getDeletePathList().get(0));
   }
+
+  @Test
+  public void testDisableAlign() {
+    String sqlStr = "select * from root.vehicle disable align";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertFalse(((QueryOperator) operator).isAlignByTime());
+  }
+
+  @Test
+  public void testNotDisableAlign() {
+    String sqlStr = "select * from root.vehicle";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    Assert.assertTrue(((QueryOperator) operator).isAlignByTime());
+  }
+
+  @Test(expected = ParseCancellationException.class)
+  public void testDisableAlignConflictAlignByDevice() {
+    String sqlStr = "select * from root.vehicle disable align align by device";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+  }
+
+  @Test
+  public void testChineseCharacter() {
+    String sqlStr1 = "set storage group to root.一级";
+    RootOperator operator = (RootOperator) parseDriver
+        .parse(sqlStr1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(SetStorageGroupOperator.class, operator.getClass());
+    Assert.assertEquals(new Path("root.一级"), ((SetStorageGroupOperator) operator).getPath());
+
+    String sqlStr2 = "select * from root.一级.设备1 limit 10 offset 20";
+    operator = (RootOperator) parseDriver
+        .parse(sqlStr2, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(QueryOperator.class, operator.getClass());
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("*"));
+    Assert.assertEquals(paths, ((QueryOperator) operator).getSelectedPaths());
+  }
+
 
 }

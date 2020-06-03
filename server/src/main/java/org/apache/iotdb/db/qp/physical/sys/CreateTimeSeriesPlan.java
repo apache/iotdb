@@ -18,16 +18,20 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class CreateTimeSeriesPlan extends PhysicalPlan {
 
@@ -35,16 +39,29 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   private TSDataType dataType;
   private TSEncoding encoding;
   private CompressionType compressor;
+  private String alias;
   private Map<String, String> props;
-	  
-  public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding, 
-      CompressionType compressor, Map<String, String> props) {
+  private Map<String, String> tags;
+  private Map<String, String> attributes;
+
+  public CreateTimeSeriesPlan() {
+    super(false, Operator.OperatorType.CREATE_TIMESERIES);
+    canbeSplit = false;
+  }
+
+  public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding,
+      CompressionType compressor, Map<String, String> props, Map<String, String> tags,
+      Map<String, String> attributes, String alias) {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
     this.path = path;
     this.dataType = dataType;
     this.encoding = encoding;
     this.compressor = compressor;
     this.props = props;
+    this.tags = tags;
+    this.attributes = attributes;
+    this.alias = alias;
+    canbeSplit = false;
   }
   
   public Path getPath() {
@@ -79,6 +96,30 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.encoding = encoding;
   }
   
+  public Map<String, String> getAttributes() {
+    return attributes;
+  }
+
+  public void setAttributes(Map<String, String> attributes) {
+    this.attributes = attributes;
+  }
+
+  public String getAlias() {
+    return alias;
+  }
+
+  public void setAlias(String alias) {
+    this.alias = alias;
+  }
+
+  public Map<String, String> getTags() {
+    return tags;
+  }
+
+  public void setTags(Map<String, String> tags) {
+    this.tags = tags;
+  }
+
   public Map<String, String> getProps() {
     return props;
   }
@@ -86,17 +127,11 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   public void setProps(Map<String, String> props) {
     this.props = props;
   }
-  
+
   @Override
   public String toString() {
-    String ret = String.format("seriesPath: %s%nresultDataType: %s%nencoding: %s%nnamespace type:"
-        + " ADD_PATH%nargs: ", path, dataType, encoding);
-    StringBuilder stringBuilder = new StringBuilder(ret.length()+50);
-    stringBuilder.append(ret);
-    for (Map.Entry<String, String> prop : props.entrySet()) {
-      stringBuilder.append(prop.getKey()).append("=").append(prop.getValue()).append(",");
-    }
-    return stringBuilder.toString();
+    return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s", path,
+        dataType, encoding, compressor);
   }
   
   @Override
@@ -104,4 +139,97 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     return Collections.singletonList(path);
   }
 
+  @Override
+  public void serializeTo(DataOutputStream stream) throws IOException {
+    stream.writeByte((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
+    byte[] bytes = path.getFullPath().getBytes();
+    stream.writeInt(bytes.length);
+    stream.write(bytes);
+    stream.write(dataType.ordinal());
+    stream.write(encoding.ordinal());
+    stream.write(compressor.ordinal());
+
+    // alias
+    if (alias != null) {
+      stream.write(1);
+      ReadWriteIOUtils.write(alias, stream);
+    } else {
+      stream.write(0);
+    }
+
+    // props
+    if (props != null && !props.isEmpty()) {
+      stream.write(1);
+      ReadWriteIOUtils.write(props, stream);
+    } else {
+      stream.write(0);
+    }
+
+    // tags
+    if (tags != null && !tags.isEmpty()) {
+      stream.write(1);
+      ReadWriteIOUtils.write(tags, stream);
+    } else {
+      stream.write(0);
+    }
+
+    // attributes
+    if (attributes != null && !attributes.isEmpty()) {
+      stream.write(1);
+      ReadWriteIOUtils.write(attributes, stream);
+    } else {
+      stream.write(0);
+    }
+  }
+
+  @Override
+  public void deserializeFrom(ByteBuffer buffer) {
+    int length = buffer.getInt();
+    byte[] bytes = new byte[length];
+    buffer.get(bytes);
+    path = new Path(new String(bytes));
+    dataType = TSDataType.values()[buffer.get()];
+    encoding = TSEncoding.values()[buffer.get()];
+    compressor = CompressionType.values()[buffer.get()];
+
+    // alias
+    if (buffer.get() == 1) {
+      alias = ReadWriteIOUtils.readString(buffer);
+    }
+
+    // props
+    if (buffer.get() == 1) {
+      props = ReadWriteIOUtils.readMap(buffer);
+    }
+
+    // tags
+    if (buffer.get() == 1) {
+      tags = ReadWriteIOUtils.readMap(buffer);
+    }
+
+    // attributes
+    if (buffer.get() == 1) {
+      attributes = ReadWriteIOUtils.readMap(buffer);
+    }
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    CreateTimeSeriesPlan that = (CreateTimeSeriesPlan) o;
+    return Objects.equals(path, that.path) &&
+        dataType == that.dataType &&
+        encoding == that.encoding &&
+        compressor == that.compressor;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(path, dataType, encoding, compressor);
+  }
 }

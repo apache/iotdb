@@ -24,7 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetaData;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -38,16 +38,12 @@ import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithoutTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.series.EmptyFileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithFilter;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderWithoutFilter;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TsFileExecutor implements QueryExecutor {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileExecutor.class);
   private IMetadataQuerier metadataQuerier;
   private IChunkLoader chunkLoader;
 
@@ -67,9 +63,9 @@ public class TsFileExecutor implements QueryExecutor {
           filteredSeriesPath.add(path);
         }
       }
+      queryExpression.setSelectSeries(filteredSeriesPath);
     }
 
-    queryExpression.setSelectSeries(filteredSeriesPath);
     metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
     if (queryExpression.hasQueryFilter()) {
       try {
@@ -163,29 +159,27 @@ public class TsFileExecutor implements QueryExecutor {
 
   /**
    * @param selectedPathList completed path
-   * @param timeFilter a GlobalTimeExpression or null
+   * @param timeExpression a GlobalTimeExpression or null
    * @return DataSetWithoutTimeGenerator
    */
   private QueryDataSet executeMayAttachTimeFiler(List<Path> selectedPathList,
-      GlobalTimeExpression timeFilter)
-      throws IOException, NoMeasurementException {
-    List<FileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
+      GlobalTimeExpression timeExpression) throws IOException, NoMeasurementException {
+    List<AbstractFileSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
 
     for (Path path : selectedPathList) {
-      List<ChunkMetaData> chunkMetaDataList = metadataQuerier.getChunkMetaDataList(path);
-      FileSeriesReader seriesReader;
-      if (chunkMetaDataList.isEmpty()) {
+      List<ChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(path);
+      AbstractFileSeriesReader seriesReader;
+      if (chunkMetadataList.isEmpty()) {
         seriesReader = new EmptyFileSeriesReader();
-        dataTypes.add(metadataQuerier.getDataType(path.getMeasurement()));
+        dataTypes.add(metadataQuerier.getDataType(path));
       } else {
-        if (timeFilter == null) {
-          seriesReader = new FileSeriesReaderWithoutFilter(chunkLoader, chunkMetaDataList);
+        if (timeExpression == null) {
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, null);
         } else {
-          seriesReader = new FileSeriesReaderWithFilter(chunkLoader, chunkMetaDataList,
-              timeFilter.getFilter());
+          seriesReader = new FileSeriesReader(chunkLoader, chunkMetadataList, timeExpression.getFilter());
         }
-        dataTypes.add(chunkMetaDataList.get(0).getDataType());
+        dataTypes.add(chunkMetadataList.get(0).getDataType());
       }
       readersOfSelectedSeries.add(seriesReader);
     }

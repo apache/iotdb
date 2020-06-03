@@ -18,14 +18,17 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.List;
+import java.io.IOException;
 import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.BatchInsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -38,10 +41,10 @@ public interface IMemTable {
 
   Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
 
-  void write(String deviceId, String measurement, TSDataType dataType,
+  void write(String deviceId, String measurement, MeasurementSchema schema,
       long insertTime, Object objectValue);
 
-  void write(BatchInsertPlan batchInsertPlan, List<Integer> indexes);
+  void write(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /**
    * @return the number of points
@@ -53,12 +56,27 @@ public interface IMemTable {
    */
   long memSize();
 
-  void insert(InsertPlan insertPlan) throws QueryProcessException;
+  /**
+   * @return whether the average number of points in each WritableChunk reaches the threshold
+   */
+  boolean reachTotalPointNumThreshold();
 
-  void insertBatch(BatchInsertPlan batchInsertPlan, List<Integer> indexes) throws QueryProcessException;
+  int getSeriesNumber();
+
+  long getTotalPointsNum();
+
+
+  void insert(InsertPlan insertPlan) throws WriteProcessException;
+
+  /**
+   * [start, end)
+   */
+  void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+      throws WriteProcessException;
 
   ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound);
+      TSEncoding encoding, Map<String, String> props, long timeLowerBound)
+      throws IOException, QueryProcessException;
 
   /**
    * putBack all the memory resources.

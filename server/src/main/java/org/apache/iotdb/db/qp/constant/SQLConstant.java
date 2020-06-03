@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.qp.constant;
 
+import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.HashMap;
 import java.util.Map;
-
-import org.apache.iotdb.db.qp.strategy.SqlBaseLexer;
-import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * this class contains several constants used in SQL.
@@ -36,9 +34,8 @@ public class SQLConstant {
     // forbidding instantiation
   }
 
-  public static final String GROUPBY_DEVICE_COLUMN_NAME = "Device";
+  public static final String ALIGNBY_DEVICE_COLUMN_NAME = "Device";
   public static final String RESERVED_TIME = "time";
-  public static final String RESERVED_FREQ = "freq";
   public static final String IS_AGGREGATION = "IS_AGGREGATION";
   public static final String NOW_FUNC = "now()";
   public static final String START_TIME_STR = "1970-1-01T00:00:00";
@@ -63,9 +60,13 @@ public class SQLConstant {
   public static final String FIRST_VALUE = "first_value";
   public static final String LAST_VALUE = "last_value";
 
+  public static final String LAST = "last";
+
   public static final String COUNT = "count";
   public static final String AVG = "avg";
   public static final String SUM = "sum";
+
+  public static final String ALL = "all";
 
   public static final int KW_AND = 1;
   public static final int KW_OR = 2;
@@ -78,6 +79,7 @@ public class SQLConstant {
   public static final int GREATERTHANOREQUALTO = SqlBaseLexer.OPERATOR_GTE;
   public static final int GREATERTHAN = SqlBaseLexer.OPERATOR_GT;
   public static final int EQUAL_NS = SqlBaseLexer.OPERATOR_NEQ;
+  public static final int IN = SqlBaseLexer.OPERATOR_IN;
 
   public static final int TOK_SELECT = 21;
   public static final int TOK_FROM = 22;
@@ -129,6 +131,21 @@ public class SQLConstant {
   public static final int TOK_REMOVE_FILE = 70;
   public static final int TOK_MOVE_FILE = 71;
   public static final int TOK_VERSION = 72;
+  public static final int TOK_TIMESERIES = 73;
+  public static final int TOK_STORAGE_GROUP = 74;
+  public static final int TOK_CHILD_PATHS = 75;
+  public static final int TOK_DEVICES = 76;
+  public static final int TOK_COUNT_TIMESERIES = 77;
+  public static final int TOK_COUNT_NODE_TIMESERIES = 78;
+  public static final int TOK_COUNT_NODES = 79;
+
+  public static final int TOK_METADATA_ALTER = 80;
+
+  public static final int TOK_FLUSH = 81;
+  public static final int TOK_MERGE = 82;
+  public static final int TOK_FULL_MERGE = 83;
+
+  public static final int TOK_CLEAR_CACHE = 84;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
@@ -158,6 +175,7 @@ public class SQLConstant {
     tokenNames.put(LESSTHAN, "lessthan");
     tokenNames.put(GREATERTHANOREQUALTO, "greaterthan_or_equalto");
     tokenNames.put(GREATERTHAN, "greaterthan");
+    tokenNames.put(IN, "in");
 
     tokenNames.put(TOK_SELECT, "TOK_SELECT");
     tokenNames.put(TOK_FROM, "TOK_FROM");
@@ -210,7 +228,7 @@ public class SQLConstant {
   }
 
   public static boolean isReservedPath(Path pathStr) {
-    return pathStr.equals(SQLConstant.RESERVED_TIME) || pathStr.equals(SQLConstant.RESERVED_FREQ);
+    return pathStr.equals(SQLConstant.RESERVED_TIME);
 
   }
 }

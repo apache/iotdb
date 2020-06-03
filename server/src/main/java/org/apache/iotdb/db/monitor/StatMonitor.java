@@ -28,14 +28,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
@@ -44,10 +43,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.slf4j.Logger;
@@ -87,8 +84,8 @@ public class StatMonitor implements IService {
     if (config.isEnableStatMonitor()) {
       try {
         String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
-        if (!mmanager.pathExist(prefix)) {
-          mmanager.setStorageGroupToMTree(prefix);
+        if (!mmanager.isPathExist(prefix)) {
+          mmanager.setStorageGroup(prefix);
         }
       } catch (MetadataException e) {
         logger.error("MManager cannot set storage group to MTree.", e);
@@ -144,8 +141,8 @@ public class StatMonitor implements IService {
     MManager mManager = MManager.getInstance();
     String prefix = MonitorConstants.STAT_STORAGE_GROUP_PREFIX;
     try {
-      if (!mManager.pathExist(prefix)) {
-        mManager.setStorageGroupToMTree(prefix);
+      if (!mManager.isPathExist(prefix)) {
+        mManager.setStorageGroup(prefix);
       }
     } catch (Exception e) {
       logger.error("MManager cannot set storage group to MTree.", e);
@@ -165,14 +162,14 @@ public class StatMonitor implements IService {
           logger.error("Registering metadata but data type of {} is null", entry.getKey());
         }
 
-        if (!mManager.pathExist(entry.getKey())) {
-          mManager.addPathToMTree(new Path(entry.getKey()), TSDataType.valueOf(entry.getValue()),
+        if (!mManager.isPathExist(entry.getKey())) {
+          mManager.createTimeseries(entry.getKey(), TSDataType.valueOf(entry.getValue()),
               TSEncoding.valueOf("RLE"),
-              CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor()),
+              TSFileDescriptor.getInstance().getConfig().getCompressor(),
               Collections.emptyMap());
         }
       }
-    } catch (MetadataException | PathException e) {
+    } catch (MetadataException e) {
       logger.error("Initialize the metadata error.", e);
     }
   }
@@ -337,12 +334,12 @@ public class StatMonitor implements IService {
     private static final StatMonitor INSTANCE = new StatMonitor();
   }
 
-  class StatBackLoop implements Runnable {
+  class StatBackLoop extends WrappedRunnable {
 
     FileSize fileSize = FileSize.getInstance();
 
     @Override
-    public void run() {
+    public void runMayThrow() {
       try {
         long currentTimeMillis = System.currentTimeMillis();
         long seconds = (currentTimeMillis - runningTimeMillis) / 1000;
@@ -387,7 +384,7 @@ public class StatMonitor implements IService {
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);
-        } catch (StorageEngineException | QueryProcessException e) {
+        } catch (StorageEngineException e) {
           numInsertError.incrementAndGet();
           logger.error("Inserting stat points error.", e);
         }

@@ -38,14 +38,14 @@ public class SimpleFileVersionControllerTest {
       if (!new File(tempFilePath).mkdir()) {
         Assert.fail("can not create version.tmp folder");
       }
-      VersionController versionController = new SimpleFileVersionController(tempFilePath);
+      VersionController versionController = new SimpleFileVersionController(tempFilePath, 1);
       assertEquals(SimpleFileVersionController.getSaveInterval(), versionController.currVersion());
       for (int i = 0; i < 150; i++) {
         versionController.nextVersion();
       }
       assertEquals(SimpleFileVersionController.getSaveInterval() + 150,
           versionController.currVersion());
-      versionController = new SimpleFileVersionController(tempFilePath);
+      versionController = new SimpleFileVersionController(tempFilePath, 1);
       assertEquals(SimpleFileVersionController.getSaveInterval() + 200,
           versionController.currVersion());
     } finally {

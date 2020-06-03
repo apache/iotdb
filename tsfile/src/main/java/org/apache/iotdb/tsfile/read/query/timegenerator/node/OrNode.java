@@ -90,7 +90,7 @@ public class OrNode implements Node {
         return leftValue;
       }
     }
-    return -1;
+    throw new IOException("no more data");
   }
 
   @Override

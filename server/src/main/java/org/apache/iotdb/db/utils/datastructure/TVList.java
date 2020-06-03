@@ -21,13 +21,21 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.Binary;
 
-@SuppressWarnings("unused")
 public abstract class TVList extends AbstractTVList {
+
+  private static final String ERR_DATATYPE_NOT_CONSISTENT = "DataType not consistent";
+
+  protected static final int SMALL_ARRAY_LENGTH = 32;
 
   protected List<long[]> timestamps;
 
@@ -68,16 +76,18 @@ public abstract class TVList extends AbstractTVList {
         minTime = time < minTime ? time : minTime;
       }
     }
+    int deletedNumber = size - newSize;
     size = newSize;
     // release primitive arrays that are empty
     int newArrayNum = newSize / ARRAY_SIZE;
     if (newSize % ARRAY_SIZE != 0) {
-      newArrayNum ++;
+      newArrayNum++;
     }
     for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
+    return deletedNumber;
   }
 
   @Override
@@ -115,8 +125,8 @@ public abstract class TVList extends AbstractTVList {
   protected void checkExpansion() {
     if ((size % ARRAY_SIZE) == 0) {
       expandValues();
-      timestamps.add((long[]) PrimitiveArrayPool.getInstance().getPrimitiveDataListByType(
-          TSDataType.INT64));
+      timestamps.add(
+          (long[]) PrimitiveArrayPool.getInstance().getPrimitiveDataListByType(TSDataType.INT64));
     }
   }
 

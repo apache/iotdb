@@ -20,7 +20,6 @@ package org.apache.iotdb.db.sync.receiver.recover;
 
 import java.io.File;
 import java.io.IOException;
-import org.apache.iotdb.db.sync.receiver.load.FileLoader;
 import org.apache.iotdb.db.sync.receiver.load.IFileLoader;
 
 public interface ISyncReceiverLogAnalyzer {

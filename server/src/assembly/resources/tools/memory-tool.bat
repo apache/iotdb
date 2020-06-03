@@ -27,7 +27,7 @@ popd
 
 set IOTDB_CONF=%IOTDB_HOME%\conf
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.MemEst.MemEstTool
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.db.tools.memestimation.MemEstTool
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------

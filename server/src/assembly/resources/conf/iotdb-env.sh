@@ -128,33 +128,74 @@ fi
 
 version_arr=(${JVM_VERSION//./ })
 
+#GC log path has to be defined here because it needs to access CASSANDRA_HOME
 if [ "${version_arr[0]}" = "1" ] ; then
-  MAJOR_VERSION=${version_arr[1]}
-  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log -XX:+PrintGCDateStamps -XX:+PrintGCDetails"
+    # Java 8
+    MAJOR_VERSION=${version_arr[1]}
+    echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]loggc"
+    if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
+        # only add -Xlog:gc if it's not mentioned in jvm-server.options file
+        mkdir -p ${IOTDB_HOME}/logs
+        if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/logs/gc.log  -XX:+PrintGCDateStamps -XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M"
+        fi
+    fi
 else
-  MAJOR_VERSION=${version_arr[0]}
-  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xloggc:${IOTDB_HOME}/gc.log"
+    #JDK 11 and others
+    MAJOR_VERSION=${version_arr[0]}
+    # See description of https://bugs.openjdk.java.net/browse/JDK-8046148 for details about the syntax
+    # The following is the equivalent to -XX:+PrintGCDetails -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
+    echo "$IOTDB_JMX_OPTS" | grep -q "^-[X]log:gc"
+    if [ "$?" = "1" ] ; then # [X] to prevent ccm from replacing this line
+        # only add -Xlog:gc if it's not mentioned in jvm-server.options file
+        mkdir -p ${IOTDB_HOME}/logs
+        if [ "$#" -ge "1" -a "$1" == "printgc" ]; then
+            IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xlog:gc=info,heap*=info,age*=info,safepoint=info,promotion*=info:file=${IOTDB_HOME}/logs/gc.log:time,uptime,pid,tid,level:filecount=10,filesize=10485760"
+        fi
+    fi
 fi
 
 
 
 calculate_heap_sizes
 
+## Set heap size by percentage of total memory
+#max_percentage=90
+#min_percentage=50
+#MAX_HEAP_SIZE="`expr $system_memory_in_mb \* $max_percentage / 100`M"
+#HEAP_NEWSIZE="`expr $system_memory_in_mb \* $min_percentage / 100`M"
+
 # Maximum heap size
 #MAX_HEAP_SIZE="2G"
 # Minimum heap size
 #HEAP_NEWSIZE="2G"
 
-JMX_LOCAL=no
+#true or false
+#DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
+JMX_LOCAL="true"
 
 JMX_PORT="31999"
+#only take effect when the jmx_local=false
+#You need to change this IP as a public IP if you want to remotely connect IoTDB by JMX.
+# 0.0.0.0 is not allowed
+JMX_IP="127.0.0.1"
 
-if [ "JMX_LOCAL" = "yes" ]; then
-	IOTDB_JMX_OPTS="-Diotdb.jmx.local.port=$JMX_PORT"
-	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+if [ ${JMX_LOCAL} = "false" ]; then
+  echo "setting remote JMX..."
+  #you may have no permission to run chmod. If so, contact your system administrator.
+  chmod 600 ${IOTDB_CONF}/jmx.password
+  chmod 600 ${IOTDB_CONF}/jmx.access
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djava.rmi.server.randomIDs=true"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.ssl=false"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.authenticate=true"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.password.file=${IOTDB_CONF}/jmx.password"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.access.file=${IOTDB_CONF}/jmx.access"
+  IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djava.rmi.server.hostname=$JMX_IP"
 else
-	IOTDB_JMX_OPTS="-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false  -Dcom.sun.management.jmxremote.ssl=false"
-	IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Dcom.sun.management.jmxremote.port=$JMX_PORT "
+  echo "setting local JMX..."
 fi
 
 

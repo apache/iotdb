@@ -49,10 +49,12 @@ public class SyncUtils {
   /**
    * Verify sending list is empty or not It's used by sync sender.
    */
-  public static boolean isEmpty(Map<String, Set<File>> sendingFileList) {
-    for (Entry<String, Set<File>> entry : sendingFileList.entrySet()) {
-      if (!entry.getValue().isEmpty()) {
-        return false;
+  public static boolean isEmpty(Map<String, Map<Long, Set<File>>> sendingFileList) {
+    for (Entry<String, Map<Long, Set<File>>> entry: sendingFileList.entrySet()) {
+      for(Entry<Long, Set<File>> innerEntry: entry.getValue().entrySet()) {
+        if (!innerEntry.getValue().isEmpty()) {
+          return false;
+        }
       }
     }
     return true;

@@ -33,7 +33,7 @@
     <dependencies>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-jdbc</artifactId>
+            <artifactId>iotdb-session</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

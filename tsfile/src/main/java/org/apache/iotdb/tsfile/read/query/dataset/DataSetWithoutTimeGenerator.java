@@ -30,14 +30,14 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReader;
+import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 
 /**
  * multi-way merging data set, no need to use TimeGenerator.
  */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {
 
-  private List<FileSeriesReader> readers;
+  private List<AbstractFileSeriesReader> readers;
 
   private List<BatchData> batchDataList;
 
@@ -53,13 +53,13 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
   /**
    * constructor of DataSetWithoutTimeGenerator.
    *
-   * @param paths paths in List structure
+   * @param paths     paths in List structure
    * @param dataTypes TSDataTypes in List structure
-   * @param readers readers in List(FileSeriesReaderByTimestamp) structure
+   * @param readers   readers in List(FileSeriesReaderByTimestamp) structure
    * @throws IOException IOException
    */
   public DataSetWithoutTimeGenerator(List<Path> paths, List<TSDataType> dataTypes,
-      List<FileSeriesReader> readers)
+      List<AbstractFileSeriesReader> readers)
       throws IOException {
     super(paths, dataTypes);
     this.readers = readers;
@@ -73,7 +73,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     timeSet = new HashSet<>();
 
     for (int i = 0; i < paths.size(); i++) {
-      FileSeriesReader reader = readers.get(i);
+      AbstractFileSeriesReader reader = readers.get(i);
       if (!reader.hasNextBatch()) {
         batchDataList.add(new BatchData());
         hasDataRemaining.add(false);
@@ -84,7 +84,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     }
 
     for (BatchData data : batchDataList) {
-      if (data.hasNext()) {
+      if (data.hasCurrent()) {
         timeHeapPut(data.currentTime());
       }
     }
@@ -106,21 +106,21 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
       Field field = new Field(dataTypes.get(i));
 
       if (!hasDataRemaining.get(i)) {
-        record.addField(new Field(null));
+        record.addField(null);
         continue;
       }
 
       BatchData data = batchDataList.get(i);
 
-      if (data.hasNext() && data.currentTime() == minTime) {
+      if (data.hasCurrent() && data.currentTime() == minTime) {
         putValueToField(data, field);
         data.next();
 
-        if (!data.hasNext()) {
-          FileSeriesReader reader = readers.get(i);
+        if (!data.hasCurrent()) {
+          AbstractFileSeriesReader reader = readers.get(i);
           if (reader.hasNextBatch()) {
             data = reader.nextBatch();
-            if (data.hasNext()) {
+            if (data.hasCurrent()) {
               batchDataList.set(i, data);
               timeHeapPut(data.currentTime());
             } else {
@@ -134,7 +134,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         }
         record.addField(field);
       } else {
-        record.addField(new Field(null));
+        record.addField(null);
       }
     }
     return record;

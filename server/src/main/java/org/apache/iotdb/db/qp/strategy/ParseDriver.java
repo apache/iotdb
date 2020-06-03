@@ -26,7 +26,6 @@ import org.antlr.v4.runtime.atn.PredictionMode;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.logical.Operator;
 
 /**
@@ -34,20 +33,14 @@ import org.apache.iotdb.db.qp.logical.Operator;
  *
  */
 public class ParseDriver {
-  private LogicalGenerator logicalGenerator;
   private ParseTreeWalker walker;
 
   public ParseDriver() {
-    this(IoTDBDescriptor.getInstance().getConfig().getZoneID());
-  }
-
-  private ParseDriver(ZoneId zoneId) {
     walker = new ParseTreeWalker();
-    logicalGenerator = new LogicalGenerator(zoneId);
   }
 
   public Operator parse(String sql, ZoneId zoneId) throws ParseCancellationException {
-    logicalGenerator.setZoneId(zoneId);
+    LogicalGenerator logicalGenerator = new LogicalGenerator(zoneId);
     CharStream charStream1 = CharStreams.fromString(sql);
     SqlBaseLexer lexer1 = new SqlBaseLexer(charStream1);
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);

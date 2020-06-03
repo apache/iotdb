@@ -18,30 +18,25 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.IQueryProcessExecutor;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.expression.IExpression;
 
-public class QueryPlan extends PhysicalPlan {
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-  private List<Path> paths = null;
+public abstract class QueryPlan extends PhysicalPlan {
+
+  protected List<Path> paths = null;
   private List<TSDataType> dataTypes = null;
-  private IExpression expression = null;
+  private boolean alignByTime = true; // for disable align sql
 
   private int rowLimit = 0;
   private int rowOffset = 0;
 
-  private boolean isGroupByDevice = false; // for group by device sql
-  private List<String> measurementColumnList; // for group by device sql
-  private Map<String, Set<String>> measurementColumnsGroupByDevice; // for group by device sql
-  private Map<String, TSDataType> dataTypeConsistencyChecker; // for group by device sql
+  private Map<String, Integer> pathToIndex = new HashMap<>();
 
   public QueryPlan() {
     super(true);
@@ -50,25 +45,6 @@ public class QueryPlan extends PhysicalPlan {
 
   public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
     super(isQuery, operatorType);
-  }
-
-  /**
-   * Check if all paths exist.
-   */
-  public void checkPaths(IQueryProcessExecutor executor) throws QueryProcessException {
-    for (Path path : paths) {
-      if (!executor.judgePathExists(path)) {
-        throw new QueryProcessException("Path doesn't exist: " + path);
-      }
-    }
-  }
-
-  public IExpression getExpression() {
-    return expression;
-  }
-
-  public void setExpression(IExpression expression) {
-    this.expression = expression;
   }
 
   @Override
@@ -108,37 +84,19 @@ public class QueryPlan extends PhysicalPlan {
     return rowLimit > 0;
   }
 
-  public boolean isGroupByDevice() {
-    return isGroupByDevice;
+  public boolean isAlignByTime() {
+    return alignByTime;
   }
 
-  public void setGroupByDevice(boolean groupByDevice) {
-    isGroupByDevice = groupByDevice;
+  public void setAlignByTime(boolean align) {
+    alignByTime = align;
   }
 
-  public void setMeasurementColumnList(List<String> measurementColumnList) {
-    this.measurementColumnList = measurementColumnList;
+  public void addPathToIndex(String columnName, Integer index) {
+    pathToIndex.put(columnName, index);
   }
 
-  public List<String> getMeasurementColumnList() {
-    return measurementColumnList;
-  }
-
-  public void setMeasurementColumnsGroupByDevice(
-      Map<String, Set<String>> measurementColumnsGroupByDevice) {
-    this.measurementColumnsGroupByDevice = measurementColumnsGroupByDevice;
-  }
-
-  public Map<String, Set<String>> getMeasurementColumnsGroupByDevice() {
-    return measurementColumnsGroupByDevice;
-  }
-
-  public void setDataTypeConsistencyChecker(
-      Map<String, TSDataType> dataTypeConsistencyChecker) {
-    this.dataTypeConsistencyChecker = dataTypeConsistencyChecker;
-  }
-
-  public Map<String, TSDataType> getDataTypeConsistencyChecker() {
-    return dataTypeConsistencyChecker;
+  public Map<String, Integer> getPathToIndex() {
+    return pathToIndex;
   }
 }

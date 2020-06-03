@@ -22,12 +22,16 @@ import org.apache.iotdb.db.qp.logical.Operator;
 
 public class GroupByPlan extends AggregationPlan {
 
+  // [startTime, endTime)
   private long startTime;
   private long endTime;
-  // time interval
-  private long unit;
+  // aggregation time interval
+  private long interval;
   // sliding step
   private long slidingStep;
+
+  // if it is left close and right open interval
+  private boolean leftCRightO = true;
 
   public GroupByPlan() {
     super();
@@ -50,12 +54,12 @@ public class GroupByPlan extends AggregationPlan {
     this.endTime = endTime;
   }
 
-  public long getUnit() {
-    return unit;
+  public long getInterval() {
+    return interval;
   }
 
-  public void setUnit(long unit) {
-    this.unit = unit;
+  public void setInterval(long interval) {
+    this.interval = interval;
   }
 
   public long getSlidingStep() {
@@ -64,5 +68,13 @@ public class GroupByPlan extends AggregationPlan {
 
   public void setSlidingStep(long slidingStep) {
     this.slidingStep = slidingStep;
+  }
+
+  public boolean isLeftCRightO() {
+    return leftCRightO;
+  }
+
+  public void setLeftCRightO(boolean leftCRightO) {
+    this.leftCRightO = leftCRightO;
   }
 }

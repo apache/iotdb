@@ -24,10 +24,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
-import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
-import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
+
 import org.junit.Before;
 import org.junit.Test;
+
+import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
+import org.apache.iotdb.tsfile.encoding.encoder.DeltaBinaryEncoder;
 
 public class DeltaBinaryEncoderIntegerTest {
 
@@ -94,11 +96,11 @@ public class DeltaBinaryEncoderIntegerTest {
   }
 
   private void shouldReadAndWrite(int[] data, int length) throws IOException {
-    //System.out.println("source data size:" + 4 * length + " byte");
+    // System.out.println("source data size:" + 4 * length + " byte");
     out = new ByteArrayOutputStream();
     writeData(data, length);
     byte[] page = out.toByteArray();
-    //System.out.println("encoding data size:" + page.length + " byte");
+    // System.out.println("encoding data size:" + page.length + " byte");
     buffer = ByteBuffer.wrap(page);
     int i = 0;
     while (reader.hasNext(buffer)) {

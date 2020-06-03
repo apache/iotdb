@@ -17,6 +17,7 @@
 # under the License.
 #
 
+# this docker file shows how to build an IoTDB image from IoTDB source codes.
 FROM ubuntu:18.04
 RUN apt update \
   && apt install wget unzip lsof maven thrift-compiler=0.9.1-2.1 -y \

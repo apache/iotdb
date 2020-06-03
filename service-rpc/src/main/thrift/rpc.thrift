@@ -19,16 +19,9 @@
 namespace java org.apache.iotdb.service.rpc.thrift
 
 // The return status code and message in each response.
-struct TSStatusType {
-  1: required i32 code
-  2: required string message
-}
-
-// The return status of a remote request
 struct TSStatus {
-  1: required TSStatusType statusType
-  2: optional list<string> infoMessages
-  3: optional string sqlState  // as defined in the ISO/IEF CLIENT specification
+  1: required i32 code
+  2: optional string message
 }
 
 struct TSExecuteStatementResp {
@@ -40,10 +33,15 @@ struct TSExecuteStatementResp {
 	5: optional bool ignoreTimeStamp
   // Data type list of columns in select statement of SQL
   6: optional list<string> dataTypeList
+  7: optional TSQueryDataSet queryDataSet
+  // for disable align statements, queryDataSet is null and nonAlignQueryDataSet is not null
+  8: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
+  9: optional map<string, i32> columnNameIndexMap
 }
 
 enum TSProtocolVersion {
   IOTDB_SERVICE_PROTOCOL_V1,
+  IOTDB_SERVICE_PROTOCOL_V2,//V2 is the first version that we can check version compatibility
 }
 
 struct TSOpenSessionResp {
@@ -62,7 +60,7 @@ struct TSOpenSessionResp {
 // OpenSession()
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
-  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
+  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
   2: optional string username
   3: optional string password
   4: optional map<string, string> configuration
@@ -89,17 +87,12 @@ struct TSExecuteStatementReq {
 
   // statementId
   3: required i64 statementId
-}
 
-struct TSExecuteInsertRowInBatchResp{
-  1: required i64 sessionId
-	2: required list<TSStatus> statusList
+  4: optional i32 fetchSize
 }
 
 struct TSExecuteBatchStatementResp{
-	1: required TSStatus status
-  // For each value in result, Statement.SUCCESS_NO_INFO represents success, Statement.EXECUTE_FAILED represents fail otherwise.
-	2: optional list<i32> result
+	1: required list<TSStatus> statusList
 }
 
 struct TSExecuteBatchStatementReq{
@@ -137,33 +130,28 @@ struct TSFetchResultsReq{
 	2: required string statement
 	3: required i32 fetchSize
 	4: required i64 queryId
+	5: required bool isAlign
 }
 
 struct TSFetchResultsResp{
 	1: required TSStatus status
 	2: required bool hasResultSet
-	3: optional TSQueryDataSet queryDataSet
+  3: required bool isAlign
+	4: optional TSQueryDataSet queryDataSet
+	5: optional TSQueryNonAlignDataSet nonAlignQueryDataSet
 }
 
 struct TSFetchMetadataResp{
 		1: required TSStatus status
 		2: optional string metadataInJson
 		3: optional list<string> columnsList
-		4: optional i32 timeseriesNum
-		5: optional string dataType
-		6: optional list<list<string>> timeseriesList
-		7: optional set<string> storageGroups
-		8: optional set<string> devices
-		9: optional list<string> nodesList
-		10: optional map<string, string> nodeTimeseriesNum
-		11: optional set<string> childPaths
+		4: optional string dataType
 }
 
 struct TSFetchMetadataReq{
     1: required i64 sessionId
 		2: required string type
 		3: optional string columnPath
-		4: optional i32 nodeLevel
 }
 
 struct TSGetTimeZoneResp {
@@ -176,26 +164,17 @@ struct TSSetTimeZoneReq {
     2: required string timeZone
 }
 
-// for prepared statement
-struct TSInsertionReq {
-    1: required i64 sessionId
-    2: optional string deviceId
-    3: optional list<string> measurements
-    4: optional list<string> values
-    5: optional i64 timestamp
-    6: optional i64 queryId
-}
-
 // for session
-struct TSInsertReq {
+struct TSInsertRecordReq {
     1: required i64 sessionId
     2: required string deviceId
     3: required list<string> measurements
-    4: required list<string> values
+    4: required binary values
     5: required i64 timestamp
+    6: optional bool inferType
 }
 
-struct TSBatchInsertionReq {
+struct TSInsertTabletReq {
     1: required i64 sessionId
     2: required string deviceId
     3: required list<string> measurements
@@ -205,12 +184,23 @@ struct TSBatchInsertionReq {
     7: required i32 size
 }
 
-struct TSInsertInBatchReq {
+struct TSInsertTabletsReq {
     1: required i64 sessionId
     2: required list<string> deviceIds
     3: required list<list<string>> measurementsList
-    4: required list<list<string>> valuesList
+    4: required list<binary> valuesList
+    5: required list<binary> timestampsList
+    6: required list<list<i32>> typesList
+    7: required list<i32> sizeList
+}
+
+struct TSInsertRecordsReq {
+    1: required i64 sessionId
+    2: required list<string> deviceIds
+    3: required list<list<string>> measurementsList
+    4: required list<binary> valuesList
     5: required list<i64> timestamps
+    6: optional bool inferType
 }
 
 struct TSDeleteDataReq {
@@ -225,6 +215,22 @@ struct TSCreateTimeseriesReq {
   3: required i32 dataType
   4: required i32 encoding
   5: required i32 compressor
+  6: optional map<string, string> props
+  7: optional map<string, string> tags
+  8: optional map<string, string> attributes
+  9: optional string measurementAlias
+}
+
+struct TSCreateMultiTimeseriesReq {
+  1: required i64 sessionId
+  2: required list<string> paths
+  3: required list<i32> dataTypes
+  4: required list<i32> encodings
+  5: required list<i32> compressors
+  6: optional list<map<string, string>> propsList
+  7: optional list<map<string, string>> tagsList
+  8: optional list<map<string, string>> attributesList
+  9: optional list<string> measurementAliasList
 }
 
 struct ServerProperties {
@@ -234,12 +240,19 @@ struct ServerProperties {
 }
 
 struct TSQueryDataSet{
-   // ByteBuffer for time column
-   1: required binary time
-   // ByteBuffer for each column values
-   2: required list<binary> valueList
-   // Bitmap for each column to indicate whether it is a null value
-   3: required list<binary> bitmapList
+    // ByteBuffer for time column
+    1: required binary time
+    // ByteBuffer for each column values
+    2: required list<binary> valueList
+    // Bitmap for each column to indicate whether it is a null value
+    3: required list<binary> bitmapList
+}
+
+struct TSQueryNonAlignDataSet{
+    // ByteBuffer for each time column
+	  1: required list<binary> timeList
+	  // ByteBuffer for each column values
+    2: required list<binary> valueList
 }
 
 
@@ -270,27 +283,31 @@ service TSIService {
 
 	ServerProperties getProperties();
 
-	TSExecuteStatementResp insert(1:TSInsertionReq req);
-
 	TSStatus setStorageGroup(1:i64 sessionId, 2:string storageGroup);
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
+
+	TSExecuteBatchStatementResp createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
 
   TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
   TSStatus deleteStorageGroups(1:i64 sessionId, 2:list<string> storageGroup);
 
-  TSExecuteBatchStatementResp insertBatch(1:TSBatchInsertionReq req);
+  TSStatus insertRecord(1:TSInsertRecordReq req);
 
-	TSStatus insertRow(1:TSInsertReq req);
+  TSExecuteBatchStatementResp insertTablet(1:TSInsertTabletReq req);
 
-	TSExecuteInsertRowInBatchResp insertRowInBatch(1:TSInsertInBatchReq req);
+  TSExecuteBatchStatementResp insertTablets(1:TSInsertTabletsReq req);
 
-	TSExecuteBatchStatementResp testInsertBatch(1:TSBatchInsertionReq req);
+	TSExecuteBatchStatementResp insertRecords(1:TSInsertRecordsReq req);
 
-  TSStatus testInsertRow(1:TSInsertReq req);
+	TSExecuteBatchStatementResp testInsertTablet(1:TSInsertTabletReq req);
 
-  TSExecuteInsertRowInBatchResp testInsertRowInBatch(1:TSInsertInBatchReq req);
+  TSExecuteBatchStatementResp testInsertTablets(1:TSInsertTabletsReq req);
+
+  TSStatus testInsertRecord(1:TSInsertRecordReq req);
+
+  TSExecuteBatchStatementResp testInsertRecords(1:TSInsertRecordsReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 

@@ -37,6 +37,13 @@ public class FunctionOperator extends FilterOperator {
     operatorType = OperatorType.FUNC;
   }
 
+  /**
+   * reverse func.
+   */
+  public void reverseFunc() {
+    // Implemented by subclass
+  }
+
   @Override
   public boolean addChildOperator(FilterOperator op) {
     logger.error("cannot add child to leaf FilterOperator, now it's FunctionOperator");

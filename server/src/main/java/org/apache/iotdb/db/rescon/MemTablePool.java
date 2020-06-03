@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.rescon;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -27,6 +25,9 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.nvm.memtable.NVMPrimitiveMemTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayDeque;
+import java.util.Deque;
 
 public class MemTablePool {
 
@@ -41,8 +42,13 @@ public class MemTablePool {
   private int nvmSize = 0;
 
   private static final int WAIT_TIME = 2000;
+  private int size = 0;
 
   private MemTablePool() {
+  }
+
+  public static MemTablePool getInstance() {
+    return InstanceHolder.INSTANCE;
   }
 
   // TODO change the impl of getAvailableMemTable to non-blocking
@@ -160,15 +166,11 @@ public class MemTablePool {
     return nvm ? nvmSize : size;
   }
 
-  public static MemTablePool getInstance() {
-    return InstanceHolder.INSTANCE;
-  }
-
   private static class InstanceHolder {
+
+    private static final MemTablePool INSTANCE = new MemTablePool();
 
     private InstanceHolder() {
     }
-
-    private static final MemTablePool INSTANCE = new MemTablePool();
   }
 }

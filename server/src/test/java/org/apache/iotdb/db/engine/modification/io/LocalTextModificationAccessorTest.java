@@ -46,8 +46,7 @@ public class LocalTextModificationAccessorTest {
         new Deletion(new Path("d1", "s3"), 3, 3),
         new Deletion(new Path("d1", "s4"), 4, 4),
     };
-    try {
-      LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName);
+    try (LocalTextModificationAccessor accessor = new LocalTextModificationAccessor(tempFileName)) {
       for (int i = 0; i < 2; i++) {
         accessor.write(modifications[i]);
       }
@@ -63,7 +62,6 @@ public class LocalTextModificationAccessorTest {
       for (int i = 0; i < 4; i++) {
         assertEquals(modifications[i], modificationList.get(i));
       }
-      accessor.close();
     } catch (IOException e) {
       fail(e.getMessage());
     } finally {

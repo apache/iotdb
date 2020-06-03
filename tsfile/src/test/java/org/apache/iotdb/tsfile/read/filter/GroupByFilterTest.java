@@ -34,7 +34,7 @@ public class GroupByFilterTest {
   @Before
   public void setUp() throws Exception {
     groupByFilter = new GroupByFilter(3, 24,
-            8, 8 + 30 * 24 + 3 + 6, FilterType.GROUP_BY_FILTER);
+            8, 8 + 30 * 24 + 3 + 6);
   }
 
   @Test

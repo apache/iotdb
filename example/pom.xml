@@ -40,6 +40,8 @@
         <module>tsfile</module>
         <module>jdbc</module>
         <module>hadoop</module>
+        <module>flink</module>
+        <module>mqtt</module>
     </modules>
     <build>
         <pluginManagement>

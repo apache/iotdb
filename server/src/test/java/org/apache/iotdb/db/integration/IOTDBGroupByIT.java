@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.After;
@@ -29,12 +29,11 @@ import org.junit.Test;
 
 import java.sql.*;
 
-import static org.apache.iotdb.db.integration.Constant.*;
+import static org.apache.iotdb.db.constant.TestConstant.*;
 import static org.junit.Assert.fail;
 
 public class IOTDBGroupByIT {
 
-  private static IoTDB daemon;
 
   private static String[] dataSet1 = new String[]{
       "SET STORAGE GROUP TO root.ln.wf01.wt01",
@@ -99,12 +98,13 @@ public class IOTDBGroupByIT {
   };
 
   private static final String TIMESTAMP_STR = "Time";
+  private long prevPartitionInterval;
 
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
@@ -112,12 +112,12 @@ public class IOTDBGroupByIT {
 
   @After
   public void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   @Test
-  public void countSumAvgTest() throws SQLException {
+  public void countSumAvgTest() {
     String[] retArray1 = new String[]{
         "5,3,35.8,11.933333333333332",
         "25,2,70.7,35.35",
@@ -139,25 +139,24 @@ public class IOTDBGroupByIT {
         "120,0,0.0,null",
         "130,0,0.0,null",
         "140,0,0.0,null",
-        "150,1,200.2,200.2",
-        "160,0,0.0,null"
+        "150,1,200.2,200.2"
     };
     String[] retArray3 = new String[]{
-            "25,2,70.7,35.35",
-            "45,1,50.5,50.5",
-            "65,0,0.0,null",
-            "85,1,100.1,100.1",
-            "105,0,0.0,null",
-            "125,0,0.0,null",
-            "145,1,200.2,200.2",
-            "165,0,0.0,null",
-            "185,1,300.3,300.3",
-            "205,0,0.0,null",
-            "225,0,0.0,null",
-            "245,1,400.4,400.4",
-            "265,0,0.0,null",
-            "285,1,500.5,500.5",
-            "305,0,0.0,null"
+        "25,2,70.7,35.35",
+        "45,1,50.5,50.5",
+        "65,0,0.0,null",
+        "85,1,100.1,100.1",
+        "105,0,0.0,null",
+        "125,0,0.0,null",
+        "145,1,200.2,200.2",
+        "165,0,0.0,null",
+        "185,1,300.3,300.3",
+        "205,0,0.0,null",
+        "225,0,0.0,null",
+        "245,1,400.4,400.4",
+        "265,0,0.0,null",
+        "285,1,500.5,500.5",
+        "305,0,0.0,null"
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -165,7 +164,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([5, 160], 20ms)");
+              + "GROUP BY ([5, 160), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -185,7 +184,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([50, 160], 10ms)");
+              + "GROUP BY ([50, 160), 10ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -204,7 +203,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select count(temperature), sum(temperature), avg(temperature) from "
               + "root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([25, 314], 20ms)");
+              + "GROUP BY ([25, 314), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -227,7 +226,7 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void maxMinValeTimeTest() throws SQLException {
+  public void maxMinValeTimeTest() {
     String[] retArray1 = new String[]{
         "2,null,null,null,null",
         "4,5.5,4.4,5,4",
@@ -242,8 +241,7 @@ public class IOTDBGroupByIT {
         "22,null,null,null,null",
         "24,null,null,null,null",
         "26,null,null,null,null",
-        "28,null,null,null,null",
-        "30,30.3,30.3,30,30"
+        "28,null,null,null,null"
     };
     String[] retArray2 = new String[]{
         "2,20.2,3.3,20,3",
@@ -260,7 +258,7 @@ public class IOTDBGroupByIT {
         "222,null,null,null,null",
         "242,400.4,400.4,250,250",
         "262,null,null,null,null",
-        "282,500.5,500.5,300,300",
+        "282,null,null,null,null",
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -269,7 +267,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select max_value(temperature), min_value(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([2,30], 2ms)");
+              + "GROUP BY ([2,30), 2ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -290,7 +288,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select max_value(temperature), min_value(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where temperature > 3 "
-              + "GROUP BY ([2,300], 20ms)");
+              + "GROUP BY ([2,300), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -313,41 +311,39 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void firstLastTest() throws SQLException {
+  public void firstLastTest() {
     String[] retArray1 = new String[]{
-            "2,5.5,4.4",
-            "6,null,null",
-            "10,10.1,10.1",
-            "14,null,null",
-            "18,20.2,20.2",
-            "22,null,null",
-            "26,null,null",
-            "30,30.3,30.3"
+        "2,5.5,4.4",
+        "6,null,null",
+        "10,10.1,10.1",
+        "14,null,null",
+        "18,20.2,20.2",
+        "22,null,null",
+        "26,null,null"
     };
     String[] retArray2 = new String[]{
-            "2,20.2,3.3",
-            "22,40.4,30.3",
-            "42,50.5,50.5",
-            "62,null,null",
-            "82,100.1,100.1",
-            "102,null,null",
-            "122,null,null",
-            "142,200.2,200.2",
-            "162,null,null",
-            "182,300.3,300.3",
-            "202,null,null",
-            "222,null,null",
-            "242,400.4,400.4",
-            "262,null,null",
-            "282,500.5,500.5"
+        "2,20.2,3.3",
+        "22,40.4,30.3",
+        "42,50.5,50.5",
+        "62,null,null",
+        "82,100.1,100.1",
+        "102,null,null",
+        "122,null,null",
+        "142,200.2,200.2",
+        "162,null,null",
+        "182,300.3,300.3",
+        "202,null,null",
+        "222,null,null",
+        "242,400.4,400.4",
+        "262,null,null",
+        "282,null,null"
     };
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
           "select last_value(temperature), first_value(temperature) from root.ln.wf01.wt01 where time > 3 "
-              + "GROUP BY ([2,30], 4ms)");
-
+              + "GROUP BY ([2,30), 4ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -366,7 +362,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select first_value(temperature), last_value(temperature) from root.ln.wf01.wt01 "
               + "where temperature > 3 "
-              + "GROUP BY ([2,300], 20ms)");
+              + "GROUP BY ([2,300), 20ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -388,16 +384,14 @@ public class IOTDBGroupByIT {
   }
 
   @Test
-  public void largeIntervalTest() throws SQLException {
+  public void largeIntervalTest() {
     String[] retArray1 = new String[]{
-            "0,4.4,12,300,4",
-            "340,100.1,10,620,500",
-            "680,null,0,null,null"
+        "0,4.4,12,300,4",
+        "340,100.1,10,620,500"
     };
     String[] retArray2 = new String[]{
-            "0,3.3,13,300,3",
-            "340,100.1,10,620,500",
-            "680,null,0,null,null"
+        "0,3.3,13,300,3",
+        "340,100.1,10,620,500"
     };
 
     try (Connection connection = DriverManager.
@@ -406,7 +400,7 @@ public class IOTDBGroupByIT {
       boolean hasResultSet = statement.execute(
           "select min_value(temperature), count(temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where time > 3 GROUP BY "
-              + "([0, 680], 340ms)");
+              + "([0, 680), 340ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -427,7 +421,7 @@ public class IOTDBGroupByIT {
       hasResultSet = statement.execute(
           "select min_value(temperature), count (temperature), max_time(temperature), "
               + "min_time(temperature) from root.ln.wf01.wt01 where temperature > 3 GROUP BY "
-              + "([0, 680], 340ms)");
+              + "([0, 680), 340ms)");
 
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -453,36 +447,35 @@ public class IOTDBGroupByIT {
   @Test
   public void countSumAvgInnerIntervalTest() {
     String[] retArray1 = new String[]{
-            "0,2,7.7,3.85",
-            "30,1,30.3,30.3",
-            "60,0,0.0,null",
-            "90,0,0.0,null",
-            "120,0,0.0,null",
-            "150,1,200.2,200.2",
-            "180,0,0.0,null",
-            "210,0,0.0,null",
-            "240,0,0.0,null",
-            "270,0,0.0,null",
-            "300,1,500.5,500.5",
-            "330,0,0.0,null",
-            "360,0,0.0,null",
-            "390,0,0.0,null",
-            "420,0,0.0,null",
-            "450,0,0.0,null",
-            "480,0,0.0,null",
-            "510,1,200.2,200.2",
-            "540,1,500.5,500.5",
-            "570,0,0.0,null",
-            "600,1,300.3,300.3"
+        "0,2,7.7,3.85",
+        "30,1,30.3,30.3",
+        "60,0,0.0,null",
+        "90,0,0.0,null",
+        "120,0,0.0,null",
+        "150,1,200.2,200.2",
+        "180,0,0.0,null",
+        "210,0,0.0,null",
+        "240,0,0.0,null",
+        "270,0,0.0,null",
+        "300,1,500.5,500.5",
+        "330,0,0.0,null",
+        "360,0,0.0,null",
+        "390,0,0.0,null",
+        "420,0,0.0,null",
+        "450,0,0.0,null",
+        "480,0,0.0,null",
+        "510,1,200.2,200.2",
+        "540,1,500.5,500.5",
+        "570,0,0.0,null"
     };
 
     try (Connection connection = DriverManager.
-            getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet = statement.execute(
-              "select count(temperature), sum(temperature), avg(temperature) from "
-                      + "root.ln.wf01.wt01 where temperature > 3 "
-                      + "GROUP BY ([0, 600], 5ms, 30ms)");
+          "select count(temperature), sum(temperature), avg(temperature) from "
+              + "root.ln.wf01.wt01 where temperature > 3 "
+              + "GROUP BY ([0, 600), 5ms, 30ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -490,14 +483,76 @@ public class IOTDBGroupByIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet
-                  .getString(count("root.ln.wf01.wt01.temperature")) + "," +
-                  resultSet.getString(sum("root.ln.wf01.wt01.temperature")) + "," + resultSet
-                  .getString(avg("root.ln.wf01.wt01.temperature"));
+              .getString(count("root.ln.wf01.wt01.temperature")) + "," +
+              resultSet.getString(sum("root.ln.wf01.wt01.temperature")) + "," + resultSet
+              .getString(avg("root.ln.wf01.wt01.temperature"));
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(retArray1.length, cnt);
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void countSumAvgNoDataTest() {
+    String[] retArray1 = new String[]{
+        "10000,0,0.0,null",
+        "10005,0,0.0,null",
+        "10010,0,0.0,null",
+        "10015,0,0.0,null",
+        "10020,0,0.0,null",
+        "10025,0,0.0,null",
+    };
+
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute(
+          "select count(temperature), sum(temperature), avg(temperature) from "
+              + "root.ln.wf01.wt01 where temperature > 3 "
+              + "GROUP BY ([10000, 10030), 5ms)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString("Time") + "," +
+              resultSet.getString(count("root.ln.wf01.wt01.temperature")) + "," +
+              resultSet.getString(sum("root.ln.wf01.wt01.temperature")) + "," +
+              resultSet.getString(avg("root.ln.wf01.wt01.temperature"));
+          Assert.assertEquals(retArray1[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray1.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void usingNowFunction() {
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,temperature,status, hardware) "
+          + "values(now(), 35.5, false, 650)");
+      ResultSet resultSet = statement.executeQuery(
+          "select count(temperature), sum(temperature), avg(temperature) from "
+              + "root.ln.wf01.wt01 "
+              + "GROUP BY ([now() - 1h, now() + 1h), 2h)");
+      Assert.assertTrue(resultSet.next());
+      //resultSet.getLong(1) is the timestamp
+      Assert.assertEquals(1, Integer.valueOf(resultSet.getString(2)).intValue());
+      Assert.assertEquals(35.5, Float.valueOf(resultSet.getString(3)).floatValue(), 0.01);
+      Assert.assertEquals(35.5, Double.valueOf(resultSet.getString(4)).doubleValue(), 0.01);
+
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

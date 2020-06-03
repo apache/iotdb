@@ -30,19 +30,23 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.query.executor.EngineQueryRouter;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -52,17 +56,16 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 /**
- * Notice that, all test begins with "IoTDB" is integration test. All test which will start the IoTDB server should be
- * defined as integration test.
+ * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
+ * IoTDB server should be defined as integration test.
  */
 public class IoTDBSeriesReaderIT {
 
-  private static IoTDB daemon;
-
   private static TSFileConfig tsFileConfig = TSFileDescriptor.getInstance().getConfig();
-  private static int maxNumberOfPointsInPage;
   private static int pageSizeInByte;
   private static int groupSizeInByte;
+  private static long prevPartitionInterval;
+  private static int prevChunkMergePointThreshold;
 
   private static Connection connection;
 
@@ -72,7 +75,6 @@ public class IoTDBSeriesReaderIT {
 
     // use small page setting
     // origin value
-    maxNumberOfPointsInPage = tsFileConfig.getMaxNumberOfPointsInPage();
     pageSizeInByte = tsFileConfig.getPageSizeInByte();
     groupSizeInByte = tsFileConfig.getGroupSizeInByte();
 
@@ -80,10 +82,15 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setMaxNumberOfPointsInPage(1000);
     tsFileConfig.setPageSizeInByte(1024 * 1024 * 150);
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1024 * 1000);
+    prevChunkMergePointThreshold = IoTDBDescriptor.getInstance().getConfig()
+        .getChunkMergePointThreshold();
+    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
-    daemon = IoTDB.getInstance();
-    daemon.active();
+    // test result of IBatchReader should not cross partition
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(2);
+
     EnvironmentUtils.envSetUp();
 
     insertData();
@@ -95,30 +102,30 @@ public class IoTDBSeriesReaderIT {
   @AfterClass
   public static void tearDown() throws Exception {
     connection.close();
-    daemon.stop();
     // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(1024 * 1024 * 150);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
-    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();
+    IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
+    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    IoTDBDescriptor.getInstance().getConfig()
+        .setChunkMergePointThreshold(prevChunkMergePointThreshold);
   }
 
-  private static void insertData() throws ClassNotFoundException, SQLException {
+  private static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement() ) {
+        Statement statement = connection.createStatement()) {
 
-
-      for (String sql : Constant.create_sql) {
+      for (String sql : TestConstant.create_sql) {
         statement.execute(sql);
       }
 
       // insert large amount of data time range : 3000 ~ 13600
       for (int time = 3000; time < 13600; time++) {
-        // System.out.println("===" + time);
         String sql = String
             .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, time % 100);
         statement.execute(sql);
@@ -129,10 +136,10 @@ public class IoTDBSeriesReaderIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time % 22);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[time % 5]);
+            TestConstant.stringValue[time % 5]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            Constant.booleanValue[time % 2]);
+            TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, time);
         statement.execute(sql);
@@ -170,8 +177,6 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
-      statement.execute("flush");
-
       // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
 
@@ -186,6 +191,7 @@ public class IoTDBSeriesReaderIT {
         statement.execute(sql);
       }
 
+      statement.execute("flush");
       // unsequence insert, time < 3000
       for (int time = 2000; time < 2500; time++) {
 
@@ -199,10 +205,23 @@ public class IoTDBSeriesReaderIT {
             .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, time + 2);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time,
-            Constant.stringValue[time % 5]);
+            TestConstant.stringValue[time % 5]);
         statement.execute(sql);
       }
 
+      for (int time = 100000; time < 100500; time++) {
+        String sql = String
+            .format("insert into root.vehicle.d0(timestamp,s0) values(%s,%s)", time, 666);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s1) values(%s,%s)", time, 777);
+        statement.execute(sql);
+        sql = String
+            .format("insert into root.vehicle.d0(timestamp,s2) values(%s,%s)", time, 888);
+        statement.execute(sql);
+      }
+
+      statement.execute("flush");
       // unsequence insert, time > 200000
       for (int time = 200900; time < 201000; time++) {
 
@@ -217,7 +236,7 @@ public class IoTDBSeriesReaderIT {
             .format("insert into root.vehicle.d0(timestamp,s3) values(%s,'%s')", time, "goodman");
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s4) values(%s, %s)", time,
-            Constant.booleanValue[time % 2]);
+            TestConstant.booleanValue[time % 2]);
         statement.execute(sql);
         sql = String.format("insert into root.vehicle.d0(timestamp,s5) values(%s, %s)", time, 9999);
         statement.execute(sql);
@@ -230,29 +249,38 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void selectAllTest() throws IOException, StorageEngineException {
-    String selectSql = "select * from root";
-    //System.out.println("Test >>> " + selectSql);
+  public void selectAllTest() throws IOException, StorageEngineException, QueryProcessException {
+    QueryRouter queryRouter = new QueryRouter();
+    List<Path> pathList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    pathList.add(new Path(TestConstant.d0s0));
+    dataTypes.add(TSDataType.INT32);
+    pathList.add(new Path(TestConstant.d0s1));
+    dataTypes.add(TSDataType.INT64);
+    pathList.add(new Path(TestConstant.d0s2));
+    dataTypes.add(TSDataType.FLOAT);
+    pathList.add(new Path(TestConstant.d0s3));
+    dataTypes.add(TSDataType.TEXT);
+    pathList.add(new Path(TestConstant.d0s4));
+    dataTypes.add(TSDataType.BOOLEAN);
+    pathList.add(new Path(TestConstant.d0s5));
+    dataTypes.add(TSDataType.DOUBLE);
+    pathList.add(new Path(TestConstant.d1s0));
+    dataTypes.add(TSDataType.INT32);
+    pathList.add(new Path(TestConstant.d1s1));
+    dataTypes.add(TSDataType.INT64);
 
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
-    QueryExpression queryExpression = QueryExpression.create();
-    queryExpression.addSelectedPath(new Path(Constant.d0s0));
-    queryExpression.addSelectedPath(new Path(Constant.d0s1));
-    queryExpression.addSelectedPath(new Path(Constant.d0s2));
-    queryExpression.addSelectedPath(new Path(Constant.d0s3));
-    queryExpression.addSelectedPath(new Path(Constant.d0s4));
-    queryExpression.addSelectedPath(new Path(Constant.d0s5));
-    queryExpression.addSelectedPath(new Path(Constant.d1s0));
-    queryExpression.addSelectedPath(new Path(Constant.d1s1));
-    queryExpression.setExpression(null);
-
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
+
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(23400, cnt);
@@ -261,56 +289,56 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void selectOneSeriesWithValueFilterTest() throws IOException, StorageEngineException {
-
-    String selectSql = "select s0 from root.vehicle.d0 where s0 >= 20";
-    //System.out.println("Test >>> " + selectSql);
-
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
-    QueryExpression queryExpression = QueryExpression.create();
-    Path p = new Path(Constant.d0s0);
-    queryExpression.addSelectedPath(p);
+  public void selectOneSeriesWithValueFilterTest()
+      throws IOException, StorageEngineException, QueryProcessException {
+    QueryRouter queryRouter = new QueryRouter();
+    List<Path> pathList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    Path p = new Path(TestConstant.d0s0);
+    pathList.add(p);
+    dataTypes.add(TSDataType.INT32);
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(p,
         ValueFilter.gtEq(20));
-    queryExpression.setExpression(singleSeriesExpression);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
+
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(pathList);
+    queryPlan.setExpression(singleSeriesExpression);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      String result = rowRecord.toString();
-      // System.out.println(result);
+      queryDataSet.next();
       cnt++;
     }
-    assertEquals(16440, cnt);
+    assertEquals(16940, cnt);
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
-  public void seriesTimeDigestReadTest() throws IOException, StorageEngineException {
-    String selectSql = "select s0 from root.vehicle.d0 where time >= 22987";
-    //System.out.println("Test >>> " + selectSql);
-
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
-    QueryExpression queryExpression = QueryExpression.create();
-    Path path = new Path(Constant.d0s0);
-    queryExpression.addSelectedPath(path);
+  public void seriesTimeDigestReadTest()
+      throws IOException, StorageEngineException, QueryProcessException {
+    QueryRouter queryRouter = new QueryRouter();
+    Path path = new Path(TestConstant.d0s0);
+    List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
-    queryExpression.setExpression(expression);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
+
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+    queryPlan.setDeduplicatedPaths(Collections.singletonList(path));
+    queryPlan.setExpression(expression);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      String result = rowRecord.toString();
-      // System.out.println(result);
+      queryDataSet.next();
       cnt++;
     }
     assertEquals(3012, cnt);
@@ -319,30 +347,40 @@ public class IoTDBSeriesReaderIT {
   }
 
   @Test
-  public void crossSeriesReadUpdateTest() throws IOException, StorageEngineException {
-    //System.out.println("Test >>> select s1 from root.vehicle.d0 where s0 < 111");
-    EngineQueryRouter engineExecutor = new EngineQueryRouter();
-    QueryExpression queryExpression = QueryExpression.create();
-    Path path1 = new Path(Constant.d0s0);
-    Path path2 = new Path(Constant.d0s1);
-    queryExpression.addSelectedPath(path1);
-    queryExpression.addSelectedPath(path2);
+  public void crossSeriesReadUpdateTest()
+      throws IOException, StorageEngineException, QueryProcessException {
+    QueryRouter queryRouter = new QueryRouter();
+    Path path1 = new Path(TestConstant.d0s0);
+    Path path2 = new Path(TestConstant.d0s1);
+
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+
+    List<Path> pathList = new ArrayList<>();
+    pathList.add(path1);
+    pathList.add(path2);
+    queryPlan.setDeduplicatedPaths(pathList);
+
+    List<TSDataType> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.INT32);
+    dataTypes.add(TSDataType.INT64);
+    queryPlan.setDeduplicatedDataTypes(dataTypes);
+
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(path1,
         ValueFilter.lt(111));
-    queryExpression.setExpression(singleSeriesExpression);
+    queryPlan.setExpression(singleSeriesExpression);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId();
-    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-    QueryDataSet queryDataSet = engineExecutor.query(queryExpression, TEST_QUERY_CONTEXT);
+    QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
     int cnt = 0;
     while (queryDataSet.hasNext()) {
-      RowRecord rowRecord = queryDataSet.next();
-      // long time = rowRecord.getTimestamp();
-      // String value = rowRecord.getFields().get(1).getStringValue();
+      queryDataSet.next();
       cnt++;
     }
-    assertEquals(22800, cnt);
+
+    assertEquals(22300, cnt);
 
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
@@ -350,9 +388,10 @@ public class IoTDBSeriesReaderIT {
   @Test
   public void queryEmptySeriesTest() throws SQLException {
     Statement statement = connection.createStatement();
-    statement.execute("CREATE TIMESERIES root.vehicle.d_empty.s1 WITH DATATYPE=INT64, ENCODING=RLE");
+    statement
+        .execute("CREATE TIMESERIES root.vehicle.d_empty.s1 WITH DATATYPE=INT64, ENCODING=RLE");
     ResultSet resultSet = statement.executeQuery("select * from root.vehicle.d_empty");
-    assertFalse (resultSet.next());
+    assertFalse(resultSet.next());
     resultSet.close();
   }
 }

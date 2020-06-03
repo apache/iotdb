@@ -27,7 +27,7 @@
 
   }
 
-  synchronized long genQueryId() {
+  synchronized long genJobId() {
    queryId++;
    return queryId;
   }

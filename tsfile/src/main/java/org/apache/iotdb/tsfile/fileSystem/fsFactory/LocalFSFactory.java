@@ -30,6 +30,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
+
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,15 @@ import org.slf4j.LoggerFactory;
 public class LocalFSFactory implements FSFactory {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalFSFactory.class);
+
+  @Override
+  public File getFileWithParent(String pathname) {
+    File res = new File(pathname);
+    if (!res.exists()) {
+      res.getParentFile().mkdirs();
+    }
+    return res;
+  }
 
   public File getFile(String pathname) {
     return new File(pathname);

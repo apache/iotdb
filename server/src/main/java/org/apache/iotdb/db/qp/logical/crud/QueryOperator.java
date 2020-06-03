@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
@@ -36,6 +36,8 @@ public class QueryOperator extends SFWOperator {
   // sliding step
   private long slidingStep;
   private boolean isGroupByTime = false;
+  // if it is left close and right open interval
+  private boolean leftCRightO;
 
   private Map<TSDataType, IFill> fillTypes;
   private boolean isFill = false;
@@ -45,7 +47,8 @@ public class QueryOperator extends SFWOperator {
   private int seriesLimit = 0;
   private int seriesOffset = 0;
 
-  private boolean isGroupByDevice = false;
+  private boolean isAlignByDevice = false;
+  private boolean isAlignByTime = true;
 
   public QueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -74,6 +77,14 @@ public class QueryOperator extends SFWOperator {
 
   public void setGroupBy(boolean isGroupBy) {
     this.isGroupByTime = isGroupBy;
+  }
+
+  public boolean isLeftCRightO() {
+    return leftCRightO;
+  }
+
+  public void setLeftCRightO(boolean leftCRightO) {
+    this.leftCRightO = leftCRightO;
   }
 
   public int getRowLimit() {
@@ -148,11 +159,19 @@ public class QueryOperator extends SFWOperator {
     this.slidingStep = slidingStep;
   }
 
-  public boolean isGroupByDevice() {
-    return isGroupByDevice;
+  public boolean isAlignByDevice() {
+    return isAlignByDevice;
   }
 
-  public void setGroupByDevice(boolean isGroupByDevice) {
-    this.isGroupByDevice = isGroupByDevice;
+  public void setAlignByDevice(boolean isAlignByDevice) {
+    this.isAlignByDevice = isAlignByDevice;
+  }
+
+  public boolean isAlignByTime() {
+    return isAlignByTime;
+  }
+
+  public void setAlignByTime(boolean isAlignByTime) {
+    this.isAlignByTime = isAlignByTime;
   }
 }

@@ -19,6 +19,27 @@
 
 -->
 
+# Apache IoTDB (incubating) 0.9.1
+
+## Bug Fixes
+
+- IOTDB-159 Fix NullPointerException in SeqTsFileRecoverTest and UnseqTsFileRecoverTest
+- IOTDB-317 Fix a bug that "flush + wrong aggregation query" causes the following queries to fail
+- IOTDB-324 Fix inaccurate statistics when writing in batch
+- IOTDB-327 Fix a groupBy-without-value-filter query bug caused by the wrong page skipping logic
+- IOTDB-331 Fix a groupBy query bug when axisOrigin-startTimeOfWindow is an integral multiple of interval
+- IOTDB-357 Fix NullPointerException in ActiveTimeSeriesCounter
+- IOTDB-359 Fix a wrong-data-type bug in TsFileSketchTool
+- IOTDB-360 Fix bug of a deadlock in CompressionRatio
+- IOTDB-363 Fix link errors in Development-Contributing.md and add Development-Document.md
+- IOTDB-392 Fix a bug in CSV export tool
+- Fix apache rat header format error in some files
+
+## Miscellaneous changes
+
+- IOTDB-321 Add definitions of time expression and LEVEL in related documents
+- Support pypi distribution for Python client
+
 # Apache IoTDB (incubating) 0.9.0
 
 ## New Features
@@ -114,6 +135,13 @@
 * Fix start-walchecker scripts for letting user define the wal folder
 * Fix start script to set JAVA_HOME
 
+# Apache IoTDB (incubating) 0.8.2
+
+ This is a bug-fix version of 0.8.1 
+
+-  IOTDB-264 lack checking datatype before writing WAL 
+-  IOTDB-317 Fix "flush + wrong aggregation" causes failed query in v0.8.x 
+-  NOTICE and LICENSE file update 
 
 # Apache IoTDB (incubating) 0.8.1
 

@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.tsfile.file.metadata.statistics;
 
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class DoubleStatistics extends Statistics<Double> {
 
@@ -33,6 +34,8 @@ public class DoubleStatistics extends Statistics<Double> {
   private double firstValue;
   private double lastValue;
   private double sumValue;
+
+  private static final int DOUBLE_STATISTICS_FIXED_RAM_SIZE = 80;
 
   @Override
   public TSDataType getType() {
@@ -47,13 +50,13 @@ public class DoubleStatistics extends Statistics<Double> {
   /**
    * initialize double statistics.
    *
-   * @param min min value
-   * @param max max value
+   * @param min   min value
+   * @param max   max value
    * @param first the first value
-   * @param last the last value
-   * @param sum sum value
+   * @param last  the last value
+   * @param sum   sum value
    */
-  private void initializeStats(double min, double max, double first, double last, double sum) {
+  public void initializeStats(double min, double max, double first, double last, double sum) {
     this.minValue = min;
     this.maxValue = max;
     this.firstValue = first;
@@ -61,8 +64,7 @@ public class DoubleStatistics extends Statistics<Double> {
     this.sumValue = sum;
   }
 
-  private void updateStats(double minValue, double maxValue, double firstValue, double lastValue,
-      double sumValue) {
+  private void updateStats(double minValue, double maxValue, double lastValue, double sumValue) {
     if (minValue < this.minValue) {
       this.minValue = minValue;
     }
@@ -71,6 +73,25 @@ public class DoubleStatistics extends Statistics<Double> {
     }
     this.sumValue += sumValue;
     this.lastValue = lastValue;
+  }
+
+  private void updateStats(double minValue, double maxValue, double firstValue, double lastValue, double sumValue, long startTime, long endTime) {
+    if (minValue < this.minValue) {
+      this.minValue = minValue;
+    }
+    if (maxValue > this.maxValue) {
+      this.maxValue = maxValue;
+    }
+    this.sumValue += sumValue;
+    // only if endTime greater or equals to the current endTime need we update the last value
+    // only if startTime less or equals to the current startTime need we update the first value
+    // otherwise, just ignore
+    if (startTime <= this.getStartTime()) {
+      this.firstValue = firstValue;
+    }
+    if (endTime >= this.getEndTime()) {
+      this.lastValue = lastValue;
+    }
   }
 
   @Override
@@ -85,7 +106,7 @@ public class DoubleStatistics extends Statistics<Double> {
       initializeStats(value, value, value, value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, value, value);
+      updateStats(value, value, value, value);
     }
   }
 
@@ -94,6 +115,11 @@ public class DoubleStatistics extends Statistics<Double> {
     for (int i = 0; i < batchSize; i++) {
       updateStats(values[i]);
     }
+  }
+
+  @Override
+  public long calculateRamSize() {
+    return DOUBLE_STATISTICS_FIXED_RAM_SIZE;
   }
 
   @Override
@@ -130,7 +156,7 @@ public class DoubleStatistics extends Statistics<Double> {
       isEmpty = false;
     } else {
       updateStats(doubleStats.getMinValue(), doubleStats.getMaxValue(), doubleStats.getFirstValue(),
-          doubleStats.getLastValue(), doubleStats.getSumValue());
+          doubleStats.getLastValue(), doubleStats.getSumValue(), stats.getStartTime(), stats.getEndTime());
     }
   }
 
@@ -215,7 +241,7 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public String toString() {
-    return "[minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
+    return super.toString() + " [minValue:" + minValue + ",maxValue:" + maxValue + ",firstValue:" + firstValue +
         ",lastValue:" + lastValue + ",sumValue:" + sumValue + "]";
   }
 }

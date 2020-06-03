@@ -18,66 +18,49 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.exception.path.PathException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.query.aggregation.AggreResultData;
-import org.apache.iotdb.db.query.aggregation.AggregateFunction;
-import org.apache.iotdb.db.query.factory.AggreFuncFactory;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
 
 public abstract class GroupByEngineDataSet extends QueryDataSet {
 
   protected long queryId;
-  private long unit;
-  private long slidingStep;
-  private long intervalStartTime;
-  private long intervalEndTime;
-
+  protected long interval;
+  protected long slidingStep;
+  // total query [startTime, endTime)
   protected long startTime;
   protected long endTime;
-  private int usedIndex;
-  protected List<AggregateFunction> functions;
+
+  // current interval [curStartTime, curEndTime)
+  protected long curStartTime;
+  protected long curEndTime;
   protected boolean hasCachedTimeInterval;
+
+  protected boolean leftCRightO;
+
+  public GroupByEngineDataSet() {
+  }
 
   /**
    * groupBy query.
    */
-  public GroupByEngineDataSet(long queryId, List<Path> paths, long unit,
-                              long slidingStep, long startTime, long endTime) {
-    super(paths);
-    this.queryId = queryId;
-    this.unit = unit;
-    this.slidingStep = slidingStep;
-    this.intervalStartTime = startTime;
-    this.intervalEndTime = endTime;
-    this.functions = new ArrayList<>();
-
+  public GroupByEngineDataSet(QueryContext context, GroupByPlan groupByPlan) {
+    super(groupByPlan.getDeduplicatedPaths(), groupByPlan.getDeduplicatedDataTypes());
+    this.queryId = context.getQueryId();
+    this.interval = groupByPlan.getInterval();
+    this.slidingStep = groupByPlan.getSlidingStep();
+    this.startTime = groupByPlan.getStartTime();
+    this.endTime = groupByPlan.getEndTime();
+    this.leftCRightO = groupByPlan.isLeftCRightO();
     // init group by time partition
-    this.usedIndex = 0;
     this.hasCachedTimeInterval = false;
-    this.endTime = -1;
-  }
-
-  protected void initAggreFuction(List<String> aggres) throws PathException {
-    List<TSDataType> types = new ArrayList<>();
-    // construct AggregateFunctions
-    for (int i = 0; i < paths.size(); i++) {
-      TSDataType tsDataType = MManager.getInstance()
-          .getSeriesType(paths.get(i).getFullPath());
-      AggregateFunction function = AggreFuncFactory.getAggrFuncByName(aggres.get(i), tsDataType);
-      function.init();
-      functions.add(function);
-      types.add(function.getResultDataType());
-    }
-    super.setDataTypes(types);
+    this.curStartTime = this.startTime - slidingStep;
+    this.curEndTime = -1;
   }
 
   @Override
@@ -87,53 +70,27 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
       return true;
     }
 
-    startTime = usedIndex * slidingStep + intervalStartTime;
-    usedIndex++;
-    if (startTime <= intervalEndTime) {
+    curStartTime += slidingStep;
+    //This is an open interval , [0-100)
+    if (curStartTime < endTime) {
       hasCachedTimeInterval = true;
-      endTime = Math.min(startTime + unit, intervalEndTime+1);
+      curEndTime = Math.min(curStartTime + interval, endTime);
       return true;
     } else {
       return false;
     }
   }
 
-  /**
-   * this method is only used in the test class to get the next time partition.
-   */
+  @Override
+  protected abstract RowRecord nextWithoutConstraint() throws IOException;
+
+  public long getStartTime() {
+    return startTime;
+  }
+
+  @TestOnly
   public Pair<Long, Long> nextTimePartition() {
     hasCachedTimeInterval = false;
-    return new Pair<>(startTime, endTime);
+    return new Pair<>(curStartTime, curEndTime);
   }
-
-  protected Field getField(AggreResultData aggreResultData) {
-    if (!aggreResultData.isSetValue()) {
-      return new Field(null);
-    }
-    Field field = new Field(aggreResultData.getDataType());
-    switch (aggreResultData.getDataType()) {
-      case INT32:
-        field.setIntV(aggreResultData.getIntRet());
-        break;
-      case INT64:
-        field.setLongV(aggreResultData.getLongRet());
-        break;
-      case FLOAT:
-        field.setFloatV(aggreResultData.getFloatRet());
-        break;
-      case DOUBLE:
-        field.setDoubleV(aggreResultData.getDoubleRet());
-        break;
-      case BOOLEAN:
-        field.setBoolV(aggreResultData.isBooleanRet());
-        break;
-      case TEXT:
-        field.setBinaryV(aggreResultData.getBinaryRet());
-        break;
-      default:
-        throw new UnSupportedDataTypeException("UnSupported: " + aggreResultData.getDataType());
-    }
-    return field;
-  }
-
 }

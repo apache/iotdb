@@ -25,7 +25,8 @@ public enum ServiceType {
   STORAGE_ENGINE_SERVICE("Storage Engine ServerService", ""),
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
   METRICS_SERVICE("Metrics ServerService","MetricsService"),
-  JDBC_SERVICE("JDBC ServerService", "JDBCService"),
+  RPC_SERVICE("RPC ServerService", "RPCService"),
+  MQTT_SERVICE("MQTTService", ""),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
   STAT_MONITOR_SERVICE("Statistics ServerService", ""),
   WAL_SERVICE("WAL ServerService", ""),
@@ -43,7 +44,8 @@ public enum ServiceType {
       generateJmxName(IoTDBConstant.IOTDB_PACKAGE, "Cache Hit Ratio")),
 
   FLUSH_SERVICE("Flush ServerService",
-      generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager"));
+      generateJmxName("org.apache.iotdb.db.engine.pool", "Flush Manager")),
+  CLUSTER_MONITOR_SERVICE("Cluster Monitor ServerService", "Cluster Monitor");
 
   private String name;
   private String jmxName;

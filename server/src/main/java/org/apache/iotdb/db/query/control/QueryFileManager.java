@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.query.control;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * <p>
@@ -67,17 +65,20 @@ public class QueryFileManager {
   }
 
   private void addUsedFilesForQuery(long queryId, List<TsFileResource> resources) {
-    for (TsFileResource tsFileResource : resources) {
-      // the file may change from open to closed within the few statements, so the initial status
-      // should be recorded to ensure consistency
+    Iterator<TsFileResource> iterator = resources.iterator();
+    while (iterator.hasNext()) {
+      TsFileResource tsFileResource = iterator.next();
       boolean isClosed = tsFileResource.isClosed();
       addFilePathToMap(queryId, tsFileResource, isClosed);
+
       // this file may be deleted just before we lock it
       if (tsFileResource.isDeleted()) {
         Map<Long, Set<TsFileResource>> pathMap = !isClosed ? unsealedFilePathsMap : sealedFilePathsMap;
-        pathMap.get(queryId).remove(tsFileResource);
-        FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
-        resources.remove(tsFileResource);
+        // This resource may be removed by other threads of this query.
+        if (pathMap.get(queryId).remove(tsFileResource)) {
+          FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
+        }
+        iterator.remove();
       }
     }
   }

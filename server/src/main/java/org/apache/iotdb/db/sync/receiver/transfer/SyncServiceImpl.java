@@ -29,13 +29,13 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.path.PathException;
 import org.apache.iotdb.db.exception.SyncDeviceOwnerConflictException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
@@ -46,6 +46,7 @@ import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogger;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SyncUtils;
+import org.apache.iotdb.service.sync.thrift.ConfirmInfo;
 import org.apache.iotdb.service.sync.thrift.SyncService;
 import org.apache.iotdb.service.sync.thrift.SyncStatus;
 import org.apache.thrift.TException;
@@ -76,8 +77,20 @@ public class SyncServiceImpl implements SyncService.Iface {
    * Verify IP address of sender
    */
   @Override
-  public SyncStatus check(String ipAddress, String uuid) {
+  public SyncStatus check(ConfirmInfo info) {
+    String ipAddress = info.address, uuid = info.uuid;
     Thread.currentThread().setName(ThreadName.SYNC_SERVER.getName());
+    if (!info.version.equals(IoTDBConstant.VERSION)) {
+      return getErrorResult(String.format("Version mismatch: the sender <%s>, the receiver <%s>",
+          info.version, IoTDBConstant.VERSION));
+    }
+    if (info.partitionInterval != IoTDBDescriptor.getInstance().getConfig()
+        .getPartitionInterval()) {
+      return getErrorResult(String
+          .format("Partition interval mismatch: the sender <%d>, the receiver <%d>",
+              info.partitionInterval,
+              IoTDBDescriptor.getInstance().getConfig().getPartitionInterval()));
+    }
     if (SyncUtils.verifyIPSegment(config.getIpWhiteList(), ipAddress)) {
       senderName.set(ipAddress + SyncConstant.SYNC_DIR_NAME_SEPARATOR + uuid);
       if (checkRecovery()) {
@@ -259,7 +272,7 @@ public class SyncServiceImpl implements SyncService.Iface {
         while ((metadataOperation = br.readLine()) != null) {
           try {
             MManager.getInstance().operation(metadataOperation);
-          } catch (IOException | MetadataException | PathException e) {
+          } catch (IOException | MetadataException e) {
             logger.error("Can not operate metadata operation {} ", metadataOperation, e);
           }
         }
@@ -302,4 +315,10 @@ public class SyncServiceImpl implements SyncService.Iface {
     return new SyncStatus(SyncConstant.ERROR_CODE, errorMsg);
   }
 
+  /**
+   * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
+   */
+  public void handleClientExit() {
+    //do nothing now
+  }
 }

@@ -18,14 +18,9 @@
  */
 package org.apache.iotdb.tsfile.read;
 
-import static org.junit.Assert.assertEquals;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
+import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.constant.TestConstant;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -37,12 +32,20 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
+
 import org.apache.iotdb.tsfile.utils.FileGenerator;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class ReadTest {
 
@@ -112,9 +115,8 @@ public class ReadTest {
     pathList.add(new Path("d2.s1"));
     pathList.add(new Path("d2.s4"));
     IExpression valFilter = new SingleSeriesExpression(new Path("d2.s2"), ValueFilter.gt(9722L));
-    IExpression tFilter = BinaryExpression
-        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.lt(1480562618977L)));
+    IExpression tFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
+        new GlobalTimeExpression(TimeFilter.lt(1480562618977L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -161,9 +163,8 @@ public class ReadTest {
     pathList.add(new Path("d1.s1"));
     pathList.add(new Path("d2.s2"));
     IExpression valFilter = new SingleSeriesExpression(new Path("d2.s2"), ValueFilter.notEq(9722L));
-    IExpression tFilter = BinaryExpression
-        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.lt(1480562618977L)));
+    IExpression tFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
+        new GlobalTimeExpression(TimeFilter.lt(1480562618977L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -192,9 +193,8 @@ public class ReadTest {
     pathList.add(new Path("d1.s1"));
     pathList.add(new Path("d2.s2"));
     IExpression valFilter = new SingleSeriesExpression(new Path("d2.s2"), ValueFilter.notEq(9722L));
-    IExpression tFilter = BinaryExpression
-        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.lt(1480562618975L)));
+    IExpression tFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
+        new GlobalTimeExpression(TimeFilter.lt(1480562618975L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -202,7 +202,8 @@ public class ReadTest {
     // time filter & value filter
     // verify d1.s1, d2.s1
     /**
-     * 1480562618950 9501 9502 1480562618954 9541 9542 1480562618955 9551 9552 1480562618956 9561 9562
+     * 1480562618950 9501 9502 1480562618954 9541 9542 1480562618955 9551 9552
+     * 1480562618956 9561 9562
      */
     int cnt = 1;
     while (dataSet.hasNext()) {
@@ -249,9 +250,8 @@ public class ReadTest {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1.s5"));
     IExpression valFilter = new SingleSeriesExpression(new Path("d1.s5"), ValueFilter.eq(false));
-    IExpression tFilter = BinaryExpression
-        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.lt(1480562618981L)));
+    IExpression tFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
+        new GlobalTimeExpression(TimeFilter.lt(1480562618981L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -277,9 +277,8 @@ public class ReadTest {
   public void queryStringTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1.s4"));
-    IExpression tFilter = BinaryExpression
-        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
+    IExpression tFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
+        new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
     QueryExpression queryExpression = QueryExpression.create(pathList, tFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
 
@@ -291,7 +290,7 @@ public class ReadTest {
         Field f1 = r.getFields().get(0);
         assertEquals("dog976", f1.toString());
       }
-       System.out.println(r);
+      System.out.println(r);
       cnt++;
     }
     Assert.assertEquals(1, cnt);
@@ -321,9 +320,8 @@ public class ReadTest {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1.s6"));
     IExpression valFilter = new SingleSeriesExpression(new Path("d1.s6"), ValueFilter.gt(103.0f));
-    IExpression tFilter = BinaryExpression
-        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
-            new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
+    IExpression tFilter = BinaryExpression.and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618970L)),
+        new GlobalTimeExpression(TimeFilter.ltEq(1480562618981L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);
     QueryDataSet dataSet = roTsFile.query(queryExpression);
@@ -349,9 +347,9 @@ public class ReadTest {
   public void queryDoubleTest() throws IOException {
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path("d1.s7"));
-    IExpression valFilter = new SingleSeriesExpression(new Path("d1.s7"), ValueFilter.gt(7.0));
+    IExpression valFilter = new SingleSeriesExpression(new Path("d1.s7"), ValueFilter.gt(1.0));
     IExpression tFilter = BinaryExpression
-        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618021L)),
+        .and(new GlobalTimeExpression(TimeFilter.gtEq(1480562618011L)),
             new GlobalTimeExpression(TimeFilter.ltEq(1480562618033L)));
     IExpression finalFilter = BinaryExpression.and(valFilter, tFilter);
     QueryExpression queryExpression = QueryExpression.create(pathList, finalFilter);

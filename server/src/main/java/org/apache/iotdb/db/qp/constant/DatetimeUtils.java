@@ -464,6 +464,8 @@ public class DatetimeUtils {
     if (str.contains("Z")) {
       return convertDatetimeStrToLong(str.substring(0, str.indexOf('Z')) + "+00:00", offset,
           depth);
+    } else if (str.length() == 10) {
+      return convertDatetimeStrToLong(str + "T00:00:00", offset, depth);
     } else if (str.length() - str.lastIndexOf('+') != 6
         && str.length() - str.lastIndexOf('-') != 6) {
       return convertDatetimeStrToLong(str + offset, offset, depth + 1);
@@ -525,7 +527,7 @@ public class DatetimeUtils {
       }
     } else {
       if (unit.equals(DurationUnit.ns)) {
-        return value / 1000_0000;
+        return value / 1000_000;
       } else if (unit.equals(DurationUnit.us)) {
         return value / 1000;
       } else {

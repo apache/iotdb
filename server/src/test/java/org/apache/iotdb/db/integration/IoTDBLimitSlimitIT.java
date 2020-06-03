@@ -27,7 +27,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBDatabaseMetadata;
@@ -41,8 +41,6 @@ import org.junit.Test;
  * defined as integration test.
  */
 public class IoTDBLimitSlimitIT {
-
-  private static IoTDB daemon;
 
   private static String[] insertSqls = new String[]{"SET STORAGE GROUP TO root.vehicle",
 
@@ -88,14 +86,11 @@ public class IoTDBLimitSlimitIT {
   @BeforeClass
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    daemon = IoTDB.getInstance();
-    daemon.active();
     EnvironmentUtils.envSetUp();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    daemon.stop();
     EnvironmentUtils.cleanEnv();
   }
 
@@ -186,7 +181,7 @@ public class IoTDBLimitSlimitIT {
               result = "";
               while (resultSet.next()) {
                 for (int i = 1; i <= count; i++) {
-                  if (now_start > 0L && column[i - 1] == Constant.TIMESTAMP_STR) {
+                  if (now_start > 0L && column[i - 1] == TestConstant.TIMESTAMP_STR) {
                     String timestr = resultSet.getString(i);
                     Long tn = Long.valueOf(timestr);
                     Long now = System.currentTimeMillis();

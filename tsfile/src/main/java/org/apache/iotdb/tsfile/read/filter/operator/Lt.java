@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterSerializeId;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 
 /**
@@ -32,6 +33,9 @@ import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
 
   private static final long serialVersionUID = -2088181659871608986L;
+
+  public Lt() {
+  }
 
   public Lt(T value, FilterType filterType) {
     super(value, filterType);
@@ -59,10 +63,7 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean satisfyStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (time <= startTime) {
-        return false;
-      }
-      return true;
+      return time > startTime;
     } else {
       return true;
     }
@@ -72,23 +73,24 @@ public class Lt<T extends Comparable<T>> extends UnaryFilter<T> {
   public boolean containStartEndTime(long startTime, long endTime) {
     if (filterType == FilterType.TIME_FILTER) {
       long time = (Long) value;
-      if (endTime < time) {
-        return true;
-      } else {
-        return false;
-      }
+      return endTime < time;
     } else {
       return true;
     }
   }
 
   @Override
-  public Filter clone() {
+  public Filter copy() {
     return new Lt(value, filterType);
   }
 
   @Override
   public String toString() {
     return getFilterType() + " < " + value;
+  }
+
+  @Override
+  public FilterSerializeId getSerializeId() {
+    return FilterSerializeId.LT;
   }
 }

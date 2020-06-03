@@ -19,11 +19,8 @@
 package org.apache.iotdb.jdbc;
 
 import java.sql.*;
-import java.util.List;
-import java.util.Set;
-import org.apache.iotdb.jdbc.IoTDBMetadataResultSet.MetadataType;
-import org.apache.iotdb.rpc.IoTDBRPCException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -38,200 +35,13 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   private static final Logger logger = LoggerFactory
           .getLogger(IoTDBDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
+  private static final String DATABASE_VERSION = "0.10.0-SNAPSHOT";
   private long sessionId;
 
   IoTDBDatabaseMetadata(IoTDBConnection connection, TSIService.Iface client, long sessionId) {
     this.connection = connection;
     this.client = client;
     this.sessionId = sessionId;
-  }
-
-  @Override
-  public ResultSet getColumns(String catalog, String schemaPattern, String columnPattern,
-      String devicePattern)
-      throws SQLException {
-    try {
-      return getColumnsFunc(catalog, schemaPattern);
-    } catch (TException e) {
-      boolean flag = connection.reconnect();
-      this.client = connection.getClient();
-      if (flag) {
-        try {
-          return getColumnsFunc(catalog, schemaPattern);
-        } catch (TException e2) {
-          throw new SQLException(String.format("Fail to get columns catalog=%s, schemaPattern=%s,"
-                  + " columnPattern=%s, devicePattern=%s after reconnecting."
-                  + " please check server status",
-              catalog, schemaPattern, columnPattern, devicePattern));
-        }
-      } else {
-        throw new SQLException(String.format(
-            "Fail to reconnect to server when getting columns catalog=%s, schemaPattern=%s,"
-                + " columnPattern=%s, devicePattern=%s after reconnecting. "
-                + "please check server status",
-            catalog, schemaPattern, columnPattern, devicePattern));
-      }
-    }
-  }
-
-  private ResultSet getColumnsFunc(String catalog, String schemaPattern)
-      throws TException, SQLException {
-    TSFetchMetadataReq req;
-    switch (catalog) {
-      case Constant.CATALOG_COLUMN:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COLUMNS_REQ);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getColumnsList(), MetadataType.COLUMN);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching column metadata", e);
-        }
-      case Constant.CATALOG_DEVICES:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_DEVICES_REQ);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getDevices(), MetadataType.DEVICES);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching device metadata", e);
-        }
-      case Constant.CATALOG_CHILD_PATHS:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_CHILD_PATHS_REQ);
-        req.setColumnPath(schemaPattern);
-        try {
-            TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getChildPaths(), MetadataType.CHILD_PATHS);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching child path metadata", e);
-        }
-      case Constant.CATALOG_STORAGE_GROUP:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_STORAGE_GROUP_REQ);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          Set<String> showStorageGroup = resp.getStorageGroups();
-          return new IoTDBMetadataResultSet(showStorageGroup, MetadataType.STORAGE_GROUP);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching storage group metadata", e);
-        }
-      case Constant.CATALOG_TIMESERIES:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_SHOW_TIMESERIES_REQ);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          List<List<String>> showTimeseriesList = resp.getTimeseriesList();
-          return new IoTDBMetadataResultSet(showTimeseriesList, MetadataType.TIMESERIES);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching timeseries metadata", e);
-        }
-      case Constant.COUNT_TIMESERIES:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_TIMESERIES_REQ);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getTimeseriesNum(), MetadataType.COUNT_TIMESERIES);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching timeseries metadata", e);
-        }
-      default:
-        throw new SQLException(catalog + " is not supported. Please refer to the user guide"
-            + " for more details.");
-    }
-  }
-
-  ResultSet getNodes(String catalog, String schemaPattern, String columnPattern,
-      String devicePattern, int nodeLevel) throws SQLException {
-    try {
-      return getNodesFunc(catalog, schemaPattern, nodeLevel);
-    } catch (TException e) {
-      boolean flag = connection.reconnect();
-      this.client = connection.getClient();
-      if (flag) {
-        try {
-          return getNodesFunc(catalog, schemaPattern, nodeLevel);
-        } catch (TException e2) {
-          throw new SQLException(String.format("Fail to get columns catalog=%s, schemaPattern=%s,"
-                  + " columnPattern=%s, devicePattern=%s, nodeLevel=%s after reconnecting."
-                  + " please check server status",
-              catalog, schemaPattern, columnPattern, devicePattern, nodeLevel));
-        }
-      } else {
-        throw new SQLException(String.format(
-            "Fail to reconnect to server when getting columns catalog=%s, schemaPattern=%s,"
-                + " columnPattern=%s, devicePattern=%s, nodeLevel=%s after reconnecting. "
-                + "please check server status",
-            catalog, schemaPattern, columnPattern, devicePattern, nodeLevel));
-      }
-    }
-  }
-
-  private ResultSet getNodesFunc(String catalog, String schemaPattern, int nodeLevel) throws TException, SQLException {
-    TSFetchMetadataReq req;
-    switch (catalog) {
-      case Constant.COUNT_NODES:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_NODES_REQ);
-        req.setNodeLevel(nodeLevel);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getNodesList().size(), IoTDBMetadataResultSet.MetadataType.COUNT_NODES);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching node metadata", e);
-        }
-      case Constant.COUNT_NODE_TIMESERIES:
-        req = new TSFetchMetadataReq(sessionId, Constant.GLOBAL_COUNT_NODE_TIMESERIES_REQ);
-        req.setNodeLevel(nodeLevel);
-        req.setColumnPath(schemaPattern);
-        try {
-          TSFetchMetadataResp resp = client.fetchMetadata(req);
-          try {
-            RpcUtils.verifySuccess(resp.getStatus());
-          } catch (IoTDBRPCException e) {
-            throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
-          }
-          return new IoTDBMetadataResultSet(resp.getNodeTimeseriesNum(), IoTDBMetadataResultSet.MetadataType.COUNT_NODE_TIMESERIES);
-        } catch (TException e) {
-          throw new TException("Connection error when fetching node metadata", e);
-        }
-      default:
-        throw new SQLException(catalog + " is not supported. Please refer to the user guide"
-            + " for more details.");
-    }
   }
 
   @Override
@@ -282,6 +92,16 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   @Override
   public boolean generatedKeyAlwaysReturned() throws SQLException {
     throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+  }
+
+  @Override
+  public long getMaxLogicalLobSize() {
+    return 0;
+  }
+
+  @Override
+  public boolean supportsRefCursors() {
+    return false;
   }
 
   @Override
@@ -352,7 +172,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getDatabaseProductVersion() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+   return DATABASE_VERSION;
   }
 
   @Override
@@ -362,7 +182,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public int getDriverMajorVersion() {
-    return 0;
+    return 1;
   }
 
   @Override
@@ -372,12 +192,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getDriverName() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return org.apache.iotdb.jdbc.IoTDBDriver.class.getName();
   }
 
   @Override
   public String getDriverVersion() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return DATABASE_VERSION;
   }
 
   @Override
@@ -633,6 +453,12 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   }
 
   @Override
+  public ResultSet getColumns(String catalog, String schemaPattern, String tableNamePattern,
+      String columnNamePattern) {
+    return null;
+  }
+
+  @Override
   public ResultSet getTables(String catalog, String schemaPattern, String tableNamePattern,
       String[] types)
       throws SQLException {
@@ -664,7 +490,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
 
   @Override
   public String getUserName() throws SQLException {
-    throw new SQLException(METHOD_NOT_SUPPORTED_STRING);
+    return client.toString();
   }
 
   @Override
@@ -1188,7 +1014,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
     resp = client.fetchMetadata(req);
     try {
       RpcUtils.verifySuccess(resp.getStatus());
-    } catch (IoTDBRPCException e) {
+    } catch (StatementExecutionException e) {
       throw new IoTDBSQLException(e.getMessage(), resp.getStatus());
     }
     return resp.getMetadataInJson();

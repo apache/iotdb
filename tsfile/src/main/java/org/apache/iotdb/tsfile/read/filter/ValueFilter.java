@@ -18,17 +18,22 @@
  */
 package org.apache.iotdb.tsfile.read.filter;
 
+import java.util.Set;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.Eq;
 import org.apache.iotdb.tsfile.read.filter.operator.Gt;
 import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.read.filter.operator.Lt;
 import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotEq;
 import org.apache.iotdb.tsfile.read.filter.operator.NotFilter;
 
 public class ValueFilter {
+
+  private ValueFilter() {
+  }
 
   public static <T extends Comparable<T>> ValueEq<T> eq(T value) {
     return new ValueEq(value);
@@ -50,12 +55,23 @@ public class ValueFilter {
     return new ValueLtEq(value);
   }
 
+  public static <T extends  Comparable<T>> ValueIn<T> in(Set<T> values, boolean not){
+    return new ValueIn(values, not);
+  }
+
   public static ValueNotFilter not(Filter filter) {
     return new ValueNotFilter(filter);
   }
 
   public static <T extends Comparable<T>> ValueNotEq<T> notEq(T value) {
     return new ValueNotEq(value);
+  }
+
+  public static class ValueIn<T extends Comparable<T>> extends In<T> {
+
+    private ValueIn(Set<T> values, boolean not) {
+      super(values, FilterType.VALUE_FILTER, not);
+    }
   }
 
   public static class ValueEq<T extends Comparable<T>> extends Eq<T> {

@@ -22,14 +22,14 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.exception.encoding.TsFileDecodingException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class PlainDecoder extends Decoder {
 
@@ -51,49 +51,31 @@ public class PlainDecoder extends Decoder {
 
   @Override
   public boolean readBoolean(ByteBuffer buffer) {
-    if (this.getEndianType() == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     return buffer.get() != 0;
   }
 
   @Override
   public short readShort(ByteBuffer buffer) {
-    if (this.getEndianType() == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     return buffer.getShort();
   }
 
   @Override
   public int readInt(ByteBuffer buffer) {
-    if (this.getEndianType() == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     return buffer.getInt();
   }
 
   @Override
   public long readLong(ByteBuffer buffer) {
-    if (this.getEndianType() == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     return buffer.getLong();
   }
 
   @Override
   public float readFloat(ByteBuffer buffer) {
-    if (this.getEndianType() == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     return buffer.getFloat();
   }
 
   @Override
   public double readDouble(ByteBuffer buffer) {
-    if (this.getEndianType() == EndianType.LITTLE_ENDIAN) {
-      buffer.order(ByteOrder.LITTLE_ENDIAN);
-    }
     return buffer.getDouble();
   }
 

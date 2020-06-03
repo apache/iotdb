@@ -37,7 +37,7 @@ import java.util.List;
  * LocalTextModificationAccessor uses a file on local file system to store the modifications
  * in text format, and writes modifications by appending to the tail of the file.
  */
-public class LocalTextModificationAccessor implements ModificationReader, ModificationWriter {
+public class LocalTextModificationAccessor implements ModificationReader, ModificationWriter, AutoCloseable {
 
   private static final Logger logger = LoggerFactory.getLogger(LocalTextModificationAccessor.class);
   private static final String SEPARATOR = ",";

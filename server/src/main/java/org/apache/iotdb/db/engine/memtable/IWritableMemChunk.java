@@ -22,8 +22,9 @@ import java.util.List;
 import org.apache.iotdb.db.utils.datastructure.AbstractTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public interface IWritableMemChunk extends TimeValuePairSorter {
+public interface IWritableMemChunk {
 
   void putLong(long t, long v);
 
@@ -49,32 +50,57 @@ public interface IWritableMemChunk extends TimeValuePairSorter {
 
   void putBooleans(long[] t, boolean[] v);
 
+  void putLongs(long[] t, long[] v, int start, int end);
+
+  void putInts(long[] t, int[] v, int start, int end);
+
+  void putFloats(long[] t, float[] v, int start, int end);
+
+  void putDoubles(long[] t, double[] v, int start, int end);
+
+  void putBinaries(long[] t, Binary[] v, int start, int end);
+
+  void putBooleans(long[] t, boolean[] v, int start, int end);
+
+
   void write(long insertTime, Object objectValue);
 
-  void write(long[] times, Object valueList, TSDataType dataType, List<Integer> indexes);
+  /**
+   * [start, end)
+   */
+  void write(long[] times, Object valueList, TSDataType dataType, int start, int end);
 
   long count();
 
-  TSDataType getType();
+  MeasurementSchema getSchema();
 
   /**
-   * using offset to mark which data is deleted:
-   * the data whose timestamp is less than offset are deleted.
+   * using offset to mark which data is deleted: the data whose timestamp is less than offset are
+   * deleted.
+   *
    * @param offset
    */
   void setTimeOffset(long offset);
 
   /**
    * served for query requests.
+   *
    * @return
    */
-  default AbstractTVList getSortedTVList(){return null;}
+  default AbstractTVList getSortedTVList() {
+    return null;
+  }
 
-  default AbstractTVList getTVList(){return null;}
+  default AbstractTVList getTVList() {
+    return null;
+  }
 
   default long getMinTime() {
     return Long.MIN_VALUE;
   }
 
-  void delete(long upperBound);
+  /**
+   * @return how many points are deleted
+   */
+  int delete(long upperBound);
 }
