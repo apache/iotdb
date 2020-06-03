@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
@@ -112,13 +113,15 @@ public class LastQueryExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
-    LeafMNode node;
+    LeafMNode node = null;
     try {
       node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
+    } catch (PathNotExistException e) {
+      // TODO use last cache for remote series
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    if (node.getCachedLast() != null) {
+    if (node != null && node.getCachedLast() != null) {
       return node.getCachedLast();
     }
 
@@ -179,7 +182,9 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    if (node != null) {
+      node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    }
     return resultPair;
   }
 

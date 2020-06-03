@@ -70,7 +70,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
   }
 
   @Test
-  public void testGetAllStorageGroupNodes() throws MetadataException {
+  public void testGetAllStorageGroupNodes() {
     List<StorageGroupMNode> allStorageGroupNodes = queryExecutor.getAllStorageGroupNodes();
     for (int i = 0; i < allStorageGroupNodes.size(); i++) {
       assertEquals(testMetaMember.getAllStorageGroupNodes().get(i).getFullPath(), allStorageGroupNodes.get(i).getFullPath());
@@ -78,7 +78,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
   }
 
   @Test
-  public void testGetAllStorageGroupNames() throws MetadataException {
+  public void testGetAllStorageGroupNames() {
     List<String> allStorageGroupNames = queryExecutor.getAllStorageGroupNames();
     for (int i = 0; i < allStorageGroupNames.size(); i++) {
       assertEquals(testMetaMember.getAllStorageGroupNames().get(i), allStorageGroupNames.get(i));

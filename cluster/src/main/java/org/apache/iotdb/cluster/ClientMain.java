@@ -138,7 +138,9 @@ public class ClientMain {
       "SELECT s1 FROM root.shenzhen.d1 WHERE time = 126400000 FILL (DOUBLE[LINEAR,1d,1d])",
       // group by
       "SELECT COUNT(*) FROM root.*.* GROUP BY ([0, 864000000), 3d, 3d)",
-      "SELECT AVG(*) FROM root.*.* WHERE s1 <= 0.7 GROUP BY ([0, 864000000), 3d, 3d)"
+      "SELECT AVG(*) FROM root.*.* WHERE s1 <= 0.7 GROUP BY ([0, 864000000), 3d, 3d)",
+      // last
+      "SELECT LAST s1 FROM root.*.*",
   };
 
   private static final String[] META_QUERY = new String[]{

@@ -40,8 +40,12 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class InsertPlan extends PhysicalPlan {
+
+  private static final Logger logger = LoggerFactory.getLogger(InsertPlan.class);
 
   private long time;
   private String deviceId;
@@ -250,6 +254,14 @@ public class InsertPlan extends PhysicalPlan {
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (types == null || types[i] == null) {
+        ReadWriteIOUtils.write((short) -1, outputStream);
+        ReadWriteIOUtils.write((String) values[i], outputStream);
+        continue;
+      }
+
       ReadWriteIOUtils.write(types[i], outputStream);
       switch (types[i]) {
         case BOOLEAN:
@@ -278,6 +290,14 @@ public class InsertPlan extends PhysicalPlan {
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (types == null || types[i] == null) {
+        ReadWriteIOUtils.write((short) -1, buffer);
+        ReadWriteIOUtils.write((String) values[i], buffer);
+        continue;
+      }
+
       ReadWriteIOUtils.write(types[i], buffer);
       switch (types[i]) {
         case BOOLEAN:
@@ -314,7 +334,15 @@ public class InsertPlan extends PhysicalPlan {
 
   public void setValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < measurements.length; i++) {
-      types[i] = ReadWriteIOUtils.readDataType(buffer);
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      short typeNum = ReadWriteIOUtils.readShort(buffer);
+      if (typeNum == -1) {
+        values[i] = ReadWriteIOUtils.readString(buffer);
+        continue;
+      }
+
+      types[i] = TSDataType.deserialize(typeNum);
       switch (types[i]) {
         case BOOLEAN:
           values[i] = ReadWriteIOUtils.readBool(buffer);
@@ -357,7 +385,7 @@ public class InsertPlan extends PhysicalPlan {
     try {
       putValues(buffer);
     } catch (QueryProcessException e) {
-      e.printStackTrace();
+      logger.warn("Exception in serialization of InsertPlan", e);
     }
   }
 
@@ -378,7 +406,7 @@ public class InsertPlan extends PhysicalPlan {
     try {
       setValues(buffer);
     } catch (QueryProcessException e) {
-      e.printStackTrace();
+      logger.warn("Exception in deserialization of InsertPlan", e);
     }
 
     // the types are lost and should be re-inferred
@@ -390,7 +418,7 @@ public class InsertPlan extends PhysicalPlan {
     return "deviceId: " + deviceId + ", time: " + time;
   }
 
-  public TimeValuePair composeTimeValuePair(int measurementIndex) throws QueryProcessException {
+  public TimeValuePair composeTimeValuePair(int measurementIndex) {
     if (measurementIndex >= values.length) {
       return null;
     }

@@ -826,8 +826,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
-      throws WriteProcessException {
+  public void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime) {
     MNode node = null;
     try {
       node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
@@ -840,8 +839,6 @@ public class StorageGroupProcessor {
               .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
         }
       }
-    } catch (QueryProcessException e) {
-      throw new WriteProcessException(e);
     } catch (MetadataException e) {
       // skip last cache update if the local MTree does not contain the schema
     } finally {
