@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -27,6 +29,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -168,6 +171,34 @@ public class IoTDBSimpleQueryIT {
     }
   }
 
+
+  @Test
+  public void testPartialInsertion() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()){
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+      statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
+
+      // seq chunk : [1,10]
+      try {
+        statement.execute("INSERT INTO root.sg1.d0(timestamp, s0, s1) VALUES (1, 1, 2.2)");
+        fail();
+      } catch (IoTDBSQLException e) {
+        assertTrue(e.getMessage().contains("s1"));
+      }
+
+      ResultSet resultSet = statement.executeQuery("select s0, s1 from root.sg1.d0");
+
+      while(resultSet.next()) {
+        assertEquals(1, resultSet.getInt("root.sg1.d0.s0"));
+        assertEquals(null, resultSet.getString("root.sg1.d0.s1"));
+      }
+    }
+  }
 
   @Test
   public void testOverlappedPagesMerge() throws SQLException, ClassNotFoundException {

@@ -272,6 +272,42 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| true |
 |Effective|Trigger|
 
+* enable\_parameter\_adapter
+
+|Name| enable\_parameter\_adapter |
+|:---:|:---|
+|Description| enable dynamically adjusting system to avoid OOM|
+|Type|Bool|
+|Default| true |
+|Effective|After restart system|
+
+* memtable\_size\_threshold
+
+|Name| memtable\_size\_threshold |
+|:---:|:---|
+|Description| max memtable size|
+|Type|Long|
+|Default| 1073741824 |
+|Effective| when enable\_parameter\_adapter is false & After restart system|
+
+* avg\_series\_point\_number\_threshold
+
+|Name| avg\_series\_point\_number\_threshold |
+|:---:|:---|
+|Description| max average number of point of each series in memtable|
+|Type|Int32|
+|Default| 10000 |
+|Effective|After restart system|
+
+* tsfile\_size\_threshold
+
+|Name| tsfile\_size\_threshold |
+|:---:|:---|
+|Description| max tsfile size|
+|Type|Long|
+|Default| 536870912 |
+|Effective| when enable\_parameter\_adapter is false & After restart system|
+
 * enable\_partition
 
 |Name| enable\_partition |
@@ -325,6 +361,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| The maximum persistence size of tags and attributes of each time series.|
 |Type| Int32 |
 |Default| 700 |
+|Effective|After restart system|
+
+* enable\_partial\_insert
+
+|Name| enable\_partial\_insert |
+|:---:|:---|
+|Description| Whether continue to write other measurements if some measurements are failed in one insertion.|
+|Type| Bool |
+|Default| true |
 |Effective|After restart system|
 
 * flush\_wal\_threshold
@@ -517,6 +562,27 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|your principal |
 |Effective|After restart system|
 
+
+* authorizer\_provider\_class
+
+|Name| authorizer\_provider\_class |
+|:---:|:---|
+|Description| the class name of the authorization service|
+|Type| String |
+|Default|org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|Effective|After restart system|
+|Other available values| org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer |
+
+* openID\_url
+
+|Name| openID\_url |
+|:---:|:---|
+|Description| the openID server if OpenIdAuthorizer is enabled|
+|Type| String (a http url) |
+|Default|no |
+|Effective|After restart system|
+
+
 ## Enable GC log
 GC log is off by default.
 For performance tuning, you may want to collect the GC info. 
@@ -524,7 +590,7 @@ For performance tuning, you may want to collect the GC info.
 To enable GC log, just add a paramenter "printgc" when you start the server.
 
 ```bash
-sbin/start-server.sh printgc
+nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
 ```
 Or
 ```bash

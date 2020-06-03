@@ -168,6 +168,7 @@ public class StorageEngine implements IService {
         throw new StorageEngineFailureException("StorageEngine failed to recover.", e);
       }
     }
+    recoveryThreadPool.shutdown();
   }
 
   private static void initTimePartition() {
@@ -497,11 +498,11 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFile(TsFileResource newTsFileResource)
       throws LoadFileException, StorageEngineException, MetadataException {
-    Map<String, Long> startTimeMap = newTsFileResource.getStartTimeMap();
-    if (startTimeMap == null || startTimeMap.isEmpty()) {
+    Map<String, Integer> deviceMap = newTsFileResource.getDeviceToIndexMap();
+    if (deviceMap == null || deviceMap.isEmpty()) {
       throw new StorageEngineException("Can not get the corresponding storage group.");
     }
-    String device = startTimeMap.keySet().iterator().next();
+    String device = deviceMap.keySet().iterator().next();
     String storageGroupName = MManager.getInstance().getStorageGroupName(device);
     getProcessor(storageGroupName).loadNewTsFile(newTsFileResource);
   }

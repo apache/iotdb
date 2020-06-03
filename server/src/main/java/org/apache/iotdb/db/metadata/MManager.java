@@ -325,17 +325,13 @@ public class MManager {
         setStorageGroup(storageGroupName);
       }
 
+      // check memory
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
+
       // create time series in MTree
       LeafMNode leafMNode = mtree
           .createTimeseries(path, plan.getDataType(), plan.getEncoding(), plan.getCompressor(),
               plan.getProps(), plan.getAlias());
-      try {
-        // check memory
-        IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(1);
-      } catch (ConfigAdjusterException e) {
-        removeFromTagInvertedIndex(mtree.deleteTimeseriesAndReturnEmptyStorageGroup(path).right);
-        throw e;
-      }
 
       // update tag index
       if (plan.getTags() != null) {
@@ -939,6 +935,19 @@ public class MManager {
     } finally {
       lock.readLock().unlock();
     }
+  }
+
+  public MNode getChild(MNode parent, String child, String info) {
+    MNode childNode = parent.getChild(child);
+    int tempCount = 0;
+    while (childNode == null) {
+      tempCount ++;
+      if (tempCount % 10000 == 0) {
+        logger.warn("try to get child {} 10000 times from {}", child, info);
+      }
+      childNode = parent.getChild(child);
+    }
+    return childNode;
   }
 
   /**

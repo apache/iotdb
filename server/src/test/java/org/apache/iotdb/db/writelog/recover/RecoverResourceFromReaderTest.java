@@ -88,7 +88,8 @@ public class RecoverResourceFromReaderTest {
     for (int i = 0; i < 10; i++) {
       for (int j = 0; j < 10; j++) {
         Path path = new Path(("root.sg.device" + i), ("sensor" + j));
-        MeasurementSchema measurementSchema = new MeasurementSchema("sensor" + j, TSDataType.INT64, TSEncoding.PLAIN);
+        MeasurementSchema measurementSchema = new MeasurementSchema("sensor" + j, TSDataType.INT64,
+            TSEncoding.PLAIN);
         schema.registerTimeseries(path, measurementSchema);
         MManager.getInstance().createTimeseries(path.getFullPath(), measurementSchema.getType(),
             measurementSchema.getEncodingType(), measurementSchema.getCompressor(),
@@ -138,18 +139,23 @@ public class RecoverResourceFromReaderTest {
       for (int j = 0; j < 10; j++) {
         String[] measurements = new String[10];
         String[] values = new String[10];
+        TSDataType[] types = new TSDataType[10];
         for (int k = 0; k < 10; k++) {
           measurements[k] = "sensor" + k;
+          types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k + 10);
         }
-        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, values);
+        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements,
+            types, values);
         node.write(insertPlan);
       }
       node.notifyStartFlush();
     }
-    InsertPlan insertPlan = new InsertPlan("root.sg.device99", 1, "sensor4", "4");
+    InsertPlan insertPlan = new InsertPlan("root.sg.device99", 1, new String[]{"sensor4"},
+        new TSDataType[]{TSDataType.INT64}, new String[]{"4"});
     node.write(insertPlan);
-    insertPlan = new InsertPlan("root.sg.device99", 300, "sensor2", "2");
+    insertPlan = new InsertPlan("root.sg.device99", 300, new String[]{"sensor2"},
+        new TSDataType[]{TSDataType.INT64}, new String[]{"2"});
     node.write(insertPlan);
     node.close();
 
@@ -174,16 +180,17 @@ public class RecoverResourceFromReaderTest {
         .getBufferedOutputStream(resourceFile.getPath())) {
       ReadWriteIOUtils.write(123, outputStream);
     }
-    
+
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         versionController, resource, true, false);
-    ActiveTimeSeriesCounter.getInstance().init(resource.getFile().getParentFile().getParentFile().getName());
+    ActiveTimeSeriesCounter.getInstance()
+        .init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();
-    assertEquals(1, (long) resource.getStartTimeMap().get("root.sg.device99"));
-    assertEquals(300, (long) resource.getEndTimeMap().get("root.sg.device99"));
+    assertEquals(1, (long) resource.getStartTime("root.sg.device99"));
+    assertEquals(300, (long) resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTimeMap().get("root.sg.device" + i));
-      assertEquals(9, (long) resource.getEndTimeMap().get("root.sg.device" + i));
+      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
+      assertEquals(9, (long) resource.getEndTime("root.sg.device" + i));
     }
   }
 }

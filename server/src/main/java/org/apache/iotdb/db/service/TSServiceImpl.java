@@ -40,7 +40,7 @@ import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -136,13 +136,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int DELETE_SIZE = 20;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
-
-  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
-
   protected Planner processor;
   protected IPlanExecutor executor;
-
+  private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
   // Record the username for every rpc connection (session).
   private Map<Long, String> sessionIdUsernameMap = new ConcurrentHashMap<>();
   private Map<Long, ZoneId> sessionIdZoneIdMap = new ConcurrentHashMap<>();
@@ -170,6 +167,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     executor = new PlanExecutor();
   }
 
+  public static List<SqlArgument> getSqlArgumentList() {
+    return sqlArgumentList;
+  }
+
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
     logger.info(
@@ -180,15 +181,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     boolean status;
     IAuthorizer authorizer;
     try {
-      authorizer = LocalFileAuthorizer.getInstance();
+      authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new TException(e);
     }
+    String loginMessage = null;
     try {
       status = authorizer.login(req.getUsername(), req.getPassword());
     } catch (AuthException e) {
       logger.info("meet error while logging in.", e);
       status = false;
+      loginMessage = e.getMessage();
     }
 
     TSStatus tsStatus;
@@ -212,6 +215,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       currSessionId.set(sessionId);
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
+      tsStatus.setMessage(loginMessage);
     }
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
         TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
@@ -855,7 +859,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws TException, AuthException, IOException, InterruptedException {
     IAuthorizer authorizer;
     try {
-      authorizer = LocalFileAuthorizer.getInstance();
+      authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new TException(e);
     }
@@ -892,7 +896,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       throws TException, AuthException, InterruptedException {
     IAuthorizer authorizer;
     try {
-      authorizer = LocalFileAuthorizer.getInstance();
+      authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
       throw new TException(e);
     }
@@ -1068,15 +1072,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     InsertPlan plan = new InsertPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
-      plan.setDeviceId(req.getDeviceIds().get(i));
-      plan.setTime(req.getTimestamps().get(i));
-      plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
-      plan.setValues(req.getValuesList().get(i).toArray(new String[0]));
-      TSStatus status = checkAuthority(plan, req.getSessionId());
-      if (status != null) {
-        resp.addToStatusList(status);
-      } else {
-        resp.addToStatusList(executePlan(plan));
+      try {
+        plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setTime(req.getTimestamps().get(i));
+        plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+        plan.setTypes(new TSDataType[plan.getMeasurements().length]);
+        plan.setValues(new Object[plan.getMeasurements().length]);
+        plan.setValues(req.valuesList.get(i));
+        plan.setInferType(req.isInferType());
+        TSStatus status = checkAuthority(plan, req.getSessionId());
+        if (status != null) {
+          resp.addToStatusList(status);
+        } else {
+          resp.addToStatusList(executePlan(plan));
+        }
+      } catch (Exception e) {
+        logger.error("meet error when insert in batch", e);
+        resp.addToStatusList(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
 
@@ -1085,6 +1097,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSExecuteBatchStatementResp testInsertTablet(TSInsertTabletReq req) {
+    logger.debug("Test insert batch request receive.");
+    return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSExecuteBatchStatementResp testInsertTablets(TSInsertTabletsReq req) throws TException {
     logger.debug("Test insert batch request receive.");
     return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
   }
@@ -1113,7 +1131,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan.setDeviceId(req.getDeviceId());
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
-      plan.setValues(req.getValues().toArray(new String[0]));
+      plan.setTypes(new TSDataType[plan.getMeasurements().length]);
+      plan.setValues(new Object[plan.getMeasurements().length]);
+      plan.setValues(req.values);
+      plan.setInferType(req.isInferType());
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       if (status != null) {
@@ -1433,10 +1454,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } else {
       return null;
     }
-  }
-
-  public static List<SqlArgument> getSqlArgumentList() {
-    return sqlArgumentList;
   }
 
   private long generateQueryId(boolean isDataQuery) {

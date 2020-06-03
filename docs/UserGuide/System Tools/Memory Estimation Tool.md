@@ -63,21 +63,21 @@ In memory estimation, if the calculation takes a long time, the tool will show t
 
 Users can use the tool using scripts under the `IOTDB_HOME/bin`folder.
 For Linux and Mac OS X users:
-* Assume that there are 20 storage groups, 10w timeseries and timeseries are evenly distributed in the storage groups:
+* Assume that there are 20 storage groups, 100k timeseries and timeseries are evenly distributed in the storage groups:
 ```
   Shell >$IOTDB_HOME/bin/memory-tool.sh calmem -sg 20 -ts 100000
 ```
-* Assume that there are 20 storage groups, 10w timeseries and maximum timeseries number among storage groups is 50000:
+* Assume that there are 20 storage groups, 100k timeseries and maximum timeseries number among storage groups is 50000:
 ```
   Shell >$IOTDB_HOME/bin/memory-tool.sh calmem -sg 20 -ts 100000 -mts -50000
 ```
 
 For Windows users:
-* Assume that there are 20 storage groups, 10w timeseries and timeseries are evenly distributed in the storage groups:
+* Assume that there are 20 storage groups, 100k timeseries and timeseries are evenly distributed in the storage groups:
 ```
   Shell >$IOTDB_HOME\bin\memory-tool.bat calmem -sg 20 -ts 100000
 ```
-* Assume that there are 20 storage groups, 10w timeseries and maximum timeseries number among storage groups is 50000:
+* Assume that there are 20 storage groups, 100k timeseries and maximum timeseries number among storage groups is 50000:
 ```
   Shell >$IOTDB_HOME\bin\memory-tool.bat calmem -sg 20 -ts 100000 -mts -50000
 ```

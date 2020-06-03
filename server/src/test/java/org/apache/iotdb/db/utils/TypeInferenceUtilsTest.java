@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Test;
 
@@ -36,18 +37,35 @@ public class TypeInferenceUtilsTest {
         false, true, false, false, false};
 
     for (int i = 0; i < values.length; i++) {
-      System.out.println(values[i]);
       assertEquals(TypeInferenceUtils.isNumber(values[i]), results[i]);
     }
   }
 
   @Test
-  public void getPredictedDataTypeTest() {
-    Object[] values = {123, "abc", 123.123, true};
-    TSDataType[] encodings = {TSDataType.INT64, TSDataType.TEXT, TSDataType.DOUBLE, TSDataType.BOOLEAN};
+  public void testInferType() {
+    Object[] values = {123, "abc", 123.123d, true, 123.1f, "123", "12.2", "true"};
+    TSDataType[] encodings = {IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+        TSDataType.TEXT, IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
+        TSDataType.BOOLEAN, TSDataType.FLOAT,
+        IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType(),
+        IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType(),
+        IoTDBDescriptor.getInstance().getConfig().getBooleanStringInferType()
+    };
 
     for (int i = 0; i < values.length; i++) {
-      assertEquals(TypeInferenceUtils.getPredictedDataType(values[i]), encodings[i]);
+      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i], true));
+    }
+  }
+
+  @Test
+  public void testNotInferType() {
+    Object[] values = {123, "abc", 123.123d, true, 123.1f, "123", "12.2", "true"};
+    TSDataType[] encodings = {TSDataType.INT32, TSDataType.TEXT, TSDataType.DOUBLE,
+        TSDataType.BOOLEAN, TSDataType.FLOAT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT
+    };
+
+    for (int i = 0; i < values.length; i++) {
+      assertEquals(encodings[i], TypeInferenceUtils.getPredictedDataType(values[i], false));
     }
   }
 }

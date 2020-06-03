@@ -30,6 +30,7 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,13 +90,17 @@ public class PublishHandler extends AbstractInterceptHandler {
             plan.setDeviceId(event.getDevice());
             plan.setTime(event.getTimestamp());
             plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
-            plan.setValues(event.getValues().toArray(new String[event.getValues().size()]));
+            plan.setValues(event.getValues().toArray(new Object[event.getValues().size()]));
+            plan.setTypes(new TSDataType[event.getValues().size()]);
+            plan.setInferType(true);
 
-            boolean status;
+            boolean status = false;
             try {
                 status = executeNonQuery(plan);
             } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e ) {
-                throw new RuntimeException(e);
+                LOG.warn(
+                    "meet error when inserting device {}, measurements {}, at time {}, because ",
+                    event.getDevice(), event.getMeasurements(), event.getTimestamp(), e);
             }
 
             LOG.debug("event process result: {}", status);

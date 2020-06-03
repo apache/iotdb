@@ -19,11 +19,14 @@
 
 package org.apache.iotdb.tsfile.utils;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.reader.TsFileInput;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.DOUBLE;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.FLOAT;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.INTEGER;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.LONG;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.NULL;
+import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.STRING;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -31,10 +34,17 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
-
-import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.*;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 /**
  * ConverterUtils is a utility class. It provide conversion between normal datatype and byte array.
@@ -213,6 +223,17 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * write a short n to byteBuffer.
+   *
+   * @return The number of bytes used to represent n.
+   */
+  public static int write(Binary n, ByteBuffer buffer) {
+    buffer.putInt(n.getLength());
+    buffer.put(n.getValues());
+    return INT_LEN + n.getLength();
+  }
+
+  /**
    * write a int n to outputStream.
    *
    * @return The number of bytes used to represent n.
@@ -285,6 +306,23 @@ public class ReadWriteIOUtils {
     buffer.putLong(n);
     return LONG_LEN;
   }
+
+  /**
+   * write a float n to byteBuffer.
+   */
+  public static int write(float n, ByteBuffer buffer) {
+    buffer.putFloat(n);
+    return FLOAT_LEN;
+  }
+
+  /**
+   * write a double n to byteBuffer.
+   */
+  public static int write(double n, ByteBuffer buffer) {
+    buffer.putDouble(n);
+    return DOUBLE_LEN;
+  }
+
 
   /**
    * write string to outputStream.

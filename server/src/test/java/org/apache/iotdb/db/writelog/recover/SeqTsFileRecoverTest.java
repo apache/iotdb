@@ -142,17 +142,20 @@ public class SeqTsFileRecoverTest {
     for (int i = 10; i < 20; i++) {
       for (int j = 0; j < 10; j++) {
         String[] measurements = new String[10];
+        TSDataType[] types = new TSDataType[10];
         String[] values = new String[10];
         for (int k = 0; k < 10; k++) {
           measurements[k] = "sensor" + k;
+          types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k);
         }
-        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, values);
+        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, types,
+            values);
         node.write(insertPlan);
       }
       node.notifyStartFlush();
     }
-    
+
     resource = new TsFileResource(tsF);
   }
 
@@ -172,11 +175,11 @@ public class SeqTsFileRecoverTest {
     RestorableTsFileIOWriter writer = performer.recover();
     assertFalse(writer.canWrite());
 
-    assertEquals(2, (long) resource.getStartTimeMap().get("root.sg.device99"));
-    assertEquals(100, (long) resource.getEndTimeMap().get("root.sg.device99"));
+    assertEquals(2, (long) resource.getStartTime("root.sg.device99"));
+    assertEquals(100, (long) resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTimeMap().get("root.sg.device" + i));
-      assertEquals(19, (long) resource.getEndTimeMap().get("root.sg.device" + i));
+      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
+      assertEquals(19, (long) resource.getEndTime("root.sg.device" + i));
     }
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));
@@ -226,11 +229,11 @@ public class SeqTsFileRecoverTest {
     assertTrue(writer.canWrite());
     writer.endFile();
 
-    assertEquals(2, (long) resource.getStartTimeMap().get("root.sg.device99"));
-    assertEquals(100, (long) resource.getEndTimeMap().get("root.sg.device99"));
+    assertEquals(2, (long) resource.getStartTime("root.sg.device99"));
+    assertEquals(100, (long) resource.getEndTime("root.sg.device99"));
     for (int i = 0; i < 10; i++) {
-      assertEquals(0, (long) resource.getStartTimeMap().get("root.sg.device" + i));
-      assertEquals(19, (long) resource.getEndTimeMap().get("root.sg.device" + i));
+      assertEquals(0, (long) resource.getStartTime("root.sg.device" + i));
+      assertEquals(19, (long) resource.getEndTime("root.sg.device" + i));
     }
 
     ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(tsF.getPath()));

@@ -32,6 +32,7 @@ import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.SystemCheckException;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.junit.Test;
 
 public class WalCheckerTest {
@@ -73,9 +74,10 @@ public class WalCheckerTest {
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
             + WAL_FILE_NAME);
 
-        ByteBuffer binaryPlans = ByteBuffer.allocate(64*1024);
+        ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
         String[] measurements = new String[]{"s1", "s2", "s3"};
+        TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
           new InsertPlan(deviceId, j, measurements, values).serialize(binaryPlans);
@@ -106,12 +108,17 @@ public class WalCheckerTest {
         LogWriter logWriter = new LogWriter(subDir.getPath() + File.separator
             + WAL_FILE_NAME);
 
-        ByteBuffer binaryPlans = ByteBuffer.allocate(64*1024);
+        ByteBuffer binaryPlans = ByteBuffer.allocate(64 * 1024);
         String deviceId = "device1";
         String[] measurements = new String[]{"s1", "s2", "s3"};
+        TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
+<<<<<<< HEAD
           new InsertPlan(deviceId, j, measurements, values).serialize(binaryPlans);
+=======
+          new InsertPlan(deviceId, j, measurements, types, values).serializeTo(binaryPlans);
+>>>>>>> master
         }
         if (i > 2) {
           binaryPlans.put("not a wal".getBytes());

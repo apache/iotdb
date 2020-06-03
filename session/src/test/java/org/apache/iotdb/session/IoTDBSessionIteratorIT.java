@@ -153,22 +153,29 @@ public class IoTDBSessionIteratorIT {
         CompressionType.SNAPPY);
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
+    types.add(TSDataType.INT32);
+    types.add(TSDataType.FLOAT);
+
     for (long time = 0; time < 10; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("1");
-      values.add("2");
-      session.insertRecord(deviceId, time, measurements, values);
+      List<Object> values = new ArrayList<>();
+      values.add(1);
+      values.add(2f);
+      session.insertRecord(deviceId, time, measurements, types, values);
     }
 
     deviceId = "root.sg1.d2";
     measurements = new ArrayList<>();
+    types = new ArrayList<>();
     measurements.add("s1");
+    types.add(TSDataType.DOUBLE);
+
     for (long time = 5; time < 10; time++) {
-      List<String> values = new ArrayList<>();
-      values.add("4");
-      session.insertRecord(deviceId, time, measurements, values);
+      List<Object> values = new ArrayList<>();
+      values.add(4d);
+      session.insertRecord(deviceId, time, measurements, types, values);
     }
   }
 

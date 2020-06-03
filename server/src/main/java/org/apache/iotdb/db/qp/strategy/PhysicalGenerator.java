@@ -181,6 +181,7 @@ public class PhysicalGenerator {
           throw new LogicalOperatorException(
               "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
+
         return new InsertPlan(
             paths.get(0).getFullPath(),
             insert.getTime(),

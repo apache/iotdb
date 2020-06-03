@@ -169,8 +169,9 @@ struct TSInsertRecordReq {
     1: required i64 sessionId
     2: required string deviceId
     3: required list<string> measurements
-    4: required list<string> values
+    4: required binary values
     5: required i64 timestamp
+    6: optional bool inferType
 }
 
 struct TSInsertTabletReq {
@@ -197,8 +198,9 @@ struct TSInsertRecordsReq {
     1: required i64 sessionId
     2: required list<string> deviceIds
     3: required list<list<string>> measurementsList
-    4: required list<list<string>> valuesList
+    4: required list<binary> valuesList
     5: required list<i64> timestamps
+    6: optional bool inferType
 }
 
 struct TSDeleteDataReq {
@@ -300,6 +302,8 @@ service TSIService {
 	TSExecuteBatchStatementResp insertRecords(1:TSInsertRecordsReq req);
 
 	TSExecuteBatchStatementResp testInsertTablet(1:TSInsertTabletReq req);
+
+  TSExecuteBatchStatementResp testInsertTablets(1:TSInsertTabletsReq req);
 
   TSStatus testInsertRecord(1:TSInsertRecordReq req);
 

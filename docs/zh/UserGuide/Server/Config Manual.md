@@ -217,6 +217,15 @@
 |默认值| 700 |
 |改后生效方式|重启服务器生效|
 
+* enable\_partial\_insert
+
+|Name| enable\_partial\_insert |
+|:---:|:---|
+|Description| 在一次insert请求中，如果部分测点写入失败，是否继续写入其他测点|
+|Type| Bool |
+|Default| true |
+|Effective|重启服务器生效|
+
 * fetch\_size
 
 |名字| fetch\_size |
@@ -252,6 +261,42 @@
 |类型|Int32|
 |默认值| 0 |
 |改后生效方式|重启服务器生效|
+
+* enable\_parameter\_adapter
+
+|Name| enable\_parameter\_adapter |
+|:---:|:---|
+|Description| 开启自动调整系统参数，避免爆内存|
+|Type|Bool|
+|Default| true |
+|Effective|重启服务器生效|
+
+* memtable\_size\_threshold
+
+|Name| memtable\_size\_threshold |
+|:---:|:---|
+|Description| 内存缓冲区 memtable 阈值|
+|Type|Long|
+|Default| 1073741824 |
+|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
+
+* avg\_series\_point\_number\_threshold
+
+|Name| avg\_series\_point\_number\_threshold |
+|:---:|:---|
+|Description| 内存中平均每个时间序列点数最大值，达到触发flush|
+|Type|Int32|
+|Default| 10000 |
+|Effective|重启服务器生效|
+
+* tsfile\_size\_threshold
+
+|Name| tsfile\_size\_threshold |
+|:---:|:---|
+|Description| 每个 tsfile 大小|
+|Type|Long|
+|Default| 536870912 |
+|Effective|enable\_parameter\_adapter为false时生效、重启服务器生效|
 
 * enable\_partition
 
@@ -463,12 +508,32 @@
 |改后生效方式|重启服务器生效|
 
 
+* authorizer\_provider\_class
+
+|名字| authorizer\_provider\_class |
+|:---:|:---|
+|描述| 权限服务的类名|
+|类型| String |
+|默认值|org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer |
+|改后生效方式|重启服务器生效|
+|其他可选值| org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer |
+
+* openID\_url
+
+|名字| openID\_url |
+|:---:|:---|
+|描述| openID 服务器地址 （当OpenIdAuthorizer被启用时必须设定）|
+|类型| String （一个http地址） |
+|默认值| 无 |
+|改后生效方式|重启服务器生效|
+
+
 ## 开启GC日志
 GC日志默认是关闭的。为了性能调优，用户可能会需要手机GC信息。
 若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：
 
 ```bash
-sbin/start-server.sh printgc
+nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
 ```
 或者
 

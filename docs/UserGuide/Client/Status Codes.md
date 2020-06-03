@@ -50,8 +50,8 @@ Here is a list of Status Code and related message:
 |203|INCOMPATIBLE_VERSION|Incompatible version|
 |298|NODE_DELETE_FAILED_ERROR|Failed while deleting node|
 |299|ALIAS_ALREADY_EXIST_ERROR|Alias already exists|
-|300|TIMESERIES_ALREADY_EXIST_ERROR|Timeseries already exists|
-|301|TIMESERIES_NOT_EXIST_ERROR|Timeseries does not exist|
+|300|PATH_ALREADY_EXIST_ERROR|Path already exists|
+|301|PATH_NOT_EXIST_ERROR|Path does not exist|
 |302|UNSUPPORTED_FETCH_METADATA_OPERATION_ERROR|Unsupported fetch metadata operation|
 |303|METADATA_ERROR|Meet error when dealing with metadata|
 |305|OUT_OF_TTL_ERROR|Insertion time is less than TTL time bound|

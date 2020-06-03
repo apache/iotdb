@@ -36,6 +36,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -175,10 +176,6 @@ public class IoTDBDescriptor {
       conf.setRpcPort(Integer.parseInt(properties.getProperty("rpc_port",
           Integer.toString(conf.getRpcPort()))));
 
-      conf.setJmxUser(properties.getProperty("jmx_user", conf.getJmxUser()));
-
-      conf.setJmxPassword(properties.getProperty("jmx_password", conf.getJmxPassword()));
-
       conf.setTimestampPrecision(properties.getProperty("timestamp_precision",
           conf.getTimestampPrecision()));
 
@@ -228,7 +225,7 @@ public class IoTDBDescriptor {
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold > 0) {
+      if (tsfileSizeThreshold >= 0) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 
@@ -238,6 +235,10 @@ public class IoTDBDescriptor {
       if (memTableSizeThreshold > 0) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
       }
+
+      conf.setAvgSeriesPointNumberThreshold(Integer.parseInt(properties
+          .getProperty("avg_series_point_number_threshold",
+              Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
 
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
@@ -309,6 +310,10 @@ public class IoTDBDescriptor {
           Boolean.toString(conf.isForceFullMerge()))));
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
+
+      conf.setEnablePartialInsert(
+          Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
+              String.valueOf(conf.isEnablePartialInsert()))));
 
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
@@ -413,6 +418,16 @@ public class IoTDBDescriptor {
         conf.setEnableMQTTService(
             Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
       }
+      if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
+        conf.setMqttMaxMessageSize(
+            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
+      }
+
+      conf.setAuthorizerProvider(properties.getProperty("authorizer_provider_class",
+          "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer"));
+      //if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
+      conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
+
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
@@ -478,6 +493,12 @@ public class IoTDBDescriptor {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
             Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
+    conf.setBooleanStringInferType(TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
+        conf.getBooleanStringInferType().toString())));
+    conf.setIntegerStringInferType(TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
+        conf.getIntegerStringInferType().toString())));
+    conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
+        conf.getFloatingStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
         Integer.parseInt(properties.getProperty("default_storage_group_level",
             Integer.toString(conf.getDefaultStorageGroupLevel()))));
@@ -575,7 +596,7 @@ public class IoTDBDescriptor {
       long tsfileSizeThreshold = Long.parseLong(properties
           .getProperty("tsfile_size_threshold",
               Long.toString(conf.getTsFileSizeThreshold())).trim());
-      if (tsfileSizeThreshold > 0 && !conf.isEnableParameterAdapter()) {
+      if (tsfileSizeThreshold >= 0 && !conf.isEnableParameterAdapter()) {
         conf.setTsFileSizeThreshold(tsfileSizeThreshold);
       }
 

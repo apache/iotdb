@@ -76,11 +76,17 @@ public class SessionDataSet {
     for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
       Field field;
 
+      int index = i + 1;
+      int datasetColumnIndex = i + START_INDEX;
+      if (ioTDBRpcDataSet.ignoreTimeStamp) {
+        index--;
+        datasetColumnIndex--;
+      }
       int loc =
-          ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(i + 1))
+          ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(index))
               - START_INDEX;
 
-      if (!ioTDBRpcDataSet.isNull(i + START_INDEX)) {
+      if (!ioTDBRpcDataSet.isNull(datasetColumnIndex)) {
         byte[] valueBytes = ioTDBRpcDataSet.values[loc];
         TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(loc);
         field = new Field(dataType);

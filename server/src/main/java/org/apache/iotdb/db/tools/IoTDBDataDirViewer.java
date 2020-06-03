@@ -136,14 +136,14 @@ public class IoTDBDataDirViewer {
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
     resource.deserialize();
     // sort device strings
-    SortedSet<String> keys = new TreeSet<>(resource.getStartTimeMap().keySet());
+    SortedSet<String> keys = new TreeSet<>(resource.getDeviceToIndexMap().keySet());
     for (String device : keys) {
       printlnBoth(pw,
           String.format("|  |  |  |  |--device %s, start time %d (%s), end time %d (%s)", device,
-              resource.getStartTimeMap().get(device), DatetimeUtils
-                  .convertMillsecondToZonedDateTime(resource.getStartTimeMap().get(device)),
-              resource.getEndTimeMap().get(device), DatetimeUtils
-                  .convertMillsecondToZonedDateTime(resource.getEndTimeMap().get(device))));
+              resource.getStartTime(device), DatetimeUtils
+                  .convertMillsecondToZonedDateTime(resource.getStartTime(device)),
+              resource.getEndTime(device), DatetimeUtils
+                  .convertMillsecondToZonedDateTime(resource.getEndTime(device))));
     }
   }
 
