@@ -890,7 +890,7 @@ public class PlanExecutor implements IPlanExecutor {
 
           schemas[i] = measurementNode.getSchema();
           // reset measurement to common name instead of alias
-          measurementList[i] = measurement;
+          measurementList[i] = measurementNode.getName();
 
           if (!insertPlan.isInferType()) {
             checkType(insertPlan, i, measurementNode.getSchema().getType());
@@ -1041,6 +1041,7 @@ public class PlanExecutor implements IPlanExecutor {
                   measurementNode.getSchema().getType()));
         }
         schemas[i] = measurementNode.getSchema();
+        measurementList[i] = measurementNode.getName();
       }
       insertTabletPlan.setSchemas(schemas);
       return StorageEngine.getInstance().insertTablet(insertTabletPlan);
