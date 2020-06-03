@@ -108,6 +108,31 @@ public class IoTDBSessionIT {
   }
 
   @Test
+  public void testInsertByBlankStrAndInferType() throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1  ");
+
+    List<String> values = new ArrayList<>();
+    values.add("1.0");
+    session.insertRecord(deviceId, 1L, measurements, values);
+
+    String[] expected = new String[]{"1\t1.0"};
+
+    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg1.d1");
+    int i = 0;
+    while (dataSet.hasNext()) {
+      assertEquals(expected[i], dataSet.next().toString());
+      i++;
+    }
+
+    session.close();
+  }
+
+  @Test
   public void testInsertByStrAndInferType() throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
