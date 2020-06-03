@@ -768,8 +768,7 @@ public class StorageGroupProcessor {
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
-        ((LeafMNode) manager.getChild(node, measurementList[i],
-            plan.getDeviceId() + " in StorageGroupProcessor-771"))
+        ((LeafMNode) node.getChild(measurementList[i]))
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
@@ -824,7 +823,7 @@ public class StorageGroupProcessor {
           continue;
         }
         // Update cached last value with high priority
-        ((LeafMNode) manager.getChild(node, measurementList[i], plan.getDeviceId()+ " in StorageGroupProcessor-826"))
+        ((LeafMNode) node.getChild(measurementList[i]))
             .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {

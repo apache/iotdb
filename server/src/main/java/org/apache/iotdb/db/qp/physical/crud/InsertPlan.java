@@ -224,7 +224,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
+    this.deviceId = deviceId.trim();
   }
 
   public String[] getMeasurements() {
@@ -278,9 +278,9 @@ public class InsertPlan extends PhysicalPlan {
       }
     }
 
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] != null) {
-        schemas[i].serializeTo(stream);
+    for (MeasurementSchema schema: schemas) {
+      if (schema != null) {
+        schema.serializeTo(stream);
       }
     }
 

@@ -74,7 +74,7 @@ public class MManager {
   private TagLogFile tagLogFile;
   private boolean writeToLog;
   // device -> DeviceMNode
-//  private RandomDeleteCache<String, MNode> mNodeCache;
+  private RandomDeleteCache<String, MNode> mNodeCache;
 
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<LeafMNode>>> tagIndex = new HashMap<>();
@@ -111,21 +111,21 @@ public class MManager {
     writeToLog = false;
 
     int cacheSize = config.getmManagerCacheSize();
-//    mNodeCache =
-//        new RandomDeleteCache<String, MNode>(cacheSize) {
-//
-//          @Override
-//          public MNode loadObjectByKey(String key) throws CacheException {
-//            lock.readLock().lock();
-//            try {
-//              return mtree.getNodeByPathWithStorageGroupCheck(key);
-//            } catch (MetadataException e) {
-//              throw new CacheException(e);
-//            } finally {
-//              lock.readLock().unlock();
-//            }
-//          }
-//        };
+    mNodeCache =
+        new RandomDeleteCache<String, MNode>(cacheSize) {
+
+          @Override
+          public MNode loadObjectByKey(String key) throws CacheException {
+            lock.readLock().lock();
+            try {
+              return mtree.getNodeByPathWithStorageGroupCheck(key);
+            } catch (MetadataException e) {
+              throw new CacheException(e);
+            } finally {
+              lock.readLock().unlock();
+            }
+          }
+        };
   }
 
   public static MManager getInstance() {
@@ -189,7 +189,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       this.mtree = new MTree();
-//      this.mNodeCache.clear();
+      this.mNodeCache.clear();
       this.tagIndex.clear();
       this.seriesNumberInStorageGroups.clear();
       this.maxSeriesNumberAmongStorageGroup = 0;
@@ -379,7 +379,7 @@ public class MManager {
         }
       }
 
-//      mNodeCache.clear();
+      mNodeCache.clear();
     }
     try {
       Set<String> emptyStorageGroups = new HashSet<>();
@@ -445,7 +445,7 @@ public class MManager {
       String storageGroupName = pair.left;
 
       // TODO: delete the path node and all its ancestors
-//      mNodeCache.clear();
+      mNodeCache.clear();
       try {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
       } catch (ConfigAdjusterException e) {
@@ -513,7 +513,7 @@ public class MManager {
         for (LeafMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
         }
-//        mNodeCache.clear();
+        mNodeCache.clear();
 
         if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
@@ -868,45 +868,6 @@ public class MManager {
     }
   }
 
-  public MNode getChild(MNode parent, String child, String info) {
-    MNode childNode = parent.getChild(child);
-    int tempCount = 0;
-    while (childNode == null) {
-      tempCount ++;
-      try {
-        Thread.sleep(1);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Current thread is interrupted, ignore");
-      }
-      if (tempCount % 1000 == 0) {
-        MNode realDevice = null;
-        try {
-          realDevice = getNodeByPath(parent.getFullPath());
-          MNode realChild = realDevice.getChild(child);
-          if (realChild == null) {
-            MNode fullNode = getNodeByPath(parent.getFullPath() + IoTDBConstant.PATH_SEPARATOR + child);
-            if (fullNode == null) {
-              logger.warn("realChild is null, qilepale");
-            } else {
-              logger.warn("got it, origin device {}, child {}, current node {}", parent.getFullPath(), child, fullNode.getFullPath());
-              return fullNode;
-            }
-          } else {
-            logger.warn("current device: == realDevice ? {}", parent.equals(realDevice));
-            logger.warn("current device {} realDevice {}", parent, realDevice);
-            return realChild;
-          }
-        } catch (MetadataException e) {
-          e.printStackTrace();
-        }
-        logger.warn("try to get child {} for {} times from {}", child, tempCount, info);
-      }
-      childNode = parent.getChild(child);
-    }
-    return childNode;
-  }
-
   /**
    * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
    * be thrown
@@ -933,9 +894,9 @@ public class MManager {
     MNode node = null;
     boolean shouldSetStorageGroup;
     try {
-      node = mtree.getNodeByPathWithStorageGroupCheck(path);
+      node = mNodeCache.get(path);
       return node;
-    } catch (MetadataException e) {
+    } catch (CacheException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path);
       }
@@ -949,10 +910,10 @@ public class MManager {
     lock.writeLock().lock();
     try {
       try {
-        node = mtree.getNodeByPathWithStorageGroupCheck(path);
+        node = mNodeCache.get(path);
         return node;
-      } catch (MetadataException e) {
-        shouldSetStorageGroup = e instanceof StorageGroupNotSetException;
+      } catch (CacheException e) {
+        shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
       }
 
       if (shouldSetStorageGroup) {
