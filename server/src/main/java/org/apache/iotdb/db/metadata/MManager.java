@@ -888,6 +888,9 @@ public class MManager {
             MNode fullNode = getNodeByPath(parent.getFullPath() + IoTDBConstant.PATH_SEPARATOR + child);
             if (fullNode == null) {
               logger.warn("realChild is null, qilepale");
+            } else {
+              logger.warn("got it, origin device {}, child {}, current node {}", parent.getFullPath(), child, fullNode.getFullPath());
+              return fullNode;
             }
           } else {
             logger.warn("current device: == realDevice ? {}", parent.equals(realDevice));
