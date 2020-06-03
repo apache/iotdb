@@ -44,7 +44,9 @@ public abstract class LRUCache<K, T> implements Cache<K, T> {
       return cache.get(key);
     } else {
       T value = loadObjectByKey(key);
-      cache.put(key, value);
+      if (value != null) {
+        cache.put(key, value);
+      }
       return value;
     }
   }

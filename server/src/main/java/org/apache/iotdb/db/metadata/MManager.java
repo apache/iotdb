@@ -150,8 +150,8 @@ public class MManager {
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
     mRemoteSchemaCache = new LRUCache<String, MeasurementSchema>(remoteCacheSize) {
       @Override
-      protected MeasurementSchema loadObjectByKey(String key) throws IOException {
-        throw new IOException();
+      protected MeasurementSchema loadObjectByKey(String key) {
+        return null;
       }
 
       @Override
@@ -605,10 +605,11 @@ public class MManager {
 
       try {
         MeasurementSchema schema = mRemoteSchemaCache.get(path);
-        return schema.getType();
+        if (schema != null) {
+          return schema.getType();
+        }
       } catch (IOException e) {
-        // if the mRemoteSchemaCache has no such a path, an IOException will be thrown.
-        // we ignore it to get the type from the local mtree.
+        // unreachable
       }
 
       return mtree.getSchema(path).getType();
