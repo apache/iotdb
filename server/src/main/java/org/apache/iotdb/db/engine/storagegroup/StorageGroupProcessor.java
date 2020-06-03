@@ -768,7 +768,7 @@ public class StorageGroupProcessor {
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
-        ((LeafMNode) manager.getChild(node, measurementList[i], plan.getDeviceId()))
+        ((LeafMNode) node.getChild(measurementList[i]))
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
@@ -819,11 +819,11 @@ public class StorageGroupProcessor {
       node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
-        if (plan.getSchemas()[i] == null) {
+        if (plan.getValues()[i] == null) {
           continue;
         }
         // Update cached last value with high priority
-        ((LeafMNode) manager.getChild(node, measurementList[i], plan.getDeviceId()))
+        ((LeafMNode) node.getChild(measurementList[i]))
             .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {

@@ -1331,6 +1331,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return status;
     }
+    logger.info("createTimeseries {}", req.getPath());
     return executePlan(plan);
   }
 
@@ -1340,7 +1341,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
     }
-
+    logger.info("createMultiTimeseries, first is {}", req.getPaths().get(0));
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPaths().get(i)),
