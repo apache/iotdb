@@ -114,11 +114,7 @@ public class WalCheckerTest {
         TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-<<<<<<< HEAD
           new InsertPlan(deviceId, j, measurements, values).serialize(binaryPlans);
-=======
-          new InsertPlan(deviceId, j, measurements, types, values).serializeTo(binaryPlans);
->>>>>>> master
         }
         if (i > 2) {
           binaryPlans.put("not a wal".getBytes());
