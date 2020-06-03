@@ -289,11 +289,7 @@ public class MManager {
         }
         storageGroupName =
             MetaUtils.getStorageGroupNameByLevel(path, config.getDefaultStorageGroupLevel());
-//        try {
-          setStorageGroup(storageGroupName);
-//        } catch (StorageGroupAlreadySetException e1) {
-//          ignore
-//        }
+        setStorageGroup(storageGroupName);
       }
 
       // check memory
