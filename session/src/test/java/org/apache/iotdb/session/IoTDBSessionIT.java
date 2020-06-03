@@ -114,18 +114,19 @@ public class IoTDBSessionIT {
 
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
-    measurements.add("s1  ");
+    measurements.add("s1 ");
 
     List<String> values = new ArrayList<>();
     values.add("1.0");
     session.insertRecord(deviceId, 1L, measurements, values);
 
-    String[] expected = new String[]{"1\t1.0"};
+    String[] expected = new String[]{"root.sg1.d1.s1 "};
 
-    SessionDataSet dataSet = session.executeQueryStatement("select s1 from root.sg1.d1");
+    assertFalse(session.checkTimeseriesExists("root.sg1.d1.s1 "));
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries");
     int i = 0;
     while (dataSet.hasNext()) {
-      assertEquals(expected[i], dataSet.next().toString());
+      assertEquals(expected[i], dataSet.next().getFields().get(0).toString());
       i++;
     }
 
