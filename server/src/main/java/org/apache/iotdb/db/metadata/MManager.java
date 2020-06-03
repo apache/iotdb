@@ -74,7 +74,7 @@ public class MManager {
   private TagLogFile tagLogFile;
   private boolean writeToLog;
   // device -> DeviceMNode
-  private RandomDeleteCache<String, MNode> mNodeCache;
+//  private RandomDeleteCache<String, MNode> mNodeCache;
 
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<LeafMNode>>> tagIndex = new HashMap<>();
@@ -111,21 +111,21 @@ public class MManager {
     writeToLog = false;
 
     int cacheSize = config.getmManagerCacheSize();
-    mNodeCache =
-        new RandomDeleteCache<String, MNode>(cacheSize) {
-
-          @Override
-          public MNode loadObjectByKey(String key) throws CacheException {
-            lock.readLock().lock();
-            try {
-              return mtree.getNodeByPathWithStorageGroupCheck(key);
-            } catch (MetadataException e) {
-              throw new CacheException(e);
-            } finally {
-              lock.readLock().unlock();
-            }
-          }
-        };
+//    mNodeCache =
+//        new RandomDeleteCache<String, MNode>(cacheSize) {
+//
+//          @Override
+//          public MNode loadObjectByKey(String key) throws CacheException {
+//            lock.readLock().lock();
+//            try {
+//              return mtree.getNodeByPathWithStorageGroupCheck(key);
+//            } catch (MetadataException e) {
+//              throw new CacheException(e);
+//            } finally {
+//              lock.readLock().unlock();
+//            }
+//          }
+//        };
   }
 
   public static MManager getInstance() {
@@ -189,7 +189,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       this.mtree = new MTree();
-      this.mNodeCache.clear();
+//      this.mNodeCache.clear();
       this.tagIndex.clear();
       this.seriesNumberInStorageGroups.clear();
       this.maxSeriesNumberAmongStorageGroup = 0;
@@ -379,7 +379,7 @@ public class MManager {
         }
       }
 
-      mNodeCache.clear();
+//      mNodeCache.clear();
     }
     try {
       Set<String> emptyStorageGroups = new HashSet<>();
@@ -445,7 +445,7 @@ public class MManager {
       String storageGroupName = pair.left;
 
       // TODO: delete the path node and all its ancestors
-      mNodeCache.clear();
+//      mNodeCache.clear();
       try {
         IoTDBConfigDynamicAdapter.getInstance().addOrDeleteTimeSeries(-1);
       } catch (ConfigAdjusterException e) {
@@ -513,7 +513,7 @@ public class MManager {
         for (LeafMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
         }
-        mNodeCache.clear();
+//        mNodeCache.clear();
 
         if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
@@ -933,9 +933,9 @@ public class MManager {
     MNode node = null;
     boolean shouldSetStorageGroup;
     try {
-      node = mNodeCache.get(path);
+      node = mtree.getNodeByPathWithStorageGroupCheck(path);
       return node;
-    } catch (CacheException e) {
+    } catch (MetadataException e) {
       if (!autoCreateSchema) {
         throw new PathNotExistException(path);
       }
@@ -949,10 +949,10 @@ public class MManager {
     lock.writeLock().lock();
     try {
       try {
-        node = mNodeCache.get(path);
+        node = mtree.getNodeByPathWithStorageGroupCheck(path);
         return node;
-      } catch (CacheException e) {
-        shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
+      } catch (MetadataException e) {
+        shouldSetStorageGroup = e instanceof StorageGroupNotSetException;
       }
 
       if (shouldSetStorageGroup) {
@@ -963,7 +963,7 @@ public class MManager {
       return node;
     } catch (StorageGroupAlreadySetException e) {
       // ignore set storage group concurrently
-      node = mtree.getNodeByPathWithStorageGroupCheck(path);
+      node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       return node;
     } finally {
       if (node != null) {
