@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.LastRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -54,6 +55,7 @@ import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -572,5 +574,11 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       AsyncMethodCallback<Boolean> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler, "Match term");
     dataMember.matchTerm(index, term, header, resultHandler);
+  }
+
+  @Override
+  public void last(LastRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
+    DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, "last");
+    dataMember.last(request, resultHandler);
   }
 }

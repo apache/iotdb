@@ -102,14 +102,21 @@ public class LastQueryExecutor {
     return dataSet;
   }
 
+  protected TimeValuePair calculateLastPairForOneSeries(
+      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
+      throws IOException, QueryProcessException, StorageEngineException {
+    return calculateLastPairForOneSeriesLocally(seriesPath, tsDataType, context,
+        deviceMeasurements);
+  }
+
   /**
    * get last result for one series
    *
    * @param context query context
    * @return TimeValuePair
    */
-  public static TimeValuePair calculateLastPairForOneSeries(
-      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> sensors)
+  public static TimeValuePair calculateLastPairForOneSeriesLocally(
+      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
@@ -136,7 +143,7 @@ public class LastQueryExecutor {
     if (!seqFileResources.isEmpty()) {
       for (int i = seqFileResources.size() - 1; i >= 0; i--) {
         TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-                seqFileResources.get(i), seriesPath, context, null, sensors);
+                seqFileResources.get(i), seriesPath, context, null, deviceMeasurements);
         if (timeseriesMetadata != null) {
           if (!timeseriesMetadata.isModified()) {
             Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
@@ -166,7 +173,7 @@ public class LastQueryExecutor {
         continue;
       }
       TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
+          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
           if (chunkMetaData.getEndTime() == resultPair.getTimestamp()

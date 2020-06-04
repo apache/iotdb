@@ -73,6 +73,7 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.LastRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -107,6 +108,7 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.LocalGroupByExecutor;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -1798,5 +1800,27 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     PreviousFill previousFill = new PreviousFill(dataType, queryTime, beforeRange);
     previousFill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
     return previousFill.getFillResult();
+  }
+
+  @Override
+  public void last(LastRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+    RemoteQueryContext queryContext = queryManager
+        .getQueryContext(request.getRequestor(), request.getQueryId());
+    try {
+      TimeValuePair timeValuePair = LastQueryExecutor
+          .calculateLastPairForOneSeriesLocally(new Path(request.getPath()),
+              TSDataType.values()[request.getDataTypeOrdinal()], queryContext,
+              request.getDeviceMeasurements());
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
+      resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+    } catch (IOException | QueryProcessException | StorageEngineException e) {
+      resultHandler.onError(e);
+    }
   }
 }

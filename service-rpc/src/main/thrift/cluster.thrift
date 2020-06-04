@@ -214,6 +214,15 @@ struct GroupByRequest {
   8: required set<string> deviceMeasurements
 }
 
+struct LastRequest {
+  1: required string path
+  2: required int dataTypeOrdinal
+  3: required long queryId
+  4: required set<string> deviceMeasurements
+  5: required Node header
+  6: required Node requestor
+}
+
 service RaftService {
   /**
   * Leader will call this method to all followers to ensure its authority.
@@ -362,8 +371,15 @@ service TSDataService extends RaftService {
 
   /**
   * Perform a previous fill and return the timevalue pair in binary.
+  * @return a binary TimeValuePair
   **/
   binary previousFill(1: PreviousFillRequest request)
+
+  /**
+  * Query the last point of the series.
+  * @return a binary TimeValuePair
+  **/
+  binary last(1: LastRequest request)
 }
 
 service TSMetaService extends RaftService {

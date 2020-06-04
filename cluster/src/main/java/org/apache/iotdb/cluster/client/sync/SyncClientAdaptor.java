@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
+import org.apache.iotdb.cluster.rpc.thrift.LastRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -56,8 +57,12 @@ import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandl
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
@@ -310,7 +315,6 @@ public class SyncClientAdaptor {
       throws InterruptedException, TException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
-    result.set(null);
     synchronized (result) {
       client.readFile(remotePath, offset, fetchSize, handler);
       result.wait(RaftServer.getConnectionTimeoutInMS());
@@ -340,5 +344,19 @@ public class SyncClientAdaptor {
       snapshotRef.wait(RaftServer.getConnectionTimeoutInMS());
     }
     return snapshotRef.get();
+  }
+
+  public static ByteBuffer last(DataClient client, Path seriesPath,
+      TSDataType dataType, QueryContext context, Set<String> deviceMeasurements, Node header)
+      throws TException, InterruptedException {
+    AtomicReference<ByteBuffer> result = new AtomicReference<>();
+    GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
+    LastRequest request = new LastRequest(seriesPath.getFullPath(), dataType.ordinal(),
+        context.getQueryId(), deviceMeasurements, header, client.getNode());
+    synchronized (result) {
+      client.last(request, handler);
+      result.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+    return result.get();
   }
 }

@@ -24,17 +24,20 @@ import java.util.Map;
 import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByVFilterDataSet;
+import org.apache.iotdb.cluster.query.last.ClusterLastQueryExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
 import org.apache.iotdb.db.query.executor.FillQueryExecutor;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.query.executor.RawDataQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
@@ -74,6 +77,11 @@ public class ClusterQueryRouter extends QueryRouter {
 
   @Override
   protected RawDataQueryExecutor getRawDataQueryExecutor(RawDataQueryPlan queryPlan) {
-    return new ClusterDataQueryExecutor(queryPlan,  this.metaGroupMember);
+    return new ClusterDataQueryExecutor(queryPlan, metaGroupMember);
+  }
+
+  @Override
+  protected LastQueryExecutor getLastQueryExecutor(LastQueryPlan lastQueryPlan) {
+    return new ClusterLastQueryExecutor(lastQueryPlan, metaGroupMember);
   }
 }
