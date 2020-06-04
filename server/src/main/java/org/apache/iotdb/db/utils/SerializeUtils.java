@@ -208,7 +208,7 @@ public class SerializeUtils {
   }
 
   public static BatchData deserializeBatchData(ByteBuffer buffer) {
-    if (buffer == null || buffer.limit() == 0) {
+    if (buffer == null || (buffer.limit() - buffer.position()) == 0) {
       return null;
     }
 

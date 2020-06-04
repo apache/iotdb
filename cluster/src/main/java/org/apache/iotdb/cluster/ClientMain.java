@@ -33,6 +33,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -56,7 +57,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -227,7 +230,10 @@ public class ClientMain {
     TSIService.Client.Factory factory = new Factory();
     TTransport transport = new TFastFramedTransport(new TSocket(ip, port));
     transport.open();
-    return factory.getClient(new TCompactProtocol(transport));
+    TProtocol protocol =
+        ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled() ?
+            new TCompactProtocol(transport) : new TBinaryProtocol(transport);
+    return factory.getClient(protocol);
   }
 
   private static void prepareSchema() {
