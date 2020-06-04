@@ -379,7 +379,7 @@ public class MManager {
       Set<String> failedNames = new HashSet<>();
       for (String p : allTimeseries) {
         try {
-          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatisticsAndLog(p);
+          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
           if (!isRecovering) {
             if (emptyStorageGroup != null) {
               StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
@@ -427,7 +427,7 @@ public class MManager {
    * @param path full path from root to leaf node
    * @return after delete if the storage group is empty, return its name, otherwise return null
    */
-  private String deleteOneTimeseriesAndUpdateStatisticsAndLog(String path)
+  private String deleteOneTimeseriesAndUpdateStatistics(String path)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
