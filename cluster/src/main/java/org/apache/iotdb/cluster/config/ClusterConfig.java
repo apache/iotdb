@@ -36,7 +36,7 @@ public class ClusterConfig {
       + ":9004:40011", "127.0.0.1:9005:40012");
 
   @ClusterConsistent
-  private boolean isRpcThriftCompressionEnabled = true;
+  private boolean isRpcThriftCompressionEnabled = false;
   private int maxConcurrentClientNum = 1024;
 
   @ClusterConsistent
