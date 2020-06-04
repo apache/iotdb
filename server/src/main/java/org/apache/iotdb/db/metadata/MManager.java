@@ -71,7 +71,7 @@ public class MManager {
   private MTree mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
-  private boolean writeToLog;
+  private boolean isRecovering;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
 
@@ -107,7 +107,7 @@ public class MManager {
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
 
     // do not write log when recover
-    writeToLog = false;
+    isRecovering = true;
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
@@ -155,7 +155,7 @@ public class MManager {
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
-      writeToLog = true;
+      isRecovering = false;
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
@@ -242,7 +242,7 @@ public class MManager {
         createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        String failedTimeseries = deleteTimeseries(args[1], true);
+        String failedTimeseries = deleteTimeseries(args[1]);
         if (!failedTimeseries.isEmpty()) {
           throw new DeleteFailedException(failedTimeseries);
         }
@@ -315,7 +315,7 @@ public class MManager {
       }
 
       // write log
-      if (writeToLog) {
+      if (!isRecovering) {
         // either tags or attributes is not empty
         if ((plan.getTags() != null && !plan.getTags().isEmpty())
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
@@ -353,10 +353,9 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @param isRecovering indicate if the deletion occurs in recovering
    * @return  The String is the deletion failed Timeseries
    */
-  public String deleteTimeseries(String prefixPath, boolean isRecovering) throws MetadataException {
+  public String deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
     if (isStorageGroup(prefixPath)) {
 
@@ -381,10 +380,10 @@ public class MManager {
       for (String p : allTimeseries) {
         try {
           String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatisticsAndLog(p);
-          if (!isRecovering && emptyStorageGroup != null) {
-            StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
-          }
-          if (writeToLog) {
+          if (!isRecovering) {
+            if (emptyStorageGroup != null) {
+              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+            }
             logWriter.deleteTimeseries(p);
           }
         } catch (DeleteFailedException e) {
@@ -474,7 +473,7 @@ public class MManager {
         ActiveTimeSeriesCounter.getInstance().init(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, 0);
       }
-      if (writeToLog) {
+      if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
       }
     } catch (IOException e) {
@@ -515,7 +514,7 @@ public class MManager {
           }
         }
         // if success
-        if (writeToLog) {
+        if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup);
         }
       }
@@ -968,7 +967,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
-      if (writeToLog) {
+      if (!isRecovering) {
         logWriter.setTTL(storageGroup, dataTTL);
       }
     } finally {

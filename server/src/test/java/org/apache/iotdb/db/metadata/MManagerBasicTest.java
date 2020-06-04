@@ -117,7 +117,7 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries("root.laptop.d1.s1", false);
+      manager.deleteTimeseries("root.laptop.d1.s1");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -125,7 +125,7 @@ public class MManagerBasicTest {
     assertFalse(manager.isPathExist("root.laptop.d1.s1"));
 
     try {
-      manager.deleteTimeseries("root.laptop.d1.s0", false);
+      manager.deleteTimeseries("root.laptop.d1.s0");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -155,13 +155,13 @@ public class MManagerBasicTest {
     assertFalse(manager.checkStorageGroupByPath("root.laptop.d2"));
 
     try {
-      manager.deleteTimeseries("root.laptop.d1.s0", false);
+      manager.deleteTimeseries("root.laptop.d1.s0");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      manager.deleteTimeseries("root.laptop.d1.s1", false);
+      manager.deleteTimeseries("root.laptop.d1.s1");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -177,9 +177,9 @@ public class MManagerBasicTest {
     }
 
     try {
-      manager.deleteTimeseries("root.laptop.d1.1_2", false);
-      manager.deleteTimeseries("root.laptop.d1.\"1.2.3\"", false);
-      manager.deleteTimeseries("root.1.2.3", false);
+      manager.deleteTimeseries("root.laptop.d1.1_2");
+      manager.deleteTimeseries("root.laptop.d1.\"1.2.3\"");
+      manager.deleteTimeseries("root.1.2.3");
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -295,9 +295,9 @@ public class MManagerBasicTest {
         CompressionType.GZIP, null);
     assertEquals(2, manager.getMaximalSeriesNumberAmongStorageGroups());
 
-    manager.deleteTimeseries("root.laptop.d1.s1", false);
+    manager.deleteTimeseries("root.laptop.d1.s1");
     assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
-    manager.deleteTimeseries("root.laptop.d1.s2", false);
+    manager.deleteTimeseries("root.laptop.d1.s2");
     assertEquals(1, manager.getMaximalSeriesNumberAmongStorageGroups());
   }
 

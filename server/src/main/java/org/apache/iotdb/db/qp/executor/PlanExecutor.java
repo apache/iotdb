@@ -1146,7 +1146,7 @@ public class PlanExecutor implements IPlanExecutor {
       deleteDataOfTimeSeries(deletePathList);
       List<String> failedNames = new LinkedList<>();
       for (Path path : deletePathList) {
-        String failedTimeseries = mManager.deleteTimeseries(path.toString(), false);
+        String failedTimeseries = mManager.deleteTimeseries(path.toString());
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);
         }
