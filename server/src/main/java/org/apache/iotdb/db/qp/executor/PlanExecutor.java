@@ -917,7 +917,9 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       for (int i = 0; i < measurementList.length; i++) {
         schemas[i] = getSeriesSchema(node, insertPlan, i);
-        measurementList[i] = schemas[i].getMeasurementId();
+        if (schemas[i] != null) {
+          measurementList[i] = schemas[i].getMeasurementId();
+        }
       }
     } finally {
       if (node != null) {
