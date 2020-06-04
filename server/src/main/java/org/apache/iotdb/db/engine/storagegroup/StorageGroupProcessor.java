@@ -758,7 +758,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
+  private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
     MNode node = null;
     try {
@@ -767,7 +767,7 @@ public class StorageGroupProcessor {
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
-        ((LeafMNode) manager.getChild(node, measurementList[i], plan.getDeviceId()))
+        ((LeafMNode) MManager.getChild(node, measurementList[i]))
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
@@ -810,7 +810,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
+  private void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
     MNode node = null;
     try {
@@ -818,7 +818,7 @@ public class StorageGroupProcessor {
       node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
-        if (plan.getSchemas()[i] == null) {
+        if (plan.getValues()[i] == null) {
           continue;
         }
         // Update cached last value with high priority

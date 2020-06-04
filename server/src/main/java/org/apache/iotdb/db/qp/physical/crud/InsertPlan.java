@@ -186,6 +186,7 @@ public class InsertPlan extends PhysicalPlan {
               measurements[i], values[i], types[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markMeasurementInsertionFailed(i);
+            schemas[i] = null;
           } else {
             throw e;
           }
@@ -202,7 +203,6 @@ public class InsertPlan extends PhysicalPlan {
       failedMeasurements = new ArrayList<>();
     }
     failedMeasurements.add(measurements[index]);
-    schemas[index] = null;
     measurements[index] = null;
     types[index] = null;
     values[index] = null;
@@ -277,8 +277,10 @@ public class InsertPlan extends PhysicalPlan {
       }
     }
 
-    for (MeasurementSchema schema : schemas) {
-      schema.serializeTo(stream);
+    for (MeasurementSchema schema: schemas) {
+      if (schema != null) {
+        schema.serializeTo(stream);
+      }
     }
 
     try {

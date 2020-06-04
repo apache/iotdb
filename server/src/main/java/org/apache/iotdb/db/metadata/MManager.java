@@ -938,19 +938,6 @@ public class MManager {
     }
   }
 
-  public MNode getChild(MNode parent, String child, String info) {
-    MNode childNode = parent.getChild(child);
-    int tempCount = 0;
-    while (childNode == null) {
-      tempCount ++;
-      if (tempCount % 10000 == 0) {
-        logger.warn("try to get child {} 10000 times from {}", child, info);
-      }
-      childNode = parent.getChild(child);
-    }
-    return childNode;
-  }
-
   /**
    * Get storage group node by path. If storage group is not set, StorageGroupNotSetException will
    * be thrown
@@ -1005,11 +992,11 @@ public class MManager {
         String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
         setStorageGroup(storageGroupName);
       }
-      node = mtree.getDeviceNodeWithAutoCreating(path);
+      node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       return node;
     } catch (StorageGroupAlreadySetException e) {
       // ignore set storage group concurrently
-      node = mtree.getDeviceNodeWithAutoCreating(path);
+      node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       return node;
     } finally {
       if (node != null) {
@@ -1025,6 +1012,21 @@ public class MManager {
   public MNode getDeviceNodeWithAutoCreateAndReadLock(String path) throws MetadataException {
     return getDeviceNodeWithAutoCreateAndReadLock(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
+  }
+
+  public static MNode getChild(MNode parent, String child) {
+    MNode childNode = parent.getChild(child);
+    int tempCount = 0;
+    while (childNode == null) {
+      tempCount ++;
+      if (tempCount % 10000 == 0) {
+        throw new RuntimeException(
+            String
+                .format("can not get child [%s] from parent [%s]", child, parent.getName()));
+      }
+      childNode = parent.getChild(child);
+    }
+    return childNode;
   }
 
   /**
