@@ -396,11 +396,11 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected int getPathsNum(String path) throws MetadataException {
-    return mManager.getInstance().getAllTimeseriesCount(path);
+    return MManager.getInstance().getAllTimeseriesCount(path);
   }
 
   protected int getPathsNumInGivenLevel(String path, int level) throws MetadataException {
-    return mManager.getInstance().getAllTimeseriesCountInGivenLevel(path, level);
+    return MManager.getInstance().getAllTimeseriesCountInGivenLevel(path, level);
   }
 
   protected List<String> getPathsName(String path) throws MetadataException {
