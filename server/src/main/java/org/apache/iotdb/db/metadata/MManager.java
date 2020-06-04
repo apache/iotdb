@@ -663,8 +663,6 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesName(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
     } finally {
       lock.readLock().unlock();
     }
@@ -677,8 +675,33 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesPath(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of timeseries for given prefix path.
+   */
+  public int getAllTimeseriesCount(String prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesCount(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of nodes in the given level for given prefix path.
+   *
+   * @param prefixPath a prefix path or a full path, can not contain '*'
+   * @param level the level can not be smaller than the level of the prefixPath
+   */
+  public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getNodesCountInGivenLevel(prefixPath, level);
     } finally {
       lock.readLock().unlock();
     }

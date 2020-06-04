@@ -51,8 +51,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
@@ -361,8 +361,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
-    List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
-    int num = nodes.size();
+    int num = getNodesNumInGivenLevel(countPlan.getPath().toString(), countPlan.getLevel());
     SingleDataSet singleDataSet =
         new SingleDataSet(
             Collections.singletonList(new Path(COLUMN_COUNT)),
@@ -376,6 +375,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
+    // get the nodes that need to group by first
     List<String> nodes = getNodesList(countPlan.getPath().toString(), countPlan.getLevel());
     ListDataSet listDataSet =
         new ListDataSet(
@@ -386,7 +386,8 @@ public class PlanExecutor implements IPlanExecutor {
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(columnPath));
       Field field1 = new Field(TSDataType.TEXT);
-      field1.setBinaryV(new Binary(Integer.toString(getPaths(columnPath).size())));
+      // get the count of every group
+      field1.setBinaryV(new Binary(Integer.toString(getPathsNum(columnPath))));
       record.addField(field);
       record.addField(field1);
       listDataSet.putRecord(record);
@@ -394,7 +395,15 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected List<String> getPaths(String path) throws MetadataException {
+  protected int getPathsNum(String path) throws MetadataException {
+    return MManager.getInstance().getAllTimeseriesCount(path);
+  }
+
+  protected int getNodesNumInGivenLevel(String path, int level) throws MetadataException {
+    return MManager.getInstance().getNodesCountInGivenLevel(path, level);
+  }
+
+  protected List<String> getPathsName(String path) throws MetadataException {
     return MManager.getInstance().getAllTimeseriesName(path);
   }
 
@@ -403,7 +412,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
-    int num = getPaths(countPlan.getPath().toString()).size();
+    int num = getPathsNum(countPlan.getPath().toString());
     SingleDataSet singleDataSet =
         new SingleDataSet(
             Collections.singletonList(new Path(COLUMN_CHILD_PATHS)),
@@ -675,7 +684,7 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       Set<String> existingPaths = new HashSet<>();
       for (Path p : deletePlan.getPaths()) {
-        existingPaths.addAll(getPaths(p.getFullPath()));
+        existingPaths.addAll(getPathsName(p.getFullPath()));
       }
       if (existingPaths.isEmpty()) {
         throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
