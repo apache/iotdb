@@ -671,8 +671,6 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesName(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
     } finally {
       lock.readLock().unlock();
     }
@@ -685,8 +683,6 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesPath(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
     } finally {
       lock.readLock().unlock();
     }
@@ -699,8 +695,21 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesCount(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of timeseries in the given level for given prefix path.
+   *
+   * @param prefixPath a prefix path or a full path, can not contain '*'
+   * @param level the level can not be smaller than the level of the prefixPath
+   */
+  public int getAllTimeseriesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesCountInGivenLevel(prefixPath, level);
     } finally {
       lock.readLock().unlock();
     }

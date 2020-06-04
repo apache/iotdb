@@ -539,7 +539,7 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get the count of timeseries under the given path.
+   * Get the count of timeseries under the given prefix path.
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
    */
@@ -552,9 +552,28 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get the count of timeseries in the given level under the given prefix path.
+   */
+  int getAllTimeseriesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+    String[] nodes = MetaUtils.getNodeNames(prefixPath);
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(prefixPath);
+    }
+    MNode node = root;
+    for (int i = 1; i < nodes.length; i++) {
+      if (node.getChild(nodes[i]) != null) {
+        node = node.getChild(nodes[i]);
+      } else {
+        throw new MetadataException(nodes[i - 1] + " does not have the child node " + nodes[i]);
+      }
+    }
+    return getCountInGivenLevel(node, 0, level - (nodes.length - 1));
+  }
+
+  /**
    * Traverse the MTree to get the count of timeseries.
    */
-  int getCount(MNode node, String[] nodes, int idx, int cnt) {
+  private int getCount(MNode node, String[] nodes, int idx, int cnt) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
@@ -571,6 +590,21 @@ public class MTree implements Serializable {
         } else {
           cnt = getCount(child, nodes, idx + 1, cnt);
         }
+      }
+    }
+    return cnt;
+  }
+
+  /**
+   * Traverse the MTree to get the count of timeseries in the given level.
+   */
+  private int getCountInGivenLevel(MNode node, int cnt, int targetLevel) {
+    if (targetLevel == 0) {
+      return cnt + 1;
+    }
+    if (node instanceof InternalMNode) {
+      for (MNode child : node.getChildren().values()) {
+        cnt = getCountInGivenLevel(child, cnt,targetLevel - 1);
       }
     }
     return cnt;
@@ -773,7 +807,9 @@ public class MTree implements Serializable {
     }
   }
 
-  /** Get all paths from root to the given level */
+  /**
+   * Get all paths from root to the given level.
+   */
   List<String> getNodesList(String path, int nodeLevel) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(path);
     if (!nodes[0].equals(root.getName())) {
