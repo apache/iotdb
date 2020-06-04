@@ -225,7 +225,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId.trim();
+    this.deviceId = deviceId;
   }
 
   public String[] getMeasurements() {

@@ -73,18 +73,18 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   public InsertTabletPlan(String deviceId, List<String> measurements) {
     super(false, OperatorType.BATCHINSERT);
-    this.deviceId = deviceId.trim();
+    this.deviceId = deviceId;
     setMeasurements(measurements);
   }
   public InsertTabletPlan(String deviceId, String[] measurements) {
     super(false, OperatorType.BATCHINSERT);
-    this.deviceId = deviceId.trim();
+    this.deviceId = deviceId;
     setMeasurements(measurements);
   }
 
   public InsertTabletPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
     super(false, OperatorType.BATCHINSERT);
-    this.deviceId = deviceId.trim();
+    this.deviceId = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);
   }

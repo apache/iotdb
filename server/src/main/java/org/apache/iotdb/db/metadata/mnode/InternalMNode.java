@@ -49,7 +49,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public synchronized void addChild(String name, MNode child) {
+  public void addChild(String name, MNode child) {
     children.put(name, child);
   }
 
@@ -89,7 +89,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public synchronized MNode getChild(String name) {
+  public MNode getChild(String name) {
     return children.containsKey(name) ? children.get(name) : aliasChildren.get(name);
   }
 

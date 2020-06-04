@@ -875,7 +875,7 @@ public class PlanExecutor implements IPlanExecutor {
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
       for (int i = 0; i < measurementList.length; i++) {
-        String measurement = measurementList[i].trim();
+        String measurement = measurementList[i];
         try {
           if (!node.hasChild(measurement)) {
             if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
@@ -886,7 +886,7 @@ public class PlanExecutor implements IPlanExecutor {
             Path path = new Path(deviceId, measurement);
             internalCreateTimeseries(path.toString(), dataType);
           }
-          LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
+          LeafMNode measurementNode = (LeafMNode) MManager.getChild(node, measurement);
 
           schemas[i] = measurementNode.getSchema();
           // reset measurement to common name instead of alias
@@ -1020,7 +1020,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       String measurement;
       for (int i = 0; i < measurementList.length; i++) {
-        measurement = measurementList[i].trim();
+        measurement = measurementList[i];
         // check if timeseries exists
         if (!node.hasChild(measurement)) {
           if (!conf.isAutoCreateSchemaEnabled()) {
@@ -1030,8 +1030,9 @@ public class PlanExecutor implements IPlanExecutor {
           Path path = new Path(deviceId, measurement);
           TSDataType dataType = dataTypes[i];
           internalCreateTimeseries(path.getFullPath(), dataType);
+
         }
-        LeafMNode measurementNode = (LeafMNode) node.getChild(measurement);
+        LeafMNode measurementNode = (LeafMNode) MManager.getChild(node, measurement);
 
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
