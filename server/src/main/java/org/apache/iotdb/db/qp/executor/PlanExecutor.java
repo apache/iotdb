@@ -886,7 +886,7 @@ public class PlanExecutor implements IPlanExecutor {
             Path path = new Path(deviceId, measurement);
             internalCreateTimeseries(path.toString(), dataType);
           }
-          LeafMNode measurementNode = (LeafMNode) MManager.getChild(node, measurement);
+          LeafMNode measurementNode = (LeafMNode) mManager.getChild(node, measurement);
 
           schemas[i] = measurementNode.getSchema();
           // reset measurement to common name instead of alias
@@ -1032,7 +1032,7 @@ public class PlanExecutor implements IPlanExecutor {
           internalCreateTimeseries(path.getFullPath(), dataType);
 
         }
-        LeafMNode measurementNode = (LeafMNode) MManager.getChild(node, measurement);
+        LeafMNode measurementNode = (LeafMNode) mManager.getChild(node, measurement);
 
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
