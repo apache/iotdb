@@ -78,7 +78,7 @@ Last标准查询流程需要以倒序方式扫描顺序文件和乱序文件，�
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
       if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
-        break;
+        continue;
       }
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);

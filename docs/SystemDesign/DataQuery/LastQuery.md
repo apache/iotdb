@@ -81,7 +81,7 @@ Last standard query process needs to scan sequential files and unsequential file
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
       if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
-        break;
+        continue;
       }
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
