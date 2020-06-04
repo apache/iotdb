@@ -75,7 +75,7 @@ Last standard query process needs to scan sequential files and unsequential file
         }
       }
     ```
-- Unsequential files are already ordered by `endtime` in descending order. We need to traverse all valid `TimeseriesMetadata` structures and keep updating the current Last timestamp, until `endtime` of any unsequential file is smaller. It should be noted that when multiple `ChunkMetadata` have the same timestamp, we take the data in` ChunkMatadata` with the largest `version` value as the result of Last.
+- Unsequential files are already ordered by `endtime` in descending order. We need to traverse all valid `TimeseriesMetadata` structures and keep updating the current Last timestamp, until `endtime` of any unsequential file is smaller than this timestamp. It should be noted that when multiple `ChunkMetadata` have the same timestamp, we take the data in` ChunkMatadata` with the largest `version` value as the result of Last.
 
     ```
     long version = 0;

@@ -72,7 +72,7 @@ Last标准查询流程需要以倒序方式扫描顺序文件和乱序文件，�
         }
       }
     ```
-- 乱序文件已经按照其endtime倒序排列好了，需要遍历所有不为空的`TimeseriesMetadata`结构并更新当前最大时间戳的Last数据，直到乱序文件的endtime均小于当前最大时间戳。需要注意的是当多个`ChunkMetadata`拥有相同的最大时间戳时，我们取`version`值最大的`ChunkMatadata`中的数据作为Last的结果。
+- 乱序文件已按照其endtime倒序排列，需要遍历所有不为空的`TimeseriesMetadata`结构并更新当前最大时间戳的Last数据，直到乱序文件的endtime均小于当前最大时间戳。需要注意的是当多个`ChunkMetadata`拥有相同的最大时间戳时，我们取`version`值最大的`ChunkMatadata`中的数据作为Last的结果。
 
     ```
     long version = 0;
