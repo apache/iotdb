@@ -564,9 +564,9 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get the count of timeseries in the given level under the given prefix path.
+   * Get the count of nodes in the given level under the given prefix path.
    */
-  int getAllTimeseriesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+  int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(prefixPath);
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath);

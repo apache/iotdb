@@ -361,7 +361,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
-    int num = getPathsNumInGivenLevel(countPlan.getPath().toString(), countPlan.getLevel());
+    int num = getNodesNumInGivenLevel(countPlan.getPath().toString(), countPlan.getLevel());
     SingleDataSet singleDataSet =
         new SingleDataSet(
             Collections.singletonList(new Path(COLUMN_COUNT)),
@@ -399,8 +399,8 @@ public class PlanExecutor implements IPlanExecutor {
     return MManager.getInstance().getAllTimeseriesCount(path);
   }
 
-  protected int getPathsNumInGivenLevel(String path, int level) throws MetadataException {
-    return MManager.getInstance().getAllTimeseriesCountInGivenLevel(path, level);
+  protected int getNodesNumInGivenLevel(String path, int level) throws MetadataException {
+    return MManager.getInstance().getNodesCountInGivenLevel(path, level);
   }
 
   protected List<String> getPathsName(String path) throws MetadataException {

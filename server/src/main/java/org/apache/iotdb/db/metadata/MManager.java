@@ -701,15 +701,15 @@ public class MManager {
   }
 
   /**
-   * To calculate the count of timeseries in the given level for given prefix path.
+   * To calculate the count of nodes in the given level for given prefix path.
    *
    * @param prefixPath a prefix path or a full path, can not contain '*'
    * @param level the level can not be smaller than the level of the prefixPath
    */
-  public int getAllTimeseriesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+  public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
     lock.readLock().lock();
     try {
-      return mtree.getAllTimeseriesCountInGivenLevel(prefixPath, level);
+      return mtree.getNodesCountInGivenLevel(prefixPath, level);
     } finally {
       lock.readLock().unlock();
     }
