@@ -927,6 +927,9 @@ public class PlanExecutor implements IPlanExecutor {
     return schemas;
   }
 
+  /**
+   * @param loc index of measurement in insertPlan
+   */
   private MeasurementSchema getSeriesSchema(MNode deviceNode, InsertPlan insertPlan, int loc) throws MetadataException {
     String measurement = insertPlan.getMeasurements()[loc];
     String deviceId = insertPlan.getDeviceId();
@@ -938,8 +941,7 @@ public class PlanExecutor implements IPlanExecutor {
       // devices exists in MTree
       if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
         // but measurement not in MTree and cannot auto-create, try the cache
-        measurementSchema = MManager.getInstance()
-            .getSeriesSchema(deviceId, measurement);
+        measurementSchema = MManager.getInstance().getSeriesSchema(deviceId, measurement);
         if (measurementSchema == null) {
           throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
         }
@@ -949,7 +951,7 @@ public class PlanExecutor implements IPlanExecutor {
         Path path = new Path(deviceId, measurement);
         internalCreateTimeseries(path.toString(), dataType);
 
-        LeafMNode measurementNode = (LeafMNode) MManager.getChild(deviceNode, measurement);
+        LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(deviceNode, measurement);
         measurementSchema = measurementNode.getSchema();
         if(!isInferType) {
           checkType(insertPlan, loc, measurementNode.getSchema().getType());
@@ -957,7 +959,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } else if (deviceNode != null) {
       // device and measurement exists in MTree
-      LeafMNode measurementNode = (LeafMNode) MManager.getChild(deviceNode, measurement);
+      LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(deviceNode, measurement);
       measurementSchema = measurementNode.getSchema();
     } else {
       // device in not in MTree, try the cache
@@ -1078,7 +1080,7 @@ public class PlanExecutor implements IPlanExecutor {
           internalCreateTimeseries(path.getFullPath(), dataType);
 
         }
-        LeafMNode measurementNode = (LeafMNode) MManager.getChild(node, measurement);
+        LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(node, measurement);
 
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
