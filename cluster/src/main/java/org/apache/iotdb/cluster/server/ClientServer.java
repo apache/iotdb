@@ -140,8 +140,8 @@ public class ClientServer extends TSServiceImpl {
     // async service also requires nonblocking server, and HsHaServer is basically more efficient a
     // nonblocking server
     TThreadPoolServer.Args poolArgs =
-        new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
-            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1);
+        new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(ClusterDescriptor
+            .getInstance().getConfig().getMaxConcurrentClientNum()).minWorkerThreads(1);
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
         poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
         new SynchronousQueue<>(), new ThreadFactory() {
