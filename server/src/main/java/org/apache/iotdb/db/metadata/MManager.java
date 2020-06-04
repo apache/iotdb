@@ -242,12 +242,9 @@ public class MManager {
         createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        Pair<Set<String>, String> pair = deleteTimeseries(args[1]);
-        for (String deleteStorageGroup : pair.left) {
-          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
-        }
-        if (!pair.right.isEmpty()) {
-          throw new DeleteFailedException(pair.right);
+        String failedTimeseries = deleteTimeseries(args[1], true);
+        if (!failedTimeseries.isEmpty()) {
+          throw new DeleteFailedException(failedTimeseries);
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
@@ -356,11 +353,10 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return 1. The Set contains StorageGroups that contain no more timeseries after this deletion
-   * files of such StorageGroups should be deleted to reclaim disk space. 2. The String is the
-   * deletion failed Timeseries
+   * @param isRecovering indicate if the deletion occur in recovering
+   * @return  The String is the deletion failed Timeseries
    */
-  public Pair<Set<String>, String> deleteTimeseries(String prefixPath) throws MetadataException {
+  public String deleteTimeseries(String prefixPath, boolean isRecovering) throws MetadataException {
     lock.writeLock().lock();
     if (isStorageGroup(prefixPath)) {
 
@@ -377,8 +373,6 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      Set<String> emptyStorageGroups = new HashSet<>();
-
       List<String> allTimeseries = mtree.getAllTimeseriesName(prefixPath);
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_PREFIX));
@@ -387,14 +381,17 @@ public class MManager {
       for (String p : allTimeseries) {
         try {
           String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatisticsAndLog(p);
-          if (emptyStorageGroup != null) {
-            emptyStorageGroups.add(emptyStorageGroup);
+          if (!isRecovering && emptyStorageGroup != null) {
+            StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+          }
+          if (writeToLog) {
+            logWriter.deleteTimeseries(p);
           }
         } catch (DeleteFailedException e) {
           failedNames.add(e.getName());
         }
       }
-      return new Pair<>(emptyStorageGroups, String.join(",", failedNames));
+      return String.join(",", failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     } finally {
@@ -455,10 +452,6 @@ public class MManager {
           seriesNumberInStorageGroups.values().stream().max(Integer::compareTo)
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
         }
-      }
-
-      if (writeToLog) {
-        logWriter.deleteTimeseries(path);
       }
       return storageGroupName;
     } finally {

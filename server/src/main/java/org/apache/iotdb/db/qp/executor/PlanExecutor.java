@@ -1144,17 +1144,12 @@ public class PlanExecutor implements IPlanExecutor {
     List<Path> deletePathList = deleteTimeSeriesPlan.getPaths();
     try {
       deleteDataOfTimeSeries(deletePathList);
-      Set<String> emptyStorageGroups = new HashSet<>();
       List<String> failedNames = new LinkedList<>();
       for (Path path : deletePathList) {
-        Pair<Set<String>, String> pair = mManager.deleteTimeseries(path.toString());
-        emptyStorageGroups.addAll(pair.left);
-        if (!pair.right.isEmpty()) {
-          failedNames.add(pair.right);
+        String failedTimeseries = mManager.deleteTimeseries(path.toString(), false);
+        if (!failedTimeseries.isEmpty()) {
+          failedNames.add(failedTimeseries);
         }
-      }
-      for (String deleteStorageGroup : emptyStorageGroups) {
-        StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
       }
       if (!failedNames.isEmpty()) {
         throw new DeleteFailedException(String.join(",", failedNames));
