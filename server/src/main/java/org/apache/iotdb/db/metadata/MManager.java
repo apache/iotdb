@@ -353,7 +353,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @param isRecovering indicate if the deletion occur in recovering
+   * @param isRecovering indicate if the deletion occurs in recovering
    * @return  The String is the deletion failed Timeseries
    */
   public String deleteTimeseries(String prefixPath, boolean isRecovering) throws MetadataException {
