@@ -37,9 +37,12 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
 
+  private static final Logger logger = LoggerFactory.getLogger(ClusterDataQueryExecutor.class);
   private MetaGroupMember metaGroupMember;
 
   ClusterDataQueryExecutor(RawDataQueryPlan plan, MetaGroupMember metaGroupMember) {
@@ -66,6 +69,9 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
           dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()), dataType, timeFilter,
           null, context);
       readersOfSelectedSeries.add(reader);
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("Initialized {} readers for {}", readersOfSelectedSeries.size(), dataQueryPlan);
     }
     return readersOfSelectedSeries;
   }

@@ -150,7 +150,7 @@ public class ClientMain {
       "SHOW STORAGE GROUP",
       "SHOW TIMESERIES root",
       "COUNT TIMESERIES root",
-      "COUNT TIMESERIES root GROUP BY LEVEL=10",
+      "COUNT TIMESERIES root GROUP BY LEVEL=2",
       "SHOW DEVICES",
   };
 
