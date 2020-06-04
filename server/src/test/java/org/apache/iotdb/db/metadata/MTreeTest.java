@@ -439,10 +439,10 @@ public class MTreeTest {
 
       assertEquals(4, root.getAllTimeseriesCount("root.laptop"));
 
-      assertEquals(2, root.getAllTimeseriesCountInGivenLevel("root.laptop", 2));
-      assertEquals(4, root.getAllTimeseriesCountInGivenLevel("root.laptop", 3));
-      assertEquals(2, root.getAllTimeseriesCountInGivenLevel("root.laptop.d1", 3));
-      assertEquals(0, root.getAllTimeseriesCountInGivenLevel("root.laptop.d1", 4));
+      assertEquals(2, root.getNodesCountInGivenLevel("root.laptop", 2));
+      assertEquals(4, root.getNodesCountInGivenLevel("root.laptop", 3));
+      assertEquals(2, root.getNodesCountInGivenLevel("root.laptop.d1", 3));
+      assertEquals(0, root.getNodesCountInGivenLevel("root.laptop.d1", 4));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
