@@ -44,40 +44,54 @@ if (((LeafMNode) node).getCachedLast() != null) {
 
 ## Last标准查询流程
 
-Last标准查询流程需要遍历所有的顺序文件和乱序文件得到查询结果，最后将查询结果写回到MNode缓存。算法中对顺序文件和乱序文件分别进行处理。
-- 顺序文件由于是对其写入时间已经排好序，因此直接使用`loadChunkMetadataFromTsFileResource`方法取出最后一个`ChunkMetadata`，通过`ChunkMetadata`的统计数据得到最大时间戳和对应的值。
+Last标准查询流程需要以倒序方式扫描顺序文件和乱序文件，一旦得到满足要求的Last查询结果就将其写回到MNode缓存中并返回。算法中对顺序文件和乱序文件分别进行处理。
+- 顺序文件由于是按照写入时间已经排好序，因此直接使用`loadTimeSeriesMetadata()`方法取出最后一个不为空的`TimeseriesMetadata`。若`TimeseriesMetadata`的统计数据可用即可直接得到Last时间戳和对应的值；如不可用则需要使用`loadChunkMetadataList()`方法得到下一层的最后一个`ChunkMetadata`，通过统计数据得到Last结果。
     ```
-    if (!seqFileResources.isEmpty()) {
-      List<ChunkMetaData> chunkMetadata =
-          FileLoaderUtils.loadChunkMetadataFromTsFileResource(
-              seqFileResources.get(seqFileResources.size() - 1), seriesPath, context);
-      if (!chunkMetadata.isEmpty()) {
-        ChunkMetaData lastChunkMetaData = chunkMetadata.get(chunkMetadata.size() - 1);
-        Statistics chunkStatistics = lastChunkMetaData.getStatistics();
-        resultPair =
-            constructLastPair(
-                chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+    for (int i = seqFileResources.size() - 1; i >= 0; i--) {
+        TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
+                seqFileResources.get(i), seriesPath, context, null, sensors);
+        if (timeseriesMetadata != null) {
+          if (!timeseriesMetadata.isModified()) {
+            Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
+            resultPair = constructLastPair(
+                    timeseriesMetadataStats.getEndTime(),
+                    timeseriesMetadataStats.getLastValue(),
+                    tsDataType);
+            break;
+          } else {
+            List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
+            if (!chunkMetadataList.isEmpty()) {
+              ChunkMetadata lastChunkMetaData = chunkMetadataList.get(chunkMetadataList.size() - 1);
+              Statistics chunkStatistics = lastChunkMetaData.getStatistics();
+              resultPair =
+                  constructLastPair(
+                      chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+              break;
+            }
+          }
+        }
       }
-    }
     ```
-- 乱序文件则需要遍历所有的`ChunkMetadata`结构得到最大时间戳数据。需要注意的是当多个`ChunkMetadata`拥有相同的时间戳时，我们取`version`值最大的`ChunkMatadata`中的数据作为Last的结果。
+- 乱序文件已经按照其endtime倒序排列好了，需要遍历所有不为空的`TimeseriesMetadata`结构并更新当前最大时间戳的Last数据，直到乱序文件的endtime均小于当前最大时间戳。需要注意的是当多个`ChunkMetadata`拥有相同的最大时间戳时，我们取`version`值最大的`ChunkMatadata`中的数据作为Last的结果。
 
     ```
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
-      if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
+      if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         break;
       }
-      List<ChunkMetaData> chunkMetadata =
-          FileLoaderUtils.loadChunkMetadataFromTsFileResource(resource, seriesPath, context);
-      for (ChunkMetaData chunkMetaData : chunkMetadata) {
-        if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-            && chunkMetaData.getVersion() > version) {
-          Statistics chunkStatistics = chunkMetaData.getStatistics();
-          resultPair =
-              constructLastPair(
-                  chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
-          version = chunkMetaData.getVersion();
+      TimeseriesMetadata timeseriesMetadata =
+          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
+      if (timeseriesMetadata != null) {
+        for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
+          if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
+              && chunkMetaData.getVersion() > version) {
+            Statistics chunkStatistics = chunkMetaData.getStatistics();
+            resultPair =
+                constructLastPair(
+                    chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+            version = chunkMetaData.getVersion();
+          }
         }
       }
     }

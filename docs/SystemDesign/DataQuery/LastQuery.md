@@ -47,40 +47,54 @@ If it is found that the cache has not been written, execute the following standa
 
 ## Last standard query process
 
-Last standard query process needs to traverse all sequential files and unsequential files to get query results, and finally write the query results back to the MNode cache.  In the algorithm, sequential files and  unsequential  files are processed separately.
-- The sequential file is sorted by its writing time, so use the `loadChunkMetadataFromTsFileResource` method directly to get the last` ChunkMetadata`, and get the maximum timestamp and corresponding value through the statistical data of `ChunkMetadata`.
+Last standard query process needs to scan sequential files and unsequential files in a reverse order to get query result, and finally write the query result back to the MNode cache.  In the algorithm, sequential files and  unsequential  files are processed separately.
+- The sequential files are sorted by its writing time, so use the `loadTimeSeriesMetadata()` method directly to get the last valid ` TimeseriesMetadata`. If the statistics of `TimeseriesMetadata` is available, the Last pair could be returned directly, otherwise we need to call `loadChunkMetadataList()` to get the last `ChunkMetadata` structure and obtain the Last time-value pair via the statistical data of `ChunkMetadata`.
     ```
-    if (!seqFileResources.isEmpty()) {
-      List<ChunkMetaData> chunkMetadata =
-          FileLoaderUtils.loadChunkMetadataFromTsFileResource(
-              seqFileResources.get(seqFileResources.size() - 1), seriesPath, context);
-      if (!chunkMetadata.isEmpty()) {
-        ChunkMetaData lastChunkMetaData = chunkMetadata.get(chunkMetadata.size() - 1);
-        Statistics chunkStatistics = lastChunkMetaData.getStatistics();
-        resultPair =
-            constructLastPair(
-                chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+    for (int i = seqFileResources.size() - 1; i >= 0; i--) {
+        TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
+                seqFileResources.get(i), seriesPath, context, null, sensors);
+        if (timeseriesMetadata != null) {
+          if (!timeseriesMetadata.isModified()) {
+            Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
+            resultPair = constructLastPair(
+                    timeseriesMetadataStats.getEndTime(),
+                    timeseriesMetadataStats.getLastValue(),
+                    tsDataType);
+            break;
+          } else {
+            List<ChunkMetadata> chunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
+            if (!chunkMetadataList.isEmpty()) {
+              ChunkMetadata lastChunkMetaData = chunkMetadataList.get(chunkMetadataList.size() - 1);
+              Statistics chunkStatistics = lastChunkMetaData.getStatistics();
+              resultPair =
+                  constructLastPair(
+                      chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+              break;
+            }
+          }
+        }
       }
-    }
     ```
-- Unsequential files need to traverse all `ChunkMetadata` structures to get the maximum timestamp data.  It should be noted that when multiple `ChunkMetadata` have the same timestamp, we take the data in` ChunkMatadata` with the largest `version` value as the result of Last.
+- Unsequential files are already ordered by `endtime` in descending order. We need to traverse all valid `TimeseriesMetadata` structures and keep updating the current Last timestamp, until `endtime` of any unsequential file is smaller. It should be noted that when multiple `ChunkMetadata` have the same timestamp, we take the data in` ChunkMatadata` with the largest `version` value as the result of Last.
 
     ```
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
-      if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
+      if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         break;
       }
-      List<ChunkMetaData> chunkMetadata =
-          FileLoaderUtils.loadChunkMetadataFromTsFileResource(resource, seriesPath, context);
-      for (ChunkMetaData chunkMetaData : chunkMetadata) {
-        if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-            && chunkMetaData.getVersion() > version) {
-          Statistics chunkStatistics = chunkMetaData.getStatistics();
-          resultPair =
-              constructLastPair(
-                  chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
-          version = chunkMetaData.getVersion();
+      TimeseriesMetadata timeseriesMetadata =
+          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
+      if (timeseriesMetadata != null) {
+        for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
+          if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
+              && chunkMetaData.getVersion() > version) {
+            Statistics chunkStatistics = chunkMetaData.getStatistics();
+            resultPair =
+                constructLastPair(
+                    chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+            version = chunkMetaData.getVersion();
+          }
         }
       }
     }
