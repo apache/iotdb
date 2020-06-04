@@ -930,19 +930,13 @@ public class MManager {
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
-  public static MNode getChild(MNode parent, String child) {
-    MNode childNode = parent.getChild(child);
-    int tempCount = 0;
-    while (childNode == null) {
-      tempCount ++;
-      if (tempCount % 10000 == 0) {
-        throw new RuntimeException(
-            String
-                .format("can not get child [%s] from parent [%s]", child, parent.getName()));
-      }
-      childNode = parent.getChild(child);
+  public MNode getChild(MNode parent, String child) {
+    lock.readLock().lock();
+    try {
+      return parent.getChild(child);
+    } finally {
+      lock.readLock().unlock();
     }
-    return childNode;
   }
 
   /**
