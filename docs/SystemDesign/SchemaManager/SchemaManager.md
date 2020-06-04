@@ -55,11 +55,12 @@ In the process of initializing, MManager will replay the mlog to load the metada
 		* if succeed
 			* delete the LeafMNode
 			* read tlog using offset in the LeafMNode, update tag inverted index
-			* if the storage group becomes empty after deleting, return the name of it
+			* if the storage group becomes empty after deleting, record its name
 		* if failed
 			* return the full path of failed timeseries
 	* iterate the returned empty storage group list, and delete them
 	* if not restart
+	   * delete the recorded empty storage group
 		* persist log into mlog
 		* currently, we won't delete the tag/attribute info of that timeseries in tlog
 	
