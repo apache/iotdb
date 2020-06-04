@@ -2218,10 +2218,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return all paths after removing wildcards in the path
    */
   public List<String> getMatchedPaths(String originPath) throws MetadataException {
-    if (!originPath.contains(PATH_WILDCARD)) {
-      // path without wildcards does not need to be processed
-      return Collections.singletonList(originPath);
-    }
     // make sure this node knows all storage groups
     syncLeader();
     // get all storage groups this path may belong to
