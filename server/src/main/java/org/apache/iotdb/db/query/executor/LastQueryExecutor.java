@@ -23,9 +23,7 @@ package org.apache.iotdb.db.query.executor;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 
-import java.util.LinkedList;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
