@@ -22,7 +22,10 @@ package org.apache.iotdb.db.query.executor;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+
+import java.util.LinkedList;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -126,7 +129,8 @@ public class LastQueryExecutor {
         QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, null);
 
     List<TsFileResource> seqFileResources = dataSource.getSeqResources();
-    List<TsFileResource> unseqFileResources = dataSource.getUnseqResources();
+    List<TsFileResource> unseqFileResources = sortUnseqFileInDescendingOrder(seriesPath,
+        dataSource.getUnseqResources());
 
     TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
 
@@ -160,7 +164,7 @@ public class LastQueryExecutor {
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
       if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
-        continue;
+        break;
       }
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
@@ -181,6 +185,14 @@ public class LastQueryExecutor {
     // Update cached last value with low priority
     node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
     return resultPair;
+  }
+
+  public static LinkedList<TsFileResource> sortUnseqFileInDescendingOrder(Path seriesPath,
+      List<TsFileResource> tsFileResources) {
+    return tsFileResources.stream()
+        .sorted((f1, f2) -> Long
+            .compare(f2.getEndTime(seriesPath.getDevice()), f1.getEndTime(seriesPath.getDevice())))
+        .collect(Collectors.toCollection(LinkedList::new));
   }
 
   private static TimeValuePair constructLastPair(long timestamp, Object value, TSDataType dataType) {
