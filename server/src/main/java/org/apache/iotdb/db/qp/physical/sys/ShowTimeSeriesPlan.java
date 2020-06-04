@@ -101,4 +101,12 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     limit = buffer.getInt();
     limit = buffer.getInt();
   }
+
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
+  }
 }

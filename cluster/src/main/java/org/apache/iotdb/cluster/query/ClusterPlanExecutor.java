@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
@@ -38,6 +39,7 @@ import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -263,6 +265,16 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+
+    int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
+    int offset = plan.getOffset();
+    // do not use limit and offset in sub-queries unless offset is 0, otherwise the results are
+    // not combinable
+    if (offset != 0) {
+      plan.setLimit(0);
+      plan.setOffset(0);
+    }
+
     if (logger.isDebugEnabled()) {
       logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPaths(),
           globalGroups.size());
@@ -277,7 +289,18 @@ public class ClusterPlanExecutor extends PlanExecutor {
       Thread.currentThread().interrupt();
       logger.warn("Unexpected interruption when waiting for getTimeseriesSchemas to finish", e);
     }
-    return new ArrayList<>(resultSet);
+    List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
+    Iterator<ShowTimeSeriesResult> iterator = resultSet.iterator();
+    while (iterator.hasNext() && limit > 0) {
+      if (offset > 0) {
+        offset--;
+        iterator.next();
+      } else {
+        limit--;
+        showTimeSeriesResults.add(iterator.next());
+      }
+    }
+    return showTimeSeriesResults;
   }
 
   private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,

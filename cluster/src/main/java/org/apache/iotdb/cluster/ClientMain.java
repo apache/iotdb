@@ -152,6 +152,7 @@ public class ClientMain {
       "COUNT TIMESERIES root",
       "COUNT TIMESERIES root GROUP BY LEVEL=2",
       "SHOW DEVICES",
+      "SHOW TIMESERIES root limit 1 offset 1",
   };
 
   public static void main(String[] args)
