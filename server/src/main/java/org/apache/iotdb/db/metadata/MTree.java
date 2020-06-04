@@ -560,7 +560,7 @@ public class MTree implements Serializable {
     if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
       throw new IllegalPathException(prefixPath);
     }
-    return getCount(root, nodes, 1, 0);
+    return getCount(root, nodes, 1);
   }
 
   /**
@@ -579,44 +579,49 @@ public class MTree implements Serializable {
         throw new MetadataException(nodes[i - 1] + " does not have the child node " + nodes[i]);
       }
     }
-    return getCountInGivenLevel(node, 0, level - (nodes.length - 1));
+    return getCountInGivenLevel(node, level - (nodes.length - 1));
   }
 
   /**
    * Traverse the MTree to get the count of timeseries.
    */
-  private int getCount(MNode node, String[] nodes, int idx, int cnt) {
+  private int getCount(MNode node, String[] nodes, int idx) throws MetadataException {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
         if (node.getChild(nodeReg) instanceof LeafMNode) {
-          cnt++;
+          return 1;
         } else {
-          cnt = getCount(node.getChild(nodeReg), nodes, idx + 1, cnt);
+          return getCount(node.getChild(nodeReg), nodes, idx + 1);
         }
+      } else {
+        throw new MetadataException(node.getName() + " does not have the child node " + nodeReg);
       }
     } else {
+      int cnt = 0;
       for (MNode child : node.getChildren().values()) {
         if (child instanceof LeafMNode) {
           cnt++;
         } else {
-          cnt = getCount(child, nodes, idx + 1, cnt);
+          cnt += getCount(child, nodes, idx + 1);
         }
       }
+      return cnt;
     }
-    return cnt;
   }
 
   /**
    * Traverse the MTree to get the count of timeseries in the given level.
+   * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
-  private int getCountInGivenLevel(MNode node, int cnt, int targetLevel) {
+  private int getCountInGivenLevel(MNode node, int targetLevel) {
     if (targetLevel == 0) {
-      return cnt + 1;
+      return 1;
     }
+    int cnt = 0;
     if (node instanceof InternalMNode) {
       for (MNode child : node.getChildren().values()) {
-        cnt = getCountInGivenLevel(child, cnt, targetLevel - 1);
+        cnt += getCountInGivenLevel(child, targetLevel - 1);
       }
     }
     return cnt;
@@ -840,6 +845,10 @@ public class MTree implements Serializable {
     return res;
   }
 
+  /**
+   * Get all paths under the given level.
+   * @param targetLevel Record the distance to the target level, 0 means the target level.
+   */
   private void findNodes(MNode node, String path, List<String> res, int targetLevel) {
     if (node == null) {
       return;
