@@ -943,7 +943,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
     } catch (LogExecutionException e) {
       TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      Throwable cause = e.getCause();
+      Throwable cause = e.getCause().getCause();
       if (cause instanceof IoTDBException) {
         tsStatus.setCode(((IoTDBException) cause).getErrorCode());
       }
