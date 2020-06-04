@@ -539,6 +539,44 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get the count of timeseries under the given path.
+   *
+   * @param prefixPath a prefix path or a full path, may contain '*'.
+   */
+  int getAllTimeseriesCount(String prefixPath) throws MetadataException {
+    String[] nodes = MetaUtils.getNodeNames(prefixPath);
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(prefixPath);
+    }
+    return getCount(root, nodes,1, 0);
+  }
+
+  /**
+   * Traverse the MTree to get the count of timeseries.
+   */
+  int getCount(MNode node, String[] nodes, int idx, int cnt) {
+    String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
+    if (!(PATH_WILDCARD).equals(nodeReg)) {
+      if (node.hasChild(nodeReg)) {
+        if (node.getChild(nodeReg) instanceof LeafMNode) {
+          cnt++;
+        } else {
+          cnt = getCount(node.getChild(nodeReg), nodes, idx + 1, cnt);
+        }
+      }
+    } else {
+      for (MNode child : node.getChildren().values()) {
+        if (child instanceof LeafMNode) {
+          cnt++;
+        } else {
+          cnt = getCount(child, nodes, idx + 1, cnt);
+        }
+      }
+    }
+    return cnt;
+  }
+
+  /**
    * Get all time series schema under the given path
    *
    * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
@@ -718,12 +756,8 @@ public class MTree implements Serializable {
         if (node.getChild(nodeReg) instanceof LeafMNode) {
           res.add(parent + node.getName());
         } else {
-          findDevices(
-              node.getChild(nodeReg),
-              nodes,
-              idx + 1,
-              parent + node.getName() + PATH_SEPARATOR,
-              res);
+          findDevices(node.getChild(nodeReg), nodes, idx + 1,
+              parent + node.getName() + PATH_SEPARATOR, res);
         }
       }
     } else {

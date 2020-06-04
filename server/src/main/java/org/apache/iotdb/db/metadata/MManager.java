@@ -692,6 +692,20 @@ public class MManager {
     }
   }
 
+  /**
+   * To calculate the count of timeseries for given prefix path.
+   */
+  public int getAllTimeseriesCount(String prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesCount(prefixPath);
+    } catch (MetadataException e) {
+      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
   public List<ShowTimeSeriesResult> getAllTimeseriesSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();
