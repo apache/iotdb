@@ -905,7 +905,7 @@ public class PlanExecutor implements IPlanExecutor {
             checkType(insertPlan, i, measurementNode.getSchema().getType());
           }
         } catch (MetadataException e) {
-          logger.warn("meet error when check {}.{}", deviceId, measurement, e);
+          logger.warn("meet error when check {}.{}, message: {}", deviceId, measurement, e.getMessage());
           if (enablePartialInsert) {
             insertPlan.markMeasurementInsertionFailed(i);
           } else {

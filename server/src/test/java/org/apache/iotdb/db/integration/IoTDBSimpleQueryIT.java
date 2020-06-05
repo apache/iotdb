@@ -27,6 +27,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -183,7 +184,6 @@ public class IoTDBSimpleQueryIT {
       statement.execute("CREATE TIMESERIES root.sg1.d0.s0 WITH DATATYPE=INT32,ENCODING=PLAIN");
       statement.execute("CREATE TIMESERIES root.sg1.d0.s1 WITH DATATYPE=INT32,ENCODING=PLAIN");
 
-      // seq chunk : [1,10]
       try {
         statement.execute("INSERT INTO root.sg1.d0(timestamp, s0, s1) VALUES (1, 1, 2.2)");
         fail();
@@ -198,6 +198,37 @@ public class IoTDBSimpleQueryIT {
         assertEquals(null, resultSet.getString("root.sg1.d0.s1"));
       }
     }
+  }
+
+
+  @Test
+  public void testPartialInsertionAllFailed() throws SQLException, ClassNotFoundException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+
+    boolean autoCreateSchemaEnabled = IoTDBDescriptor.getInstance().getConfig()
+        .isAutoCreateSchemaEnabled();
+    boolean enablePartialInsert = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
+
+    try(Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/",
+            "root", "root");
+        Statement statement = connection.createStatement()){
+      IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(true);
+
+      statement.execute("SET STORAGE GROUP TO root.sg1");
+
+      try {
+        statement.execute("INSERT INTO root.sg1(timestamp, s0) VALUES (1, 1)");
+        fail();
+      } catch (IoTDBSQLException e) {
+        assertTrue(e.getMessage().contains("s0"));
+      }
+    }
+
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(enablePartialInsert);
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(autoCreateSchemaEnabled);
+
   }
 
   @Test
