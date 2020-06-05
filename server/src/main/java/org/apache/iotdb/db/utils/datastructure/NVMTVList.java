@@ -241,7 +241,7 @@ public abstract class NVMTVList extends AbstractTVList {
 
   @Override
   public void sort() {
-    initTempArrays();
+    initSortedAndTempArrays();
 
     copyTVToTempArrays();
 
@@ -255,7 +255,7 @@ public abstract class NVMTVList extends AbstractTVList {
     sorted = true;
   }
 
-  protected abstract void initTempArrays();
+  protected abstract void initSortedAndTempArrays();
 
   protected abstract void copyTVToTempArrays();
 
@@ -296,6 +296,13 @@ public abstract class NVMTVList extends AbstractTVList {
   }
 
   @Override
+  protected void setForSort(int src, int dest) {
+    long srcT = getTimeForSort(src);
+    Object srcV = getValueForSort(src);
+    setForSort(dest, srcT, srcV);
+  }
+
+  @Override
   protected void setForSort(int index, long timestamp, Object value) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
@@ -307,6 +314,13 @@ public abstract class NVMTVList extends AbstractTVList {
   }
 
   protected abstract void setValueForSort(int arrayIndex, int elementIndex, Object value);
+
+  @Override
+  protected int compare(int idx1, int idx2) {
+    long t1 = getTimeForSort(idx1);
+    long t2 = getTimeForSort(idx2);
+    return Long.compare(t1, t2);
+  }
 
   @Override
   protected void saveAsPivot(int pos) {

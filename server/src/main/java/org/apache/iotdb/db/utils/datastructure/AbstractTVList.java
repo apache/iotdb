@@ -136,6 +136,8 @@ public abstract class AbstractTVList {
 
   protected abstract void set(int src, int dest);
 
+  protected abstract void setForSort(int src, int dest);
+
   protected abstract void setFromSorted(int src, int dest);
 
   protected abstract void setToSorted(int src, int dest);
@@ -234,11 +236,7 @@ public abstract class AbstractTVList {
     this.timeOffset = timeOffset;
   }
 
-  protected int compare(int idx1, int idx2) {
-    long t1 = getTime(idx1);
-    long t2 = getTime(idx2);
-    return Long.compare(t1, t2);
-  }
+  protected abstract int compare(int idx1, int idx2);
 
   protected abstract void saveAsPivot(int pos);
 
@@ -283,8 +281,7 @@ public abstract class AbstractTVList {
        */
       int n = start - left;  // The number of elements to move
       for (int i = n; i >= 1; i--) {
-        set(left + i - 1, left + i);
-        setToSorted(left + i - 1, left + i);
+        setForSort(left + i - 1, left + i);
       }
       setPivotTo(left);
     }

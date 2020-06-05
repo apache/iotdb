@@ -48,7 +48,7 @@ public class NVMDoubleTVList extends NVMTVList {
   }
 
   @Override
-  protected void initTempArrays() {
+  protected void initSortedAndTempArrays() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayPool
           .getInstance().getDataListsByType(TSDataType.INT64, size);
@@ -119,7 +119,8 @@ public class NVMDoubleTVList extends NVMTVList {
 
   @Override
   protected void setFromSorted(int src, int dest) {
-    setForSort(dest, sortedTimestamps[src/ARRAY_SIZE][src%ARRAY_SIZE], sortedValues[src/ARRAY_SIZE][src%ARRAY_SIZE]);
+    setForSort(dest, sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
+        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
   }
 
   @Override

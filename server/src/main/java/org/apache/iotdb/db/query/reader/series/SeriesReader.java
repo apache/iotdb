@@ -477,7 +477,6 @@ class SeriesReader {
            * get current first point in mergeReader, this maybe overlapped latter
            */
           TimeValuePair timeValuePair = mergeReader.currentTimeValuePair();
-          System.out.println("read:" + timeValuePair);
 
           if (timeValuePair.getTimestamp() > currentPageEndTime) {
             break;

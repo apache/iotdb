@@ -108,6 +108,18 @@ public abstract class TVList extends AbstractTVList {
   }
 
   @Override
+  protected int compare(int idx1, int idx2) {
+    long t1 = getTime(idx1);
+    long t2 = getTime(idx2);
+    return Long.compare(t1, t2);
+  }
+
+  @Override
+  protected void setForSort(int src, int dest) {
+    set(src, dest);
+  }
+
+  @Override
   protected void clearSortedTime() {
     if (sortedTimestamps != null) {
       for (long[] dataArray : sortedTimestamps) {

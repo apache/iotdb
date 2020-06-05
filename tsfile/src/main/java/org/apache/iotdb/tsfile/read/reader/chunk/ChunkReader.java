@@ -93,7 +93,6 @@ public class ChunkReader implements IChunkReader {
       // deserialize a PageHeader from chunkDataBuffer
       PageHeader pageHeader = isFromOldTsFile ? HeaderUtils.deserializePageHeaderV1(chunkDataBuffer, chunkHeader.getDataType()) :
           PageHeader.deserializeFrom(chunkDataBuffer, chunkHeader.getDataType());
-      System.out.println("statistics:" + pageHeader.getStatistics());
       // if the current page satisfies
       if (pageSatisfied(pageHeader)) {
         pageReaderList.add(constructPageReaderForNextPage(pageHeader));

@@ -2,11 +2,9 @@ package org.apache.iotdb.db.utils.datastructure;
 
 import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
 import org.apache.iotdb.db.nvm.space.NVMBinaryDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
-import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -92,7 +90,7 @@ public class NVMBinaryTVList extends NVMTVList {
   }
 
   @Override
-  protected void initTempArrays() {
+  protected void initSortedAndTempArrays() {
     if (sortedTimestamps == null || sortedTimestamps.length < size) {
       sortedTimestamps = (long[][]) PrimitiveArrayPool
           .getInstance().getDataListsByType(TSDataType.INT64, size);
@@ -163,7 +161,8 @@ public class NVMBinaryTVList extends NVMTVList {
 
   @Override
   protected void setFromSorted(int src, int dest) {
-    setForSort(dest, sortedTimestamps[src/ARRAY_SIZE][src%ARRAY_SIZE], sortedValues[src/ARRAY_SIZE][src%ARRAY_SIZE]);
+    setForSort(dest, sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
+        sortedValues[src / ARRAY_SIZE][src % ARRAY_SIZE]);
   }
 
   @Override
@@ -175,7 +174,7 @@ public class NVMBinaryTVList extends NVMTVList {
 
   @Override
   protected void setValueForSort(int arrayIndex, int elementIndex, Object value) {
-    tempValuesForSort[arrayIndex][elementIndex] = (Binary) value;
+    tempValuesForSort[arrayIndex * ARRAY_SIZE + elementIndex][0] = (Binary) value;
   }
 
   @Override
