@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
  */
 public class TsFileResourcePrinter {
 
+  @SuppressWarnings("squid:S106")
   public static void main(String[] args) throws IOException {
 
     String folder = "test";
@@ -59,6 +60,7 @@ public class TsFileResourcePrinter {
     }
   }
 
+  @SuppressWarnings("squid:S106")
   public static void printResource(String filename) throws IOException {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
