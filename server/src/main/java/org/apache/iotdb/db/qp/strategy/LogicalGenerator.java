@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.io.File;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -164,7 +163,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
@@ -1105,6 +1103,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     createTimeSeriesOperator.setProps(props);
     initializedOperator = createTimeSeriesOperator;
   }
+
+  @Override
+  public void enterAliasClause(SqlBaseParser.AliasClauseContext ctx) {
+    super.enterAliasClause(ctx);
+    if (alterTimeSeriesOperator != null && ctx.ID() != null) {
+      alterTimeSeriesOperator.setAlias(ctx.ID().getText());
+    }
+  }
+
 
   @Override
   public void enterAttributeClause(AttributeClauseContext ctx) {

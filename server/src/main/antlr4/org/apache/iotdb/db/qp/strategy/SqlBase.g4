@@ -130,7 +130,11 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT tagClause attributeClause
+    | UPSERT aliasClause tagClause attributeClause
+    ;
+
+aliasClause
+    : (ALIAS OPERATOR_EQ ID)?
     ;
 
 attributeClauses
@@ -627,6 +631,10 @@ ADD
 
 UPSERT
     : U P S E R T
+    ;
+
+ALIAS
+    : A L I A S
     ;
 
 VALUES

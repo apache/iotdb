@@ -18,15 +18,39 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -47,13 +71,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -261,6 +278,9 @@ public class MManager {
       case MetadataOperationType.CHANGE_OFFSET:
         changeOffset(args[1], Long.parseLong(args[2]));
         break;
+      case MetadataOperationType.CHANGE_ALIAS:
+        changeAlias(args[1], args[2]);
+        break;
       default:
         logger.error("Unrecognizable command {}", cmd);
     }
@@ -354,7 +374,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return  The String is the deletion failed Timeseries
+   * @return The String is the deletion failed Timeseries
    */
   public String deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
@@ -669,7 +689,8 @@ public class MManager {
   }
 
   /**
-   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include alias.
+   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include
+   * alias.
    */
   public List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {
     lock.readLock().lock();
@@ -696,7 +717,7 @@ public class MManager {
    * To calculate the count of nodes in the given level for given prefix path.
    *
    * @param prefixPath a prefix path or a full path, can not contain '*'
-   * @param level the level can not be smaller than the level of the prefixPath
+   * @param level      the level can not be smaller than the level of the prefixPath
    */
   public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
     lock.readLock().lock();
@@ -1010,17 +1031,31 @@ public class MManager {
     }
   }
 
+  public void changeAlias(String path, String alias) throws MetadataException {
+    lock.writeLock().lock();
+    try {
+      LeafMNode leafMNode = (LeafMNode) mtree.getNodeByPath(path);
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
+      leafMNode.getParent().addAlias(alias, leafMNode);
+      leafMNode.setAlias(alias);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
   /**
    * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
    *
+   * @param alias         newly added alias
    * @param tagsMap       newly added tags map
    * @param attributesMap newly added attributes map
    * @param fullPath      timeseries
    */
-  public void upsertTagsAndAttributes(
-      Map<String, String> tagsMap, Map<String, String> attributesMap, String fullPath)
-      throws MetadataException, IOException {
+  public void upsertTagsAndAttributes(String alias, Map<String, String> tagsMap,
+      Map<String, String> attributesMap, String fullPath) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
@@ -1028,15 +1063,35 @@ public class MManager {
         throw new PathNotExistException(fullPath);
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
+      // upsert alias
+      if (alias != null && !alias.equals(leafMNode.getAlias())) {
+
+        if (leafMNode.getParent().hasChild(alias)) {
+          throw new MetadataException("The alias already exists.");
+        }
+        if (leafMNode.getAlias() != null) {
+          leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+        }
+        leafMNode.getParent().addAlias(alias, leafMNode);
+        leafMNode.setAlias(alias);
+        // persist to WAL
+        logWriter.changeAlias(fullPath, alias);
+      }
+
+      if (tagsMap == null && attributesMap == null) {
+        return;
+      }
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
-        for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+        if (tagsMap != null) {
+          for (Entry<String, String> entry : tagsMap.entrySet()) {
+            tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+                .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          }
         }
         return;
       }
@@ -1044,28 +1099,32 @@ public class MManager {
       Pair<Map<String, String>, Map<String, String>> pair =
           tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
-      for (Entry<String, String> entry : tagsMap.entrySet()) {
-        String key = entry.getKey();
-        String value = entry.getValue();
-        String beforeValue = pair.left.get(key);
-        pair.left.put(key, value);
-        // if the key has existed and the value is not equal to the new one
-        // we should remove before key-value from inverted index map
-        if (beforeValue != null && !beforeValue.equals(value)) {
-          tagIndex.get(key).get(beforeValue).remove(leafMNode);
-          if (tagIndex.get(key).get(beforeValue).isEmpty()) {
-            tagIndex.get(key).remove(beforeValue);
+      if (tagsMap != null) {
+        for (Entry<String, String> entry : tagsMap.entrySet()) {
+          String key = entry.getKey();
+          String value = entry.getValue();
+          String beforeValue = pair.left.get(key);
+          pair.left.put(key, value);
+          // if the key has existed and the value is not equal to the new one
+          // we should remove before key-value from inverted index map
+          if (beforeValue != null && !beforeValue.equals(value)) {
+            tagIndex.get(key).get(beforeValue).remove(leafMNode);
+            if (tagIndex.get(key).get(beforeValue).isEmpty()) {
+              tagIndex.get(key).remove(beforeValue);
+            }
+          }
+
+          // if the key doesn't exist or the value is not equal to the new one
+          // we should add a new key-value to inverted index map
+          if (beforeValue == null || !beforeValue.equals(value)) {
+            tagIndex.computeIfAbsent(key, k -> new HashMap<>())
+                .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
           }
         }
-
-        // if the key doesn't exist or the value is not equal to the new one
-        // we should add a new key-value to inverted index map
-        if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-              .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
-        }
       }
-      pair.left.putAll(tagsMap);
+      if (tagsMap != null) {
+        pair.left.putAll(tagsMap);
+      }
       pair.right.putAll(attributesMap);
 
       // persist the change to disk
