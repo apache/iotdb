@@ -144,10 +144,12 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
 
+  @Override
   public int getSeriesNumber() {
     return seriesNumber;
   }
 
+  @Override
   public long getTotalPointsNum() {
     return totalPointsNum;
   }
@@ -197,7 +199,7 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
     IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-    TVList chunkCopy = memChunk.getTVList().clone();
+    TVList chunkCopy = (TVList) memChunk.getTVList().clone();
 
     chunkCopy.setTimeOffset(undeletedTime);
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());

@@ -4,8 +4,11 @@ import java.util.ArrayDeque;
 import java.util.EnumMap;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.nvm.exception.NVMSpaceManagerException;
+import org.apache.iotdb.db.nvm.space.NVMBinaryDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
+import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
+import org.apache.iotdb.db.utils.datastructure.NVMBinaryTVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class NVMPrimitiveArrayPool {
@@ -15,7 +18,8 @@ public class NVMPrimitiveArrayPool {
    */
   private static final EnumMap<TSDataType, ArrayDeque<NVMDataSpace>> primitiveArraysMap = new EnumMap<>(TSDataType.class);
 
-  public static final int ARRAY_SIZE = 128;
+  public static final int ARRAY_SIZE =
+      IoTDBDescriptor.getInstance().getConfig().getPrimitiveArraySize();
 
   static {
     primitiveArraysMap.put(TSDataType.BOOLEAN, new ArrayDeque());
@@ -35,17 +39,19 @@ public class NVMPrimitiveArrayPool {
   private NVMPrimitiveArrayPool() {}
 
   public synchronized NVMDataSpace getPrimitiveDataListByType(TSDataType dataType, boolean isTime) {
-    ArrayDeque<NVMDataSpace> dataListQueue = primitiveArraysMap.computeIfAbsent(dataType, k ->new ArrayDeque<>());
+    ArrayDeque<NVMDataSpace> dataListQueue = primitiveArraysMap
+        .computeIfAbsent(dataType, k -> new ArrayDeque<>());
     NVMDataSpace nvmSpace = dataListQueue.poll();
 
     if (nvmSpace == null) {
       try {
         long size = NVMSpaceManager.getPrimitiveTypeByteSize(dataType);
-        nvmSpace = NVMSpaceManager.getInstance().allocateDataSpace(size * ARRAY_SIZE, dataType, isTime);
+        nvmSpace = NVMSpaceManager.getInstance().allocateDataSpace(
+            size * (dataType == TSDataType.TEXT ? NVMBinaryDataSpace.NUM_OF_TEXT_IN_SPACE
+                : ARRAY_SIZE), dataType, isTime);
       } catch (NVMSpaceManagerException e) {
         e.printStackTrace();
         System.exit(0);
-        // TODO
       }
     }
     return nvmSpace;

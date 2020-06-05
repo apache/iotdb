@@ -37,6 +37,7 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -212,7 +213,12 @@ public class EnvironmentUtils {
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-    NVMSpaceManager.getInstance().init();
+    try {
+      NVMSpaceManager.getInstance().init();
+    } catch (StartupException e) {
+      logger.error("init NVM space failed", e);
+      fail(e.getMessage());
+    }
   }
 
   public static void stopDaemon() {

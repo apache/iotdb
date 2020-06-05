@@ -80,6 +80,11 @@ public class MemTableFlushTask {
         IWritableMemChunk series = memTable.getMemTableMap().get(deviceId).get(measurementId);
         MeasurementSchema desc = series.getSchema();
         AbstractTVList tvList = series.getSortedTVList();
+        System.out.println("flush size:" + tvList.size());
+        for (int i = 0; i < tvList.size(); i++) {
+          System.out.print("<" + tvList.getTime(i) + ":" + tvList.getInt(i) + "> ");
+        }
+        System.out.println();
         sortTime += System.currentTimeMillis() - startTime;
         encodingTaskQueue.add(new Pair<>(tvList, desc));
         // register active time series to the ActiveTimeSeriesCounter

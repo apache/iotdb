@@ -269,11 +269,6 @@ public class FloatTVList extends TVList {
   }
 
   @Override
-  protected Object getValueForSort(int index) {
-    return getFloat(index);
-  }
-
-  @Override
   protected void setForSort(int index, long timestamp, Object value) {
     set(index, timestamp, (float) value);
   }

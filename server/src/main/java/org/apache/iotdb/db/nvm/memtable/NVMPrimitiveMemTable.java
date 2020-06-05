@@ -7,17 +7,19 @@ import java.util.Map.Entry;
 import org.apache.iotdb.db.engine.memtable.AbstractMemTable;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.db.engine.memtable.TimeValuePairSorter;
-import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
-import org.apache.iotdb.db.utils.datastructure.NVMTVList;
 import org.apache.iotdb.db.rescon.TVListAllocator;
-import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.utils.datastructure.NVMTVList;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NVMPrimitiveMemTable extends AbstractMemTable {
+
+  private static final Logger logger = LoggerFactory.getLogger(NVMPrimitiveMemTable.class);
 
   public NVMPrimitiveMemTable(String sgId) {
     super(sgId);
@@ -28,9 +30,9 @@ public class NVMPrimitiveMemTable extends AbstractMemTable {
   }
 
   @Override
-  protected IWritableMemChunk genMemSeries(String deviceId, String measurementId, TSDataType dataType) {
-    return new NVMWritableMemChunk(dataType,
-        (NVMTVList) TVListAllocator.getInstance().allocate(storageGroupId, deviceId, measurementId, dataType, true));
+  protected IWritableMemChunk genMemSeries(String deviceId, String measurementId, MeasurementSchema schema) {
+    return new NVMWritableMemChunk(schema,
+        (NVMTVList) TVListAllocator.getInstance().allocate(storageGroupId, deviceId, measurementId, schema.getType(), true));
   }
 
   @Override
@@ -53,23 +55,6 @@ public class NVMPrimitiveMemTable extends AbstractMemTable {
     return this == obj;
   }
 
-  @Override
-  public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound) {
-    TimeValuePairSorter sorter;
-    if (!checkPath(deviceId, measurement)) {
-      return null;
-    } else {
-      long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
-      IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType,
-          (TVList) memChunk.getTVList().clone());
-      chunkCopy.setTimeOffset(undeletedTime);
-      sorter = chunkCopy;
-    }
-    return new ReadOnlyMemChunk(dataType, sorter, props);
-  }
-
   public void loadData(Map<String, Map<String, Pair<List<NVMDataSpace>, List<NVMDataSpace>>>> dataMap) {
     if (dataMap == null) {
       return;
@@ -83,10 +68,16 @@ public class NVMPrimitiveMemTable extends AbstractMemTable {
           .entrySet()) {
         String measurementId = measurementDataEntry.getKey();
         Pair<List<NVMDataSpace>, List<NVMDataSpace>> tvListPair = measurementDataEntry.getValue();
-        TSDataType dataType = tvListPair.right.get(0).getDataType();
 
-        NVMWritableMemChunk memChunk = (NVMWritableMemChunk) createIfNotExistAndGet(deviceId, measurementId, dataType);
-        memChunk.loadData(tvListPair.left, tvListPair.right);
+        try {
+          MeasurementSchema[] schemas = MManager.getInstance().getSchemas(deviceId, new String[]{measurementId});
+          NVMWritableMemChunk memChunk = (NVMWritableMemChunk) createIfNotExistAndGet(deviceId, measurementId, schemas[0]);
+          memChunk.loadData(tvListPair.left, tvListPair.right);
+        } catch (MetadataException e) {
+          logger.error(
+              "occurs exception when reloading records from path ({}.{}): {}.(Will ignore the records)",
+              deviceId, measurementId, e.getMessage());
+        }
       }
     }
   }

@@ -73,8 +73,8 @@ public class TsFileRecoverPerformer {
     this.versionController = versionController;
     this.resource = currentTsFileResource;
     this.acceptUnseq = acceptUnseq;
-    this.storageGroupId = sgId;
     this.isLastFile = isLastFile;
+    this.storageGroupId = sgId;
   }
 
   /**

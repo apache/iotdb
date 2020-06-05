@@ -231,6 +231,7 @@ public class AggregationExecutor {
         continue;
       }
       BatchData nextOverlappedPageData = seriesReader.nextPage();
+      System.out.println("read:" + nextOverlappedPageData.count);
       for (int i = 0; i < aggregateResultList.size(); i++) {
         if (!isCalculatedArray[i]) {
           AggregateResult aggregateResult = aggregateResultList.get(i);

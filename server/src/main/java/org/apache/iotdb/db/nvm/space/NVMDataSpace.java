@@ -35,7 +35,7 @@ public class NVMDataSpace extends NVMSpace {
   }
 
   public int getValidUnitNum() {
-    // TODO only for time
+    // only for time space
     int count = 0;
     while (count < unitNum) {
       long v = (long) getData(count);
@@ -67,7 +67,7 @@ public class NVMDataSpace extends NVMSpace {
         object = byteBuffer.getDouble(index);
         break;
       case TEXT:
-        // TODO
+        // override in NVMBinaryDataSpace
         break;
     }
     return object;

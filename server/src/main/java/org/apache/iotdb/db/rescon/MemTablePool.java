@@ -42,7 +42,6 @@ public class MemTablePool {
   private int nvmSize = 0;
 
   private static final int WAIT_TIME = 2000;
-  private int size = 0;
 
   private MemTablePool() {
   }

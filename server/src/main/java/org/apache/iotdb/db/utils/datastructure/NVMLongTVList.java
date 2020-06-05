@@ -33,12 +33,7 @@ public class NVMLongTVList extends NVMTVList {
 
   @Override
   public long getLong(int index) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    return (long) values.get(arrayIndex).getData(elementIndex);
+    return (long) getValue(index);
   }
 
   @Override
@@ -156,37 +151,18 @@ public class NVMLongTVList extends NVMTVList {
 
   @Override
   public void putLongs(long[] time, long[] value) {
-    checkExpansion();
-    int idx = 0;
     int length = time.length;
 
     for (int i = 0; i < length; i++) {
       putLong(time[i], value[i]);
     }
+  }
 
-//    updateMinTimeAndSorted(time);
-//
-//    while (idx < length) {
-//      int inputRemaining = length - idx;
-//      int arrayIdx = size / ARRAY_SIZE;
-//      int elementIdx = size % ARRAY_SIZE;
-//      int internalRemaining  = ARRAY_SIZE - elementIdx;
-//      if (internalRemaining >= inputRemaining) {
-//        // the remaining inputs can fit the last array, copy all remaining inputs into last array
-//        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-//        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-//        size += inputRemaining;
-//        break;
-//      } else {
-//        // the remaining inputs cannot fit the last array, fill the last array and create a new
-//        // one and enter the next loop
-//        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-//        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
-//        idx += internalRemaining;
-//        size += internalRemaining;
-//        checkExpansion();
-//      }
-//    }
+  @Override
+  public void putLongs(long[] time, long[] value, int start, int end) {
+    for (int i = start; i < end; i++) {
+      putLong(time[i], value[i]);
+    }
   }
 }
 

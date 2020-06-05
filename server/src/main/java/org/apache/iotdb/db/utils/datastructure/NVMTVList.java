@@ -9,6 +9,9 @@ import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 public abstract class NVMTVList extends AbstractTVList {
 
@@ -102,7 +105,7 @@ public abstract class NVMTVList extends AbstractTVList {
   }
 
   @Override
-  public void delete(long upperBound) {
+  public int delete(long upperBound) {
     int newSize = 0;
     minTime = Long.MAX_VALUE;
     for (int i = 0; i < size; i++) {
@@ -112,6 +115,7 @@ public abstract class NVMTVList extends AbstractTVList {
         minTime = time < minTime ? time : minTime;
       }
     }
+    int deletedNumber = size - newSize;
     size = newSize;
     // release primitive arrays that are empty
     int newArrayNum = newSize / ARRAY_SIZE;
@@ -122,6 +126,7 @@ public abstract class NVMTVList extends AbstractTVList {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
+    return deletedNumber;
   }
 
   @Override
@@ -279,6 +284,17 @@ public abstract class NVMTVList extends AbstractTVList {
     return tempTimestampsForSort[arrayIndex][elementIndex];
   }
 
+  protected abstract Object getValueForSort(int index);
+
+  public Object getValue(int index) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    int arrayIndex = index / ARRAY_SIZE;
+    int elementIndex = index % ARRAY_SIZE;
+    return values.get(arrayIndex).getData(elementIndex);
+  }
+
   @Override
   protected void setForSort(int index, long timestamp, Object value) {
     if (index >= size) {
@@ -301,5 +317,18 @@ public abstract class NVMTVList extends AbstractTVList {
   @Override
   protected void setPivotTo(int pos) {
     setForSort(pos, pivotTime, pivotValue);
+  }
+
+  @Override
+  public TimeValuePair getTimeValuePair(int index) {
+    return new TimeValuePair(getTime(index),
+        TsPrimitiveType.getByType(dataType, getValue(index)));
+  }
+
+  @Override
+  protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
+      TSEncoding encoding) {
+    return new TimeValuePair(time, TsPrimitiveType.getByType(dataType, getValue(index)));
+
   }
 }

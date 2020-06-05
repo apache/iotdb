@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.memtable;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -61,22 +60,5 @@ public class PrimitiveMemTable extends AbstractMemTable {
   @Override
   public boolean equals(Object obj) {
     return this == obj;
-  }
-
-  @Override
-  public ReadOnlyMemChunk query(String deviceId, String measurement, TSDataType dataType,
-      Map<String, String> props, long timeLowerBound) {
-    TimeValuePairSorter sorter;
-    if (!checkPath(deviceId, measurement)) {
-      return null;
-    } else {
-      long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
-      IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
-      IWritableMemChunk chunkCopy = new WritableMemChunk(dataType,
-          (TVList) memChunk.getTVList().clone());
-      chunkCopy.setTimeOffset(undeletedTime);
-      sorter = chunkCopy;
-    }
-    return new ReadOnlyMemChunk(dataType, sorter, props);
   }
 }

@@ -261,11 +261,6 @@ public class LongTVList extends TVList {
   }
 
   @Override
-  protected Object getValueForSort(int index) {
-    return getLong(index);
-  }
-
-  @Override
   protected void setForSort(int index, long timestamp, Object value) {
     set(index, timestamp, (long) value);
   }

@@ -80,6 +80,30 @@ public abstract class AbstractTVList {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
 
+  public void putLongs(long[] time, long[] value, int start, int end) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putInts(long[] time, int[] value, int start, int end) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putFloats(long[] time, float[] value, int start, int end) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putDoubles(long[] time, double[] value, int start, int end) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putBinaries(long[] time, Binary[] value, int start, int end) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
+  public void putBooleans(long[] time, boolean[] value, int start, int end) {
+    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+  }
+
   public long getLong(int index) {
     throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
   }
@@ -260,6 +284,7 @@ public abstract class AbstractTVList {
       int n = start - left;  // The number of elements to move
       for (int i = n; i >= 1; i--) {
         set(left + i - 1, left + i);
+        setToSorted(left + i - 1, left + i);
       }
       setPivotTo(left);
     }

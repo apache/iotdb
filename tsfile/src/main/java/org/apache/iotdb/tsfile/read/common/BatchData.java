@@ -68,7 +68,7 @@ public class BatchData implements Serializable {
   private int writeCurArrayIndex;
 
   // the insert timestamp number of timeRet
-  private int count;
+  public int count;
 
 
   private List<long[]> timeRet;

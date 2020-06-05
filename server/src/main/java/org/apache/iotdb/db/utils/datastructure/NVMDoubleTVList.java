@@ -34,12 +34,7 @@ public class NVMDoubleTVList extends NVMTVList {
 
   @Override
   public double getDouble(int index) {
-    if (index >= size) {
-      throw new ArrayIndexOutOfBoundsException(index);
-    }
-    int arrayIndex = index / ARRAY_SIZE;
-    int elementIndex = index % ARRAY_SIZE;
-    return (double) values.get(arrayIndex).getData(elementIndex);
+    return (double) getValue(index);
   }
 
   @Override
@@ -157,45 +152,17 @@ public class NVMDoubleTVList extends NVMTVList {
 
   @Override
   public void putDoubles(long[] time, double[] value) {
-//    checkExpansion();
-    int idx = 0;
     int length = time.length;
 
     for (int i = 0; i < length; i++) {
       putDouble(time[i], value[i]);
     }
+  }
 
-//    long startTime = System.currentTimeMillis();
-//    for (NVMDataSpace timeSpace : timestamps) {
-//      timeSpace.force();
-//    }
-//    for (NVMDataSpace valueSpace : values) {
-//      valueSpace.force();
-//    }
-//    PerfMonitor.add("NVMTVList.force", System.currentTimeMillis() - startTime);
-
-//    updateMinTimeAndSorted(time);
-//
-//    while (idx < length) {
-//      int inputRemaining = length - idx;
-//      int arrayIdx = size / ARRAY_SIZE;
-//      int elementIdx = size % ARRAY_SIZE;
-//      int internalRemaining  = ARRAY_SIZE - elementIdx;
-//      if (internalRemaining >= inputRemaining) {
-//        // the remaining inputs can fit the last array, copy all remaining inputs into last array
-//        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-//        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-//        size += inputRemaining;
-//        break;
-//      } else {
-//        // the remaining inputs cannot fit the last array, fill the last array and create a new
-//        // one and enter the next loop
-//        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-//        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
-//        idx += internalRemaining;
-//        size += internalRemaining;
-//        checkExpansion();
-//      }
-//    }
+  @Override
+  public void putDoubles(long[] time, double[] value, int start, int end) {
+    for (int i = start; i < end; i++) {
+      putDouble(time[i], value[i]);
+    }
   }
 }

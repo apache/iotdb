@@ -4,6 +4,7 @@ import static org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool.ARRAY_SIZE;
 
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.nvm.rescon.NVMPrimitiveArrayPool;
+import org.apache.iotdb.db.nvm.space.NVMBinaryDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMDataSpace;
 import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
 import org.apache.iotdb.db.nvm.space.NVMSpaceMetadataManager;
@@ -14,7 +15,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 // TODO how to organize data
 public class NVMBinaryTVList extends NVMTVList {
 
-  // TODO
   private Binary[][] sortedValues;
   private Binary[][] tempValuesForSort;
 
@@ -27,10 +27,9 @@ public class NVMBinaryTVList extends NVMTVList {
   public void putBinary(long timestamp, Binary value) {
     checkExpansion();
     int arrayIndex = size;
-    int elementIndex = 0;
     minTime = minTime <= timestamp ? minTime : timestamp;
-    timestamps.get(arrayIndex).setData(elementIndex, timestamp);
-    values.get(arrayIndex).setData(elementIndex, value);
+    timestamps.get(arrayIndex).setData(0, timestamp);
+    ((NVMBinaryDataSpace)values.get(arrayIndex)).appendData(value);
     size++;
     if (sorted && size > 1 && timestamp < getTime(size - 2)) {
       sorted = false;
@@ -39,7 +38,8 @@ public class NVMBinaryTVList extends NVMTVList {
 
   @Override
   protected void checkExpansion() {
-    NVMDataSpace valueSpace = expandValues();
+    NVMBinaryDataSpace valueSpace = (NVMBinaryDataSpace) expandValues();
+    valueSpace.reset();
     NVMDataSpace timeSpace = NVMPrimitiveArrayPool
         .getInstance().getPrimitiveDataListByType(TSDataType.INT64, true);
     timestamps.add(timeSpace);
@@ -48,22 +48,46 @@ public class NVMBinaryTVList extends NVMTVList {
   }
 
   @Override
-  public Binary getBinary(int index) {
+  public long getTime(int index) {
     if (index >= size) {
       throw new ArrayIndexOutOfBoundsException(index);
     }
-    int arrayIndex = index;
-    int elementIndex = 0;
-    return (Binary) values.get(arrayIndex).getData(elementIndex);
+    return (long) timestamps.get(index).getData(0);
+  }
+
+  @Override
+  public Binary getBinary(int index) {
+    return (Binary) getValue(index);
+  }
+
+  @Override
+  public Object getValue(int index) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    return values.get(index).getData(0);
+  }
+
+  @Override
+  protected void set(int index, long timestamp, Object value) {
+    if (index >= size) {
+      throw new ArrayIndexOutOfBoundsException(index);
+    }
+    timestamps.get(index).setData(0, timestamp);
+    values.get(index).setData(0, value);
   }
 
   @Override
   public BinaryTVList clone() {
     BinaryTVList cloneList = new BinaryTVList();
-    cloneAs(cloneList);
-    for (NVMDataSpace valueSpace : values) {
-      cloneList.addBatchValue((Binary[]) cloneValue(valueSpace));
+
+    long[] cloneTimestamps = new long[size];
+    Binary[] cloneValues = new Binary[size];
+    for (int i = 0; i < size; i++) {
+      cloneTimestamps[i] = timestamps.get(i).getLong(0);
+      cloneValues[i] = (Binary) values.get(i).getData(0);
     }
+    cloneList.putBinaries(cloneTimestamps, cloneValues);
     return cloneList;
   }
 
@@ -172,49 +196,17 @@ public class NVMBinaryTVList extends NVMTVList {
   
   @Override
   public void putBinaries(long[] time, Binary[] value) {
-    checkExpansion();
-    int idx = 0;
     int length = time.length;
 
     for (int i = 0; i < length; i++) {
       putBinary(time[i], value[i]);
     }
-
-//    updateMinTimeAndSorted(time);
-//
-//    while (idx < length) {
-//      int inputRemaining = length - idx;
-//      int arrayIdx = size / ARRAY_SIZE;
-//      int elementIdx = size % ARRAY_SIZE;
-//      int internalRemaining  = ARRAY_SIZE - elementIdx;
-//      if (internalRemaining >= inputRemaining) {
-//        // the remaining inputs can fit the last array, copy all remaining inputs into last array
-//        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
-//        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
-//        size += inputRemaining;
-//        break;
-//      } else {
-//        // the remaining inputs cannot fit the last array, fill the last array and create a new
-//        // one and enter the next loop
-//        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
-//        System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
-//        idx += internalRemaining;
-//        size += internalRemaining;
-//        checkExpansion();
-//      }
-//    }
   }
 
-  public static void main(String[] args) throws StartupException {
-    NVMSpaceManager.getInstance().init();
-
-    NVMBinaryTVList tvList = new NVMBinaryTVList("sg", "d0", "s0");
-    int size = 5000;
-    for (int i = 0; i < size; i++) {
-      String v = String.valueOf(size - i);
-      tvList.putBinary(i, Binary.valueOf(v));
+  @Override
+  public void putBinaries(long[] time, Binary[] value, int start, int end) {
+    for (int i = start; i < end; i++) {
+      putBinary(time[i], value[i]);
     }
-
-    tvList.sort();
   }
 }
