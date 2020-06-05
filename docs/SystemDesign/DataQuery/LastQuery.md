@@ -87,8 +87,9 @@ Last standard query process needs to scan sequential files and unsequential file
           FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
-          if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-              && chunkMetaData.getVersion() > version) {
+          if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
+              || (chunkMetaData.getEndTime() == resultPair.getTimestamp()
+              && chunkMetaData.getVersion() > version)) {
             Statistics chunkStatistics = chunkMetaData.getStatistics();
             resultPair =
                 constructLastPair(
