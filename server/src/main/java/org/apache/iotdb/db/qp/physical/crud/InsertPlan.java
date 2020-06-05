@@ -358,6 +358,10 @@ public class InsertPlan extends PhysicalPlan {
     return failedMeasurements;
   }
 
+  public int getFailedMeasurementNumber() {
+    return failedMeasurements == null ? 0 : failedMeasurements.size();
+  }
+
   public TSDataType[] getTypes() {
     return types;
   }

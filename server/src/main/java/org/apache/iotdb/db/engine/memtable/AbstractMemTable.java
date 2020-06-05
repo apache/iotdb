@@ -111,7 +111,7 @@ public abstract class AbstractMemTable implements IMemTable {
           insertPlan.getSchemas()[i], insertPlan.getTime(), value);
     }
 
-    totalPointsNum += insertPlan.getValues().length - insertPlan.getFailedMeasurements().size();
+    totalPointsNum += insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
   }
 
   @Override
