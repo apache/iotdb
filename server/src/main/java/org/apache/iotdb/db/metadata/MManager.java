@@ -1035,7 +1035,9 @@ public class MManager {
     lock.writeLock().lock();
     try {
       LeafMNode leafMNode = (LeafMNode) mtree.getNodeByPath(path);
-      leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
       leafMNode.getParent().addAlias(alias, leafMNode);
       leafMNode.setAlias(alias);
     } finally {
@@ -1062,17 +1064,18 @@ public class MManager {
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
       // upsert alias
-      if (alias != null) {
+      if (alias != null && !alias.equals(leafMNode.getAlias())) {
+
         if (leafMNode.getParent().hasChild(alias)) {
           throw new MetadataException("The alias already exits.");
         }
         if (leafMNode.getAlias() != null) {
           leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
-          leafMNode.getParent().addAlias(alias, leafMNode);
-          leafMNode.setAlias(alias);
-          // persist to WAL
-          logWriter.changeAlias(fullPath, alias);
         }
+        leafMNode.getParent().addAlias(alias, leafMNode);
+        leafMNode.setAlias(alias);
+        // persist to WAL
+        logWriter.changeAlias(fullPath, alias);
       }
       //
       if (tagsMap == null && attributesMap == null) {
