@@ -32,7 +32,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.thrift.TException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -63,7 +62,7 @@ public class ClusterPlanExecutorTest extends BaseQueryTest{
 
   @Test
   public void testMatchPaths() throws MetadataException {
-    List<String> allMatchedPaths = queryExecutor.getPaths("root.*.s0");
+    List<String> allMatchedPaths = queryExecutor.getPathsName("root.*.s0");
     for (int i = 0; i < allMatchedPaths.size(); i++) {
       assertEquals(pathList.get(i).getFullPath(), allMatchedPaths.get(i));
     }

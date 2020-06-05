@@ -63,6 +63,7 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -125,6 +126,7 @@ public class StorageEngine implements IService {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
+    // build time Interval to divide time partition
     if (!enablePartition) {
       timePartitionInterval = Long.MAX_VALUE;
     } else {
@@ -587,10 +589,12 @@ public class StorageEngine implements IService {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
 
+  @TestOnly
   public static void setEnablePartition(boolean enablePartition) {
     StorageEngine.enablePartition = enablePartition;
   }
 
+  @TestOnly
   public static boolean isEnablePartition() {
     return enablePartition;
   }

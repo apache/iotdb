@@ -29,14 +29,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import junit.framework.TestCase;
+import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
+import org.apache.iotdb.cluster.common.TestMetaClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -52,11 +61,14 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
+import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 public class DataLogApplierTest extends IoTDBTest {
+
+  private boolean partialWriteEnabled;
 
   private TestMetaGroupMember testMetaGroupMember = new TestMetaGroupMember() {
     @Override
@@ -79,6 +91,31 @@ public class DataLogApplierTest extends IoTDBTest {
       }
       return ret;
     }
+
+    @Override
+    public AsyncClient connectNode(Node node) {
+      try {
+        return new TestMetaClient(null, null, node, null) {
+          @Override
+          public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
+            new Thread(() -> testMetaGroupMember.queryNodeStatus(resultHandler)).start();
+          }
+        };
+      } catch (IOException e) {
+        return null;
+      }
+    }
+
+    @Override
+    public DataClient getDataClient(Node node) throws IOException {
+      return new DataClient(null, null, node, null) {
+        @Override
+        public void getAllPaths(Node header, List<String> path,
+            AsyncMethodCallback<List<String>> resultHandler) {
+          new Thread(() -> testDataGroupMember.getAllPaths(header, path, resultHandler)).start();
+        }
+      };
+    }
   };
 
   private TestDataGroupMember testDataGroupMember = new TestDataGroupMember();
@@ -89,10 +126,22 @@ public class DataLogApplierTest extends IoTDBTest {
   @Before
   public void setUp() throws org.apache.iotdb.db.exception.StartupException, QueryProcessException {
     super.setUp();
+    PartitionGroup allNodes = new PartitionGroup();
+    for (int i = 0; i < 100; i += 10) {
+      allNodes.add(TestUtils.getNode(i));
+    }
+
+    testMetaGroupMember.setAllNodes(allNodes);
+    testMetaGroupMember.setPartitionTable(new SlotPartitionTable(allNodes, TestUtils.getNode(0)));
+    testMetaGroupMember.setThisNode(TestUtils.getNode(0));
+
     testMetaGroupMember.setLeader(testMetaGroupMember.getThisNode());
     testDataGroupMember.setLeader(testDataGroupMember.getThisNode());
     testDataGroupMember.setCharacter(NodeCharacter.LEADER);
     testMetaGroupMember.setCharacter(NodeCharacter.LEADER);
+    QueryCoordinator.getINSTANCE().setMetaGroupMember(testMetaGroupMember);
+    partialWriteEnabled = IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert();
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(false);
   }
 
   @Override
@@ -101,6 +150,8 @@ public class DataLogApplierTest extends IoTDBTest {
     testDataGroupMember.closeLogManager();
     testMetaGroupMember.closeLogManager();
     super.tearDown();
+    QueryCoordinator.getINSTANCE().setMetaGroupMember(null);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePartialInsert(partialWriteEnabled);
   }
 
   @Test

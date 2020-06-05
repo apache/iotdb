@@ -118,7 +118,9 @@ public class Session {
     if (!isClosed) {
       return;
     }
+
     transport = new TFastFramedTransport(new TSocket(host, port, connectionTimeoutInMs));
+
     if (!transport.isOpen()) {
       try {
         transport.open();

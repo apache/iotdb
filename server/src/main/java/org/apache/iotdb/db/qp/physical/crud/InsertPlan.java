@@ -25,7 +25,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -176,6 +179,12 @@ public class InsertPlan extends PhysicalPlan {
     if (inferType) {
       for (int i = 0; i < schemas.length; i++) {
         if (schemas[i] == null) {
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            markMeasurementInsertionFailed(i);
+          } else {
+            throw new QueryProcessException(new PathNotExistException(
+                deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+          }
           continue;
         }
         types[i] = schemas[i].getType();
@@ -186,6 +195,7 @@ public class InsertPlan extends PhysicalPlan {
               measurements[i], values[i], types[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
             markMeasurementInsertionFailed(i);
+            schemas[i] = null;
           } else {
             throw e;
           }
@@ -202,7 +212,6 @@ public class InsertPlan extends PhysicalPlan {
       failedMeasurements = new ArrayList<>();
     }
     failedMeasurements.add(measurements[index]);
-    schemas[index] = null;
     measurements[index] = null;
     types[index] = null;
     values[index] = null;

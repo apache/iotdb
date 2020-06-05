@@ -421,4 +421,31 @@ public class MTreeTest {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void testGetAllTimeseriesCount() {
+    // set storage group first
+    MTree root = new MTree();
+    try {
+      root.setStorageGroup("root.laptop");
+      root.createTimeseries("root.laptop.d1.s1", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null, null);
+      root.createTimeseries("root.laptop.d1.s2", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null, null);
+      root.createTimeseries("root.laptop.d2.s1", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null, null);
+      root.createTimeseries("root.laptop.d2.s2", TSDataType.INT32, TSEncoding.PLAIN,
+          CompressionType.GZIP, null, null);
+
+      assertEquals(4, root.getAllTimeseriesCount("root.laptop"));
+
+      assertEquals(2, root.getNodesCountInGivenLevel("root.laptop", 2));
+      assertEquals(4, root.getNodesCountInGivenLevel("root.laptop", 3));
+      assertEquals(2, root.getNodesCountInGivenLevel("root.laptop.d1", 3));
+      assertEquals(0, root.getNodesCountInGivenLevel("root.laptop.d1", 4));
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }

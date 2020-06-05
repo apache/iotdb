@@ -344,6 +344,9 @@ public class ReadWriteIOUtils {
    * @return the length of string represented by byte[].
    */
   public static int write(String s, ByteBuffer buffer) {
+    if (s == null) {
+      return write(-1, buffer);
+    }
     int len = 0;
     byte[] bytes = s.getBytes();
     len += write(bytes.length, buffer);
@@ -563,6 +566,9 @@ public class ReadWriteIOUtils {
    */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
+    if (strLength < 0) {
+      return null;
+    }
     byte[] bytes = new byte[strLength];
     buffer.get(bytes, 0, strLength);
     return new String(bytes, 0, strLength);
