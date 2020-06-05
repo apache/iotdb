@@ -165,6 +165,7 @@ public class PhysicalGenerator {
             alterTimeSeriesOperator.getPath(),
             alterTimeSeriesOperator.getAlterType(),
             alterTimeSeriesOperator.getAlterMap(),
+            alterTimeSeriesOperator.getAlias(),
             alterTimeSeriesOperator.getTagsMap(),
             alterTimeSeriesOperator.getAttributesMap());
       case DELETE:

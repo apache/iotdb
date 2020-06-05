@@ -918,7 +918,8 @@ public class PlanExecutor implements IPlanExecutor {
       insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
       if (insertPlan.getFailedMeasurements() != null) {
-        throw new StorageEngineException("failed to insert points " + insertPlan.getFailedMeasurements());
+        throw new StorageEngineException(
+            "failed to insert points " + insertPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
@@ -967,8 +968,7 @@ public class PlanExecutor implements IPlanExecutor {
           // need to do nothing
           break;
       }
-    }
-    catch (ClassCastException e){
+    } catch (ClassCastException e) {
       logger.error("inconsistent type between client and server");
     }
   }
@@ -987,7 +987,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (PathAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
         logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
-                + " a non-exist time series {}", path);
+            + " a non-exist time series {}", path);
       }
     }
   }
@@ -1046,9 +1046,9 @@ public class PlanExecutor implements IPlanExecutor {
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
           throw new QueryProcessException(String.format(
-                  "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
-                  measurement, insertTabletPlan.getDataTypes()[i],
-                  measurementNode.getSchema().getType()));
+              "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
+              measurement, insertTabletPlan.getDataTypes()[i],
+              measurementNode.getSchema().getType()));
         }
         schemas[i] = measurementNode.getSchema();
         // reset measurement to common name instead of alias
@@ -1192,18 +1192,16 @@ public class PlanExecutor implements IPlanExecutor {
           mManager.addAttributes(alterMap, path.getFullPath());
           break;
         case UPSERT:
-          mManager.upsertTagsAndAttributes(
-              alterTimeSeriesPlan.getTagsMap(),
-              alterTimeSeriesPlan.getAttributesMap(),
+          mManager.upsertTagsAndAttributes(alterTimeSeriesPlan.getAlias(),
+              alterTimeSeriesPlan.getTagsMap(), alterTimeSeriesPlan.getAttributesMap(),
               path.getFullPath());
           break;
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {
-      throw new QueryProcessException(
-          String.format(
-              "Something went wrong while read/write the [%s]'s tag/attribute info.",
+      throw new QueryProcessException(String
+          .format("Something went wrong while read/write the [%s]'s tag/attribute info.",
               path.getFullPath()));
     }
     return true;
