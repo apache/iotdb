@@ -1067,7 +1067,7 @@ public class MManager {
       if (alias != null && !alias.equals(leafMNode.getAlias())) {
 
         if (leafMNode.getParent().hasChild(alias)) {
-          throw new MetadataException("The alias already exits.");
+          throw new MetadataException("The alias already exists.");
         }
         if (leafMNode.getAlias() != null) {
           leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
@@ -1077,7 +1077,7 @@ public class MManager {
         // persist to WAL
         logWriter.changeAlias(fullPath, alias);
       }
-      //
+
       if (tagsMap == null && attributesMap == null) {
         return;
       }
