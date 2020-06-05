@@ -1109,7 +1109,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterAliasClause(SqlBaseParser.AliasClauseContext ctx) {
     super.enterAliasClause(ctx);
-    if (alterTimeSeriesOperator != null) {
+    if (alterTimeSeriesOperator != null && ctx.ID() != null) {
       alterTimeSeriesOperator.setAlias(ctx.ID().getText());
     }
   }
