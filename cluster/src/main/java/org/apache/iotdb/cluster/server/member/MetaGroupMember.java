@@ -1543,8 +1543,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     TSStatus status;
     // the error codes from the groups that cannot execute the plan
     List<String> errorCodePartitionGroups = new ArrayList<>();
+    TSStatus subStatus = StatusUtils.OK;
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
-      TSStatus subStatus;
       if (entry.getValue().contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
         subStatus = getLocalDataMember(entry.getValue().getHeader())
@@ -1560,9 +1560,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             subStatus.getMessage()));
       }
     }
-    if (errorCodePartitionGroups.isEmpty()) {
-      // no error occurs, the plan is successfully executed
-      status = StatusUtils.OK;
+    if (errorCodePartitionGroups.size() <= 1) {
+      // when size = 0, no error occurs, the plan is successfully executed, return OK
+      // when size = 1, one error occurs, set status = subStatus and return
+      status = subStatus;
     } else {
       status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
       status.setMessage("The following errors occurred when executing the query, "
