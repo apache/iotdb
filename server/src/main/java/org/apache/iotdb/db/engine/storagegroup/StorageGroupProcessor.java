@@ -767,7 +767,7 @@ public class StorageGroupProcessor {
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
-        ((LeafMNode) MManager.getInstance().getChild(node, measurementList[i]))
+        ((LeafMNode) manager.getChild(node, measurementList[i]))
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {

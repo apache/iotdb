@@ -91,7 +91,7 @@ public class MManager {
   private MTree mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
-  private boolean writeToLog;
+  private boolean isRecovering;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
   // currently, if a key is not existed in the mRemoteSchemaCache, an IOException will be thrown
@@ -129,7 +129,7 @@ public class MManager {
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
 
     // do not write log when recover
-    writeToLog = false;
+    isRecovering = true;
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {
@@ -189,7 +189,7 @@ public class MManager {
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
-      writeToLog = true;
+      isRecovering = false;
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
@@ -276,12 +276,9 @@ public class MManager {
         createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        Pair<Set<String>, String> pair = deleteTimeseries(args[1]);
-        for (String deleteStorageGroup : pair.left) {
-          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
-        }
-        if (!pair.right.isEmpty()) {
-          throw new DeleteFailedException(pair.right);
+        String failedTimeseries = deleteTimeseries(args[1]);
+        if (!failedTimeseries.isEmpty()) {
+          throw new DeleteFailedException(failedTimeseries);
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
@@ -352,7 +349,7 @@ public class MManager {
       }
 
       // write log
-      if (writeToLog) {
+      if (!isRecovering) {
         // either tags or attributes is not empty
         if ((plan.getTags() != null && !plan.getTags().isEmpty())
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
@@ -390,11 +387,9 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return 1. The Set contains StorageGroups that contain no more timeseries after this deletion
-   * files of such StorageGroups should be deleted to reclaim disk space. 2. The String is the
-   * deletion failed Timeseries
+   * @return  The String is the deletion failed Timeseries
    */
-  public Pair<Set<String>, String> deleteTimeseries(String prefixPath) throws MetadataException {
+  public String deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
 
     // clear cached schema
@@ -415,8 +410,6 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      Set<String> emptyStorageGroups = new HashSet<>();
-
       List<String> allTimeseries = mtree.getAllTimeseriesName(prefixPath);
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_PREFIX));
@@ -424,15 +417,18 @@ public class MManager {
       Set<String> failedNames = new HashSet<>();
       for (String p : allTimeseries) {
         try {
-          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatisticsAndLog(p);
-          if (emptyStorageGroup != null) {
-            emptyStorageGroups.add(emptyStorageGroup);
+          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+          if (!isRecovering) {
+            if (emptyStorageGroup != null) {
+              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+            }
+            logWriter.deleteTimeseries(p);
           }
         } catch (DeleteFailedException e) {
           failedNames.add(e.getName());
         }
       }
-      return new Pair<>(emptyStorageGroups, String.join(",", failedNames));
+      return String.join(",", failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     } finally {
@@ -469,7 +465,7 @@ public class MManager {
    * @param path full path from root to leaf node
    * @return after delete if the storage group is empty, return its name, otherwise return null
    */
-  private String deleteOneTimeseriesAndUpdateStatisticsAndLog(String path)
+  private String deleteOneTimeseriesAndUpdateStatistics(String path)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
@@ -494,10 +490,6 @@ public class MManager {
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
         }
       }
-
-      if (writeToLog) {
-        logWriter.deleteTimeseries(path);
-      }
       return storageGroupName;
     } finally {
       lock.writeLock().unlock();
@@ -519,7 +511,7 @@ public class MManager {
         ActiveTimeSeriesCounter.getInstance().init(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, 0);
       }
-      if (writeToLog) {
+      if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
       }
     } catch (IOException e) {
@@ -563,7 +555,7 @@ public class MManager {
           }
         }
         // if success
-        if (writeToLog) {
+        if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup);
         }
       }
@@ -721,8 +713,6 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesName(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
     } finally {
       lock.readLock().unlock();
     }
@@ -735,8 +725,33 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesPath(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of timeseries for given prefix path.
+   */
+  public int getAllTimeseriesCount(String prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesCount(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of nodes in the given level for given prefix path.
+   *
+   * @param prefixPath a prefix path or a full path, can not contain '*'
+   * @param level the level can not be smaller than the level of the prefixPath
+   */
+  public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getNodesCountInGivenLevel(prefixPath, level);
     } finally {
       lock.readLock().unlock();
     }
@@ -1014,7 +1029,6 @@ public class MManager {
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
-
   public MNode getChild(MNode parent, String child) {
     lock.readLock().lock();
     try {
@@ -1049,7 +1063,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
-      if (writeToLog) {
+      if (!isRecovering) {
         logWriter.setTTL(storageGroup, dataTTL);
       }
     } finally {
