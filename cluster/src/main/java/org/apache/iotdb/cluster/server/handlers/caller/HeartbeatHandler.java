@@ -69,6 +69,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
           .computeIfAbsent(follower, k -> new Peer(localMember.getLogManager().getLastLogIndex()));
       if (!peer.isCatchUp() || !localMember.getLogManager()
           .isLogUpToDate(lastLogTerm, lastLogIdx)) {
+        peer.setNextIndex(lastLogIdx + 1);
         logger.debug("{}: catching up node {}, index-term: {}-{}/{}-{}, peer nextIndex {}, peer "
                 + "match index {}",
             memberName, follower,

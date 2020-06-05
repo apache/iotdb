@@ -62,12 +62,13 @@ public class CatchUpTask implements Runnable {
    */
   boolean checkMatchIndex() throws TException, InterruptedException, LeaderUnknownException {
     boolean isLogDebug = logger.isDebugEnabled();
+    long lo = -1;
+    long hi;
     synchronized (raftMember.getLogManager()) {
-      peer.setNextIndex(raftMember.getLogManager().getLastLogIndex());
       try {
         long localFirstIndex = raftMember.getLogManager().getFirstIndex();
-        long lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
-        long hi = peer.getNextIndex() + 1;
+        lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
+        hi = raftMember.getLogManager().getLastLogIndex() + 1;
         logs = raftMember.getLogManager().getEntries(lo, hi);
         if (isLogDebug) {
           logger.debug(
@@ -78,8 +79,9 @@ public class CatchUpTask implements Runnable {
         logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
       }
     }
-
-    int index = logs.size() - 1;
+    int index = (int) (peer.getNextIndex() - lo);
+    // if index < 0 then send Snapshot and all the logs in logManager
+    // if index >= 0 but there is no matched log, still send Snapshot and all the logs in logManager
     while (index >= 0) {
       Log log = logs.get(index);
       synchronized (raftMember.getTerm()) {
