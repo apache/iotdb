@@ -30,7 +30,8 @@ import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 /**
- * this tool can analyze the tsfile.resource files from a folder.
+ * This tool can analyze the tsfile.resource files from a folder, 
+ * or analyze a single tsfile.resource file.
  */
 public class TsFileResourcePrinter {
 
@@ -41,22 +42,31 @@ public class TsFileResourcePrinter {
       folder = args[0];
     }
     File folderFile = SystemFileFactory.INSTANCE.getFile(folder);
-    File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix(folderFile.getAbsolutePath(), ".tsfile.resource");
-    Arrays.sort(files, Comparator.comparingLong(x -> Long.valueOf(x.getName().split("-")[0])));
+    if (folderFile.isDirectory()) {
+      // analyze the tsfile.resource files from a folder
+      File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix(folderFile.getAbsolutePath(), ".tsfile.resource");
+      Arrays.sort(files, Comparator.comparingLong(x -> Long.valueOf(x.getName().split("-")[0])));
 
-    for (File file : files) {
-      printResource(file.getAbsolutePath());
+      for (File file : files) {
+        printResource(file.getAbsolutePath());
+      }
+      System.out.println("Analyzing the resource file folder " + folder + " finished.");
     }
-    System.out.println("analyzing the resource file finished.");
+    else {
+      // analyze a tsfile.resource file
+      printResource(folderFile.getAbsolutePath());
+      System.out.println("Analyzing the resource file " + folder + " finished.");
+    }
   }
 
   public static void printResource(String filename) throws IOException {
     filename = filename.substring(0, filename.length() - 9);
     TsFileResource resource = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filename));
-    System.err.println(String.format("analyzing %s ...", filename));
+    System.out.println(String.format("Analyzing %s ...", filename));
+    System.out.println();
     resource.deserialize();
 
-    System.out.println("historicalVersions: " + resource.getHistoricalVersions());
+    System.out.println("HistoricalVersions: " + resource.getHistoricalVersions());
 
     for (String device : resource.getDeviceToIndexMap().keySet()) {
       System.out.println(String.format(
@@ -69,5 +79,6 @@ public class TsFileResourcePrinter {
           resource.getEndTime(device),
           DatetimeUtils.convertMillsecondToZonedDateTime(resource.getEndTime(device))));
     }
+    System.out.println();
   }
 }
