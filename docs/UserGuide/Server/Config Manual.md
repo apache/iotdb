@@ -582,6 +582,43 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|no |
 |Effective|After restart system|
 
+## Automatic Schema Creation and Type Inference
+
+* boolean\_string\_infer\_type
+
+|Name| boolean\_string\_infer\_type |
+|:---:|:---|
+|Description| To which type the values "true" and "false" should be reslved|
+|Type| BOOLEAN or TEXT |
+|Default|BOOLEAN |
+|Effective|After restart system|
+
+* integer\_string\_infer\_type
+
+|Name| integer\_string\_infer\_type |
+|:---:|:---|
+|Description| To which type the value NaN in a query should be resolved|
+|Type| DOUBLE, FLOAT or TEXT |
+|Default|DOUBLE |
+|Effective|After restart system|
+
+* nan\_string\_infer\_type
+
+|Name| nan\_string\_infer\_type |
+|:---:|:---|
+|Description| To which type an integer string like "67" in a query should be resolved|
+|Type| DOUBLE, FLOAT or TEXT |
+|Default|FLOAT |
+|Effective|After restart system|
+
+* floating\_string\_infer\_type
+
+|Name| floating\_string\_infer\_type |
+|:---:|:---|
+|Description| To which type a floating number string like "6.7" in a query should be resolved|
+|Type| DOUBLE, FLOAT or TEXT |
+|Default|FLOAT |
+|Effective|After restart system|
 
 ## Enable GC log
 GC log is off by default.

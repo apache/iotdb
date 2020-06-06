@@ -31,6 +31,8 @@ public class TypeInferenceUtils {
 
   private static TSDataType floatingStringInferType = IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
 
+  private static TSDataType nanStringInferType = IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
+
   private TypeInferenceUtils() {
 
   }
@@ -66,7 +68,7 @@ public class TypeInferenceUtils {
         }
         // "NaN" is returned if the NaN Literal is given in Parser
       } else if ("NaN".equals(strValue)) {
-        return TSDataType.DOUBLE;
+        return nanStringInferType;
       } else {
         return TSDataType.TEXT;
       }
