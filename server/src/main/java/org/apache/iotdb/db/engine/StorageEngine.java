@@ -132,6 +132,7 @@ public class StorageEngine implements IService {
     } else {
       initTimePartition();
     }
+
     // create systemDir
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));

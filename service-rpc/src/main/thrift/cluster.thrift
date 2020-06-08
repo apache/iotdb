@@ -223,6 +223,7 @@ struct LastRequest {
   6: required Node requestor
 }
 
+
 service RaftService {
   /**
   * Leader will call this method to all followers to ensure its authority.
@@ -279,6 +280,7 @@ service RaftService {
   * leader.
   **/
   long requestCommitIndex(1:Node header)
+
 
   /**
   * Read a chunk of a file from the client. If the remaining of the file does not have enough
@@ -392,6 +394,7 @@ service TSMetaService extends RaftService {
   * @param node a new node that needs to be added
   **/
   AddNodeResponse addNode(1: Node node, 2: StartUpStatus startUpStatus)
+
 
   CheckStatusResponse  checkStatus(1: StartUpStatus startUpStatus)
 

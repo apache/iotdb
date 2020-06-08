@@ -1616,8 +1616,7 @@ public class MManager {
    * deduplicate.
    */
   @FunctionalInterface
-  public
-  interface StorageGroupFilter {
+  public interface StorageGroupFilter {
     boolean satisfy(String storageGroup);
   }
 }
