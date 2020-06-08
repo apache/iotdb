@@ -111,9 +111,11 @@ public class CommittedEntryManager {
       throw new EntryCompactedException(index, dummyIndex);
     }
     if ((int) (index - dummyIndex) >= entries.size()) {
-      logger.debug(
-          "invalid committedEntryManager maybeTerm : parameter: index({}) > lastIndex({})",
-          index, getLastIndex());
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "invalid committedEntryManager maybeTerm : parameter: index({}) > lastIndex({})",
+            index, getLastIndex());
+      }
       return -1;
     }
     return entries.get((int) (index - dummyIndex)).getCurrLogTerm();

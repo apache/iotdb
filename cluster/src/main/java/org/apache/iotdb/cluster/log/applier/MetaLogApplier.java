@@ -21,12 +21,10 @@ package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
-import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -49,7 +47,7 @@ public class MetaLogApplier extends BaseApplier {
   @Override
   public void apply(Log log)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    logger.debug("Applying {}", log);
+    logger.debug("MetaMember [{}] start applying Log {}", metaGroupMember.getName(), log);
     if (log instanceof AddNodeLog) {
       AddNodeLog addNodeLog = (AddNodeLog) log;
       Node newNode = addNodeLog.getNewNode();

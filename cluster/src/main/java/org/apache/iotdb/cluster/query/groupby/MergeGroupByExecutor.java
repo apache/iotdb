@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MergeGroupByExecutor implements GroupByExecutor {
+
   private static final Logger logger = LoggerFactory.getLogger(MergeGroupByExecutor.class);
 
   private List<AggregateResult> results = new ArrayList<>();
@@ -86,7 +87,8 @@ public class MergeGroupByExecutor implements GroupByExecutor {
         results.get(i).merge(subResults.get(i));
       }
     }
-    logger.debug("Aggregation result of {}@[{}, {}] is {}", path, curStartTime, curEndTime, results);
+    logger.debug("Aggregation result of {}@[{}, {}] is {}", path, curStartTime, curEndTime,
+        results);
     return results;
   }
 

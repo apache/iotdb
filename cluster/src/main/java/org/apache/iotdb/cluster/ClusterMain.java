@@ -180,6 +180,7 @@ public class ClusterMain {
       MetaClient client = new MetaClient(factory, new TAsyncClientManager(), node, null);
 
       try {
+        logger.info("Start removing node {} with the help of node {}", nodeToRemove, node);
         Long response = SyncClientAdaptor.removeNode(client, nodeToRemove);
         if (response != null) {
           if (response == Response.RESPONSE_AGREE) {

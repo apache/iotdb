@@ -27,21 +27,23 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * AppendGroupEntryHandler checks if the log is successfully appended by the quorum or some node has
- * rejected it for some reason when one node has finished the AppendEntryRequest.
- * The target of the log is the data groups, the consistency can be reached as long as quorum
- * data groups agree, even if the actually agreed nodes can be less than quorum, because the same
- * nodes may say "yes" for multiple groups.
+ * rejected it for some reason when one node has finished the AppendEntryRequest. The target of the
+ * log is the data groups, the consistency can be reached as long as quorum data groups agree, even
+ * if the actually agreed nodes can be less than quorum, because the same nodes may say "yes" for
+ * multiple groups.
  */
 public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
 
   private static final Logger logger = LoggerFactory.getLogger(AppendGroupEntryHandler.class);
 
+  private RaftMember member;
   private Log log;
   // the number of nodes that accept the log in each group
   // to succeed, each number should reach zero
@@ -61,13 +63,15 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   private AtomicInteger erroredNodeNum = new AtomicInteger(0);
 
   public AppendGroupEntryHandler(int[] groupReceivedCounter, int receiverNodeIndex,
-      Node receiverNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm) {
+      Node receiverNode, AtomicBoolean leaderShipStale, Log log, AtomicLong newLeaderTerm,
+      RaftMember member) {
     this.groupReceivedCounter = groupReceivedCounter;
     this.receiverNodeIndex = receiverNodeIndex;
     this.receiverNode = receiverNode;
     this.leaderShipStale = leaderShipStale;
     this.log = log;
     this.newLeaderTerm = newLeaderTerm;
+    this.member = member;
   }
 
   @Override
@@ -98,19 +102,19 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
   }
 
   /**
-   * Decrease all related counters of the receiver node. See the field "groupReceivedCounter" for
-   * an example. If all counters reach 0, wake the waiting thread to welcome the success.
+   * Decrease all related counters of the receiver node. See the field "groupReceivedCounter" for an
+   * example. If all counters reach 0, wake the waiting thread to welcome the success.
    */
   private void processAgreement() {
     synchronized (groupReceivedCounter) {
-      logger.debug("Node {} has accepted log {}", receiverNode, log);
+      logger.debug("{}: Node {} has accepted log {}", member.getName(), receiverNode, log);
       // this node is contained in REPLICATION_NUM groups, decrease the counters of these groups
       for (int i = 0; i < replicationNum; i++) {
         int nodeIndex = receiverNodeIndex - i;
         if (nodeIndex < 0) {
           nodeIndex += groupReceivedCounter.length;
         }
-        groupReceivedCounter[nodeIndex] --;
+        groupReceivedCounter[nodeIndex]--;
       }
 
       // examine if all groups has agreed
@@ -130,10 +134,12 @@ public class AppendGroupEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onError(Exception exception) {
-    logger.error("Cannot send the add node request to node {}", receiverNode, exception);
+    logger.error("{}: Cannot send the add node request to node {}", member.getName(), receiverNode,
+        exception);
     if (erroredNodeNum.incrementAndGet() >= replicationNum / 2) {
       synchronized (groupReceivedCounter) {
-        logger.error("Over half of the nodes failed, the request is rejected");
+        logger
+            .error("{}: Over half of the nodes failed, the request is rejected", member.getName());
         groupReceivedCounter.notifyAll();
       }
     }

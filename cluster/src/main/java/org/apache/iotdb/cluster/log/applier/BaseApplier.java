@@ -83,13 +83,16 @@ abstract class BaseApplier implements LogApplier {
       boolean causedByStorageGroupNotSet = metaMissingException instanceof StorageGroupNotSetException;
 
       if (causedByPathNotExist) {
-        logger.debug("Timeseries is not found locally, try pulling it from another group: {}",
-            e.getCause().getMessage());
+        if (logger.isDebugEnabled()) {
+          logger.debug("Timeseries is not found locally[{}], try pulling it from another group: {}",
+              metaGroupMember.getName(), e.getCause().getMessage());
+        }
         try {
           List<MeasurementSchema> schemas = metaGroupMember
               .pullTimeSeriesSchemas(Collections.singletonList(plan.getDeviceId()));
           for (MeasurementSchema schema : schemas) {
-            registerMeasurement(plan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
+            registerMeasurement(
+                plan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
                 schema);
           }
         } catch (MetadataException e1) {
@@ -106,15 +109,17 @@ abstract class BaseApplier implements LogApplier {
   }
 
   /**
-   * If e or one of its recursive causes is a PathNotExistException or
-   * StorageGroupNotSetException, return such an exception or null if it cannot be found.
+   * If e or one of its recursive causes is a PathNotExistException or StorageGroupNotSetException,
+   * return such an exception or null if it cannot be found.
+   *
    * @param currEx
    * @return null or a PathNotExistException or a StorageGroupNotSetException
    */
   private Throwable findMetaMissingException(Throwable currEx) {
     while (true) {
-      if (currEx instanceof PathNotExistException || currEx instanceof StorageGroupNotSetException) {
-       return currEx;
+      if (currEx instanceof PathNotExistException
+          || currEx instanceof StorageGroupNotSetException) {
+        return currEx;
       }
       if (currEx.getCause() == null) {
         break;

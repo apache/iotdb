@@ -28,13 +28,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
+import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.junit.Before;
 import org.junit.Test;
 
 public class AppendNodeEntryHandlerTest {
+
+  private RaftMember member;
+
+  @Before
+  public void setUp() {
+    this.member = new TestMetaGroupMember();
+  }
 
   @Test
   public void testAgreement() throws InterruptedException {
@@ -49,6 +59,7 @@ public class AppendNodeEntryHandlerTest {
         handler.setLeaderShipStale(leadershipStale);
         handler.setVoteCounter(quorum);
         handler.setLog(log);
+        handler.setMember(member);
         handler.setReceiverTerm(receiverTerm);
         handler.setReceiver(TestUtils.getNode(i));
         handler.setPeer(peer);
@@ -76,6 +87,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setLeaderShipStale(leadershipStale);
       handler.setVoteCounter(quorum);
       handler.setLog(log);
+      handler.setMember(member);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(i));
       handler.setPeer(peer);
@@ -100,6 +112,7 @@ public class AppendNodeEntryHandlerTest {
       handler.setLeaderShipStale(leadershipStale);
       handler.setVoteCounter(quorum);
       handler.setLog(log);
+      handler.setMember(member);
       handler.setReceiverTerm(receiverTerm);
       handler.setReceiver(TestUtils.getNode(0));
       handler.setPeer(peer);
@@ -123,6 +136,7 @@ public class AppendNodeEntryHandlerTest {
     handler.setLeaderShipStale(leadershipStale);
     handler.setVoteCounter(quorum);
     handler.setLog(log);
+    handler.setMember(member);
     handler.setReceiverTerm(receiverTerm);
     handler.setReceiver(TestUtils.getNode(0));
     handler.setPeer(peer);

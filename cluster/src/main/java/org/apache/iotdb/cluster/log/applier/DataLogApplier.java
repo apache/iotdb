@@ -38,7 +38,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to IoTDB.
+ * DataLogApplier applies logs like data insertion/deletion/update and timeseries creation to
+ * IoTDB.
  */
 public class DataLogApplier extends BaseApplier {
 
@@ -54,6 +55,8 @@ public class DataLogApplier extends BaseApplier {
   @Override
   public void apply(Log log)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
+    logger.debug("DataMember [{}] start applying Log {}", dataGroupMember.getName(), log);
+
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();

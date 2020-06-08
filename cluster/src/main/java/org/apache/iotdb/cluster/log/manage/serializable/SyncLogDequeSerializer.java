@@ -262,7 +262,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         logger.warn("Cannot create log meta file");
       }
     } catch (IOException e) {
-      logger.error("Cannot create new log meta file ",  e);
+      logger.error("Cannot create new log meta file ", e);
     }
   }
 
@@ -274,7 +274,8 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   private File createNewLogFile(String dirName) throws IOException {
     File logFile = SystemFileFactory.INSTANCE
-        .getFile(dirName + File.separator + LOG_FILE_PREFIX + "-" + versionController.nextVersion());
+        .getFile(
+            dirName + File.separator + LOG_FILE_PREFIX + "-" + versionController.nextVersion());
     if (!logFile.createNewFile()) {
       logger.warn("Cannot create new log file {}", logFile);
     }
@@ -429,7 +430,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
           // actual log
           Log log = readLog(logReader);
           result.add(log);
-          logNumInFile ++;
+          logNumInFile++;
         }
       } catch (IOException e) {
         logger.error("Error in recovering logs from {}: ", logFile, e);
@@ -450,7 +451,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     try {
       log = parser.parse(ByteBuffer.wrap(ReadWriteIOUtils.readBytes(logReader, logSize)));
     } catch (UnknownLogTypeException e) {
-      logger.error("Unknown log detected ",  e);
+      logger.error("Unknown log detected ", e);
     }
 
     logSizeDeque.addLast(totalSize);
@@ -485,9 +486,11 @@ public class SyncLogDequeSerializer implements StableEntryManager {
         state = new HardState();
       }
     }
-    logger.info("Recovered log meta: {}, firstLogPos: {}, removedLogSize: {}, availableVersion: [{},"
-            + " {}], state: {}",
-        meta, firstLogPosition, removedLogSize, minAvailableVersion, maxAvailableVersion, state);
+    logger
+        .info("Recovered log meta: {}, firstLogPos: {}, removedLogSize: {}, availableVersion: [{},"
+                + " {}], state: {}",
+            meta, firstLogPosition, removedLogSize, minAvailableVersion, maxAvailableVersion,
+            state);
     return meta;
   }
 

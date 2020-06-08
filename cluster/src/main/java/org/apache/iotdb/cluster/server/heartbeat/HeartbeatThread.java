@@ -86,7 +86,8 @@ public class HeartbeatThread implements Runnable {
               logger.info("{}: The leader {} timed out", memberName, localMember.getLeader());
               localMember.setCharacter(NodeCharacter.ELECTOR);
             } else {
-              logger.debug("{}: Heartbeat is still valid", memberName);
+              logger.debug("{}: Heartbeat from leader {} is still valid", memberName,
+                  localMember.getLeader());
               Thread.sleep(RaftServer.getConnectionTimeoutInMS());
             }
             break;
@@ -143,6 +144,7 @@ public class HeartbeatThread implements Runnable {
 
         if (localMember.getCharacter() != NodeCharacter.LEADER) {
           // if the character changes, abort the remaining heartbeats
+          logger.warn("The leadership of node {} is ended.", localMember.getThisNode());
           return;
         }
 
@@ -202,7 +204,8 @@ public class HeartbeatThread implements Runnable {
    * Start one round of election. Increase the local term, ask for vote from each of the nodes in
    * the group and become the leader if at least half of them agree.
    */
-  @SuppressWarnings({"java:S2274"}) // enable timeout
+  @SuppressWarnings({"java:S2274"})
+  // enable timeout
   void startElection() {
     synchronized (localMember.getTerm()) {
       long nextTerm = localMember.getTerm().incrementAndGet();

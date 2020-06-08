@@ -40,7 +40,6 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.Before;
 import org.junit.Test;
@@ -100,20 +99,21 @@ public class CatchUpTaskTest {
         @Override
         public void matchTerm(long index, long term, Node header,
             AsyncMethodCallback<Boolean> resultHandler) {
-         new Thread(() -> {
+          new Thread(() -> {
             if (receivedLogs.isEmpty()) {
               resultHandler.onComplete(true);
               return;
             } else {
               for (Log receivedLog : receivedLogs) {
-                if (receivedLog.getCurrLogTerm() == term && receivedLog.getCurrLogIndex() == index) {
+                if (receivedLog.getCurrLogTerm() == term
+                    && receivedLog.getCurrLogIndex() == index) {
                   resultHandler.onComplete(true);
                   return;
                 }
               }
             }
             resultHandler.onComplete(false);
-         }).start();
+          }).start();
         }
       };
     }
@@ -130,8 +130,8 @@ public class CatchUpTaskTest {
     receivedSnapshot = null;
     receivedLogs = new ArrayList<>();
     EmptyContentLog log = new EmptyContentLog();
-    log.setCurrLogIndex(0);
-    log.setCurrLogTerm(0);
+    log.setCurrLogIndex(-1);
+    log.setCurrLogTerm(-1);
     receivedLogs.add(log);
   }
 
@@ -150,11 +150,12 @@ public class CatchUpTaskTest {
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
     peer.setCatchUp(false);
+    peer.setNextIndex(0);
     CatchUpTask task = new CatchUpTask(receiver, peer, sender);
     ClusterDescriptor.getInstance().getConfig().setUseBatchInLogCatchUp(false);
     task.run();
 
-    assertEquals(logList, receivedLogs);
+    assertEquals(logList, receivedLogs.subList(1, receivedLogs.size()));
     assertEquals(9, leaderCommit);
   }
 
@@ -173,10 +174,11 @@ public class CatchUpTaskTest {
     sender.setCharacter(NodeCharacter.LEADER);
     Peer peer = new Peer(10);
     peer.setCatchUp(false);
+    peer.setNextIndex(0);
     CatchUpTask task = new CatchUpTask(receiver, peer, sender);
     task.run();
 
-    assertEquals(logList, receivedLogs);
+    assertEquals(logList, receivedLogs.subList(1, receivedLogs.size()));
     assertEquals(9, leaderCommit);
   }
 }
