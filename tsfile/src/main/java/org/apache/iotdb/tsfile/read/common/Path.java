@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.io.Serializable;
-
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
@@ -33,6 +32,7 @@ public class Path implements Serializable, Comparable<Path> {
 
   private static final long serialVersionUID = 3405277066329298200L;
   private String measurement = null;
+  private String alias = null;
   private String device = null;
   private String fullPath;
   private static final String illegalPathArgument = "Path parameter is null";
@@ -82,7 +82,6 @@ public class Path implements Serializable, Comparable<Path> {
    * @param pathSc complete path string
    */
   private void init(String pathSc) {
-    pathSc = pathSc.trim();
     int i = 0;
     int j = 0;
     for (char c : pathSc.toCharArray()) {
@@ -107,7 +106,7 @@ public class Path implements Serializable, Comparable<Path> {
         subStrs = pathSc.split("\'");
       }
       device = subStrs[0];
-      if (!device.trim().equals("")) {
+      if (!device.equals("")) {
         device = device.substring(0, subStrs[0].length() - 1);
       }
       measurement = subStrs[1];
@@ -177,6 +176,12 @@ public class Path implements Serializable, Comparable<Path> {
   public String getMeasurement() {
     return measurement;
   }
+
+  public String getAlias() { return alias; }
+
+  public void setAlias(String alias) { this.alias = alias; }
+
+  public String getFullPathWithAlias() { return device + TsFileConstant.PATH_SEPARATOR + alias; }
 
   @Override
   public int hashCode() {

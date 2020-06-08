@@ -36,6 +36,7 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -96,7 +97,7 @@ public class AggregationExecutor {
       }
     }
 
-    return constructDataSet(Arrays.asList(aggregateResultList));
+    return constructDataSet(Arrays.asList(aggregateResultList), aggregationPlan);
   }
 
   /**
@@ -175,8 +176,12 @@ public class AggregationExecutor {
           seriesReader.skipCurrentChunk();
           continue;
         }
-        remainingToCalculate = aggregateOverlappedPages(seriesReader, aggregateResultList,
+
+        remainingToCalculate = aggregatePages(seriesReader, aggregateResultList,
                 isCalculatedArray, remainingToCalculate);
+        if (remainingToCalculate == 0) {
+          return;
+        }
       }
     }
 
@@ -211,12 +216,21 @@ public class AggregationExecutor {
     return newRemainingToCalculate;
   }
 
-  private static int aggregateOverlappedPages(IAggregateReader seriesReader,
+  private static int aggregatePages(IAggregateReader seriesReader,
       List<AggregateResult> aggregateResultList, boolean[] isCalculatedArray, int remainingToCalculate)
-      throws IOException {
-    // cal by page data
-    int newRemainingToCalculate = remainingToCalculate;
+      throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
+      //cal by page statistics
+      if (seriesReader.canUseCurrentPageStatistics()) {
+        Statistics pageStatistic = seriesReader.currentPageStatistics();
+        remainingToCalculate = aggregateStatistics(aggregateResultList, isCalculatedArray,
+            remainingToCalculate, pageStatistic);
+        if (remainingToCalculate == 0) {
+          return 0;
+        }
+        seriesReader.skipCurrentPage();
+        continue;
+      }
       BatchData nextOverlappedPageData = seriesReader.nextPage();
       for (int i = 0; i < aggregateResultList.size(); i++) {
         if (!isCalculatedArray[i]) {
@@ -225,15 +239,15 @@ public class AggregationExecutor {
           nextOverlappedPageData.resetBatchData();
           if (aggregateResult.isCalculatedAggregationResult()) {
             isCalculatedArray[i] = true;
-            newRemainingToCalculate--;
-            if (newRemainingToCalculate == 0) {
-              return newRemainingToCalculate;
+            remainingToCalculate--;
+            if (remainingToCalculate == 0) {
+              return 0;
             }
           }
         }
       }
     }
-    return newRemainingToCalculate;
+    return remainingToCalculate;
   }
 
   /**
@@ -260,7 +274,7 @@ public class AggregationExecutor {
       aggregateResults.add(result);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
-    return constructDataSet(aggregateResults);
+    return constructDataSet(aggregateResults, queryPlan);
   }
 
   protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan) throws StorageEngineException {
@@ -305,15 +319,34 @@ public class AggregationExecutor {
    *
    * @param aggregateResultList aggregate result list
    */
-  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList) {
+  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList, RawDataQueryPlan plan) {
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
       TSDataType dataType = resultData.getResultDataType();
       record.addField(resultData.getResult(), dataType);
     }
 
-    SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
-    dataSet.setRecord(record);
+    SingleDataSet dataSet = null;
+    if (((AggregationPlan)plan).getLevel() >= 0) {
+      // current only support count operation
+      Map<Integer, String> pathIndex = new HashMap<>();
+      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan.getDeduplicatedPaths(), ((AggregationPlan)plan).getLevel(), pathIndex);
+
+      RowRecord curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex);
+
+      List<Path> paths = new ArrayList<>();
+      List<TSDataType> dataTypes = new ArrayList<>();
+      for (int i = 0; i < finalPaths.size(); i++) {
+        dataTypes.add(TSDataType.INT64);
+      }
+
+      dataSet = new SingleDataSet(paths, dataTypes);
+      dataSet.setRecord(curRecord);
+    } else {
+      dataSet = new SingleDataSet(selectedSeries, dataTypes);
+      dataSet.setRecord(record);
+    }
+
     return dataSet;
   }
 

@@ -50,9 +50,6 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-
 public class LastQueryExecutor {
   private List<Path> selectedSeries;
   private List<TSDataType> dataTypes;
@@ -86,7 +83,11 @@ public class LastQueryExecutor {
       if (lastTimeValuePair.getValue() != null) {
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
-        pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+        if (selectedSeries.get(i).getAlias() != null) {
+          pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+        } else {
+          pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+        }
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
@@ -158,15 +159,16 @@ public class LastQueryExecutor {
 
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
-      if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
+      if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         continue;
       }
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
-          if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-              && chunkMetaData.getVersion() > version) {
+          if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
+              || (chunkMetaData.getEndTime() == resultPair.getTimestamp()
+              && chunkMetaData.getVersion() > version)) {
             Statistics chunkStatistics = chunkMetaData.getStatistics();
             resultPair =
                 constructLastPair(

@@ -18,9 +18,10 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.GroupByFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
@@ -48,7 +49,7 @@ public class GroupByFillDataSet extends QueryDataSet {
 
   public GroupByFillDataSet(List<Path> paths, List<TSDataType> dataTypes,
       GroupByEngineDataSet groupByEngineDataSet,
-      Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByFillPlan groupByFillPlan)
+      Map<TSDataType, IFill> fillTypes, QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws StorageEngineException, IOException, QueryProcessException {
     super(paths, dataTypes);
     this.groupByEngineDataSet = groupByEngineDataSet;
@@ -57,14 +58,23 @@ public class GroupByFillDataSet extends QueryDataSet {
     initLastTimeArray(context, groupByFillPlan);
   }
 
-  private void initPreviousParis(QueryContext context, GroupByFillPlan groupByFillPlan)
+  private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
           throws StorageEngineException, IOException, QueryProcessException {
     previousValue = new Object[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
       TSDataType dataType = dataTypes.get(i);
-      IFill fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(), -1L);
-      fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(), groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
+      IFill fill;
+      if (fillTypes.containsKey(dataType)) {
+        fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(),
+            ((PreviousFill) fillTypes.get(dataType)).getBeforeRange(),
+            ((PreviousFill) fillTypes.get(dataType)).isUntilLast());
+      } else {
+        fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(),
+            IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval());
+      }
+      fill.configureFill(path, dataType, groupByEngineDataSet.getStartTime(),
+          groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();
       if (timeValuePair == null || timeValuePair.getValue() == null) {
@@ -75,14 +85,14 @@ public class GroupByFillDataSet extends QueryDataSet {
     }
   }
 
-  private void initLastTimeArray(QueryContext context, GroupByFillPlan groupByFillPlan)
+  private void initLastTimeArray(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws IOException, StorageEngineException, QueryProcessException {
     lastTimeArray = new long[paths.size()];
     Arrays.fill(lastTimeArray, Long.MAX_VALUE);
     for (int i = 0; i < paths.size(); i++) {
       TimeValuePair lastTimeValuePair = LastQueryExecutor.calculateLastPairForOneSeries(
-              paths.get(i), dataTypes.get(i), context,
-              groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
+          paths.get(i), dataTypes.get(i), context,
+          groupByFillPlan.getAllMeasurementsInDevice(paths.get(i).getDevice()));
       if (lastTimeValuePair.getValue() != null) {
         lastTimeArray[i] = lastTimeValuePair.getTimestamp();
       }
@@ -102,11 +112,17 @@ public class GroupByFillDataSet extends QueryDataSet {
       Field field = rowRecord.getFields().get(i);
       // current group by result is null
       if (field == null || field.getDataType() == null) {
-        // the previous value is not null and
-        // (fill type is not previous until last or now time is before last time)
-        if (previousValue[i] != null
-            && (!((PreviousFill) fillTypes.get(dataTypes.get(i))).isUntilLast()
-            || rowRecord.getTimestamp() <= lastTimeArray[i])) {
+        // the previous value is not null
+        // and (fill type is not previous until last or now time is before last time)
+        // and (previous before range is not limited or previous before range contains the previous interval)
+        if (previousValue[i] != null && (
+            (fillTypes.containsKey(dataTypes.get(i)) && !((PreviousFill) fillTypes
+                .get(dataTypes.get(i))).isUntilLast())
+                || rowRecord.getTimestamp() <= lastTimeArray[i]) && (
+            !fillTypes.containsKey(dataTypes.get(i))
+                || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange() < 0
+                || ((PreviousFill) fillTypes.get(dataTypes.get(i))).getBeforeRange()
+                >= groupByEngineDataSet.interval)) {
           rowRecord.getFields().set(i, Field.getField(previousValue[i], dataTypes.get(i)));
         }
       } else {

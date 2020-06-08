@@ -20,6 +20,17 @@
 
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -56,12 +67,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
-import static org.junit.Assert.*;
 
 public class TTLTest {
 
@@ -103,6 +108,7 @@ public class TTLTest {
   public void testSetMetaTTL() throws IOException, MetadataException {
     // exception is expected when setting ttl to a non-exist storage group
     boolean caught = false;
+
     try {
       MManager.getInstance().setTTL(sg1 + ".notExist", ttl);
     } catch (MetadataException e) {
@@ -121,13 +127,14 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLWrite() throws WriteProcessException {
+  public void testTTLWrite() throws WriteProcessException, QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
-    insertPlan.setValues(new String[]{"1"});
-    insertPlan.setSchemas(
+    insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
+    insertPlan.setValues(new Object[]{1L});
+    insertPlan.setSchemasAndTransferType(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
@@ -147,13 +154,14 @@ public class TTLTest {
     storageGroupProcessor.insert(insertPlan);
   }
 
-  private void prepareData() throws WriteProcessException {
+  private void prepareData() throws WriteProcessException, QueryProcessException {
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(sg1);
     insertPlan.setTime(System.currentTimeMillis());
     insertPlan.setMeasurements(new String[]{"s1"});
-    insertPlan.setValues(new String[]{"1"});
-    insertPlan.setSchemas(
+    insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
+    insertPlan.setValues(new Object[]{1L});
+    insertPlan.setSchemasAndTransferType(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     long initTime = System.currentTimeMillis();
@@ -162,7 +170,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
@@ -170,7 +178,7 @@ public class TTLTest {
       insertPlan.setTime(initTime - 2000 + i);
       storageGroupProcessor.insert(insertPlan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.asyncCloseAllWorkingTsFileProcessors();
+        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }
@@ -227,7 +235,8 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLRemoval() throws StorageEngineException, WriteProcessException {
+  public void testTTLRemoval()
+      throws StorageEngineException, WriteProcessException, QueryProcessException {
     prepareData();
 
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
@@ -338,7 +347,7 @@ public class TTLTest {
   }
 
   @Test
-  public void testTTLCleanFile() throws WriteProcessException {
+  public void testTTLCleanFile() throws WriteProcessException, QueryProcessException {
     prepareData();
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 

@@ -125,7 +125,7 @@ matrix:
       jdk: openjdk8
       script:
         # now, grafana has no tests; spark-* tests are written by scala
-        - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!site','!distribution' -am
+        - mvn post-integration-test -Pcode-coverage -Pcoveralls -pl '!distribution' -am
       after_success:
         - mvn coveralls:report -DserviceName=travis_ci -pl tsfile,server,jdbc,client,session,hive-connector,flink-iotdb-connector,flink-tsfile-connector
     - os: linux
@@ -133,7 +133,7 @@ matrix:
       dist: xenial
       jdk: openjdk8
       script:
-        - mvn clean package -pl site
+        - mvn -P site clean package -pl site
     - os: windows
       name: windows-website checker
       language: c
@@ -152,7 +152,7 @@ matrix:
         - export "M2_HOME=/c/mvn363/apache-maven-3.6.3"
         - export "PATH=/c/mvn363/apache-maven-3.6.3/bin:$PATH"
       script:
-        - mvn clean package -pl site
+        - mvn -P site clean package -pl site
 cache:
   directories:
     - '$HOME/.m2/repository'
@@ -174,7 +174,7 @@ script:
     - mvn -B apache-rat:check
     # Output something every 10 minutes or Travis kills the job
     - while sleep 540; do echo "=====[ $SECONDS seconds still running ]====="; done &
-    - mvn -B clean test integration-test -pl '!site' -am
+    - mvn -B clean test integration-test
     # Killing background sleep loop
     - kill %1
 

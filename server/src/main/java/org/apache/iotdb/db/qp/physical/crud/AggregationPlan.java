@@ -31,6 +31,8 @@ public class AggregationPlan extends RawDataQueryPlan {
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
 
+  private int level = -1;
+
   public AggregationPlan() {
     super();
     setOperatorType(Operator.OperatorType.AGGREGATION);
@@ -55,5 +57,13 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   public void setDeduplicatedAggregations(List<String> deduplicatedAggregations) {
     this.deduplicatedAggregations = deduplicatedAggregations;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
   }
 }

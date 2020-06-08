@@ -155,11 +155,8 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
           .isNeedUpgrade(unseqFile)) {
         selectOverlappedSeqFiles(unseqFile);
       }
-
-      // skip if the unseqFile and tmpSelectedSeqFiles has TsFileResources that need to be upgraded
-      boolean isNeedUpgrade = checkForUpgrade(unseqFile);
       boolean isClosed = checkClosed(unseqFile);
-      if (isNeedUpgrade || !isClosed) {
+      if (!isClosed) {
         tmpSelectedSeqFiles.clear();
         unseqIndex++;
         timeConsumption = System.currentTimeMillis() - startTime;
@@ -213,36 +210,22 @@ public class MaxFileMergeFileSelector implements IMergeFileSelector {
     return isClosed;
   }
 
-  private boolean checkForUpgrade(TsFileResource unseqFile) {
-    // reject the selection if it contains files that should be upgraded
-    boolean isNeedUpgrade = false;
-    if (UpgradeUtils.isNeedUpgrade(unseqFile)) {
-      isNeedUpgrade = true;
-    }
-    for (Integer seqIdx : tmpSelectedSeqFiles) {
-      if (UpgradeUtils.isNeedUpgrade(resource.getSeqFiles().get(seqIdx))) {
-        isNeedUpgrade = true;
-        break;
-      }
-    }
-    return isNeedUpgrade;
-  }
-
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
 
     int tmpSelectedNum = 0;
-    for (Entry<String, Long> deviceStartTimeEntry : unseqFile.getStartTimeMap().entrySet()) {
+    for (Entry<String, Integer> deviceStartTimeEntry : unseqFile.getDeviceToIndexMap().entrySet()) {
       String deviceId = deviceStartTimeEntry.getKey();
-      Long unseqStartTime = deviceStartTimeEntry.getValue();
-      Long unseqEndTime = unseqFile.getEndTimeMap().get(deviceId);
+      int deviceIndex = deviceStartTimeEntry.getValue();
+      long unseqStartTime = unseqFile.getStartTime(deviceIndex);
+      long unseqEndTime = unseqFile.getEndTime(deviceIndex);
 
       boolean noMoreOverlap = false;
       for (int i = 0; i < resource.getSeqFiles().size() && !noMoreOverlap; i++) {
         TsFileResource seqFile = resource.getSeqFiles().get(i);
-        if (seqSelected[i] || !seqFile.getEndTimeMap().containsKey(deviceId)) {
+        if (seqSelected[i] || !seqFile.getDeviceToIndexMap().containsKey(deviceId)) {
           continue;
         }
-        long seqEndTime = seqFile.getEndTimeMap().get(deviceId);
+        long seqEndTime = seqFile.getEndTime(deviceId);
         if (unseqEndTime <= seqEndTime) {
           // the unseqFile overlaps current seqFile
           tmpSelectedSeqFiles.add(i);

@@ -79,6 +79,7 @@ public class IoTDBConstant {
   public static final String SEQUENCE_FLODER_NAME = "sequence";
   public static final String UNSEQUENCE_FLODER_NAME = "unsequence";
   public static final String TSFILE_NAME_SEPARATOR = "-";
+  public static final String UPGRADE_FOLDER_NAME = "upgrade";
 
   // system folder name
   public static final String SYSTEM_FOLDER_NAME = "system";
@@ -92,4 +93,5 @@ public class IoTDBConstant {
   public static final String MQTT_PORT_NAME = "mqtt_port";
   public static final String MQTT_HANDLER_POOL_SIZE_NAME = "mqtt_handler_pool_size";
   public static final String MQTT_PAYLOAD_FORMATTER_NAME = "mqtt_payload_formatter";
+  public static final String MQTT_MAX_MESSAGE_SIZE = "mqtt_max_message_size";
 }

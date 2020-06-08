@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.executor.fill;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -103,7 +102,6 @@ public class LastPointReader {
               dataType);
         } else {
           List<ChunkMetadata> seqChunkMetadataList = timeseriesMetadata.loadChunkMetadataList();
-
           for (int i = seqChunkMetadataList.size() - 1; i >= 0; i--) {
             lastPoint = getChunkLastPoint(seqChunkMetadataList.get(i));
             // last point of this sequence chunk is valid, quit the loop
@@ -126,7 +124,7 @@ public class LastPointReader {
         sortUnSeqFileResourcesInDecendingOrder(dataSource.getUnseqResources());
 
     while (!unseqFileResource.isEmpty()
-        && (lBoundTime <= unseqFileResource.peek().getEndTimeMap().get(seriesPath.getDevice()))) {
+        && (lBoundTime <= unseqFileResource.peek().getEndTime(seriesPath.getDevice()))) {
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(
               unseqFileResource.poll(), seriesPath, context, timeFilter, allSensors);
@@ -184,12 +182,9 @@ public class LastPointReader {
     PriorityQueue<TsFileResource> unseqTsFilesSet =
         new PriorityQueue<>(
             (o1, o2) -> {
-              Map<String, Long> startTimeMap = o1.getEndTimeMap();
-              Long minTimeOfO1 = startTimeMap.get(seriesPath.getDevice());
-              Map<String, Long> startTimeMap2 = o2.getEndTimeMap();
-              Long minTimeOfO2 = startTimeMap2.get(seriesPath.getDevice());
-
-              return Long.compare(minTimeOfO2, minTimeOfO1);
+              Long maxTimeOfO1 = o1.getEndTime(seriesPath.getDevice());
+              Long maxTimeOfO2 = o2.getEndTime(seriesPath.getDevice());
+              return Long.compare(maxTimeOfO2, maxTimeOfO1);
             });
     unseqTsFilesSet.addAll(tsFileResources);
     return unseqTsFilesSet;

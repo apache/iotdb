@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import java.util.LinkedHashMap;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
