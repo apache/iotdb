@@ -75,6 +75,11 @@ public class WriteLogNodeManagerTest {
 
   @Test
   public void testAutoSync() throws IOException, InterruptedException {
+    // This UT is for WAL, but WAL is disabled when using NVM, so just ignore.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      return;
+    }
+
     // this test check that nodes in a manager will sync periodically.
     int flushWalPeriod = config.getFlushWalThreshold();
     config.setForceWalPeriodInMs(10000);

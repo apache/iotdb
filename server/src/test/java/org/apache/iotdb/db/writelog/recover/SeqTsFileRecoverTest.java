@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -169,6 +170,11 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testNonLastRecovery() throws StorageGroupProcessorException, IOException {
+    // This UT recovers data by WAL, but WAL is disabled when using NVM, so just ignore.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      return;
+    }
+
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         versionController, resource, true, false, "root.sg");
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
@@ -218,6 +224,11 @@ public class SeqTsFileRecoverTest {
 
   @Test
   public void testLastRecovery() throws StorageGroupProcessorException, IOException {
+    // This UT recovers data by WAL, but WAL is disabled when using NVM, so just ignore.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      return;
+    }
+
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         versionController, resource, true, true, "root.sg");
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);

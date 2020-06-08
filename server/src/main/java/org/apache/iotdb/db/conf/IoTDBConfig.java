@@ -190,7 +190,7 @@ public class IoTDBConfig {
   /**
    * Is NVM enable.
    */
-  private boolean enableNVM = true;
+  private boolean enableNVM = false;
 
   /**
    * NVM directory.

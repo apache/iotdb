@@ -174,7 +174,7 @@ public class NVMBinaryTVList extends NVMTVList {
 
   @Override
   protected void setValueForSort(int arrayIndex, int elementIndex, Object value) {
-    tempValuesForSort[arrayIndex * ARRAY_SIZE + elementIndex][0] = (Binary) value;
+    tempValuesForSort[arrayIndex][elementIndex] = (Binary) value;
   }
 
   @Override

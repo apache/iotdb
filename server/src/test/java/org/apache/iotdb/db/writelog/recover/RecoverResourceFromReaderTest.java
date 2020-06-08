@@ -27,6 +27,7 @@ import java.io.OutputStream;
 import java.util.Collections;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -172,6 +173,11 @@ public class RecoverResourceFromReaderTest {
 
   @Test
   public void testResourceRecovery() throws StorageGroupProcessorException, IOException {
+    // This UT recovers data by WAL, but WAL is disabled when using NVM, so just ignore.
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableNVM()) {
+      return;
+    }
+
     // write a broken resourceFile
     File resourceFile = FSFactoryProducer.getFSFactory()
         .getFile(resource.getFile() + TsFileResource.RESOURCE_SUFFIX);
