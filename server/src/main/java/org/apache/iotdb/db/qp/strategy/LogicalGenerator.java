@@ -47,6 +47,7 @@ import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
@@ -318,7 +319,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
-    initializedOperator = new LoadConfigurationOperator();
+    if (ctx.GLOBAL() != null) {
+      initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.GLOBAL);
+    } else {
+      initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.LOCAL);
+    }
+
   }
 
   @Override
@@ -794,7 +800,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setFill(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
-
     // parse timeUnit
     queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
     queryOp.setSlidingStep(queryOp.getUnit());
@@ -1112,7 +1117,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : properties) {
         props.put(property.ID().getText().toLowerCase(),
-                property.propertyValue().getText().toLowerCase());
+            property.propertyValue().getText().toLowerCase());
       }
     }
     createTimeSeriesOperator.setCompressor(compressor);

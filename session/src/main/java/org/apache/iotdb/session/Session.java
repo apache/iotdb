@@ -58,7 +58,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +75,7 @@ public class Session {
   private String password;
   private TSIService.Iface client = null;
   private long sessionId;
-  private TSocket transport;
+  private TTransport transport;
   private boolean isClosed = true;
   private ZoneId zoneId;
   private long statementId;
@@ -116,7 +118,9 @@ public class Session {
     if (!isClosed) {
       return;
     }
-    transport = new TSocket(host, port, connectionTimeoutInMs);
+
+    transport = new TFastFramedTransport(new TSocket(host, port, connectionTimeoutInMs));
+
     if (!transport.isOpen()) {
       try {
         transport.open();
@@ -901,6 +905,7 @@ public class Session {
       throws StatementExecutionException, IoTDBConnectionException {
 
     TSExecuteStatementReq execReq = new TSExecuteStatementReq(sessionId, sql, statementId);
+
     execReq.setFetchSize(fetchSize);
     TSExecuteStatementResp execResp;
     try {

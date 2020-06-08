@@ -287,6 +287,11 @@ public class IoTDBConfig {
   private int mManagerCacheSize = 400000;
 
   /**
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   */
+  private int mRemoteSchemaCacheSize = 100000;
+
+  /**
    * Is external sort enable.
    */
   private boolean enableExternalSort = true;
@@ -932,11 +937,19 @@ public class IoTDBConfig {
     this.mManagerCacheSize = mManagerCacheSize;
   }
 
+  public int getmRemoteSchemaCacheSize() {
+    return mRemoteSchemaCacheSize;
+  }
+
+  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
+    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
+  }
+
   public boolean isSyncEnable() {
     return isSyncEnable;
   }
 
-  void setSyncEnable(boolean syncEnable) {
+  public void setSyncEnable(boolean syncEnable) {
     isSyncEnable = syncEnable;
   }
 

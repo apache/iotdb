@@ -484,7 +484,7 @@ public class MTree implements Serializable {
    *
    * @return storage group in the given path
    */
-  String getStorageGroupName(String path) throws MetadataException {
+  String getStorageGroupName(String path) throws StorageGroupNotSetException {
     String[] nodes = MetaUtils.getNodeNames(path);
     MNode cur = root;
     for (int i = 1; i < nodes.length; i++) {

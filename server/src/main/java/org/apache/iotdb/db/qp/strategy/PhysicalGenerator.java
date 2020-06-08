@@ -47,6 +47,8 @@ import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
@@ -70,9 +72,10 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -209,7 +212,9 @@ public class PhysicalGenerator {
                     "not supported operator type %s in ttl operation.", operator.getType()));
         }
       case LOAD_CONFIGURATION:
-        return new LoadConfigurationPlan();
+        LoadConfigurationOperatorType type = ((LoadConfigurationOperator) operator)
+            .getLoadConfigurationOperatorType();
+        return generateLoadConfigurationPlan(type);
       case SHOW:
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_DYNAMIC_PARAMETER:
@@ -271,8 +276,23 @@ public class PhysicalGenerator {
     }
   }
 
-  protected List<TSDataType> getSeriesTypes(List<String> paths, String aggregation)
-      throws MetadataException {
+
+  protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
+      throws QueryProcessException {
+    switch (type) {
+      case GLOBAL:
+        return new LoadConfigurationPlan(LoadConfigurationPlanType.GLOBAL);
+      case LOCAL:
+        return new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
+      default:
+        throw new QueryProcessException(
+            String.format("Unrecognized load configuration operator type, %s", type.name()));
+    }
+
+  }
+
+  protected List<TSDataType> getSeriesTypes(List<String> paths,
+      String aggregation) throws MetadataException {
     return SchemaUtils.getSeriesTypesByString(paths, aggregation);
   }
 
