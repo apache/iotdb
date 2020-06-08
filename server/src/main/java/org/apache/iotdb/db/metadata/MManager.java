@@ -295,6 +295,9 @@ public class MManager {
       case MetadataOperationType.CHANGE_OFFSET:
         changeOffset(args[1], Long.parseLong(args[2]));
         break;
+      case MetadataOperationType.CHANGE_ALIAS:
+        changeAlias(args[1], args[2]);
+        break;
       default:
         logger.error("Unrecognizable command {}", cmd);
     }
@@ -388,7 +391,7 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return  The String is the deletion failed Timeseries
+   * @return The String is the deletion failed Timeseries
    */
   public String deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
@@ -724,7 +727,8 @@ public class MManager {
   }
 
   /**
-   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include alias.
+   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include
+   * alias.
    */
   public List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {
     lock.readLock().lock();
@@ -751,7 +755,7 @@ public class MManager {
    * To calculate the count of nodes in the given level for given prefix path.
    *
    * @param prefixPath a prefix path or a full path, can not contain '*'
-   * @param level the level can not be smaller than the level of the prefixPath
+   * @param level      the level can not be smaller than the level of the prefixPath
    */
   public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
     lock.readLock().lock();
@@ -1111,17 +1115,31 @@ public class MManager {
     }
   }
 
+  public void changeAlias(String path, String alias) throws MetadataException {
+    lock.writeLock().lock();
+    try {
+      LeafMNode leafMNode = (LeafMNode) mtree.getNodeByPath(path);
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
+      leafMNode.getParent().addAlias(alias, leafMNode);
+      leafMNode.setAlias(alias);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
   /**
    * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
    *
+   * @param alias         newly added alias
    * @param tagsMap       newly added tags map
    * @param attributesMap newly added attributes map
    * @param fullPath      timeseries
    */
-  public void upsertTagsAndAttributes(
-      Map<String, String> tagsMap, Map<String, String> attributesMap, String fullPath)
-      throws MetadataException, IOException {
+  public void upsertTagsAndAttributes(String alias, Map<String, String> tagsMap,
+      Map<String, String> attributesMap, String fullPath) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
@@ -1129,15 +1147,35 @@ public class MManager {
         throw new PathNotExistException(fullPath);
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
+      // upsert alias
+      if (alias != null && !alias.equals(leafMNode.getAlias())) {
+
+        if (leafMNode.getParent().hasChild(alias)) {
+          throw new MetadataException("The alias already exists.");
+        }
+        if (leafMNode.getAlias() != null) {
+          leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+        }
+        leafMNode.getParent().addAlias(alias, leafMNode);
+        leafMNode.setAlias(alias);
+        // persist to WAL
+        logWriter.changeAlias(fullPath, alias);
+      }
+
+      if (tagsMap == null && attributesMap == null) {
+        return;
+      }
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
-        for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+        if (tagsMap != null) {
+          for (Entry<String, String> entry : tagsMap.entrySet()) {
+            tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+                .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          }
         }
         return;
       }
@@ -1145,28 +1183,32 @@ public class MManager {
       Pair<Map<String, String>, Map<String, String>> pair =
           tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
-      for (Entry<String, String> entry : tagsMap.entrySet()) {
-        String key = entry.getKey();
-        String value = entry.getValue();
-        String beforeValue = pair.left.get(key);
-        pair.left.put(key, value);
-        // if the key has existed and the value is not equal to the new one
-        // we should remove before key-value from inverted index map
-        if (beforeValue != null && !beforeValue.equals(value)) {
-          tagIndex.get(key).get(beforeValue).remove(leafMNode);
-          if (tagIndex.get(key).get(beforeValue).isEmpty()) {
-            tagIndex.get(key).remove(beforeValue);
+      if (tagsMap != null) {
+        for (Entry<String, String> entry : tagsMap.entrySet()) {
+          String key = entry.getKey();
+          String value = entry.getValue();
+          String beforeValue = pair.left.get(key);
+          pair.left.put(key, value);
+          // if the key has existed and the value is not equal to the new one
+          // we should remove before key-value from inverted index map
+          if (beforeValue != null && !beforeValue.equals(value)) {
+            tagIndex.get(key).get(beforeValue).remove(leafMNode);
+            if (tagIndex.get(key).get(beforeValue).isEmpty()) {
+              tagIndex.get(key).remove(beforeValue);
+            }
+          }
+
+          // if the key doesn't exist or the value is not equal to the new one
+          // we should add a new key-value to inverted index map
+          if (beforeValue == null || !beforeValue.equals(value)) {
+            tagIndex.computeIfAbsent(key, k -> new HashMap<>())
+                .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
           }
         }
-
-        // if the key doesn't exist or the value is not equal to the new one
-        // we should add a new key-value to inverted index map
-        if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-              .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
-        }
       }
-      pair.left.putAll(tagsMap);
+      if (tagsMap != null) {
+        pair.left.putAll(tagsMap);
+      }
       pair.right.putAll(attributesMap);
 
       // persist the change to disk

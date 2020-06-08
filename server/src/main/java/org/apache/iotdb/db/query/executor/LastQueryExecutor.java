@@ -176,8 +176,9 @@ public class LastQueryExecutor {
           FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
-          if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-              && chunkMetaData.getVersion() > version) {
+          if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
+              || (chunkMetaData.getEndTime() == resultPair.getTimestamp()
+              && chunkMetaData.getVersion() > version)) {
             Statistics chunkStatistics = chunkMetaData.getStatistics();
             resultPair =
                 constructLastPair(

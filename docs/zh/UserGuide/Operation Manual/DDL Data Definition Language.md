@@ -109,10 +109,10 @@ ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
-* 更新插入标签和属性
-> 如果该标签或属性原来不存在，则插入，否则，用新值更新原来的旧值
+* 更新插入别名，标签和属性
+> 如果该别名，标签或属性原来不存在，则插入，否则，用新值更新原来的旧值
 ```
-ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
+ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
 ## 查看时间序列
