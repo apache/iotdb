@@ -55,13 +55,13 @@ public class CatchUpTask implements Runnable {
   }
 
   /**
-   *
    * @return true if the matched index exceed the memory log bound so a snapshot is necessary, or
    * false if the catch up can be done using memory logs.
    * @throws TException
    * @throws InterruptedException
    */
   boolean checkMatchIndex() throws TException, InterruptedException, LeaderUnknownException {
+    boolean isLogDebug = logger.isDebugEnabled();
     synchronized (raftMember.getLogManager()) {
       peer.setNextIndex(raftMember.getLogManager().getLastLogIndex());
       try {
@@ -69,8 +69,11 @@ public class CatchUpTask implements Runnable {
         long lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
         long hi = peer.getNextIndex() + 1;
         logs = raftMember.getLogManager().getEntries(lo, hi);
-        logger.debug("Get {} logs of [{}, {}]to check match index, local first index: {}",
-            logs.size(), lo, hi, localFirstIndex);
+        if (isLogDebug) {
+          logger.debug(
+              "node [{}] use {} logs of [{}, {}] to fix log inconsistency with node [{}], local first index: {}",
+              raftMember.getName(), node, logs.size(), lo, hi, localFirstIndex);
+        }
       } catch (Exception e) {
         logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
       }
@@ -101,10 +104,12 @@ public class CatchUpTask implements Runnable {
       boolean matched = SyncClientAdaptor
           .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+      logger.debug("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
+          matched ? "succeed" : "failed", log);
       if (matched) {
         // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
         logs.subList(0, index).clear();
-        if (logger.isDebugEnabled()) {
+        if (isLogDebug) {
           logger.debug("{} makes {} catch up with {} cached logs", raftMember.getName(), node,
               logs.size());
         }
@@ -143,8 +148,10 @@ public class CatchUpTask implements Runnable {
       peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
       // update peer's status so raftMember can send logs in main thread.
       peer.setCatchUp(true);
-      logger.debug("Catch up {} finished, update it's matchIndex to {}", node,
-          logs.get(logs.size() - 1).getCurrLogIndex());
+      if (logger.isDebugEnabled()) {
+        logger.debug("Catch up {} finished, update it's matchIndex to {}", node,
+            logs.get(logs.size() - 1).getCurrLogIndex());
+      }
     } catch (LeaderUnknownException e) {
       logger.warn("Catch up {} failed because leadership is lost", node);
     } catch (Exception e) {

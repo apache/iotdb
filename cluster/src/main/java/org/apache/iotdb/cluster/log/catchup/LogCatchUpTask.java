@@ -110,7 +110,7 @@ public class LogCatchUpTask implements Callable<Void> {
 
       handler.setLog(log);
       request.setEntry(log.serialize());
-      logger.debug("Catching up {} with log {}", node, log);
+      logger.debug("{}: Catching up {} with log {}", raftMember.getName(), node, log);
 
       synchronized (appendSucceed) {
         AsyncClient client = raftMember.connectNode(node);
@@ -168,7 +168,9 @@ public class LogCatchUpTask implements Callable<Void> {
       } else {
         request.setPrevLogTerm(logs.get(i - 1).getCurrLogTerm());
       }
-      logger.debug("Catching up {} with log {}", node, logList);
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Catching up {} with log {}", raftMember.getName(), node, logList);
+      }
 
       // do append entries
       synchronized (appendSucceed) {
@@ -191,8 +193,8 @@ public class LogCatchUpTask implements Callable<Void> {
     } else {
       doLogCatchUp();
     }
+    logger.debug("{}: Catch up {} finished", raftMember.getName(), node);
 
-    logger.debug("Catch up {} finished", node);
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);
     return null;

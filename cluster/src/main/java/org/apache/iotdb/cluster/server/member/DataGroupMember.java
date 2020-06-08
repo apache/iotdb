@@ -395,7 +395,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     PartitionedSnapshot snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
     try {
       snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
-      logger.debug("{} received a snapshot {}", name, snapshot);
+      if (logger.isDebugEnabled()) {
+        logger.debug("{} received a snapshot {}", name, snapshot);
+      }
       applyPartitionedSnapshot(snapshot);
       resultHandler.onComplete(null);
     } catch (Exception e) {
@@ -452,7 +454,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @param snapshot
    */
   public void applySnapshot(Snapshot snapshot, int slot) throws SnapshotApplicationException {
-    logger.debug("{}: applying snapshot {}", name, snapshot);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: applying snapshot {}", name, snapshot);
+    }
     // ensure storage groups are synchronized
     metaGroupMember.syncLeader();
     if (snapshot instanceof FileSnapshot) {
@@ -770,8 +774,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // wait if the data of the slot is in another node
       slotManager.waitSlot(requiredSlot);
     }
-    logger.debug("{}: {} slots are requested, first:{}, last: {}", name, requiredSlots.size(),
-        requiredSlots.get(0), requiredSlots.get(requiredSlots.size() - 1));
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: {} slots are requested, first:{}, last: {}", name, requiredSlots.size(),
+          requiredSlots.get(0), requiredSlots.get(requiredSlots.size() - 1));
+    }
 
     // If the logs between [currCommitLogIndex, currLastLogIndex] are committed after the
     // snapshot is generated, they will be invisible to the new slot owner and thus lost forever

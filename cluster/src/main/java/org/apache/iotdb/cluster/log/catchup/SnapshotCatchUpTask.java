@@ -84,11 +84,12 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Void
   @Override
   public Void call() throws InterruptedException, TException, LeaderUnknownException {
     if (doSnapshotCatchUp()) {
-      logger.debug("Snapshot catch up {} finished, begin to catch up log", node);
+      logger
+          .debug("{}: Snapshot catch up {} finished, begin to catch up log", raftMember.getName(),
+              node);
       doLogCatchUp();
     }
-
-    logger.debug("Catch up {} finished", node);
+    logger.debug("{}: Catch up {} finished", raftMember.getName(), node);
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);
     return null;

@@ -42,7 +42,6 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -174,7 +173,7 @@ public class ClientServer extends TSServiceImpl {
     if (serverService == null) {
       return;
     }
-    
+
     poolServer.stop();
     serverService.shutdownNow();
     serverTransport.close();
@@ -189,9 +188,8 @@ public class ClientServer extends TSServiceImpl {
    */
   @Override
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-      return metaGroupMember.executeNonQuery(plan);
+    return metaGroupMember.executeNonQuery(plan);
   }
-
 
 
   /**
@@ -297,7 +295,4 @@ public class ClientServer extends TSServiceImpl {
       }
     }
   }
-
-
-
 }

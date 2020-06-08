@@ -41,8 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to
- * a sub-snapshot according to its slot and stores timeseries schemas of each slot.
+ * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to a
+ * sub-snapshot according to its slot and stores timeseries schemas of each slot.
  */
 public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends RaftLogManager {
 

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
 import java.io.BufferedInputStream;
@@ -662,9 +661,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         // the previously sent id conflicted, generate a new one
         setNodeIdentifier(genNodeIdentifier());
       }
-      if (logger.isDebugEnabled()) {
-        logger.debug("Send identifier {} to the leader", thisNode.getNodeIdentifier());
-      }
+      logger.debug("Send identifier {} to the leader", thisNode.getNodeIdentifier());
       response.setFollowerIdentifier(thisNode.getNodeIdentifier());
     }
 
@@ -1138,7 +1135,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           MetaClient client = (MetaClient) connectNode(node);
           try {
             client.appendEntry(request, new AppendGroupEntryHandler(groupRemainings, i, node,
-                leaderShipStale, log, newLeaderTerm));
+                leaderShipStale, log, newLeaderTerm, this));
           } catch (TException e) {
             logger.error("Cannot send log to node {}", node, e);
           }
@@ -1528,7 +1525,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return StatusUtils.NO_STORAGE_GROUP;
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
-
     return forwardPlan(planGroupMap);
   }
 
@@ -1795,9 +1791,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     syncLeader();
     // get all data groups
     List<PartitionGroup> partitionGroups = routeFilter(null, path);
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
-    }
+    logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
     List<IReaderByTimestamp> readers = new ArrayList<>();
     for (PartitionGroup partitionGroup : partitionGroups) {
       // query each group to get a reader in that group
@@ -1827,8 +1821,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (partitionGroup.contains(thisNode)) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember = getLocalDataMember(partitionGroup.getHeader());
-      logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(),
-          context.getQueryId());
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: creating a local reader for {}#{}", name, path.getFullPath(),
+            context.getQueryId());
+      }
       return dataGroupMember.getReaderByTimestamp(path, deviceMeasurements, dataType, context);
     } else {
       return getRemoteReaderByTimestamp(path, deviceMeasurements, dataType, partitionGroup,
@@ -1898,10 +1894,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     syncLeader();
     // find the groups that should be queried using the timeFilter
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: Sending data query of {} to {} groups", name, path,
-          partitionGroups.size());
-    }
+    logger.debug("{}: Sending data query of {} to {} groups", name, path,
+        partitionGroups.size());
     ManagedMergeReader mergeReader = new ManagedMergeReader(dataType);
     try {
       // build a reader for each group and merge them
@@ -1939,10 +1933,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // make sure the partition table is new
     syncLeader();
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: Sending aggregation query of {} to {} groups", name, path,
-          partitionGroups.size());
-    }
+    logger.debug("{}: Sending aggregation query of {} to {} groups", name, path,
+        partitionGroups.size());
     List<AggregateResult> results = null;
     // get the aggregation result of each group and merge them
     for (PartitionGroup partitionGroup : partitionGroups) {
@@ -2142,10 +2134,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       IPointReader seriesPointReader = dataGroupMember
           .getSeriesPointReader(path, deviceMeasurements, dataType, timeFilter, valueFilter,
               context);
-      logger.debug("{}: creating a local reader for {}#{} of {}, empty: {}", name,
-          path.getFullPath(),
-          context.getQueryId(), partitionGroup.getHeader(),
-          !seriesPointReader.hasNextTimeValuePair());
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: creating a local reader for {}#{} of {}, empty: {}", name,
+            path.getFullPath(),
+            context.getQueryId(), partitionGroup.getHeader(),
+            !seriesPointReader.hasNextTimeValuePair());
+      }
       return seriesPointReader;
     } else {
       return getRemoteSeriesPointReader(timeFilter, valueFilter, dataType, path,
