@@ -26,24 +26,18 @@ import org.apache.iotdb.db.engine.merge.IMergeFileSelector;
 import org.apache.iotdb.db.engine.merge.IRecoverMergeTask;
 import org.apache.iotdb.db.engine.merge.MergeCallback;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.sizeMerge.independence.selector.IndependenceMaxFileSelector;
-import org.apache.iotdb.db.engine.merge.sizeMerge.independence.task.IndependenceMergeTask;
-import org.apache.iotdb.db.engine.merge.sizeMerge.independence.task.RecoverIndependenceMergeTask;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.selector.RegularizationMaxFileSelector;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RecoverRegularizationMergeTask;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 public enum SizeMergeFileStrategy {
-  REGULARIZATION,
-  INDEPENDENCE;
+  REGULARIZATION;
   // TODO new strategies?
 
   public IMergeFileSelector getFileSelector(Collection<TsFileResource> seqFiles, long budget,
       long timeLowerBound) {
     switch (this) {
-      case INDEPENDENCE:
-        return new IndependenceMaxFileSelector(seqFiles, budget, timeLowerBound);
       case REGULARIZATION:
       default:
         return new RegularizationMaxFileSelector(seqFiles, budget, timeLowerBound);
@@ -53,9 +47,6 @@ public enum SizeMergeFileStrategy {
   public Callable<Void> getMergeTask(MergeResource mergeResource, String storageGroupSysDir,
       MergeCallback callback, String taskName, String storageGroupName) {
     switch (this) {
-      case INDEPENDENCE:
-        return new IndependenceMergeTask(mergeResource, storageGroupSysDir, callback, taskName,
-            storageGroupName);
       case REGULARIZATION:
       default:
         return new RegularizationMergeTask(mergeResource, storageGroupSysDir, callback, taskName,
@@ -67,9 +58,6 @@ public enum SizeMergeFileStrategy {
       List<TsFileResource> unseqTsFiles, String storageGroupSysDir, MergeCallback callback,
       String taskName, String storageGroupName) {
     switch (this) {
-      case INDEPENDENCE:
-        return new RecoverIndependenceMergeTask(seqTsFiles,
-            unseqTsFiles, storageGroupSysDir, callback, taskName, storageGroupName);
       case REGULARIZATION:
       default:
         return new RecoverRegularizationMergeTask(seqTsFiles,

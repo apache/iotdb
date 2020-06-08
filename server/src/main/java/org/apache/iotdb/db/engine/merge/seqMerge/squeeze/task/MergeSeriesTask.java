@@ -27,14 +27,10 @@ import org.apache.iotdb.db.engine.merge.BaseMergeSeriesTask;
 import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
-import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.recover.SqueezeMergeLogger;
 import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
-import org.apache.iotdb.db.engine.merge.sizeMerge.independence.task.IndependenceMergeSeriesTask;
 import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeSeriesTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class MergeSeriesTask extends BaseMergeSeriesTask {
 
@@ -48,13 +44,13 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
     SizeMergeFileStrategy sizeMergeFileStrategy = IoTDBDescriptor.getInstance().getConfig()
         .getSizeMergeFileStrategy();
     switch (sizeMergeFileStrategy) {
-      case INDEPENDENCE:
-        IndependenceMergeSeriesTask independenceMergeSeriesTask = new IndependenceMergeSeriesTask(
-            mergeContext,
-            taskName, mergeLogger,
-            resource, unmergedSeries);
-        newResources = independenceMergeSeriesTask.mergeSeries();
-        break;
+//      case INDEPENDENCE:
+//        IndependenceMergeSeriesTask independenceMergeSeriesTask = new IndependenceMergeSeriesTask(
+//            mergeContext,
+//            taskName, mergeLogger,
+//            resource, unmergedSeries);
+//        newResources = independenceMergeSeriesTask.mergeSeries();
+//        break;
       case REGULARIZATION:
       default:
         RegularizationMergeSeriesTask regularizationMergeSeriesTask = new RegularizationMergeSeriesTask(

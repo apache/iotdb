@@ -38,26 +38,6 @@ public class MaxFileMergeFileSelectorTest extends MergeTest {
 
   @Test
   public void testFullSelection() throws MergeException, IOException {
-//    IMergeFileSelector mergeFileSelector = new IndependenceMaxFileSelector(seqResources, unseqResources,
-//        Long.MAX_VALUE);
-//    Pair<MergeResource, SelectorContext> selectRes = mergeFileSelector.selectMergedFiles();
-//    MergeResource mergeResource = selectRes.left;
-//    List<TsFileResource> seqSelected = mergeResource.getSeqFiles();
-//    List<TsFileResource> unseqSelected = mergeResource.getUnseqFiles();
-//    assertEquals(seqResources, seqSelected);
-//    assertEquals(unseqResources, unseqSelected);
-//    mergeResource.clear();
-//
-//    mergeFileSelector = new IndependenceMaxFileSelector(seqResources.subList(0, 1), unseqResources,
-//        Long.MAX_VALUE);
-//    selectRes = mergeFileSelector.selectMergedFiles();
-//    mergeResource = selectRes.left;
-//    seqSelected = mergeResource.getSeqFiles();
-//    unseqSelected = mergeResource.getUnseqFiles();
-//    assertEquals(seqResources.subList(0, 1), seqSelected);
-//    assertEquals(unseqResources, unseqSelected);
-//    mergeResource.clear();
-
     IMergeFileSelector mergeFileSelector = new SqueezeMaxFileSelector(seqResources,
         unseqResources.subList(0, 1),
         Long.MAX_VALUE);
