@@ -373,9 +373,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     synchronized (logManager) {
       long success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
       if (success != -1) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} append a new log {}", name, log);
-        }
+        logger.debug("{} append a new log {}", name, log);
         resp = Response.RESPONSE_AGREE;
       } else {
         // the incoming log points to an illegal position, reject it
@@ -394,7 +392,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    */
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-    logger.debug("{} received an AppendEntryRequest", name);
+    logger.debug("{} received an AppendEntryRequest: {}", name, request);
     // the term checked here is that of the leader, not that of the log
     if (!checkRequestTerm(request, resultHandler)) {
       return;
@@ -430,8 +428,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
           logs);
       resultHandler.onComplete(response);
-      logger.debug("{} AppendEntriesRequest of log size {} completed", name,
-          request.getEntries().size());
+      if (logger.isDebugEnabled()) {
+        logger.debug("{} AppendEntriesRequest of log size {} completed", name,
+            request.getEntries().size());
+      }
     } catch (UnknownLogTypeException e) {
       resultHandler.onError(e);
     }
@@ -539,7 +539,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // single node group, does not need the agreement of others
       return AppendLogResult.OK;
     }
-
     logger.debug("{} sending a log to followers: {}", name, log);
 
     AtomicBoolean leaderShipStale = new AtomicBoolean(false);
@@ -600,7 +599,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
     if (!peer.isCatchUp()) {
-      logger.warn("{} can't append log to node {} because it needs catchUp", name, node);
+      logger.warn("{} can't append log {} to node {} because it needs catchUp", name, log, node);
     } else {
       AsyncClient client = connectNode(node);
       if (client != null) {
@@ -609,6 +608,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         handler.setVoteCounter(voteCounter);
         handler.setLeaderShipStale(leaderShipStale);
         handler.setLog(log);
+        handler.setMember(this);
         handler.setPeer(peer);
         handler.setReceiverTerm(newLeaderTerm);
         try {
@@ -877,7 +877,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       logger.debug("{}: plan {} has no where to be forwarded", name, plan);
       return StatusUtils.NO_LEADER;
     }
-
     logger.debug("{}: Forward {} to node {}", name, plan, node);
 
     AsyncClient client = connectNode(node);

@@ -27,11 +27,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
+import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,12 +41,14 @@ public class AppendGroupEntryHandlerTest {
 
   private int REPLICATION_NUM;
   private int prevReplicationNum;
+  private RaftMember member;
 
   @Before
   public void setUp() {
     prevReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(2);
     REPLICATION_NUM = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    member = new TestMetaGroupMember();
   }
 
   @After
@@ -65,7 +68,7 @@ public class AppendGroupEntryHandlerTest {
     synchronized (groupReceivedCounter) {
       for (int i = 0; i < 10; i += 2) {
         AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, i,
-            TestUtils.getNode(i), leadershipStale, testLog, newLeaderTerm);
+            TestUtils.getNode(i), leadershipStale, testLog, newLeaderTerm, member);
         new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
       }
       groupReceivedCounter.wait();
@@ -89,7 +92,7 @@ public class AppendGroupEntryHandlerTest {
     synchronized (groupReceivedCounter) {
       for (int i = 0; i < 5; i++) {
         AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, i,
-            TestUtils.getNode(i), leadershipStale, testLog, newLeaderTerm);
+            TestUtils.getNode(i), leadershipStale, testLog, newLeaderTerm, member);
         handler.onComplete(Response.RESPONSE_AGREE);
       }
     }
@@ -116,7 +119,7 @@ public class AppendGroupEntryHandlerTest {
     Log testLog = new TestLog();
     synchronized (groupReceivedCounter) {
       AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, 0,
-          TestUtils.getNode(0), leadershipStale, testLog, newLeaderTerm);
+          TestUtils.getNode(0), leadershipStale, testLog, newLeaderTerm, member);
       new Thread(() -> handler.onComplete(100L)).start();
       groupReceivedCounter.wait();
     }
@@ -138,7 +141,7 @@ public class AppendGroupEntryHandlerTest {
     Log testLog = new TestLog();
 
     AppendGroupEntryHandler handler = new AppendGroupEntryHandler(groupReceivedCounter, 0,
-        TestUtils.getNode(0), leadershipStale, testLog, newLeaderTerm);
+        TestUtils.getNode(0), leadershipStale, testLog, newLeaderTerm, member);
     handler.onError(new TestException());
 
     for (int i = 0; i < 10; i++) {

@@ -105,7 +105,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onError(Exception exception) {
     if (exception instanceof ConnectException) {
-      logger.debug("{}: Cannot connect to {}: {}", memberName, voter, exception.getMessage());
+      logger.warn("{}: Cannot connect to {}: {}", memberName, voter, exception.getMessage());
     } else {
       logger.warn("{}: A voter {} encountered an error:", memberName, voter, exception);
     }

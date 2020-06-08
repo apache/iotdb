@@ -45,6 +45,7 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
   public void onComplete(Long response) {
     logger.debug("{}: Received a catch-up result size of {} from {}", memberName, logs.size(),
         follower);
+
     long resp = response;
     if (resp == RESPONSE_AGREE) {
       synchronized (appendSucceed) {
@@ -52,6 +53,7 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
         appendSucceed.notifyAll();
       }
       logger.debug("{}: Succeeded to send logs, size is {}", memberName, logs.size());
+
     } else if (resp == RESPONSE_LOG_MISMATCH) {
       // this is not probably possible
       logger.error("{}: Log mismatch occurred when sending log, which size is {}", memberName,
@@ -62,6 +64,7 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
     } else {
       // the follower's term has updated, which means a new leader is elected
       logger.debug("{}: Received a rejection because term is updated to: {}", memberName, resp);
+
       raftMember.stepDown(resp);
 
       synchronized (appendSucceed) {

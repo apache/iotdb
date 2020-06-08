@@ -36,10 +36,11 @@ public class MetaHeartbeatThread extends HeartbeatThread {
   }
 
   /**
-   * Send a heartbeat to "node" through "client".
-   * If the node's identifier is unknown, set the requireIdentifierFlag. If the last identifier
-   * it has sent conflicts with another, further set the regenerateIdentifierFlag.
-   * Also send the partition table to the node if the table is required.
+   * Send a heartbeat to "node" through "client". If the node's identifier is unknown, set the
+   * requireIdentifierFlag. If the last identifier it has sent conflicts with another, further set
+   * the regenerateIdentifierFlag. Also send the partition table to the node if the table is
+   * required.
+   *
    * @param node
    * @param client
    */

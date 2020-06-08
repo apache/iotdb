@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.Peer;
+import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +43,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   private static final Logger logger = LoggerFactory.getLogger(AppendNodeEntryHandler.class);
 
+  private RaftMember member;
   private AtomicLong receiverTerm;
   private Log log;
   private AtomicInteger voteCounter;
@@ -51,7 +53,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   @Override
   public void onComplete(Long response) {
-    logger.debug("Append response {} from {}", response, receiver);
+    logger.debug("{}: Append response {} from {}", member.getName(), response, receiver);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;
@@ -60,17 +62,18 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
     synchronized (voteCounter) {
       if (resp == RESPONSE_AGREE) {
         int remaining = voteCounter.decrementAndGet();
-        logger.debug("Received an agreement from {} for {}, remaining votes to succeed: {}",
-            receiver, log, remaining);
+        logger.debug("{}: Received an agreement from {} for {}, remaining votes to succeed: {}",
+            member.getName(), receiver, log, remaining);
         if (remaining == 0) {
-          logger.debug("Log {} is accepted by the quorum", log);
+          logger.debug("{}: Log {} is accepted by the quorum", member.getName(), log);
           voteCounter.notifyAll();
         }
       } else if (resp > 0) {
         // a response > 0 is the follower's term
         // the leader ship is stale, wait for the new leader's heartbeat
         long prevReceiverTerm = receiverTerm.get();
-        logger.debug("Received a rejection from {} because term is stale: {}/{}", receiver,
+        logger.debug("{}: Received a rejection from {} because term is stale: {}/{}",
+            member.getName(), receiver,
             prevReceiverTerm, resp);
         if (resp > prevReceiverTerm) {
           receiverTerm.set(resp);
@@ -79,7 +82,8 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         voteCounter.notifyAll();
       } else {
         //e.g., Response.RESPONSE_LOG_MISMATCH
-        logger.debug("The log {} is rejected because: {}", log, resp);
+        logger.debug("{}: The log {} is rejected by {} because: {}", member.getName(), log,
+            receiver, resp);
         if (resp == RESPONSE_LOG_MISMATCH) {
           setPeerNotCatchUp();
         }
@@ -93,14 +97,19 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   public void onError(Exception exception) {
     setPeerNotCatchUp();
     if (exception instanceof ConnectException) {
-      logger.debug("Cannot connect to {}: {}", receiver, exception.getMessage());
+      logger
+          .warn("{}: Cannot connect to {}: {}", member.getName(), receiver, exception.getMessage());
     } else {
-      logger.warn("Cannot append log {} to {}", log, receiver, exception);
+      logger.warn("{}: Cannot append log {} to {}", member.getName(), log, receiver, exception);
     }
   }
 
   public void setLog(Log log) {
     this.log = log;
+  }
+
+  public void setMember(RaftMember member) {
+    this.member = member;
   }
 
   public void setVoteCounter(AtomicInteger voteCounter) {
