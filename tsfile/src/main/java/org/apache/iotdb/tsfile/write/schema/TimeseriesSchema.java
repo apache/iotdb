@@ -271,7 +271,7 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
   }
 
   /**
-   * compare by measurementID.
+   * compare by full path.
    */
   @Override
   public int compareTo(TimeseriesSchema o) {

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.version;
 
-import java.io.IOException;
-
 /**
  * SysTimeVersionController uses system timestamp as the version number.
  */
