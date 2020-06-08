@@ -345,14 +345,17 @@ public abstract class AbstractCli {
       for (int j = index + 1; j < args.length; j++) {
         executeCommand.append(args[j]).append(" ");
       }
+      // remove last space
       executeCommand.deleteCharAt(executeCommand.length() - 1);
+      // some bashes may not remove quotes of parameters automatically, remove them in that case
       if (executeCommand.charAt(0) == '\'' || executeCommand.charAt(0) == '\"') {
         executeCommand.deleteCharAt(0);
+        if (executeCommand.charAt(executeCommand.length() - 1) == '\''
+            || executeCommand.charAt(executeCommand.length() - 1) == '\"') {
+          executeCommand.deleteCharAt(executeCommand.length() - 1);
+        }
       }
-      if (executeCommand.charAt(executeCommand.length() - 1) == '\''
-          || executeCommand.charAt(executeCommand.length() - 1) == '\"') {
-        executeCommand.deleteCharAt(executeCommand.length() - 1);
-      }
+
       execute = executeCommand.toString();
       hasExecuteSQL = true;
       args = Arrays.copyOfRange(args, 0, index);

@@ -460,8 +460,10 @@ public class InsertPlan extends PhysicalPlan {
       logger.warn("Exception in deserialization of InsertPlan", e);
     }
 
-    // the types are lost and should be re-inferred
-    this.inferType = true;
+    // the types are not inferred before the plan is serialized
+    if (types[0] == null) {
+      this.inferType = true;
+    }
   }
 
   @Override

@@ -571,6 +571,7 @@ public class StorageEngine implements IService {
     return timePartitionInterval;
   }
 
+  @TestOnly
   public static void setTimePartitionInterval(long timePartitionInterval) {
     StorageEngine.timePartitionInterval = timePartitionInterval;
   }
