@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.merge;
 
 import static org.apache.iotdb.db.utils.MergeUtils.writeBatchPoint;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -29,6 +28,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -64,7 +64,7 @@ public abstract class BaseMergeSeriesTask {
   private double progress;
 
   protected RestorableTsFileIOWriter newFileWriter;
-  protected TsFileResource newResource;
+  protected TsFileResource currentMergeResource;
 
   protected BaseMergeSeriesTask(MergeContext context, String taskName, MergeLogger mergeLogger,
       MergeResource mergeResource, List<Path> unmergedSeries) {
@@ -91,18 +91,14 @@ public abstract class BaseMergeSeriesTask {
   }
 
   private File createNewFile(String mergeSuffix) {
-    long currFileVersion =
-        Long.parseLong(
-            resource.getSeqFiles().get(0).getFile().getName().replace(TSFILE_SUFFIX, "")
-                .split(TSFILE_SEPARATOR)[1]);
-    long prevMergeNum =
-        Long.parseLong(
-            resource.getSeqFiles().get(0).getFile().getName().replace(TSFILE_SUFFIX, "")
-                .split(TSFILE_SEPARATOR)[2]);
+    String originName = resource.getMergeFileNameHeap().poll();
+    String[] splits = originName.replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    int mergeVersion = Integer.parseInt(splits[2]) + 1;
     File parent = resource.getSeqFiles().get(0).getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        System.currentTimeMillis() + TSFILE_SEPARATOR + currFileVersion + TSFILE_SEPARATOR + (
-            prevMergeNum + 1) + TSFILE_SUFFIX + mergeSuffix);
+        splits[0] + IoTDBConstant.TSFILE_NAME_SEPARATOR + splits[1] +
+            IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX + mergeSuffix);
   }
 
   protected void logMergeProgress() {
@@ -194,8 +190,8 @@ public abstract class BaseMergeSeriesTask {
       synchronized (newFileWriter) {
         chunkWriter.writeToFileWriter(newFileWriter);
       }
-      newResource.updateStartTime(path.getDevice(), currMinTime);
-      newResource.updateEndTime(path.getDevice(), currMaxTime);
+      currentMergeResource.updateStartTime(path.getDevice(), currMinTime);
+      currentMergeResource.updateEndTime(path.getDevice(), currMaxTime);
       mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
       tsFilesReader.close();
     }

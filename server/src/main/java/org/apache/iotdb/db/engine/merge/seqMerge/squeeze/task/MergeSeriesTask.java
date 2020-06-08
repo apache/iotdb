@@ -56,7 +56,7 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
         RegularizationMergeSeriesTask regularizationMergeSeriesTask = new RegularizationMergeSeriesTask(
             mergeContext, taskName, mergeLogger,
             resource, unmergedSeries);
-        newResources.add(regularizationMergeSeriesTask.mergeSeries());
+        newResources = regularizationMergeSeriesTask.mergeSeries();
         break;
     }
     return newResources;

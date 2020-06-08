@@ -117,6 +117,7 @@ public class SqueezeMergeTask implements Callable<Void> {
       }
     }
     resource.setChunkWriterCache(chunkWriterCacheMap);
+    resource.constructMergeFileNameHeap();
 
     List<String> storageGroupPaths = MManager.getInstance()
         .getAllTimeseriesName(storageGroupName + ".*");

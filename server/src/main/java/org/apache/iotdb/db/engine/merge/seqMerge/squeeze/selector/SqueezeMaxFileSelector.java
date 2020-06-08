@@ -91,21 +91,15 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
     firstOverlapIdx = Integer.MAX_VALUE;
     lastOverlapIdx = Integer.MIN_VALUE;
 
-    logger.info("Select using tight bound:{}", useTightBound);
+    logger.debug("Select using tight bound:{}", useTightBound);
     selectedUnseqFiles = selectByUnseq(useTightBound);
-    logger.info("After selecting by unseq, first seq index:{}, last seq index:{}", firstOverlapIdx,
+    logger.debug("After selecting by unseq, first seq index:{}, last seq index:{}", firstOverlapIdx,
         lastOverlapIdx);
     if (firstOverlapIdx <= lastOverlapIdx) {
       // selectByUnseq has found candidates, check if we can extend the selection
       logger.info("Try extending the seq files");
       extendCurrentSelection(useTightBound);
       logger.info("After seq extension, first seq index:{}, last seq index:{}", firstOverlapIdx,
-          lastOverlapIdx);
-    } else {
-      // try selecting only seq files as candidates
-      logger.info("Try selecting only seq files");
-      selectBySeq(useTightBound);
-      logger.info("After seq selection, first seq index:{}, last seq index:{}", firstOverlapIdx,
           lastOverlapIdx);
     }
     for (int i = firstOverlapIdx; i <= lastOverlapIdx; i++) {
@@ -151,7 +145,7 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
             if (!seqFile.getDeviceToIndexMap().containsKey(deviceId)) {
               continue;
             }
-            Long seqEndTime = seqFile.getEndTime(deviceId);
+            long seqEndTime = seqFile.getEndTime(deviceId);
             if (unseqEndTime <= seqEndTime) {
               // the unseqFile overlaps current seqFile
               tmpFirstOverlapIdx = Math.min(firstOverlapIdx, i);
@@ -196,40 +190,6 @@ public class SqueezeMaxFileSelector extends BaseFileSelector {
       this.selectorContext.updateTimeConsumption();
     }
     return selectedUnseqFiles;
-  }
-
-  private void selectBySeq(boolean useTightBound) throws IOException {
-    for (int i = 0; i < seqFiles.size() - 1
-        && this.selectorContext.getTimeConsumption() < timeLimit; i++) {
-      // try to find candidates starting from i
-      TsFileResource seqFile = seqFiles.get(i);
-      logger
-          .debug("Try selecting seq file {}/{}, {}", i, seqFiles.size() - 1, seqFile);
-      Pair<Long, Long> fileCostRes = this.memCalculator
-          .calculateSeqFileCost(seqFile, useTightBound, tempMaxSeqFileCost);
-      long fileCost = fileCostRes.left;
-      tempMaxSeqFileCost = fileCostRes.right;
-      if (fileCost < memoryBudget) {
-        firstOverlapIdx = i;
-        lastOverlapIdx = i;
-        this.selectorContext.setTotalCost(fileCost);
-        logger.debug("Seq file {} can fit memory, search from it", seqFile);
-        extendCurrentSelection(useTightBound);
-        if (lastOverlapIdx > firstOverlapIdx) {
-          // if candidates starting from i are found, return
-          return;
-        } else {
-          this.selectorContext.clearTotalCost();
-          firstOverlapIdx = Integer.MAX_VALUE;
-          lastOverlapIdx = Integer.MIN_VALUE;
-          logger.debug("The next file of {} cannot fit memory together, search the next file",
-              seqFile);
-        }
-      } else {
-        logger.info("File {} cannot fie memory {}/{}", seqFile, fileCost, memoryBudget);
-      }
-      this.selectorContext.updateTimeConsumption();
-    }
   }
 
   // if we have selected seqFiles[3] to seqFiles[6], check if we can add seqFiles[7] into the

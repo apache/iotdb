@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.merge.manage;
 
 import static org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,7 +30,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
@@ -57,6 +60,15 @@ public class MergeResource {
   private Map<TsFileResource, RestorableTsFileIOWriter> fileWriterCache = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<Path, IChunkWriter> chunkWriterCache = new ConcurrentHashMap<>();
+
+  // for squeeze merge, when merged tsfile reaches threshold, get a fileName order by its timestamp
+  private PriorityQueue<String> mergeFileNameHeap = new PriorityQueue<>(((o1, o2) -> {
+    String[] items1 = o1.replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    String[] items2 = o2.replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    return Long.compare(Long.parseLong(items1[0]), Long.parseLong(items2[0]));
+  }));
 
   private boolean cacheDeviceMeta = false;
 
@@ -252,6 +264,19 @@ public class MergeResource {
 
   public void setChunkWriterCache(Map<Path, IChunkWriter> chunkWriterCache) {
     this.chunkWriterCache = chunkWriterCache;
+  }
+
+  public void constructMergeFileNameHeap() {
+    for (TsFileResource seqFile : this.seqFiles) {
+      mergeFileNameHeap.add(seqFile.toString());
+    }
+    for (TsFileResource unseqFile : this.unseqFiles) {
+      mergeFileNameHeap.add(unseqFile.toString());
+    }
+  }
+
+  public PriorityQueue<String> getMergeFileNameHeap() {
+    return mergeFileNameHeap;
   }
 
   public void clearChunkWriterCache() {

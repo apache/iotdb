@@ -337,6 +337,13 @@ public class StorageGroupProcessor {
     }
   }
 
+  private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
+    long oldVersion = partitionMaxFileVersions.getOrDefault(partitionNum, 0L);
+    if (fileVersion > oldVersion) {
+      partitionMaxFileVersions.put(partitionNum, fileVersion);
+    }
+  }
+
   private void recoverSeqMerge(List<TsFileResource> seqTsFiles, List<TsFileResource> unseqTsFiles,
       String taskName) throws IOException, MetadataException {
     SeqMergeFileStrategy strategy = IoTDBDescriptor.getInstance().getConfig()
@@ -347,13 +354,6 @@ public class StorageGroupProcessor {
     logger.info("{} a RecoverSeqMergeTask {} starts...", storageGroupName, taskName);
     recoverMergeTask
         .recoverMerge(IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot());
-  }
-
-  private void updatePartitionFileVersion(long partitionNum, long fileVersion) {
-    long oldVersion = partitionMaxFileVersions.getOrDefault(partitionNum, 0L);
-    if (fileVersion > oldVersion) {
-      partitionMaxFileVersions.put(partitionNum, fileVersion);
-    }
   }
 
   private void recoverSizeMerge(List<TsFileResource> seqTsFiles, List<TsFileResource> unseqTsFiles,
@@ -1568,7 +1568,9 @@ public class StorageGroupProcessor {
   }
 
   public void merge(boolean fullMerge) {
+    // merge seq data with unseq data files
     seqMerge(fullMerge);
+    // merge only seq data files
     sizeMerge();
   }
 
@@ -1585,7 +1587,7 @@ public class StorageGroupProcessor {
       logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
           fullMerge);
       syncCloseAllWorkingTsFileProcessors();
-      if (unSequenceFileList.isEmpty() && sequenceFileTreeSet.isEmpty()) {
+      if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;
       }
@@ -1599,7 +1601,7 @@ public class StorageGroupProcessor {
       try {
         Pair<MergeResource, SelectorContext> selectRes = fileSelector.selectMergedFiles();
         MergeResource mergeResource = selectRes.left;
-        if (mergeResource.getSeqFiles().size() == 0 && mergeResource.getUnseqFiles().size() == 0) {
+        if (mergeResource.getSeqFiles().size() == 0 || mergeResource.getUnseqFiles().size() == 0) {
           logger.info("{} cannot select merge candidates under the budget {}", storageGroupName,
               budget);
           return;

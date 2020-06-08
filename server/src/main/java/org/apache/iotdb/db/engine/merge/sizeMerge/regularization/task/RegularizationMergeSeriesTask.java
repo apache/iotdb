@@ -23,7 +23,9 @@ import static org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.Reg
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.BaseMergeSeriesTask;
 import org.apache.iotdb.db.engine.merge.MergeLogger;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
@@ -48,7 +50,7 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
     super(context, taskName, mergeLogger, mergeResource, unmergedSeries);
   }
 
-  public TsFileResource mergeSeries() throws IOException {
+  public List<TsFileResource> mergeSeries() throws IOException {
     if (logger.isInfoEnabled()) {
       long totalChunkPoint = 0;
       long chunkNum = 0;
@@ -66,18 +68,27 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
     }
     long startTime = System.currentTimeMillis();
 
+    List<TsFileResource> newResources = new ArrayList<>();
+
     Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = createNewFileWriter(
         MERGE_SUFFIX);
     newFileWriter = newTsFilePair.left;
-    newResource = newTsFilePair.right;
+    TsFileResource currentMergeResource = newTsFilePair.right;
+    newResources.add(currentMergeResource);
 
     List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
     for (List<Path> pathList : devicePaths) {
       mergePaths(pathList);
       mergedSeriesCnt += pathList.size();
       logMergeProgress();
+      if (currentMergeResource.getFileSize() >= IoTDBDescriptor.getInstance().getConfig()
+          .getTsFileSizeThreshold()) {
+        newFileWriter.endFile();
+        newTsFilePair = createNewFileWriter(MERGE_SUFFIX);
+        newFileWriter = newTsFilePair.left;
+        currentMergeResource = newTsFilePair.right;
+      }
     }
-    newFileWriter.endFile();
     mergeLogger.logAllTsEnd();
 
     if (logger.isInfoEnabled()) {
@@ -87,7 +98,7 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
     if (logger.isInfoEnabled()) {
       long totalChunkPoint = 0;
       long chunkNum = 0;
-      List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(newResource);
+      List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(this.currentMergeResource);
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         chunkNum++;
         totalChunkPoint += chunkMetadata.getNumOfPoints();
@@ -95,12 +106,12 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
       logger.info("merge after seqFile chunk large = {}", totalChunkPoint * 1.0 / chunkNum);
     }
 
-    File oldTsFile = newResource.getFile();
+    File oldTsFile = this.currentMergeResource.getFile();
     File newTsFile = new File(oldTsFile.getParent(),
         oldTsFile.getName().replace(RegularizationMergeTask.MERGE_SUFFIX, ""));
     oldTsFile.renameTo(newTsFile);
-    newResource.setFile(newTsFile);
-    newResource.serialize();
-    return newResource;
+    this.currentMergeResource.setFile(newTsFile);
+    this.currentMergeResource.serialize();
+    return newResources;
   }
 }
