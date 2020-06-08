@@ -528,6 +528,45 @@
 |改后生效方式|重启服务器生效|
 
 
+## 数据类型自动推断
+
+* boolean\_string\_infer\_type
+
+|名字| boolean\_string\_infer\_type |
+|:---:|:---|
+|描述|  "true" 或者 "false" 被视为什么数据|
+|取值| BOOLEAN 或者 TEXT |
+|默认值|BOOLEAN |
+|改后生效方式|重启服务器生效|
+
+* integer\_string\_infer\_type
+
+|名字| integer\_string\_infer\_type |
+|:---:|:---|
+|描述| 整数型数据被推断成什么 |
+|取值| INT32, INT64, FLOAT, DOUBLE, TEXT |
+|默认值|FLOAT |
+|改后生效方式|重启服务器生效|
+
+* nan\_string\_infer\_type
+
+|名字| nan\_string\_infer\_type |
+|:---:|:---|
+|描述| NaN 字符串被推断为什么|
+|取值| DOUBLE, FLOAT or TEXT |
+|默认值|FLOAT |
+|改后生效方式|重启服务器生效|
+
+* floating\_string\_infer\_type
+
+|名字| floating\_string\_infer\_type |
+|:---:|:---|
+|描述| "6.7"等浮点数被推断为什么|
+|取值| DOUBLE, FLOAT or TEXT |
+|默认值|FLOAT |
+|改后生效方式|重启服务器生效|
+
+
 ## 开启GC日志
 GC日志默认是关闭的。为了性能调优，用户可能会需要手机GC信息。
 若要打开GC日志，则需要在启动IoTDB Server的时候加上"printgc"参数：

@@ -597,8 +597,8 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| integer\_string\_infer\_type |
 |:---:|:---|
-|Description| To which type the value NaN in a query should be resolved|
-|Type| DOUBLE, FLOAT or TEXT |
+|Description| To which type an integer string like "67" in a query should be resolved|
+|Type| INT32, INT64, DOUBLE, FLOAT or TEXT |
 |Default|DOUBLE |
 |Effective|After restart system|
 
@@ -606,7 +606,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| nan\_string\_infer\_type |
 |:---:|:---|
-|Description| To which type an integer string like "67" in a query should be resolved|
+|Description| To which type the value NaN in a query should be resolved|
 |Type| DOUBLE, FLOAT or TEXT |
 |Default|FLOAT |
 |Effective|After restart system|
