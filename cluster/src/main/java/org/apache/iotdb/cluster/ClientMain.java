@@ -226,7 +226,7 @@ public class ClientMain {
     return openResp.getSessionId();
   }
 
-  @SuppressWarnings({"java:S2095", "resource"}) // the transport is used later
+  @SuppressWarnings({"java:S2095"}) // the transport is used later
   private static Client getClient(String ip, int port) throws TTransportException {
     TSIService.Client.Factory factory = new Factory();
     TTransport transport = new TFastFramedTransport(new TSocket(ip, port));

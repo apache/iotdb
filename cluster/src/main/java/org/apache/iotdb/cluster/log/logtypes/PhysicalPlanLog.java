@@ -49,9 +49,7 @@ public class PhysicalPlanLog extends Log {
   @Override
   public ByteBuffer serialize() {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-
-    try {
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) PHYSICAL_PLAN.ordinal());
 
       dataOutputStream.writeLong(getCurrLogIndex());

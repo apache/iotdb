@@ -26,12 +26,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class ClientPool {
 
-  private static final Logger logger = LoggerFactory.getLogger(ClientPool.class);
   private Map<Node, Deque<AsyncClient>> clientCaches = new ConcurrentHashMap<>();
   private ClientFactory clientFactory;
 

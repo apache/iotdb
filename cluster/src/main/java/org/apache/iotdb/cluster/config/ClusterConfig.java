@@ -31,7 +31,7 @@ public class ClusterConfig {
   private int localDataPort = 40010;
   private int localClientPort = 55560;
 
-  // each one is {IP | domain name}:{meta port}:{data port}
+  // each one is a "<IP | domain name>:<meta port>:<data port>" string tuple
   private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010", "127.0.0.1"
       + ":9004:40011", "127.0.0.1:9005:40012");
 
@@ -47,7 +47,7 @@ public class ClusterConfig {
    * This parameter controls when to actually delete snapshoted logs because we can't remove
    * snapshoted logs directly from disk now
    */
-  private long maxRemovedLogSize = 1024 * 1024 * 128;
+  private long maxRemovedLogSize = 1024 * 1024 * 128L;
 
   private int queryTimeoutInSec = 30;
 

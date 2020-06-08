@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.logtypes;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
@@ -35,15 +36,15 @@ public class RemoveNodeLog extends Log {
     @Override
     public ByteBuffer serialize() {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-        try {
+        try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
             dataOutputStream.writeByte(Types.REMOVE_NODE.ordinal());
             dataOutputStream.writeLong(getCurrLogIndex());
             dataOutputStream.writeLong(getCurrLogTerm());
+
+            SerializeUtils.serialize(removedNode, dataOutputStream);
         } catch (IOException e) {
             // ignored
         }
-        SerializeUtils.serialize(removedNode, dataOutputStream);
         return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
     }
 
@@ -62,5 +63,25 @@ public class RemoveNodeLog extends Log {
 
     public void setRemovedNode(Node removedNode) {
         this.removedNode = removedNode;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        RemoveNodeLog that = (RemoveNodeLog) o;
+        return Objects.equals(removedNode, that.removedNode);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), removedNode);
     }
 }

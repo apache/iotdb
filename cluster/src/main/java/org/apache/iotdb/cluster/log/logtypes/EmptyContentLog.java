@@ -40,8 +40,7 @@ public class EmptyContentLog extends Log {
   @Override
   public ByteBuffer serialize() {
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(DEFAULT_BUFFER_SIZE);
-    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-    try {
+    try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) EMPTY_CONTENT.ordinal());
       dataOutputStream.writeLong(getCurrLogIndex());
       dataOutputStream.writeLong(getCurrLogTerm());

@@ -41,11 +41,6 @@ public class StatusUtils {
       getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
   public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
-  public static final TSStatus PATH_ALREADY_EXIST_ERROR = getStatus(
-      TSStatusCode.PATH_ALREADY_EXIST_ERROR);
-  public static final TSStatus WRITE_PROCESS_ERROR = getStatus(TSStatusCode.WRITE_PROCESS_ERROR);
-  public static final TSStatus PATH_NOT_EXIST_ERROR = getStatus(TSStatusCode.PATH_NOT_EXIST_ERROR);
-  public static final TSStatus PATH_ILLEGAL = getStatus(TSStatusCode.PATH_ILLEGAL);
 
 
   private static TSStatus getStatus(TSStatusCode statusCode) {

@@ -31,6 +31,4 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD})
 @Retention(RetentionPolicy.SOURCE)
 public @interface ClusterConsistent {
-  //TODO-Cluster#355: the initial cluster and the new nodes should check the
-  // configuration consistency with other nodes.
 }

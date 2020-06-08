@@ -55,8 +55,8 @@ public class CatchUpTask implements Runnable {
   }
 
   /**
-   * @return true if the matched index exceed the memory log bound so a snapshot is necessary, or
-   * false if the catch up can be done using memory logs.
+   * @return true if a matched index is found so that we can use logs only to catch up, or
+   * false if the catch up must be done with a snapshot.
    * @throws TException
    * @throws InterruptedException
    */
@@ -83,43 +83,60 @@ public class CatchUpTask implements Runnable {
     // if index < 0 then send Snapshot and all the logs in logManager
     // if index >= 0 but there is no matched log, still send Snapshot and all the logs in logManager
     while (index >= 0) {
-      Log log = logs.get(index);
-      synchronized (raftMember.getTerm()) {
-        // make sure this node is still a leader
-        if (raftMember.getCharacter() != NodeCharacter.LEADER) {
-          throw new LeaderUnknownException(raftMember.getAllNodes());
-        }
-      }
-      long prevLogIndex = log.getCurrLogIndex() - 1;
-      long prevLogTerm = -1;
-      if (index > 0) {
-        prevLogTerm = logs.get(index - 1).getCurrLogTerm();
-      } else {
-        try {
-          prevLogTerm = raftMember.getLogManager().getTerm(log.getCurrLogIndex() - 1);
-        } catch (Exception e) {
-          logger.error("getTerm failed for newly append entries", e);
-        }
-      }
-
-      RaftService.AsyncClient client = raftMember.connectNode(node);
-      boolean matched = SyncClientAdaptor
-          .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
-      raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-      logger.debug("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
-          matched ? "succeed" : "failed", log);
-      if (matched) {
-        // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
-        logs.subList(0, index).clear();
-        if (isLogDebug) {
-          logger.debug("{} makes {} catch up with {} cached logs", raftMember.getName(), node,
-              logs.size());
-        }
-        return false;
+      if (checkMatchIndex(index)) {
+        return true;
       }
       index--;
     }
-    return true;
+    return false;
+  }
+
+  /**
+   *
+   * @param index the index of a log in logs
+   * @return true if the log at logs[index] matches a log in the remote node, false if the
+   * corresponding log cannot be found
+   * @throws LeaderUnknownException
+   * @throws TException
+   * @throws InterruptedException
+   */
+  private boolean checkMatchIndex(int index)
+      throws LeaderUnknownException, TException, InterruptedException {
+    boolean isLogDebug = logger.isDebugEnabled();
+    Log log = logs.get(index);
+    synchronized (raftMember.getTerm()) {
+      // make sure this node is still a leader
+      if (raftMember.getCharacter() != NodeCharacter.LEADER) {
+        throw new LeaderUnknownException(raftMember.getAllNodes());
+      }
+    }
+    long prevLogTerm = -1;
+    try {
+      prevLogTerm = raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1);
+    } catch (Exception e) {
+      logger.error("getTerm failed for newly append entries", e);
+    }
+    long prevLogIndex = log.getCurrLogIndex() - 1;
+    if (index > 0) {
+      prevLogTerm = logs.get(index - 1).getCurrLogTerm();
+    }
+
+    RaftService.AsyncClient client = raftMember.connectNode(node);
+    boolean matched = SyncClientAdaptor
+        .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
+    raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+    logger.debug("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
+        matched ? "succeed" : "failed", log);
+    if (matched) {
+      // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
+      logs.subList(0, index).clear();
+      if (isLogDebug) {
+        logger.debug("{} makes {} catch up with {} cached logs", raftMember.getName(), node,
+            logs.size());
+      }
+      return true;
+    }
+    return false;
   }
 
   private void doSnapshot() {
@@ -137,8 +154,8 @@ public class CatchUpTask implements Runnable {
 
   public void run() {
     try {
-      boolean needSnapshot = checkMatchIndex();
-      if (needSnapshot) {
+      boolean findMatchedIndex = checkMatchIndex();
+      if (!findMatchedIndex) {
         doSnapshot();
         SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftMember);
         task.call();

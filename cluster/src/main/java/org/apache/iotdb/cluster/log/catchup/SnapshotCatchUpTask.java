@@ -29,7 +29,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.SnapshotCatchUpHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.TException;
@@ -41,6 +40,8 @@ import org.slf4j.LoggerFactory;
  */
 public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Void> {
 
+  // sending a snapshot may take longer than normal communications
+  private static final long SEND_SNAPSHOT_WAIT_MS = 5 * 60 * 1000L;
   private static final Logger logger = LoggerFactory.getLogger(SnapshotCatchUpTask.class);
 
   private Snapshot snapshot;
@@ -50,6 +51,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Void
     this.snapshot = snapshot;
   }
 
+  @SuppressWarnings("java:S2274") // enable timeout
   private boolean doSnapshotCatchUp()
       throws TException, InterruptedException, LeaderUnknownException {
     AsyncClient client = raftMember.connectNode(node);
@@ -75,7 +77,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Void
     synchronized (succeed) {
       client.sendSnapshot(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-      succeed.wait(RaftServer.getConnectionTimeoutInMS());
+      succeed.wait(SEND_SNAPSHOT_WAIT_MS);
     }
 
     return succeed.get();

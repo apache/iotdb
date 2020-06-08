@@ -44,8 +44,11 @@ import org.slf4j.LoggerFactory;
 /**
  * LogCatchUpTask sends a list of logs to a node to make the node keep up with the leader.
  */
+@SuppressWarnings("java:S2274") // enable timeout
 public class LogCatchUpTask implements Callable<Void> {
 
+  // sending logs may take longer than normal communications
+  private static final long SEND_LOGS_WAIT_MS = 5 * 60 * 1000L;
   private static final Logger logger = LoggerFactory.getLogger(LogCatchUpTask.class);
   private static final int LOG_NUM_IN_BATCH = 128;
   Node node;
@@ -140,8 +143,16 @@ public class LogCatchUpTask implements Callable<Void> {
     request.setLeader(raftMember.getThisNode());
     request.setLeaderCommit(raftMember.getLogManager().getCommitLogIndex());
 
+    try {
+      request.setPrevLogTerm(
+          raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1));
+    } catch (Exception e) {
+      logger.error("getTerm failed for newly append entries", e);
+    }
+
+    List<ByteBuffer> logList = new ArrayList<>();
     for (int i = 0; i < logs.size() && !abort; i += LOG_NUM_IN_BATCH) {
-      List<ByteBuffer> logList = new ArrayList<>();
+      logList.clear();
       for (int j = i; j < i + LOG_NUM_IN_BATCH && j < logs.size(); j++) {
         logList.add(logs.get(j).serialize());
       }
@@ -158,14 +169,7 @@ public class LogCatchUpTask implements Callable<Void> {
       request.setEntries(logList);
       // set index for raft
       request.setPrevLogIndex(logs.get(i).getCurrLogIndex() - 1);
-      if (i == 0) {
-        try {
-          request.setPrevLogTerm(
-              raftMember.getLogManager().getTerm(logs.get(0).getCurrLogIndex() - 1));
-        } catch (Exception e) {
-          logger.error("getTerm failed for newly append entries", e);
-        }
-      } else {
+      if (i != 0) {
         request.setPrevLogTerm(logs.get(i - 1).getCurrLogTerm());
       }
       if (logger.isDebugEnabled()) {
@@ -175,13 +179,10 @@ public class LogCatchUpTask implements Callable<Void> {
       // do append entries
       synchronized (appendSucceed) {
         AsyncClient client = raftMember.connectNode(node);
-        if (client == null) {
-          return;
-        }
 
         client.appendEntries(request, handler);
         raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        appendSucceed.wait(RaftServer.getConnectionTimeoutInMS());
+        appendSucceed.wait(SEND_LOGS_WAIT_MS);
       }
       abort = !appendSucceed.get();
     }

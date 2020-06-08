@@ -577,7 +577,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void last(LastRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {
+  public void last(LastRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, "last");
     dataMember.last(request, resultHandler);
   }
