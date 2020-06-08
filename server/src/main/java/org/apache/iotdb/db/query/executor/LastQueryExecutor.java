@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
@@ -101,24 +102,33 @@ public class LastQueryExecutor {
     return dataSet;
   }
 
+  protected TimeValuePair calculateLastPairForOneSeries(
+      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
+      throws IOException, QueryProcessException, StorageEngineException {
+    return calculateLastPairForOneSeriesLocally(seriesPath, tsDataType, context,
+        deviceMeasurements);
+  }
+
   /**
    * get last result for one series
    *
    * @param context query context
    * @return TimeValuePair
    */
-  public static TimeValuePair calculateLastPairForOneSeries(
-      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> sensors)
+  public static TimeValuePair calculateLastPairForOneSeriesLocally(
+      Path seriesPath, TSDataType tsDataType, QueryContext context, Set<String> deviceMeasurements)
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
-    LeafMNode node;
+    LeafMNode node = null;
     try {
       node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
+    } catch (PathNotExistException e) {
+      // TODO use last cache for remote series
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
-    if (node.getCachedLast() != null) {
+    if (node != null && node.getCachedLast() != null) {
       return node.getCachedLast();
     }
 
@@ -133,7 +143,7 @@ public class LastQueryExecutor {
     if (!seqFileResources.isEmpty()) {
       for (int i = seqFileResources.size() - 1; i >= 0; i--) {
         TimeseriesMetadata timeseriesMetadata = FileLoaderUtils.loadTimeSeriesMetadata(
-                seqFileResources.get(i), seriesPath, context, null, sensors);
+                seqFileResources.get(i), seriesPath, context, null, deviceMeasurements);
         if (timeseriesMetadata != null) {
           if (!timeseriesMetadata.isModified()) {
             Statistics timeseriesMetadataStats = timeseriesMetadata.getStatistics();
@@ -163,7 +173,7 @@ public class LastQueryExecutor {
         continue;
       }
       TimeseriesMetadata timeseriesMetadata =
-          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
+          FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, deviceMeasurements);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
           if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
@@ -180,7 +190,9 @@ public class LastQueryExecutor {
     }
 
     // Update cached last value with low priority
-    node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    if (node != null) {
+      node.updateCachedLast(resultPair, false, Long.MIN_VALUE);
+    }
     return resultPair;
   }
 

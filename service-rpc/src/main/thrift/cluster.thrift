@@ -120,6 +120,7 @@ struct StartUpStatus {
   1: required long partitionInterval
   2: required int hashSalt
   3: required int replicationNumber
+  4: required list<Node> seedNodeList
 }
 
 // follower -> leader
@@ -127,6 +128,7 @@ struct CheckStatusResponse {
   1: required bool partitionalIntervalEquals
   2: required bool hashSaltEquals
   3: required bool replicationNumEquals
+  4: required bool seedNodeEquals
 }
 
 struct SendSnapshotRequest {
@@ -212,6 +214,16 @@ struct GroupByRequest {
   8: required set<string> deviceMeasurements
 }
 
+struct LastRequest {
+  1: required string path
+  2: required int dataTypeOrdinal
+  3: required long queryId
+  4: required set<string> deviceMeasurements
+  5: required Node header
+  6: required Node requestor
+}
+
+
 service RaftService {
   /**
   * Leader will call this method to all followers to ensure its authority.
@@ -269,7 +281,18 @@ service RaftService {
   **/
   long requestCommitIndex(1:Node header)
 
+
+  /**
+  * Read a chunk of a file from the client. If the remaining of the file does not have enough
+  * bytes, only the remaining will be returned.
+  * Notice that when the last chunk of the file is read, the file will be deleted immediately.
+  **/
   binary readFile(1:string filePath, 2:i64 offset, 3:i32 length)
+
+  /**
+  * Test if a log of "index" and "term" exists.
+  **/
+  bool matchTerm(1:long index, 2:long term, 3:Node header)
 }
 
 
@@ -325,7 +348,6 @@ service TSDataService extends RaftService {
 
   binary getAllMeasurementSchema(1: Node header, 2: binary planBinary)
 
-
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
@@ -351,8 +373,15 @@ service TSDataService extends RaftService {
 
   /**
   * Perform a previous fill and return the timevalue pair in binary.
+  * @return a binary TimeValuePair
   **/
   binary previousFill(1: PreviousFillRequest request)
+
+  /**
+  * Query the last point of the series.
+  * @return a binary TimeValuePair
+  **/
+  binary last(1: LastRequest request)
 }
 
 service TSMetaService extends RaftService {
@@ -365,6 +394,9 @@ service TSMetaService extends RaftService {
   * @param node a new node that needs to be added
   **/
   AddNodeResponse addNode(1: Node node, 2: StartUpStatus startUpStatus)
+
+
+  CheckStatusResponse  checkStatus(1: StartUpStatus startUpStatus)
 
   /**
   * Remove a node from the cluster. If the node is not in the cluster or the cluster size will

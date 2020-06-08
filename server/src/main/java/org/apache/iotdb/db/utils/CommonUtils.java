@@ -73,11 +73,10 @@ public class CommonUtils {
       switch (dataType) {
         case BOOLEAN:
           value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE
-              .equals(value)) {
+          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEAN_FALSE.equals(value)) {
             return false;
           }
-          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
+          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEAN_TRUE.equals(value)) {
             return true;
           }
           throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");
@@ -115,11 +114,11 @@ public class CommonUtils {
       switch (dataType) {
         case BOOLEAN:
           value = value.toLowerCase();
-          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEN_FALSE
+          if (SQLConstant.BOOLEAN_FALSE_NUM.equals(value) || SQLConstant.BOOLEAN_FALSE
               .equals(value)) {
             return false;
           }
-          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEN_TRUE.equals(value)) {
+          if (SQLConstant.BOOLEAN_TRUE_NUM.equals(value) || SQLConstant.BOOLEAN_TRUE.equals(value)) {
             return true;
           }
           throw new QueryProcessException("The BOOLEAN should be true/TRUE, false/FALSE or 0/1");

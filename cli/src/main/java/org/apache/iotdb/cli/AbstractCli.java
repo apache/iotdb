@@ -346,6 +346,13 @@ public abstract class AbstractCli {
         executeCommand.append(args[j]).append(" ");
       }
       executeCommand.deleteCharAt(executeCommand.length() - 1);
+      if (executeCommand.charAt(0) == '\'' || executeCommand.charAt(0) == '\"') {
+        executeCommand.deleteCharAt(0);
+      }
+      if (executeCommand.charAt(executeCommand.length() - 1) == '\''
+          || executeCommand.charAt(executeCommand.length() - 1) == '\"') {
+        executeCommand.deleteCharAt(executeCommand.length() - 1);
+      }
       execute = executeCommand.toString();
       hasExecuteSQL = true;
       args = Arrays.copyOfRange(args, 0, index);

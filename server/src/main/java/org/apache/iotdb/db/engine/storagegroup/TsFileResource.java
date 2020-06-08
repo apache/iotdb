@@ -68,23 +68,23 @@ public class TsFileResource {
   public static final String RESOURCE_SUFFIX = ".resource";
   static final String TEMP_SUFFIX = ".temp";
   private static final String CLOSING_SUFFIX = ".closing";
-  private static final int INIT_ARRAY_SIZE = 64;
+  protected static final int INIT_ARRAY_SIZE = 64;
 
   /**
    * start times array. 
    */
-  private long[] startTimes;
+  protected long[] startTimes;
 
   /**
    * end times array. 
    * The values in this array are Long.MIN_VALUE if it's an unsealed sequence tsfile
    */
-  private long[] endTimes;
+  protected long[] endTimes;
 
   /**
    * device -> index of start times array and end times array
    */
-  private Map<String, Integer> deviceToIndex;
+  protected Map<String, Integer> deviceToIndex;
 
   public TsFileProcessor getProcessor() {
     return processor;
@@ -242,7 +242,7 @@ public class TsFileResource {
     }
   }
 
-  private void initTimes(long[] times, long defaultTime) {
+  protected void initTimes(long[] times, long defaultTime) {
     Arrays.fill(times, defaultTime);
   }
 

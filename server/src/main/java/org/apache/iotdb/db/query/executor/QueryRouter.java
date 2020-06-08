@@ -217,7 +217,12 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet lastQuery(LastQueryPlan lastQueryPlan, QueryContext context)
           throws StorageEngineException, QueryProcessException, IOException {
-    LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
+    LastQueryExecutor lastQueryExecutor = getLastQueryExecutor(lastQueryPlan);
     return lastQueryExecutor.execute(context, lastQueryPlan);
   }
+
+  protected LastQueryExecutor getLastQueryExecutor(LastQueryPlan lastQueryPlan) {
+    return new LastQueryExecutor(lastQueryPlan);
+  }
+
 }
