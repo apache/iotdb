@@ -139,7 +139,8 @@ public class DataGroupMemberTest extends MemberTest {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
   }
 
-  private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup) {
+  private PartitionedSnapshotLogManager getLogManager(PartitionGroup partitionGroup,
+      DataGroupMember dataGroupMember) {
     return new TestPartitionedLogManager(new DataLogApplier(testMetaMember, dataGroupMember),
         testMetaMember.getPartitionTable(), partitionGroup.getHeader(), FileSnapshot::new) {
       @Override
@@ -212,7 +213,7 @@ public class DataGroupMemberTest extends MemberTest {
         }
       }
     };
-    dataGroupMember.setLogManager(getLogManager(nodes));
+    dataGroupMember.setLogManager(getLogManager(nodes, dataGroupMember));
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     return dataGroupMember;

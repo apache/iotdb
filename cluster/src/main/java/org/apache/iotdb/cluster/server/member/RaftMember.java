@@ -942,7 +942,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
     } catch (LogExecutionException e) {
       TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      Throwable cause = e.getCause().getCause();
+      Throwable cause = getRootCause(e);
       if (cause instanceof IoTDBException) {
         tsStatus.setCode(((IoTDBException) cause).getErrorCode());
       }
@@ -956,6 +956,14 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return tsStatus;
     }
     return null;
+  }
+
+  private Throwable getRootCause(Throwable e) {
+    Throwable curr = e;
+    while (curr.getCause() != null) {
+      curr = curr.getCause();
+    }
+    return curr;
   }
 
   /**
