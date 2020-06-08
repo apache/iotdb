@@ -101,7 +101,7 @@ public class IoTDBConfigDynamicAdapter implements IDynamicAdapter {
    * Static memory, includes all timeseries metadata, which equals to
    * TIMESERIES_METADATA_SIZE_IN_BYTE * totalTimeseriesNum, the unit is byte.
    * <p>
-   * Currently， we think that static memory only consists of time series metadata information. We
+   * Currently, we think that static memory only consists of time series metadata information. We
    * ignore the memory occupied by the tsfile information maintained in memory, because we think
    * that this part occupies very little memory.
    */

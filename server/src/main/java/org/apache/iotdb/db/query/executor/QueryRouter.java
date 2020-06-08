@@ -23,10 +23,8 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByFillDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
-import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.*;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,6 +36,8 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.util.ExpressionOptimizer;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
@@ -48,6 +48,8 @@ import java.util.Map;
  * plan, physical plan will be executed by EngineQueryRouter.
  */
 public class QueryRouter implements IQueryRouter {
+
+  private static Logger logger = LoggerFactory.getLogger(QueryRouter.class);
 
   @Override
   public QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
@@ -87,6 +89,13 @@ public class QueryRouter implements IQueryRouter {
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
       IOException {
 
+    if (logger.isDebugEnabled()) {
+      logger.debug("paths:" + aggregationPlan.getPaths()
+        + " level:" + aggregationPlan.getLevel()
+        + " duplicatePaths:" + aggregationPlan.getDeduplicatedPaths()
+        + " deduplicatePaths:" + aggregationPlan.getDeduplicatedAggregations());
+    }
+
     IExpression expression = aggregationPlan.getExpression();
     List<Path> deduplicatedPaths = aggregationPlan.getDeduplicatedPaths();
 
@@ -99,12 +108,16 @@ public class QueryRouter implements IQueryRouter {
 
     AggregationExecutor engineExecutor = getAggregationExecutor(aggregationPlan);
 
+    QueryDataSet dataSet = null;
+
     if (optimizedExpression != null
         && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME) {
-      return engineExecutor.executeWithValueFilter(context, aggregationPlan);
+      dataSet =  engineExecutor.executeWithValueFilter(context, aggregationPlan);
+    } else {
+      dataSet = engineExecutor.executeWithoutValueFilter(context, aggregationPlan);
     }
 
-    return engineExecutor.executeWithoutValueFilter(context, aggregationPlan);
+    return dataSet;
   }
 
   protected AggregationExecutor getAggregationExecutor(AggregationPlan aggregationPlan) {
@@ -112,18 +125,24 @@ public class QueryRouter implements IQueryRouter {
   }
 
   @Override
-  public QueryDataSet groupBy(GroupByPlan groupByPlan, QueryContext context)
-      throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
-    long unit = groupByPlan.getInterval();
-    long slidingStep = groupByPlan.getSlidingStep();
-    long startTime = groupByPlan.getStartTime();
-    long endTime = groupByPlan.getEndTime();
+  public QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
+    throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
 
-    IExpression expression = groupByPlan.getExpression();
-    List<Path> selectedSeries = groupByPlan.getDeduplicatedPaths();
+    if (logger.isDebugEnabled()) {
+      logger.debug("paths:" + groupByTimePlan.getPaths() + " level:" + groupByTimePlan.getLevel());
+    }
+
+    GroupByEngineDataSet dataSet = null;
+    long unit = groupByTimePlan.getInterval();
+    long slidingStep = groupByTimePlan.getSlidingStep();
+    long startTime = groupByTimePlan.getStartTime();
+    long endTime = groupByTimePlan.getEndTime();
+
+    IExpression expression = groupByTimePlan.getExpression();
+    List<Path> selectedSeries = groupByTimePlan.getDeduplicatedPaths();
 
     GlobalTimeExpression timeExpression = new GlobalTimeExpression(
-        new GroupByFilter(unit, slidingStep, startTime, endTime));
+      new GroupByFilter(unit, slidingStep, startTime, endTime));
 
     if (expression == null) {
       expression = timeExpression;
@@ -133,24 +152,38 @@ public class QueryRouter implements IQueryRouter {
 
     // optimize expression to an executable one
     IExpression optimizedExpression = ExpressionOptimizer.getInstance()
-        .optimize(expression, selectedSeries);
-    groupByPlan.setExpression(optimizedExpression);
+      .optimize(expression, selectedSeries);
+    groupByTimePlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      return getGroupByWithoutValueFilterDataSet(context, groupByPlan);
+      dataSet = getGroupByWithoutValueFilterDataSet(context, groupByTimePlan);
     } else {
-      return getGroupByWithValueFilterDataSet(context, groupByPlan);
+      dataSet = getGroupByWithValueFilterDataSet(context, groupByTimePlan);
     }
+
+    // we support group by level for count operation
+    // details at https://issues.apache.org/jira/browse/IOTDB-622
+    // and UserGuide/Operation Manual/DML
+    if (groupByTimePlan.getLevel() >= 0) {
+      return groupByLevelWithoutTimeIntervalDataSet(context, groupByTimePlan, dataSet);
+    }
+    return dataSet;
   }
 
-  protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan plan)
+  protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan plan)
       throws StorageEngineException, QueryProcessException {
     return new GroupByWithoutValueFilterDataSet(context, plan);
   }
 
-  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context, GroupByPlan plan)
+  protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(QueryContext context, GroupByTimePlan plan)
       throws StorageEngineException, QueryProcessException {
     return new GroupByWithValueFilterDataSet(context, plan);
+  }
+
+  protected GroupByTimeDataSet groupByLevelWithoutTimeIntervalDataSet(QueryContext context, GroupByTimePlan plan,
+                                                                      GroupByEngineDataSet dataSet)
+    throws StorageEngineException, QueryProcessException, IOException {
+      return new GroupByTimeDataSet(context, plan, dataSet);
   }
 
   @Override
@@ -174,7 +207,7 @@ public class QueryRouter implements IQueryRouter {
   }
 
   @Override
-  public QueryDataSet groupByFill(GroupByFillPlan groupByFillPlan, QueryContext context)
+  public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
           throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException, IOException {
     GroupByEngineDataSet groupByEngineDataSet = (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
     return new GroupByFillDataSet(groupByFillPlan.getDeduplicatedPaths(), groupByFillPlan.getDeduplicatedDataTypes(),
@@ -187,5 +220,4 @@ public class QueryRouter implements IQueryRouter {
     LastQueryExecutor lastQueryExecutor = new LastQueryExecutor(lastQueryPlan);
     return lastQueryExecutor.execute(context, lastQueryPlan);
   }
-
 }

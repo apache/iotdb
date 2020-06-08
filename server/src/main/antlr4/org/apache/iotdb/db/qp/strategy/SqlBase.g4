@@ -130,7 +130,11 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT tagClause attributeClause
+    | UPSERT aliasClause tagClause attributeClause
+    ;
+
+aliasClause
+    : (ALIAS OPERATOR_EQ ID)?
     ;
 
 attributeClauses
@@ -188,10 +192,11 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByClause specialLimit?
+    | groupByTimeClause specialLimit?
     | groupByFillClause
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
+    | groupByLevelClause specialLimit?
     ;
 
 specialLimit
@@ -236,12 +241,18 @@ fillClause
     : FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
     ;
 
-groupByClause
+groupByTimeClause
     : GROUP BY LR_BRACKET
       timeInterval
       COMMA DURATION
       (COMMA DURATION)?
       RR_BRACKET
+    | GROUP BY LR_BRACKET
+            timeInterval
+            COMMA DURATION
+            (COMMA DURATION)?
+            RR_BRACKET
+            COMMA LEVEL OPERATOR_EQ INT
     ;
 
 groupByFillClause
@@ -251,6 +262,10 @@ groupByFillClause
       RR_BRACKET
       FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
      ;
+
+groupByLevelClause
+    : GROUP BY LEVEL OPERATOR_EQ INT
+    ;
 
 typeClause
     : dataType LS_BRACKET linearClause RS_BRACKET
@@ -627,6 +642,10 @@ ADD
 
 UPSERT
     : U P S E R T
+    ;
+
+ALIAS
+    : A L I A S
     ;
 
 VALUES

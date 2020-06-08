@@ -91,7 +91,7 @@ public class RowRowRecordParser implements RowRecordParser<Row>, ResultTypeQuery
 
 	/**
 	 * Creates RowRowRecordParser from output RowTypeInfo and selected series in the RowRecord. The row field "time"
-	 * will be used to store the timestamp value. The other row fields store the values ​​of the same field names of
+	 * will be used to store the timestamp value. The other row fields store the values of the same field names of
 	 * the RowRecord.
 	 *
 	 * @param outputRowTypeInfo The RowTypeInfo of the output row.

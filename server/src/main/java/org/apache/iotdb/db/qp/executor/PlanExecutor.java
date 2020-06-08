@@ -84,18 +84,8 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByFillPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
@@ -301,12 +291,12 @@ public class PlanExecutor implements IPlanExecutor {
       if (queryPlan.getPaths() == null || queryPlan.getPaths().isEmpty()) {
         // no time series are selected, return EmptyDataSet
         return new EmptyDataSet();
-      } else if (queryPlan instanceof GroupByFillPlan) {
-        GroupByFillPlan groupByFillPlan = (GroupByFillPlan) queryPlan;
+      } else if (queryPlan instanceof GroupByTimeFillPlan) {
+        GroupByTimeFillPlan groupByFillPlan = (GroupByTimeFillPlan) queryPlan;
         return queryRouter.groupByFill(groupByFillPlan, context);
-      } else if (queryPlan instanceof GroupByPlan) {
-        GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
-        return queryRouter.groupBy(groupByPlan, context);
+      } else if (queryPlan instanceof GroupByTimePlan) {
+        GroupByTimePlan groupByTimePlan = (GroupByTimePlan) queryPlan;
+        return queryRouter.groupBy(groupByTimePlan, context);
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         queryDataSet = queryRouter.aggregate(aggregationPlan, context);
@@ -929,7 +919,7 @@ public class PlanExecutor implements IPlanExecutor {
             measurementList[i] = schemas[i].getMeasurementId();
           }
         } catch (MetadataException e) {
-          logger.warn("meet error when check {}.{}", deviceId, measurementList[i], e);
+          logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i], e.getMessage());
           if (enablePartialInsert) {
             insertPlan.markMeasurementInsertionFailed(i);
           } else {
@@ -1024,8 +1014,7 @@ public class PlanExecutor implements IPlanExecutor {
           // need to do nothing
           break;
       }
-    }
-    catch (ClassCastException e){
+    } catch (ClassCastException e) {
       logger.error("inconsistent type between client and server");
     }
   }
@@ -1044,7 +1033,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (PathAlreadyExistException e) {
       if (logger.isDebugEnabled()) {
         logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
-                + " a non-exist time series {}", path);
+            + " a non-exist time series {}", path);
       }
     }
   }
@@ -1103,9 +1092,9 @@ public class PlanExecutor implements IPlanExecutor {
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
           throw new QueryProcessException(String.format(
-                  "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
-                  measurement, insertTabletPlan.getDataTypes()[i],
-                  measurementNode.getSchema().getType()));
+              "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
+              measurement, insertTabletPlan.getDataTypes()[i],
+              measurementNode.getSchema().getType()));
         }
         schemas[i] = measurementNode.getSchema();
         // reset measurement to common name instead of alias
@@ -1249,18 +1238,16 @@ public class PlanExecutor implements IPlanExecutor {
           mManager.addAttributes(alterMap, path.getFullPath());
           break;
         case UPSERT:
-          mManager.upsertTagsAndAttributes(
-              alterTimeSeriesPlan.getTagsMap(),
-              alterTimeSeriesPlan.getAttributesMap(),
+          mManager.upsertTagsAndAttributes(alterTimeSeriesPlan.getAlias(),
+              alterTimeSeriesPlan.getTagsMap(), alterTimeSeriesPlan.getAttributesMap(),
               path.getFullPath());
           break;
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } catch (IOException e) {
-      throw new QueryProcessException(
-          String.format(
-              "Something went wrong while read/write the [%s]'s tag/attribute info.",
+      throw new QueryProcessException(String
+          .format("Something went wrong while read/write the [%s]'s tag/attribute info.",
               path.getFullPath()));
     }
     return true;
