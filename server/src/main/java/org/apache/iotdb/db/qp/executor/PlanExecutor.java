@@ -967,11 +967,11 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } else if (deviceNode != null) {
       // device and measurement exists in MTree
-      LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(deviceNode, measurement);
+      LeafMNode measurementNode = (LeafMNode) mManager.getChild(deviceNode, measurement);
       measurementSchema = measurementNode.getSchema();
     } else {
       // device in not in MTree, try the cache
-      measurementSchema = MManager.getInstance().getSeriesSchema(deviceId, measurement);
+      measurementSchema = mManager.getSeriesSchema(deviceId, measurement);
     }
     return measurementSchema;
   }
