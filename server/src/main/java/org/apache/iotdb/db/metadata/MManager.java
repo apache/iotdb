@@ -135,7 +135,9 @@ public class MManager {
           public MNode loadObjectByKey(String key) throws CacheException {
             lock.readLock().lock();
             try {
-              return mtree.getNodeByPathWithStorageGroupCheck(key);
+              MNode node = mtree.getNodeByPathWithStorageGroupCheck(key);
+              node.setFullPath(key);
+              return node;
             } catch (MetadataException e) {
               throw new CacheException(e);
             } finally {

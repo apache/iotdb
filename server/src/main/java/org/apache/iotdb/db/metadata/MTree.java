@@ -157,6 +157,7 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeNames[i]);
     }
+    cur.setFullPath(deviceId);
     return cur;
   }
 
@@ -805,7 +806,7 @@ public class MTree implements Serializable {
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
         if (node.getChild(nodeReg) instanceof LeafMNode) {
-          res.add(parent + node.getName());
+          res.add(node.getFullPath());
         } else {
           findDevices(node.getChild(nodeReg), nodes, idx + 1,
               parent + node.getName() + PATH_SEPARATOR, res);
@@ -815,7 +816,7 @@ public class MTree implements Serializable {
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
         if (child instanceof LeafMNode && !deviceAdded) {
-          res.add(parent + node.getName());
+          res.add(node.getFullPath());
           deviceAdded = true;
         } else if (!(child instanceof LeafMNode)) {
           findDevices(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, res);
