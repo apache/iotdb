@@ -146,6 +146,46 @@ The selected timeseries are "the power supply status of ln group wf01 plant wt01
 The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
+### Aggregate Query
+This section mainly introduces the related examples of aggregate query.
+
+#### Count Points
+
+```
+select count(status) from root.ln.wf01.wt01;
+```
+
+| count(root.ln.wf01.wt01.status) |
+| -------------- |
+| 4              |
+
+
+##### Count Points By Level
+
+Level could be defined to show count the number of points of each node at the given level in current Metadata Tree.
+
+This could be used to query the number of points under each device.
+
+The SQL statement is:
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 7              |
+
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=2;
+```
+
+| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
+| ------ | ------------------- | ------------------- |
+| 0      | 4                   | 3                   |
+
 ### Down-Frequency Aggregate Query
 
 This section mainly introduces the related examples of down-frequency aggregation query, 
@@ -262,6 +302,48 @@ We will get the result like following:
 | 35     | 3                               |
 | 40     | 5                               |
 
+
+#### Down-Frequency Aggregate Query with Level Clause
+
+Level could be defined to show count the number of points of each node at the given level in current Metadata Tree.
+
+This could be used to query the number of points under each device.
+
+The SQL statement is:
+
+Get down-frequency aggregate query by level.
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 1              |
+| 12     | 3              |
+| 15     | 0              |
+| 18     | 0              |
+
+Down-frequency aggregate query with sliding step and by level.
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),2ms,3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 0              |
+| 12     | 2              |
+| 15     | 0              |
+| 18     | 0              |
 
 #### Down-Frequency Aggregate Query with Fill Clause
 

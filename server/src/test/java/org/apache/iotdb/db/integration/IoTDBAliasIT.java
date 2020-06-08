@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.integration;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -41,15 +43,17 @@ public class IoTDBAliasIT {
       "CREATE TIMESERIES root.sg.d2.s1(speed) WITH DATATYPE=FLOAT, ENCODING=RLE",
       "CREATE TIMESERIES root.sg.d2.s2(temperature) WITH DATATYPE=FLOAT, ENCODING=RLE",
 
+      "CREATE TIMESERIES root.sg.d2.s3(power) WITH DATATYPE=FLOAT, ENCODING=RLE",
+
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(100, 10.1, 20.7)",
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(200, 15.2, 22.9)",
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(300, 30.3, 25.1)",
       "INSERT INTO root.sg.d1(timestamp,speed,temperature) values(400, 50.4, 28.3)",
 
-      "INSERT INTO root.sg.d2(timestamp,speed,temperature) values(100, 11.1, 20.2)",
-      "INSERT INTO root.sg.d2(timestamp,speed,temperature) values(200, 20.2, 21.8)",
-      "INSERT INTO root.sg.d2(timestamp,speed,temperature) values(300, 45.3, 23.4)",
-      "INSERT INTO root.sg.d2(timestamp,speed,temperature) values(400, 73.4, 26.3)"
+      "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(100, 11.1, 20.2, 80.0)",
+      "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(200, 20.2, 21.8, 81.0)",
+      "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(300, 45.3, 23.4, 82.0)",
+      "INSERT INTO root.sg.d2(timestamp,speed,temperature,power) values(400, 73.4, 26.3, 83.0)"
   };
 
   private static final String TIMESTAMP_STR = "Time";
@@ -106,7 +110,7 @@ public class IoTDBAliasIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,root.sg.d1.speed,root.sg.d1.temperature,", header.toString());
+        assertEquals("Time,root.sg.d1.speed,root.sg.d1.temperature,", header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -114,10 +118,10 @@ public class IoTDBAliasIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        Assert.assertEquals(retArray.length, cnt);
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -145,10 +149,10 @@ public class IoTDBAliasIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
               + resultSet.getString(TIMESEIRES_STR) + ","
               + resultSet.getString(VALUE_STR);
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(retArray.length, cnt);
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -178,7 +182,7 @@ public class IoTDBAliasIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,root.sg.d1.speed,root.sg.d1.speed,root.sg.d1.s2,",
+        assertEquals("Time,root.sg.d1.speed,root.sg.d1.speed,root.sg.d1.s2,",
             header.toString());
 
         int cnt = 0;
@@ -187,10 +191,10 @@ public class IoTDBAliasIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        Assert.assertEquals(4, cnt);
+        assertEquals(4, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -219,10 +223,10 @@ public class IoTDBAliasIT {
           String ans = resultSet.getString(TIMESTAMP_STR) + ","
               + resultSet.getString(TIMESEIRES_STR) + ","
               + resultSet.getString(VALUE_STR);
-          Assert.assertEquals(retArray[cnt], ans);
+          assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(retArray.length, cnt);
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -250,8 +254,9 @@ public class IoTDBAliasIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("count(root.sg.d1.speed),count(root.sg.d2.speed),"
-            + "max_value(root.sg.d1.temperature),max_value(root.sg.d2.temperature),", header.toString());
+        assertEquals("count(root.sg.d1.speed),count(root.sg.d2.speed),"
+                + "max_value(root.sg.d1.temperature),max_value(root.sg.d2.temperature),",
+            header.toString());
 
         int cnt = 0;
         while (resultSet.next()) {
@@ -259,14 +264,65 @@ public class IoTDBAliasIT {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             builder.append(resultSet.getString(i)).append(",");
           }
-          Assert.assertEquals(retArray[cnt], builder.toString());
+          assertEquals(retArray[cnt], builder.toString());
           cnt++;
         }
-        Assert.assertEquals(retArray.length, cnt);
+        assertEquals(retArray.length, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void AlterAliasTest() throws ClassNotFoundException {
+    String ret = "root.sg.d2.s3,powerNew,root.sg,FLOAT,RLE,SNAPPY";
+
+    String[] retArray = {"100,80.0,", "200,81.0,", "300,82.0,", "400,83.0,"};
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("ALTER timeseries root.sg.d2.s3 UPSERT ALIAS=powerNew");
+      boolean hasResult = statement.execute("show timeseries root.sg.d2.s3");
+      assertTrue(hasResult);
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        String ans = resultSet.getString("timeseries")
+            + "," + resultSet.getString("alias")
+            + "," + resultSet.getString("storage group")
+            + "," + resultSet.getString("dataType")
+            + "," + resultSet.getString("encoding")
+            + "," + resultSet.getString("compression");
+        assertEquals(ret, ans);
+      }
+
+      hasResult = statement.execute("select powerNew from root.sg.d2");
+      assertTrue(hasResult);
+      resultSet = statement.getResultSet();
+      ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+      StringBuilder header = new StringBuilder();
+      for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+        header.append(resultSetMetaData.getColumnName(i)).append(",");
+      }
+      assertEquals("Time,root.sg.d2.powerNew,", header.toString());
+
+      int cnt = 0;
+      while (resultSet.next()) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          builder.append(resultSet.getString(i)).append(",");
+        }
+        assertEquals(retArray[cnt], builder.toString());
+        cnt++;
+      }
+      assertEquals(retArray.length, cnt);
+    } catch (Exception e) {
+      fail(e.getMessage());
+      e.printStackTrace();
     }
   }
 

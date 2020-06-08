@@ -25,14 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
@@ -60,13 +53,8 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
-import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -79,6 +67,7 @@ import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -549,7 +538,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (plan.getOperatorType() == OperatorType.FILL) {
           throw new QueryProcessException("Fill doesn't support disable align clause.");
         }
-        if (plan.getOperatorType() == OperatorType.GROUPBY) {
+        if (plan.getOperatorType() == OperatorType.GROUPBYTIME) {
           throw new QueryProcessException("Group by doesn't support disable align clause.");
         }
       }
@@ -698,6 +687,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // Last Query should return different respond instead of the static one
       // because the query dataset and query id is different although the header of last query is same.
       return StaticResps.LAST_RESP.deepCopy();
+    } else if (plan instanceof AggregationPlan && ((AggregationPlan)plan).getLevel() >= 0) {
+      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(((AggregationPlan)plan).getDeduplicatedPaths(), ((AggregationPlan)plan).getLevel(), null);
+      for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+        respColumns.add("count(" + entry.getKey() + ")");
+        columnsTypes.add(TSDataType.INT64.toString());
+      }
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);
       resp.setColumnNameIndexMap(plan.getPathToIndex());
@@ -718,17 +713,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     switch (plan.getOperatorType()) {
       case QUERY:
       case FILL:
-        for (Path p : paths) {
-          if (p.getAlias() != null) {
-            respColumns.add(p.getFullPathWithAlias());
+        for (Path path : paths) {
+          if (path.getAlias() != null) {
+            respColumns.add(path.getFullPathWithAlias());
           } else {
-            respColumns.add(p.getFullPath());
+            respColumns.add(path.getFullPath());
           }
         }
         seriesTypes = getSeriesTypesByString(respColumns, null);
         break;
       case AGGREGATION:
-      case GROUPBY:
+      case GROUPBYTIME:
       case GROUP_BY_FILL:
         List<String> aggregations = plan.getAggregations();
         if (aggregations.size() != paths.size()) {
@@ -1210,7 +1205,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getTSBatchExecuteStatementResp(Arrays.asList(tsStatusArray));
       }
     } catch (Exception e) {
-      logger.info("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils
           .getTSBatchExecuteStatementResp(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     } finally {
@@ -1265,7 +1260,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       return RpcUtils.getTSBatchExecuteStatementResp(statusList);
     } catch (Exception e) {
-      logger.info("{}: error occurs when insertTablets", IoTDBConstant.GLOBAL_DB_NAME, e);
+      logger.error("{}: error occurs when insertTablets", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils
           .getTSBatchExecuteStatementResp(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     } finally {
@@ -1340,7 +1335,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.NOT_LOGIN_ERROR);
     }
-
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPaths().get(i)),

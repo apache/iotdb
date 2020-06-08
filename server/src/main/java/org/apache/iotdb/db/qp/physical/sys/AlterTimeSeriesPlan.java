@@ -42,19 +42,17 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   private final Map<String, String> alterMap;
 
   // used when the alterType is UPSERT
+  private final String alias;
   private final Map<String, String> tagsMap;
   private final Map<String, String> attributesMap;
 
-  public AlterTimeSeriesPlan(
-      Path path,
-      AlterType alterType,
-      Map<String, String> alterMap,
-      Map<String, String> tagsMap,
-      Map<String, String> attributesMap) {
+  public AlterTimeSeriesPlan(Path path, AlterType alterType, Map<String, String> alterMap,
+      String alias, Map<String, String> tagsMap, Map<String, String> attributesMap) {
     super(false, Operator.OperatorType.ALTER_TIMESERIES);
     this.path = path;
     this.alterType = alterType;
     this.alterMap = alterMap;
+    this.alias = alias;
     this.tagsMap = tagsMap;
     this.attributesMap = attributesMap;
   }
@@ -69,6 +67,10 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
 
   public Map<String, String> getAlterMap() {
     return alterMap;
+  }
+
+  public String getAlias() {
+    return alias;
   }
 
   public Map<String, String> getTagsMap() {

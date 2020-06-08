@@ -26,8 +26,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.Collections;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class LeafMNode extends MNode {
+
+  private static final Logger logger = LoggerFactory.getLogger(LeafMNode.class);
 
   private static final long serialVersionUID = -1199657856921206435L;
 
@@ -73,7 +77,9 @@ public class LeafMNode extends MNode {
 
   @Override
   public MNode getChild(String name) {
-    return null;
+    logger.warn("current node {} is a LeafMNode, can not get child {}", super.name, name);
+    throw new RuntimeException(
+        String.format("current node %s is a LeafMNode, can not get child %s", super.name, name));
   }
 
   @Override

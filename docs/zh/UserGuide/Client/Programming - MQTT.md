@@ -70,7 +70,7 @@ MQTT主题与IoTDB时间序列相对应。
 | mqtt_port      | mqtt服务绑定端口 |   1883 |
 | mqtt_handler_pool_size | 处理mqtt消息的处理程序池大小 |    1 |
 | mqtt_payload_formatter | mqtt消息有效负载格式化程序 |    json |
-
+| mqtt_max_message_size | mqtt消息最大长度（字节）|   1048576 |
 
 ## 例子
 以下是mqtt客户端将消息发送到IoTDB服务器的示例。

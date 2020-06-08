@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import java.io.File;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -28,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -96,7 +96,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantRoleToUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GrantWatermarkEmbeddingContext;
-import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.GroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertColumnSpecContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.InsertStatementContext;
@@ -163,13 +163,15 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.StringContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class is a listener and you can get an operator which is a logical plan.
  */
 public class LogicalGenerator extends SqlBaseBaseListener {
+  private static Logger logger = LoggerFactory.getLogger(LogicalGenerator.class);
 
   private RootOperator initializedOperator = null;
   private ZoneId zoneId;
@@ -193,17 +195,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterCountTimeseries(CountTimeseriesContext ctx) {
     super.enterCountTimeseries(ctx);
+    PrefixPathContext pathContext = ctx.prefixPath();
+    Path path = (pathContext != null ? parsePrefixPath(pathContext) : new Path(SQLConstant.ROOT));
     if (ctx.INT() != null) {
       initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODE_TIMESERIES,
-          parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
+              path, Integer.parseInt(ctx.INT().getText()));
     } else {
-      if(ctx.prefixPath() != null) {
-        initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
-            parsePrefixPath(ctx.prefixPath()));
-      } else {
-        initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
-            new Path(SQLConstant.ROOT));
-      }
+      initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_TIMESERIES,
+              path);
     }
   }
 
@@ -211,12 +210,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterFlush(FlushContext ctx) {
     super.enterFlush(ctx);
     FlushOperator flushOperator = new FlushOperator(SQLConstant.TOK_FLUSH);
-    if(ctx.booleanClause() != null) {
-        flushOperator.setSeq(Boolean.parseBoolean(ctx.booleanClause().getText()));
+    if (ctx.booleanClause() != null) {
+      flushOperator.setSeq(Boolean.parseBoolean(ctx.booleanClause().getText()));
     }
-    if(ctx.prefixPath(0) != null) {
+    if (ctx.prefixPath(0) != null) {
       List<Path> storageGroups = new ArrayList<>();
-      for(PrefixPathContext prefixPathContext : ctx.prefixPath()) {
+      for (PrefixPathContext prefixPathContext : ctx.prefixPath()) {
         storageGroups.add(parsePrefixPath(prefixPathContext));
       }
       flushOperator.setStorageGroupList(storageGroups);
@@ -247,7 +246,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCountNodes(CountNodesContext ctx) {
     super.enterCountNodes(ctx);
     initializedOperator = new CountOperator(SQLConstant.TOK_COUNT_NODES,
-        parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
+            parsePrefixPath(ctx.prefixPath()), Integer.parseInt(ctx.INT().getText()));
   }
 
   @Override
@@ -255,10 +254,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterShowDevices(ctx);
     if (ctx.prefixPath() != null) {
       initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
-          parsePrefixPath(ctx.prefixPath()));
+              parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowDevicesOperator(SQLConstant.TOK_DEVICES,
-          new Path(SQLConstant.ROOT));
+              new Path(SQLConstant.ROOT));
     }
   }
 
@@ -267,10 +266,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterShowChildPaths(ctx);
     if (ctx.prefixPath() != null) {
       initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS,
-          parsePrefixPath(ctx.prefixPath()));
+              parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowChildPathsOperator(SQLConstant.TOK_CHILD_PATHS,
-          new Path(SQLConstant.ROOT));
+              new Path(SQLConstant.ROOT));
     }
   }
 
@@ -283,22 +282,22 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadFiles(LoadFilesContext ctx) {
     super.enterLoadFiles(ctx);
-    if(ctx.autoCreateSchema() != null) {
-      if(ctx.autoCreateSchema().INT() != null) {
+    if (ctx.autoCreateSchema() != null) {
+      if (ctx.autoCreateSchema().INT() != null) {
         initializedOperator = new LoadFilesOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            Integer.parseInt(ctx.autoCreateSchema().INT().getText())
+                Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
+                Integer.parseInt(ctx.autoCreateSchema().INT().getText())
         );
       } else {
         initializedOperator = new LoadFilesOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
-            Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
-            IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
+                Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
+                IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
         );
       }
     } else {
       initializedOperator = new LoadFilesOperator(new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
-          true,
-          IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
+              true,
+              IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
       );
     }
   }
@@ -307,7 +306,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterMoveFile(MoveFileContext ctx) {
     super.enterMoveFile(ctx);
     initializedOperator = new MoveFileOperator(new File(removeStringQuote(ctx.STRING_LITERAL(0).getText())),
-        new File(removeStringQuote(ctx.STRING_LITERAL(1).getText())));
+            new File(removeStringQuote(ctx.STRING_LITERAL(1).getText())));
   }
 
   @Override
@@ -345,10 +344,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterShowTimeseries(ctx);
     if (ctx.prefixPath() != null) {
       initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
-          parsePrefixPath(ctx.prefixPath()));
+              parsePrefixPath(ctx.prefixPath()));
     } else {
       initializedOperator = new ShowTimeSeriesOperator(SQLConstant.TOK_TIMESERIES,
-          new Path("root"));
+              new Path("root"));
     }
   }
 
@@ -390,7 +389,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       // add tag
       alterTimeSeriesOperator.setAlterType(AlterType.ADD_TAGS);
       setMap(ctx, alterMap);
-    } else if (ctx.ATTRIBUTES() != null){
+    } else if (ctx.ATTRIBUTES() != null) {
       // add attribute
       alterTimeSeriesOperator.setAlterType(AlterType.ADD_ATTRIBUTES);
       setMap(ctx, alterMap);
@@ -407,7 +406,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : tagsList) {
         String value;
-        if(property.propertyValue().STRING_LITERAL() != null) {
+        if (property.propertyValue().STRING_LITERAL() != null) {
           value = removeStringQuote(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
@@ -427,7 +426,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCreateUser(CreateUserContext ctx) {
     super.enterCreateUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE,
-        AuthorOperator.AuthorType.CREATE_USER);
+            AuthorOperator.AuthorType.CREATE_USER);
     authorOperator.setUserName(ctx.ID().getText());
     authorOperator.setPassWord(removeStringQuote(ctx.password.getText()));
     initializedOperator = authorOperator;
@@ -438,7 +437,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterCreateRole(CreateRoleContext ctx) {
     super.enterCreateRole(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE,
-        AuthorOperator.AuthorType.CREATE_ROLE);
+            AuthorOperator.AuthorType.CREATE_ROLE);
     authorOperator.setRoleName(ctx.ID().getText());
     initializedOperator = authorOperator;
     operatorType = SQLConstant.TOK_AUTHOR_CREATE;
@@ -448,7 +447,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterAlterUser(AlterUserContext ctx) {
     super.enterAlterUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_UPDATE_USER,
-        AuthorOperator.AuthorType.UPDATE_USER);
+            AuthorOperator.AuthorType.UPDATE_USER);
     if (ctx.ID() != null) {
       authorOperator.setUserName(ctx.ID().getText());
     } else {
@@ -463,7 +462,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterDropUser(DropUserContext ctx) {
     super.enterDropUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP,
-        AuthorOperator.AuthorType.DROP_USER);
+            AuthorOperator.AuthorType.DROP_USER);
     authorOperator.setUserName(ctx.ID().getText());
     initializedOperator = authorOperator;
     operatorType = SQLConstant.TOK_AUTHOR_DROP;
@@ -473,7 +472,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterDropRole(DropRoleContext ctx) {
     super.enterDropRole(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP,
-        AuthorOperator.AuthorType.DROP_ROLE);
+            AuthorOperator.AuthorType.DROP_ROLE);
     authorOperator.setRoleName(ctx.ID().getText());
     initializedOperator = authorOperator;
     operatorType = SQLConstant.TOK_AUTHOR_DROP;
@@ -483,7 +482,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterGrantUser(GrantUserContext ctx) {
     super.enterGrantUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-        AuthorOperator.AuthorType.GRANT_USER);
+            AuthorOperator.AuthorType.GRANT_USER);
     authorOperator.setUserName(ctx.ID().getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
@@ -495,7 +494,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterGrantRole(GrantRoleContext ctx) {
     super.enterGrantRole(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-        AuthorType.GRANT_ROLE);
+            AuthorType.GRANT_ROLE);
     authorOperator.setRoleName(ctx.ID().getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
@@ -507,7 +506,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterRevokeUser(RevokeUserContext ctx) {
     super.enterRevokeUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-        AuthorType.REVOKE_USER);
+            AuthorType.REVOKE_USER);
     authorOperator.setUserName(ctx.ID().getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
@@ -519,7 +518,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterRevokeRole(RevokeRoleContext ctx) {
     super.enterRevokeRole(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-        AuthorType.REVOKE_ROLE);
+            AuthorType.REVOKE_ROLE);
     authorOperator.setRoleName(ctx.ID().getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
@@ -531,7 +530,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterGrantRoleToUser(GrantRoleToUserContext ctx) {
     super.enterGrantRoleToUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-        AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
+            AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
     authorOperator.setRoleName(ctx.roleName.getText());
     authorOperator.setUserName(ctx.userName.getText());
     initializedOperator = authorOperator;
@@ -542,7 +541,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterRevokeRoleFromUser(RevokeRoleFromUserContext ctx) {
     super.enterRevokeRoleFromUser(ctx);
     AuthorOperator authorOperator = new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT,
-        AuthorType.REVOKE_ROLE_FROM_USER);
+            AuthorType.REVOKE_ROLE_FROM_USER);
     authorOperator.setRoleName(ctx.roleName.getText());
     authorOperator.setUserName(ctx.userName.getText());
     initializedOperator = authorOperator;
@@ -564,8 +563,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       sc.addTail(nodeName.getText());
     }
     initializedOperator = new LoadDataOperator(SQLConstant.TOK_DATALOAD,
-        removeStringQuote(csvPath),
-        sc.toString());
+            removeStringQuote(csvPath),
+            sc.toString());
     operatorType = SQLConstant.TOK_DATALOAD;
   }
 
@@ -596,7 +595,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterListUser(ListUserContext ctx) {
     super.enterListUser(ctx);
     initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
-        AuthorOperator.AuthorType.LIST_USER);
+            AuthorOperator.AuthorType.LIST_USER);
     operatorType = SQLConstant.TOK_LIST;
   }
 
@@ -604,7 +603,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterListRole(ListRoleContext ctx) {
     super.enterListRole(ctx);
     initializedOperator = new AuthorOperator(SQLConstant.TOK_LIST,
-        AuthorOperator.AuthorType.LIST_ROLE);
+            AuthorOperator.AuthorType.LIST_ROLE);
     operatorType = SQLConstant.TOK_LIST;
   }
 
@@ -612,7 +611,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterListPrivilegesUser(ListPrivilegesUserContext ctx) {
     super.enterListPrivilegesUser(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-        AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+            AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     operator.setUserName(ctx.ID().getText());
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = operator;
@@ -623,7 +622,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterListPrivilegesRole(ListPrivilegesRoleContext ctx) {
     super.enterListPrivilegesRole(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-        AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+            AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     operator.setRoleName((ctx.ID().getText()));
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     initializedOperator = operator;
@@ -634,7 +633,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterListUserPrivileges(ListUserPrivilegesContext ctx) {
     super.enterListUserPrivileges(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-        AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
+            AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
     operator.setUserName(ctx.ID().getText());
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_LIST;
@@ -644,7 +643,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterListRolePrivileges(ListRolePrivilegesContext ctx) {
     super.enterListRolePrivileges(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-        AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
+            AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
     operator.setRoleName(ctx.ID().getText());
     initializedOperator = operator;
     operatorType = SQLConstant.TOK_LIST;
@@ -654,7 +653,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterListAllRoleOfUser(ListAllRoleOfUserContext ctx) {
     super.enterListAllRoleOfUser(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-        AuthorOperator.AuthorType.LIST_USER_ROLES);
+            AuthorOperator.AuthorType.LIST_USER_ROLES);
     initializedOperator = operator;
     operator.setUserName(ctx.ID().getText());
     operatorType = SQLConstant.TOK_LIST;
@@ -664,7 +663,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterListAllUserOfRole(ListAllUserOfRoleContext ctx) {
     super.enterListAllUserOfRole(ctx);
     AuthorOperator operator = new AuthorOperator(SQLConstant.TOK_LIST,
-        AuthorOperator.AuthorType.LIST_ROLE_USERS);
+            AuthorOperator.AuthorType.LIST_ROLE_USERS);
     initializedOperator = operator;
     operator.setRoleName((ctx.ID().getText()));
     operatorType = SQLConstant.TOK_LIST;
@@ -735,7 +734,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       deletePaths.add(parsePrefixPath(prefixPath));
     }
     DeleteTimeSeriesOperator deleteTimeSeriesOperator = new DeleteTimeSeriesOperator(
-        SQLConstant.TOK_METADATA_DELETE);
+            SQLConstant.TOK_METADATA_DELETE);
     deleteTimeSeriesOperator.setDeletePathList(deletePaths);
     initializedOperator = deleteTimeSeriesOperator;
     operatorType = SQLConstant.TOK_METADATA_DELETE;
@@ -745,7 +744,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterSetStorageGroup(SetStorageGroupContext ctx) {
     super.enterSetStorageGroup(ctx);
     SetStorageGroupOperator setStorageGroupOperator = new SetStorageGroupOperator(
-        SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
+            SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
     Path path = parseFullPath(ctx.fullPath());
     setStorageGroupOperator.setPath(path);
     initializedOperator = setStorageGroupOperator;
@@ -761,7 +760,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       deletePaths.add(parseFullPath(fullPath));
     }
     DeleteStorageGroupOperator deleteStorageGroupOperator = new DeleteStorageGroupOperator(
-        SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
+            SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
     deleteStorageGroupOperator.setDeletePathList(deletePaths);
     initializedOperator = deleteStorageGroupOperator;
     operatorType = SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL;
@@ -791,7 +790,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterGroupByFillClause(SqlBaseParser.GroupByFillClauseContext ctx) {
     super.enterGroupByFillClause(ctx);
-    queryOp.setGroupBy(true);
+    queryOp.setGroupByTime(true);
     queryOp.setFill(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
@@ -864,9 +863,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
-  public void enterGroupByClause(GroupByClauseContext ctx) {
-    super.enterGroupByClause(ctx);
-    queryOp.setGroupBy(true);
+  public void enterGroupByTimeClause(GroupByTimeClauseContext ctx) {
+    super.enterGroupByTimeClause(ctx);
+
+    queryOp.setGroupByTime(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
     // parse timeUnit
     queryOp.setUnit(parseDuration(ctx.DURATION(0).getText()));
@@ -876,11 +876,23 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       queryOp.setSlidingStep(parseDuration(ctx.DURATION(1).getText()));
       if (queryOp.getSlidingStep() < queryOp.getUnit()) {
         throw new SQLParserException(
-            "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
+          "The third parameter sliding step shouldn't be smaller than the second parameter time interval.");
       }
     }
 
     parseTimeInterval(ctx.timeInterval());
+
+    if (ctx.INT() != null) {
+      queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
+    }
+  }
+
+  @Override
+  public void enterGroupByLevelClause(SqlBaseParser.GroupByLevelClauseContext ctx) {
+    super.enterGroupByLevelClause(ctx);
+    queryOp.setGroupByLevel(true);
+
+    queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
   }
 
   @Override
@@ -903,7 +915,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     TSDataType dataType = parseType(ctx.dataType().getText());
     if (ctx.linearClause() != null && dataType == TSDataType.TEXT) {
       throw new SQLParserException(String.format("type %s cannot use %s fill function"
-          , dataType, ctx.linearClause().LINEAR().getText()));
+              , dataType, ctx.linearClause().LINEAR().getText()));
     }
 
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
@@ -989,7 +1001,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       offset = Integer.parseInt(ctx.INT().getText());
     } catch (NumberFormatException e) {
       throw new SQLParserException(
-          "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.");
+              "Out of range. OFFSET <OFFSETValue>: OFFSETValue should be Int32.");
     }
     if (offset < 0) {
       throw new SQLParserException("OFFSET <OFFSETValue>: OFFSETValue should >= 0.");
@@ -1009,7 +1021,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       slimit = Integer.parseInt(ctx.INT().getText());
     } catch (NumberFormatException e) {
       throw new SQLParserException(
-          "Out of range. SLIMIT <SN>: SN should be Int32.");
+              "Out of range. SLIMIT <SN>: SN should be Int32.");
     }
     if (slimit <= 0) {
       throw new SQLParserException("SLIMIT <SN>: SN should be greater than 0.");
@@ -1025,11 +1037,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       soffset = Integer.parseInt(ctx.INT().getText());
     } catch (NumberFormatException e) {
       throw new SQLParserException(
-          "Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
+              "Out of range. SOFFSET <SOFFSETValue>: SOFFSETValue should be Int32.");
     }
     if (soffset < 0) {
       throw new SQLParserException(
-          "SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.");
+              "SOFFSET <SOFFSETValue>: SOFFSETValue should >= 0.");
     }
     queryOp.setSeriesOffset(soffset);
   }
@@ -1078,7 +1090,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       path.add(nodeNameWithoutStar.getText());
     }
     return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+            new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
   }
 
   @Override
@@ -1109,6 +1121,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   @Override
+  public void enterAliasClause(SqlBaseParser.AliasClauseContext ctx) {
+    super.enterAliasClause(ctx);
+    if (alterTimeSeriesOperator != null && ctx.ID() != null) {
+      alterTimeSeriesOperator.setAlias(ctx.ID().getText());
+    }
+  }
+
+
+  @Override
   public void enterAttributeClause(AttributeClauseContext ctx) {
     super.enterAttributeClause(ctx);
     Map<String, String> attributes = extractMap(ctx.property(), ctx.property(0));
@@ -1131,7 +1152,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   private Map<String, String> extractMap(List<PropertyContext> property2,
-      PropertyContext property3) {
+                                         PropertyContext property3) {
     String value;
     Map<String, String> tags = new HashMap<>(property2.size());
     if (property3 != null) {
@@ -1251,7 +1272,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       path.add(nodeName.getText());
     }
     return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+            new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
   }
 
   /**
@@ -1278,7 +1299,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
           unit += durationStr.charAt(i);
         }
         total += DatetimeUtils
-            .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
+                .convertDurationStrToLong(tmp, unit.toLowerCase(), timestampPrecision);
         tmp = 0;
       }
     }
@@ -1326,7 +1347,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       operator.setKey(ctx.property().ID().getText());
     }
     String value;
-    if(propertyValueContext.STRING_LITERAL() != null) {
+    if (propertyValueContext.STRING_LITERAL() != null) {
       value = removeStringQuote(propertyValueContext.getText());
     } else {
       value = propertyValueContext.getText();
@@ -1431,10 +1452,10 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         throw new SQLParserException(path.toString(), "Date can only be used to time");
       }
       basic = new BasicFunctionOperator(ctx.comparisonOperator().type.getType(), path,
-          Long.toString(parseDateExpression(ctx.constant().dateExpression())));
+              Long.toString(parseDateExpression(ctx.constant().dateExpression())));
     } else {
       basic = new BasicFunctionOperator(ctx.comparisonOperator().type.getType(), path,
-          ctx.constant().getText());
+              ctx.constant().getText());
     }
     return basic;
   }
@@ -1446,7 +1467,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       path.add(nodeName.getText());
     }
     return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+            new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
   }
 
   /**
@@ -1492,9 +1513,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       return DatetimeUtils.convertDatetimeStrToLong(timestampStr, zoneId);
     } catch (Exception e) {
       throw new SQLParserException(String
-          .format("Input time format %s error. "
-              + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
-              + "refer to user document for more info.", timestampStr));
+              .format("Input time format %s error. "
+                      + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
+                      + "refer to user document for more info.", timestampStr));
     }
   }
 
@@ -1506,9 +1527,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   private long parseDeleteTimeFilter(DeleteDataOperator operator) {
     FilterOperator filterOperator = operator.getFilterOperator();
     if (filterOperator.getTokenIntType() != SQLConstant.LESSTHAN
-        && filterOperator.getTokenIntType() != SQLConstant.LESSTHANOREQUALTO) {
+            && filterOperator.getTokenIntType() != SQLConstant.LESSTHANOREQUALTO) {
       throw new SQLParserException(
-          "For delete command, where clause must be like : time < XXX or time <= XXX");
+              "For delete command, where clause must be like : time < XXX or time <= XXX");
     }
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
     if (filterOperator.getTokenIntType() == SQLConstant.LESSTHAN) {
@@ -1560,14 +1581,14 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       case INT32:
       case INT64:
         if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
-            || tsEncoding.equals(TSEncoding.TS_2DIFF))) {
+                || tsEncoding.equals(TSEncoding.TS_2DIFF))) {
           throwExp = true;
         }
         break;
       case FLOAT:
       case DOUBLE:
         if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
-            || tsEncoding.equals(TSEncoding.TS_2DIFF) || tsEncoding.equals(TSEncoding.GORILLA))) {
+                || tsEncoding.equals(TSEncoding.TS_2DIFF) || tsEncoding.equals(TSEncoding.GORILLA))) {
           throwExp = true;
         }
         break;
@@ -1581,7 +1602,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
     if (throwExp) {
       throw new SQLParserException(
-          String.format("encoding %s does not support %s", tsEncoding, tsDataType));
+              String.format("encoding %s does not support %s", tsEncoding, tsDataType));
     }
   }
 }

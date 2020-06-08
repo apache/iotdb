@@ -103,6 +103,10 @@ public abstract class AbstractMemTable implements IMemTable {
   public void insert(InsertPlan insertPlan) {
     for (int i = 0; i < insertPlan.getValues().length; i++) {
 
+      if (insertPlan.getValues()[i] == null) {
+        continue;
+      }
+
       Object value = insertPlan.getValues()[i];
       memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
 
@@ -110,7 +114,7 @@ public abstract class AbstractMemTable implements IMemTable {
           insertPlan.getSchemas()[i], insertPlan.getTime(), value);
     }
 
-    totalPointsNum += insertPlan.getValues().length;
+    totalPointsNum += insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
   }
 
   @Override
@@ -172,6 +176,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public boolean reachTotalPointNumThreshold() {
+    if (totalPointsNum == 0) {
+      return false;
+    }
     return totalPointsNum >= totalPointsNumThreshold;
   }
 

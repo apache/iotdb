@@ -18,6 +18,26 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
@@ -25,7 +45,12 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.*;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
@@ -46,13 +71,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -71,7 +89,7 @@ public class MManager {
   private MTree mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
-  private boolean writeToLog;
+  private boolean isRecovering;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
 
@@ -107,7 +125,7 @@ public class MManager {
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
 
     // do not write log when recover
-    writeToLog = false;
+    isRecovering = true;
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
@@ -155,7 +173,7 @@ public class MManager {
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
-      writeToLog = true;
+      isRecovering = false;
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
       logger.error("Cannot read MTree from file, using an empty new one", e);
@@ -242,12 +260,9 @@ public class MManager {
         createTimeseries(plan, offset);
         break;
       case MetadataOperationType.DELETE_TIMESERIES:
-        Pair<Set<String>, String> pair = deleteTimeseries(args[1]);
-        for (String deleteStorageGroup : pair.left) {
-          StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(deleteStorageGroup);
-        }
-        if (!pair.right.isEmpty()) {
-          throw new DeleteFailedException(pair.right);
+        String failedTimeseries = deleteTimeseries(args[1]);
+        if (!failedTimeseries.isEmpty()) {
+          throw new DeleteFailedException(failedTimeseries);
         }
         break;
       case MetadataOperationType.SET_STORAGE_GROUP:
@@ -262,6 +277,9 @@ public class MManager {
         break;
       case MetadataOperationType.CHANGE_OFFSET:
         changeOffset(args[1], Long.parseLong(args[2]));
+        break;
+      case MetadataOperationType.CHANGE_ALIAS:
+        changeAlias(args[1], args[2]);
         break;
       default:
         logger.error("Unrecognizable command {}", cmd);
@@ -318,7 +336,7 @@ public class MManager {
       }
 
       // write log
-      if (writeToLog) {
+      if (!isRecovering) {
         // either tags or attributes is not empty
         if ((plan.getTags() != null && !plan.getTags().isEmpty())
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
@@ -356,11 +374,9 @@ public class MManager {
    * Delete all timeseries under the given path, may cross different storage group
    *
    * @param prefixPath path to be deleted, could be root or a prefix path or a full path
-   * @return 1. The Set contains StorageGroups that contain no more timeseries after this deletion
-   * files of such StorageGroups should be deleted to reclaim disk space. 2. The String is the
-   * deletion failed Timeseries
+   * @return The String is the deletion failed Timeseries
    */
-  public Pair<Set<String>, String> deleteTimeseries(String prefixPath) throws MetadataException {
+  public String deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
     if (isStorageGroup(prefixPath)) {
 
@@ -377,8 +393,6 @@ public class MManager {
       mNodeCache.clear();
     }
     try {
-      Set<String> emptyStorageGroups = new HashSet<>();
-
       List<String> allTimeseries = mtree.getAllTimeseriesName(prefixPath);
       // Monitor storage group seriesPath is not allowed to be deleted
       allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_PREFIX));
@@ -386,15 +400,18 @@ public class MManager {
       Set<String> failedNames = new HashSet<>();
       for (String p : allTimeseries) {
         try {
-          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatisticsAndLog(p);
-          if (emptyStorageGroup != null) {
-            emptyStorageGroups.add(emptyStorageGroup);
+          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+          if (!isRecovering) {
+            if (emptyStorageGroup != null) {
+              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+            }
+            logWriter.deleteTimeseries(p);
           }
         } catch (DeleteFailedException e) {
           failedNames.add(e.getName());
         }
       }
-      return new Pair<>(emptyStorageGroups, String.join(",", failedNames));
+      return String.join(",", failedNames);
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     } finally {
@@ -431,7 +448,7 @@ public class MManager {
    * @param path full path from root to leaf node
    * @return after delete if the storage group is empty, return its name, otherwise return null
    */
-  private String deleteOneTimeseriesAndUpdateStatisticsAndLog(String path)
+  private String deleteOneTimeseriesAndUpdateStatistics(String path)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
@@ -456,10 +473,6 @@ public class MManager {
               .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
         }
       }
-
-      if (writeToLog) {
-        logWriter.deleteTimeseries(path);
-      }
       return storageGroupName;
     } finally {
       lock.writeLock().unlock();
@@ -481,7 +494,7 @@ public class MManager {
         ActiveTimeSeriesCounter.getInstance().init(storageGroup);
         seriesNumberInStorageGroups.put(storageGroup, 0);
       }
-      if (writeToLog) {
+      if (!isRecovering) {
         logWriter.setStorageGroup(storageGroup);
       }
     } catch (IOException e) {
@@ -522,7 +535,7 @@ public class MManager {
           }
         }
         // if success
-        if (writeToLog) {
+        if (!isRecovering) {
           logWriter.deleteStorageGroup(storageGroup);
         }
       }
@@ -670,22 +683,46 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesName(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
     } finally {
       lock.readLock().unlock();
     }
   }
 
   /**
-   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include alias.
+   * Similar to method getAllTimeseriesName(), but return Path instead of String in order to include
+   * alias.
    */
   public List<Path> getAllTimeseriesPath(String prefixPath) throws MetadataException {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesPath(prefixPath);
-    } catch (MetadataException e) {
-      throw new MetadataException(e);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of timeseries for given prefix path.
+   */
+  public int getAllTimeseriesCount(String prefixPath) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesCount(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To calculate the count of nodes in the given level for given prefix path.
+   *
+   * @param prefixPath a prefix path or a full path, can not contain '*'
+   * @param level      the level can not be smaller than the level of the prefixPath
+   */
+  public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getNodesCountInGivenLevel(prefixPath, level);
     } finally {
       lock.readLock().unlock();
     }
@@ -915,11 +952,11 @@ public class MManager {
         String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
         setStorageGroup(storageGroupName);
       }
-      node = mtree.getDeviceNodeWithAutoCreating(path);
+      node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       return node;
     } catch (StorageGroupAlreadySetException e) {
       // ignore set storage group concurrently
-      node = mtree.getDeviceNodeWithAutoCreating(path);
+      node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
       return node;
     } finally {
       if (node != null) {
@@ -935,6 +972,15 @@ public class MManager {
   public MNode getDeviceNodeWithAutoCreateAndReadLock(String path) throws MetadataException {
     return getDeviceNodeWithAutoCreateAndReadLock(
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
+  }
+
+  public MNode getChild(MNode parent, String child) {
+    lock.readLock().lock();
+    try {
+      return parent.getChild(child);
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   /**
@@ -962,7 +1008,7 @@ public class MManager {
     lock.writeLock().lock();
     try {
       getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
-      if (writeToLog) {
+      if (!isRecovering) {
         logWriter.setTTL(storageGroup, dataTTL);
       }
     } finally {
@@ -985,17 +1031,31 @@ public class MManager {
     }
   }
 
+  public void changeAlias(String path, String alias) throws MetadataException {
+    lock.writeLock().lock();
+    try {
+      LeafMNode leafMNode = (LeafMNode) mtree.getNodeByPath(path);
+      if (leafMNode.getAlias() != null) {
+        leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+      }
+      leafMNode.getParent().addAlias(alias, leafMNode);
+      leafMNode.setAlias(alias);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
   /**
    * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
    *
+   * @param alias         newly added alias
    * @param tagsMap       newly added tags map
    * @param attributesMap newly added attributes map
    * @param fullPath      timeseries
    */
-  public void upsertTagsAndAttributes(
-      Map<String, String> tagsMap, Map<String, String> attributesMap, String fullPath)
-      throws MetadataException, IOException {
+  public void upsertTagsAndAttributes(String alias, Map<String, String> tagsMap,
+      Map<String, String> attributesMap, String fullPath) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
       MNode mNode = mtree.getNodeByPath(fullPath);
@@ -1003,15 +1063,35 @@ public class MManager {
         throw new PathNotExistException(fullPath);
       }
       LeafMNode leafMNode = (LeafMNode) mNode;
+      // upsert alias
+      if (alias != null && !alias.equals(leafMNode.getAlias())) {
+
+        if (leafMNode.getParent().hasChild(alias)) {
+          throw new MetadataException("The alias already exists.");
+        }
+        if (leafMNode.getAlias() != null) {
+          leafMNode.getParent().deleteAliasChild(leafMNode.getAlias());
+        }
+        leafMNode.getParent().addAlias(alias, leafMNode);
+        leafMNode.setAlias(alias);
+        // persist to WAL
+        logWriter.changeAlias(fullPath, alias);
+      }
+
+      if (tagsMap == null && attributesMap == null) {
+        return;
+      }
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, attributesMap);
         logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
-        for (Entry<String, String> entry : tagsMap.entrySet()) {
-          tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
-              .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+        if (tagsMap != null) {
+          for (Entry<String, String> entry : tagsMap.entrySet()) {
+            tagIndex.computeIfAbsent(entry.getKey(), k -> new HashMap<>())
+                .computeIfAbsent(entry.getValue(), v -> new HashSet<>()).add(leafMNode);
+          }
         }
         return;
       }
@@ -1019,28 +1099,32 @@ public class MManager {
       Pair<Map<String, String>, Map<String, String>> pair =
           tagLogFile.read(config.getTagAttributeTotalSize(), leafMNode.getOffset());
 
-      for (Entry<String, String> entry : tagsMap.entrySet()) {
-        String key = entry.getKey();
-        String value = entry.getValue();
-        String beforeValue = pair.left.get(key);
-        pair.left.put(key, value);
-        // if the key has existed and the value is not equal to the new one
-        // we should remove before key-value from inverted index map
-        if (beforeValue != null && !beforeValue.equals(value)) {
-          tagIndex.get(key).get(beforeValue).remove(leafMNode);
-          if (tagIndex.get(key).get(beforeValue).isEmpty()) {
-            tagIndex.get(key).remove(beforeValue);
+      if (tagsMap != null) {
+        for (Entry<String, String> entry : tagsMap.entrySet()) {
+          String key = entry.getKey();
+          String value = entry.getValue();
+          String beforeValue = pair.left.get(key);
+          pair.left.put(key, value);
+          // if the key has existed and the value is not equal to the new one
+          // we should remove before key-value from inverted index map
+          if (beforeValue != null && !beforeValue.equals(value)) {
+            tagIndex.get(key).get(beforeValue).remove(leafMNode);
+            if (tagIndex.get(key).get(beforeValue).isEmpty()) {
+              tagIndex.get(key).remove(beforeValue);
+            }
+          }
+
+          // if the key doesn't exist or the value is not equal to the new one
+          // we should add a new key-value to inverted index map
+          if (beforeValue == null || !beforeValue.equals(value)) {
+            tagIndex.computeIfAbsent(key, k -> new HashMap<>())
+                .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
           }
         }
-
-        // if the key doesn't exist or the value is not equal to the new one
-        // we should add a new key-value to inverted index map
-        if (beforeValue == null || !beforeValue.equals(value)) {
-          tagIndex.computeIfAbsent(key, k -> new HashMap<>())
-              .computeIfAbsent(value, v -> new HashSet<>()).add(leafMNode);
-        }
       }
-      pair.left.putAll(tagsMap);
+      if (tagsMap != null) {
+        pair.left.putAll(tagsMap);
+      }
       pair.right.putAll(attributesMap);
 
       // persist the change to disk

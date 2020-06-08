@@ -34,7 +34,7 @@ Metadata of IoTDB is managed by MManger, including:
 
 	> tag key -> tag value -> timeseries LeafMNode
 
-In the process of initializing, MManager will replay the mlog to load the metadata into memory. There are six types of operation log:
+In the process of initializing, MManager will replay the mlog to load the metadata into memory. There are seven types of operation log:
 > At the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
 
 * Create Timeseries
@@ -55,11 +55,11 @@ In the process of initializing, MManager will replay the mlog to load the metada
 		* if succeed
 			* delete the LeafMNode
 			* read tlog using offset in the LeafMNode, update tag inverted index
-			* if the storage group becomes empty after deleting, return the name of it
+			* if the storage group becomes empty after deleting, record its name
 		* if failed
 			* return the full path of failed timeseries
-	* iterate the returned empty storage group list, and delete them
 	* if not restart
+	   * delete the recorded empty storage group
 		* persist log into mlog
 		* currently, we won't delete the tag/attribute info of that timeseries in tlog
 	
@@ -86,8 +86,11 @@ In the process of initializing, MManager will replay the mlog to load the metada
 * Change the offset of Timeseries
 	* modify the offset of the timeseries's LeafMNode
 
+* Change the alias of Timeseries
+	* modify the alias of the timeseries's LeafMNode and update the aliasMap in its parent node.
 
-In addition to these six operation that are needed to be logged, there are another six alter operation to tag/attribute info of timeseries.
+
+In addition to these seven operation that are needed to be logged, there are another six alter operation to tag/attribute info of timeseries.
  
 > Same as above, at the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
 
@@ -127,8 +130,10 @@ In addition to these six operation that are needed to be logged, there are anoth
 	* iterate the attributes needed to be added, if it has existed, then throw exception, otherwise, add it
 	* persist the new attribute information into tlog
 
-* upsert tags/attributes
+* upsert alias/tags/attributes
 	* obtain the LeafMNode of that timeseries
+	* change the alias of the timeseries's LeafMNode and update the aliasMap in its parent node if exists
+	* persist the updated alias into mlog
 	* read tag information through the offset in LeafMNode
 	* iterate the tags and attributes needed to be upserted, if it has existed，use the new value to update it, otherwise, add it
 	* persist the updated tags and attributes information into tlog
@@ -219,6 +224,13 @@ sql examples and the corresponding mlog record:
    
    > format: 10,path,[change offset]
 
+* alter timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias
+   
+   > mlog: 13,root.turbine.d1.s1,newAlias
+   
+   > format: 13,path,[new alias]
+                                                                                                                
+                                                                                                              
 ## TLog
 * org.apache.iotdb.db.metadata.TagLogFile
 
