@@ -530,6 +530,25 @@
 
 ## 数据类型自动推断
 
+
+* enable\_auto\_create\_schema
+
+|名字| enable\_auto\_create\_schema |
+|:---:|:---|
+|描述| 当写入的序列不存在时，是否自动创建序列到Schema|
+|取值| true or false |
+|默认值|true |
+|改后生效方式|重启服务器生效|
+
+* default\_storage\_group\_level
+
+|名字| default\_storage\_group\_level |
+|:---:|:---|
+|描述| 当写入的数据不存在且自动创建序列时，若需要创建相应的存储组，将序列路径的哪一层当做存储组. 例如, 如果我们接到一个新序列 root.sg0.d1.s2, 并且level=1， 那么root.sg0被视为存储组（因为root是level 0 层）|
+|取值| 整数 |
+|默认值|1 |
+|改后生效方式|重启服务器生效|
+
 * boolean\_string\_infer\_type
 
 |名字| boolean\_string\_infer\_type |

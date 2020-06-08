@@ -584,6 +584,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 ## Automatic Schema Creation and Type Inference
 
+* enable\_auto\_create\_schema
+
+|Name| enable\_auto\_create\_schema |
+|:---:|:---|
+|Description| whether auto create the time series when a non-existed time series data comes|
+|Type| true or false |
+|Default|true |
+|Effective|After restart system|
+
+* default\_storage\_group\_level
+
+|Name| default\_storage\_group\_level |
+|:---:|:---|
+|Description| Storage group level when creating schema automatically is enabled. For example, if we receives a data point from root.sg0.d1.s2, we will set root.sg0 as the storage group if storage group level is 1. (root is level 0)|
+|Type| integer |
+|Default|1 |
+|Effective|After restart system|
+
 * boolean\_string\_infer\_type
 
 |Name| boolean\_string\_infer\_type |
