@@ -16,22 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.nvm.metadata;
+package org.apache.iotdb.db.engine.memtable.nvm;
 
-import java.io.IOException;
-import org.apache.iotdb.db.nvm.space.NVMSpace;
-import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
+import java.util.List;
+import org.apache.iotdb.db.engine.memtable.AbstractWritableMemChunk;
+import org.apache.iotdb.db.nvm.space.NVMDataSpace;
+import org.apache.iotdb.db.utils.datastructure.NVMTVList;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public abstract class NVMSpaceMetadata {
+public class NVMWritableMemChunk extends AbstractWritableMemChunk {
 
-  protected NVMSpace space;
-
-  public NVMSpaceMetadata() throws IOException {
-    long size = getUnitSize() * getUnitNum();
-    space = NVMSpaceManager.getInstance().allocateSpace(size);
+  public NVMWritableMemChunk(MeasurementSchema schema, NVMTVList list) {
+    this.schema = schema;
+    this.list = list;
   }
 
-  abstract int getUnitSize();
-
-  abstract int getUnitNum();
+  public void loadData(List<NVMDataSpace> timeSpaceList, List<NVMDataSpace> valueSpaceList) {
+    ((NVMTVList) list).loadData(timeSpaceList, valueSpaceList);
+  }
 }

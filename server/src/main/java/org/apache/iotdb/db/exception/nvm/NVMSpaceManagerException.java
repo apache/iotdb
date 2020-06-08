@@ -16,22 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.nvm.metadata;
+package org.apache.iotdb.db.exception.nvm;
 
-import java.io.IOException;
-import org.apache.iotdb.db.nvm.space.NVMSpace;
-import org.apache.iotdb.db.nvm.space.NVMSpaceManager;
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public abstract class NVMSpaceMetadata {
+public class NVMSpaceManagerException extends IoTDBException {
 
-  protected NVMSpace space;
+  private static final long serialVersionUID = 3502239072309147687L;
 
-  public NVMSpaceMetadata() throws IOException {
-    long size = getUnitSize() * getUnitNum();
-    space = NVMSpaceManager.getInstance().allocateSpace(size);
+  public NVMSpaceManagerException(String message) {
+    super(message, TSStatusCode.NVMSPACE_MANAGER_ERROR.getStatusCode());
   }
-
-  abstract int getUnitSize();
-
-  abstract int getUnitNum();
 }
