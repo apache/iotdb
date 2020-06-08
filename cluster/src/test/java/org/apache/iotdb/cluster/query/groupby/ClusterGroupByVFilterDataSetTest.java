@@ -30,7 +30,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -48,7 +48,7 @@ public class ClusterGroupByVFilterDataSetTest extends BaseQueryTest {
   public void test() throws IOException, StorageEngineException, QueryProcessException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    GroupByPlan groupByPlan = new GroupByPlan();
+    GroupByTimePlan groupByPlan = new GroupByTimePlan();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<String> aggregations = new ArrayList<>();

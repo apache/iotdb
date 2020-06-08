@@ -34,7 +34,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -170,7 +170,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    GroupByPlan groupByPlan = new GroupByPlan();
+    GroupByTimePlan groupByPlan = new GroupByTimePlan();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<String> aggregations = new ArrayList<>();
@@ -215,7 +215,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
       throws StorageEngineException, IOException, QueryFilterOptimizationException, QueryProcessException {
     QueryContext queryContext =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
-    GroupByPlan groupByPlan = new GroupByPlan();
+    GroupByTimePlan groupByPlan = new GroupByTimePlan();
     List<Path> pathList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<String> aggregations = new ArrayList<>();
