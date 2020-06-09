@@ -47,6 +47,7 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -292,14 +293,18 @@ public class TsFileResource {
       for (int i = 0; i < size; i++) {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
-        try {
-          if (mManager != null) {
-            MNode deviceNode = mManager.getNodeByPath(path);
+        if (mManager != null) {
+          MNode deviceNode = null;
+          try {
+            deviceNode = mManager.getDeviceNodeAndReadLock(path);
             path = deviceNode.getFullPath();
+          } catch (MetadataException e) {
+            logger.error("Cannot get deviceId {} from MManager", path, e);
+          } finally {
+            if (deviceNode != null) {
+              ((InternalMNode) deviceNode).readUnlock();
+            }
           }
-        }
-        catch (MetadataException e) {
-          logger.error("Cannot get deviceId {} from MManager", path, e);
         }
         deviceMap.put(path, i);
         startTimesArray[i] = time;
