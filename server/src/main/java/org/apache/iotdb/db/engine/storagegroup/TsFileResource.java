@@ -45,6 +45,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.service.UpgradeSevice;
@@ -297,7 +298,7 @@ public class TsFileResource {
             path = deviceNode.getFullPath();
           }
         }
-        catch (Exception e) {
+        catch (MetadataException e) {
           logger.error("Cannot get deviceId {} from MManager", path, e);
         }
         deviceMap.put(path, i);
