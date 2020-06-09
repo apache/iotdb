@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
@@ -47,6 +50,10 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.offset = offset;
   }
 
+  public ShowTimeSeriesPlan() {
+    super(ShowContentType.TIMESERIES);
+  }
+
   public Path getPath() {
     return this.path;
   }
@@ -69,5 +76,29 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   public int getOffset() {
     return offset;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.write(PhysicalPlanType.SHOW_TIMESERIES.ordinal());
+
+    putString(outputStream, path.getFullPath());
+    outputStream.writeBoolean(isContains);
+    putString(outputStream, key);
+    putString(outputStream, value);
+
+    outputStream.writeInt(limit);
+    outputStream.writeInt(offset);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    path = new Path(readString(buffer));
+    isContains = buffer.get() == 1;
+    key = readString(buffer);
+    value = readString(buffer);
+
+    limit = buffer.getInt();
+    limit = buffer.getInt();
   }
 }

@@ -49,7 +49,7 @@ public class UpgradeTask extends WrappedRunnable {
   public void runMayThrow() {
     try {
       List<TsFileResource> upgradedResources = generateUpgradedFiles();
-      upgradeResource.getWriteQueryLock().writeLock().lock();
+      upgradeResource.writeLock();
       String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
       String oldModificationFilePath = oldTsfilePath + ModificationFile.FILE_SUFFIX;
       try {
@@ -98,7 +98,7 @@ public class UpgradeTask extends WrappedRunnable {
             oldTsfilePath + COMMA_SEPERATOR + UpgradeCheckStatus.UPGRADE_SUCCESS);
         upgradeResource.getUpgradeTsFileResourceCallBack().call(upgradeResource);
       } finally {
-        upgradeResource.getWriteQueryLock().writeLock().unlock();
+        upgradeResource.writeUnlock();
       }
       UpgradeSevice.setCntUpgradeFileNum(UpgradeSevice.getCntUpgradeFileNum() - 1);
       logger.info("Upgrade completes, file path:{} , the remaining upgraded file num: {}",
@@ -110,7 +110,7 @@ public class UpgradeTask extends WrappedRunnable {
   }
 
   private List<TsFileResource> generateUpgradedFiles() throws WriteProcessException {
-    upgradeResource.getWriteQueryLock().readLock().lock();
+    upgradeResource.readLock();
     String oldTsfilePath = upgradeResource.getFile().getAbsolutePath();
     List<TsFileResource> upgradedResources = new ArrayList<>();
     UpgradeLog.writeUpgradeLogFile(
@@ -123,7 +123,7 @@ public class UpgradeTask extends WrappedRunnable {
       logger
           .error("generate upgrade file failed, the file to be upgraded:{}", oldTsfilePath, e);
     } finally {
-      upgradeResource.getWriteQueryLock().readLock().unlock();
+      upgradeResource.readUnlock();
     }
     return upgradedResources;
   }
