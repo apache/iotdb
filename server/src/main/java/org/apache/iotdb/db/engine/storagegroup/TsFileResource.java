@@ -47,7 +47,6 @@ import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -293,18 +292,10 @@ public class TsFileResource {
       for (int i = 0; i < size; i++) {
         String path = ReadWriteIOUtils.readString(inputStream);
         long time = ReadWriteIOUtils.readLong(inputStream);
-        if (mManager != null) {
-          MNode deviceNode = null;
-          try {
-            deviceNode = mManager.getDeviceNodeAndReadLock(path);
-            path = deviceNode.getFullPath();
-          } catch (MetadataException e) {
-            logger.error("Cannot get deviceId {} from MManager", path, e);
-          } finally {
-            if (deviceNode != null) {
-              ((InternalMNode) deviceNode).readUnlock();
-            }
-          }
+        try {
+          path = getDeviceIdFromMManager(mManager, path);
+        } catch (NullPointerException e) {
+          // cannot get the deviceId from MManager, use the deviceId from disk
         }
         deviceMap.put(path, i);
         startTimesArray[i] = time;
@@ -337,6 +328,25 @@ public class TsFileResource {
         modFile = new ModificationFile(modF.getPath());
       }
     }
+  }
+
+  /**
+   * To reduce the String number in memory, 
+   * use the deviceId from MManager instead of the deviceId read from disk
+   * 
+   * @param mManager  MManager
+   * @param path      deviceId read from disk
+   * @return deviceId deviceId get from MManager
+   */
+  private String getDeviceIdFromMManager(MManager mManager, String path) {
+    MNode deviceNode = null;
+    try {
+      deviceNode = mManager.getDeviceNode(path);
+      path = deviceNode.getFullPath();
+    } catch (MetadataException e) {
+      logger.error("Cannot get deviceId {} from MManager", path, e);
+    }
+    return path;
   }
 
   public void updateStartTime(String device, long time) {

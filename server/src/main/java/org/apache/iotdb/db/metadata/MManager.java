@@ -1045,12 +1045,17 @@ public class MManager {
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
-  /**
-   * !!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
-   */
-  public MNode getDeviceNodeAndReadLock(String path) throws MetadataException {
-    return getDeviceNodeWithAutoCreateAndReadLock(
-        path, false, config.getDefaultStorageGroupLevel());
+  public MNode getDeviceNode(String path) throws MetadataException {
+    lock.readLock().lock();
+    MNode node = null;
+    try {
+      node = mNodeCache.get(path);
+      return node;
+    } catch (CacheException e) {
+      throw new PathNotExistException(path);
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 
   public MNode getChild(MNode parent, String child) {
