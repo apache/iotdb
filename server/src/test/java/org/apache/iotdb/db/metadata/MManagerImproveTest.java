@@ -27,7 +27,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -136,7 +136,7 @@ public class MManagerImproveTest {
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       for (String s : measurementList) {
         assertTrue(node.hasChild(s));
-        LeafMNode measurementNode = (LeafMNode) node.getChild(s);
+        MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
         TSDataType dataType = measurementNode.getSchema().getType();
         assertEquals(TSDataType.TEXT, dataType);
       }

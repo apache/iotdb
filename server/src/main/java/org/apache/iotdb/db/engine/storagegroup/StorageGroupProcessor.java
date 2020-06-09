@@ -73,7 +73,7 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -767,7 +767,7 @@ public class StorageGroupProcessor {
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
-        ((LeafMNode) manager.getChild(node, measurementList[i]))
+        ((MeasurementMNode) manager.getChild(node, measurementList[i]))
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
@@ -824,7 +824,7 @@ public class StorageGroupProcessor {
         // Update cached last value with high priority
         MNode measurementNode = manager.getChild(node, measurementList[i]);
         if (measurementNode != null) {
-          ((LeafMNode) measurementNode)
+          ((MeasurementMNode) measurementNode)
               .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
         }
       }

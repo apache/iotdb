@@ -85,7 +85,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -291,7 +291,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected QueryDataSet processDataQuery(QueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-      IOException {
+      IOException, MetadataException {
     QueryDataSet queryDataSet;
     if (queryPlan instanceof AlignByDevicePlan) {
       queryDataSet = getAlignByDeviceDataSet((AlignByDevicePlan) queryPlan, context, queryRouter);
@@ -323,7 +323,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
-      QueryContext context, IQueryRouter router) {
+      QueryContext context, IQueryRouter router) throws MetadataException {
     return new AlignByDeviceDataSet(plan, context, router);
   }
 
@@ -820,7 +820,7 @@ public class PlanExecutor implements IPlanExecutor {
                   schema.getEncodingType(),
                   schema.getCompressor(),
                   Collections.emptyMap());
-            } else if (node.getChild(chunkMetadata.getMeasurementUid()) instanceof InternalMNode) {
+            } else if (!(node.getChild(chunkMetadata.getMeasurementUid()) instanceof MeasurementMNode)) {
               throw new QueryProcessException(
                   String.format("Current Path is not leaf node. %s", series));
             }
@@ -969,7 +969,7 @@ public class PlanExecutor implements IPlanExecutor {
         Path path = new Path(deviceId, measurement);
         internalCreateTimeseries(path.toString(), dataType);
 
-        LeafMNode measurementNode = (LeafMNode) mManager.getChild(deviceNode, measurement);
+        MeasurementMNode measurementNode = (MeasurementMNode) mManager.getChild(deviceNode, measurement);
         measurementSchema = measurementNode.getSchema();
         if(!isInferType) {
           checkType(insertPlan, loc, measurementNode.getSchema().getType());
@@ -977,7 +977,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } else if (deviceNode != null) {
       // device and measurement exists in MTree
-      LeafMNode measurementNode = (LeafMNode) MManager.getInstance().getChild(deviceNode, measurement);
+      MeasurementMNode measurementNode = (MeasurementMNode) MManager.getInstance().getChild(deviceNode, measurement);
       measurementSchema = measurementNode.getSchema();
     } else {
       // device in not in MTree, try the cache
@@ -1097,7 +1097,7 @@ public class PlanExecutor implements IPlanExecutor {
           internalCreateTimeseries(path.getFullPath(), dataType);
 
         }
-        LeafMNode measurementNode = (LeafMNode) mManager.getChild(node, measurement);
+        MeasurementMNode measurementNode = (MeasurementMNode) mManager.getChild(node, measurement);
 
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
