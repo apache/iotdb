@@ -73,6 +73,7 @@ public class SessionPool {
   private long timeout; //ms
   private static int FINAL_RETRY = RETRY - 1;
   private boolean enableCompression = false;
+  private SessionThreadPool threadPool;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false);
@@ -94,6 +95,20 @@ public class SessionPool {
     this.fetchSize = fetchSize;
     this.timeout = timeout;
     this.enableCompression = enableCompression;
+    this.threadPool = new SessionThreadPool();
+  }
+
+  public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
+      long timeout, boolean enableCompression, int threadPoolSize, int blockingQueueSize) {
+    this.maxSize = maxSize;
+    this.ip = ip;
+    this.port = port;
+    this.user = user;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.timeout = timeout;
+    this.enableCompression = enableCompression;
+    this.threadPool = new SessionThreadPool(threadPoolSize, blockingQueueSize);
   }
 
   //if this method throws an exception, either the server is broken, or the ip/port/user/password is incorrect.
@@ -247,6 +262,16 @@ public class SessionPool {
     insertTablet(tablet, false);
   }
 
+  public void asyncInsertTablet(Tablet tablet) {
+    threadPool.submit(() -> {
+      try {
+        insertTablet(tablet);
+      } catch (BatchExecutionException | IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
+    });
+  }
+
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
@@ -290,6 +315,16 @@ public class SessionPool {
   public void insertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, BatchExecutionException {
     insertTablets(tablets, false);
+  }
+
+  public void asyncInsertTablets(Map<String, Tablet> tablets) {
+    threadPool.submit(() -> {
+      try {
+        insertTablets(tablets);
+      } catch (BatchExecutionException | IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
+    });
   }
 
   /**
@@ -341,6 +376,17 @@ public class SessionPool {
     }
   }
 
+  public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList) {
+    threadPool.submit(() -> {
+      try {
+        insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+      } catch (BatchExecutionException | IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
+    });
+  }
 
   /**
    * Insert data in batch format, which can reduce the overhead of network. This method is just like
@@ -392,6 +438,17 @@ public class SessionPool {
         throw e;
       }
     }
+  }
+
+  public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
+      List<TSDataType> types, List<Object> values) {
+    threadPool.submit(() -> {
+      try {
+        insertRecord(deviceId, time, measurements, types, values);
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        e.printStackTrace();
+      }
+    });
   }
 
   /**

@@ -24,5 +24,7 @@ public class Config {
   public static final String DEFAULT_PASSWORD = "password";
   public static final int DEFAULT_FETCH_SIZE = 10000;
   public static final int DEFAULT_TIMEOUT_MS = 0;
+  public static final int DEFAULT_THREAD_POOL_SIZE = 100;
+  public static final int DEFAULT_BLOCKING_QUEUE_SIZE = 100000;
 
 }

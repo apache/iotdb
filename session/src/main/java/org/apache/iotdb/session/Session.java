@@ -46,6 +46,7 @@ import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.session.pool.SessionThreadPool;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -78,6 +79,7 @@ public class Session {
   private ZoneId zoneId;
   private long statementId;
   private int fetchSize;
+  private SessionThreadPool asyncThreadPool;
 
   public Session(String host, int port) {
     this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
@@ -93,6 +95,17 @@ public class Session {
     this.username = username;
     this.password = password;
     this.fetchSize = Config.DEFAULT_FETCH_SIZE;
+    asyncThreadPool = new SessionThreadPool();
+  }
+
+  public Session(String host, int port, String username, String password, int threadPoolSize,
+      int blockingQueueSize) {
+    this.host = host;
+    this.port = port;
+    this.username = username;
+    this.password = password;
+    this.fetchSize = Config.DEFAULT_FETCH_SIZE;
+    asyncThreadPool = new SessionThreadPool(threadPoolSize, blockingQueueSize);
   }
 
   public Session(String host, int port, String username, String password, int fetchSize) {
@@ -101,6 +114,7 @@ public class Session {
     this.username = username;
     this.password = password;
     this.fetchSize = fetchSize;
+    asyncThreadPool = new SessionThreadPool();
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -220,6 +234,16 @@ public class Session {
     insertTablet(tablet, false);
   }
 
+  public void asyncInsertTablet(Tablet tablet) {
+    asyncThreadPool.submit(() -> {
+      try {
+        insertTablet(tablet);
+      } catch (BatchExecutionException | IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
+    });
+  }
+
   /**
    * insert a Tablet
    *
@@ -270,6 +294,16 @@ public class Session {
   public void insertTablets(Map<String, Tablet> tablets)
       throws IoTDBConnectionException, BatchExecutionException {
     insertTablets(tablets, false);
+  }
+
+  public void asyncInsertTablets(Map<String, Tablet> tablets) {
+    asyncThreadPool.submit(() -> {
+      try {
+        insertTablets(tablets);
+      } catch (BatchExecutionException | IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
+    });
   }
 
   /**
@@ -368,6 +402,18 @@ public class Session {
     return  request;
   }
 
+  public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+      List<List<Object>> valuesList) {
+    asyncThreadPool.submit(() -> {
+      try {
+        insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
+      } catch (BatchExecutionException | IoTDBConnectionException e) {
+        e.printStackTrace();
+      }
+    });
+  }
+
   /**
    * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
    * executeBatch, we pack some insert request in batch and send them to server. If you want improve
@@ -447,6 +493,31 @@ public class Session {
     buffer.flip();
     request.setValues(buffer);
     return  request;
+  }
+
+  public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
+      List<TSDataType> types, List<Object> values) {
+    asyncThreadPool.submit(() -> {
+      try {
+        insertRecord(deviceId, time, measurements, types, values);
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        e.printStackTrace();
+      }
+    });
+  }
+
+  public void asyncInsertRecord2(String deviceId, long time, List<String> measurements,
+      List<TSDataType> types, List<Object> values) {
+    Runnable task = () -> {
+      try {
+        insertRecord(deviceId, time, measurements, types, values);
+      } catch (IoTDBConnectionException e) {
+        e.printStackTrace();
+      } catch (StatementExecutionException e) {
+        e.printStackTrace();
+      }
+    };
+    new Thread(task).start();
   }
 
   /**
