@@ -433,11 +433,21 @@ public class MManager {
         tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
     if (tagMap != null) {
       for (Entry<String, String> entry : tagMap.entrySet()) {
-        tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
-        if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
-          tagIndex.get(entry.getKey()).remove(entry.getValue());
-          if (tagIndex.get(entry.getKey()).isEmpty()) {
-            tagIndex.remove(entry.getKey());
+        if (tagIndex.containsKey(entry.getKey()) && tagIndex.get(entry.getKey())
+            .containsKey(entry.getValue())) {
+          tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
+          if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
+            tagIndex.get(entry.getKey()).remove(entry.getValue());
+            if (tagIndex.get(entry.getKey()).isEmpty()) {
+              tagIndex.remove(entry.getKey());
+            }
+          }
+        } else {
+          if (logger.isWarnEnabled()) {
+            logger.warn(String.format(
+                "TimeSeries %s's tag info has been removed from tag inverted index before "
+                    + "deleting it, tag key is %s, tag value is %s",
+                node.getFullPath(), entry.getKey(), entry.getValue()));
           }
         }
       }
