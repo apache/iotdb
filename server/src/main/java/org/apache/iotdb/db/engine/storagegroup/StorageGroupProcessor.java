@@ -32,6 +32,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.SeqMergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.testMerge.TestMergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -1334,8 +1335,60 @@ public class StorageGroupProcessor {
   }
 
   public void merge(boolean fullMerge) {
+    //    testMerge();
     seqMerge(fullMerge);
 //    sizeMerge();
+  }
+
+  private void testMerge() {
+    writeLock();
+    try {
+      if (isMerging) {
+        if (logger.isInfoEnabled()) {
+          logger.info("{} Last merge is ongoing, currently consumed time: {}ms", storageGroupName,
+              (System.currentTimeMillis() - mergeStartTime));
+        }
+        return;
+      }
+      logger.info("{} will close all files for starting a merge", storageGroupName);
+      syncCloseAllWorkingTsFileProcessors();
+      if (sequenceFileTreeSet.isEmpty()) {
+        logger.info("{} no files to be merged", storageGroupName);
+        return;
+      }
+
+      TestMergeFileStrategy strategy = TestMergeFileStrategy.LEVEL;
+      try {
+        MergeResource mergeResource = new MergeResource(new ArrayList<>(sequenceFileTreeSet),
+            unSequenceFileList);
+        // avoid pending tasks holds the metadata and streams
+        mergeResource.clear();
+        String taskName = storageGroupName + "-" + System.currentTimeMillis();
+        // do not cache metadata until true candidates are chosen, or too much metadata will be
+        // cached during selection
+        mergeResource.setCacheDeviceMeta(true);
+
+        for (TsFileResource tsFileResource : mergeResource.getSeqFiles()) {
+          tsFileResource.setMerging(true);
+        }
+        Callable<Void> mergeTask = strategy.getMergeTask(mergeResource,
+            storageGroupSysDir.getPath(), this::mergeEndAction, taskName, storageGroupName);
+        mergingModification = new ModificationFile(
+            storageGroupSysDir + File.separator + MERGING_MODIFICATION_FILE_NAME);
+        MergeManager.getINSTANCE().submitMainTask(mergeTask);
+        if (logger.isInfoEnabled()) {
+          logger.info("{} submits a merge task {}, merging {} seqFiles",
+              storageGroupName, taskName, mergeResource.getSeqFiles().size());
+        }
+        isMerging = true;
+        mergeStartTime = System.currentTimeMillis();
+
+      } catch (IOException e) {
+        logger.error("{} cannot select file for merge", storageGroupName, e);
+      }
+    } finally {
+      writeUnlock();
+    }
   }
 
   private void seqMerge(boolean fullMerge) {
