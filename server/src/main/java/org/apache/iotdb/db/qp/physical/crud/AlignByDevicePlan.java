@@ -35,6 +35,10 @@ public class AlignByDevicePlan extends QueryPlan {
   // to record different kinds of measurement
   private Map<String, MeasurementType> measurementTypeMap;
 
+
+  // to record the real type of series
+  private Map<String, TSDataType> rawTypeMap;
+
   private GroupByPlan groupByPlan;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
@@ -83,6 +87,14 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setMeasurementTypeMap(
       Map<String, MeasurementType> measurementTypeMap) {
     this.measurementTypeMap = measurementTypeMap;
+  }
+
+  public Map<String, TSDataType> getRawTypeMap() {
+    return rawTypeMap;
+  }
+
+  public void setRawTypeMap(Map<String, TSDataType> rawTypeMap) {
+    this.rawTypeMap = rawTypeMap;
   }
 
   public GroupByPlan getGroupByPlan() {
