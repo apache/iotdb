@@ -73,6 +73,12 @@ public class IoTDBConstant {
   public static final String COLUMN_STORAGE_GROUP = "storage group";
   public static final String COLUMN_TTL = "ttl";
 
+  public static final String COLUMN_TASK_NAME = "task name";
+  public static final String COLUMN_CREATED_TIME = "created time";
+  public static final String COLUMN_PROGRESS = "progress";
+  public static final String COLUMN_CANCELLED = "cancelled";
+  public static final String COLUMN_DONE = "done";
+
   public static final String PATH_WILDCARD = "*";
 
   // data folder name
