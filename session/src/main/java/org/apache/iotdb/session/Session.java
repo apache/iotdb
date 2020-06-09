@@ -506,20 +506,6 @@ public class Session {
     });
   }
 
-  public void asyncInsertRecord2(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values) {
-    Runnable task = () -> {
-      try {
-        insertRecord(deviceId, time, measurements, types, values);
-      } catch (IoTDBConnectionException e) {
-        e.printStackTrace();
-      } catch (StatementExecutionException e) {
-        e.printStackTrace();
-      }
-    };
-    new Thread(task).start();
-  }
-
   /**
    * insert data in one row, if you want improve your performance, please use insertInBatch method
    * or insertBatch method
