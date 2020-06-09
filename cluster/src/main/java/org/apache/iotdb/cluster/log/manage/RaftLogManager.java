@@ -22,6 +22,11 @@ package org.apache.iotdb.cluster.log.manage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
@@ -50,6 +55,22 @@ public class RaftLogManager {
   private long commitIndex;
   private LogApplier logApplier;
 
+
+  private ScheduledExecutorService executorService;
+
+
+  /**
+   * max number of committed logs to be saved
+   */
+  private int maxNumberOfLogs = ClusterDescriptor.getInstance().getConfig().getMaxNumberOfLogs();
+
+  /**
+   * deletion check period of the submitted log
+   */
+  private int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
+      .getLogDeleteCheckIntervalSecond();
+
+
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier) {
     this.logApplier = applier;
     this.setCommittedEntryManager(new CommittedEntryManager());
@@ -63,6 +84,14 @@ public class RaftLogManager {
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
     // must have applied entry [compactIndex,last] to state machine
     this.commitIndex = last;
+
+    executorService = new ScheduledThreadPoolExecutor(1,
+        new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
+            .build());
+    executorService
+        .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
+            logDeleteCheckIntervalSecond,
+            TimeUnit.SECONDS);
   }
 
   public Snapshot getSnapshot() {
@@ -364,7 +393,8 @@ public class RaftLogManager {
    *
    * @param newCommitIndex request commitIndex
    */
-  public void commitTo(long newCommitIndex, boolean ignoreExecutionExceptions) throws LogExecutionException {
+  public void commitTo(long newCommitIndex, boolean ignoreExecutionExceptions)
+      throws LogExecutionException {
     if (commitIndex < newCommitIndex) {
       long lo = getUnCommittedEntryManager().getFirstUnCommittedIndex();
       long hi = newCommitIndex + 1;
@@ -411,11 +441,12 @@ public class RaftLogManager {
   /**
    * Used by commitTo to apply newly committed entries
    *
-   * @param entries applying entries
+   * @param entries                  applying entries
    * @param ignoreExecutionException when set to true, exceptions during applying the logs are
    *                                 ignored, otherwise they are reported to the upper level
    */
-  protected void applyEntries(List<Log> entries, boolean ignoreExecutionException) throws LogExecutionException {
+  protected void applyEntries(List<Log> entries, boolean ignoreExecutionException)
+      throws LogExecutionException {
     for (Log entry : entries) {
       try {
         logApplier.apply(entry);
@@ -488,6 +519,11 @@ public class RaftLogManager {
     this.commitIndex = last;
   }
 
+  @TestOnly
+  public void setMaxNumberOfLogs(int maxNumberOfLogs) {
+    this.maxNumberOfLogs = maxNumberOfLogs;
+  }
+
   public void close() {
     getStableEntryManager().close();
   }
@@ -516,5 +552,23 @@ public class RaftLogManager {
 
   public void setStableEntryManager(StableEntryManager stableEntryManager) {
     this.stableEntryManager = stableEntryManager;
+  }
+
+
+  /**
+   * check whether delete the committed log
+   */
+  public void checkDeleteLog() {
+    if (committedEntryManager.getTotalSize() <= maxNumberOfLogs) {
+      return;
+    }
+    long removeSize = committedEntryManager.getTotalSize() - maxNumberOfLogs;
+    long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
+    try {
+      getCommittedEntryManager().compactEntries(compactIndex);
+      getStableEntryManager().removeCompactedEntries(compactIndex);
+    } catch (EntryUnavailableException e) {
+      logger.error("regular compact log entries failed, error={}", e.getMessage());
+    }
   }
 }

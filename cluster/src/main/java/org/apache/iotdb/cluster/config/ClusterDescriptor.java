@@ -216,6 +216,13 @@ public class ClusterDescriptor {
     config.setUseBatchInLogCatchUp(Boolean.parseBoolean(properties.getProperty(
         "USE_BATCH_IN_CATCH_UP", String.valueOf(config.isUseBatchInLogCatchUp()))));
 
+    config.setMaxNumberOfLogs(Integer.parseInt(
+        properties.getProperty("MAX_NUMBER_OF_LOGS", String.valueOf(config.getMaxNumberOfLogs()))));
+
+    config.setLogDeleteCheckIntervalSecond(Integer.parseInt(properties
+        .getProperty("LOG_DELETION_CHECK_INTERVAL_SECOND",
+            String.valueOf(config.getLogDeleteCheckIntervalSecond()))));
+
     String seedUrls = properties.getProperty("SEED_NODES");
     if (seedUrls != null) {
       List<String> urlList = getSeedUrlList(seedUrls);

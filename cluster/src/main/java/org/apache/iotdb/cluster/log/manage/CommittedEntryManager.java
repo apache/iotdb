@@ -94,6 +94,15 @@ public class CommittedEntryManager {
   }
 
   /**
+   * Return the entries's size
+   *
+   * @return entries's size
+   */
+  public long getTotalSize() {
+    return getLastIndex() - getFirstIndex() + 1;
+  }
+
+  /**
    * Return the entry's term for given index. Note that the called should ensure index <=
    * entries[entries.size()-1].index.
    *

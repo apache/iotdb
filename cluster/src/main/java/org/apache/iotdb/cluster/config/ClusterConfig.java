@@ -53,6 +53,16 @@ public class ClusterConfig {
 
   private boolean useBatchInLogCatchUp = true;
 
+  /**
+   * max number of committed logs to be saved
+   */
+  private int maxNumberOfLogs = 100;
+
+  /**
+   * deletion check period of the submitted log
+   */
+  private int logDeleteCheckIntervalSecond = 3600;
+
   public boolean isUseBatchInLogCatchUp() {
     return useBatchInLogCatchUp;
   }
@@ -147,5 +157,21 @@ public class ClusterConfig {
 
   public void setQueryTimeoutInSec(int queryTimeoutInSec) {
     this.queryTimeoutInSec = queryTimeoutInSec;
+  }
+
+  public int getMaxNumberOfLogs() {
+    return maxNumberOfLogs;
+  }
+
+  public void setMaxNumberOfLogs(int maxNumberOfLogs) {
+    this.maxNumberOfLogs = maxNumberOfLogs;
+  }
+
+  public int getLogDeleteCheckIntervalSecond() {
+    return logDeleteCheckIntervalSecond;
+  }
+
+  public void setLogDeleteCheckIntervalSecond(int logDeleteCheckIntervalSecond) {
+    this.logDeleteCheckIntervalSecond = logDeleteCheckIntervalSecond;
   }
 }
