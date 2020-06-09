@@ -1058,6 +1058,24 @@ public class MManager {
     }
   }
 
+  /**
+   * To reduce the String number in memory, 
+   * use the deviceId from MManager instead of the deviceId read from disk
+   * 
+   * @param deviceId read from disk
+   * @return deviceId
+   */
+  public String getDeviceId(String path) {
+    MNode deviceNode = null;
+    try {
+      deviceNode = getDeviceNode(path);
+      path = deviceNode.getFullPath();
+    } catch (MetadataException | NullPointerException e) {
+      logger.error("Cannot get deviceId {} from MManager", path, e);
+    }
+    return path;
+  }
+
   public MNode getChild(MNode parent, String child) {
     lock.readLock().lock();
     try {
