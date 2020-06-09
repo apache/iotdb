@@ -36,7 +36,7 @@ import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
-import org.apache.iotdb.cluster.rpc.thrift.LastRequest;
+import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
@@ -350,7 +350,7 @@ public class SyncClientAdaptor {
       throws TException, InterruptedException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
     GenericHandler<ByteBuffer> handler = new GenericHandler<>(client.getNode(), result);
-    LastRequest request = new LastRequest(seriesPath.getFullPath(), dataType.ordinal(),
+    LastQueryRequest request = new LastQueryRequest(seriesPath.getFullPath(), dataType.ordinal(),
         context.getQueryId(), deviceMeasurements, header, client.getNode());
     synchronized (result) {
       client.last(request, handler);
