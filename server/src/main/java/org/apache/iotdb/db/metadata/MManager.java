@@ -453,11 +453,21 @@ public class MManager {
         tagLogFile.readTag(config.getTagAttributeTotalSize(), node.getOffset());
     if (tagMap != null) {
       for (Entry<String, String> entry : tagMap.entrySet()) {
-        tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
-        if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
-          tagIndex.get(entry.getKey()).remove(entry.getValue());
-          if (tagIndex.get(entry.getKey()).isEmpty()) {
-            tagIndex.remove(entry.getKey());
+        if (tagIndex.containsKey(entry.getKey()) && tagIndex.get(entry.getKey())
+            .containsKey(entry.getValue())) {
+          tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
+          if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
+            tagIndex.get(entry.getKey()).remove(entry.getValue());
+            if (tagIndex.get(entry.getKey()).isEmpty()) {
+              tagIndex.remove(entry.getKey());
+            }
+          }
+        } else {
+          if (logger.isWarnEnabled()) {
+            logger.warn(String.format(
+                "TimeSeries %s's tag info has been removed from tag inverted index before "
+                    + "deleting it, tag key is %s, tag value is %s",
+                node.getFullPath(), entry.getKey(), entry.getValue()));
           }
         }
       }
@@ -972,7 +982,7 @@ public class MManager {
 
   /**
    * get device node, if the storage group is not set, create it when autoCreateSchema is true
-   *
+   * <p>
    * (we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * <p>!!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
@@ -1573,8 +1583,9 @@ public class MManager {
   }
 
   /**
-   * if the path is in local mtree, nothing needed to do (because mtree is in the memory);
-   * Otherwise cache the path to mRemoteSchemaCache
+   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
+   * cache the path to mRemoteSchemaCache
+   *
    * @param path
    * @param schema
    */
