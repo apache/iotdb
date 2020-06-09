@@ -463,9 +463,12 @@ public class MManager {
             }
           }
         } else {
-          logger.warn(String.format(
-              "TimeSeries %s's tag info has been removed from tag inverted index before deleting it, tag key is %s, tag value is %s",
-              node.getFullPath(), entry.getKey(), entry.getValue()));
+          if (logger.isWarnEnabled()) {
+            logger.warn(String.format(
+                "TimeSeries %s's tag info has been removed from tag inverted index before "
+                    + "deleting it, tag key is %s, tag value is %s",
+                node.getFullPath(), entry.getKey(), entry.getValue()));
+          }
         }
       }
     }
