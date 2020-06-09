@@ -277,10 +277,26 @@ public class PhysicalGenerator {
   }
 
 
+
+  /**
+   * get types for path list
+   *
+   * @return pair.left is the type of column in result set, pair.right is the real type of the
+   * measurement
+   */
   protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<String> paths,
       String aggregation) throws MetadataException {
-    return new Pair<>(SchemaUtils.getSeriesTypesByString(paths, aggregation),
-        SchemaUtils.getSeriesTypesByString(paths, null));
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByString(paths, null);
+    // if the aggregation function is null, the type of column in result set
+    // is equal to the real type of the measurement
+    if (aggregation == null) {
+      return new Pair<>(measurementDataTypes, measurementDataTypes);
+    } else {
+      // if the aggregation function is not null,
+      // we should recalculate the type of column in result set
+      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByString(paths, aggregation);
+      return new Pair<>(columnDataTypes, measurementDataTypes);
+    }
   }
 
   protected List<TSDataType> getSeriesTypes(List<Path> paths) throws MetadataException {
@@ -370,9 +386,12 @@ public class PhysicalGenerator {
       // to record result measurement columns
       List<String> measurements = new ArrayList<>();
       // to check the same measurement of different devices having the same datatype
-      Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
-      Map<String, TSDataType> rawTypeMap = new HashMap<>();
+      // record the data type of each column of result set
+      Map<String, TSDataType> columnDataTypeMap = new HashMap<>();
       Map<String, MeasurementType> measurementTypeMap = new HashMap<>();
+
+      // to record the real type of the corresponding measurement
+      Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
@@ -405,10 +424,11 @@ public class PhysicalGenerator {
             String aggregation =
                 originAggregations != null && !originAggregations.isEmpty()
                     ? originAggregations.get(i) : null;
+
             Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(actualPaths,
                 aggregation);
-            List<TSDataType> aggregationDataTypes = pair.left;
-            List<TSDataType> rawTypes = pair.right;
+            List<TSDataType> columnDataTypes = pair.left;
+            List<TSDataType> measurementDataTypes = pair.right;
             for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
               Path path = new Path(actualPaths.get(pathIdx));
 
@@ -421,17 +441,17 @@ public class PhysicalGenerator {
               } else {
                 measurementChecked = path.getMeasurement();
               }
-              TSDataType aggregationDataType = aggregationDataTypes.get(pathIdx);
-              if (measurementDataTypeMap.containsKey(measurementChecked)) {
-                if (!aggregationDataType.equals(measurementDataTypeMap.get(measurementChecked))) {
+              TSDataType columnDataType = columnDataTypes.get(pathIdx);
+              if (columnDataTypeMap.containsKey(measurementChecked)) {
+                if (!columnDataType.equals(columnDataTypeMap.get(measurementChecked))) {
                   throw new QueryProcessException(
                       "The data types of the same measurement column should be the same across "
                           + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
                           + "SQL document.");
                 }
               } else {
-                measurementDataTypeMap.put(measurementChecked, aggregationDataType);
-                rawTypeMap.put(measurementChecked, rawTypes.get(pathIdx));
+                columnDataTypeMap.put(measurementChecked, columnDataType);
+                measurementDataTypeMap.put(measurementChecked, measurementDataTypes.get(pathIdx));
               }
 
               // update measurementSetOfGivenSuffix and Normal measurement
@@ -471,9 +491,9 @@ public class PhysicalGenerator {
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
       alignByDevicePlan.setDevices(devices);
-      alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
+      alignByDevicePlan.setColumnDataTypeMap(columnDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
-      alignByDevicePlan.setRawTypeMap(rawTypeMap);
+      alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
       alignByDevicePlan.setPaths(paths);
 
       // get deviceToFilterMap

@@ -62,6 +62,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private List<String> devices;
   private Map<String, IExpression> deviceToFilterMap;
   private Map<String, MeasurementType> measurementTypeMap;
+  // record the real type of the corresponding measurement
   private Map<String, TSDataType> measurementDataTypeMap;
 
   private GroupByPlan groupByPlan;
@@ -95,7 +96,6 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       case AGGREGATION:
         this.dataSetType = DataSetType.AGGREGATE;
         this.aggregationPlan = alignByDevicePlan.getAggregationPlan();
-        this.measurementDataTypeMap = alignByDevicePlan.getRawTypeMap();
         break;
       case FILL:
         this.dataSetType = DataSetType.FILL;
