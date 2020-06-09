@@ -582,6 +582,61 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default|no |
 |Effective|After restart system|
 
+## Automatic Schema Creation and Type Inference
+
+* enable\_auto\_create\_schema
+
+|Name| enable\_auto\_create\_schema |
+|:---:|:---|
+|Description| whether auto create the time series when a non-existed time series data comes|
+|Type| true or false |
+|Default|true |
+|Effective|After restart system|
+
+* default\_storage\_group\_level
+
+|Name| default\_storage\_group\_level |
+|:---:|:---|
+|Description| Storage group level when creating schema automatically is enabled. For example, if we receives a data point from root.sg0.d1.s2, we will set root.sg0 as the storage group if storage group level is 1. (root is level 0)|
+|Type| integer |
+|Default|1 |
+|Effective|After restart system|
+
+* boolean\_string\_infer\_type
+
+|Name| boolean\_string\_infer\_type |
+|:---:|:---|
+|Description| To which type the values "true" and "false" should be reslved|
+|Type| BOOLEAN or TEXT |
+|Default|BOOLEAN |
+|Effective|After restart system|
+
+* integer\_string\_infer\_type
+
+|Name| integer\_string\_infer\_type |
+|:---:|:---|
+|Description| To which type an integer string like "67" in a query should be resolved|
+|Type| INT32, INT64, DOUBLE, FLOAT or TEXT |
+|Default|DOUBLE |
+|Effective|After restart system|
+
+* nan\_string\_infer\_type
+
+|Name| nan\_string\_infer\_type |
+|:---:|:---|
+|Description| To which type the value NaN in a query should be resolved|
+|Type| DOUBLE, FLOAT or TEXT |
+|Default|FLOAT |
+|Effective|After restart system|
+
+* floating\_string\_infer\_type
+
+|Name| floating\_string\_infer\_type |
+|:---:|:---|
+|Description| To which type a floating number string like "6.7" in a query should be resolved|
+|Type| DOUBLE, FLOAT or TEXT |
+|Default|FLOAT |
+|Effective|After restart system|
 
 ## Enable GC log
 GC log is off by default.

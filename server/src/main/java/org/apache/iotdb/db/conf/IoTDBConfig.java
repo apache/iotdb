@@ -381,6 +381,11 @@ public class IoTDBConfig {
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
 
   /**
+   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT
+   */
+  private TSDataType nanStringInferType = TSDataType.DOUBLE;
+
+  /**
    * Storage group level when creating schema automatically is enabled
    */
   private int defaultStorageGroupLevel = 1;
@@ -1308,6 +1313,19 @@ public class IoTDBConfig {
   public void setFloatingStringInferType(
       TSDataType floatingNumberStringInferType) {
     this.floatingStringInferType = floatingNumberStringInferType;
+  }
+
+  public TSDataType getNanStringInferType() {
+    return nanStringInferType;
+  }
+
+  public void setNanStringInferType(TSDataType nanStringInferType) {
+    if (nanStringInferType != TSDataType.DOUBLE &&
+        nanStringInferType != TSDataType.FLOAT &&
+        nanStringInferType != TSDataType.TEXT) {
+      throw new IllegalArgumentException("Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is " + nanStringInferType);
+    }
+    this.nanStringInferType = nanStringInferType;
   }
 
   public int getDefaultStorageGroupLevel() {
