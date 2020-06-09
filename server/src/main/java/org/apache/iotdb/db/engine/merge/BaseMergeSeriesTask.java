@@ -163,19 +163,19 @@ public abstract class BaseMergeSeriesTask {
         currMinTime = Math.min(currMinTime, batchData.getTimeByIndex(0));
         for (int i = 0; i < batchData.length(); i++) {
           writeBatchPoint(batchData, i, chunkWriter);
+          if (mergeSizeSelectorStrategy
+              .isChunkEnoughLarge(chunkWriter, minChunkPointNum, currMinTime, currMaxTime,
+                  timeBlock)) {
+            mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
+            synchronized (newFileWriter) {
+              chunkWriter.writeToFileWriter(newFileWriter);
+            }
+            chunkWriter = new ChunkWriterImpl(chunkWriter.getMeasurementSchema());
+            resource.putChunkWriter(path, chunkWriter);
+          }
         }
         if (!tsFilesReader.hasNextBatch()) {
           currMaxTime = Math.max(batchData.getTimeByIndex(batchData.length() - 1), currMaxTime);
-        }
-        if (mergeSizeSelectorStrategy
-            .isChunkEnoughLarge(chunkWriter, minChunkPointNum, currMinTime, currMaxTime,
-                timeBlock)) {
-          mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
-          synchronized (newFileWriter) {
-            chunkWriter.writeToFileWriter(newFileWriter);
-          }
-          chunkWriter = new ChunkWriterImpl(chunkWriter.getMeasurementSchema());
-          resource.putChunkWriter(path, chunkWriter);
         }
       }
       newResource.updateStartTime(path.getDevice(), currMinTime);
