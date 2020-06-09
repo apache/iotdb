@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.sql.Connection;
@@ -269,7 +270,9 @@ public class IoTDBMergeTest {
           cnt++;
         }
       }
-      assertEquals(1, cnt);
+      // it is uncertain whether the sub tasks are created at this time point, and we are only
+      // sure that the main task is created
+      assertTrue(cnt >= 1);
     }
   }
 }

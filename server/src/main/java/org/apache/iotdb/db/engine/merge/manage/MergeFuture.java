@@ -49,7 +49,7 @@ public abstract class MergeFuture extends FutureTask<Void> implements Comparable
 
   @Override
   public int compareTo(MergeFuture future) {
-    return this.createdTime.compareTo(future.createdTime);
+    return this.getTaskName().compareTo(future.getTaskName());
   }
 
   @Override
@@ -61,7 +61,7 @@ public abstract class MergeFuture extends FutureTask<Void> implements Comparable
       return false;
     }
     MergeFuture future = (MergeFuture) o;
-    return Objects.equals(createdTime, future.createdTime);
+    return Objects.equals(getTaskName(), future.getTaskName());
   }
 
   @Override
