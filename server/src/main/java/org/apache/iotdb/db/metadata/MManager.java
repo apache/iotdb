@@ -1071,7 +1071,7 @@ public class MManager {
       deviceNode = getDeviceNode(path);
       path = deviceNode.getFullPath();
     } catch (MetadataException | NullPointerException e) {
-      logger.error("Cannot get deviceId {} from MManager", path, e);
+      // Cannot get deviceId from MManager, return deviceId read from disk
     }
     return path;
   }
