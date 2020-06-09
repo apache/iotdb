@@ -47,9 +47,9 @@ import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
-import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
@@ -61,9 +61,17 @@ import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
@@ -72,10 +80,10 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -91,14 +99,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
 
 /**
  * Used to convert logical operator to physical plan
  */
 public class PhysicalGenerator {
-  private static Logger logger = LoggerFactory.getLogger(PhysicalGenerator.class);
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
     List<Path> paths;
@@ -291,9 +296,25 @@ public class PhysicalGenerator {
 
   }
 
-  protected List<TSDataType> getSeriesTypes(List<String> paths,
+  /**
+   * get types for path list
+   *
+   * @return pair.left is the type of column in result set, pair.right is the real type of the
+   * measurement
+   */
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<String> paths,
       String aggregation) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByString(paths, null);
+    // if the aggregation function is null, the type of column in result set
+    // is equal to the real type of the measurement
+    if (aggregation == null) {
+      return new Pair<>(measurementDataTypes, measurementDataTypes);
+    } else {
+      // if the aggregation function is not null,
+      // we should recalculate the type of column in result set
+      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByString(paths, aggregation);
+      return new Pair<>(columnDataTypes, measurementDataTypes);
+    }
   }
 
   protected List<TSDataType> getSeriesTypes(List<Path> paths) throws MetadataException {
@@ -341,7 +362,8 @@ public class PhysicalGenerator {
 
       if (queryOperator.getLevel() >= 0) {
         for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
-          if (!SQLConstant.COUNT.equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
+          if (!SQLConstant.COUNT
+              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
             throw new QueryProcessException("group by level only support count now.");
           }
         }
@@ -357,12 +379,13 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.hasAggregation()) {
       queryPlan = new AggregationPlan();
-      ((AggregationPlan)queryPlan).setLevel(queryOperator.getLevel());
+      ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
       if (queryOperator.getLevel() >= 0) {
         for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
-          if (!SQLConstant.COUNT.equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
+          if (!SQLConstant.COUNT
+              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
             throw new QueryProcessException("group by level only support count now.");
           }
         }
@@ -387,7 +410,7 @@ public class PhysicalGenerator {
       } else if (queryPlan instanceof FillQueryPlan) {
         alignByDevicePlan.setFillQueryPlan((FillQueryPlan) queryPlan);
       } else if (queryPlan instanceof AggregationPlan) {
-        if (((AggregationPlan)queryPlan).getLevel() >= 0) {
+        if (((AggregationPlan) queryPlan).getLevel() >= 0) {
           throw new QueryProcessException("group by level does not support align by device now.");
         }
         alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
@@ -402,8 +425,12 @@ public class PhysicalGenerator {
       // to record result measurement columns
       List<String> measurements = new ArrayList<>();
       // to check the same measurement of different devices having the same datatype
-      Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
+      // record the data type of each column of result set
+      Map<String, TSDataType> columnDataTypeMap = new HashMap<>();
       Map<String, MeasurementType> measurementTypeMap = new HashMap<>();
+
+      // to record the real type of the corresponding measurement
+      Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
       for (int i = 0; i < suffixPaths.size(); i++) { // per suffix in SELECT
@@ -436,7 +463,11 @@ public class PhysicalGenerator {
             String aggregation =
                 originAggregations != null && !originAggregations.isEmpty()
                     ? originAggregations.get(i) : null;
-            List<TSDataType> dataTypes = getSeriesTypes(actualPaths, aggregation);
+
+            Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(actualPaths,
+                aggregation);
+            List<TSDataType> columnDataTypes = pair.left;
+            List<TSDataType> measurementDataTypes = pair.right;
             for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
               Path path = new Path(actualPaths.get(pathIdx));
 
@@ -449,16 +480,17 @@ public class PhysicalGenerator {
               } else {
                 measurementChecked = path.getMeasurement();
               }
-              TSDataType dataType = dataTypes.get(pathIdx);
-              if (measurementDataTypeMap.containsKey(measurementChecked)) {
-                if (!dataType.equals(measurementDataTypeMap.get(measurementChecked))) {
+              TSDataType columnDataType = columnDataTypes.get(pathIdx);
+              if (columnDataTypeMap.containsKey(measurementChecked)) {
+                if (!columnDataType.equals(columnDataTypeMap.get(measurementChecked))) {
                   throw new QueryProcessException(
                       "The data types of the same measurement column should be the same across "
                           + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
                           + "SQL document.");
                 }
               } else {
-                measurementDataTypeMap.put(measurementChecked, dataType);
+                columnDataTypeMap.put(measurementChecked, columnDataType);
+                measurementDataTypeMap.put(measurementChecked, measurementDataTypes.get(pathIdx));
               }
 
               // update measurementSetOfGivenSuffix and Normal measurement
@@ -498,8 +530,9 @@ public class PhysicalGenerator {
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
       alignByDevicePlan.setDevices(devices);
-      alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
+      alignByDevicePlan.setColumnDataTypeMap(columnDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
+      alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
       alignByDevicePlan.setPaths(paths);
 
       // get deviceToFilterMap
