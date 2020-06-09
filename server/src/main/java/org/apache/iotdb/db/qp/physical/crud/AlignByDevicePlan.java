@@ -35,6 +35,9 @@ public class AlignByDevicePlan extends QueryPlan {
   // to record different kinds of measurement
   private Map<String, MeasurementType> measurementTypeMap;
 
+  // to record the real type of series
+  private Map<String, TSDataType> rawTypeMap;
+
   private GroupByTimePlan groupByTimePlan;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
@@ -85,6 +88,14 @@ public class AlignByDevicePlan extends QueryPlan {
     this.measurementTypeMap = measurementTypeMap;
   }
 
+  public Map<String, TSDataType> getRawTypeMap() {
+    return rawTypeMap;
+  }
+
+  public void setRawTypeMap(Map<String, TSDataType> rawTypeMap) {
+    this.rawTypeMap = rawTypeMap;
+  }
+
   public GroupByTimePlan getGroupByTimePlan() {
     return groupByTimePlan;
   }
@@ -113,11 +124,10 @@ public class AlignByDevicePlan extends QueryPlan {
   }
 
   /**
-   * Exist: the measurements which don't belong to NonExist and Constant.
-   * NonExist: the measurements that do not exist in any device, data type is considered as String.
-   * The value is considered as null.
-   * Constant: the measurements that have quotation mark. e.g. "abc",'11'.
-   * The data type is considered as String and the value is the measurement name.
+   * Exist: the measurements which don't belong to NonExist and Constant. NonExist: the measurements
+   * that do not exist in any device, data type is considered as String. The value is considered as
+   * null. Constant: the measurements that have quotation mark. e.g. "abc",'11'. The data type is
+   * considered as String and the value is the measurement name.
    */
   public enum MeasurementType {
     Exist, NonExist, Constant;

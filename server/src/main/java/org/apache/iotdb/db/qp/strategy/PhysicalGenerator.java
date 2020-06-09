@@ -98,6 +98,7 @@ import org.slf4j.Logger;
  * Used to convert logical operator to physical plan
  */
 public class PhysicalGenerator {
+
   private static Logger logger = LoggerFactory.getLogger(PhysicalGenerator.class);
 
   public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
@@ -291,9 +292,10 @@ public class PhysicalGenerator {
 
   }
 
-  protected List<TSDataType> getSeriesTypes(List<String> paths,
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<String> paths,
       String aggregation) throws MetadataException {
-    return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+    return new Pair<>(SchemaUtils.getSeriesTypesByString(paths, aggregation),
+        SchemaUtils.getSeriesTypesByString(paths, null));
   }
 
   protected List<TSDataType> getSeriesTypes(List<Path> paths) throws MetadataException {
@@ -341,7 +343,8 @@ public class PhysicalGenerator {
 
       if (queryOperator.getLevel() >= 0) {
         for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
-          if (!SQLConstant.COUNT.equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
+          if (!SQLConstant.COUNT
+              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
             throw new QueryProcessException("group by level only support count now.");
           }
         }
@@ -357,12 +360,13 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.hasAggregation()) {
       queryPlan = new AggregationPlan();
-      ((AggregationPlan)queryPlan).setLevel(queryOperator.getLevel());
+      ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
       if (queryOperator.getLevel() >= 0) {
         for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
-          if (!SQLConstant.COUNT.equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
+          if (!SQLConstant.COUNT
+              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
             throw new QueryProcessException("group by level only support count now.");
           }
         }
@@ -387,7 +391,7 @@ public class PhysicalGenerator {
       } else if (queryPlan instanceof FillQueryPlan) {
         alignByDevicePlan.setFillQueryPlan((FillQueryPlan) queryPlan);
       } else if (queryPlan instanceof AggregationPlan) {
-        if (((AggregationPlan)queryPlan).getLevel() >= 0) {
+        if (((AggregationPlan) queryPlan).getLevel() >= 0) {
           throw new QueryProcessException("group by level does not support align by device now.");
         }
         alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
@@ -403,6 +407,7 @@ public class PhysicalGenerator {
       List<String> measurements = new ArrayList<>();
       // to check the same measurement of different devices having the same datatype
       Map<String, TSDataType> measurementDataTypeMap = new HashMap<>();
+      Map<String, TSDataType> rawTypeMap = new HashMap<>();
       Map<String, MeasurementType> measurementTypeMap = new HashMap<>();
       List<Path> paths = new ArrayList<>();
 
@@ -436,7 +441,10 @@ public class PhysicalGenerator {
             String aggregation =
                 originAggregations != null && !originAggregations.isEmpty()
                     ? originAggregations.get(i) : null;
-            List<TSDataType> dataTypes = getSeriesTypes(actualPaths, aggregation);
+            Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(actualPaths,
+                aggregation);
+            List<TSDataType> aggregationDataTypes = pair.left;
+            List<TSDataType> rawTypes = pair.right;
             for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
               Path path = new Path(actualPaths.get(pathIdx));
 
@@ -449,16 +457,17 @@ public class PhysicalGenerator {
               } else {
                 measurementChecked = path.getMeasurement();
               }
-              TSDataType dataType = dataTypes.get(pathIdx);
+              TSDataType aggregationDataType = aggregationDataTypes.get(pathIdx);
               if (measurementDataTypeMap.containsKey(measurementChecked)) {
-                if (!dataType.equals(measurementDataTypeMap.get(measurementChecked))) {
+                if (!aggregationDataType.equals(measurementDataTypeMap.get(measurementChecked))) {
                   throw new QueryProcessException(
                       "The data types of the same measurement column should be the same across "
                           + "devices in ALIGN_BY_DEVICE sql. For more details please refer to the "
                           + "SQL document.");
                 }
               } else {
-                measurementDataTypeMap.put(measurementChecked, dataType);
+                measurementDataTypeMap.put(measurementChecked, aggregationDataType);
+                rawTypeMap.put(measurementChecked, rawTypes.get(pathIdx));
               }
 
               // update measurementSetOfGivenSuffix and Normal measurement
@@ -500,6 +509,7 @@ public class PhysicalGenerator {
       alignByDevicePlan.setDevices(devices);
       alignByDevicePlan.setMeasurementDataTypeMap(measurementDataTypeMap);
       alignByDevicePlan.setMeasurementTypeMap(measurementTypeMap);
+      alignByDevicePlan.setRawTypeMap(rawTypeMap);
       alignByDevicePlan.setPaths(paths);
 
       // get deviceToFilterMap
