@@ -66,7 +66,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   private ScheduledExecutorService timedMergeThreadPool;
   private ScheduledExecutorService taskCleanerThreadPool;
 
-  // TODO: add to JMX
   private Map<String, Set<MergeFuture>> storageGroupMainTasks = new ConcurrentHashMap<>();
   private Map<String, Set<MergeFuture>> storageGroupSubTasks = new ConcurrentHashMap<>();
 
@@ -143,6 +142,8 @@ public class MergeManager implements IService, MergeManagerMBean {
         }
       }
       mergeTaskPool = null;
+      storageGroupMainTasks.clear();
+      storageGroupSubTasks.clear();
       logger.info("MergeManager stopped");
     }
     JMXService.deregisterMBean(mbeanName);
@@ -170,6 +171,8 @@ public class MergeManager implements IService, MergeManagerMBean {
         }
       }
       mergeTaskPool = null;
+      storageGroupMainTasks.clear();
+      storageGroupSubTasks.clear();
       logger.info("MergeManager stopped");
     }
   }
