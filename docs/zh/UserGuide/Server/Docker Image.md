@@ -65,16 +65,16 @@ $ docker inspect --format='{{.NetworkSettings.IPAddress}}' <C_ID>
 4. 如果您想尝试使用 iotdb-cli 命令行, 您可以使用如下命令:
 ```
 $ docker exec -it /bin/bash  <C_ID>
-$ (now you have enter the container): /cli/sbin/start-client.sh -h localhost -p 6667 -u root -pw root
+$ (now you have enter the container): /cli/sbin/start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
 
 或者运行一个新的 client docker container，命令如下:
 ```
-$ docker run -it iotdb:base /cli/sbin/start-client.sh -h <C_IP> -p 6667 -u root -pw root
+$ docker run -it iotdb:base /cli/sbin/start-cli.sh -h <C_IP> -p 6667 -u root -pw root
 ```
 还可以使用本地的 iotdb-cli (比如：您已经使用`mvn package`编译过源码), 假设您的 work_dir 是 cli/bin, 那么您可以直接运行:
 ```
-$ start-client.sh -h localhost -p 6667 -u root -pw root
+$ start-cli.sh -h localhost -p 6667 -u root -pw root
 ```
 5. 如果您想写一些代码来插入或者查询数据，您可以在 pom.xml 文件中加入下面的依赖:
 ```xml
