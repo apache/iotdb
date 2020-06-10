@@ -1815,13 +1815,6 @@ public class StorageGroupProcessor {
 
   private void handleOtherMerge(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, File mergeLog, List<TsFileResource> newFile) {
-    // make sure no queries are holding the seqFiles
-    for (TsFileResource seqFile : seqFiles) {
-      seqFile.writeLock();
-    }
-    for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.writeLock();
-    }
     // block new queries and insertions to prevent the seqFiles from changing
     mergeLock.writeLock().lock();
     try {
