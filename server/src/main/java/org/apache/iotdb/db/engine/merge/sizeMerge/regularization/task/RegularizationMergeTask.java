@@ -167,6 +167,7 @@ public class RegularizationMergeTask implements Callable<Void> {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
       seqFile.setMerging(false);
+      seqFile.setDeleted(true);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
