@@ -1708,13 +1708,6 @@ public class StorageGroupProcessor {
   }
 
   private void removeSeqFiles(List<TsFileResource> seqFiles) {
-    mergeLock.writeLock().lock();
-    try {
-      sequenceFileTreeSet.removeAll(seqFiles);
-    } finally {
-      mergeLock.writeLock().unlock();
-    }
-
     for (TsFileResource seqFile : seqFiles) {
       seqFile.writeLock();
       try {
@@ -1726,13 +1719,6 @@ public class StorageGroupProcessor {
   }
 
   private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
-    mergeLock.writeLock().lock();
-    try {
-      unSequenceFileList.removeAll(unseqFiles);
-    } finally {
-      mergeLock.writeLock().unlock();
-    }
-
     for (TsFileResource unseqFile : unseqFiles) {
       unseqFile.writeLock();
       try {
@@ -1808,7 +1794,12 @@ public class StorageGroupProcessor {
 
   private void handleInplaceMerge(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, File mergeLog) {
-
+    mergeLock.writeLock().lock();
+    try {
+      unSequenceFileList.removeAll(unseqFiles);
+    } finally {
+      mergeLock.writeLock().unlock();
+    }
     removeUnseqFiles(unseqFiles);
     endMerge(mergeLog, seqFiles);
   }
@@ -1816,10 +1807,13 @@ public class StorageGroupProcessor {
   private void handleOtherMerge(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, File mergeLog, List<TsFileResource> newFile) {
     // block new queries and insertions to prevent the seqFiles from changing
+    writeLock();
     mergeLock.writeLock().lock();
     try {
-      removeUnseqFiles(unseqFiles);
-      removeSeqFiles(seqFiles);
+
+      unSequenceFileList.removeAll(unseqFiles);
+      sequenceFileTreeSet.removeAll(seqFiles);
+
       // move modifications generated during merge into the new file
       for (TsFileResource tsFileResource : newFile) {
         tsFileResource
@@ -1840,15 +1834,13 @@ public class StorageGroupProcessor {
       logger.error("{} fails to do the after merge action,", storageGroupName, e);
     } finally {
       isMerging = false;
+      writeUnlock();
       mergeLock.writeLock().unlock();
       logger.info("{} a merge task ends", storageGroupName);
-      for (TsFileResource seqFile : seqFiles) {
-        seqFile.writeUnlock();
-      }
-      for (TsFileResource unseqFile : unseqFiles) {
-        unseqFile.writeUnlock();
-      }
     }
+
+    removeUnseqFiles(unseqFiles);
+    removeSeqFiles(seqFiles);
   }
 
   /**
