@@ -60,12 +60,18 @@ public class IoTDBConfig {
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
+  private boolean enableMetricService = false;
+
+  private boolean enableIotDBMetricsStorage = true;
+
+  private boolean enablePrometheusMetricsEndpoint = true;
   /**
    * Port which the metrics service listens to.
    */
-  private int metricsPort = 8181;
+  private int metricsPrometheusPort = 9090;
 
-  private boolean enableMetricService = false;
+  private String metricsPrometheusEndpoint = "/metrics";
+
 
   /**
    * whether to enable the mqtt service.
@@ -582,8 +588,6 @@ public class IoTDBConfig {
   //wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric = 50;
-
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
@@ -732,12 +736,12 @@ public class IoTDBConfig {
     return dataDirs;
   }
 
-  public int getMetricsPort() {
-    return metricsPort;
+  public int getMetricsPrometheusPort() {
+    return metricsPrometheusPort;
   }
 
-  void setMetricsPort(int metricsPort) {
-    this.metricsPort = metricsPort;
+  void setMetricsPrometheusPort(int metricsPrometheusPort) {
+    this.metricsPrometheusPort = metricsPrometheusPort;
   }
 
   public boolean isEnableMetricService() {
@@ -1627,6 +1631,30 @@ public class IoTDBConfig {
 
   public void setPrimitiveArraySize(int primitiveArraySize) {
     this.primitiveArraySize = primitiveArraySize;
+  }
+
+  public boolean isEnableIotDBMetricsStorage() {
+    return enableIotDBMetricsStorage;
+  }
+
+  public void setEnableIotDBMetricsStorage(boolean enableIotDBMetricsStorage) {
+    this.enableIotDBMetricsStorage = enableIotDBMetricsStorage;
+  }
+
+  public boolean isEnablePrometheusMetricsEndpoint() {
+    return enablePrometheusMetricsEndpoint;
+  }
+
+  public void setEnablePrometheusMetricsEndpoint(boolean enablePrometheusMetricsEndpoint) {
+    this.enablePrometheusMetricsEndpoint = enablePrometheusMetricsEndpoint;
+  }
+
+  public String getMetricsPrometheusEndpoint() {
+    return metricsPrometheusEndpoint;
+  }
+
+  public void setMetricsPrometheusEndpoint(String metricsPrometheusEndpoint) {
+    this.metricsPrometheusEndpoint = metricsPrometheusEndpoint;
   }
 
   public String getOpenIdProviderUrl() {

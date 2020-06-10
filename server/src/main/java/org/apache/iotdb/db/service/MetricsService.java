@@ -20,6 +20,7 @@ import io.micrometer.core.instrument.binder.system.UptimeMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.micrometer.IoTDBRegistry;
 import org.apache.iotdb.micrometer.IoTDBRegistryConfig;
@@ -27,7 +28,8 @@ import org.apache.iotdb.micrometer.IoTDBRegistryConfig;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Metrics Service that is based on micrometer.
@@ -43,11 +45,11 @@ public class MetricsService implements IService {
     private static final MetricsService INSTANCE = new MetricsService();
 
     private HttpServer server;
-    private final PrometheusMeterRegistry prometheusMeterRegistry;
+    private PrometheusMeterRegistry prometheusMeterRegistry;
     private JvmGcMetrics jvmGcMetrics;
 
     public MetricsService() {
-        prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+        // Do nothing
     }
 
     public static IService getInstance() {
@@ -57,8 +59,33 @@ public class MetricsService implements IService {
     @Override
     public void start() throws StartupException {
         // Define Meter Registry
+        List<MeterRegistry> registries = new ArrayList<>();
+        if (IoTDBDescriptor.getInstance().getConfig().isEnableIotDBMetricsStorage()) {
+            registries.add(new IoTDBRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM));
+        }
+        if (IoTDBDescriptor.getInstance().getConfig().isEnablePrometheusMetricsEndpoint()) {
+            prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+            registries.add(prometheusMeterRegistry);
+            // Serve an Endpoint for prometheus
+            int port = IoTDBDescriptor.getInstance().getConfig().getMetricsPrometheusPort();
+            String endpoint = IoTDBDescriptor.getInstance().getConfig().getMetricsPrometheusEndpoint();
+            try {
+                server = HttpServer.create(new InetSocketAddress(port), 0);
+                server.createContext(endpoint, httpExchange -> {
+                    String response = prometheusMeterRegistry.scrape();
+                    httpExchange.sendResponseHeaders(200, response.getBytes().length);
+                    try (OutputStream os = httpExchange.getResponseBody()) {
+                        os.write(response.getBytes());
+                    }
+                });
+
+                new Thread(server::start).start();
+            } catch (IOException e) {
+                throw new IllegalStateException("Unable to start server", e);
+            }
+        }
         MeterRegistry registry = new CompositeMeterRegistry(Clock.SYSTEM,
-            Arrays.asList(new IoTDBRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM), prometheusMeterRegistry));
+                registries);
         // Set this as default, then users can simply write Metrics.xxx
         Metrics.addRegistry(registry);
         // Wire up JVM and Other Default Bindings
@@ -72,28 +99,14 @@ public class MetricsService implements IService {
         new ProcessThreadMetrics().bindTo(registry);
         new UptimeMetrics().bindTo(registry);
         new FileDescriptorMetrics().bindTo(registry);
-
-        // Serve an Endpoint for prometheus
-        try {
-            server = HttpServer.create(new InetSocketAddress(8080), 0);
-            server.createContext("/metrics", httpExchange -> {
-                String response = prometheusMeterRegistry.scrape();
-                httpExchange.sendResponseHeaders(200, response.getBytes().length);
-                try (OutputStream os = httpExchange.getResponseBody()) {
-                    os.write(response.getBytes());
-                }
-            });
-
-            new Thread(server::start).start();
-        } catch (IOException e) {
-            throw new IllegalStateException("Unable to start server", e);
-        }
     }
 
     @Override
     public void stop() {
         jvmGcMetrics.close();
-        server.stop(0);
+        if (server != null) {
+            server.stop(0);
+        }
     }
 
     @Override
