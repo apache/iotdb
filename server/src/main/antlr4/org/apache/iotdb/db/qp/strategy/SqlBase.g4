@@ -73,7 +73,7 @@ statement
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
-    | SHOW MERGE STATUS #showMergeStatus
+    | SHOW MERGE #showMergeStatus
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
@@ -879,9 +879,6 @@ FALSE
     : F A L S E
     ;
 
-STATUS
-    : S T A T U S
-    ;
 //============================
 // End of the keywords list
 //============================

@@ -211,8 +211,8 @@ Note: This statement can be used in IoTDB Client and JDBC.
 * Show Merge Status Statement
 
 ```
-SHOW MERGE STATUS
-Eg: IoTDB > SHOW MERGE STATUS
+SHOW MERGE
+Eg: IoTDB > SHOW MERGE
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
