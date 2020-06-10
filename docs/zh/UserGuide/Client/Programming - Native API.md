@@ -113,10 +113,22 @@
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
+* 异步方式插入一个 Record
+  
+  ```
+  void asyncInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  ```
+
 * 插入一个 Tablet，Tablet 是一个设备若干行非空数据块，每一行的列都相同
 
   ```
   void insertTablet(Tablet tablet)
+  ```
+  
+* 异步方式插入一个 Tablet
+
+  ```
+  void asyncInsertTablet(Tablet tablet)
   ```
 
 * 插入多个 Tablet
@@ -125,11 +137,24 @@
   void insertTablets(Map<String, Tablet> tablet)
   ```
   
+* 异步方式插入多个 Tablet
+
+  ```
+  void asyncInsertTablets(Map<String, Tablet> tablet)
+  ```
+  
 * 插入多个 Record
 
   ```
   void insertRecords(List<String> deviceIds, List<Long> times, 
                        List<List<String>> measurementsList, List<List<String>> valuesList)
+  ```
+
+* 异步方式插入多个 Record
+
+  ```
+  void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
+                         List<List<String>> measurementsList, List<List<String>> valuesList)
   ```
 
 ## 测试客户端逻辑+网络传输代价的接口

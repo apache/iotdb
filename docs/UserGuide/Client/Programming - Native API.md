@@ -117,10 +117,22 @@ Here we show the commonly used interfaces and their parameters in the Native API
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
+* Insert a Record in a asynchronous manner
+
+  ```
+  void asyncInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  ```
+
 * Insert a Tablet，which is multiple rows of a device, each row has the same measurements
 
   ```
   void insertTablet(Tablet tablet)
+  ```
+  
+* Insert a Tablet in a asynchronous manner
+
+  ```
+  void asyncInsertTablet(Tablet tablet)
   ```
 
 * Insert multiple Tablets
@@ -129,11 +141,24 @@ Here we show the commonly used interfaces and their parameters in the Native API
   void insertTablets(Map<String, Tablet> tablet)
   ```
   
+* Insert multiple Tablets in a asynchronous manner
+
+  ```
+  void asyncInsertTablets(Map<String, Tablet> tablet)
+  ```
+  
 * Insert multiple Records
 
   ```
   void insertRecords(List<String> deviceIds, List<Long> times, 
                        List<List<String>> measurementsList, List<List<String>> valuesList)
+  ```
+  
+* Insert multiple Records in a asynchronous manner
+
+  ```
+  void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
+                         List<List<String>> measurementsList, List<List<String>> valuesList)
   ```
 
 ## Native APIs for profiling network cost
