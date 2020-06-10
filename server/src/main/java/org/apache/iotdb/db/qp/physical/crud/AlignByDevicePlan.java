@@ -40,6 +40,7 @@ public class AlignByDevicePlan extends QueryPlan {
   private Map<String, TSDataType> measurementDataTypeMap;
 
   private GroupByTimePlan groupByTimePlan;
+
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
 
@@ -96,6 +97,7 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setMeasurementDataTypeMap(Map<String, TSDataType> measurementDataTypeMap) {
     this.measurementDataTypeMap = measurementDataTypeMap;
   }
+
 
   public GroupByTimePlan getGroupByTimePlan() {
     return groupByTimePlan;
