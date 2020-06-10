@@ -75,6 +75,7 @@ import org.slf4j.LoggerFactory;
 
 public class StorageEngine implements IService {
 
+  public static final String GROUP_TAG = "_group";
   private final Logger logger;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
@@ -281,15 +282,15 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     String storageGroupName = getStorageGroupName(insertPlan.getDeviceId());
-    Metrics.counter("iotdb.storage.insert.count", "_group", storageGroupName).increment();
+    Metrics.counter("iotdb.storage.insert.count", GROUP_TAG, storageGroupName).increment();
+    long start = System.nanoTime();
     try {
-      long start = System.nanoTime();
       storageGroupProcessor.insert(insertPlan);
-      long stop = System.nanoTime();
-      Metrics.timer("iotdb.storage.insert.latency", "_group", storageGroupName).record(stop - start, TimeUnit.NANOSECONDS);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     } finally {
+      long stop = System.nanoTime();
+      Metrics.timer("iotdb.storage.insert.latency", GROUP_TAG, storageGroupName).record(stop - start, TimeUnit.NANOSECONDS);
     }
   }
 
@@ -322,8 +323,8 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     String storageGroupName = getStorageGroupName(insertTabletPlan.getDeviceId());
-    Metrics.summary("iotdb.storage.insert.batch.size", "_group", storageGroupName).record(insertTabletPlan.getRowCount());
-    LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.storage.insert.batch.latency", "_group", storageGroupName).start();
+    Metrics.summary("iotdb.storage.insert.batch.size", GROUP_TAG, storageGroupName).record(insertTabletPlan.getRowCount());
+    LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.storage.insert.batch.latency", GROUP_TAG, storageGroupName).start();
     try {
       return storageGroupProcessor.insertTablet(insertTabletPlan);
     } catch (WriteProcessException e) {
