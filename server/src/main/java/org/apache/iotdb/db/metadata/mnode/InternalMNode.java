@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.util.LinkedHashMap;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 
 public class InternalMNode extends MNode {
 
@@ -40,12 +39,12 @@ public class InternalMNode extends MNode {
   public InternalMNode(MNode parent, String name) {
     super(parent, name);
     this.children = new LinkedHashMap<>();
-    this.aliasChildren = new LinkedHashMap<>();
   }
 
   @Override
   public boolean hasChild(String name) {
-    return this.children.containsKey(name) || this.aliasChildren.containsKey(name);
+    return this.children.containsKey(name) ||
+        (aliasChildren != null && aliasChildren.containsKey(name));
   }
 
   @Override
@@ -75,11 +74,13 @@ public class InternalMNode extends MNode {
         throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + name);
       }
     }
-}
+  }
 
   @Override
   public void deleteAliasChild(String alias) throws DeleteFailedException {
-
+    if (aliasChildren == null) {
+      return;
+    }
     if (lock.writeLock().tryLock()) {
       aliasChildren.remove(alias);
       lock.writeLock().unlock();
@@ -90,7 +91,8 @@ public class InternalMNode extends MNode {
 
   @Override
   public MNode getChild(String name) {
-    return children.containsKey(name) ? children.get(name) : aliasChildren.get(name);
+    return children.containsKey(name) ? children.get(name)
+        : (aliasChildren == null ? null : aliasChildren.get(name));
   }
 
   @Override
@@ -104,6 +106,9 @@ public class InternalMNode extends MNode {
 
   @Override
   public void addAlias(String alias, MNode child) {
+    if (aliasChildren == null) {
+      aliasChildren = new LinkedHashMap<>();
+    }
     aliasChildren.put(alias, child);
   }
 
