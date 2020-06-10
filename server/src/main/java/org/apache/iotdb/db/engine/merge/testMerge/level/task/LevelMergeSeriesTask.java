@@ -131,17 +131,19 @@ public class LevelMergeSeriesTask {
           newResource.updateStartTime(path.getDevice(), batchData.getTimeByIndex(0));
           for (int i = 0; i < batchData.length(); i++) {
             writeBatchPoint(batchData, i, chunkWriter);
+            if (chunkWriter.getPtNum() >= levelChunkPointThreshold) {
+              mergeNum++;
+              levelChunkPointThreshold =
+                  (long) (this.chunkMergePointThreshold * Math.pow(mergeLevelMultiple, mergeNum));
+              mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
+              chunkWriter.writeToFileWriter(newFileWriter);
+              chunkWriter = new ChunkWriterImpl(chunkWriter.getMeasurementSchema());
+              resource.putChunkWriter(path, chunkWriter);
+            }
           }
           if (!tsFilesReader.hasNextBatch()) {
             newResource.updateEndTime(path.getDevice(),
                 batchData.getTimeByIndex(batchData.length() - 1));
-          }
-          if (chunkWriter.getPtNum() >= levelChunkPointThreshold) {
-            mergeNum++;
-            levelChunkPointThreshold =
-                (long) (this.chunkMergePointThreshold * Math.pow(mergeLevelMultiple, mergeNum));
-            mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
-            chunkWriter.writeToFileWriter(newFileWriter);
           }
         }
         chunkWriter.writeToFileWriter(newFileWriter);
