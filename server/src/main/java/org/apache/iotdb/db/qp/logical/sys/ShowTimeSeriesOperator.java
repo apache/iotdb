@@ -29,6 +29,8 @@ public class ShowTimeSeriesOperator extends ShowOperator {
   private String value;
   private int limit = 0;
   private int offset = 0;
+  // if is true, the result will be sorted according to the inserting frequency of the timeseries
+  private boolean orderByHeat;
 
   public ShowTimeSeriesOperator(int tokeIntType, Path path) {
     super(tokeIntType);
@@ -77,5 +79,13 @@ public class ShowTimeSeriesOperator extends ShowOperator {
 
   public void setOffset(int offset) {
     this.offset = offset;
+  }
+
+  public boolean isOrderByHeat() {
+    return orderByHeat;
+  }
+
+  public void setOrderByHeat(boolean orderByHeat) {
+    this.orderByHeat = orderByHeat;
   }
 }

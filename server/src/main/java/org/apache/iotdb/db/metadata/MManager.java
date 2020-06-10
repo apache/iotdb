@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -36,7 +38,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -772,7 +773,9 @@ public class MManager {
       if (value2Node.isEmpty()) {
         throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
       }
-      Set<LeafMNode> allMatchedNodes = new TreeSet<>(Comparator.comparing(MNode::getFullPath));
+
+      List<LeafMNode> allMatchedNodes = new ArrayList<>();
+
       if (plan.isContains()) {
         for (Entry<String, Set<LeafMNode>> entry : value2Node.entrySet()) {
           String tagValue = entry.getKey();
@@ -788,6 +791,18 @@ public class MManager {
           }
         }
       }
+
+      // if ordered by heat, we sort all the timeseries by the descending order of the last insert timestamp
+      if (plan.isOrderByHeat()) {
+        allMatchedNodes = allMatchedNodes.stream().sorted(
+            Comparator.comparingLong(MTree::getLastTimeStamp).reversed()
+                .thenComparing(MNode::getFullPath)).collect(toList());
+      } else {
+        // otherwise, we just sort them by the alphabetical order
+        allMatchedNodes = allMatchedNodes.stream().sorted(Comparator.comparing(MNode::getFullPath))
+            .collect(toList());
+      }
+
       List<ShowTimeSeriesResult> res = new LinkedList<>();
       String[] prefixNodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
       int curOffset = -1;
@@ -811,7 +826,7 @@ public class MManager {
                 getStorageGroupName(leaf.getFullPath()), measurementSchema.getType().toString(),
                 measurementSchema.getEncodingType().toString(),
                 measurementSchema.getCompressor().toString(), pair.left));
-            if (limit != 0 || offset != 0) {
+            if (limit != 0) {
               count++;
             }
           } catch (IOException e) {
@@ -850,8 +865,13 @@ public class MManager {
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();
+    List<String[]> ans;
     try {
-      List<String[]> ans = mtree.getAllMeasurementSchema(plan);
+      if (plan.isOrderByHeat()) {
+        ans = mtree.getAllMeasurementSchemaByHeatOrder(plan);
+      } else {
+        ans = mtree.getAllMeasurementSchema(plan);
+      }
       List<ShowTimeSeriesResult> res = new LinkedList<>();
       for (String[] ansString : ans) {
         long tagFileOffset = Long.parseLong(ansString[6]);
@@ -972,7 +992,7 @@ public class MManager {
 
   /**
    * get device node, if the storage group is not set, create it when autoCreateSchema is true
-   *
+   * <p>
    * (we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * <p>!!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
@@ -1573,15 +1593,17 @@ public class MManager {
   }
 
   /**
-   * if the path is in local mtree, nothing needed to do (because mtree is in the memory);
-   * Otherwise cache the path to mRemoteSchemaCache
+   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
+   * cache the path to mRemoteSchemaCache
+   *
    * @param path
    * @param schema
    */
   public void cacheSchema(String path, MeasurementSchema schema) {
     // check schema is in local
     try {
-      ShowTimeSeriesPlan tempPlan = new ShowTimeSeriesPlan(new Path(path), false, null, null, 0, 0);
+      ShowTimeSeriesPlan tempPlan = new ShowTimeSeriesPlan(new Path(path), false, null, null, 0, 0,
+          false);
       List<String[]> schemas = mtree.getAllMeasurementSchema(tempPlan);
       if (schemas.isEmpty()) {
         mRemoteSchemaCache.put(path, schema);

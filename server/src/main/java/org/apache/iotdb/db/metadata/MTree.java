@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.query.executor.LastQueryExecutor.calculateLastPairForOneSeries;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -27,6 +29,9 @@ import com.alibaba.fastjson.serializer.SerializerFeature;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,6 +43,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
@@ -52,10 +58,12 @@ import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -612,6 +620,7 @@ public class MTree implements Serializable {
 
   /**
    * Traverse the MTree to get the count of timeseries in the given level.
+   *
    * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
   private int getCountInGivenLevel(MNode node, int targetLevel) {
@@ -626,6 +635,34 @@ public class MTree implements Serializable {
     }
     return cnt;
   }
+
+  /**
+   * Get all time series schema under the given path order by insert frequency
+   *
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
+   */
+  List<String[]> getAllMeasurementSchemaByHeatOrder(ShowTimeSeriesPlan plan)
+      throws MetadataException {
+    String[] nodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(plan.getPath().getFullPath());
+    }
+    List<String[]> allMatchedNodes = new ArrayList<>();
+
+    findPath(root, nodes, 1, "", allMatchedNodes, false);
+
+    Stream<String[]> sortedStream = allMatchedNodes.stream().sorted(
+        Comparator.comparingLong((String[] s) -> Long.parseLong(s[7])).reversed()
+            .thenComparing((String[] array) -> array[0]));
+
+    // no limit
+    if (plan.getLimit() == 0) {
+      return sortedStream.collect(toList());
+    } else {
+      return sortedStream.skip(plan.getOffset()).limit(plan.getLimit()).collect(toList());
+    }
+  }
+
 
   /**
    * Get all time series schema under the given path
@@ -643,10 +680,10 @@ public class MTree implements Serializable {
     curOffset.set(-1);
     count.set(0);
     if (offset.get() != 0 || limit.get() != 0) {
-      res = new ArrayList<>(limit.get());
+      res = new LinkedList<>();
       findPath(root, nodes, 1, "", res, true);
     } else {
-      res = new ArrayList<>();
+      res = new LinkedList<>();
       findPath(root, nodes, 1, "", res, false);
     }
     // avoid memory leaks
@@ -660,10 +697,11 @@ public class MTree implements Serializable {
   /**
    * Iterate through MTree to fetch metadata info of all leaf nodes under the given seriesPath
    *
-   * @param timeseriesSchemaList List<timeseriesSchema>
+   * @param timeseriesSchemas Collection<timeseriesSchema> result: [name, alias, storage group,
+   *                          dataType, encoding, compression, offset, lastTimeStamp]
    */
   private void findPath(MNode node, String[] nodes, int idx, String parent,
-      List<String[]> timeseriesSchemaList, boolean hasLimit) throws MetadataException {
+      Collection<String[]> timeseriesSchemas, boolean hasLimit) throws MetadataException {
     if (node instanceof LeafMNode) {
       if (nodes.length <= idx) {
         if (hasLimit) {
@@ -679,7 +717,7 @@ public class MTree implements Serializable {
           nodeName = node.getName();
         }
         String nodePath = parent + nodeName;
-        String[] tsRow = new String[7];
+        String[] tsRow = new String[8];
         tsRow[0] = nodePath;
         tsRow[1] = ((LeafMNode) node).getAlias();
         MeasurementSchema measurementSchema = ((LeafMNode) node).getSchema();
@@ -688,7 +726,8 @@ public class MTree implements Serializable {
         tsRow[4] = measurementSchema.getEncodingType().toString();
         tsRow[5] = measurementSchema.getCompressor().toString();
         tsRow[6] = String.valueOf(((LeafMNode) node).getOffset());
-        timeseriesSchemaList.add(tsRow);
+        tsRow[7] = String.valueOf(getLastTimeStamp((LeafMNode) node));
+        timeseriesSchemas.add(tsRow);
 
         if (hasLimit) {
           count.set(count.get() + 1);
@@ -700,7 +739,7 @@ public class MTree implements Serializable {
     if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
         findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList, hasLimit);
+            timeseriesSchemas, hasLimit);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
@@ -708,7 +747,22 @@ public class MTree implements Serializable {
           continue;
         }
         findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList, hasLimit);
+            timeseriesSchemas, hasLimit);
+      }
+    }
+  }
+
+  static long getLastTimeStamp(LeafMNode node) {
+    TimeValuePair last = node.getCachedLast();
+    if (last != null) {
+      return node.getCachedLast().getTimestamp();
+    } else {
+      try {
+        last = calculateLastPairForOneSeries(new Path(node.getFullPath()),
+            node.getSchema().getType(), new QueryContext(-1), Collections.emptySet());
+        return last.getTimestamp();
+      } catch (Exception e) {
+        return Long.MIN_VALUE;
       }
     }
   }
@@ -847,6 +901,7 @@ public class MTree implements Serializable {
 
   /**
    * Get all paths under the given level.
+   *
    * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
   private void findNodes(MNode node, String path, List<String> res, int targetLevel) {

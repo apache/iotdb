@@ -27,7 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -47,7 +46,6 @@ import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
-import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
@@ -56,6 +54,7 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
@@ -165,14 +164,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.StringContainer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class is a listener and you can get an operator which is a logical plan.
  */
 public class LogicalGenerator extends SqlBaseBaseListener {
-  private static Logger logger = LoggerFactory.getLogger(LogicalGenerator.class);
 
   private RootOperator initializedOperator = null;
   private ZoneId zoneId;
@@ -1058,7 +1054,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     List<String> measurementList = new ArrayList<>();
     for (NodeNameWithoutStarContext nodeNameWithoutStar : nodeNamesWithoutStar) {
       String measurement = nodeNameWithoutStar.getText();
-      if (measurement.contains("\"") || measurement.contains("\'")) {
+      if (measurement.contains("\"") || measurement.contains("'")) {
         measurement = measurement.substring(1, measurement.length() - 1);
       }
       measurementList.add(measurement);
@@ -1358,6 +1354,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       value = propertyValueContext.getText();
     }
     operator.setValue(value);
+  }
+
+  @Override
+  public void enterOrderByHeatClause(SqlBaseParser.OrderByHeatClauseContext ctx) {
+    super.enterOrderByHeatClause(ctx);
+    ShowTimeSeriesOperator operator = (ShowTimeSeriesOperator) initializedOperator;
+    operator.setOrderByHeat(true);
   }
 
   private FilterOperator parseOrExpression(OrExpressionContext ctx) {
