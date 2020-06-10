@@ -1207,7 +1207,7 @@ public class StorageGroupProcessor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      Metrics.timer("iotdb.processor.query.duration", "_group", storageGroupName).record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+      Metrics.timer("iotdb.processor.query.latency", "_group", storageGroupName).record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
       sample.stop();
       insertLock.readLock().unlock();
       mergeLock.readLock().unlock();

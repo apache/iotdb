@@ -286,7 +286,7 @@ public class StorageEngine implements IService {
       long start = System.nanoTime();
       storageGroupProcessor.insert(insertPlan);
       long stop = System.nanoTime();
-      Metrics.timer("iotdb.storage.insert.duration", "_group", storageGroupName).record(stop - start, TimeUnit.NANOSECONDS);
+      Metrics.timer("iotdb.storage.insert.latency", "_group", storageGroupName).record(stop - start, TimeUnit.NANOSECONDS);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     } finally {
@@ -323,7 +323,7 @@ public class StorageEngine implements IService {
     // TODO monitor: update statistics
     String storageGroupName = getStorageGroupName(insertTabletPlan.getDeviceId());
     Metrics.summary("iotdb.storage.insert.batch.size", "_group", storageGroupName).record(insertTabletPlan.getRowCount());
-    LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.storage.insert.batch.duration", "_group", storageGroupName).start();
+    LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.storage.insert.batch.latency", "_group", storageGroupName).start();
     try {
       return storageGroupProcessor.insertTablet(insertTabletPlan);
     } catch (WriteProcessException e) {
