@@ -1708,13 +1708,6 @@ public class StorageGroupProcessor {
   }
 
   private void removeSeqFiles(List<TsFileResource> seqFiles) {
-    mergeLock.writeLock().lock();
-    try {
-      sequenceFileTreeSet.removeAll(seqFiles);
-    } finally {
-      mergeLock.writeLock().unlock();
-    }
-
     for (TsFileResource seqFile : seqFiles) {
       seqFile.writeLock();
       try {
@@ -1726,13 +1719,6 @@ public class StorageGroupProcessor {
   }
 
   private void removeUnseqFiles(List<TsFileResource> unseqFiles) {
-    mergeLock.writeLock().lock();
-    try {
-      unSequenceFileList.removeAll(unseqFiles);
-    } finally {
-      mergeLock.writeLock().unlock();
-    }
-
     for (TsFileResource unseqFile : unseqFiles) {
       unseqFile.writeLock();
       try {
@@ -1808,29 +1794,34 @@ public class StorageGroupProcessor {
 
   private void handleInplaceMerge(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, File mergeLog) {
-
+    mergeLock.writeLock().lock();
+    try {
+      unSequenceFileList.removeAll(unseqFiles);
+    } finally {
+      mergeLock.writeLock().unlock();
+    }
     removeUnseqFiles(unseqFiles);
     endMerge(mergeLog, seqFiles);
   }
 
   private void handleOtherMerge(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, File mergeLog, List<TsFileResource> newFile) {
-    // make sure no queries are holding the seqFiles
-    for (TsFileResource seqFile : seqFiles) {
-      seqFile.writeLock();
-    }
-    for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.writeLock();
-    }
     // block new queries and insertions to prevent the seqFiles from changing
+    writeLock();
     mergeLock.writeLock().lock();
     try {
-      removeUnseqFiles(unseqFiles);
-      removeSeqFiles(seqFiles);
+
+      unSequenceFileList.removeAll(unseqFiles);
+      sequenceFileTreeSet.removeAll(seqFiles);
+
       // move modifications generated during merge into the new file
       for (TsFileResource tsFileResource : newFile) {
-        tsFileResource
-            .setProcessor(getOrCreateTsFileProcessor(tsFileResource.getTimePartition(), true));
+        TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName,
+            tsFileResource.getFile().getAbsoluteFile(),
+            getVersionControllerByTimePartitionId(tsFileResource.getTimePartition()),
+            this::closeUnsealedTsFileProcessorCallBack,
+            this::updateLatestFlushTimeCallback, true);
+        tsFileResource.setProcessor(tsFileProcessor);
         if (mergingModification != null) {
           logger.info("{} is updating the merged file's modification file", storageGroupName);
           for (Modification modification : mergingModification.getModifications()) {
@@ -1847,15 +1838,13 @@ public class StorageGroupProcessor {
       logger.error("{} fails to do the after merge action,", storageGroupName, e);
     } finally {
       isMerging = false;
+      writeUnlock();
       mergeLock.writeLock().unlock();
       logger.info("{} a merge task ends", storageGroupName);
-      for (TsFileResource seqFile : seqFiles) {
-        seqFile.writeUnlock();
-      }
-      for (TsFileResource unseqFile : unseqFiles) {
-        unseqFile.writeUnlock();
-      }
     }
+
+    removeUnseqFiles(unseqFiles);
+    removeSeqFiles(seqFiles);
   }
 
   /**

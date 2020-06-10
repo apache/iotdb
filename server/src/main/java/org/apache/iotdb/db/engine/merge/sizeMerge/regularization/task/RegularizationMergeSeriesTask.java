@@ -53,6 +53,14 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
         .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
     String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "")
         .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+
+    //TODO: for test only
+    try {
+      Long.parseLong(items1[0]);
+    } catch (NumberFormatException e) {
+      return items1[0].compareTo(items2[0]);
+    }
+
     return Long.compare(Long.parseLong(items1[0]), Long.parseLong(items2[0]));
   }));
 
