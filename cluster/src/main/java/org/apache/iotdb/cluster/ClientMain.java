@@ -54,6 +54,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -77,6 +78,7 @@ public class ClientMain {
   private static final String PARAM_DELETE_STORAGE_GROUP = "dsg";
   private static final String PARAM_DELETE_SERIES = "ds";
   private static final String PARAM_QUERY_PORTS = "qp";
+  private static final String PARAM_INSERT_PORT = "ip";
   private static Options options = new Options();
 
   static {
@@ -86,6 +88,7 @@ public class ClientMain {
     options.addOption(new Option(PARAM_DELETE_STORAGE_GROUP, "Perform deleting storage group"));
     options.addOption(new Option(PARAM_QUERY_PORTS, true, "Ports to query (ip is currently "
         + "localhost)"));
+    options.addOption(new Option(PARAM_INSERT_PORT, true, "Port to perform insertion"));
   }
 
   private static Map<String, TSStatus> failedQueries;
@@ -166,6 +169,9 @@ public class ClientMain {
 
     String ip = "127.0.0.1";
     int port = 55560;
+    if (commandLine.hasOption(PARAM_INSERT_PORT)){
+      port = Integer.parseInt(commandLine.getOptionValue(PARAM_INSERT_PORT));
+    }
     Client client;
     long sessionId;
 

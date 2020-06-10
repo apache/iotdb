@@ -291,6 +291,13 @@ public class InsertPlan extends PhysicalPlan {
     } catch (QueryProcessException e) {
       throw new IOException(e);
     }
+
+    // infer type flag
+    if (inferType || types == null || types[0] == null) {
+      stream.write(1);
+    } else {
+      stream.write(0);
+    }
   }
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
@@ -438,6 +445,13 @@ public class InsertPlan extends PhysicalPlan {
     } catch (QueryProcessException e) {
       logger.warn("Exception in serialization of InsertPlan", e);
     }
+
+    // infer type flag
+    if (inferType || types == null || types[0] == null) {
+      buffer.put((byte) 1);
+    } else {
+      buffer.put((byte) 0);
+    }
   }
 
   @Override
@@ -461,7 +475,7 @@ public class InsertPlan extends PhysicalPlan {
     }
 
     // the types are not inferred before the plan is serialized
-    if (types[0] == null) {
+    if (buffer.get() == 1) {
       this.inferType = true;
     }
   }
