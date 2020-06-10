@@ -499,6 +499,8 @@ public class IoTDBDescriptor {
         conf.getIntegerStringInferType().toString())));
     conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
         conf.getFloatingStringInferType().toString())));
+    conf.setNanStringInferType(TSDataType.valueOf(properties.getProperty("nan_string_infer_type",
+        conf.getNanStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
         Integer.parseInt(properties.getProperty("default_storage_group_level",
             Integer.toString(conf.getDefaultStorageGroupLevel()))));

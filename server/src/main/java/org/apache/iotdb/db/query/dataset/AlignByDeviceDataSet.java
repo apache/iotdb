@@ -62,7 +62,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private List<String> devices;
   private Map<String, IExpression> deviceToFilterMap;
   private Map<String, MeasurementType> measurementTypeMap;
-  private Map<String, TSDataType> measurementDataTpeMap;
+  // record the real type of the corresponding measurement
+  private Map<String, TSDataType> measurementDataTypeMap;
 
   private GroupByTimePlan groupByTimePlan;
   private FillQueryPlan fillQueryPlan;
@@ -76,12 +77,12 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private List<String> executeColumns;
 
   public AlignByDeviceDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
-      IQueryRouter queryRouter) {
+      IQueryRouter queryRouter) throws MetadataException {
     super(null, alignByDevicePlan.getDataTypes());
 
     this.measurements = alignByDevicePlan.getMeasurements();
     this.devices = alignByDevicePlan.getDevices();
-    this.measurementDataTpeMap = alignByDevicePlan.getMeasurementDataTypeMap();
+    this.measurementDataTypeMap = alignByDevicePlan.getMeasurementDataTypeMap();
     this.queryRouter = queryRouter;
     this.context = context;
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
@@ -127,7 +128,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       List<Path> executePaths = new ArrayList<>();
       List<TSDataType> tsDataTypes = new ArrayList<>();
       List<String> executeAggregations = new ArrayList<>();
-      for (String column : measurementDataTpeMap.keySet()) {
+      for (String column : measurementDataTypeMap.keySet()) {
         String measurement = column;
         if (dataSetType == DataSetType.GROUPBYTIME || dataSetType == DataSetType.AGGREGATE) {
           measurement = column.substring(column.indexOf('(') + 1, column.indexOf(')'));
@@ -138,7 +139,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
         if (measurementOfGivenDevice.contains(measurement)) {
           executeColumns.add(column);
           executePaths.add(new Path(currentDevice, measurement));
-          tsDataTypes.add(measurementDataTpeMap.get(column));
+          tsDataTypes.add(measurementDataTypeMap.get(column));
         }
       }
 

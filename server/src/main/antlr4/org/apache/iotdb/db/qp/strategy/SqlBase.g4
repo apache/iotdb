@@ -394,6 +394,7 @@ dateFormat
 
 constant
     : dateExpression
+    | NaN
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
@@ -876,6 +877,7 @@ TRUE
 FALSE
     : F A L S E
     ;
+
 //============================
 // End of the keywords list
 //============================
@@ -936,6 +938,8 @@ L_BRACKET : '{';
 R_BRACKET : '}';
 
 UNDERLINE : '_';
+
+NaN : 'NaN';
 
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL
