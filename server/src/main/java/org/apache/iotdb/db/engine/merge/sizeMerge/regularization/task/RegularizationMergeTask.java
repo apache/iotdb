@@ -23,11 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -38,16 +34,10 @@ import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.recover.Regular
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,7 +60,7 @@ public class RegularizationMergeTask implements Callable<Void> {
   MergeCallback callback;
   String taskName;
 
-  TsFileResource newResource;
+  List<TsFileResource> newResources = new ArrayList<>();
 
   public RegularizationMergeTask(
       MergeResource mergeResource, String storageGroupSysDir, MergeCallback callback,
@@ -110,17 +100,7 @@ public class RegularizationMergeTask implements Callable<Void> {
         resource.getUnseqFiles());
     mergeLogger = new RegularizationMergeLogger(storageGroupSysDir);
 
-    Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
-    Map<Path, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
-    for (String device : devices) {
-      InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
-      for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
-        MeasurementSchema measurementSchema = ((LeafMNode) entry.getValue()).getSchema();
-        chunkWriterCacheMap
-            .put(new Path(device, entry.getKey()), new ChunkWriterImpl(measurementSchema));
-      }
-    }
-    resource.setChunkWriterCache(chunkWriterCacheMap);
+    resource.setChunkWriterCache(MergeUtils.constructChunkWriterCache(storageGroupName));
 
     List<String> storageGroupPaths = MManager.getInstance()
         .getAllTimeseriesName(storageGroupName + ".*");
@@ -134,7 +114,7 @@ public class RegularizationMergeTask implements Callable<Void> {
     RegularizationMergeSeriesTask mergeChunkTask = new RegularizationMergeSeriesTask(mergeContext,
         taskName, mergeLogger,
         resource, unmergedSeries);
-    newResource = mergeChunkTask.mergeSeries();
+    newResources = mergeChunkTask.mergeSeries();
 
     cleanUp(true);
     if (logger.isInfoEnabled()) {
@@ -174,8 +154,6 @@ public class RegularizationMergeTask implements Callable<Void> {
     if (executeCallback) {
       // make sure merge.log is not deleted until unseqFiles are cleared so that when system
       // reboots, the undeleted files can be deleted again
-      List<TsFileResource> newResources = new ArrayList<>();
-      newResources.add(newResource);
       callback.call(resource.getSeqFiles(), resource.getUnseqFiles(), logFile, newResources);
     } else {
       logFile.delete();
@@ -188,8 +166,7 @@ public class RegularizationMergeTask implements Callable<Void> {
       resource.removeFileReader(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
-      seqFile.getFile().delete();
-      seqFile.setDeleted(true);
+      seqFile.setMerging(false);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {

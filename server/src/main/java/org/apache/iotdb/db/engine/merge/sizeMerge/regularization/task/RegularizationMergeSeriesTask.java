@@ -20,11 +20,14 @@
 package org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task;
 
 import static org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask.MERGE_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.PriorityQueue;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.merge.BaseMergeSeriesTask;
 import org.apache.iotdb.db.engine.merge.MergeLogger;
@@ -43,6 +46,15 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
 
   private static final Logger logger = LoggerFactory.getLogger(
       RegularizationMergeSeriesTask.class);
+
+  // for Regularization merge, when merged tsfile reaches threshold, get a fileName order by its timestamp
+  private PriorityQueue<File> mergeFileNameHeap = new PriorityQueue<>(((o1, o2) -> {
+    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+    return Long.compare(Long.parseLong(items1[0]), Long.parseLong(items2[0]));
+  }));
 
   public RegularizationMergeSeriesTask(MergeContext context, String taskName,
       MergeLogger mergeLogger,
@@ -68,12 +80,13 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
     }
     long startTime = System.currentTimeMillis();
 
+    this.constructMergeFileNameHeap();
     List<TsFileResource> newResources = new ArrayList<>();
 
     Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = createNewFileWriter(
-        MERGE_SUFFIX);
-    newFileWriter = newTsFilePair.left;
-    TsFileResource currentMergeResource = newTsFilePair.right;
+        mergeFileNameHeap, MERGE_SUFFIX);
+    currentFileWriter = newTsFilePair.left;
+    currentMergeResource = newTsFilePair.right;
     newResources.add(currentMergeResource);
 
     List<List<Path>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
@@ -83,35 +96,47 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
       logMergeProgress();
       if (currentMergeResource.getFileSize() >= IoTDBDescriptor.getInstance().getConfig()
           .getTsFileSizeThreshold()) {
-        newFileWriter.endFile();
-        newTsFilePair = createNewFileWriter(MERGE_SUFFIX);
-        newFileWriter = newTsFilePair.left;
+        currentFileWriter.endFile();
+        newTsFilePair = createNewFileWriter(mergeFileNameHeap, MERGE_SUFFIX);
+        currentFileWriter = newTsFilePair.left;
         currentMergeResource = newTsFilePair.right;
       }
     }
+    currentFileWriter.endFile();
     mergeLogger.logAllTsEnd();
 
     if (logger.isInfoEnabled()) {
       logger.info("{} all series are merged after {}ms", taskName,
           System.currentTimeMillis() - startTime);
-    }
-    if (logger.isInfoEnabled()) {
       long totalChunkPoint = 0;
       long chunkNum = 0;
-      List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(this.currentMergeResource);
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        chunkNum++;
-        totalChunkPoint += chunkMetadata.getNumOfPoints();
+      for (TsFileResource seqFile : resource.getSeqFiles()) {
+        List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(seqFile);
+        for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+          chunkNum++;
+          totalChunkPoint += chunkMetadata.getNumOfPoints();
+        }
       }
       logger.info("merge after seqFile chunk large = {}", totalChunkPoint * 1.0 / chunkNum);
     }
 
-    File oldTsFile = this.currentMergeResource.getFile();
-    File newTsFile = new File(oldTsFile.getParent(),
-        oldTsFile.getName().replace(RegularizationMergeTask.MERGE_SUFFIX, ""));
-    oldTsFile.renameTo(newTsFile);
-    this.currentMergeResource.setFile(newTsFile);
-    this.currentMergeResource.serialize();
+    for (TsFileResource tsFileResource : newResources) {
+      File oldTsFile = tsFileResource.getFile();
+      File newTsFile = new File(oldTsFile.getParent(),
+          oldTsFile.getName().replace(MERGE_SUFFIX, ""));
+      oldTsFile.renameTo(newTsFile);
+      tsFileResource.setFile(newTsFile);
+      tsFileResource.serialize();
+    }
     return newResources;
+  }
+
+  private void constructMergeFileNameHeap() {
+    for (TsFileResource seqFile : this.resource.getSeqFiles()) {
+      mergeFileNameHeap.add(seqFile.getFile());
+    }
+    for (TsFileResource unseqFile : this.resource.getUnseqFiles()) {
+      mergeFileNameHeap.add(unseqFile.getFile());
+    }
   }
 }

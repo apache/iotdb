@@ -27,6 +27,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +49,11 @@ public class LogAnalyzer {
 
   private String currLine;
 
-  private TsFileResource newResource;
+  private List<TsFileResource> newResources;
   private Status status;
 
   public LogAnalyzer(String taskName, File logFile) {
+    this.newResources = new ArrayList<>();
     this.taskName = taskName;
     this.logFile = logFile;
   }
@@ -83,16 +86,17 @@ public class LogAnalyzer {
         status = Status.ALL_TS_MERGED;
         return;
       }
-      newResource = new TsFileResource(new File(currLine));
+      newResources.add(new TsFileResource(new File(currLine)));
     }
     if (logger.isDebugEnabled()) {
-      logger.debug("{} found {} size merge file after {}ms", taskName, newResource.getFileSize(),
+      logger.debug("{} found {} merge files after {}ms", taskName, newResources.size(),
           (System.currentTimeMillis() - startTime));
     }
+
   }
 
-  public TsFileResource getNewResource() {
-    return newResource;
+  public List<TsFileResource> getNewResource() {
+    return newResources;
   }
 
   public enum Status {

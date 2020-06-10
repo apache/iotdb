@@ -63,7 +63,7 @@ public abstract class BaseMergeSeriesTask {
   protected int mergedSeriesCnt;
   private double progress;
 
-  protected RestorableTsFileIOWriter newFileWriter;
+  protected RestorableTsFileIOWriter currentFileWriter;
   protected TsFileResource currentMergeResource;
 
   protected BaseMergeSeriesTask(MergeContext context, String taskName, MergeLogger mergeLogger,
@@ -80,23 +80,27 @@ public abstract class BaseMergeSeriesTask {
         .getChunkMergePointThreshold();
   }
 
-  protected Pair<RestorableTsFileIOWriter, TsFileResource> createNewFileWriter(String mergeSuffix)
-      throws IOException {
+  protected Pair<RestorableTsFileIOWriter, TsFileResource> createNewFileWriter(
+      PriorityQueue<File> mergeFileNameHeap, String mergeSuffix) throws IOException {
     // use the minimum version as the version of the new file
-    File newFile = createNewFile(mergeSuffix);
+    File newFile = createNewFile(mergeFileNameHeap, mergeSuffix);
     Pair<RestorableTsFileIOWriter, TsFileResource> newTsFilePair = new Pair<>(
         new RestorableTsFileIOWriter(newFile), new TsFileResource(newFile));
     mergeLogger.logNewFile(newTsFilePair.right);
     return newTsFilePair;
   }
 
-  private File createNewFile(String mergeSuffix) {
-    String originName = resource.getMergeFileNameHeap().poll();
-    String[] splits = originName.replace(TSFILE_SUFFIX, "")
+  private File createNewFile(PriorityQueue<File> mergeFileNameHeap, String mergeSuffix) {
+    File originFile;
+    if (mergeFileNameHeap.size() > 1) {
+      originFile = mergeFileNameHeap.poll();
+    } else {
+      originFile = mergeFileNameHeap.peek();
+    }
+    String[] splits = originFile.getName().replace(TSFILE_SUFFIX, "")
         .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
     int mergeVersion = Integer.parseInt(splits[2]) + 1;
-    File parent = resource.getSeqFiles().get(0).getFile().getParentFile();
-    return FSFactoryProducer.getFSFactory().getFile(parent,
+    return FSFactoryProducer.getFSFactory().getFile(originFile.getParentFile(),
         splits[0] + IoTDBConstant.TSFILE_NAME_SEPARATOR + splits[1] +
             IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeVersion + TSFILE_SUFFIX + mergeSuffix);
   }
@@ -125,7 +129,7 @@ public abstract class BaseMergeSeriesTask {
         currSeqFiles.add(seqFile);
       }
     }
-    newFileWriter.startChunkGroup(deviceId);
+    currentFileWriter.startChunkGroup(deviceId);
     int mergeChunkSubTaskNum = IoTDBDescriptor.getInstance().getConfig()
         .getMergeChunkSubThreadNum();
     PriorityQueue<Path>[] seriesHeaps = new PriorityQueue[mergeChunkSubTaskNum];
@@ -152,8 +156,8 @@ public abstract class BaseMergeSeriesTask {
         throw new IOException(e);
       }
     }
-    newFileWriter.writeVersion(0L);
-    newFileWriter.endChunkGroup();
+    currentFileWriter.writeVersion(0L);
+    currentFileWriter.endChunkGroup();
   }
 
   private long mergeSubChunks(PriorityQueue<Path> seriesHeaps, List<TsFileResource> seqFiles,
@@ -164,7 +168,7 @@ public abstract class BaseMergeSeriesTask {
       long currMinTime = Long.MAX_VALUE;
       long currMaxTime = Long.MIN_VALUE;
       IChunkWriter chunkWriter = resource.getChunkWriter(path);
-      newFileWriter.addSchema(path, chunkWriter.getMeasurementSchema());
+      currentFileWriter.addSchema(path, chunkWriter.getMeasurementSchema());
       QueryContext context = new QueryContext();
       IBatchReader tsFilesReader = new SeriesRawDataBatchReader(path,
           chunkWriter.getMeasurementSchema().getType(),
@@ -182,13 +186,13 @@ public abstract class BaseMergeSeriesTask {
             .isChunkEnoughLarge(chunkWriter, minChunkPointNum, currMinTime, currMaxTime,
                 timeBlock)) {
           mergeContext.incTotalPointWritten(chunkWriter.getPtNum());
-          synchronized (newFileWriter) {
-            chunkWriter.writeToFileWriter(newFileWriter);
+          synchronized (currentFileWriter) {
+            chunkWriter.writeToFileWriter(currentFileWriter);
           }
         }
       }
-      synchronized (newFileWriter) {
-        chunkWriter.writeToFileWriter(newFileWriter);
+      synchronized (currentFileWriter) {
+        chunkWriter.writeToFileWriter(currentFileWriter);
       }
       currentMergeResource.updateStartTime(path.getDevice(), currMinTime);
       currentMergeResource.updateEndTime(path.getDevice(), currMaxTime);

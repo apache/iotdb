@@ -81,7 +81,7 @@ public class RecoverRegularizationMergeTask extends RegularizationMergeTask impl
         cleanUp(true);
         break;
       case ALL_TS_MERGED:
-        newResource = analyzer.getNewResource();
+        newResources = analyzer.getNewResource();
         cleanUp(true);
         break;
       default:

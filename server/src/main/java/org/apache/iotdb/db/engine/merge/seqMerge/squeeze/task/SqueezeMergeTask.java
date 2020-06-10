@@ -22,11 +22,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -37,16 +33,10 @@ import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.recover.SqueezeMergeLog
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,18 +96,7 @@ public class SqueezeMergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
-    Map<Path, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
-    for (String device : devices) {
-      InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
-      for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
-        MeasurementSchema measurementSchema = ((LeafMNode) entry.getValue()).getSchema();
-        chunkWriterCacheMap
-            .put(new Path(device, entry.getKey()), new ChunkWriterImpl(measurementSchema));
-      }
-    }
-    resource.setChunkWriterCache(chunkWriterCacheMap);
-    resource.constructMergeFileNameHeap();
+    resource.setChunkWriterCache(MergeUtils.constructChunkWriterCache(storageGroupName));
 
     List<String> storageGroupPaths = MManager.getInstance()
         .getAllTimeseriesName(storageGroupName + ".*");
@@ -178,11 +157,9 @@ public class SqueezeMergeTask implements Callable<Void> {
       resource.removeFileReader(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
-      seqFile.getFile().delete();
       File resourceFile = new File(seqFile.getPath() + MERGE_SUFFIX);
       resourceFile.delete();
       seqFile.setMerging(false);
-      seqFile.setDeleted(true);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {

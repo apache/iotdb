@@ -1822,8 +1822,10 @@ public class StorageGroupProcessor {
     for (TsFileResource seqFile : seqFiles) {
       seqFile.getWriteQueryLock().writeLock().lock();
     }
+    for (TsFileResource unseqFile : unseqFiles) {
+      unseqFile.getWriteQueryLock().writeLock().lock();
+    }
     // block new queries and insertions to prevent the seqFiles from changing
-    writeLock();
     mergeLock.writeLock().lock();
     try {
       removeUnseqFiles(unseqFiles);
@@ -1848,9 +1850,14 @@ public class StorageGroupProcessor {
       logger.error("{} fails to do the after merge action,", storageGroupName, e);
     } finally {
       isMerging = false;
-      writeUnlock();
       mergeLock.writeLock().unlock();
       logger.info("{} a merge task ends", storageGroupName);
+      for (TsFileResource seqFile : seqFiles) {
+        seqFile.getWriteQueryLock().writeLock().unlock();
+      }
+      for (TsFileResource unseqFile : unseqFiles) {
+        unseqFile.getWriteQueryLock().writeLock().unlock();
+      }
     }
   }
 

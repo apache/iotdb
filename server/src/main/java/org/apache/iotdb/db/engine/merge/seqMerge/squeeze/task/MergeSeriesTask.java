@@ -40,17 +40,10 @@ class MergeSeriesTask extends BaseMergeSeriesTask {
   }
 
   List<TsFileResource> mergeSeries() throws IOException {
-    List<TsFileResource> newResources = new ArrayList<>();
+    List<TsFileResource> newResources;
     SizeMergeFileStrategy sizeMergeFileStrategy = IoTDBDescriptor.getInstance().getConfig()
         .getSizeMergeFileStrategy();
     switch (sizeMergeFileStrategy) {
-//      case INDEPENDENCE:
-//        IndependenceMergeSeriesTask independenceMergeSeriesTask = new IndependenceMergeSeriesTask(
-//            mergeContext,
-//            taskName, mergeLogger,
-//            resource, unmergedSeries);
-//        newResources = independenceMergeSeriesTask.mergeSeries();
-//        break;
       case REGULARIZATION:
       default:
         RegularizationMergeSeriesTask regularizationMergeSeriesTask = new RegularizationMergeSeriesTask(

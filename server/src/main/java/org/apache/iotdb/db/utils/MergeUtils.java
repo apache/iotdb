@@ -23,11 +23,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
+import java.util.Set;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -35,7 +44,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -251,6 +262,21 @@ public class MergeUtils {
     }
     ret.add(currList);
     return ret;
+  }
+
+  public static Map<Path, IChunkWriter> constructChunkWriterCache(String storageGroupName)
+      throws MetadataException {
+    Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
+    Map<Path, IChunkWriter> chunkWriterCacheMap = new HashMap<>();
+    for (String device : devices) {
+      InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
+      for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
+        MeasurementSchema measurementSchema = ((LeafMNode) entry.getValue()).getSchema();
+        chunkWriterCacheMap
+            .put(new Path(device, entry.getKey()), new ChunkWriterImpl(measurementSchema));
+      }
+    }
+    return chunkWriterCacheMap;
   }
 
   public static class MetaListEntry implements Comparable<MetaListEntry> {
