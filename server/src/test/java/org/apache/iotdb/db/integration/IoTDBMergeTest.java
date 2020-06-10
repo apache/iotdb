@@ -258,7 +258,7 @@ public class IoTDBMergeTest {
       statement.execute("MERGE");
 
       int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SHOW MERGE STATUS")) {
+      try (ResultSet resultSet = statement.executeQuery("SHOW MERGE")) {
         cnt = 0;
         int colNum = resultSet.getMetaData().getColumnCount();
         while (resultSet.next()) {
