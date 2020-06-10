@@ -20,7 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -130,8 +130,8 @@ public class IoTDBLastIT {
         }
       }
 
-      LeafMNode node =
-          (LeafMNode) MManager.getInstance().getNodeByPath("root.ln.wf01.wt01.temperature");
+      MeasurementMNode node =
+          (MeasurementMNode) MManager.getInstance().getNodeByPath("root.ln.wf01.wt01.temperature");
       node.resetCache();
 
       statement.execute(
@@ -192,7 +192,7 @@ public class IoTDBLastIT {
         Statement statement = connection.createStatement()) {
 
       MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt02.temperature");
-      ((LeafMNode) node).resetCache();
+      ((MeasurementMNode) node).resetCache();
       boolean hasResultSet =
           statement.execute(
               "select last temperature,status,id from root.ln.wf01.wt02");
@@ -243,7 +243,7 @@ public class IoTDBLastIT {
         Statement statement = connection.createStatement()) {
 
       MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt03.temperature");
-      ((LeafMNode) node).resetCache();
+      ((MeasurementMNode) node).resetCache();
 
       statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
       statement.execute("flush");
@@ -251,6 +251,50 @@ public class IoTDBLastIT {
       statement.execute("flush");
       boolean hasResultSet = statement.execute(
           "select last temperature from root.ln.wf01.wt03");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + ","
+                  + resultSet.getString(TIMESEIRES_STR) + ","
+                  + resultSet.getString(VALUE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(cnt, 1);
+      }
+    }
+  }
+
+  @Test
+  public void lastWithUnseqTimeLargerThanSeqTimeTest() throws SQLException, MetadataException {
+    String[] retArray =
+        new String[] {
+            "150,root.ln.wf01.wt04.temperature,31.2",
+        };
+
+
+    try (Connection connection =
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(100,22.1)");
+      statement.execute("flush");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,status) values(200,true)");
+      statement.execute("flush");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(150,31.2)");
+      statement.execute("flush");
+
+      MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt03.temperature");
+      ((MeasurementMNode) node).resetCache();
+
+      boolean hasResultSet = statement.execute(
+          "select last temperature from root.ln.wf01.wt04");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;

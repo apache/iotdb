@@ -25,7 +25,9 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port>
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+or
+> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
 
 # Windows
 > sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>

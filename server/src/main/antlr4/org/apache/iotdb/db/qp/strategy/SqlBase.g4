@@ -75,7 +75,7 @@ statement
     | SHOW DEVICES prefixPath? #showDevices
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
-    | LOAD CONFIGURATION #loadConfigurationStatement
+    | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
@@ -130,7 +130,11 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT tagClause attributeClause
+    | UPSERT aliasClause tagClause attributeClause
+    ;
+
+aliasClause
+    : (ALIAS OPERATOR_EQ ID)?
     ;
 
 attributeClauses
@@ -188,10 +192,11 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByClause specialLimit?
+    | groupByTimeClause specialLimit?
     | groupByFillClause
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
+    | groupByLevelClause specialLimit?
     ;
 
 specialLimit
@@ -236,12 +241,18 @@ fillClause
     : FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
     ;
 
-groupByClause
+groupByTimeClause
     : GROUP BY LR_BRACKET
       timeInterval
       COMMA DURATION
       (COMMA DURATION)?
       RR_BRACKET
+    | GROUP BY LR_BRACKET
+            timeInterval
+            COMMA DURATION
+            (COMMA DURATION)?
+            RR_BRACKET
+            COMMA LEVEL OPERATOR_EQ INT
     ;
 
 groupByFillClause
@@ -251,6 +262,10 @@ groupByFillClause
       RR_BRACKET
       FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
      ;
+
+groupByLevelClause
+    : GROUP BY LEVEL OPERATOR_EQ INT
+    ;
 
 typeClause
     : dataType LS_BRACKET linearClause RS_BRACKET
@@ -379,6 +394,7 @@ dateFormat
 
 constant
     : dateExpression
+    | NaN
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
@@ -629,6 +645,10 @@ UPSERT
     : U P S E R T
     ;
 
+ALIAS
+    : A L I A S
+    ;
+
 VALUES
     : V A L U E S
     ;
@@ -833,6 +853,11 @@ RENAME
     : R E N A M E
     ;
 
+GLOBAL
+  : G L O B A L
+  | G
+  ;
+
 FULL
     : F U L L
     ;
@@ -852,6 +877,7 @@ TRUE
 FALSE
     : F A L S E
     ;
+
 //============================
 // End of the keywords list
 //============================
@@ -912,6 +938,8 @@ L_BRACKET : '{';
 R_BRACKET : '}';
 
 UNDERLINE : '_';
+
+NaN : 'NaN';
 
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL

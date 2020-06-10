@@ -95,6 +95,12 @@ public class IoTDBConfig {
   private String mqttPayloadFormatter = "json";
 
   /**
+   * max mqtt message size
+   */
+  private int mqttMaxMessageSize = 1048576;
+
+
+  /**
    * Rpc binding address.
    */
   private String rpcAddress = "0.0.0.0";
@@ -127,7 +133,9 @@ public class IoTDBConfig {
   /**
    * Is dynamic parameter adapter enable.
    */
-  private boolean enableParameterAdapter = true;
+  //the default value of this parameter should be kept true in iotdb-engine.properties,
+  //we set it as false here for convenient testing.
+  private boolean enableParameterAdapter = false;
 
   /**
    * Is the write ahead log enable.
@@ -281,6 +289,11 @@ public class IoTDBConfig {
   private int mManagerCacheSize = 400000;
 
   /**
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   */
+  private int mRemoteSchemaCacheSize = 100000;
+
+  /**
    * Is external sort enable.
    */
   private boolean enableExternalSort = true;
@@ -373,6 +386,11 @@ public class IoTDBConfig {
    * register time series as which type when receiving a floating number string "6.7"
    */
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
+
+  /**
+   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT
+   */
+  private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
   /**
    * Storage group level when creating schema automatically is enabled
@@ -580,12 +598,18 @@ public class IoTDBConfig {
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  // In one insert (one device, one timestamp, multiple measurements),
+  // if enable partial insert, one measurement failure will not impact other measurements
+  private boolean enablePartialInsert = true;
+
   // Open ID Secret
   private String openIdProviderUrl = null;
 
   // the authorizer provider class which extends BasicAuthorizer
   private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
 
+  // time in nanosecond precision when starting up
+  private long startUpNanosecond = System.nanoTime();
 
   public IoTDBConfig() {
     // empty constructor
@@ -759,7 +783,7 @@ public class IoTDBConfig {
     return timestampPrecision;
   }
 
-  void setTimestampPrecision(String timestampPrecision) {
+  public void setTimestampPrecision(String timestampPrecision) {
     if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
         || timestampPrecision.equals("ns"))) {
       logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
@@ -929,11 +953,19 @@ public class IoTDBConfig {
     this.mManagerCacheSize = mManagerCacheSize;
   }
 
+  public int getmRemoteSchemaCacheSize() {
+    return mRemoteSchemaCacheSize;
+  }
+
+  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
+    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
+  }
+
   public boolean isSyncEnable() {
     return isSyncEnable;
   }
 
-  void setSyncEnable(boolean syncEnable) {
+  public void setSyncEnable(boolean syncEnable) {
     isSyncEnable = syncEnable;
   }
 
@@ -1103,6 +1135,14 @@ public class IoTDBConfig {
 
   void setPerformanceStatMemoryInKB(int performanceStatMemoryInKB) {
     this.performanceStatMemoryInKB = performanceStatMemoryInKB;
+  }
+
+  public boolean isEnablePartialInsert() {
+    return enablePartialInsert;
+  }
+
+  public void setEnablePartialInsert(boolean enablePartialInsert) {
+    this.enablePartialInsert = enablePartialInsert;
   }
 
   public boolean isForceFullMerge() {
@@ -1324,6 +1364,19 @@ public class IoTDBConfig {
   public void setFloatingStringInferType(
       TSDataType floatingNumberStringInferType) {
     this.floatingStringInferType = floatingNumberStringInferType;
+  }
+
+  public TSDataType getNanStringInferType() {
+    return nanStringInferType;
+  }
+
+  public void setNanStringInferType(TSDataType nanStringInferType) {
+    if (nanStringInferType != TSDataType.DOUBLE &&
+        nanStringInferType != TSDataType.FLOAT &&
+        nanStringInferType != TSDataType.TEXT) {
+      throw new IllegalArgumentException("Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is " + nanStringInferType);
+    }
+    this.nanStringInferType = nanStringInferType;
   }
 
   public int getDefaultStorageGroupLevel() {
@@ -1590,6 +1643,14 @@ public class IoTDBConfig {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
   }
 
+  public int getMqttMaxMessageSize() {
+    return mqttMaxMessageSize;
+  }
+
+  public void setMqttMaxMessageSize(int mqttMaxMessageSize) {
+    this.mqttMaxMessageSize = mqttMaxMessageSize;
+  }
+
   public int getTagAttributeTotalSize() {
     return tagAttributeTotalSize;
   }
@@ -1620,5 +1681,9 @@ public class IoTDBConfig {
 
   public void setAuthorizerProvider(String authorizerProvider) {
     this.authorizerProvider = authorizerProvider;
+  }
+
+  public long getStartUpNanosecond() {
+    return startUpNanosecond;
   }
 }

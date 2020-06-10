@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.executor.fill;
 
+import java.io.IOException;
+import java.util.Set;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -26,13 +28,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 
-import java.io.IOException;
-import java.util.Set;
-
 public abstract class IFill {
 
-  long queryTime;
-  TSDataType dataType;
+  protected long queryTime;
+  protected TSDataType dataType;
 
   public IFill(TSDataType dataType, long queryTime) {
     this.dataType = dataType;
@@ -45,7 +44,7 @@ public abstract class IFill {
   public abstract IFill copy();
 
   public abstract void configureFill(Path path, TSDataType dataType, long queryTime,
-      Set<String> sensors, QueryContext context);
+      Set<String> deviceMeasurements, QueryContext context);
 
   public abstract TimeValuePair getFillResult()
       throws IOException, QueryProcessException, StorageEngineException;
@@ -60,6 +59,10 @@ public abstract class IFill {
 
   public void setQueryTime(long queryTime) {
     this.queryTime = queryTime;
+  }
+
+  public long getQueryTime() {
+    return queryTime;
   }
 
   abstract void constructFilter();

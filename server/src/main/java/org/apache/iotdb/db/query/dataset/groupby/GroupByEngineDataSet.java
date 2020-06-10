@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -49,14 +49,14 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
   /**
    * groupBy query.
    */
-  public GroupByEngineDataSet(QueryContext context, GroupByPlan groupByPlan) {
-    super(groupByPlan.getDeduplicatedPaths(), groupByPlan.getDeduplicatedDataTypes());
+  public GroupByEngineDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
+    super(groupByTimePlan.getDeduplicatedPaths(), groupByTimePlan.getDeduplicatedDataTypes());
     this.queryId = context.getQueryId();
-    this.interval = groupByPlan.getInterval();
-    this.slidingStep = groupByPlan.getSlidingStep();
-    this.startTime = groupByPlan.getStartTime();
-    this.endTime = groupByPlan.getEndTime();
-    this.leftCRightO = groupByPlan.isLeftCRightO();
+    this.interval = groupByTimePlan.getInterval();
+    this.slidingStep = groupByTimePlan.getSlidingStep();
+    this.startTime = groupByTimePlan.getStartTime();
+    this.endTime = groupByTimePlan.getEndTime();
+    this.leftCRightO = groupByTimePlan.isLeftCRightO();
     // init group by time partition
     this.hasCachedTimeInterval = false;
     this.curStartTime = this.startTime - slidingStep;

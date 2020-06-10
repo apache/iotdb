@@ -29,10 +29,10 @@ public class StorageGroupMNode extends InternalMNode {
   private long dataTTL;
 
 
-  public StorageGroupMNode(MNode parent, String name, String fullPath, long dataTTL) {
+  public StorageGroupMNode(MNode parent, String name, long dataTTL) {
     super(parent, name);
     this.dataTTL = dataTTL;
-    this.fullPath = fullPath;
+    this.fullPath = getFullPath();
   }
 
   public long getDataTTL() {

@@ -120,6 +120,12 @@ public class MLogWriter {
     writer.flush();
   }
 
+  public void changeAlias(String path, String alias) throws IOException {
+    writer.write(String.format("%s,%s,%s", MetadataOperationType.CHANGE_ALIAS, path, alias));
+    writer.newLine();
+    writer.flush();
+  }
+
   public static void upgradeMLog(String schemaDir, String logFileName) throws IOException {
     File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
     File tmpLogFile = SystemFileFactory.INSTANCE.getFile(logFile.getAbsolutePath() + ".tmp");

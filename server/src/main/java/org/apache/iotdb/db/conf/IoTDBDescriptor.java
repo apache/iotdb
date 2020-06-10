@@ -73,7 +73,6 @@ public class IoTDBDescriptor {
     boolean ok = parseCommandLine(options, params);
     if (!ok) {
       logger.error("replaces properties failed, use default conf params");
-      return;
     } else {
       if (commandLine.hasOption(RPC_PORT)) {
         conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue(RPC_PORT)));
@@ -93,7 +92,7 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  private String getPropsUrl() {
+  public String getPropsUrl() {
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -274,6 +273,10 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("metadata_node_cache_size",
               Integer.toString(conf.getmManagerCacheSize())).trim()));
 
+      conf.setmRemoteSchemaCacheSize(Integer
+          .parseInt(properties.getProperty("remote_schema_cache_size",
+              Integer.toString(conf.getmRemoteSchemaCacheSize())).trim()));
+
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
 
@@ -318,6 +321,10 @@ public class IoTDBDescriptor {
           "size_merge_file_strategy", conf.getSizeMergeFileStrategy().toString())));
       conf.setMergeSizeSelectorStrategy(MergeSizeSelectorStrategy.valueOf(properties.getProperty(
           "merge_size_selector_strategy", conf.getMergeSizeSelectorStrategy().toString())));
+
+      conf.setEnablePartialInsert(
+          Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
+              String.valueOf(conf.isEnablePartialInsert()))));
 
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
@@ -422,6 +429,10 @@ public class IoTDBDescriptor {
         conf.setEnableMQTTService(
             Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
       }
+      if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
+        conf.setMqttMaxMessageSize(
+            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
+      }
 
       conf.setAuthorizerProvider(properties.getProperty("authorizer_provider_class",
           "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer"));
@@ -499,6 +510,8 @@ public class IoTDBDescriptor {
         conf.getIntegerStringInferType().toString())));
     conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
         conf.getFloatingStringInferType().toString())));
+    conf.setNanStringInferType(TSDataType.valueOf(properties.getProperty("nan_string_infer_type",
+        conf.getNanStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
         Integer.parseInt(properties.getProperty("default_storage_group_level",
             Integer.toString(conf.getDefaultStorageGroupLevel()))));
@@ -568,17 +581,9 @@ public class IoTDBDescriptor {
             .toString(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
   }
 
-  public void loadHotModifiedProps() throws QueryProcessException {
-    String url = getPropsUrl();
-    if (url == null) {
-      return;
-    }
-
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
-      logger.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-
+  public void loadHotModifiedProps(Properties properties)
+      throws QueryProcessException {
+    try {
       // update data dirs
       String dataDirs = properties.getProperty("data_dirs", null);
       if (dataDirs != null) {
@@ -621,6 +626,22 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
+    } catch (Exception e) {
+      throw new QueryProcessException(
+          String.format("Fail to reload configuration because %s", e));
+    }
+  }
+
+  public void loadHotModifiedProps() throws QueryProcessException {
+    String url = getPropsUrl();
+    if (url == null) {
+      return;
+    }
+    try (InputStream inputStream = new FileInputStream(new File(url))) {
+      logger.info("Start to reload config file {}", url);
+      Properties properties = new Properties();
+      properties.load(inputStream);
+      loadHotModifiedProps(properties);
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(

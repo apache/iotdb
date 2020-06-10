@@ -24,10 +24,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import java.util.Collections;
 import java.util.Map;
 
-public class LeafMNode extends MNode {
+/**
+ * Represents an (Internal-)MNode which has a Measurement or Sensor attached to it.
+ */
+public class MeasurementMNode extends InternalMNode {
 
   private static final long serialVersionUID = -1199657856921206435L;
 
@@ -44,51 +46,11 @@ public class LeafMNode extends MNode {
   /**
    * @param alias alias of measurementName
    */
-  public LeafMNode(MNode parent, String measurementName, String alias, TSDataType dataType,
-      TSEncoding encoding, CompressionType type, Map<String, String> props) {
+  public MeasurementMNode(MNode parent, String measurementName, String alias, TSDataType dataType,
+                          TSEncoding encoding, CompressionType type, Map<String, String> props) {
     super(parent, measurementName);
     this.schema = new MeasurementSchema(measurementName, dataType, encoding, type, props);
     this.alias = alias;
-  }
-
-  @Override
-  public boolean hasChild(String name) {
-    return false;
-  }
-
-  @Override
-  public void addChild(String name, MNode child) {
-    // Do nothing
-  }
-
-  @Override
-  public void deleteChild(String name) {
-    // Do nothing
-  }
-
-  @Override
-  public void deleteAliasChild(String alias) {
-    // Do nothing
-  }
-
-  @Override
-  public MNode getChild(String name) {
-    return null;
-  }
-
-  @Override
-  public int getLeafCount() {
-    return 1;
-  }
-
-  @Override
-  public void addAlias(String alias, MNode child) {
-    // Do nothing
-  }
-
-  @Override
-  public Map<String, MNode> getChildren() {
-    return Collections.emptyMap();
   }
 
   public MeasurementSchema getSchema() {
@@ -117,6 +79,7 @@ public class LeafMNode extends MNode {
     }
   }
 
+  @Override
   public String getFullPath() {
     return concatFullPath();
   }

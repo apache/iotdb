@@ -303,6 +303,8 @@ service TSIService {
 
 	TSExecuteBatchStatementResp testInsertTablet(1:TSInsertTabletReq req);
 
+  TSExecuteBatchStatementResp testInsertTablets(1:TSInsertTabletsReq req);
+
   TSStatus testInsertRecord(1:TSInsertRecordReq req);
 
   TSExecuteBatchStatementResp testInsertRecords(1:TSInsertRecordsReq req);

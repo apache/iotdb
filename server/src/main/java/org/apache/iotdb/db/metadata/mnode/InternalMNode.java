@@ -18,9 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import java.util.LinkedHashMap;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -62,7 +62,7 @@ public class InternalMNode extends MNode {
     if (children.containsKey(name)) {
       Lock writeLock;
       // if its child node is leaf node, we need to acquire the write lock of the current device node
-      if (children.get(name) instanceof LeafMNode) {
+      if (children.get(name) instanceof MeasurementMNode) {
         writeLock = lock.writeLock();
       } else {
         // otherwise, we only need to acquire the write lock of its child node.
