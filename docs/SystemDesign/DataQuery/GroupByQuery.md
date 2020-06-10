@@ -217,7 +217,7 @@ The downsampling query logic with value filtering conditions is mainly in the `G
 
 This class has the following key fields:
 * private List\<IReaderByTimestamp\> allDataReaderList
-* private GroupByPlan groupByPlan
+* private GroupByPlan groupByTimePlan
 * private TimeGenerator timestampGenerator
 * private long timestamp is used to cache timestamp for the next group by partition
 * private boolean hasCachedTimestamp used to determine whether there is a timestamp cache for the next group by partition
@@ -258,3 +258,26 @@ for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt+
   }
 }
 ```
+
+
+## Aggregated query with level
+
+After down-frequency query, we could also to count the total number of points of
+
+each node at the given level in current Metadata Tree.
+
+The logic is in the `GroupByTimeDataSet` class.
+
+1. In the beginning, get the final paths group by level and the origin path index to final path.
+    > For example, we could get final path `root.sg1` by `root.sg1.d1.s0,root.sg1.d2.s1` and `level=1`.
+
+2. Then, get the down-frequency query result: RowRecord.
+
+3. Finally, merge each RowRecord to NewRecord, which has fields like <final path, count>.
+
+    > For example, we will get new RowRecord `<root.sg1,7>` by `<root.sg1.d1.s0, 3>, <root.sg1.d2.s1, 4>` and level=1.
+
+
+> Attention:
+> 1. only support count aggregation
+> 2. root's level == 0

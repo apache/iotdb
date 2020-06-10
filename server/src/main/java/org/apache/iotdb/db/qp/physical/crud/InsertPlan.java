@@ -23,11 +23,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -66,7 +66,7 @@ public class InsertPlan extends PhysicalPlan {
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   @TestOnly
@@ -86,7 +86,7 @@ public class InsertPlan extends PhysicalPlan {
         e.printStackTrace();
       }
     }
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   @TestOnly
@@ -102,7 +102,7 @@ public class InsertPlan extends PhysicalPlan {
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   public InsertPlan(TSRecord tsRecord) {
@@ -120,7 +120,7 @@ public class InsertPlan extends PhysicalPlan {
       types[i] = tsRecord.dataPointList.get(i).getType();
       values[i] = tsRecord.dataPointList.get(i).getValue();
     }
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   public InsertPlan(String deviceId, long insertTime, String[] measurementList, TSDataType[] types,
@@ -131,7 +131,7 @@ public class InsertPlan extends PhysicalPlan {
     this.measurements = measurementList;
     this.types = types;
     this.values = insertValues;
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   public InsertPlan(String deviceId, long insertTime, String[] measurementList,
@@ -145,7 +145,7 @@ public class InsertPlan extends PhysicalPlan {
     this.values = new Object[measurements.length];
     System.arraycopy(insertValues, 0, values, 0, measurements.length);
     inferType = true;
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
 
@@ -178,6 +178,12 @@ public class InsertPlan extends PhysicalPlan {
     if (inferType) {
       for (int i = 0; i < schemas.length; i++) {
         if (schemas[i] == null) {
+          if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
+            markMeasurementInsertionFailed(i);
+          } else {
+            throw new QueryProcessException(new PathNotExistException(
+                deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+          }
           continue;
         }
         types[i] = schemas[i].getType();
@@ -264,7 +270,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.INSERT.ordinal();
     stream.writeByte((byte) type);
     stream.writeLong(time);
@@ -399,7 +405,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(ByteBuffer buffer) {
+  public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
     buffer.putLong(time);
@@ -422,7 +428,7 @@ public class InsertPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFrom(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     this.time = buffer.getLong();
     this.deviceId = readString(buffer);
 

@@ -147,6 +147,9 @@ public class SQLConstant {
 
   public static final int TOK_CLEAR_CACHE = 84;
 
+  public static final int TOK_LOAD_CONFIGURATION_GLOBAL = 85;
+  public static final int TOK_LOAD_CONFIGURATION_LOCAL = 86;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();

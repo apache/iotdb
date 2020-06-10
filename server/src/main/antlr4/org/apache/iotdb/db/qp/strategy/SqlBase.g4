@@ -75,7 +75,7 @@ statement
     | SHOW DEVICES prefixPath? #showDevices
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
-    | LOAD CONFIGURATION #loadConfigurationStatement
+    | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
@@ -192,10 +192,11 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByClause specialLimit?
+    | groupByTimeClause specialLimit?
     | groupByFillClause
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
+    | groupByLevelClause specialLimit?
     ;
 
 specialLimit
@@ -240,12 +241,18 @@ fillClause
     : FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
     ;
 
-groupByClause
+groupByTimeClause
     : GROUP BY LR_BRACKET
       timeInterval
       COMMA DURATION
       (COMMA DURATION)?
       RR_BRACKET
+    | GROUP BY LR_BRACKET
+            timeInterval
+            COMMA DURATION
+            (COMMA DURATION)?
+            RR_BRACKET
+            COMMA LEVEL OPERATOR_EQ INT
     ;
 
 groupByFillClause
@@ -255,6 +262,10 @@ groupByFillClause
       RR_BRACKET
       FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
      ;
+
+groupByLevelClause
+    : GROUP BY LEVEL OPERATOR_EQ INT
+    ;
 
 typeClause
     : dataType LS_BRACKET linearClause RS_BRACKET
@@ -841,6 +852,11 @@ TAGS
 RENAME
     : R E N A M E
     ;
+
+GLOBAL
+  : G L O B A L
+  | G
+  ;
 
 FULL
     : F U L L

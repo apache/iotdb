@@ -48,6 +48,8 @@ import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MoveFileOperator;
@@ -64,8 +66,8 @@ import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByFillPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -80,6 +82,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
@@ -214,7 +217,9 @@ public class PhysicalGenerator {
                     "not supported operator type %s in ttl operation.", operator.getType()));
         }
       case LOAD_CONFIGURATION:
-        return new LoadConfigurationPlan();
+        LoadConfigurationOperatorType type = ((LoadConfigurationOperator) operator)
+            .getLoadConfigurationOperatorType();
+        return generateLoadConfigurationPlan(type);
       case SHOW:
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_DYNAMIC_PARAMETER:
@@ -276,7 +281,19 @@ public class PhysicalGenerator {
     }
   }
 
+  protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
+      throws QueryProcessException {
+    switch (type) {
+      case GLOBAL:
+        return new LoadConfigurationPlan(LoadConfigurationPlanType.GLOBAL);
+      case LOCAL:
+        return new LoadConfigurationPlan(LoadConfigurationPlanType.LOCAL);
+      default:
+        throw new QueryProcessException(
+            String.format("Unrecognized load configuration operator type, %s", type.name()));
+    }
 
+  }
 
   /**
    * get types for path list
@@ -306,41 +323,51 @@ public class PhysicalGenerator {
   private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessException {
     QueryPlan queryPlan;
 
-    if (queryOperator.isGroupBy() && queryOperator.isFill()) {
-      queryPlan = new GroupByFillPlan();
-      ((GroupByFillPlan) queryPlan).setInterval(queryOperator.getUnit());
-      ((GroupByFillPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-      ((GroupByFillPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+    if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
+      queryPlan = new GroupByTimeFillPlan();
+      ((GroupByTimeFillPlan) queryPlan).setInterval(queryOperator.getUnit());
+      ((GroupByTimeFillPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+      ((GroupByTimeFillPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
       if (!queryOperator.isLeftCRightO()) {
-        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
-        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
+        ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
+        ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
       } else {
-        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
-        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+        ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime());
+        ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime());
       }
-      ((GroupByFillPlan) queryPlan)
+      ((GroupByTimeFillPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
       for (String aggregation : queryPlan.getAggregations()) {
         if (!SQLConstant.LAST_VALUE.equals(aggregation)) {
           throw new QueryProcessException("Group By Fill only support last_value function");
         }
       }
-      ((GroupByFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
-    } else if (queryOperator.isGroupBy()) {
-      queryPlan = new GroupByPlan();
-      ((GroupByPlan) queryPlan).setInterval(queryOperator.getUnit());
-      ((GroupByPlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
-      ((GroupByPlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
+      ((GroupByTimeFillPlan) queryPlan).setFillType(queryOperator.getFillTypes());
+    } else if (queryOperator.isGroupByTime()) {
+      queryPlan = new GroupByTimePlan();
+      ((GroupByTimePlan) queryPlan).setInterval(queryOperator.getUnit());
+      ((GroupByTimePlan) queryPlan).setSlidingStep(queryOperator.getSlidingStep());
+      ((GroupByTimePlan) queryPlan).setLeftCRightO(queryOperator.isLeftCRightO());
       if (!queryOperator.isLeftCRightO()) {
-        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
-        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
+        ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime() + 1);
+        ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime() + 1);
       } else {
-        ((GroupByPlan) queryPlan).setStartTime(queryOperator.getStartTime());
-        ((GroupByPlan) queryPlan).setEndTime(queryOperator.getEndTime());
+        ((GroupByTimePlan) queryPlan).setStartTime(queryOperator.getStartTime());
+        ((GroupByTimePlan) queryPlan).setEndTime(queryOperator.getEndTime());
       }
-      ((GroupByPlan) queryPlan)
+      ((GroupByTimePlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
 
+      ((GroupByTimePlan) queryPlan).setLevel(queryOperator.getLevel());
+
+      if (queryOperator.getLevel() >= 0) {
+        for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
+          if (!SQLConstant.COUNT
+              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
+            throw new QueryProcessException("group by level only support count now.");
+          }
+        }
+      }
     } else if (queryOperator.isFill()) {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
@@ -352,8 +379,17 @@ public class PhysicalGenerator {
       ((FillQueryPlan) queryPlan).setFillType(queryOperator.getFillTypes());
     } else if (queryOperator.hasAggregation()) {
       queryPlan = new AggregationPlan();
+      ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
+      if (queryOperator.getLevel() >= 0) {
+        for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
+          if (!SQLConstant.COUNT
+              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
+            throw new QueryProcessException("group by level only support count now.");
+          }
+        }
+      }
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else {
@@ -369,11 +405,14 @@ public class PhysicalGenerator {
     } else if (queryOperator.isAlignByDevice()) {
       // below is the core realization of ALIGN_BY_DEVICE sql logic
       AlignByDevicePlan alignByDevicePlan = new AlignByDevicePlan();
-      if (queryPlan instanceof GroupByPlan) {
-        alignByDevicePlan.setGroupByPlan((GroupByPlan) queryPlan);
+      if (queryPlan instanceof GroupByTimePlan) {
+        alignByDevicePlan.setGroupByTimePlan((GroupByTimePlan) queryPlan);
       } else if (queryPlan instanceof FillQueryPlan) {
         alignByDevicePlan.setFillQueryPlan((FillQueryPlan) queryPlan);
       } else if (queryPlan instanceof AggregationPlan) {
+        if (((AggregationPlan) queryPlan).getLevel() >= 0) {
+          throw new QueryProcessException("group by level does not support align by device now.");
+        }
         alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
       }
 

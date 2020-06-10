@@ -36,11 +36,11 @@ public class AlignByDevicePlan extends QueryPlan {
   // to record different kinds of measurement
   private Map<String, MeasurementType> measurementTypeMap;
 
-
   // to record the real type of the measurement
   private Map<String, TSDataType> measurementDataTypeMap;
 
-  private GroupByPlan groupByPlan;
+  private GroupByTimePlan groupByTimePlan;
+
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
 
@@ -98,13 +98,14 @@ public class AlignByDevicePlan extends QueryPlan {
     this.measurementDataTypeMap = measurementDataTypeMap;
   }
 
-  public GroupByPlan getGroupByPlan() {
-    return groupByPlan;
+
+  public GroupByTimePlan getGroupByTimePlan() {
+    return groupByTimePlan;
   }
 
-  public void setGroupByPlan(GroupByPlan groupByPlan) {
-    this.groupByPlan = groupByPlan;
-    this.setOperatorType(OperatorType.GROUPBY);
+  public void setGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
+    this.groupByTimePlan = groupByTimePlan;
+    this.setOperatorType(OperatorType.GROUPBYTIME);
   }
 
   public FillQueryPlan getFillQueryPlan() {

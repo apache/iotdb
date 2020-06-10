@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
 
-public class GroupByPlan extends AggregationPlan {
+public class GroupByTimePlan extends AggregationPlan {
 
   // [startTime, endTime)
   private long startTime;
@@ -33,9 +33,9 @@ public class GroupByPlan extends AggregationPlan {
   // if it is left close and right open interval
   private boolean leftCRightO = true;
 
-  public GroupByPlan() {
+  public GroupByTimePlan() {
     super();
-    setOperatorType(Operator.OperatorType.GROUPBY);
+    setOperatorType(Operator.OperatorType.GROUPBYTIME);
   }
 
   public long getStartTime() {
@@ -77,4 +77,5 @@ public class GroupByPlan extends AggregationPlan {
   public void setLeftCRightO(boolean leftCRightO) {
     this.leftCRightO = leftCRightO;
   }
+
 }
