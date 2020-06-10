@@ -461,9 +461,7 @@ public class InsertPlan extends PhysicalPlan {
     }
 
     // the types are not inferred before the plan is serialized
-    if (types[0] == null) {
-      this.inferType = true;
-    }
+    this.inferType = true;
   }
 
   @Override
