@@ -23,19 +23,27 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
+import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -77,8 +85,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private MetaGroupMember metaGroupMember;
 
   private static final int THREAD_POOL_SIZE = 6;
-  private static final int WAIT_GET_NODES_LIST_TIME = 5;
-  private static final TimeUnit WAIT_GET_NODES_LIST_TIME_UNIT = TimeUnit.MINUTES;
+  private static final int WAIT_REMOTE_QUERY_TIME = 5;
+  private static final TimeUnit WAIT_REMOTE_QUERY_TIME_UNIT = TimeUnit.MINUTES;
   private static final String LOG_FAIL_CONNECT = "Failed to connect to node: {}";
 
   public ClusterPlanExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
@@ -111,6 +119,147 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
+  protected int getPathsNum(String path) throws MetadataException {
+    // make sure this node knows all storage groups
+    metaGroupMember.syncLeader();
+    // get all storage groups this path may belong to
+    // the key is the storage group name and the value is the path to be queried with storage group
+    // added, e.g:
+    // "root.*" will be translated into:
+    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(path);
+    logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
+    int ret = getPathCount(sgPathMap, -1);
+    logger.debug("The number of paths satisfying {} is {}", path, ret);
+    return ret;
+  }
+
+  @Override
+  protected int getNodesNumInGivenLevel(String path, int level) throws MetadataException {
+    // make sure this node knows all storage groups
+    metaGroupMember.syncLeader();
+    // get all storage groups this path may belong to
+    // the key is the storage group name and the value is the path to be queried with storage group
+    // added, e.g:
+    // "root.*" will be translated into:
+    // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
+    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(path);
+    logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
+    int ret = getPathCount(sgPathMap, level);
+    logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
+    return ret;
+  }
+
+  /**
+   * Split the paths by the data group they belong to and query them from the groups separately.
+   *
+   * @param sgPathMap the key is the storage group name and the value is the path to be queried with
+   *                  storage group added
+   * @param level the max depth to match the pattern, -1 means matching the whole pattern
+   * @return the number of paths that match the pattern at given level
+   * @throws MetadataException
+   */
+  private int getPathCount(Map<String, String> sgPathMap, int level)
+      throws MetadataException {
+    AtomicInteger result = new AtomicInteger();
+    // split the paths by the data group they belong to
+    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
+    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
+      String storageGroupName = sgPathEntry.getKey();
+      String pathUnderSG = sgPathEntry.getValue();
+      // find the data group that should hold the timeseries schemas of the storage group
+      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable().route(storageGroupName, 0);
+      if (partitionGroup.contains(metaGroupMember.getThisNode())) {
+        // this node is a member of the group, perform a local query after synchronizing with the
+        // leader
+        metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        int localResult = getLocalPathCount(pathUnderSG, level);
+        logger.debug("{}: get path count of {} locally, result {}", metaGroupMember.getName(),
+            partitionGroup, localResult);
+        result.addAndGet(localResult);
+      } else {
+        // batch the queries of the same group to reduce communication
+        groupPathMap.computeIfAbsent(partitionGroup, p -> new ArrayList<>()).add(pathUnderSG);
+      }
+    }
+    if (groupPathMap.isEmpty()) {
+      return result.get();
+    }
+
+    ExecutorService remoteQueryThreadPool = Executors.newFixedThreadPool(groupPathMap.size());
+    List<Future<?>> remoteFutures = new ArrayList<>();
+    // query each data group separately
+    for (Entry<PartitionGroup, List<String>> partitionGroupPathEntry : groupPathMap.entrySet()) {
+      PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
+      List<String> pathsToQuery = partitionGroupPathEntry.getValue();
+      remoteFutures.add(remoteQueryThreadPool.submit(() -> {
+        try {
+          result.addAndGet(getRemotePathCount(partitionGroup, pathsToQuery, level));
+        } catch (MetadataException e) {
+          logger.warn("Cannot get remote path count of {} from {}", pathsToQuery, partitionGroup,
+              e);
+        }
+      }));
+    }
+    for (Future<?> remoteFuture : remoteFutures) {
+      try {
+        remoteFuture.get();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.info("Query path count of {} level {} interrupted", sgPathMap, level);
+        return result.get();
+      } catch (ExecutionException e) {
+        logger.warn("Cannot get remote path count of {} level {}", sgPathMap, level, e);
+      }
+    }
+    remoteQueryThreadPool.shutdown();
+    try {
+      remoteQueryThreadPool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.info("Query path count of {} level {} interrupted", sgPathMap, level);
+      return result.get();
+    }
+
+    return result.get();
+  }
+
+  private int getLocalPathCount(String path, int level) throws MetadataException {
+    int localResult;
+    if (level == -1) {
+      localResult = MManager.getInstance().getAllTimeseriesCount(path);
+    } else {
+      localResult = MManager.getInstance().getNodesCountInGivenLevel(path, level);
+    }
+    return localResult;
+  }
+
+  private int getRemotePathCount(PartitionGroup partitionGroup, List<String> pathsToQuery, int level)
+      throws MetadataException {
+    // choose the node with lowest latency or highest throughput
+    List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
+    for (Node node : coordinatedNodes) {
+      try {
+        DataClient client = metaGroupMember.getDataClient(node);
+        Integer count = SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(),
+            pathsToQuery, level);
+        logger.debug("{}: get path count of {} from {}, result {}", metaGroupMember.getName(),
+            partitionGroup, node, count);
+        if (count != null) {
+          return count;
+        }
+      } catch (IOException | TException e) {
+        throw new MetadataException(e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new MetadataException(e);
+      }
+    }
+    logger.warn("Cannot get paths of {} from {}", pathsToQuery, partitionGroup);
+    return 0;
+  }
+
+  @Override
   protected Set<String> getDevices(String path) throws MetadataException {
     return metaGroupMember.getMatchedDevices(path);
   }
@@ -133,7 +282,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNodeList()", e);
@@ -203,7 +352,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for getNextChildren()", e);
@@ -283,7 +432,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_GET_NODES_LIST_TIME, WAIT_GET_NODES_LIST_TIME_UNIT);
+      pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("Unexpected interruption when waiting for getTimeseriesSchemas to finish", e);

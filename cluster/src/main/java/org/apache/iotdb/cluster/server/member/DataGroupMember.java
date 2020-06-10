@@ -1830,4 +1830,30 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       resultHandler.onError(e);
     }
   }
+
+  @Override
+  public void getPathCount(Node header, List<String> pathsToQuery, int level,
+      AsyncMethodCallback<Integer> resultHandler) {
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+    int count = 0;
+    for (String s : pathsToQuery) {
+      if (level == -1) {
+        try {
+          count += MManager.getInstance().getAllTimeseriesCount(s);
+        } catch (MetadataException e) {
+          resultHandler.onError(e);
+        }
+      } else {
+        try {
+          count += MManager.getInstance().getNodesCountInGivenLevel(s, level);
+        } catch (MetadataException e) {
+          resultHandler.onError(e);
+        }
+      }
+    }
+    resultHandler.onComplete(count);
+  }
 }

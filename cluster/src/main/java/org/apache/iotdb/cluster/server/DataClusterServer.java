@@ -55,6 +55,7 @@ import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TTransportException;
@@ -579,5 +580,12 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
     DataGroupMember dataMember = getDataMember(request.getHeader(), resultHandler, "last");
     dataMember.last(request, resultHandler);
+  }
+
+  @Override
+  public void getPathCount(Node header, List<String> pathsToQuery, int level,
+      AsyncMethodCallback<Integer> resultHandler) throws TException {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "count path");
+    dataMember.getPathCount(header, pathsToQuery, level, resultHandler);
   }
 }

@@ -382,6 +382,8 @@ service TSDataService extends RaftService {
   * @return a binary TimeValuePair
   **/
   binary last(1: LastQueryRequest request)
+
+  int getPathCount(1: Node header 2: list<string> pathsToQuery 3: int level)
 }
 
 service TSMetaService extends RaftService {

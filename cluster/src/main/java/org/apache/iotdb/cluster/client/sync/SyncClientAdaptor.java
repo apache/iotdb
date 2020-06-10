@@ -253,6 +253,18 @@ public class SyncClientAdaptor {
     return remoteResult.get();
   }
 
+  public static Integer getPathCount(DataClient client, Node header, List<String> pathsToQuery,
+      int level)
+      throws InterruptedException, TException {
+    AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
+    GenericHandler<Integer> handler = new GenericHandler<>(client.getNode(), remoteResult);
+    synchronized (remoteResult) {
+      client.getPathCount(header, pathsToQuery, level, handler);
+      remoteResult.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+    return remoteResult.get();
+  }
+
   public static Set<String> getAllDevices(DataClient client, Node header,
       List<String> pathsToQuery)
       throws InterruptedException, TException {
