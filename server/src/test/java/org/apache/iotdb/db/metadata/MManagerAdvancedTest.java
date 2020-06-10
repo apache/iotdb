@@ -25,7 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -129,7 +129,7 @@ public class MManagerAdvancedTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
 
     MNode node = mmanager.getNodeByPath("root.vehicle.d0");
-    Assert.assertEquals(TSDataType.INT32, ((LeafMNode) node.getChild("s0")).getSchema().getType());
+    Assert.assertEquals(TSDataType.INT32, ((MeasurementMNode) node.getChild("s0")).getSchema().getType());
 
     try {
       mmanager.getNodeByPath("root.vehicle.d100");
@@ -148,11 +148,11 @@ public class MManagerAdvancedTest {
     TimeValuePair tv2 = new TimeValuePair(2000, TsPrimitiveType.getByType(TSDataType.DOUBLE, 3.0));
     TimeValuePair tv3 = new TimeValuePair(1500, TsPrimitiveType.getByType(TSDataType.DOUBLE, 2.5));
     MNode node = mmanager.getNodeByPath("root.vehicle.d2.s0");
-    ((LeafMNode)node).updateCachedLast(tv1, true, Long.MIN_VALUE);
-    ((LeafMNode)node).updateCachedLast(tv2, true, Long.MIN_VALUE);
-    Assert.assertEquals(tv2.getTimestamp(), ((LeafMNode)node).getCachedLast().getTimestamp());
-    ((LeafMNode)node).updateCachedLast(tv3, true, Long.MIN_VALUE);
-    Assert.assertEquals(tv2.getTimestamp(), ((LeafMNode)node).getCachedLast().getTimestamp());
+    ((MeasurementMNode)node).updateCachedLast(tv1, true, Long.MIN_VALUE);
+    ((MeasurementMNode)node).updateCachedLast(tv2, true, Long.MIN_VALUE);
+    Assert.assertEquals(tv2.getTimestamp(), ((MeasurementMNode)node).getCachedLast().getTimestamp());
+    ((MeasurementMNode)node).updateCachedLast(tv3, true, Long.MIN_VALUE);
+    Assert.assertEquals(tv2.getTimestamp(), ((MeasurementMNode)node).getCachedLast().getTimestamp());
   }
 
   @Test
