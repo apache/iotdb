@@ -86,7 +86,9 @@ IoTDB支持多种安装途径。用户可以使用三种方式对IoTDB进行安�
 Linux系统与MacOS系统启动命令如下：
 
 ```
-> sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port>
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+or
+> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
 ```
 
 Windows系统启动命令如下：

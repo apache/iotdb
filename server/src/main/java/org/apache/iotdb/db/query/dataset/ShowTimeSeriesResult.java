@@ -18,9 +18,16 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-public class ShowTimeSeriesResult {
+public class ShowTimeSeriesResult implements Comparable<ShowTimeSeriesResult> {
 
   private String name;
   private String alias;
@@ -39,6 +46,10 @@ public class ShowTimeSeriesResult {
     this.encoding = encoding;
     this.compressor = compressor;
     this.tagAndAttribute = tagAndAttribute;
+  }
+
+  public ShowTimeSeriesResult() {
+
   }
 
   public String getName() {
@@ -67,5 +78,71 @@ public class ShowTimeSeriesResult {
 
   public Map<String, String> getTagAndAttribute() {
     return tagAndAttribute;
+  }
+
+  @Override
+  public int compareTo(ShowTimeSeriesResult o) {
+    return this.name.compareTo(o.name);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    ShowTimeSeriesResult result = (ShowTimeSeriesResult) o;
+    return Objects.equals(name, result.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(name);
+  }
+
+  public void serialize(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(alias != null, outputStream); //flag
+    if (alias != null) {
+      ReadWriteIOUtils.write(alias, outputStream);
+    }
+    ReadWriteIOUtils.write(sgName, outputStream);
+    ReadWriteIOUtils.write(dataType, outputStream);
+    ReadWriteIOUtils.write(encoding, outputStream);
+    ReadWriteIOUtils.write(compressor, outputStream);
+
+    ReadWriteIOUtils.write(tagAndAttribute != null, outputStream); //flag
+    if (tagAndAttribute != null) {
+      ReadWriteIOUtils.write(tagAndAttribute.size(), outputStream);
+      for (Entry<String, String> stringStringEntry : tagAndAttribute.entrySet()) {
+        ReadWriteIOUtils.write(stringStringEntry.getKey(), outputStream);
+        ReadWriteIOUtils.write(stringStringEntry.getValue(), outputStream);
+      }
+    }
+  }
+
+  public static ShowTimeSeriesResult deserialize(ByteBuffer buffer) {
+    ShowTimeSeriesResult result = new ShowTimeSeriesResult();
+    result.name = ReadWriteIOUtils.readString(buffer);
+    if (buffer.get() == 1) { //flag
+      result.alias = ReadWriteIOUtils.readString(buffer);
+    }
+    result.sgName = ReadWriteIOUtils.readString(buffer);
+    result.dataType = ReadWriteIOUtils.readString(buffer);
+    result.encoding = ReadWriteIOUtils.readString(buffer);
+    result.compressor = ReadWriteIOUtils.readString(buffer);
+
+    if (buffer.get() == 1) { //flag
+      int tagSize = buffer.getInt();
+      result.tagAndAttribute = new HashMap<>(tagSize);
+      for (int i = 0; i < tagSize; i++) {
+        String key = ReadWriteIOUtils.readString(buffer);
+        String value = ReadWriteIOUtils.readString(buffer);
+        result.tagAndAttribute.put(key, value);
+      }
+    }
+    return result;
   }
 }

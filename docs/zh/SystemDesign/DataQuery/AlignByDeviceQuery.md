@@ -40,7 +40,7 @@ AlignByDevicePlan 即按设备对齐查询对应的表结构为：
 - `Map<String, TSDataType> measurementDataTypeMap`：AlignByDevicePlan 要求不同设备的同名 sensor 数据类型一致，该字段是一个 `measurementName -> dataType` 的 Map 结构，用来验证同名 sensor 的数据类型一致性。如 `root.sg.d1.s1` 和 `root.sg.d2.s1` 应该是同一数据类型。
 - `enum MeasurementType`：记录三种 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；有单引号或双引号的 measurement 为 `Constant` 类型；存在的 measurement 为 `Exist` 类型。
 - `Map<String, MeasurementType> measurementTypeMap`: 该字段是一个 `measureName -> measurementType` 的 Map 结构，用来记录查询中所有 measurement 的类型。
-- groupByPlan, fillQueryPlan, aggregationPlan：为了避免冗余，这三个执行计划被设定为 RawDataQueryPlan 的子类，而在 AlignByDevicePlan 中被设置为变量。如果查询计划属于这三个计划中的一种，则该字段会被赋值并保存。
+- groupByTimePlan, fillQueryPlan, aggregationPlan：为了避免冗余，这三个执行计划被设定为 RawDataQueryPlan 的子类，而在 AlignByDevicePlan 中被设置为变量。如果查询计划属于这三个计划中的一种，则该字段会被赋值并保存。
 
 在进行具体实现过程的讲解前，先给出一个覆盖较为完整的例子，下面的解释过程中将结合该示例进行说明。
 
@@ -82,7 +82,7 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
 接下来介绍 AlignByDevicePlan 的计算过程：
 
-1. 检查查询类型是否为 groupByPlan, fillQueryPlan, aggregationPlan 这三类查询中的一种，如果是则对相应的变量进行赋值，并更改 `AlignByDevicePlan` 的查询类型。
+1. 检查查询类型是否为 groupByTimePlan, fillQueryPlan, aggregationPlan 这三类查询中的一种，如果是则对相应的变量进行赋值，并更改 `AlignByDevicePlan` 的查询类型。
 2. 遍历 SELECT 后缀路径，对每一个后缀路径设置一个中间变量为 `measurementSetOfGivenSuffix`，用来记录该后缀路径对应的所有 measurement。如果后缀路径以单引号或双引号开头，则直接在 `measurements` 中增加该值，并记录其类型为 `Constant` 类型。
 3. 否则将设备列表与该后缀路径拼接，得到完整的路径，如果拼接后的路径不存在，需要进一步判断该 measurement 是否在其它设备中存在，如果都没有则暂时识别为 `NonExist`，如果后续出现设备存在该 measurement，则覆盖 `NonExist` 值为 `Exist`。
 4. 如果拼接后路径存在，则证明 measurement 是 `Exist` 类型，需要检验数据类型的一致性，不满足返回错误信息，满足则记录下该 Measurement，对 `measurementSetOfGivenSuffix` 等进行更新。

@@ -29,7 +29,7 @@ public class ShowChildPathsPlan extends ShowPlan {
   public ShowChildPathsPlan(ShowContentType showContentType, Path prefixPath) {
     super(showContentType);
     this.prefixPath = prefixPath;
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   public Path getPath() {

@@ -121,7 +121,7 @@ class MergeFileTask {
       return;
     }
 
-    seqFile.getWriteQueryLock().writeLock().lock();
+    seqFile.writeLock();
     try {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
@@ -184,7 +184,7 @@ class MergeFileTask {
       }
       throw e;
     } finally {
-      seqFile.getWriteQueryLock().writeLock().unlock();
+      seqFile.writeUnlock();
     }
   }
 
@@ -257,7 +257,7 @@ class MergeFileTask {
     mergeLogger.logFileMergeEnd();
     logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
 
-    seqFile.getWriteQueryLock().writeLock().lock();
+    seqFile.writeLock();
     try {
       resource.removeFileReader(seqFile);
       ChunkMetadataCache.getInstance().remove(seqFile);
@@ -274,7 +274,7 @@ class MergeFileTask {
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
-      seqFile.getWriteQueryLock().writeLock().unlock();
+      seqFile.writeUnlock();
     }
   }
 

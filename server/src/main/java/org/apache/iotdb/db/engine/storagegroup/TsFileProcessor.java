@@ -378,7 +378,9 @@ public class TsFileProcessor {
 
       //we have to add the memtable into flushingList first and then set the shouldClose tag.
       // see https://issues.apache.org/jira/browse/IOTDB-510
-      IMemTable tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
+      IMemTable tmpMemTable = workMemTable == null || workMemTable.memSize() == 0
+          ? new NotifyFlushMemTable()
+          : workMemTable;
 
       try {
         addAMemtableIntoFlushingList(tmpMemTable);

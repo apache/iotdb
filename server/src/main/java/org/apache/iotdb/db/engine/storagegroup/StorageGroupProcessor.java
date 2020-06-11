@@ -73,13 +73,14 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -720,8 +721,7 @@ public class StorageGroupProcessor {
    * @param timePartitionId time partition id
    */
   private void insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
-      int start, int end, boolean sequence, TSStatus[] results, long timePartitionId)
-      throws WriteProcessException {
+      int start, int end, boolean sequence, TSStatus[] results, long timePartitionId) {
     // return when start >= end
     if (start >= end) {
       return;
@@ -758,16 +758,16 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
+  private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
     MNode node = null;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
+      MManager manager = MManager.getInstance();
+      node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
         // Update cached last value with high priority
-        MNode measurementNode = node.getChild(measurementList[i]);
-        ((LeafMNode) measurementNode)
+        ((MeasurementMNode) manager.getChild(node, measurementList[i]))
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
@@ -810,20 +810,25 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
+  private void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
     MNode node = null;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
+      MManager manager = MManager.getInstance();
+      node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
+        if (plan.getValues()[i] == null) {
+          continue;
+        }
         // Update cached last value with high priority
-        MNode measurementNode = node.getChild(measurementList[i]);
-
-        ((LeafMNode) measurementNode)
-            .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
+        MNode measurementNode = manager.getChild(node, measurementList[i]);
+        if (measurementNode != null) {
+          ((MeasurementMNode) measurementNode)
+              .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
+        }
       }
-    } catch (MetadataException | QueryProcessException e) {
+    } catch (MetadataException e) {
       throw new WriteProcessException(e);
     } finally {
       if (node != null) {
@@ -1109,7 +1114,7 @@ public class StorageGroupProcessor {
       }
 
       // ensure that the file is not used by any queries
-      if (resource.getWriteQueryLock().writeLock().tryLock()) {
+      if (resource.tryWriteLock()) {
         try {
           // physical removal
           resource.remove();
@@ -1123,7 +1128,7 @@ public class StorageGroupProcessor {
             unSequenceFileList.remove(resource);
           }
         } finally {
-          resource.getWriteQueryLock().writeLock().unlock();
+          resource.writeUnlock();
         }
       }
     } finally {
@@ -1558,6 +1563,7 @@ public class StorageGroupProcessor {
           }
         }
       }
+      UpgradeSevice.getINSTANCE().stop();
     }
   }
 
@@ -1648,11 +1654,11 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource unseqFile : unseqFiles) {
-      unseqFile.getWriteQueryLock().writeLock().lock();
+      unseqFile.writeLock();
       try {
         unseqFile.remove();
       } finally {
-        unseqFile.getWriteQueryLock().writeLock().unlock();
+        unseqFile.writeUnlock();
       }
     }
   }
@@ -1705,15 +1711,9 @@ public class StorageGroupProcessor {
 
     for (int i = 0; i < seqFiles.size(); i++) {
       TsFileResource seqFile = seqFiles.get(i);
-      while (!seqFile.getWriteQueryLock().writeLock().tryLock() || !mergeLock.writeLock()
-          .tryLock()) {
-        if (seqFile.getWriteQueryLock().writeLock().isHeldByCurrentThread()) {
-          seqFile.getWriteQueryLock().writeLock().unlock();
-        }
-        if(mergeLock.writeLock().isHeldByCurrentThread()) {
-          mergeLock.writeLock().unlock();
-        }
-      }
+      // get both seqFile lock and merge lock
+      doubleWriteLock(seqFile);
+
       try {
         updateMergeModification(seqFile);
         if (i == seqFiles.size() - 1) {
@@ -1723,11 +1723,44 @@ public class StorageGroupProcessor {
           mergeLog.delete();
         }
       } finally {
-        mergeLock.writeLock().unlock();
-        seqFile.getWriteQueryLock().writeLock().unlock();
+        doubleWriteUnlock(seqFile);
       }
     }
     logger.info("{} a merge task ends", storageGroupName);
+  }
+
+  /**
+   * acquire the write locks of the resource and the merge lock
+   * @param seqFile
+   */
+  private void doubleWriteLock(TsFileResource seqFile) {
+    boolean fileLockGot;
+    boolean mergeLockGot;
+    while (true) {
+      fileLockGot = seqFile.tryWriteLock();
+      mergeLockGot = mergeLock.writeLock().tryLock();
+
+      if (fileLockGot && mergeLockGot) {
+        break;
+      } else {
+        // did not get all of them, release the gotten one and retry
+        if (fileLockGot) {
+          seqFile.writeUnlock();
+        }
+        if(mergeLockGot) {
+          mergeLock.writeLock().unlock();
+        }
+      }
+    }
+  }
+
+  /**
+   * release the write locks of the resource and the merge lock
+   * @param seqFile
+   */
+  private void doubleWriteUnlock(TsFileResource seqFile) {
+    mergeLock.writeLock().unlock();
+    seqFile.writeUnlock();
   }
 
   /**
@@ -1830,6 +1863,22 @@ public class StorageGroupProcessor {
   }
 
   /**
+   * Set the version in "partition" to "version" if "version" is larger than the current version.
+   * @param partition
+   * @param version
+   */
+  public void setPartitionFileVersionToMax(long partition, long version) {
+    partitionMaxFileVersions.compute(partition, (prt, oldVer) -> computeMaxVersion(oldVer, version));
+  }
+
+  private long computeMaxVersion(Long oldVersion, Long newVersion) {
+    if (oldVersion == null) {
+      return newVersion;
+    }
+    return Math.max(oldVersion, newVersion);
+  }
+
+  /**
    * Find the position of "newTsFileResource" in the sequence files if it can be inserted into them.
    * @param newTsFileResource
    * @param newFilePartitionId
@@ -1916,7 +1965,7 @@ public class StorageGroupProcessor {
   }
 
   /**
-   * If the historical versions of a file is a sub-set of the given file's, remove it to reduce
+   * If the historical versions of a file is a sub-set of the given file's, (close and) remove it to reduce
    * unnecessary merge. Only used when the file sender and the receiver share the same file
    * close policy.
    * Warning: DO NOT REMOVE
@@ -1928,33 +1977,61 @@ public class StorageGroupProcessor {
     closeQueryLock.writeLock().lock();
     try {
       Iterator<TsFileResource> iterator = sequenceFileTreeSet.iterator();
-      removeFullyOverlapFiles(resource, iterator);
+      removeFullyOverlapFiles(resource, iterator, true);
 
       iterator = unSequenceFileList.iterator();
-      removeFullyOverlapFiles(resource, iterator);
+      removeFullyOverlapFiles(resource, iterator, false);
     } finally {
       closeQueryLock.writeLock().unlock();
       writeUnlock();
     }
   }
 
-  private void removeFullyOverlapFiles(TsFileResource resource, Iterator<TsFileResource> iterator) {
+  private void removeFullyOverlapFiles(TsFileResource newTsFile, Iterator<TsFileResource> iterator
+      , boolean isSeq) {
     while (iterator.hasNext()) {
-      TsFileResource seqFile = iterator.next();
-      if (resource.getHistoricalVersions().containsAll(seqFile.getHistoricalVersions())
-          && !resource.getHistoricalVersions().equals(seqFile.getHistoricalVersions())
-          && seqFile.getWriteQueryLock().writeLock().tryLock()) {
+      TsFileResource existingTsFile = iterator.next();
+      if (newTsFile.getHistoricalVersions().containsAll(existingTsFile.getHistoricalVersions())
+          && !newTsFile.getHistoricalVersions().equals(existingTsFile.getHistoricalVersions())
+          && existingTsFile.tryWriteLock()) {
+        // if we fail to lock the file, it means it is being queried or merged and we will not
+        // wait until it is free, we will just leave it to the next merge
         try {
-          iterator.remove();
-          seqFile.remove();
+          removeFullyOverlapFile(existingTsFile, iterator, isSeq);
         } catch (Exception e) {
-          logger.error("Something gets wrong while removing FullyOverlapFiles ", e);
-          throw e;
+          logger.error("Something gets wrong while removing FullyOverlapFiles: {}",
+              existingTsFile.getFile().getAbsolutePath(), e);
         } finally {
-          seqFile.getWriteQueryLock().writeLock().unlock();
+          existingTsFile.writeUnlock();
         }
       }
     }
+  }
+
+  /**
+   * remove the given tsFileResource. If the corresponding tsFileProcessor is in the working status,
+   * close it before remove the related resource files.
+   * maybe time-consuming for closing a tsfile.
+   * @param tsFileResource
+   * @param iterator
+   * @param isSeq
+   */
+  private void removeFullyOverlapFile(TsFileResource tsFileResource, Iterator<TsFileResource> iterator
+      , boolean isSeq) {
+    if (!tsFileResource.isClosed()) {
+      // also remove the TsFileProcessor if the overlapped file is not closed
+      long timePartition = tsFileResource.getTimePartition();
+      Map<Long, TsFileProcessor> fileProcessorMap = isSeq ? workSequenceTsFileProcessors :
+          workUnsequenceTsFileProcessors;
+      TsFileProcessor tsFileProcessor = fileProcessorMap.get(timePartition);
+      if (tsFileProcessor != null && tsFileProcessor.getTsFileResource() == tsFileResource) {
+        //have to take some time to close the tsFileProcessor
+        tsFileProcessor.syncClose();
+        fileProcessorMap.remove(timePartition);
+      }
+    }
+    iterator.remove();
+    tsFileResource.remove();
   }
 
   /**
@@ -2167,12 +2244,12 @@ public class StorageGroupProcessor {
     if (tsFileResourceToBeDeleted == null) {
       return false;
     }
-    tsFileResourceToBeDeleted.getWriteQueryLock().writeLock().lock();
+    tsFileResourceToBeDeleted.writeLock();
     try {
       tsFileResourceToBeDeleted.remove();
       logger.info("Delete tsfile {} successfully.", tsFileResourceToBeDeleted.getFile());
     } finally {
-      tsFileResourceToBeDeleted.getWriteQueryLock().writeLock().unlock();
+      tsFileResourceToBeDeleted.writeUnlock();
     }
     return true;
   }
@@ -2225,14 +2302,14 @@ public class StorageGroupProcessor {
     if (tsFileResourceToBeMoved == null) {
       return false;
     }
-    tsFileResourceToBeMoved.getWriteQueryLock().writeLock().lock();
+    tsFileResourceToBeMoved.writeLock();
     try {
       tsFileResourceToBeMoved.moveTo(targetDir);
       logger
           .info("Move tsfile {} to target dir {} successfully.", tsFileResourceToBeMoved.getFile(),
               targetDir.getPath());
     } finally {
-      tsFileResourceToBeMoved.getWriteQueryLock().writeLock().unlock();
+      tsFileResourceToBeMoved.writeUnlock();
     }
     return true;
   }
@@ -2261,7 +2338,6 @@ public class StorageGroupProcessor {
 
   @FunctionalInterface
   public interface CloseTsFileCallBack {
-
     void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 
@@ -2269,9 +2345,42 @@ public class StorageGroupProcessor {
     return storageGroupName;
   }
 
+  /**
+   * Check if the data of "tsFileResource" all exist locally by comparing the historical versions
+   * in the partition of "partitionNumber". This is available only when the IoTDB instances which generated
+   * "tsFileResource" have the same close file policy as the local one.
+   * If one of the version in "tsFileResource" equals to a version of a working file, false is
+   * returned because "tsFileResource" may have unwritten data of that file.
+   * @param tsFileResource
+   * @param partitionNum
+   * @return true if the historicalVersions of "tsFileResource" is a subset of
+   * partitionDirectFileVersions, or false if it is not a subset and it contains any
+   * version of a working file
+   * USED by cluster module
+   */
   public boolean isFileAlreadyExist(TsFileResource tsFileResource, long partitionNum) {
-    return partitionDirectFileVersions.getOrDefault(partitionNum, Collections.emptySet())
-        .containsAll(tsFileResource.getHistoricalVersions());
+    // consider the case: The local node crashes when it is writing TsFile no.5.
+    // when it restarts, the leader has proceeded to no.6. When the leader sends no.5 to this
+    // node, the file should be accepted as local no.5 is not closed which means there may be
+    // unreceived data in no.5
+    // So if the incoming file contains the version of an unclosed file, it should be accepted
+    for (TsFileProcessor workSequenceTsFileProcessor : getWorkSequenceTsFileProcessors()) {
+      long workingFileVersion = workSequenceTsFileProcessor.getTsFileResource().getMaxVersion();
+      if (tsFileResource.getHistoricalVersions().contains(workingFileVersion)) {
+        return false;
+      }
+    }
+    for (TsFileProcessor workUnsequenceTsFileProcessor : getWorkUnsequenceTsFileProcessor()) {
+      long workingFileVersion = workUnsequenceTsFileProcessor.getTsFileResource().getMaxVersion();
+      if (tsFileResource.getHistoricalVersions().contains(workingFileVersion)) {
+        return false;
+      }
+    }
+    Set<Long> partitionFileVersions = partitionDirectFileVersions
+        .getOrDefault(partitionNum, Collections.emptySet());
+    logger.debug("FileVersions/PartitionVersions: {}/{}", tsFileResource.getHistoricalVersions(),
+        partitionFileVersions);
+    return partitionFileVersions.containsAll(tsFileResource.getHistoricalVersions());
   }
 
   @FunctionalInterface

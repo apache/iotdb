@@ -121,7 +121,7 @@ public class AuthorityChecker {
       case QUERY:
       case SELECT:
       case FILTER:
-      case GROUPBY:
+      case GROUPBYTIME:
       case SEQTABLESCAN:
       case TABLESCAN:
       case INDEXQUERY:

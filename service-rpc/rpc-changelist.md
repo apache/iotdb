@@ -20,7 +20,7 @@
 -->
 
 
-# 0.10.0 (version-1) -> version-2
+# 0.9.x (version-1) -> 0.10.x (version-2)
 
 Last Updated on 2020-5-25 by Kaifeng Xue.
 
@@ -40,6 +40,7 @@ Last Updated on 2020-5-25 by Kaifeng Xue.
 | Add struct TSQueryNonAlignDataSet                            | Haonan Hou|
 | Add struct TSInsertTabletsReq                            | Jialin Qiao|
 | Add method insertTablets                            | Jialin Qiao|
+| Add method testInsertTablets                            | Xiangdong Huang |
 
 ## 3. Update
 
@@ -54,7 +55,7 @@ Last Updated on 2020-5-25 by Kaifeng Xue.
 
 
 
-# 0.8.0 (version-0) -> version-1
+# 0.8.x -> 0.9.x (version-1)
 
 Last Updated on 2019-10-27 by Lei Rui.
 

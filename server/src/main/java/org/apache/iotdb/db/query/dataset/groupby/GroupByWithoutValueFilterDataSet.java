@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.GroupByPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
@@ -65,16 +65,16 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   /**
    * constructor.
    */
-  public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByPlan groupByPlan)
+  public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
           throws StorageEngineException, QueryProcessException {
-    super(context, groupByPlan);
+    super(context, groupByTimePlan);
 
-    initGroupBy(context, groupByPlan);
+    initGroupBy(context, groupByTimePlan);
   }
 
-  protected void initGroupBy(QueryContext context, GroupByPlan groupByPlan)
+  protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
           throws StorageEngineException, QueryProcessException {
-    IExpression expression = groupByPlan.getExpression();
+    IExpression expression = groupByTimePlan.getExpression();
 
     Filter timeFilter = null;
     if (expression != null) {
@@ -87,12 +87,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       if (!pathExecutors.containsKey(path)) {
         //init GroupByExecutor
         pathExecutors.put(path,
-                getGroupByExecutor(path, groupByPlan.getAllMeasurementsInDevice(path.getDevice()), dataTypes.get(i), context, timeFilter, null));
+                getGroupByExecutor(path, groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()), dataTypes.get(i), context, timeFilter, null));
         resultIndexes.put(path, new ArrayList<>());
       }
       resultIndexes.get(path).add(i);
       AggregateResult aggrResult = AggregateResultFactory
-              .getAggrResultByName(groupByPlan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
+              .getAggrResultByName(groupByTimePlan.getDeduplicatedAggregations().get(i), dataTypes.get(i));
       pathExecutors.get(path).addAggregateResult(aggrResult);
     }
   }
