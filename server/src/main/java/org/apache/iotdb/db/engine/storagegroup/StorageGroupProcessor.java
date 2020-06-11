@@ -1592,7 +1592,7 @@ public class StorageGroupProcessor {
       }
       logger.info("{} will close all files for starting a merge (fullmerge = {})", storageGroupName,
           fullMerge);
-      syncCloseAllWorkingTsFileProcessors();
+
       if (unSequenceFileList.isEmpty() || sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;
@@ -1816,12 +1816,6 @@ public class StorageGroupProcessor {
 
       // move modifications generated during merge into the new file
       for (TsFileResource tsFileResource : newFile) {
-        TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName,
-            tsFileResource.getFile().getAbsoluteFile(),
-            getVersionControllerByTimePartitionId(tsFileResource.getTimePartition()),
-            this::closeUnsealedTsFileProcessorCallBack,
-            this::updateLatestFlushTimeCallback, true);
-        tsFileResource.setProcessor(tsFileProcessor);
         if (mergingModification != null) {
           logger.info("{} is updating the merged file's modification file", storageGroupName);
           for (Modification modification : mergingModification.getModifications()) {
