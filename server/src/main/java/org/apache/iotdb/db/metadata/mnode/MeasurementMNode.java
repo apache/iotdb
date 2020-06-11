@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -123,43 +125,59 @@ public class MeasurementMNode extends MNode {
   }
 
   @Override
-  public void serializeTo(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(MetadataConstant.MEASUREMENT_MNODE_TYPE, outputStream);
-    ReadWriteIOUtils.write(name, outputStream);
-
-    ReadWriteIOUtils.writeIsNull(alias, outputStream);
+  public void serializeTo(BufferedWriter bw) throws IOException {
+    String s = String.valueOf(MetadataConstant.MEASUREMENT_MNODE_TYPE);
+    s += "," + name + ",";
     if (alias != null) {
-      ReadWriteIOUtils.write(alias, outputStream);
+      s += alias;
     }
-    schema.serializeTo(outputStream);
-    ReadWriteIOUtils.write(offset, outputStream);
-    serializeChildren(outputStream);
+    s += "," + schema.getType().name() + ",";
+    s += schema.getEncodingType().name() + ",";
+    s += schema.getCompressor().name() + ",";
+    s += offset + ",";
+    s += children.size() + ",";
+    s += aliasChildren == null ? 0 : aliasChildren.size();
+    bw.write(s);
+    bw.newLine();
+    serializeChildren(bw);
   }
 
-  public static MeasurementMNode deserializeFrom(InputStream inputStream, MNode parent)
-      throws IOException {
-    String name = ReadWriteIOUtils.readString(inputStream);
-    String alias = null;
-    if (!ReadWriteIOUtils.readIsNull(inputStream)) {
-      alias = ReadWriteIOUtils.readString(inputStream);
+  public void serializeTo1(OutputStream outputStream) throws IOException {
+    String s = String.valueOf(MetadataConstant.MEASUREMENT_MNODE_TYPE);
+    s += "," + name + ",";
+    if (alias != null) {
+      s += alias;
     }
-    MeasurementMNode node = new MeasurementMNode(parent, name,
-        MeasurementSchema.deserializeFrom(inputStream), alias);
-    node.setOffset(ReadWriteIOUtils.readLong(inputStream));
+    s += "," + schema.getType().name() + ",";
+    s += schema.getEncodingType().name() + ",";
+    s += schema.getCompressor().name() + ",";
+    s += offset + ",";
+    s += children.size() + ",";
+    s += aliasChildren == null ? 0 : aliasChildren.size();
+    ReadWriteIOUtils.write(s, outputStream);
+    serializeChildren1(outputStream);
+  }
 
-    int childrenSize = ReadWriteIOUtils.readInt(inputStream);
+  public static MeasurementMNode deserializeFrom(BufferedReader br, String[] nodeInfo,
+      MNode parent) throws IOException {
+    String name = nodeInfo[1];
+    String alias = nodeInfo[2].equals("") ? null : nodeInfo[2];
+    MeasurementSchema schema = new MeasurementSchema(name, TSDataType.valueOf(nodeInfo[3]),
+        TSEncoding.valueOf(nodeInfo[4]), CompressionType.valueOf(nodeInfo[5]));
+    MeasurementMNode node = new MeasurementMNode(parent, name, schema, alias);
+    node.setOffset(Long.valueOf(nodeInfo[6]));
+
     Map<String, MNode> children = new HashMap<>();
-    for (int i = 0; i < childrenSize; i++) {
-      children
-          .put(ReadWriteIOUtils.readString(inputStream), MNode.deserializeFrom(inputStream, node));
+    for (int i = 0; i < Integer.valueOf(nodeInfo[7]); i++) {
+      MNode child = MNode.deserializeFrom(br, node);
+      children.put(child.getName(), child);
     }
     node.setChildren(children);
 
-    int aliasChildrenSize = ReadWriteIOUtils.readInt(inputStream);
     Map<String, MNode> aliasChildren = new HashMap<>();
-    for (int i = 0; i < aliasChildrenSize; i++) {
-      children
-          .put(ReadWriteIOUtils.readString(inputStream), MNode.deserializeFrom(inputStream, node));
+    for (int i = 0; i < Integer.valueOf(nodeInfo[8]); i++) {
+      MNode child = MNode.deserializeFrom(br, node);
+      children.put(child.getName(), child);
     }
     node.setAliasChildren(aliasChildren);
 

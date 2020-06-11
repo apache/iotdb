@@ -20,6 +20,8 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -56,8 +58,8 @@ public class MNode implements Serializable {
    */
   protected String fullPath;
 
-  private Map<String, MNode> children;
-  private Map<String, MNode> aliasChildren;
+  Map<String, MNode> children;
+  Map<String, MNode> aliasChildren;
 
   protected ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -201,54 +203,70 @@ public class MNode implements Serializable {
     this.aliasChildren = aliasChildren;
   }
 
-  public void serializeTo(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(MetadataConstant.MNODE_TYPE, outputStream);
-    ReadWriteIOUtils.write(name, outputStream);
-    serializeChildren(outputStream);
+  public void serializeTo1(OutputStream outputStream) throws IOException {
+    String s = String.valueOf(MetadataConstant.MNODE_TYPE);
+    s += "," + name + ",";
+    s += children.size() + ",";
+    s += aliasChildren == null ? 0 : aliasChildren.size();
+    ReadWriteIOUtils.write(s, outputStream);
+    serializeChildren1(outputStream);
   }
 
-  void serializeChildren(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(children.size(), outputStream);
-    for (Entry<String, MNode> entry : children.entrySet()) {
-      ReadWriteIOUtils.write(entry.getKey(), outputStream);
-      entry.getValue().serializeTo(outputStream);
-    }
+  public void serializeTo(BufferedWriter bw) throws IOException {
+    String s = String.valueOf(MetadataConstant.MNODE_TYPE);
+    s += "," + name + ",";
+    s += children.size() + ",";
+    s += aliasChildren == null ? 0 : aliasChildren.size();
+    bw.write(s);
+    bw.newLine();
+    serializeChildren(bw);
+  }
 
-    if (aliasChildren == null) {
-      ReadWriteIOUtils.write(0, outputStream);
-    } else {
-      ReadWriteIOUtils.write(aliasChildren.size(), outputStream);
+  void serializeChildren(BufferedWriter bw) throws IOException {
+    for (Entry<String, MNode> entry : children.entrySet()) {
+      entry.getValue().serializeTo(bw);
+    }
+    if (aliasChildren != null) {
       for (Entry<String, MNode> entry : aliasChildren.entrySet()) {
-        ReadWriteIOUtils.write(entry.getKey(), outputStream);
-        entry.getValue().serializeTo(outputStream);
+        entry.getValue().serializeTo(bw);
       }
     }
   }
 
-  public static MNode deserializeFrom(InputStream inputStream, MNode parent) throws IOException {
-    short nodeType = ReadWriteIOUtils.readShort(inputStream);
+  void serializeChildren1(OutputStream outputStream) throws IOException {
+    for (Entry<String, MNode> entry : children.entrySet()) {
+      entry.getValue().serializeTo1(outputStream);
+    }
+    if (aliasChildren != null) {
+      for (Entry<String, MNode> entry : aliasChildren.entrySet()) {
+        entry.getValue().serializeTo1(outputStream);
+      }
+    }
+  }
+
+  public static MNode deserializeFrom(BufferedReader br, MNode parent) throws IOException {
+    String[] nodeInfo = br.readLine().split(",");
     MNode node;
+    short nodeType = Short.valueOf(nodeInfo[0]);
     if (nodeType == MetadataConstant.STORAGE_GROUP_MNODE_TYPE) {
-      return StorageGroupMNode.deserializeFrom(inputStream, parent);
+      return StorageGroupMNode.deserializeFrom(br, nodeInfo, parent);
     } else if (nodeType == MetadataConstant.MEASUREMENT_MNODE_TYPE) {
-      return MeasurementMNode.deserializeFrom(inputStream, parent);
+      return MeasurementMNode.deserializeFrom(br, nodeInfo, parent);
     } else {
-      node = new MNode(parent, ReadWriteIOUtils.readString(inputStream));
+      node = new MNode(parent, nodeInfo[1]);
     }
 
-    int childrenSize = ReadWriteIOUtils.readInt(inputStream);
     Map<String, MNode> children = new HashMap<>();
-    for (int i = 0; i < childrenSize; i++) {
-      children.put(ReadWriteIOUtils.readString(inputStream),
-          MNode.deserializeFrom(inputStream, node));
+    for (int i = 0; i < Integer.valueOf(nodeInfo[2]); i++) {
+      MNode child = MNode.deserializeFrom(br, node);
+      children.put(child.getName(), child);
     }
     node.setChildren(children);
 
-    int aliasChildrenSize = ReadWriteIOUtils.readInt(inputStream);
     Map<String, MNode> aliasChildren = new HashMap<>();
-    for (int i = 0; i < aliasChildrenSize; i++) {
-      children.put(ReadWriteIOUtils.readString(inputStream),
-          MNode.deserializeFrom(inputStream, node));
+    for (int i = 0; i < Integer.valueOf(nodeInfo[3]); i++) {
+      MNode child = MNode.deserializeFrom(br, node);
+      children.put(child.getName(), child);
     }
     node.setAliasChildren(aliasChildren);
 

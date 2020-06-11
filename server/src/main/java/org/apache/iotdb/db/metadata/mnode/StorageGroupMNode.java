@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,33 +52,42 @@ public class StorageGroupMNode extends MNode {
   }
 
   @Override
-  public void serializeTo(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(MetadataConstant.STORAGE_GROUP_MNODE_TYPE, outputStream);
-    ReadWriteIOUtils.write(name, outputStream);
-    ReadWriteIOUtils.write(dataTTL, outputStream);
-
-    serializeChildren(outputStream);
+  public void serializeTo(BufferedWriter bw) throws IOException {
+    String s = String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
+    s += "," + name + ",";
+    s += dataTTL + ",";
+    s += children.size() + ",";
+    s += aliasChildren == null ? 0 : aliasChildren.size();
+    bw.write(s);
+    bw.newLine();
+    serializeChildren(bw);
   }
 
-  public static StorageGroupMNode deserializeFrom(InputStream inputStream, MNode parent)
-      throws IOException {
-    String name = ReadWriteIOUtils.readString(inputStream);
-    StorageGroupMNode node = new StorageGroupMNode(parent, name,
-        ReadWriteIOUtils.readLong(inputStream));
+  public void serializeTo1(OutputStream outputStream) throws IOException {
+    String s = String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
+    s += "," + name + ",";
+    s += dataTTL + ",";
+    s += children.size() + ",";
+    s += aliasChildren == null ? 0 : aliasChildren.size();
+    ReadWriteIOUtils.write(s, outputStream);
+    serializeChildren1(outputStream);
+  }
 
-    int childrenSize = ReadWriteIOUtils.readInt(inputStream);
+  public static StorageGroupMNode deserializeFrom(BufferedReader br, String[] nodeInfo,
+      MNode parent) throws IOException {
+    StorageGroupMNode node = new StorageGroupMNode(parent, nodeInfo[1], Long.valueOf(nodeInfo[2]));
+
     Map<String, MNode> children = new HashMap<>();
-    for (int i = 0; i < childrenSize; i++) {
-      children.put(ReadWriteIOUtils.readString(inputStream),
-          MNode.deserializeFrom(inputStream, node));
+    for (int i = 0; i < Integer.valueOf(nodeInfo[3]); i++) {
+      MNode child = MNode.deserializeFrom(br, node);
+      children.put(child.getName(), child);
     }
     node.setChildren(children);
 
-    int aliasChildrenSize = ReadWriteIOUtils.readInt(inputStream);
     Map<String, MNode> aliasChildren = new HashMap<>();
-    for (int i = 0; i < aliasChildrenSize; i++) {
-      children.put(ReadWriteIOUtils.readString(inputStream),
-          MNode.deserializeFrom(inputStream, node));
+    for (int i = 0; i < Integer.valueOf(nodeInfo[4]); i++) {
+      MNode child = MNode.deserializeFrom(br, node);
+      children.put(child.getName(), child);
     }
     node.setAliasChildren(aliasChildren);
 
