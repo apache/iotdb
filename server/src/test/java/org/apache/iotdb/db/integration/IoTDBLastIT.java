@@ -20,7 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -130,8 +130,8 @@ public class IoTDBLastIT {
         }
       }
 
-      LeafMNode node =
-          (LeafMNode) MManager.getInstance().getNodeByPath("root.ln.wf01.wt01.temperature");
+      MeasurementMNode node =
+          (MeasurementMNode) MManager.getInstance().getNodeByPath("root.ln.wf01.wt01.temperature");
       node.resetCache();
 
       statement.execute(
@@ -192,7 +192,7 @@ public class IoTDBLastIT {
         Statement statement = connection.createStatement()) {
 
       MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt02.temperature");
-      ((LeafMNode) node).resetCache();
+      ((MeasurementMNode) node).resetCache();
       boolean hasResultSet =
           statement.execute(
               "select last temperature,status,id from root.ln.wf01.wt02");
@@ -243,7 +243,7 @@ public class IoTDBLastIT {
         Statement statement = connection.createStatement()) {
 
       MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt03.temperature");
-      ((LeafMNode) node).resetCache();
+      ((MeasurementMNode) node).resetCache();
 
       statement.execute("INSERT INTO root.ln.wf01.wt03(timestamp,status, id) values(500, false, 9)");
       statement.execute("flush");
@@ -291,7 +291,7 @@ public class IoTDBLastIT {
       statement.execute("flush");
 
       MNode node = MManager.getInstance().getNodeByPath("root.ln.wf01.wt03.temperature");
-      ((LeafMNode) node).resetCache();
+      ((MeasurementMNode) node).resetCache();
 
       boolean hasResultSet = statement.execute(
           "select last temperature from root.ln.wf01.wt04");

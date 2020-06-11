@@ -22,7 +22,6 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 public class TypeInferenceUtils {
 
@@ -31,6 +30,8 @@ public class TypeInferenceUtils {
   private static TSDataType integerStringInferType = IoTDBDescriptor.getInstance().getConfig().getIntegerStringInferType();
 
   private static TSDataType floatingStringInferType = IoTDBDescriptor.getInstance().getConfig().getFloatingStringInferType();
+
+  private static TSDataType nanStringInferType = IoTDBDescriptor.getInstance().getConfig().getNanStringInferType();
 
   private TypeInferenceUtils() {
 
@@ -65,6 +66,9 @@ public class TypeInferenceUtils {
         } else {
           return floatingStringInferType;
         }
+        // "NaN" is returned if the NaN Literal is given in Parser
+      } else if ("NaN".equals(strValue)) {
+        return nanStringInferType;
       } else {
         return TSDataType.TEXT;
       }

@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -120,13 +120,11 @@ public class LastQueryExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
-    LeafMNode node = null;
+    MeasurementMNode node = null;
     try {
-      node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
-    } catch (PathNotExistException e) {
-      // TODO use last cache for remote series
+      node = (MeasurementMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
     } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      // TODO use last cache for remote series
     }
     if (node != null && node.getCachedLast() != null) {
       return node.getCachedLast();
