@@ -160,7 +160,6 @@ public class SqueezeMergeTask implements Callable<Void> {
       File resourceFile = new File(seqFile.getPath() + MERGE_SUFFIX);
       resourceFile.delete();
       seqFile.setMerging(false);
-      seqFile.setDeleted(true);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
