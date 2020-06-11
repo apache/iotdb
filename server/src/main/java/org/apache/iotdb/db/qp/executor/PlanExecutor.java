@@ -891,9 +891,6 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       MeasurementSchema[] schemas = getSeriesSchemas(insertPlan);
       insertPlan.setSchemasAndTransferType(schemas);
-      // To reduce the String number in memory, set the deviceId from MManager to insertPlan
-      String deviceId = insertPlan.getDeviceId();
-      insertPlan.setDeviceId(mManager.getDeviceId(deviceId));
       StorageEngine.getInstance().insert(insertPlan);
       if (insertPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException("failed to insert points " + insertPlan.getFailedMeasurements());
@@ -911,6 +908,8 @@ public class PlanExecutor implements IPlanExecutor {
     MNode node = null;
     try {
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      // To reduce the String number in memory, set the deviceId from MManager to insertPlan
+      insertPlan.setDeviceId(node.getFullPath());
     } catch (PathNotExistException e) {
       // ignore
     }
