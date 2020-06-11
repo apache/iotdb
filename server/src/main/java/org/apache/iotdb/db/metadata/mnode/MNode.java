@@ -99,10 +99,6 @@ public abstract class MNode implements Serializable {
     return fullPath;
   }
 
-  public void setFullPath(String fullPath) {
-    this.fullPath = fullPath;
-  }
-
   String concatFullPath() {
     StringBuilder builder = new StringBuilder(name);
     MNode curr = this;

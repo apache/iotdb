@@ -891,6 +891,9 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       MeasurementSchema[] schemas = getSeriesSchemas(insertPlan);
       insertPlan.setSchemasAndTransferType(schemas);
+      // To reduce the String number in memory, set the deviceId from MManager to insertPlan
+      String deviceId = insertPlan.getDeviceId();
+      insertPlan.setDeviceId(mManager.getDeviceId(deviceId));
       StorageEngine.getInstance().insert(insertPlan);
       if (insertPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException("failed to insert points " + insertPlan.getFailedMeasurements());
@@ -1069,6 +1072,9 @@ public class PlanExecutor implements IPlanExecutor {
       String[] measurementList = insertTabletPlan.getMeasurements();
       String deviceId = insertTabletPlan.getDeviceId();
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      // To reduce the String number in memory, use the deviceId from MManager
+      deviceId = node.getFullPath();
+      insertTabletPlan.setDeviceId(deviceId);
       TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];

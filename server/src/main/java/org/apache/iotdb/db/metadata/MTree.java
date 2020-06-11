@@ -155,7 +155,6 @@ public class MTree implements Serializable {
       }
       cur = cur.getChild(nodeNames[i]);
     }
-    cur.setFullPath(deviceId);
     return cur;
   }
 
