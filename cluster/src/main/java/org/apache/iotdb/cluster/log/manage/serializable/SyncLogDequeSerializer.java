@@ -36,6 +36,8 @@ import java.util.Date;
 import java.util.Deque;
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.HardState;
@@ -78,6 +80,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   private String logDir;
   // version controller
   private VersionController versionController;
+
+  /**
+   * the lock uses when change the logSizeDeque
+   */
+  private final ReadWriteLock lock = new ReentrantReadWriteLock();
+
 
   /**
    * for log tools
@@ -126,10 +134,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     this.maxRemovedLogSize = maxRemovedLogSize;
   }
 
+  @Override
   public List<Log> getAllEntries() {
     return recoverLog();
   }
 
+  @Override
   public void append(List<Log> entries) {
     Log entry = entries.get(entries.size() - 1);
     meta.setCommitLogIndex(entry.getCurrLogIndex());
@@ -139,17 +149,32 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     append(entries, meta);
   }
 
+  @Override
   public void setHardStateAndFlush(HardState state) {
     this.state = state;
     serializeMeta(meta);
   }
 
+  @Override
   public HardState getHardState() {
     return state;
   }
 
+  @Override
   public void removeCompactedEntries(long index) {
-    // TODO-Cluster: decide a log discarding policy
+    long distance = meta.getCommitLogIndex() - index;
+    if (distance <= 0) {
+      logger
+          .info("compact ({}) is out of bound lastIndex ({})", index, meta.getCommitLogIndex());
+      return;
+    }
+    if (distance > logSizeDeque.size()) {
+      logger.info(
+          "entries before request index ({}) have been compacted", index);
+    }
+
+    int numToRemove = logSizeDeque.size() - (int) distance;
+    removeFirst(numToRemove);
   }
 
   public Deque<Integer> getLogSizeDeque() {
@@ -293,20 +318,32 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logger.error("Error in appending log {} ", log, e);
     }
 
-    logSizeDeque.addLast(totalSize);
+    lock.writeLock().lock();
+    try {
+      logSizeDeque.addLast(totalSize);
+    } finally {
+      lock.writeLock().unlock();
+    }
+
     serializeMeta(meta);
+
   }
 
   public void append(List<Log> logs, LogManagerMeta meta) {
     int bufferSize = 0;
     List<ByteBuffer> bufferList = new ArrayList<>(logs.size());
-    for (Log log : logs) {
-      ByteBuffer data = log.serialize();
-      int size = data.capacity() + Integer.BYTES;
-      logSizeDeque.addLast(size);
-      bufferSize += size;
+    lock.writeLock().lock();
+    try {
+      for (Log log : logs) {
+        ByteBuffer data = log.serialize();
+        int size = data.capacity() + Integer.BYTES;
+        logSizeDeque.addLast(size);
+        bufferSize += size;
 
-      bufferList.add(data);
+        bufferList.add(data);
+      }
+    } finally {
+      lock.writeLock().unlock();
     }
 
     ByteBuffer finalBuffer = ByteBuffer.allocate(bufferSize);
@@ -343,9 +380,15 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     }
 
     int size = 0;
-    for (int i = 0; i < count; i++) {
-      size += logSizeDeque.removeLast();
+    lock.writeLock().lock();
+    try {
+      for (int i = 0; i < count; i++) {
+        size += logSizeDeque.removeLast();
+      }
+    } finally {
+      lock.writeLock().unlock();
     }
+
     // truncate file
     while (size > 0) {
       File currentLogFile = getCurrentLogFile();
@@ -454,7 +497,12 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logger.error("Unknown log detected ", e);
     }
 
-    logSizeDeque.addLast(totalSize);
+    lock.writeLock().lock();
+    try {
+      logSizeDeque.addLast(totalSize);
+    } finally {
+      lock.writeLock().unlock();
+    }
 
     return log;
   }
@@ -527,6 +575,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     logger.debug("Serialized log meta into {}", tempMetaFile.getPath());
   }
 
+  @Override
   public void close() {
     try {
       if (currentLogOutputStream != null) {

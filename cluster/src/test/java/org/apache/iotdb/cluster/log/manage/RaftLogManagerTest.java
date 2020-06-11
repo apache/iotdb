@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.exception.EntryCompactedException;
 import org.apache.iotdb.cluster.exception.EntryUnavailableException;
 import org.apache.iotdb.cluster.exception.GetEntriesWrongParametersException;
+import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
@@ -619,7 +620,8 @@ public class RaftLogManagerTest {
       try {
         List<Log> entries = instance.getEntries(1, Integer.MAX_VALUE);
         assertEquals(test.testEntries, entries);
-        assertEquals(test.testOffset, instance.getUnCommittedEntryManager().getFirstUnCommittedIndex());
+        assertEquals(test.testOffset,
+            instance.getUnCommittedEntryManager().getFirstUnCommittedIndex());
       } catch (Exception e) {
         fail("An unexpected exception was thrown.");
       } finally {
@@ -1009,6 +1011,50 @@ public class RaftLogManagerTest {
       }
     } finally {
       instance.close();
+    }
+  }
+
+  @Test
+  public void testCheckDeleteLog() {
+    SyncLogDequeSerializer syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    syncLogDequeSerializer.setMaxRemovedLogSize(10);
+
+    CommittedEntryManager committedEntryManager = new CommittedEntryManager();
+    RaftLogManager raftLogManager = new RaftLogManager(committedEntryManager,
+        syncLogDequeSerializer, logApplier);
+
+    int maxNumberOfLogs = 100;
+    List<Log> testLogs1;
+
+    raftLogManager.setMaxNumberOfLogs(maxNumberOfLogs);
+    testLogs1 = TestUtils.prepareNodeLogs(130);
+    raftLogManager.append(testLogs1);
+    try {
+      raftLogManager.commitTo(testLogs1.get(testLogs1.size() - 1).getCurrLogIndex(), false);
+    } catch (LogExecutionException e) {
+      assertEquals("why failed?", e.toString());
+    }
+
+    assertEquals(130, committedEntryManager.getTotalSize());
+    assertEquals(130, syncLogDequeSerializer.getLogSizeDeque().size());
+
+    raftLogManager.checkDeleteLog();
+
+    assertEquals(maxNumberOfLogs, committedEntryManager.getTotalSize());
+    assertEquals(maxNumberOfLogs, syncLogDequeSerializer.getLogSizeDeque().size());
+
+    raftLogManager.close();
+
+    // recovery
+    syncLogDequeSerializer = new SyncLogDequeSerializer(testIdentifier);
+    try {
+      List<Log> logs = syncLogDequeSerializer.recoverLog();
+      assertEquals(maxNumberOfLogs, logs.size());
+      for (int i = 0; i < maxNumberOfLogs; i++) {
+        assertEquals(testLogs1.get(i + 30), logs.get(i));
+      }
+    } finally {
+      syncLogDequeSerializer.close();
     }
   }
 }
