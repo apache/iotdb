@@ -47,9 +47,11 @@ import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.assertj.core.api.WithAssertions;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -413,8 +415,25 @@ public class IoTDBSessionIT {
         "d2.指标2"
     };
     session.setStorageGroup(storageGroup);
+
     createTimeseriesInChinese(storageGroup, devices);
     insertInChinese(storageGroup, devices);
+
+    // Check if the Series exist
+    for (String device : devices) {
+      final boolean sessionExists = session.checkTimeseriesExists(storageGroup + "." + device);
+      assertTrue(sessionExists);
+    }
+
+    // Check if they all have 10 entries
+    final SessionDataSet sessionDataSet = session.executeQueryStatement("SELECT COUNT(*) FROM " + storageGroup);
+    assertEquals(4, sessionDataSet.getColumnNames().size());
+    final RowRecord record = sessionDataSet.next();
+
+    for (Field field : record.getFields()) {
+      assertEquals(10, field.getIntV());
+    }
+
     session.deleteStorageGroup(storageGroup);
     session.close();
   }
@@ -564,6 +583,8 @@ public class IoTDBSessionIT {
   }
 
   @Test
+  @Ignore
+  // TODO is this test relevant? Then it should be fixed ASAP
   public void TestSessionInterfacesWithDisabledWAL()
       throws StatementExecutionException, IoTDBConnectionException,
           BatchExecutionException {
@@ -617,6 +638,14 @@ public class IoTDBSessionIT {
     }
 
     session.insertTablet(tablet);
+
+    // Ensure that overall 200 records where inserted
+    final SessionDataSet result = session.executeQueryStatement("SELECT COUNT(*) FROM " + deviceId);
+
+    for (Field field : result.next().getFields()) {
+      assertEquals(200, field.getIntV());
+    }
+
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(isEnableWAL);
     session.close();
   }

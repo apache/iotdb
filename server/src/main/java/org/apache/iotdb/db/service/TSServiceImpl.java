@@ -469,7 +469,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
       if (physicalPlan.isQuery()) {
-        return internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
+        return internalExecuteQueryStatement(req.statementId, physicalPlan,
             req.fetchSize,
             sessionIdUsernameMap.get(req.getSessionId()));
       } else {
@@ -516,7 +516,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
             TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
       }
 
-      return internalExecuteQueryStatement(statement, req.statementId, physicalPlan, req.fetchSize,
+      return internalExecuteQueryStatement(req.statementId, physicalPlan, req.fetchSize,
           sessionIdUsernameMap.get(req.getSessionId()));
 
     } catch (ParseCancellationException e) {
@@ -538,8 +538,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
    *             AuthorPlan
    */
-  private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
-      long statementId, PhysicalPlan plan, int fetchSize, String username) {
+  private TSExecuteStatementResp internalExecuteQueryStatement(long statementId, PhysicalPlan plan, int fetchSize, String username) {
     long startTime = System.currentTimeMillis();
     long queryId = -1;
     try {

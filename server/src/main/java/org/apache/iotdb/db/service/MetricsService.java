@@ -60,7 +60,6 @@ public class MetricsService implements IService {
     private static final MetricsService INSTANCE = new MetricsService();
 
     private HttpServer server;
-    private PrometheusMeterRegistry prometheusMeterRegistry;
     private JvmGcMetrics jvmGcMetrics;
 
     public MetricsService() {
@@ -79,7 +78,7 @@ public class MetricsService implements IService {
             registries.add(new IoTDBRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM));
         }
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePrometheusMetricsEndpoint()) {
-            prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
+            PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
             registries.add(prometheusMeterRegistry);
             // Serve an Endpoint for prometheus
             int port = IoTDBDescriptor.getInstance().getConfig().getMetricsPrometheusPort();
