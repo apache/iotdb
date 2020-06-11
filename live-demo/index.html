@@ -1,0 +1,103 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<html>
+
+<head>
+  <title>Try IoTDB</title>
+  <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  <link href='css/style.css' rel='stylesheet'>
+  <!-- import CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+  <style>
+    span[class="rundemo"]:hover{
+      cursor:pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- <div id='header'>
+      <h3>Try IoTDB</h3>
+    </div> -->
+
+  <div id='log' style="margin-top: 30px;">
+    <div class='line notification'>
+      <p>Welcome to <strong>Try IoTDB</strong>, a demonstration of the
+        <a href="http://iotdb.apache.org/" target="_blank">IoTDB</a> database!
+        More Example see <a href="http://iotdb.apache.org/UserGuide/Master/Operation%20Manual/DDL%20Data%20Definition%20Language.html" target="_blank">DDL</a> <a href="http://iotdb.apache.org/UserGuide/Master/Operation%20Manual/DML%20Data%20Manipulation%20Language.html" target="_blank">DML</a>
+      </p>
+    </div>
+    <div id="app">
+      <el-collapse>
+          <el-collapse-item title="Related Example" name="1">
+            <span class="rundemo">set storage group to root.turbine</span><br>
+            <span class="rundemo">create timeseries root.turbine.d1.s1(temperature1) with datatype=FLOAT, encoding=GORILLA, compression=SNAPPY tags(unit=degree, owner=user1)</span><br>
+            <span class="rundemo">insert into root.turbine.d1(timestamp,s1,s1) values(1,1,2)</span><br>
+            <span class="rundemo">show timeseries root</span><br>
+            <span class="rundemo">count timeseries root</span><br>
+            <span class="rundemo">select * from root</span><br>
+            <span class="rundemo"> select last * from root</span><br>
+            <span class="rundemo">select count(*) from root</span><br>
+            <span class="rundemo">select count(*) from root group by ([0,10), 2ms)</span><br>
+            <span class="rundemo">select last_value(*) from root group by ([0,10), 2ms) fill(float[previous])</span>
+
+          </el-collapse-item>
+        </el-collapse>
+    </div>
+    <!-- <div id='toolbar'>
+        <span class="prompt">&gt; </span><input id='input' spellcheck='false'>
+      </div> -->
+
+    <div class="line input" id='toolbar'>
+      <div class="nopad"><span class="prompt">&gt; </span>
+        <input id='input' spellcheck='false'></div>
+    </div>
+
+    <!-- <input type="text" onkeydown="keyLogin();"> -->
+  </div>
+  <div id='footer'>
+    <p>Copyright &copy; 2020 The Apache Software Foundation.<br>
+      Apache and the Apache feather logo are trademarks of The Apache Software Foundation</p>
+  </div>
+  <script src='js/jquery.min.js' type='application/x-javascript'></script>
+  <script src='js/underscore-min.js' type='application/x-javascript'></script>
+  <script src='js/json2.js' type='application/x-javascript'></script>
+  <script src='js/terminal.js' type='application/x-javascript'></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- import Vue before Element -->
+    <script src="https://unpkg.com/vue/dist/vue.js"></script>
+    <!-- import JavaScript -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+  <script>
+    new Vue({
+      el: '#app',
+      data: function() {
+        return { visible: false }
+      }
+    })
+    $(document).on('click', "span[class='rundemo']", function () {
+      submitCommand($(this).text());
+      return false;
+    });
+  </script>
+</body>
+
+</html>
