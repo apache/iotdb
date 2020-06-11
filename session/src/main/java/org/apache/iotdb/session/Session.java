@@ -19,6 +19,7 @@
 package org.apache.iotdb.session;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +27,10 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -81,6 +86,7 @@ public class Session {
   private long statementId;
   private int fetchSize;
   private SessionThreadPool asyncThreadPool;
+  private static final int ASYNC_TIMEOUT = 10;
 
   public Session(String host, int port) {
     this(host, port, Config.DEFAULT_USER, Config.DEFAULT_PASSWORD);
@@ -218,6 +224,20 @@ public class Session {
     insertRecord(deviceId, time, measurements, types, valuesList);
   }
 
+  private static <T> CompletableFuture<T> failAfter(Duration duration) {
+    ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    CompletableFuture<T> promise = new CompletableFuture<>();
+    scheduler.schedule(() -> {
+      final TimeoutException ex = new TimeoutException("Timeout after " + duration);
+      return promise.completeExceptionally(ex);
+    }, duration.toMillis(), TimeUnit.MILLISECONDS);
+    return promise;
+  }
+
+  private void asyncHandler(Void aVoid) {
+    logger.info("Insertion executed successfully.");
+  }
 
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
@@ -258,6 +278,7 @@ public class Session {
    * @param sorted whether times in Tablet are in ascending order
    */
   public void asyncInsertTablet(Tablet tablet, boolean sorted) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablet(tablet, sorted);
@@ -266,7 +287,8 @@ public class Session {
       }
       return null;
     }, asyncThreadPool.getThreadPool());
-    asyncRun.thenRun(this::asyncHandler);
+
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
@@ -331,6 +353,7 @@ public class Session {
    * @param sorted  whether times in each Tablet are in ascending order
    */
   public void asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablets(tablets, sorted);
@@ -339,7 +362,8 @@ public class Session {
       }
       return null;
     }, asyncThreadPool.getThreadPool());
-    asyncRun.thenRun(this::asyncHandler);
+
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   private TSInsertTabletsReq genTSInsertTabletsReq(Map<String, Tablet> tablets, boolean sorted)
@@ -406,6 +430,7 @@ public class Session {
   public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
@@ -414,7 +439,8 @@ public class Session {
       }
       return null;
     }, asyncThreadPool.getThreadPool());
-    asyncRun.thenRun(this::asyncHandler);
+
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   private TSInsertRecordsReq genTSInsertRecordsReq(List<String> deviceIds, List<Long> times,
@@ -475,6 +501,7 @@ public class Session {
    */
   public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, valuesList);
@@ -483,7 +510,8 @@ public class Session {
       }
       return null;
     }, asyncThreadPool.getThreadPool());
-    asyncRun.thenRun(this::asyncHandler);
+
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   private TSInsertRecordsReq genTSInsertRecordsReq(List<String> deviceIds, List<Long> times,
@@ -555,6 +583,7 @@ public class Session {
    */
   public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types, List<Object> values) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, types, values);
@@ -563,7 +592,8 @@ public class Session {
       }
       return null;
     }, asyncThreadPool.getThreadPool());
-    asyncRun.thenRun(this::asyncHandler);
+
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   /**
@@ -593,6 +623,7 @@ public class Session {
    */
   public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, values);
@@ -601,11 +632,8 @@ public class Session {
       }
       return null;
     }, asyncThreadPool.getThreadPool());
-    asyncRun.thenRun(this::asyncHandler);
-  }
 
-  private void asyncHandler() {
-    logger.info("Insertion executed successfully.");
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   private TSInsertRecordReq genTSInsertRecordReq(String deviceId, long time, List<String> measurements,

@@ -18,12 +18,17 @@
  */
 package org.apache.iotdb.session.pool;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -75,6 +80,7 @@ public class SessionPool {
   private static int FINAL_RETRY = RETRY - 1;
   private boolean enableCompression = false;
   private SessionThreadPool threadPool;
+  private static final int ASYNC_TIMEOUT = 10;
 
   public SessionPool(String ip, int port, String user, String password, int maxSize) {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, false);
@@ -279,6 +285,7 @@ public class SessionPool {
    * @param tablet data batch
    */
   public void asyncInsertTablet(Tablet tablet, boolean sorted) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablet(tablet, sorted);
@@ -288,7 +295,7 @@ public class SessionPool {
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.thenRun(this::asyncHandler);
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   /**
@@ -341,6 +348,7 @@ public class SessionPool {
    * @param tablets
    */
   public void asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablets(tablets, sorted);
@@ -350,7 +358,7 @@ public class SessionPool {
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.thenRun(this::asyncHandler);
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   /**
@@ -412,6 +420,7 @@ public class SessionPool {
   public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
@@ -421,7 +430,7 @@ public class SessionPool {
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.thenRun(this::asyncHandler);
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   /**
@@ -459,6 +468,7 @@ public class SessionPool {
    */
   public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, valuesList);
@@ -468,7 +478,7 @@ public class SessionPool {
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.thenRun(this::asyncHandler);
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   /**
@@ -506,6 +516,7 @@ public class SessionPool {
    */
   public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types, List<Object> values) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, types, values);
@@ -515,11 +526,7 @@ public class SessionPool {
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.thenRun(this::asyncHandler);
-  }
-
-  private void asyncHandler() {
-    logger.info("Insertion executed successfully.");
+    asyncRun.acceptEither(timeout, this::asyncHandler);
   }
 
   /**
@@ -557,6 +564,7 @@ public class SessionPool {
    */
   public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) {
+    CompletableFuture<Void> timeout = failAfter(Duration.ofSeconds(ASYNC_TIMEOUT));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, values);
@@ -566,7 +574,22 @@ public class SessionPool {
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.thenRun(this::asyncHandler);
+    asyncRun.acceptEither(timeout, this::asyncHandler);
+  }
+
+  private static <T> CompletableFuture<T> failAfter(Duration duration) {
+    ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    CompletableFuture<T> promise = new CompletableFuture<>();
+    scheduler.schedule(() -> {
+      final TimeoutException ex = new TimeoutException("Timeout after " + duration);
+      return promise.completeExceptionally(ex);
+    }, duration.toMillis(), TimeUnit.MILLISECONDS);
+    return promise;
+  }
+
+  private void asyncHandler(Void aVoid) {
+    logger.info("Insertion executed successfully.");
   }
 
   /**
