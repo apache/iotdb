@@ -263,10 +263,25 @@ public class SessionPool {
     insertTablet(tablet, false);
   }
 
-  public void asyncInsertTablet(Tablet tablet) {
+  /**
+   * insert the data of a device in an asynchronous manner.
+   * For each timestamp, the number of measurements is the same.
+   *  a Tablet example:
+   *
+   *        device1
+   *     time s1, s2, s3
+   *     1,   1,  1,  1
+   *     2,   2,  2,  2
+   *     3,   3,  3,  3
+   *
+   * times in Tablet may be not in ascending order
+   *
+   * @param tablet data batch
+   */
+  public void asyncInsertTablet(Tablet tablet, boolean sorted) {
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
-        insertTablet(tablet);
+        insertTablet(tablet, sorted);
       } catch (IoTDBConnectionException | BatchExecutionException e) {
         logger.error("Error occurred when inserting tablets: ", e);
       }
@@ -321,10 +336,14 @@ public class SessionPool {
     insertTablets(tablets, false);
   }
 
-  public void asyncInsertTablets(Map<String, Tablet> tablets) {
+  /**
+   * use batch interface to insert data in an asynchronous manner
+   * @param tablets
+   */
+  public void asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted) {
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
-        insertTablets(tablets);
+        insertTablets(tablets, sorted);
       } catch (IoTDBConnectionException | BatchExecutionException e) {
         logger.error("Error occurred when inserting tablets: ", e);
       }
@@ -383,6 +402,13 @@ public class SessionPool {
     }
   }
 
+  /**
+   * Insert data in batch format asynchronously, which can reduce the overhead of network.
+   * This method is just like jdbc batch insert. If you want to improve your performance,
+   * please see insertTablet method
+   *
+   * @see Session#insertTablet(Tablet)
+   */
   public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList) {
@@ -425,6 +451,27 @@ public class SessionPool {
   }
 
   /**
+   * Insert data in batch format asynchronously, which can reduce the overhead of network.
+   * This method is just like jdbc batch insert, we pack some insert request in batch and send them
+   * to server. If you want to improve your performance, please see insertTablet method
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<String>> valuesList) {
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
+      try {
+        insertRecords(deviceIds, times, measurementsList, valuesList);
+      } catch (IoTDBConnectionException | BatchExecutionException e) {
+        logger.error("Error occurred when inserting tablets: ", e);
+      }
+      return null;
+    }, threadPool.getThreadPool());
+
+    asyncRun.thenRun(this::asyncHandler);
+  }
+
+  /**
    * insert data in one row, if you want improve your performance, please use insertRecords method
    * or insertTablet method
    *
@@ -450,6 +497,13 @@ public class SessionPool {
     }
   }
 
+  /**
+   * insert data in one row asynchronously, if you want improve your performance,
+   * please use insertRecords method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
   public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types, List<Object> values) {
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
@@ -492,6 +546,27 @@ public class SessionPool {
         throw e;
       }
     }
+  }
+
+  /**
+   * insert data in one row asynchronously, if you want improve your performance,
+   * please use insertRecords method or insertTablet method
+   *
+   * @see Session#insertRecords(List, List, List, List, List)
+   * @see Session#insertTablet(Tablet)
+   */
+  public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
+      List<String> values) {
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
+      try {
+        insertRecord(deviceId, time, measurements, values);
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        logger.error("Error occurred when inserting tablets: ", e);
+      }
+      return null;
+    }, threadPool.getThreadPool());
+
+    asyncRun.thenRun(this::asyncHandler);
   }
 
   /**

@@ -151,6 +151,14 @@ public class SessionExample {
       values.add(3L);
       session.insertRecord(deviceId, time, measurements, types, values);
     }
+
+    for (long time = 100; time < 200; time++) {
+      List<Object> values = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      session.asyncInsertRecord(deviceId, time, measurements, types, values);
+    }
   }
 
   private static void insertStrRecord() throws IoTDBConnectionException, StatementExecutionException {
@@ -166,6 +174,14 @@ public class SessionExample {
       values.add("2");
       values.add("3");
       session.insertRecord(deviceId, time, measurements, values);
+    }
+
+    for (long time = 10; time < 20; time++) {
+      List<String> values = new ArrayList<>();
+      values.add("1");
+      values.add("2");
+      values.add("3");
+      session.asyncInsertRecord(deviceId, time, measurements, values);
     }
   }
 
@@ -222,8 +238,33 @@ public class SessionExample {
       }
     }
 
+    for (long time = 500; time < 1000; time++) {
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      typesList.add(types);
+      timestamps.add(time);
+      if (time != 0 && time % 100 == 0) {
+        session.asyncInsertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+        deviceIds.clear();
+        measurementsList.clear();
+        valuesList.clear();
+        timestamps.clear();
+      }
+    }
+
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
+
   /**
    * insert the data of a device. For each timestamp, the number of measurements is the same.
    *
@@ -258,6 +299,19 @@ public class SessionExample {
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
+        tablet.reset();
+      }
+    }
+
+    for (long time = 100; time < 200; time++) {
+      int row = tablet.rowSize++;
+      timestamps[row] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor = (long[]) values[i];
+        sensor[row] = i;
+      }
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        session.asyncInsertTablet(tablet, true);
         tablet.reset();
       }
     }
@@ -308,6 +362,30 @@ public class SessionExample {
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
         session.insertTablets(tabletMap, true);
+
+        tablet1.reset();
+        tablet2.reset();
+        tablet3.reset();
+      }
+    }
+
+    for (long time = 100; time < 200; time++) {
+      int row1 = tablet1.rowSize++;
+      int row2 = tablet2.rowSize++;
+      int row3 = tablet3.rowSize++;
+      timestamps1[row1] = time;
+      timestamps2[row2] = time;
+      timestamps3[row3] = time;
+      for (int i = 0; i < 3; i++) {
+        long[] sensor1 = (long[]) values1[i];
+        sensor1[row1] = i;
+        long[] sensor2 = (long[]) values2[i];
+        sensor2[row2] = i;
+        long[] sensor3 = (long[]) values3[i];
+        sensor3[row3] = i;
+      }
+      if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
+        session.asyncInsertTablets(tabletMap, true);
 
         tablet1.reset();
         tablet2.reset();
