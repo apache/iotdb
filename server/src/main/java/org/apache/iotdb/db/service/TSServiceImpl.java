@@ -1496,7 +1496,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     AtomicInteger globalCnt = new AtomicInteger();
     long startTime = System.currentTimeMillis();
-    int clientNum = 50;
+    int clientNum = Integer.parseInt(args[2]);
     ExecutorService pool = Executors.newFixedThreadPool(clientNum);
     for (int i = 0; i < clientNum; i++) {
       pool.submit(() -> {
