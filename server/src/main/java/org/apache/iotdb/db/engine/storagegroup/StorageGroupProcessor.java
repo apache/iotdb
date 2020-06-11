@@ -1816,6 +1816,12 @@ public class StorageGroupProcessor {
 
       // move modifications generated during merge into the new file
       for (TsFileResource tsFileResource : newFile) {
+        TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName,
+            tsFileResource.getFile().getAbsoluteFile(),
+            getVersionControllerByTimePartitionId(tsFileResource.getTimePartition()),
+            this::closeUnsealedTsFileProcessorCallBack,
+            this::updateLatestFlushTimeCallback, true);
+        tsFileResource.setProcessor(tsFileProcessor);
         if (mergingModification != null) {
           logger.info("{} is updating the merged file's modification file", storageGroupName);
           for (Modification modification : mergingModification.getModifications()) {
