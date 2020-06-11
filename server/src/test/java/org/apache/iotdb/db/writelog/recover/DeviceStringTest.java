@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -27,19 +26,13 @@ import java.io.IOException;
 import java.util.Collections;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
-import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -86,6 +79,7 @@ public class DeviceStringTest {
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     writer = new TsFileWriter(tsF, schema);
 
+    resource = new TsFileResource(tsF);
     TSRecord tsRecord = new TSRecord(100, "root.sg.device99");
     tsRecord.addTuple(DataPoint.getDataPoint(TSDataType.INT64, "sensor4", String.valueOf(0)));
     writer.write(tsRecord);
@@ -95,8 +89,9 @@ public class DeviceStringTest {
 
     writer.flushAllChunkGroups();
     writer.getIOWriter().close();
-
-    resource = new TsFileResource(tsF);
+    resource.putStartTime(new String("root.sg.device99"), 2);
+    resource.putEndTime(new String("root.sg.device99"), 100);
+    resource.close();
     resource.serialize();
   }
 
@@ -108,13 +103,7 @@ public class DeviceStringTest {
   }
 
   @Test
-  public void testDeviceString() throws StorageGroupProcessorException, IOException, MetadataException {
-    resource.deserialize();
-    assertTrue(!resource.getDeviceToIndexMap().keySet().isEmpty());
-    resource.serialize();
-    resource = null;
-    mManager.clear();
-    mManager.init();
+  public void testDeviceString() throws IOException {
     resource = new TsFileResource(tsF);
     resource.deserialize();
     assertTrue(!resource.getDeviceToIndexMap().keySet().isEmpty());

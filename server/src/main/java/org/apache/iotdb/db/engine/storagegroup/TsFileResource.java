@@ -421,6 +421,8 @@ public class TsFileResource {
     }
     else {
       index = deviceToIndex.size();
+      // To reduce the String number in memory, use the deviceId from MManager
+      deviceId = MManager.getInstance().getDeviceId(deviceId);
       deviceToIndex.put(deviceId, index);
       if (startTimes.length <= index) {
         startTimes = enLargeArray(startTimes, Long.MAX_VALUE);
@@ -437,6 +439,8 @@ public class TsFileResource {
     }
     else {
       index = deviceToIndex.size();
+      // To reduce the String number in memory, use the deviceId from MManager
+      deviceId = MManager.getInstance().getDeviceId(deviceId);
       deviceToIndex.put(deviceId, index);
       if (endTimes.length <= index) {
         startTimes = enLargeArray(startTimes, Long.MAX_VALUE);

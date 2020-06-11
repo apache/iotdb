@@ -138,9 +138,7 @@ public class MManager {
       public MNode loadObjectByKey(String key) throws CacheException {
         lock.readLock().lock();
         try {
-          MNode node = mtree.getNodeByPathWithStorageGroupCheck(key);
-          node.setFullPath(key);
-          return node;
+          return mtree.getNodeByPathWithStorageGroupCheck(key);
         } catch (MetadataException e) {
           throw new CacheException(e);
         } finally {
@@ -1071,7 +1069,7 @@ public class MManager {
       deviceNode = getDeviceNode(path);
       path = deviceNode.getFullPath();
     } catch (MetadataException | NullPointerException e) {
-      // Cannot get deviceId from MManager, return deviceId read from disk
+      // Cannot get deviceId from MManager, return the input deviceId
     }
     return path;
   }
