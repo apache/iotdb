@@ -312,4 +312,6 @@ service TSIService {
 	TSStatus deleteData(1:TSDeleteDataReq req);
 
 	i64 requestStatementId(1:i64 sessionId);
+
+  i64 requestCommitId(1:i64 headerId)
 }
