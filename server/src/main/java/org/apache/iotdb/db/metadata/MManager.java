@@ -1040,6 +1040,37 @@ public class MManager {
         path, config.isAutoCreateSchemaEnabled(), config.getDefaultStorageGroupLevel());
   }
 
+  public MNode getDeviceNode(String path) throws MetadataException {
+    lock.readLock().lock();
+    MNode node = null;
+    try {
+      node = mNodeCache.get(path);
+      return node;
+    } catch (CacheException e) {
+      throw new PathNotExistException(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * To reduce the String number in memory, 
+   * use the deviceId from MManager instead of the deviceId read from disk
+   * 
+   * @param deviceId read from disk
+   * @return deviceId
+   */
+  public String getDeviceId(String path) {
+    MNode deviceNode = null;
+    try {
+      deviceNode = getDeviceNode(path);
+      path = deviceNode.getFullPath();
+    } catch (MetadataException | NullPointerException e) {
+      // Cannot get deviceId from MManager, return the input deviceId
+    }
+    return path;
+  }
+
   public MNode getChild(MNode parent, String child) {
     lock.readLock().lock();
     try {

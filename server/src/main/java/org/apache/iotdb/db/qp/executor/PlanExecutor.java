@@ -918,6 +918,8 @@ public class PlanExecutor implements IPlanExecutor {
     MNode node = null;
     try {
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      // To reduce the String number in memory, set the deviceId from MManager to insertPlan
+      insertPlan.setDeviceId(node.getFullPath());
     } catch (PathNotExistException e) {
       // ignore
     }
@@ -1083,6 +1085,9 @@ public class PlanExecutor implements IPlanExecutor {
       String[] measurementList = insertTabletPlan.getMeasurements();
       String deviceId = insertTabletPlan.getDeviceId();
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      // To reduce the String number in memory, use the deviceId from MManager
+      deviceId = node.getFullPath();
+      insertTabletPlan.setDeviceId(deviceId);
       TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
