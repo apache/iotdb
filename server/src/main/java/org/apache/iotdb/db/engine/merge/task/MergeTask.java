@@ -35,9 +35,8 @@ import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -46,10 +45,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
- * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
- *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
- *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
- *        3. remove unseqFiles
+ * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
+ * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
+ * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
  */
 public class MergeTask implements Callable<Void> {
 
@@ -92,14 +90,15 @@ public class MergeTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
-    try  {
+    try {
       doMerge();
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
       cleanUp(false);
       // call the callback to make sure the StorageGroup exit merging status, but passing 2
       // empty file lists to avoid files being deleted.
-      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
+      callback.call(Collections.emptyList(), Collections.emptyList(),
+          new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
       throw e;
     }
     return null;
@@ -121,7 +120,7 @@ public class MergeTask implements Callable<Void> {
     Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<Path> unmergedSeries = new ArrayList<>();
     for (String device : devices) {
-      InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
+      MNode deviceNode = MManager.getInstance().getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
         Path path = new Path(device, entry.getKey());
         measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
@@ -132,8 +131,8 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
-        fullMerge, unmergedSeries, concurrentMergeSeriesNum);
+    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
+        mergeLogger, resource, fullMerge, unmergedSeries, concurrentMergeSeriesNum);
     mergeChunkTask.mergeSeries();
 
     MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,

@@ -18,7 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-public class StorageGroupMNode extends InternalMNode {
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.iotdb.db.metadata.MetadataConstant;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+public class StorageGroupMNode extends MNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -27,7 +35,6 @@ public class StorageGroupMNode extends InternalMNode {
    * be eventually deleted.
    */
   private long dataTTL;
-
 
   public StorageGroupMNode(MNode parent, String name, long dataTTL) {
     super(parent, name);
@@ -43,4 +50,37 @@ public class StorageGroupMNode extends InternalMNode {
     this.dataTTL = dataTTL;
   }
 
+  @Override
+  public void serializeTo(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(MetadataConstant.STORAGE_GROUP_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(name, outputStream);
+    ReadWriteIOUtils.write(dataTTL, outputStream);
+
+    serializeChildren(outputStream);
+  }
+
+  public static StorageGroupMNode deserializeFrom(InputStream inputStream, MNode parent)
+      throws IOException {
+    String name = ReadWriteIOUtils.readString(inputStream);
+    StorageGroupMNode node = new StorageGroupMNode(parent, name,
+        ReadWriteIOUtils.readLong(inputStream));
+
+    int childrenSize = ReadWriteIOUtils.readInt(inputStream);
+    Map<String, MNode> children = new HashMap<>();
+    for (int i = 0; i < childrenSize; i++) {
+      children.put(ReadWriteIOUtils.readString(inputStream),
+          MNode.deserializeFrom(inputStream, node));
+    }
+    node.setChildren(children);
+
+    int aliasChildrenSize = ReadWriteIOUtils.readInt(inputStream);
+    Map<String, MNode> aliasChildren = new HashMap<>();
+    for (int i = 0; i < aliasChildrenSize; i++) {
+      children.put(ReadWriteIOUtils.readString(inputStream),
+          MNode.deserializeFrom(inputStream, node));
+    }
+    node.setAliasChildren(aliasChildren);
+
+    return node;
+  }
 }

@@ -18,18 +18,23 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
-import java.util.Map;
 
 /**
  * Represents an (Internal-)MNode which has a Measurement or Sensor attached to it.
  */
-public class MeasurementMNode extends InternalMNode {
+public class MeasurementMNode extends MNode {
 
   private static final long serialVersionUID = -1199657856921206435L;
 
@@ -47,9 +52,16 @@ public class MeasurementMNode extends InternalMNode {
    * @param alias alias of measurementName
    */
   public MeasurementMNode(MNode parent, String measurementName, String alias, TSDataType dataType,
-                          TSEncoding encoding, CompressionType type, Map<String, String> props) {
+      TSEncoding encoding, CompressionType type, Map<String, String> props) {
     super(parent, measurementName);
     this.schema = new MeasurementSchema(measurementName, dataType, encoding, type, props);
+    this.alias = alias;
+  }
+
+  public MeasurementMNode(MNode parent, String measurementName, MeasurementSchema schema,
+      String alias) {
+    super(parent, measurementName);
+    this.schema = schema;
     this.alias = alias;
   }
 
@@ -63,7 +75,9 @@ public class MeasurementMNode extends InternalMNode {
 
   public synchronized void updateCachedLast(
       TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
-    if (timeValuePair == null || timeValuePair.getValue() == null) return;
+    if (timeValuePair == null || timeValuePair.getValue() == null) {
+      return;
+    }
 
     if (cachedLastValuePair == null) {
       // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will update cache.
@@ -73,7 +87,7 @@ public class MeasurementMNode extends InternalMNode {
       }
     } else if (timeValuePair.getTimestamp() > cachedLastValuePair.getTimestamp()
         || (timeValuePair.getTimestamp() == cachedLastValuePair.getTimestamp()
-            && highPriorityUpdate)) {
+        && highPriorityUpdate)) {
       cachedLastValuePair.setTimestamp(timeValuePair.getTimestamp());
       cachedLastValuePair.setValue(timeValuePair.getValue());
     }
@@ -102,5 +116,53 @@ public class MeasurementMNode extends InternalMNode {
 
   public void setAlias(String alias) {
     this.alias = alias;
+  }
+
+  public void setSchema(MeasurementSchema schema) {
+    this.schema = schema;
+  }
+
+  @Override
+  public void serializeTo(OutputStream outputStream) throws IOException {
+    ReadWriteIOUtils.write(MetadataConstant.MEASUREMENT_MNODE_TYPE, outputStream);
+    ReadWriteIOUtils.write(name, outputStream);
+
+    ReadWriteIOUtils.writeIsNull(alias, outputStream);
+    if (alias != null) {
+      ReadWriteIOUtils.write(alias, outputStream);
+    }
+    schema.serializeTo(outputStream);
+    ReadWriteIOUtils.write(offset, outputStream);
+    serializeChildren(outputStream);
+  }
+
+  public static MeasurementMNode deserializeFrom(InputStream inputStream, MNode parent)
+      throws IOException {
+    String name = ReadWriteIOUtils.readString(inputStream);
+    String alias = null;
+    if (!ReadWriteIOUtils.readIsNull(inputStream)) {
+      alias = ReadWriteIOUtils.readString(inputStream);
+    }
+    MeasurementMNode node = new MeasurementMNode(parent, name,
+        MeasurementSchema.deserializeFrom(inputStream), alias);
+    node.setOffset(ReadWriteIOUtils.readLong(inputStream));
+
+    int childrenSize = ReadWriteIOUtils.readInt(inputStream);
+    Map<String, MNode> children = new HashMap<>();
+    for (int i = 0; i < childrenSize; i++) {
+      children
+          .put(ReadWriteIOUtils.readString(inputStream), MNode.deserializeFrom(inputStream, node));
+    }
+    node.setChildren(children);
+
+    int aliasChildrenSize = ReadWriteIOUtils.readInt(inputStream);
+    Map<String, MNode> aliasChildren = new HashMap<>();
+    for (int i = 0; i < aliasChildrenSize; i++) {
+      children
+          .put(ReadWriteIOUtils.readString(inputStream), MNode.deserializeFrom(inputStream, node));
+    }
+    node.setAliasChildren(aliasChildren);
+
+    return node;
   }
 }
