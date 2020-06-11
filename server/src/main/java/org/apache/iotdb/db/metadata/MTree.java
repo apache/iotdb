@@ -365,13 +365,6 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get device node, if the give path is not a device, throw exception
-   */
-  MNode getDeviceNode(String path) throws MetadataException {
-    return getNodeByPath(path);
-  }
-
-  /**
    * Get node by the path
    *
    * @return last node in given seriesPath
@@ -467,7 +460,7 @@ public class MTree implements Serializable {
       MNode current = nodeStack.pop();
       if (current instanceof StorageGroupMNode) {
         ret.add((StorageGroupMNode) current);
-      } else if (current instanceof MNode) {
+      } else {
         nodeStack.addAll(current.getChildren().values());
       }
     }
@@ -616,10 +609,8 @@ public class MTree implements Serializable {
       return 1;
     }
     int cnt = 0;
-    if (node instanceof MNode) {
-      for (MNode child : node.getChildren().values()) {
-        cnt += getCountInGivenLevel(child, targetLevel - 1);
-      }
+    for (MNode child : node.getChildren().values()) {
+      cnt += getCountInGivenLevel(child, targetLevel - 1);
     }
     return cnt;
   }
@@ -746,7 +737,7 @@ public class MTree implements Serializable {
             parent + node.getName() + PATH_SEPARATOR, res, length);
       }
     } else {
-      if (node instanceof MNode && node.getChildren().size() > 0) {
+      if (node.getChildren().size() > 0) {
         for (MNode child : node.getChildren().values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
             continue;
@@ -788,10 +779,10 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to match all devices with prefix path.
    *
-   * @param node   the current traversing node
-   * @param nodes  split the prefix path with '.'
-   * @param idx    the current index of array nodes
-   * @param res    store all matched device names
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
+   * @param res store all matched device names
    */
   private void findDevices(MNode node, String[] nodes, int idx, Set<String> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
@@ -849,10 +840,8 @@ public class MTree implements Serializable {
       res.add(path);
       return;
     }
-    if (node instanceof MNode) {
-      for (MNode child : node.getChildren().values()) {
-        findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1);
-      }
+    for (MNode child : node.getChildren().values()) {
+      findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1);
     }
   }
 

@@ -21,8 +21,6 @@ package org.apache.iotdb.db.metadata.mnode;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -30,7 +28,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
@@ -140,22 +137,6 @@ public class MeasurementMNode extends MNode {
     bw.write(s);
     bw.newLine();
     serializeChildren(bw);
-  }
-
-  public void serializeTo1(OutputStream outputStream) throws IOException {
-    String s = String.valueOf(MetadataConstant.MEASUREMENT_MNODE_TYPE);
-    s += "," + name + ",";
-    if (alias != null) {
-      s += alias;
-    }
-    s += "," + schema.getType().name() + ",";
-    s += schema.getEncodingType().name() + ",";
-    s += schema.getCompressor().name() + ",";
-    s += offset + ",";
-    s += children.size() + ",";
-    s += aliasChildren == null ? 0 : aliasChildren.size();
-    ReadWriteIOUtils.write(s, outputStream);
-    serializeChildren1(outputStream);
   }
 
   public static MeasurementMNode deserializeFrom(BufferedReader br, String[] nodeInfo,

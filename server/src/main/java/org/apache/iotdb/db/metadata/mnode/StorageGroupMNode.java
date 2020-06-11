@@ -21,11 +21,9 @@ package org.apache.iotdb.db.metadata.mnode;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 public class StorageGroupMNode extends MNode {
 
@@ -61,16 +59,6 @@ public class StorageGroupMNode extends MNode {
     bw.write(s);
     bw.newLine();
     serializeChildren(bw);
-  }
-
-  public void serializeTo1(OutputStream outputStream) throws IOException {
-    String s = String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
-    s += "," + name + ",";
-    s += dataTTL + ",";
-    s += children.size() + ",";
-    s += aliasChildren == null ? 0 : aliasChildren.size();
-    ReadWriteIOUtils.write(s, outputStream);
-    serializeChildren1(outputStream);
   }
 
   public static StorageGroupMNode deserializeFrom(BufferedReader br, String[] nodeInfo,

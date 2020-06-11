@@ -23,7 +23,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -203,15 +202,6 @@ public class MNode implements Serializable {
     this.aliasChildren = aliasChildren;
   }
 
-  public void serializeTo1(OutputStream outputStream) throws IOException {
-    String s = String.valueOf(MetadataConstant.MNODE_TYPE);
-    s += "," + name + ",";
-    s += children.size() + ",";
-    s += aliasChildren == null ? 0 : aliasChildren.size();
-    ReadWriteIOUtils.write(s, outputStream);
-    serializeChildren1(outputStream);
-  }
-
   public void serializeTo(BufferedWriter bw) throws IOException {
     String s = String.valueOf(MetadataConstant.MNODE_TYPE);
     s += "," + name + ",";
@@ -229,17 +219,6 @@ public class MNode implements Serializable {
     if (aliasChildren != null) {
       for (Entry<String, MNode> entry : aliasChildren.entrySet()) {
         entry.getValue().serializeTo(bw);
-      }
-    }
-  }
-
-  void serializeChildren1(OutputStream outputStream) throws IOException {
-    for (Entry<String, MNode> entry : children.entrySet()) {
-      entry.getValue().serializeTo1(outputStream);
-    }
-    if (aliasChildren != null) {
-      for (Entry<String, MNode> entry : aliasChildren.entrySet()) {
-        entry.getValue().serializeTo1(outputStream);
       }
     }
   }
