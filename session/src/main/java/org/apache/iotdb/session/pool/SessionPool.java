@@ -20,6 +20,7 @@ package org.apache.iotdb.session.pool;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentMap;
@@ -263,13 +264,16 @@ public class SessionPool {
   }
 
   public void asyncInsertTablet(Tablet tablet) {
-    threadPool.submit(() -> {
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablet(tablet);
-      } catch (BatchExecutionException | IoTDBConnectionException e) {
-        e.printStackTrace();
+      } catch (IoTDBConnectionException | BatchExecutionException e) {
+        logger.error("Error occurred when inserting tablets: ", e);
       }
-    });
+      return null;
+    }, threadPool.getThreadPool());
+
+    asyncRun.thenRun(this::asyncHandler);
   }
 
   /**
@@ -318,13 +322,16 @@ public class SessionPool {
   }
 
   public void asyncInsertTablets(Map<String, Tablet> tablets) {
-    threadPool.submit(() -> {
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablets(tablets);
-      } catch (BatchExecutionException | IoTDBConnectionException e) {
-        e.printStackTrace();
+      } catch (IoTDBConnectionException | BatchExecutionException e) {
+        logger.error("Error occurred when inserting tablets: ", e);
       }
-    });
+      return null;
+    }, threadPool.getThreadPool());
+
+    asyncRun.thenRun(this::asyncHandler);
   }
 
   /**
@@ -379,13 +386,16 @@ public class SessionPool {
   public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList) {
-    threadPool.submit(() -> {
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } catch (BatchExecutionException | IoTDBConnectionException e) {
-        e.printStackTrace();
+      } catch (IoTDBConnectionException | BatchExecutionException e) {
+        logger.error("Error occurred when inserting tablets: ", e);
       }
-    });
+      return null;
+    }, threadPool.getThreadPool());
+
+    asyncRun.thenRun(this::asyncHandler);
   }
 
   /**
@@ -442,13 +452,20 @@ public class SessionPool {
 
   public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
       List<TSDataType> types, List<Object> values) {
-    threadPool.submit(() -> {
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, types, values);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
-        e.printStackTrace();
+        logger.error("Error occurred when inserting tablets: ", e);
       }
-    });
+      return null;
+    }, threadPool.getThreadPool());
+
+    asyncRun.thenRun(this::asyncHandler);
+  }
+
+  private void asyncHandler() {
+    logger.info("Insertion executed successfully.");
   }
 
   /**
