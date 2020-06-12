@@ -28,12 +28,14 @@ import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.session.Config;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SessionThreadPool {
 
+  private static final Logger logger = LoggerFactory.getLogger(SessionThreadPool.class);
   private ExecutorService pool;
   private BlockingQueue<Runnable> threadQueue;
-  private static final int WAIT_TIMEOUT = 10000;
 
   public SessionThreadPool() {
     threadQueue = new LinkedBlockingQueue<Runnable>(Config.DEFAULT_BLOCKING_QUEUE_SIZE);
@@ -66,10 +68,10 @@ public class SessionThreadPool {
     public void rejectedExecution(Runnable r, ThreadPoolExecutor executor) {
       try {
         synchronized (r) {
-          r.wait(WAIT_TIMEOUT);
+          r.wait(Config.DEFAULT_THREAD_WAIT_TIME);
         }
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        logger.error("Interrupted while insertion thread is waiting:", e);
       }
     }
   }
