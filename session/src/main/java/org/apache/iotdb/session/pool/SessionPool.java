@@ -293,7 +293,10 @@ public class SessionPool {
       } catch (IoTDBConnectionException | BatchExecutionException e) {
         logger.error("Error occurred when inserting tablets: ", e);
       }
-      return new Pair<>(tablet.deviceId, tablet.timestamps[0]);
+      if (tablet.rowSize > 0) {
+        return new Pair<>(tablet.deviceId, tablet.timestamps[0]);
+      }
+      return null;
     }, threadPool.getThreadPool());
 
     asyncRun.acceptEither(timeout, this::asyncHandler);
@@ -430,7 +433,10 @@ public class SessionPool {
       } catch (IoTDBConnectionException | BatchExecutionException e) {
         logger.error("Error occurred when inserting tablets: ", e);
       }
-      return new Pair<>(deviceIds.get(0), times.get(0));
+      if (!deviceIds.isEmpty()) {
+        return new Pair<>(deviceIds.get(0), times.get(0));
+      }
+      return null;
     }, threadPool.getThreadPool());
 
     asyncRun.acceptEither(timeout, this::asyncHandler);
@@ -479,7 +485,10 @@ public class SessionPool {
       } catch (IoTDBConnectionException | BatchExecutionException e) {
         logger.error("Error occurred when inserting tablets: ", e);
       }
-      return new Pair<>(deviceIds.get(0), times.get(0));
+      if (!deviceIds.isEmpty()) {
+        return new Pair<>(deviceIds.get(0), times.get(0));
+      }
+      return null;
     }, threadPool.getThreadPool());
 
     asyncRun.acceptEither(timeout, this::asyncHandler);
