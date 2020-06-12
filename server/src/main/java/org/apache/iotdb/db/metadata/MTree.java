@@ -787,7 +787,7 @@ public class MTree implements Serializable {
       throw new IllegalPathException(prefixPath);
     }
     Set<String> devices = new TreeSet<>();
-    findDevices(root, nodes, 1, "", devices);
+    findDevices(root, nodes, 1, devices);
     return devices;
   }
 
@@ -797,28 +797,26 @@ public class MTree implements Serializable {
    * @param node   the current traversing node
    * @param nodes  split the prefix path with '.'
    * @param idx    the current index of array nodes
-   * @param parent store the node string having traversed
    * @param res    store all matched device names
    */
-  private void findDevices(MNode node, String[] nodes, int idx, String parent, Set<String> res) {
+  private void findDevices(MNode node, String[] nodes, int idx, Set<String> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
     if (!(PATH_WILDCARD).equals(nodeReg)) {
       if (node.hasChild(nodeReg)) {
         if (node.getChild(nodeReg) instanceof LeafMNode) {
-          res.add(parent + node.getName());
+          res.add(node.getFullPath());
         } else {
-          findDevices(node.getChild(nodeReg), nodes, idx + 1,
-              parent + node.getName() + PATH_SEPARATOR, res);
+          findDevices(node.getChild(nodeReg), nodes, idx + 1, res);
         }
       }
     } else {
       boolean deviceAdded = false;
       for (MNode child : node.getChildren().values()) {
         if (child instanceof LeafMNode && !deviceAdded) {
-          res.add(parent + node.getName());
+          res.add(node.getFullPath());
           deviceAdded = true;
         } else if (!(child instanceof LeafMNode)) {
-          findDevices(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR, res);
+          findDevices(child, nodes, idx + 1, res);
         }
       }
     }
