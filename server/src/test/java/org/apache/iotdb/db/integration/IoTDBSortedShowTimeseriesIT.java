@@ -154,7 +154,7 @@ public class IoTDBSortedShowTimeseriesIT {
       }
       assertEquals(retArray1.length, count);
 
-      hasResultSet = statement.execute("show timeseries order by heat");
+      hasResultSet = statement.execute("show LATEST timeseries");
       Assert.assertTrue(hasResultSet);
       resultSet = statement.getResultSet();
       count = 0;
@@ -200,7 +200,7 @@ public class IoTDBSortedShowTimeseriesIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("show timeseries order by heat limit 5");
+      boolean hasResultSet = statement.execute("show LATEST timeseries limit 5");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;
@@ -243,7 +243,7 @@ public class IoTDBSortedShowTimeseriesIT {
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("show timeseries where unit=cores order by heat");
+      boolean hasResultSet = statement.execute("show LATEST timeseries where unit=cores");
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int count = 0;

@@ -69,7 +69,7 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | SHOW TIMESERIES prefixPath? showWhereClause? orderByHeatClause? limitClause? #showTimeseries
+    | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
@@ -166,10 +166,6 @@ showWhereClause
     ;
 containsExpression
     : name=ID OPERATOR_CONTAINS value=propertyValue
-    ;
-
-orderByHeatClause
-    : ORDER BY HEAT
     ;
 
 orExpression
@@ -882,12 +878,8 @@ FALSE
     : F A L S E
     ;
 
-ORDER
-    : O R D E R
-    ;
-
-HEAT
-    : H E A T
+LATEST
+    : L A T E S T
     ;
 
 //============================
