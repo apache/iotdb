@@ -105,7 +105,8 @@ public class SchemaUtils {
       List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = getAggregationType(aggregations.get(i));
+      String aggrStr = aggregations != null ? aggregations.get(i) : null ;
+      TSDataType dataType = getAggregationType(aggrStr);
       if (dataType != null) {
         tsDataTypes.add(dataType);
       } else {
