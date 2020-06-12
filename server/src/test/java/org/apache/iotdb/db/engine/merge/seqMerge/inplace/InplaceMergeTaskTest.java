@@ -45,7 +45,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class MergeTaskTest extends MergeTest {
+public class InplaceMergeTaskTest extends MergeTest {
 
   private File tempSGDir;
 

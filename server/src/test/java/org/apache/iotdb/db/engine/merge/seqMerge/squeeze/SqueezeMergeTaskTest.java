@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.MergeTest;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.squeeze.task.SqueezeMergeTask;
@@ -45,22 +46,27 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class MergeTaskTest extends MergeTest {
+public class SqueezeMergeTaskTest extends MergeTest {
 
   private File tempSGDir;
+  private MergeSizeSelectorStrategy preMergeSizeSelectorStrategy;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
+    preMergeSizeSelectorStrategy = IoTDBDescriptor.getInstance().getConfig()
+        .getMergeSizeSelectorStrategy();
     IoTDBDescriptor.getInstance().getConfig().setMergeSizeSelectorStrategy(
         MergeSizeSelectorStrategy.TIME_RANGE);
-    tempSGDir = new File("tempSG");
+    tempSGDir = new File(TestConstant.BASE_OUTPUT_PATH.concat("tempSG"));
     tempSGDir.mkdirs();
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+    IoTDBDescriptor.getInstance().getConfig().setMergeSizeSelectorStrategy(
+        preMergeSizeSelectorStrategy);
     FileUtils.deleteDirectory(tempSGDir);
   }
 

@@ -61,7 +61,6 @@ public abstract class BaseFileSelector implements IMergeFileSelector {
 
   public Pair<MergeResource, SelectorContext> select() throws MergeException {
     selectorContext.setStartTime(System.currentTimeMillis());
-    MergeResource resource = new MergeResource();
     try {
       logger.info("Selecting merge candidates from {} seqFile, {} unseqFiles", seqFiles.size(),
           unseqFiles.size());

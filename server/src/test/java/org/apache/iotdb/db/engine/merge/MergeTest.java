@@ -26,15 +26,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -72,7 +71,7 @@ public abstract class MergeTest {
 
   @Before
   public void setUp()
-      throws IOException, WriteProcessException, MetadataException, MetadataException {
+      throws IOException, WriteProcessException, MetadataException {
     MManager.getInstance().init();
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getChunkMergePointThreshold();
@@ -165,8 +164,7 @@ public abstract class MergeTest {
   }
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum,
-      long valueOffset)
-      throws IOException, WriteProcessException {
+      long valueOffset) throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getFile());
     for (String deviceId : deviceIds) {
       for (MeasurementSchema measurementSchema : measurementSchemas) {

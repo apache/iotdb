@@ -31,7 +31,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-public class MergePerfTest extends MergeTest {
+public class InplaceMergePerfTest extends MergeTest {
 
   private long timeConsumption;
   private boolean fullMerge;
@@ -58,7 +58,7 @@ public class MergePerfTest extends MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(-1);
 
     List<Long> timeConsumptions = new ArrayList<>();
-    MergePerfTest perfTest = new MergePerfTest();
+    InplaceMergePerfTest perfTest = new InplaceMergePerfTest();
 
     perfTest.seqFileNum = 5;
     perfTest.unseqFileNum = 5;

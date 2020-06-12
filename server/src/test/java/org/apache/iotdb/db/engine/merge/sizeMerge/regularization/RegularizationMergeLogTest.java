@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.merge.seqMerge.inplace;
+package org.apache.iotdb.db.engine.merge.sizeMerge.regularization;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -28,11 +28,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.merge.MergeTest;
-import org.apache.iotdb.db.engine.merge.seqMerge.inplace.task.InplaceMergeTask;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -41,9 +40,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class MergeLogTest extends MergeTest {
+public class RegularizationMergeLogTest extends MergeTest {
 
-  File tempSGDir;
+  private File tempSGDir;
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
@@ -56,16 +55,14 @@ public class MergeLogTest extends MergeTest {
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
     FileUtils.deleteDirectory(tempSGDir);
-    FileUtils.deleteDirectory(tempSGDir);
   }
 
   @Test
   public void testMergeLog() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setChunkMergePointThreshold(Integer.MAX_VALUE);
-    InplaceMergeTask mergeTask =
-        new InplaceMergeTask(
-            new MergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
-            tempSGDir.getPath(), this::testCallBack, "test", false, MERGE_TEST_SG);
+    RegularizationMergeTask mergeTask =
+        new RegularizationMergeTask(
+            new MergeResource(seqResources),
+            tempSGDir.getPath(), this::testCallBack, "test", MERGE_TEST_SG);
     mergeTask.call();
   }
 
@@ -76,12 +73,21 @@ public class MergeLogTest extends MergeTest {
       String line;
       while ((line = bufferedReader.readLine()) != null) {
         lineCnt++;
+        System.out.println(line);
       }
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertEquals(39, lineCnt);
+    assertEquals(3, lineCnt);
+    try {
+      for (TsFileResource fileResource : newFile) {
+        fileResource.close();
+        fileResource.remove();
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
 }
