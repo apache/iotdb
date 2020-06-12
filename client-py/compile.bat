@@ -18,7 +18,7 @@
 @REM
 
 @echo off
-set THRIFT_EXE=D:\software\Thrift\thrift-0.13.0.exe
+set THRIFT_EXE=D:\IoTDB\IoTDB-development\incubator-iotdb\client-py\thrift-0.13.0.exe
 set BAT_DIR=%~dp0
 set THRIFT_SCRIPT=%BAT_DIR%..\service-rpc\src\main\thrift\rpc.thrift
 set THRIFT_OUT=%BAT_DIR%target\iotdb
