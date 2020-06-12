@@ -65,21 +65,4 @@ public class RegisterManager {
     iServices.clear();
     logger.info("deregister all service.");
   }
-
-  /**
-   * For test only
-   */
-  public void testDeregisterAll() {
-    //we stop JMXServer at last
-    Collections.reverse(iServices);
-    for (IService service : iServices) {
-      try {
-        service.testStop();
-      } catch (Exception e) {
-        logger.error("Failed to stop {} because:", service.getID().getName(), e);
-      }
-    }
-    iServices.clear();
-    logger.info("deregister all service.");
-  }
 }

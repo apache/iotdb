@@ -780,15 +780,14 @@ public class TsFileProcessor {
     this.timeRangeId = timeRangeId;
   }
 
-  /**
-   * For test only
-   * @throws IOException 
-   */
-  public void testClose() throws IOException {
-    for (IMemTable memTable : flushingMemTables) {
-      MemTablePool.getInstance().putBack(memTable, storageGroupName);
+  public void putMemTableBackAndClose() throws TsFileProcessorException {
+    workMemTable.release();
+    MemTablePool.getInstance().putBack(workMemTable, storageGroupName);
+    try {
+      writer.close();
+    } catch (IOException e) {
+      throw new TsFileProcessorException(e);
     }
-    writer.close();
     writer = null;
   }
 }

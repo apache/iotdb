@@ -213,12 +213,6 @@ public class EnvironmentUtils {
     }
   }
 
-  public static void stopWithoutCloseFilesDaemon() {
-    if(daemon != null) {
-      daemon.testStop();
-    }
-  }
-
   public static void activeDaemon() {
     if(daemon != null) {
       daemon.active();

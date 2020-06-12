@@ -157,7 +157,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
     }
 
-    EnvironmentUtils.stopWithoutCloseFilesDaemon();
+    EnvironmentUtils.stopDaemon();
     EnvironmentUtils.activeDaemon();
 
     try (Connection connection = DriverManager
@@ -168,7 +168,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(4,2)");
     }
 
-    EnvironmentUtils.stopWithoutCloseFilesDaemon();
+    EnvironmentUtils.stopDaemon();
     EnvironmentUtils.activeDaemon();
 
     try (Connection connection = DriverManager
@@ -211,7 +211,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
     }
 
-    EnvironmentUtils.stopWithoutCloseFilesDaemon();
+    EnvironmentUtils.stopDaemon();
     EnvironmentUtils.activeDaemon();
 
     try (Connection connection = DriverManager
@@ -222,7 +222,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s2) values(2,2)");
     }
 
-    EnvironmentUtils.stopWithoutCloseFilesDaemon();
+    EnvironmentUtils.stopDaemon();
     EnvironmentUtils.activeDaemon();
 
     try (Connection connection = DriverManager

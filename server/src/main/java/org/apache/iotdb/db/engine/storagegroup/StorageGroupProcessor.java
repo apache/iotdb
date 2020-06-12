@@ -1178,22 +1178,22 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void testAsyncCloseAllWorkingTsFileProcessors() {
+  public void forceCloseAllWorkingTsFileProcessors() {
     writeLock();
     try {
-      logger.info("async force close all files in storage group: {}", storageGroupName);
+      logger.info("force close all processors in storage group: {}", storageGroupName);
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor : new ArrayList<>(
           workSequenceTsFileProcessors.values())) {
-        tsFileProcessor.testClose();
+        tsFileProcessor.putMemTableBackAndClose();
       }
       // to avoid concurrent modification problem, we need a new array list
       for (TsFileProcessor tsFileProcessor : new ArrayList<>(
           workUnsequenceTsFileProcessors.values())) {
-        tsFileProcessor.testClose();
+        tsFileProcessor.putMemTableBackAndClose();
       }
-    } catch (IOException e) {
-      logger.error("error when closing TsFileProcessors in storage group: {}", storageGroupName, e);
+    } catch (TsFileProcessorException e) {
+      logger.error("error when force closing TsFileProcessors in storage group: {}", storageGroupName, e);
     } finally {
       writeUnlock();
     }

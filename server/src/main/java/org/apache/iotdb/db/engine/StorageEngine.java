@@ -213,7 +213,7 @@ public class StorageEngine implements IService {
 
   @Override
   public void stop() {
-    syncCloseAllProcessor();
+    forceCloseAllProcessor();
     if (ttlCheckThread != null) {
       ttlCheckThread.shutdownNow();
       try {
@@ -221,22 +221,6 @@ public class StorageEngine implements IService {
       } catch (InterruptedException e) {
         logger.warn("TTL check thread still doesn't exit after 30s");
       }
-    }
-    recoveryThreadPool.shutdownNow();
-    this.reset();
-  }
-
-  /**
-   *  For test only
-   */
-  @Override
-  public void testStop() {
-    logger.info("Start closing all storage group processor");
-    for (StorageGroupProcessor processor : processorMap.values()) {
-      processor.testAsyncCloseAllWorkingTsFileProcessors();
-    }
-    if (ttlCheckThread != null) {
-      ttlCheckThread.shutdownNow();
     }
     recoveryThreadPool.shutdownNow();
     this.reset();
@@ -331,6 +315,13 @@ public class StorageEngine implements IService {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.syncCloseAllWorkingTsFileProcessors();
+    }
+  }
+
+  public void forceCloseAllProcessor() {
+    logger.info("Start closing all storage group processor");
+    for (StorageGroupProcessor processor : processorMap.values()) {
+      processor.forceCloseAllWorkingTsFileProcessors();
     }
   }
 
