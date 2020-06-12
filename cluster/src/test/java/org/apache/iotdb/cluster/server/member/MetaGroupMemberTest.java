@@ -676,12 +676,12 @@ public class MetaGroupMemberTest extends MemberTest {
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
         testMetaMember
             .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(0, 0)),
-                null));
+                null).left);
     // a remote series that can be fetched
     assertEquals(Collections.singletonList(TSDataType.DOUBLE),
         testMetaMember
             .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(9, 0)),
-                null));
+                null).left);
     // a non-existent series
     MManager.getInstance().setStorageGroup(TestUtils.getTestSg(10));
     try {

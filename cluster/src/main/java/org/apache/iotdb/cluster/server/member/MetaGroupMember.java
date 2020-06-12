@@ -160,6 +160,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -1695,11 +1696,22 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    * @throws MetadataException
    */
-  public List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws
       MetadataException {
     try {
       // try locally first
-      return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths,
+          (List<String>) null);
+      // if the aggregation function is null, the type of column in result set
+      // is equal to the real type of the measurement
+      if (aggregations == null) {
+        return new Pair<>(measurementDataTypes, measurementDataTypes);
+      } else {
+        // if the aggregation function is not null,
+        // we should recalculate the type of column in result set
+        List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+        return new Pair<>(columnDataTypes, measurementDataTypes);
+      }
     } catch (PathNotExistException e) {
       List<String> pathStr = new ArrayList<>();
       for (Path path : paths) {
@@ -1713,7 +1725,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
 
       // consider the aggregations to get the real data type
-      List<TSDataType> result = new ArrayList<>();
+      List<TSDataType> columnType = new ArrayList<>();
+      List<TSDataType> measurementType = new ArrayList<>();
       for (int i = 0; i < schemas.size(); i++) {
         TSDataType dataType = null;
         if (aggregations != null) {
@@ -1724,13 +1737,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
         if (dataType == null) {
           MeasurementSchema schema = schemas.get(i);
-          result.add(schema.getType());
-          MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
+          columnType.add(schema.getType());
+          MManager.getInstance().cacheSchema(paths.get(i).getDevice() +
+                  IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
         } else {
-          result.add(dataType);
+          columnType.add(dataType);
         }
+        measurementType.add(schemas.get(i).getType());
       }
-      return result;
+      return new Pair<>(columnType, measurementType);
     }
   }
 
@@ -1744,11 +1759,21 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    * @throws MetadataException
    */
-  public List<TSDataType> getSeriesTypesByString(List<String> pathStrs, String aggregation) throws
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs, String aggregation) throws
       MetadataException {
     try {
       // try locally first
-      return SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
+      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByString(pathStrs, null);
+      // if the aggregation function is null, the type of column in result set
+      // is equal to the real type of the measurement
+      if (aggregation == null) {
+        return new Pair<>(measurementDataTypes, measurementDataTypes);
+      } else {
+        // if the aggregation function is not null,
+        // we should recalculate the type of column in result set
+        List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
+        return new Pair<>(columnDataTypes, measurementDataTypes);
+      }
     } catch (PathNotExistException e) {
       // pull schemas remotely
       List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStrs);
@@ -1758,18 +1783,20 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
 
       // consider the aggregations to get the real data type
-      List<TSDataType> result = new ArrayList<>();
+      List<TSDataType> columnType = new ArrayList<>();
+      List<TSDataType> measurementType = new ArrayList<>();
       // aggregations like first/last value does not have fixed data types and will return a null
       TSDataType aggregationType = getAggregationType(aggregation);
       for (MeasurementSchema schema : schemas) {
         if (aggregationType == null) {
-          result.add(schema.getType());
+          columnType.add(schema.getType());
         } else {
-          result.add(aggregationType);
+          columnType.add(aggregationType);
         }
         MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
+        measurementType.add(schema.getType());
       }
-      return result;
+      return new Pair<>(columnType, measurementType);
     }
   }
 

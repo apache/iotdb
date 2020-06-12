@@ -39,7 +39,7 @@ public class ClusterAlignByDeviceDataSet extends AlignByDeviceDataSet {
       AlignByDevicePlan alignByDevicePlan,
       QueryContext context,
       IQueryRouter queryRouter,
-      MetaGroupMember metaGroupMember) {
+      MetaGroupMember metaGroupMember) throws MetadataException {
     super(alignByDevicePlan, context, queryRouter);
     this.metaGroupMember = metaGroupMember;
   }

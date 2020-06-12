@@ -570,7 +570,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
-                                                         QueryContext context, IQueryRouter router) {
+                                                         QueryContext context, IQueryRouter router)
+      throws MetadataException {
     return new ClusterAlignByDeviceDataSet(plan, context, router, metaGroupMember);
   }
 

@@ -233,7 +233,7 @@ public class ClientServer extends TSServiceImpl {
   @Override
   protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
       throws MetadataException {
-    return metaGroupMember.getSeriesTypesByPath(paths, aggregations);
+    return metaGroupMember.getSeriesTypesByPath(paths, aggregations).left;
   }
 
   /**
@@ -248,7 +248,7 @@ public class ClientServer extends TSServiceImpl {
   @Override
   protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
       throws MetadataException {
-    return metaGroupMember.getSeriesTypesByString(paths, aggregation);
+    return metaGroupMember.getSeriesTypesByString(paths, aggregation).left;
   }
 
   /**

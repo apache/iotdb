@@ -53,6 +53,7 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
 import org.junit.Before;
@@ -172,15 +173,17 @@ public class MemberTest {
   private MetaGroupMember newMetaGroupMember(Node node) {
     MetaGroupMember ret = new TestMetaGroupMember() {
       @Override
-      public List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
           throws MetadataException {
-        return SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+        return new Pair<>(SchemaUtils.getSeriesTypesByPath(paths, aggregations),
+            SchemaUtils.getSeriesTypesByPath(paths, (List<String>) null));
       }
 
       @Override
-      public List<TSDataType> getSeriesTypesByString(List<String> pathStrs, String aggregation)
+      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs, String aggregation)
           throws MetadataException {
-        return SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
+        return  new Pair<>(SchemaUtils.getSeriesTypesByString(pathStrs, aggregation),
+            SchemaUtils.getSeriesTypesByString(pathStrs, null));
       }
 
       @Override

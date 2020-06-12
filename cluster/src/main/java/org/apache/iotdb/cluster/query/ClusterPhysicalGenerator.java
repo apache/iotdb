@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurati
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +54,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
   }
 
   @Override
-  protected List<TSDataType> getSeriesTypes(List<String> paths,
+  protected Pair<List<TSDataType>, List<TSDataType>> getSeriesTypes(List<String> paths,
       String aggregation) throws MetadataException {
     return metaGroupMember.getSeriesTypesByString(paths, aggregation);
   }
@@ -64,7 +65,7 @@ public class ClusterPhysicalGenerator extends PhysicalGenerator {
     for (Path path : paths) {
       pathStrs.add(path.getFullPath());
     }
-    return metaGroupMember.getSeriesTypesByString(pathStrs, null);
+    return metaGroupMember.getSeriesTypesByString(pathStrs, null).left;
   }
 
   @Override
