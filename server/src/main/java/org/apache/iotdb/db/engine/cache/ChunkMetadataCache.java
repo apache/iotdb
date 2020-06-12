@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -131,10 +132,11 @@ public class ChunkMetadataCache {
 
     lock.readLock().lock();
     try {
-      if (lruCache.containsKey(key)) {
+      List<ChunkMetadata> chunkMetadataList = lruCache.get(key);
+      if (chunkMetadataList != null) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return new ArrayList<>(lruCache.get(key));
+        return new ArrayList<>(chunkMetadataList);
       }
     } finally {
       lock.readLock().unlock();
@@ -142,10 +144,11 @@ public class ChunkMetadataCache {
 
     lock.writeLock().lock();
     try {
-      if (lruCache.containsKey(key)) {
+      List<ChunkMetadata> chunkMetadataList = lruCache.get(key);
+      if (chunkMetadataList != null) {
         printCacheLog(true);
         cacheHitNum.incrementAndGet();
-        return new ArrayList<>(lruCache.get(key));
+        return new ArrayList<>(chunkMetadataList);
       }
       printCacheLog(false);
       // bloom filter part
