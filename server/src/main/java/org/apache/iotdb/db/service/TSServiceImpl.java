@@ -86,7 +86,9 @@ import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
@@ -117,6 +119,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -124,6 +127,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -131,6 +135,7 @@ import org.apache.thrift.server.ServerContext;
 import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
+import org.eclipse.jetty.server.session.Session;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1081,11 +1086,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSExecuteBatchStatementResp insertRecords(TSInsertRecordsReq req) {
     TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
-    if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
-      resp.addToStatusList(RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR));
-      return resp;
-    }
+//    if (!checkLogin(req.getSessionId())) {
+//      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+//      resp.addToStatusList(RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR));
+//      return resp;
+//    }
 
     InsertPlan plan = new InsertPlan();
     for (int i = 0; i < req.deviceIds.size(); i++) {
@@ -1097,7 +1102,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         plan.setValues(new Object[plan.getMeasurements().length]);
         plan.setValues(req.valuesList.get(i));
         plan.setInferType(req.isInferType());
-        TSStatus status = checkAuthority(plan, req.getSessionId());
+        TSStatus status = null;
+        //TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           resp.addToStatusList(status);
         } else {
@@ -1491,14 +1497,162 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return 0;
   }
 
-  public static void main(String[] args) throws TException {
+  public static int calculateLength(List<TSDataType> types, List<Object> values)
+    throws IoTDBConnectionException {
+    int res = 0;
+    for (int i = 0; i < types.size(); i++) {
+      // types
+      res += Short.BYTES;
+      switch (types.get(i)) {
+        case BOOLEAN:
+          res += 1;
+          break;
+        case INT32:
+          res += Integer.BYTES;
+          break;
+        case INT64:
+          res += Long.BYTES;
+          break;
+        case FLOAT:
+          res += Float.BYTES;
+          break;
+        case DOUBLE:
+          res += Double.BYTES;
+          break;
+        case TEXT:
+          res += Integer.BYTES;
+          res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
+          break;
+        default:
+          throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));
+      }
+    }
 
+    return res;
+  }
+
+  public static void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
+    throws IoTDBConnectionException {
+    for (int i = 0; i < values.size(); i++) {
+      ReadWriteIOUtils.write(types.get(i), buffer);
+      switch (types.get(i)) {
+        case BOOLEAN:
+          ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
+          break;
+        case INT32:
+          ReadWriteIOUtils.write((Integer) values.get(i), buffer);
+          break;
+        case INT64:
+          ReadWriteIOUtils.write((Long) values.get(i), buffer);
+          break;
+        case FLOAT:
+          ReadWriteIOUtils.write((Float) values.get(i), buffer);
+          break;
+        case DOUBLE:
+          ReadWriteIOUtils.write((Double) values.get(i), buffer);
+          break;
+        case TEXT:
+          byte[] bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
+          ReadWriteIOUtils.write(bytes.length, buffer);
+          buffer.put(bytes);
+          break;
+        default:
+          throw new IoTDBConnectionException("Unsupported data type:" + types.get(i));
+      }
+    }
+  }
+
+  public static TSInsertRecordsReq genTSInsertRecordsReq(List<String> deviceIds, List<Long> times,
+                                                   List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+                                                   List<List<Object>> valuesList) throws IoTDBConnectionException {
+    // check params size
+    int len = deviceIds.size();
+    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+        "deviceIds, times, measurementsList and valuesList's size should be equal");
+    }
+
+    TSInsertRecordsReq request = new TSInsertRecordsReq();
+    request.setSessionId(0);
+    request.setDeviceIds(deviceIds);
+    request.setTimestamps(times);
+    request.setMeasurementsList(measurementsList);
+    List<ByteBuffer> buffersList = new ArrayList<>();
+    for (int i = 0; i < measurementsList.size(); i++) {
+      ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
+      putValues(typesList.get(i), valuesList.get(i), buffer);
+      buffer.flip();
+      buffersList.add(buffer);
+    }
+    request.setValuesList(buffersList);
+    return  request;
+  }
+
+  public static TSInsertRecordsReq prepareData(long next, int point_num) {
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+
+    for (long time = next; time < next + point_num; time++) {
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      typesList.add(types);
+      timestamps.add(time);
+    }
+
+    TSInsertRecordsReq request = null;
+    try {
+      request = genTSInsertRecordsReq(deviceIds, timestamps, measurementsList,
+        typesList, valuesList);
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
+
+    return request;
+  }
+
+  public static TSInsertRecordsReq finalReq(TSInsertRecordsReq req, long next, int point_num) {
+    List<Long> timestamps = new ArrayList<>();
+    for (long time = next; time < next + point_num; time++) {
+      timestamps.add(time);
+    }
+    req.setTimestamps(timestamps);
+    req.setSessionId(next);
+    return req;
+  }
+
+  public static void main(String[] args) throws TException {
+    System.out.println("main ...");
 
     AtomicInteger globalCnt = new AtomicInteger();
+    AtomicLong globalTime = new AtomicLong();
     long startTime = System.currentTimeMillis();
     int clientNum = Integer.parseInt(args[2]);
+    int addSync = Integer.parseInt(args[3]);
+    int pointNum = Integer.parseInt(args[4]);
+    List<TSInsertRecordsReq> reqs = new ArrayList<>(clientNum);
     ExecutorService pool = Executors.newFixedThreadPool(clientNum);
     for (int i = 0; i < clientNum; i++) {
+      reqs.add(prepareData(i * pointNum, pointNum));
+      globalTime.addAndGet(pointNum);
+      int finalI = i;
       pool.submit(() -> {
         TTransport tTransport = new TFastFramedTransport(new TSocket(args[0],
             Integer.parseInt(args[1])));
@@ -1507,10 +1661,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         tTransport.open();
         int cnt = 0;
         while (true) {
-          client.requestCommitId(0);
+          if (addSync > 0) {
+            client.requestCommitId(0);
+          }
+          client.insertRecords(finalReq(reqs.get(finalI), globalTime.getAndAdd(pointNum), pointNum));
           cnt ++;
-          if (cnt % (1000000 / clientNum) == 0) {
-            int gc = globalCnt.addAndGet(1000000 / clientNum);
+          //System.out.println(cnt);
+          if (cnt % (100000 / clientNum) == 0) {
+            int gc = globalCnt.addAndGet(100000 / clientNum);
             long consumedTime = System.currentTimeMillis() - startTime;
             System.out.println(String.format("%d request complete, time %d, speed %f", gc,
                 consumedTime, (double) gc / consumedTime));
