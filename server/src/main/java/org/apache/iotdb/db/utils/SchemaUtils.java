@@ -24,6 +24,8 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -141,5 +143,26 @@ public class SchemaUtils {
         throw new MetadataException(
             "aggregate does not support " + aggregation + " function.");
     }
+  }
+
+  /**
+   * If e or one of its recursive causes is a PathNotExistException or StorageGroupNotSetException,
+   * return such an exception or null if it cannot be found.
+   *
+   * @param currEx
+   * @return null or a PathNotExistException or a StorageGroupNotSetException
+   */
+  public static Throwable findMetaMissingException(Throwable currEx) {
+    while (true) {
+      if (currEx instanceof PathNotExistException
+          || currEx instanceof StorageGroupNotSetException) {
+        return currEx;
+      }
+      if (currEx.getCause() == null) {
+        break;
+      }
+      currEx = currEx.getCause();
+    }
+    return null;
   }
 }

@@ -89,6 +89,7 @@ import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
+import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -117,6 +118,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -1130,17 +1132,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       Filter timeFilter,
       Filter valueFilter, QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    if (!MManager.getInstance().isPathExist(path.getFullPath())) {
-      try {
-        List<MeasurementSchema> schemas = metaGroupMember
-            .pullTimeSeriesSchemas(Collections.singletonList(path.getFullPath()));
-        for (MeasurementSchema schema : schemas) {
-          MManager.getInstance().cacheSchema(path.getFullPath(), schema);
-        }
-      } catch (MetadataException e) {
-        throw new QueryProcessException(e);
-      }
-    }
+    ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
     List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
@@ -1612,17 +1604,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throw new LeaderUnknownException(getAllNodes());
 
     }
-    if (!MManager.getInstance().isPathExist(path)) {
-      try {
-        List<MeasurementSchema> schemas = metaGroupMember
-            .pullTimeSeriesSchemas(Collections.singletonList(path));
-        for (MeasurementSchema schema : schemas) {
-          MManager.getInstance().cacheSchema(path, schema);
-        }
-      } catch (MetadataException e) {
-        throw new QueryProcessException(e);
-      }
-    }
+    ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
     List<AggregateResult> results = new ArrayList<>();
     for (String aggregation : aggregations) {
       results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType));
@@ -1662,6 +1644,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
     if (syncLeader()) {
+      ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
       List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
       LocalGroupByExecutor executor = new LocalGroupByExecutor(path, deviceMeasurements,
           dataType
@@ -1818,8 +1801,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.getQueryId());
     try {
+      Path path = new Path(request.getPath());
+      ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
       TimeValuePair timeValuePair = LastQueryExecutor
-          .calculateLastPairForOneSeriesLocally(new Path(request.getPath()),
+          .calculateLastPairForOneSeriesLocally(path,
               TSDataType.values()[request.getDataTypeOrdinal()], queryContext,
               request.getDeviceMeasurements());
       ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();

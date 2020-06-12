@@ -95,7 +95,7 @@ public class MManager {
   private boolean isRecovering;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
-  // currently, if a key is not existed in the mRemoteSchemaCache, an IOException will be thrown
+  // currently, if a key is not existed in the mRemoteSchemaCache, null will be returned
   private LRUCache<String, MeasurementSchema> mRemoteSchemaCache;
 
   // tag key -> tag value -> LeafMNode
@@ -954,7 +954,10 @@ public class MManager {
   public boolean isPathExist(String path) {
     lock.readLock().lock();
     try {
-      return mtree.isPathExist(path);
+      return mRemoteSchemaCache.get(path) != null || mtree.isPathExist(path);
+    } catch (IOException e) {
+      // schema cache does not really throw
+      return false;
     } finally {
       lock.readLock().unlock();
     }
@@ -1065,7 +1068,7 @@ public class MManager {
    * To reduce the String number in memory, 
    * use the deviceId from MManager instead of the deviceId read from disk
    * 
-   * @param deviceId read from disk
+   * @param path read from disk
    * @return deviceId
    */
   public String getDeviceId(String path) {

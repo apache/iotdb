@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,7 +79,7 @@ abstract class BaseApplier implements LogApplier {
       getQueryExecutor().processNonQuery(plan);
     } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
       // check if this is caused by metadata missing, if so, pull metadata and retry
-      Throwable metaMissingException = findMetaMissingException(e);
+      Throwable metaMissingException = SchemaUtils.findMetaMissingException(e);
       boolean causedByPathNotExist = metaMissingException instanceof PathNotExistException;
       boolean causedByStorageGroupNotSet = metaMissingException instanceof StorageGroupNotSetException;
 
@@ -106,27 +107,6 @@ abstract class BaseApplier implements LogApplier {
         throw e;
       }
     }
-  }
-
-  /**
-   * If e or one of its recursive causes is a PathNotExistException or StorageGroupNotSetException,
-   * return such an exception or null if it cannot be found.
-   *
-   * @param currEx
-   * @return null or a PathNotExistException or a StorageGroupNotSetException
-   */
-  private Throwable findMetaMissingException(Throwable currEx) {
-    while (true) {
-      if (currEx instanceof PathNotExistException
-          || currEx instanceof StorageGroupNotSetException) {
-        return currEx;
-      }
-      if (currEx.getCause() == null) {
-        break;
-      }
-      currEx = currEx.getCause();
-    }
-    return null;
   }
 
   protected void registerMeasurement(String path, MeasurementSchema schema) {
