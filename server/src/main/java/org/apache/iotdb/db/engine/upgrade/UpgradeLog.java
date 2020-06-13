@@ -20,12 +20,12 @@ package org.apache.iotdb.db.engine.upgrade;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,8 +47,7 @@ public class UpgradeLog {
         upgradeLogPath.getParentFile().mkdirs();
       }
       upgradeLogPath.createNewFile();
-      upgradeLogWriter = FSFactoryProducer.getFSFactory()
-          .getBufferedWriter(getUpgradeLogPath(), true);
+      upgradeLogWriter = new BufferedWriter(new FileWriter(getUpgradeLogPath(), true));
       return true;
     } catch (IOException e) {
       logger.error("meet error when create upgrade log, file path:{}",
