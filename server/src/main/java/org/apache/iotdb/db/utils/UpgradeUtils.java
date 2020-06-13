@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.upgrade.UpgradeCheckStatus;
 import org.apache.iotdb.db.engine.upgrade.UpgradeLog;
@@ -80,7 +81,7 @@ public class UpgradeUtils {
    * Since one old TsFile may be upgraded to multiple upgraded files, 
    * this method is for getting the name of one of the upgraded file. 
    * 
-   * @param old TsFile resource to be upgraded
+   * @param upgradeResource TsFile resource to be upgraded
    * @return name of upgraded file
    * 
    */
@@ -94,12 +95,12 @@ public class UpgradeUtils {
   }
 
   public static void recoverUpgrade() {
-    if (FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
+    if (SystemFileFactory.INSTANCE.getFile(UpgradeLog.getUpgradeLogPath()).exists()) {
       try (BufferedReader upgradeLogReader = new BufferedReader(
           new FileReader(
-              FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath())))) {
+              SystemFileFactory.INSTANCE.getFile(UpgradeLog.getUpgradeLogPath())))) {
         Map<String, Integer> upgradeRecoverMap = new HashMap<>();
-        String line = null;
+        String line;
         while ((line = upgradeLogReader.readLine()) != null) {
           String oldFileName = line.split(COMMA_SEPERATOR)[0];
           if (upgradeRecoverMap.containsKey(oldFileName)) {
@@ -162,7 +163,7 @@ public class UpgradeUtils {
         logger.error("meet error when recover upgrade process, file path:{}",
             UpgradeLog.getUpgradeLogPath(), e);
       } finally {
-        FSFactoryProducer.getFSFactory().getFile(UpgradeLog.getUpgradeLogPath()).delete();
+        SystemFileFactory.INSTANCE.getFile(UpgradeLog.getUpgradeLogPath()).delete();
       }
     }
   }
