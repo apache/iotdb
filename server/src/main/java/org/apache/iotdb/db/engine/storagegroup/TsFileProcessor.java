@@ -781,8 +781,11 @@ public class TsFileProcessor {
   }
 
   public void putMemTableBackAndClose() throws TsFileProcessorException {
-    workMemTable.release();
-    MemTablePool.getInstance().putBack(workMemTable, storageGroupName);
+    if (workMemTable != null) {
+      workMemTable.release();
+      MemTablePool.getInstance().putBack(workMemTable, storageGroupName);
+    }
+    
     try {
       writer.close();
     } catch (IOException e) {
