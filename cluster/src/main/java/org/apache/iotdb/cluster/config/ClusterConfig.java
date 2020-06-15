@@ -74,6 +74,16 @@ public class ClusterConfig {
    */
   private int selectorNumOfClientPool = 10;
 
+  /**
+   * consistency level, now three consistency levels are supported: strong, mid and weak. Strong
+   * consistency means the server will first try to synchronize with the leader to get the newest
+   * meta data, if failed(timeout), directly report an error to the user; While mid consistency
+   * means the server will first try to synchronize with the leader, but if failed(timeout), it will
+   * give up and just use current data it has cached before; Weak consistency do not synchronize
+   * with the leader and simply use the local data
+   */
+  private ConsistencyLevel consistencyLevel = ConsistencyLevel.MID_CONSISTENCY;
+
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
   }
@@ -200,5 +210,13 @@ public class ClusterConfig {
 
   public void setLogDeleteCheckIntervalSecond(int logDeleteCheckIntervalSecond) {
     this.logDeleteCheckIntervalSecond = logDeleteCheckIntervalSecond;
+  }
+
+  public ConsistencyLevel getConsistencyLevel() {
+    return consistencyLevel;
+  }
+
+  public void setConsistencyLevel(ConsistencyLevel consistencyLevel) {
+    this.consistencyLevel = consistencyLevel;
   }
 }
