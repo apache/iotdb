@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -29,7 +30,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
- * Represents an (Internal-)MNode which has a Measurement or Sensor attached to it.
+ * Represents an MNode which has a Measurement or Sensor attached to it.
  */
 public class MeasurementMNode extends MNode {
 
@@ -123,28 +124,35 @@ public class MeasurementMNode extends MNode {
   public void serializeTo(BufferedWriter bw) throws IOException {
     serializeChildren(bw);
 
-    String s = String.valueOf(MetadataConstant.MEASUREMENT_MNODE_TYPE);
-    s += "," + name + ",";
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.MEASUREMENT_MNODE_TYPE));
+    s.append(",").append(name).append(",");
     if (alias != null) {
-      s += alias;
+      s.append(alias);
     }
-    s += "," + schema.getType().name() + ",";
-    s += schema.getEncodingType().name() + ",";
-    s += schema.getCompressor().name() + ",";
-    s += offset + ",";
-    s += children.size() + ",";
-    s += aliasChildren == null ? 0 : aliasChildren.size();
-    bw.write(s);
+    s.append(",").append(schema.getType().name()).append(",");
+    s.append(schema.getEncodingType().name()).append(",");
+    s.append(schema.getCompressor().name()).append(",");
+    for (Map.Entry<String, String> entry : schema.getProps().entrySet()) {
+      s.append(entry.getKey()).append(":").append(entry.getValue()).append(";");
+    }
+    s.append(",").append(offset).append(",");
+    s.append(children.size()).append(",");
+    s.append(aliasChildren == null ? 0 : aliasChildren.size());
+    bw.write(s.toString());
     bw.newLine();
   }
 
   public static MeasurementMNode deserializeFrom(String[] nodeInfo) {
     String name = nodeInfo[1];
     String alias = nodeInfo[2].equals("") ? null : nodeInfo[2];
+    Map<String, String> props = new HashMap<>();
+    for (String propInfo : nodeInfo[6].split(";")) {
+      props.put(propInfo.split(":")[0], propInfo.split(":")[1]);
+    }
     MeasurementSchema schema = new MeasurementSchema(name, TSDataType.valueOf(nodeInfo[3]),
-        TSEncoding.valueOf(nodeInfo[4]), CompressionType.valueOf(nodeInfo[5]));
+        TSEncoding.valueOf(nodeInfo[4]), CompressionType.valueOf(nodeInfo[5]), props);
     MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
-    node.setOffset(Long.valueOf(nodeInfo[6]));
+    node.setOffset(Long.valueOf(nodeInfo[7]));
 
     return node;
   }
