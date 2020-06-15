@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
@@ -145,6 +146,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           member = createNewMember(header);
         } catch (NotInSameGroupException e) {
           ex = e;
+        } catch (CheckConsistencyException ce) {
+          ex = ce;
         }
       } else {
         logger.info("Partition is not ready, cannot create member");
@@ -163,13 +166,13 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * @throws NotInSameGroupException If this node is not in the group of the header.
    */
   private DataGroupMember createNewMember(Node header)
-      throws NotInSameGroupException {
+      throws NotInSameGroupException, CheckConsistencyException {
     DataGroupMember member;
     PartitionGroup partitionGroup;
     partitionGroup = partitionTable.getHeaderGroup(header);
     if (partitionGroup == null || !partitionGroup.contains(thisNode)) {
       // if the partition table is old, this node may have not been moved to the new group
-      metaGroupMember.syncLeader();
+      metaGroupMember.syncLeaderWithConsistencyCheck();
       partitionGroup = partitionTable.getHeaderGroup(header);
     }
     if (partitionGroup != null && partitionGroup.contains(thisNode)) {
@@ -526,6 +529,8 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
           createNewMember(newGroup.getHeader());
         } catch (NotInSameGroupException e) {
           // ignored
+        } catch (CheckConsistencyException ce) {
+          logger.error("remove node failed, error={}", ce.getMessage());
         }
       }
     }
