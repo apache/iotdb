@@ -24,6 +24,7 @@ import static org.junit.Assert.assertEquals;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -41,6 +42,7 @@ import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,6 +53,8 @@ public class CatchUpTaskTest {
   private long leaderCommit;
   private Node header = new Node();
   private boolean testLeadershipFlag;
+
+
 
   private RaftMember sender = new TestMetaGroupMember() {
     @Override
@@ -133,6 +137,12 @@ public class CatchUpTaskTest {
     log.setCurrLogIndex(-1);
     log.setCurrLogTerm(-1);
     receivedLogs.add(log);
+  }
+
+  @After
+  public void tearDown() throws Exception {
+    sender.stop();
+    EnvironmentUtils.cleanAllDir();
   }
 
   @Test
