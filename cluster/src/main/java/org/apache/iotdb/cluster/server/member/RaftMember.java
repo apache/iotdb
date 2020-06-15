@@ -44,6 +44,8 @@ import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.config.ConsistencyLevel;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -134,6 +136,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   // when the commit progress is updated by a heart beat, this object is notified so that we may
   // know if this node is synchronized with the leader
   private Object syncLock = new Object();
+
+  /**
+   * consistency level, now three consistency levels are supported: strong, mid and weak.
+   */
+  private ConsistencyLevel consistencyLevel = config.getConsistencyLevel();
 
   public RaftMember() {
   }
@@ -1031,6 +1038,32 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
+
+  /**
+   * according to the consistency configuration, decide whether to execute syncLeader or not and
+   * throws exception when failed
+   *
+   * @throws CheckConsistencyException
+   */
+  public void syncLeaderWithConsistencyCheck() throws CheckConsistencyException {
+    switch (consistencyLevel) {
+      case STRONG_CONSISTENCY:
+        if (!syncLeader()) {
+          throw new CheckConsistencyException("strong consistency, sync with leader failed");
+        }
+        return;
+      case MID_CONSISTENCY:
+        // do not care success or not
+        syncLeader();
+        return;
+      case WEAK_CONSISTENCY:
+        // do nothing
+        return;
+      default:
+        throw new CheckConsistencyException("unknown consistency" + consistencyLevel.name());
+    }
+  }
+
   /**
    * Request and check the leader's commitId to see whether this node has caught up. If not, wait
    * until this node catches up.
@@ -1038,7 +1071,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return true if the node has caught up, false otherwise
    */
   public boolean syncLeader() {
-
     if (character == NodeCharacter.LEADER) {
       return true;
     }
