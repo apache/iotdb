@@ -32,7 +32,6 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -118,7 +117,6 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -1040,6 +1038,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     List<MeasurementSchema> timeseriesSchemas = new ArrayList<>();
     for (String prefixPath : prefixPaths) {
       MManager.getInstance().collectSeries(prefixPath, timeseriesSchemas);
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
+          timeseriesSchemas.size(), prefixPaths.get(0), prefixPaths.size() - 1);
     }
 
     PullSchemaResp resp = new PullSchemaResp();

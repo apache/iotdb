@@ -1623,15 +1623,21 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
     List<MeasurementSchema> schemas = new ArrayList<>();
     // pull timeseries schema from every group involved
-    logger.debug("{}: pulling schemas of {} from {} groups", name, prefixPaths,
-        partitionGroupPathMap.size());
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: pulling schemas of {} and other {} paths from {} groups", name,
+          prefixPaths.get(0), prefixPaths.size() - 1,
+          partitionGroupPathMap.size());
+    }
     for (Entry<PartitionGroup, List<String>> partitionGroupListEntry : partitionGroupPathMap
         .entrySet()) {
       PartitionGroup partitionGroup = partitionGroupListEntry.getKey();
       List<String> paths = partitionGroupListEntry.getValue();
       pullTimeSeriesSchemas(partitionGroup, paths, schemas);
     }
-    logger.debug("{}: pulled {} schemas for {}", name, schemas, prefixPaths);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: pulled {} schemas for {} and other {} paths", name, schemas.size(),
+          prefixPaths.get(0), prefixPaths.size() - 1);
+    }
     return schemas;
   }
 
@@ -1650,8 +1656,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       // the node is in the target group, synchronize with leader should be enough
       getLocalDataMember(partitionGroup.getHeader(), null,
           "Pull timeseries of " + prefixPaths).syncLeader();
+      int preSize = results.size();
       for (String prefixPath : prefixPaths) {
         MManager.getInstance().collectSeries(prefixPath, results);
+      }
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from local", name,
+            results.size() - preSize, prefixPaths.get(0), prefixPaths.size() - 1);
       }
       return;
     }
@@ -1662,7 +1673,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     pullSchemaRequest.setPrefixPaths(prefixPaths);
 
     for (Node node : partitionGroup) {
-      logger.debug("{}: Pulling timeseries schemas of {} from {}", name, prefixPaths, node);
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}", name,
+            prefixPaths.get(0), prefixPaths.size() - 1, node);
+      }
       DataClient client;
       List<MeasurementSchema> schemas = null;
       try {
@@ -1670,16 +1684,21 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         schemas = SyncClientAdaptor.pullTimeSeriesSchema(client, pullSchemaRequest);
       } catch (IOException | TException e) {
         logger
-            .error("{}: Cannot pull timeseries schemas of {} from {}", name, prefixPaths, node,
-                e);
+            .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", name,
+                prefixPaths.get(0), prefixPaths.size() - 1, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger
-            .error("{}: Cannot pull timeseries schemas of {} from {}", name, prefixPaths, node,
-                e);
+            .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", name,
+                prefixPaths.get(0), prefixPaths.size() - 1, node, e);
       }
 
       if (schemas != null) {
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
+              name,
+              schemas.size(), prefixPaths.get(0), prefixPaths.size() - 1, node, partitionGroup.getHeader());
+        }
         results.addAll(schemas);
         break;
       }
