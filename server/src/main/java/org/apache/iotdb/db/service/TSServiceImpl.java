@@ -68,6 +68,7 @@ import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.ComposedStatus;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -1187,14 +1188,15 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return RpcUtils.getTSBatchExecuteStatementResp(status);
       }
 
-      executeNonQuery(insertTabletPlan);
+      TSStatus tsStatus = executePlan(insertTabletPlan);
+      if (tsStatus instanceof ComposedStatus) {
+        logger.debug("Insert one Tablet failed!");
+        return RpcUtils.getTSBatchExecuteStatementResp(Arrays.asList(((ComposedStatus) tsStatus).getStatusList()));
+      }
       if (logger.isDebugEnabled()) {
         logger.debug("Insert one Tablet successfully");
       }
       return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
-    } catch (BatchInsertionException e) {
-      logger.debug("Insert one Tablet failed!");
-      return RpcUtils.getTSBatchExecuteStatementResp(Arrays.asList(e.getFailingStatus()));
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils
@@ -1232,7 +1234,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           continue;
         }
 
-        insertOneTablet(insertTabletPlan, statusList);
+        statusList.add(executePlan(insertTabletPlan));
       }
       return RpcUtils.getTSBatchExecuteStatementResp(statusList);
     } catch (Exception e) {
@@ -1241,17 +1243,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           .getTSBatchExecuteStatementResp(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
-    }
-  }
-
-  private void insertOneTablet(InsertTabletPlan plan, List<TSStatus> statusList)
-      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
-    try {
-      executeNonQuery(plan);
-      statusList.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-    } catch (BatchInsertionException e) {
-      TSStatus failed = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
-      statusList.add(failed);
     }
   }
 
@@ -1415,6 +1406,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);
+    } catch (BatchInsertionException e) {
+      return new ComposedStatus(e.getFailingStatus());
     } catch (QueryProcessException e) {
       logger.debug("meet error while processing non-query. ", e);
       return RpcUtils.getStatus(e.getErrorCode(), e.getMessage());
