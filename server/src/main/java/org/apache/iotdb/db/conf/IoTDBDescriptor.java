@@ -428,7 +428,6 @@ public class IoTDBDescriptor {
       //if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
       conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
 
-
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
           .setTSFileStorageFs(FSType.valueOf(
@@ -493,12 +492,15 @@ public class IoTDBDescriptor {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
             Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
-    conf.setBooleanStringInferType(TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
-        conf.getBooleanStringInferType().toString())));
-    conf.setIntegerStringInferType(TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
-        conf.getIntegerStringInferType().toString())));
-    conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
-        conf.getFloatingStringInferType().toString())));
+    conf.setBooleanStringInferType(
+        TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
+            conf.getBooleanStringInferType().toString())));
+    conf.setIntegerStringInferType(
+        TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
+            conf.getIntegerStringInferType().toString())));
+    conf.setFloatingStringInferType(
+        TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
+            conf.getFloatingStringInferType().toString())));
     conf.setNanStringInferType(TSDataType.valueOf(properties.getProperty("nan_string_infer_type",
         conf.getNanStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
@@ -676,6 +678,8 @@ public class IoTDBDescriptor {
             maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
         conf.setAllocateMemoryForTimeSeriesMetaDataCache(
             maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+        conf.setAllocateMemoryForReadWithoutCache(
+            maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
       } catch (Exception e) {
         throw new RuntimeException(
             "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"

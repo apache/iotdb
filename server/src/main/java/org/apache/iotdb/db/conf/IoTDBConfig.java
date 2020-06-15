@@ -128,6 +128,8 @@ public class IoTDBConfig {
    */
   private long allocateMemoryForRead = Runtime.getRuntime().maxMemory() * 3 / 10;
 
+  private long allocateMemoryForReadWithoutCache = Runtime.getRuntime().maxMemory() * 21 / 100;
+
   /**
    * Is dynamic parameter adapter enable.
    */
@@ -1084,6 +1086,14 @@ public class IoTDBConfig {
 
   void setAllocateMemoryForRead(long allocateMemoryForRead) {
     this.allocateMemoryForRead = allocateMemoryForRead;
+  }
+
+  public long getAllocateMemoryForReadWithoutCache() {
+    return allocateMemoryForReadWithoutCache;
+  }
+
+  public void setAllocateMemoryForReadWithoutCache(long allocateMemoryForReadWithoutCache) {
+    this.allocateMemoryForReadWithoutCache = allocateMemoryForReadWithoutCache;
   }
 
   public boolean isEnableExternalSort() {

@@ -138,6 +138,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // The statementId is unique in one IoTDB instance.
   private AtomicLong statementIdGenerator = new AtomicLong();
 
+  // current total free memory for reading process(not including the cache memory)
+  private final AtomicLong totalFreeMemoryForRead;
+
   // (sessionId -> Set(statementId))
   private Map<Long, Set<Long>> sessionId2StatementId = new ConcurrentHashMap<>();
   // (statementId -> Set(queryId))
@@ -154,6 +157,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
     executor = new PlanExecutor();
+    totalFreeMemoryForRead = new AtomicLong(
+        IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForReadWithoutCache());
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
@@ -420,7 +425,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (SQLParserException e) {
       logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
+          TSStatusCode.SQL_PARSE_ERROR,
+          ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
       return false;
     } catch (QueryProcessException e) {
       logger.info(
@@ -687,8 +693,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // Last Query should return different respond instead of the static one
       // because the query dataset and query id is different although the header of last query is same.
       return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan instanceof AggregationPlan && ((AggregationPlan)plan).getLevel() >= 0) {
-      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(((AggregationPlan)plan).getDeduplicatedPaths(), ((AggregationPlan)plan).getLevel(), null);
+    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
+      Map<String, Long> finalPaths = FilePathUtils
+          .getPathByLevel(((AggregationPlan) plan).getDeduplicatedPaths(),
+              ((AggregationPlan) plan).getLevel(), null);
       for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
         respColumns.add("count(" + entry.getKey() + ")");
         columnsTypes.add(TSDataType.INT64.toString());
