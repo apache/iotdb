@@ -20,12 +20,9 @@ package org.apache.iotdb.db.metadata.mnode;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -35,7 +32,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -91,14 +87,8 @@ public class MNode implements Serializable {
    */
   public void deleteChild(String name) throws DeleteFailedException {
     if (children.containsKey(name)) {
-      Lock writeLock;
-      // if its child node is leaf node, we need to acquire the write lock of the current device node
-      if (children.get(name) instanceof MeasurementMNode) {
-        writeLock = lock.writeLock();
-      } else {
-        // otherwise, we only need to acquire the write lock of its child node.
-        writeLock = (children.get(name)).lock.writeLock();
-      }
+      // acquire the write lock of its child node.
+      Lock writeLock = (children.get(name)).lock.writeLock();
       if (writeLock.tryLock()) {
         children.remove(name);
         writeLock.unlock();
@@ -182,6 +172,10 @@ public class MNode implements Serializable {
     return parent;
   }
 
+  public void setParent(MNode parent) {
+    this.parent = parent;
+  }
+
   public Map<String, MNode> getChildren() {
     return children;
   }
@@ -203,13 +197,14 @@ public class MNode implements Serializable {
   }
 
   public void serializeTo(BufferedWriter bw) throws IOException {
+    serializeChildren(bw);
+
     String s = String.valueOf(MetadataConstant.MNODE_TYPE);
     s += "," + name + ",";
     s += children.size() + ",";
     s += aliasChildren == null ? 0 : aliasChildren.size();
     bw.write(s);
     bw.newLine();
-    serializeChildren(bw);
   }
 
   void serializeChildren(BufferedWriter bw) throws IOException {
@@ -221,35 +216,6 @@ public class MNode implements Serializable {
         entry.getValue().serializeTo(bw);
       }
     }
-  }
-
-  public static MNode deserializeFrom(BufferedReader br, MNode parent) throws IOException {
-    String[] nodeInfo = br.readLine().split(",");
-    MNode node;
-    short nodeType = Short.valueOf(nodeInfo[0]);
-    if (nodeType == MetadataConstant.STORAGE_GROUP_MNODE_TYPE) {
-      return StorageGroupMNode.deserializeFrom(br, nodeInfo, parent);
-    } else if (nodeType == MetadataConstant.MEASUREMENT_MNODE_TYPE) {
-      return MeasurementMNode.deserializeFrom(br, nodeInfo, parent);
-    } else {
-      node = new MNode(parent, nodeInfo[1]);
-    }
-
-    Map<String, MNode> children = new HashMap<>();
-    for (int i = 0; i < Integer.valueOf(nodeInfo[2]); i++) {
-      MNode child = MNode.deserializeFrom(br, node);
-      children.put(child.getName(), child);
-    }
-    node.setChildren(children);
-
-    Map<String, MNode> aliasChildren = new HashMap<>();
-    for (int i = 0; i < Integer.valueOf(nodeInfo[3]); i++) {
-      MNode child = MNode.deserializeFrom(br, node);
-      children.put(child.getName(), child);
-    }
-    node.setAliasChildren(aliasChildren);
-
-    return node;
   }
 
   public void readLock() {

@@ -18,10 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -123,6 +121,8 @@ public class MeasurementMNode extends MNode {
 
   @Override
   public void serializeTo(BufferedWriter bw) throws IOException {
+    serializeChildren(bw);
+
     String s = String.valueOf(MetadataConstant.MEASUREMENT_MNODE_TYPE);
     s += "," + name + ",";
     if (alias != null) {
@@ -136,31 +136,15 @@ public class MeasurementMNode extends MNode {
     s += aliasChildren == null ? 0 : aliasChildren.size();
     bw.write(s);
     bw.newLine();
-    serializeChildren(bw);
   }
 
-  public static MeasurementMNode deserializeFrom(BufferedReader br, String[] nodeInfo,
-      MNode parent) throws IOException {
+  public static MeasurementMNode deserializeFrom(String[] nodeInfo) {
     String name = nodeInfo[1];
     String alias = nodeInfo[2].equals("") ? null : nodeInfo[2];
     MeasurementSchema schema = new MeasurementSchema(name, TSDataType.valueOf(nodeInfo[3]),
         TSEncoding.valueOf(nodeInfo[4]), CompressionType.valueOf(nodeInfo[5]));
-    MeasurementMNode node = new MeasurementMNode(parent, name, schema, alias);
+    MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
     node.setOffset(Long.valueOf(nodeInfo[6]));
-
-    Map<String, MNode> children = new HashMap<>();
-    for (int i = 0; i < Integer.valueOf(nodeInfo[7]); i++) {
-      MNode child = MNode.deserializeFrom(br, node);
-      children.put(child.getName(), child);
-    }
-    node.setChildren(children);
-
-    Map<String, MNode> aliasChildren = new HashMap<>();
-    for (int i = 0; i < Integer.valueOf(nodeInfo[8]); i++) {
-      MNode child = MNode.deserializeFrom(br, node);
-      children.put(child.getName(), child);
-    }
-    node.setAliasChildren(aliasChildren);
 
     return node;
   }

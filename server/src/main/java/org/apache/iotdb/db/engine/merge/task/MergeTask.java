@@ -110,7 +110,8 @@ public class MergeTask implements Callable<Void> {
     cleanUp(false);
     // call the callback to make sure the StorageGroup exit merging status, but passing 2
     // empty file lists to avoid files being deleted.
-    callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
+    callback.call(Collections.emptyList(), Collections.emptyList(),
+        new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
   }
 
   private void doMerge() throws IOException, MetadataException {
@@ -149,7 +150,6 @@ public class MergeTask implements Callable<Void> {
       abort();
       return;
     }
-
 
     fileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
         resource.getSeqFiles());

@@ -18,11 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 
 public class StorageGroupMNode extends MNode {
@@ -51,6 +48,8 @@ public class StorageGroupMNode extends MNode {
 
   @Override
   public void serializeTo(BufferedWriter bw) throws IOException {
+    serializeChildren(bw);
+
     String s = String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
     s += "," + name + ",";
     s += dataTTL + ",";
@@ -58,27 +57,9 @@ public class StorageGroupMNode extends MNode {
     s += aliasChildren == null ? 0 : aliasChildren.size();
     bw.write(s);
     bw.newLine();
-    serializeChildren(bw);
   }
 
-  public static StorageGroupMNode deserializeFrom(BufferedReader br, String[] nodeInfo,
-      MNode parent) throws IOException {
-    StorageGroupMNode node = new StorageGroupMNode(parent, nodeInfo[1], Long.valueOf(nodeInfo[2]));
-
-    Map<String, MNode> children = new HashMap<>();
-    for (int i = 0; i < Integer.valueOf(nodeInfo[3]); i++) {
-      MNode child = MNode.deserializeFrom(br, node);
-      children.put(child.getName(), child);
-    }
-    node.setChildren(children);
-
-    Map<String, MNode> aliasChildren = new HashMap<>();
-    for (int i = 0; i < Integer.valueOf(nodeInfo[4]); i++) {
-      MNode child = MNode.deserializeFrom(br, node);
-      children.put(child.getName(), child);
-    }
-    node.setAliasChildren(aliasChildren);
-
-    return node;
+  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
+    return new StorageGroupMNode(null, nodeInfo[1], Long.valueOf(nodeInfo[2]));
   }
 }
