@@ -20,10 +20,12 @@
 package org.apache.iotdb.cluster.client;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.ClientFactory;
 import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.client.async.DataClient;
@@ -31,6 +33,7 @@ import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestClientFactory;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.Test;
@@ -98,7 +101,30 @@ public class ClientPoolTest {
       AsyncClient poolClient = clientPool.getClient(TestUtils.getNode(i));
       assertEquals(testClients.get(i), poolClient);
     }
+  }
 
+  @Test
+  public void testMaxClient() throws IOException {
+    int maxClientNum = ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
+    ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(5);
+    testClientFactory = new TestClientFactory();
+    ClientPool clientPool = new ClientPool(testClientFactory);
+
+    for (int i = 0; i < 5; i++) {
+      clientPool.getClient(TestUtils.getNode(0));
+    }
+    AtomicReference<AsyncClient> reference = new AtomicReference<>();
+    Thread t = new Thread(() -> {
+      try {
+        reference.set(clientPool.getClient(TestUtils.getNode(0)));
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    });
+    t.start();
+    t.interrupt();
+    assertNull(reference.get());
+    ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(maxClientNum);
   }
 
 }

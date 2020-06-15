@@ -63,6 +63,19 @@ public class ClusterConfig {
    */
   private int logDeleteCheckIntervalSecond = 3600;
 
+  /**
+   * max number of clients in a ClientPool of a member for one node.
+   */
+  private int maxClientPerNodePerMember = 100;
+
+  public int getMaxClientPerNodePerMember() {
+    return maxClientPerNodePerMember;
+  }
+
+  public void setMaxClientPerNodePerMember(int maxClientPerNodePerMember) {
+    this.maxClientPerNodePerMember = maxClientPerNodePerMember;
+  }
+
   public boolean isUseBatchInLogCatchUp() {
     return useBatchInLogCatchUp;
   }
