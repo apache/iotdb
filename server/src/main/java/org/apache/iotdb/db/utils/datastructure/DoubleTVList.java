@@ -183,7 +183,7 @@ public class DoubleTVList extends TVList {
   protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
       TSEncoding encoding) {
     double value = getDouble(index);
-    if (floatPrecision != null && !encoding.equals(TSEncoding.GORILLA)) {
+    if (floatPrecision != null && encoding.equals(TSEncoding.RLE)) {
       value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.DOUBLE, value));

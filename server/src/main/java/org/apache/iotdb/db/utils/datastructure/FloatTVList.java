@@ -183,7 +183,7 @@ public class FloatTVList extends TVList {
   protected TimeValuePair getTimeValuePair(int index, long time, Integer floatPrecision,
       TSEncoding encoding) {
     float value = getFloat(index);
-    if (floatPrecision != null && !encoding.equals(TSEncoding.GORILLA)) {
+    if (floatPrecision != null && encoding.equals(TSEncoding.RLE)) {
       value = MathUtils.roundWithGivenPrecision(value, floatPrecision);
     }
     return new TimeValuePair(time, TsPrimitiveType.getByType(TSDataType.FLOAT, value));
