@@ -45,9 +45,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
- * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2. move the
- * merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the seqFiles
- * into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
+ * steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files
+ *        2. move the merged chunks in the temp files back to the seqFiles or move the unmerged
+ *        chunks in the seqFiles into temp files and replace the seqFiles with the temp files.
+ *        3. remove unseqFiles
  */
 public class MergeTask implements Callable<Void> {
 
@@ -64,6 +65,11 @@ public class MergeTask implements Callable<Void> {
   int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
+
+  States states = States.START;
+
+  MergeMultiChunkTask chunkTask;
+  MergeFileTask fileTask;
 
   MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
@@ -94,14 +100,17 @@ public class MergeTask implements Callable<Void> {
       doMerge();
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
-      cleanUp(false);
-      // call the callback to make sure the StorageGroup exit merging status, but passing 2
-      // empty file lists to avoid files being deleted.
-      callback.call(Collections.emptyList(), Collections.emptyList(),
-          new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
-      throw e;
+      abort();
     }
     return null;
+  }
+
+  private void abort() throws IOException {
+    states = States.ABORTED;
+    cleanUp(false);
+    // call the callback to make sure the StorageGroup exit merging status, but passing 2
+    // empty file lists to avoid files being deleted.
+    callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
   }
 
   private void doMerge() throws IOException, MetadataException {
@@ -131,14 +140,30 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName,
-        mergeLogger, resource, fullMerge, unmergedSeries, concurrentMergeSeriesNum);
-    mergeChunkTask.mergeSeries();
+    chunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
+        fullMerge, unmergedSeries, concurrentMergeSeriesNum, storageGroupName);
+    states = States.MERGE_CHUNKS;
+    chunkTask.mergeSeries();
+    if (Thread.interrupted()) {
+      logger.info("Merge task {} aborted", taskName);
+      abort();
+      return;
+    }
 
-    MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
+
+    fileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
         resource.getSeqFiles());
-    mergeFileTask.mergeFiles();
+    states = States.MERGE_FILES;
+    chunkTask = null;
+    fileTask.mergeFiles();
+    if (Thread.interrupted()) {
+      logger.info("Merge task {} aborted", taskName);
+      abort();
+      return;
+    }
 
+    states = States.CLEAN_UP;
+    fileTask = null;
     cleanUp(true);
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
@@ -181,5 +206,37 @@ public class MergeTask implements Callable<Void> {
     } else {
       logFile.delete();
     }
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
+  }
+
+  enum States {
+    START,
+    MERGE_CHUNKS,
+    MERGE_FILES,
+    CLEAN_UP,
+    ABORTED
+  }
+
+  public String getProgress() {
+    switch (states) {
+      case ABORTED:
+        return "Aborted";
+      case CLEAN_UP:
+        return "Cleaning up";
+      case MERGE_FILES:
+        return "Merging files: " + fileTask.getProgress();
+      case MERGE_CHUNKS:
+        return "Merging series: " + chunkTask.getProgress();
+      case START:
+      default:
+        return "Just started";
+    }
+  }
+
+  public String getTaskName() {
+    return taskName;
   }
 }
