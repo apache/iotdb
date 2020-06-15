@@ -25,7 +25,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -261,15 +260,19 @@ public class IoTDBStatement implements Statement {
   private int[] executeBatchSQL() throws TException, BatchUpdateException {
     isCancelled = false;
     TSExecuteBatchStatementReq execReq = new TSExecuteBatchStatementReq(sessionId, batchSQLList);
-    TSExecuteBatchStatementResp execResp = client.executeBatchStatement(execReq);
-    int[] result = new int[execResp.statusList.size()];
+    TSStatus execResp = client.executeBatchStatement(execReq);
+    int[] result = new int[batchSQLList.size()];
     boolean allSuccess = true;
     String message = "";
     for (int i = 0; i < result.length; i++) {
-      result[i] = execResp.statusList.get(i).code;
-      if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        allSuccess = false;
-        message = execResp.statusList.get(i).message;
+      if (execResp.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        result[i] = execResp.getSubStatus().get(i).code;
+        if (result[i] != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          allSuccess = false;
+          message = execResp.getSubStatus().get(i).message;
+        }
+      } else {
+        result[i] = execResp.getCode();
       }
     }
     if (!allSuccess) {
