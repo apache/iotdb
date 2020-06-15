@@ -70,7 +70,7 @@ public class IoTDBConfigCheck {
   private static boolean enablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
-  private static String iotdbVersion = "0.10.0";
+
 
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
@@ -81,7 +81,7 @@ public class IoTDBConfigCheck {
   }
 
   private IoTDBConfigCheck() {
-    logger.info("Starting IoTDB " + iotdbVersion);
+    logger.info("Starting IoTDB " + IoTDBConstant.VERSION);
 
     // check whether SCHEMA_DIR exists, create if not exists
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);
@@ -116,7 +116,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
-    systemProperties.put(IOTDB_VERSION_STRING, iotdbVersion);
+    systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
   }
 
 
@@ -193,7 +193,7 @@ public class IoTDBConfigCheck {
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
       properties.setProperty(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
-      properties.setProperty(IOTDB_VERSION_STRING, iotdbVersion);
+      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
