@@ -39,6 +39,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
+import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -1181,29 +1182,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       insertTabletPlan.setRowCount(req.size);
       insertTabletPlan.setDataTypes(req.types);
 
-      boolean isAllSuccessful = true;
       TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
       if (status != null) {
         return RpcUtils.getTSBatchExecuteStatementResp(status);
       }
-      TSStatus[] tsStatusArray = executor.insertTablet(insertTabletPlan);
 
-      for (TSStatus tsStatus : tsStatusArray) {
-        if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-          isAllSuccessful = false;
-          break;
-        }
+      executeNonQuery(insertTabletPlan);
+      if (logger.isDebugEnabled()) {
+        logger.debug("Insert one Tablet successfully");
       }
-
-      if (isAllSuccessful) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("Insert one Tablet successfully");
-        }
-        return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
-      } else {
-        logger.debug("Insert one Tablet failed!");
-        return RpcUtils.getTSBatchExecuteStatementResp(Arrays.asList(tsStatusArray));
-      }
+      return RpcUtils.getTSBatchExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+    } catch (BatchInsertionException e) {
+      logger.debug("Insert one Tablet failed!");
+      return RpcUtils.getTSBatchExecuteStatementResp(Arrays.asList(e.getFailingStatus()));
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils
@@ -1235,28 +1226,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         insertTabletPlan.setRowCount(req.sizeList.get(i));
         insertTabletPlan.setDataTypes(req.typesList.get(i));
 
-        boolean isCurrentTabletSuccessful = true;
         TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
         if (status != null) {
           statusList.add(status);
           continue;
         }
-        TSStatus[] tsStatusArray = executor.insertTablet(insertTabletPlan);
-        TSStatus failed = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
 
-        for (TSStatus tsStatus : tsStatusArray) {
-          if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            isCurrentTabletSuccessful = false;
-            failed = tsStatus;
-            break;
-          }
-        }
-
-        if (isCurrentTabletSuccessful) {
-          statusList.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
-        } else {
-          statusList.add(failed);
-        }
+        insertOneTablet(insertTabletPlan, statusList);
       }
       return RpcUtils.getTSBatchExecuteStatementResp(statusList);
     } catch (Exception e) {
@@ -1265,6 +1241,17 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           .getTSBatchExecuteStatementResp(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+    }
+  }
+
+  private void insertOneTablet(InsertTabletPlan plan, List<TSStatus> statusList)
+      throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
+    try {
+      executeNonQuery(plan);
+      statusList.add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
+    } catch (BatchInsertionException e) {
+      TSStatus failed = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR);
+      statusList.add(failed);
     }
   }
 
