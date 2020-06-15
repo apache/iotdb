@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -237,10 +238,6 @@ public class Session {
   }
 
   private void asyncHandler(Pair<String, Long> insertPair) {
-    if (insertPair != null) {
-      logger.debug("Device: {}, at time: {}, inserted successfully.", insertPair.left,
-          insertPair.right);
-    }
   }
 
   /**
@@ -288,6 +285,7 @@ public class Session {
       try {
         insertTablet(tablet, sorted);
       } catch (IoTDBConnectionException | BatchExecutionException e) {
+        //callback.call();
         logger.error("Error occurred when inserting tablets: ", e);
       }
       if (tablet.rowSize > 0) {
@@ -1210,4 +1208,8 @@ public class Session {
     }
   }
 
+  @FunctionalInterface
+  public interface SessionInsertionCallBack {
+    void call();
+  }
 }

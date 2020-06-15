@@ -38,13 +38,13 @@ public class SessionThreadPool {
   private BlockingQueue<Runnable> threadQueue;
 
   public SessionThreadPool() {
-    threadQueue = new LinkedBlockingQueue<Runnable>(Config.DEFAULT_BLOCKING_QUEUE_SIZE);
+    threadQueue = new LinkedBlockingQueue<>(Config.DEFAULT_BLOCKING_QUEUE_SIZE);
     pool = new ThreadPoolExecutor(Config.DEFAULT_THREAD_POOL_SIZE, Config.DEFAULT_THREAD_POOL_SIZE,
         0L, TimeUnit.MILLISECONDS, threadQueue, new CustomPolicy());
   }
 
   public SessionThreadPool(int poolSize, int blockingQueueSize) {
-    threadQueue = new LinkedBlockingQueue<Runnable>(blockingQueueSize);
+    threadQueue = new LinkedBlockingQueue<>(blockingQueueSize);
     pool = new ThreadPoolExecutor(poolSize, poolSize,
         0L, TimeUnit.MILLISECONDS, threadQueue, new CustomPolicy());
   }

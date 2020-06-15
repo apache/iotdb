@@ -91,6 +91,12 @@ public class SessionPool {
     this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression);
   }
 
+  public SessionPool(String ip, int port, String user, String password, int maxSize,
+      boolean enableCompression, int threadPoolSize, int blockingQueueSize) {
+    this(ip, port, user, password, maxSize, Config.DEFAULT_FETCH_SIZE, 60_000, enableCompression,
+        threadPoolSize, blockingQueueSize);
+  }
+
   @SuppressWarnings("squid:S107")
   public SessionPool(String ip, int port, String user, String password, int maxSize, int fetchSize,
       long timeout, boolean enableCompression) {
