@@ -456,6 +456,12 @@ public class MManager {
       for (Entry<String, String> entry : tagMap.entrySet()) {
         if (tagIndex.containsKey(entry.getKey()) && tagIndex.get(entry.getKey())
             .containsKey(entry.getValue())) {
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                "Delete: TimeSeries %s is removed from tag inverted index, "
+                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset()));
+          }
           tagIndex.get(entry.getKey()).get(entry.getValue()).remove(node);
           if (tagIndex.get(entry.getKey()).get(entry.getValue()).isEmpty()) {
             tagIndex.get(entry.getKey()).remove(entry.getValue());
@@ -464,11 +470,11 @@ public class MManager {
             }
           }
         } else {
-          if (logger.isWarnEnabled()) {
-            logger.warn(String.format(
-                "TimeSeries %s's tag info has been removed from tag inverted index before "
-                    + "deleting it, tag key is %s, tag value is %s",
-                node.getFullPath(), entry.getKey(), entry.getValue()));
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                "Delete: TimeSeries %s's tag info has been removed from tag inverted index before "
+                    + "deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(), tagIndex.containsKey(entry.getKey())));
           }
         }
       }
@@ -550,12 +556,14 @@ public class MManager {
         // clear cached schema
         mRemoteSchemaCache.removeItem(storageGroup);
 
+        // clear cached MNode
+        mNodeCache.clear();
+
         // try to delete storage group
         List<MeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
         for (MeasurementMNode leafMNode : leafMNodes) {
           removeFromTagInvertedIndex(leafMNode);
         }
-        mNodeCache.clear();
 
         if (config.isEnableParameterAdapter()) {
           IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(-1);
@@ -634,7 +642,8 @@ public class MManager {
         if (!deviceNode.hasChild(measurements[i])) {
           throw new MetadataException(measurements[i] + " does not exist in " + deviceId);
         }
-        measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i])).getSchema();
+        measurementSchemas[i] = ((MeasurementMNode) deviceNode.getChild(measurements[i]))
+            .getSchema();
       }
       return measurementSchemas;
     } finally {
@@ -787,7 +796,8 @@ public class MManager {
       if (value2Node.isEmpty()) {
         throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
       }
-      Set<MeasurementMNode> allMatchedNodes = new TreeSet<>(Comparator.comparing(MNode::getFullPath));
+      Set<MeasurementMNode> allMatchedNodes = new TreeSet<>(
+          Comparator.comparing(MNode::getFullPath));
       if (plan.isContains()) {
         for (Entry<String, Set<MeasurementMNode>> entry : value2Node.entrySet()) {
           String tagValue = entry.getKey();
@@ -1236,9 +1246,26 @@ public class MManager {
           // if the key has existed and the value is not equal to the new one
           // we should remove before key-value from inverted index map
           if (beforeValue != null && !beforeValue.equals(value)) {
-            tagIndex.get(key).get(beforeValue).remove(leafMNode);
-            if (tagIndex.get(key).get(beforeValue).isEmpty()) {
-              tagIndex.get(key).remove(beforeValue);
+
+            if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
+              if (logger.isDebugEnabled()) {
+                logger.debug(String.format(
+                    "Upsert: TimeSeries %s is removed from tag inverted index, "
+                        + "tag key is %s, tag value is %s, tlog offset is %d",
+                    leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset()));
+              }
+
+              tagIndex.get(key).get(beforeValue).remove(leafMNode);
+              if (tagIndex.get(key).get(beforeValue).isEmpty()) {
+                tagIndex.get(key).remove(beforeValue);
+              }
+            } else {
+              if (logger.isDebugEnabled()) {
+                logger.debug(String.format(
+                    "Upsert: TimeSeries %s's tag info has been removed from tag inverted index "
+                        + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                    leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
+              }
             }
           }
 
@@ -1250,9 +1277,7 @@ public class MManager {
           }
         }
       }
-      if (tagsMap != null) {
-        pair.left.putAll(tagsMap);
-      }
+
       pair.right.putAll(attributesMap);
 
       // persist the change to disk
@@ -1399,13 +1424,30 @@ public class MManager {
         String key = entry.getKey();
         String value = entry.getValue();
         // change the tag inverted index map
-        tagIndex.get(key).get(value).remove(leafMNode);
-        if (tagIndex.get(key).get(value).isEmpty()) {
-          tagIndex.get(key).remove(value);
-          if (tagIndex.get(key).isEmpty()) {
-            tagIndex.remove(key);
+        if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(value)) {
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                "Drop: TimeSeries %s is removed from tag inverted index, "
+                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                leafMNode.getFullPath(), entry.getKey(), entry.getValue(), leafMNode.getOffset()));
+          }
+
+          tagIndex.get(key).get(value).remove(leafMNode);
+          if (tagIndex.get(key).get(value).isEmpty()) {
+            tagIndex.get(key).remove(value);
+            if (tagIndex.get(key).isEmpty()) {
+              tagIndex.remove(key);
+            }
+          }
+        } else {
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                "Drop: TimeSeries %s's tag info has been removed from tag inverted index "
+                    + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                leafMNode.getFullPath(), key, value, leafMNode.getOffset(), tagIndex.containsKey(key)));
           }
         }
+
       }
     } finally {
       lock.writeLock().unlock();
@@ -1463,7 +1505,24 @@ public class MManager {
         String beforeValue = entry.getValue();
         String currentValue = newTagValue.get(key);
         // change the tag inverted index map
-        tagIndex.get(key).get(beforeValue).remove(leafMNode);
+        if (tagIndex.containsKey(key) && tagIndex.get(key).containsKey(beforeValue)) {
+
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                "Set: TimeSeries %s is removed from tag inverted index, "
+                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                leafMNode.getFullPath(), entry.getKey(), beforeValue, leafMNode.getOffset()));
+          }
+
+          tagIndex.get(key).get(beforeValue).remove(leafMNode);
+        } else {
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                "Set: TimeSeries %s's tag info has been removed from tag inverted index "
+                    + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
+          }
+        }
         tagIndex.computeIfAbsent(key, k -> new HashMap<>())
             .computeIfAbsent(currentValue, k -> new HashSet<>()).add(leafMNode);
       }
@@ -1510,7 +1569,25 @@ public class MManager {
         // persist the change to disk
         tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
         // change the tag inverted index map
-        tagIndex.get(oldKey).get(value).remove(leafMNode);
+        if (tagIndex.containsKey(oldKey) && tagIndex.get(oldKey).containsKey(value)) {
+
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                "Rename: TimeSeries %s is removed from tag inverted index, "
+                    + "tag key is %s, tag value is %s, tlog offset is %d",
+                leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset()));
+          }
+
+          tagIndex.get(oldKey).get(value).remove(leafMNode);
+
+        } else {
+          if (logger.isDebugEnabled()) {
+            logger.debug(String.format(
+                "Rename: TimeSeries %s's tag info has been removed from tag inverted index "
+                    + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
+                leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset(), tagIndex.containsKey(oldKey)));
+          }
+        }
         tagIndex.computeIfAbsent(newKey, k -> new HashMap<>())
             .computeIfAbsent(value, k -> new HashSet<>()).add(leafMNode);
       } else if (pair.right.containsKey(oldKey)) {
