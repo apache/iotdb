@@ -85,7 +85,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
     boolean isAlignByDevice = false;
     if (operator instanceof QueryOperator) {
-      if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator).isLastQuery()) {
+      if (!((QueryOperator) operator).isAlignByDevice() || ((QueryOperator) operator)
+          .isLastQuery()) {
         concatSelect(prefixPaths, select); // concat and remove star
 
         if (((QueryOperator) operator).hasSlimit()) {
@@ -99,9 +100,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           String device = path.getDevice();
           if (!device.isEmpty()) {
             throw new LogicalOptimizeException(
-                    "The paths of the SELECT clause can only be single level. In other words, "
-                            + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
-                            + " For more details please refer to the SQL document.");
+                "The paths of the SELECT clause can only be single level. In other words, "
+                    + "the paths of the SELECT clause can only be measurements or STAR, without DOT."
+                    + " For more details please refer to the SQL document.");
           }
         }
         // ALIGN_BY_DEVICE leaves the 1) concat, 2) remove star, 3) slimit tasks to the next phase,
@@ -115,7 +116,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     if (filter == null) {
       return operator;
     }
-    if(!isAlignByDevice){
+    if (!isAlignByDevice) {
       sfwOperator.setFilterOperator(concatFilter(prefixPaths, filter, filterPaths));
     }
     sfwOperator.getFilterOperator().setPathSet(filterPaths);
@@ -181,7 +182,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
    * Make 'SLIMIT&SOFFSET' take effect by trimming the suffixList and aggregations of the
    * selectOperator.
    *
-   * @param seriesLimit is ensured to be positive integer
+   * @param seriesLimit  is ensured to be positive integer
    * @param seriesOffset is ensured to be non-negative integer
    */
   private void slimitTrim(SelectOperator select, int seriesLimit, int seriesOffset)

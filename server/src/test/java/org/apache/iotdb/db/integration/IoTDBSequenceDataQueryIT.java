@@ -182,7 +182,8 @@ public class IoTDBSequenceDataQueryIT {
     pathList.add(new Path(TestConstant.d1s1));
     dataTypes.add(TSDataType.INT64);
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
+        .assignQueryId(true, 1024, pathList.size());
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setDeduplicatedDataTypes(dataTypes);
@@ -213,7 +214,8 @@ public class IoTDBSequenceDataQueryIT {
     dataTypes.add(TSDataType.INT64);
 
     GlobalTimeExpression globalTimeExpression = new GlobalTimeExpression(TimeFilter.gtEq(800L));
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
+        .assignQueryId(true, 1024, pathList.size());
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
@@ -261,7 +263,8 @@ public class IoTDBSequenceDataQueryIT {
     SingleSeriesExpression singleSeriesExpression = new SingleSeriesExpression(queryPath,
         ValueFilter.gtEq(14));
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance()
+        .assignQueryId(true, 1024, pathList.size());
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();

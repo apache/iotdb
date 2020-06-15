@@ -103,11 +103,11 @@ public class EnvironmentUtils {
     }
     //try jmx connection
     try {
-    JMXServiceURL url =
-        new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
-    JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
+      JMXServiceURL url =
+          new JMXServiceURL("service:jmx:rmi:///jndi/rmi://localhost:31999/jmxrmi");
+      JMXConnector jmxConnector = JMXConnectorFactory.connect(url);
       logger.error("stop JMX failed. 31999 can be connected now.");
-    jmxConnector.close();
+      jmxConnector.close();
     } catch (IOException e) {
       //do nothing
     }
@@ -128,7 +128,6 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
-
 
     // clean cache
     if (config.isMetaDataCacheEnable()) {
@@ -203,18 +202,18 @@ public class EnvironmentUtils {
     createAllDir();
     // disable the system monitor
     config.setEnableStatMonitor(false);
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
+    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true, 1024, 0);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
   }
 
   public static void stopDaemon() {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.stop();
     }
   }
 
   public static void activeDaemon() {
-    if(daemon != null) {
+    if (daemon != null) {
       daemon.active();
     }
   }

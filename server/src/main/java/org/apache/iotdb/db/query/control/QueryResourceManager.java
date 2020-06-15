@@ -18,6 +18,13 @@
  */
 package org.apache.iotdb.db.query.control;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -27,13 +34,6 @@ import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeseria
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * <p>
@@ -45,31 +45,55 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class QueryResourceManager {
 
-  private AtomicLong queryIdAtom = new AtomicLong();
-  private QueryFileManager filePathsManager;
+  private final AtomicLong queryIdAtom = new AtomicLong();
+  private final QueryFileManager filePathsManager;
   /**
    * Record temporary files used for external sorting.
    * <p>
    * Key: query job id. Value: temporary file list used for external sorting.
    */
-  private Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
+  private final Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
+
+  private final Map<Long, Long> queryIdEstimatedMemoryMap;
+
+  // current total free memory for reading process(not including the cache memory)
+  private final AtomicLong totalFreeMemoryForRead;
+
+  // estimated size for one point memory size, the unit is byte
+  private static final int POINT_ESTIMATED_SIZE = 16;
 
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
     externalSortFileMap = new ConcurrentHashMap<>();
+    queryIdEstimatedMemoryMap = new ConcurrentHashMap<>();
+    totalFreeMemoryForRead = new AtomicLong(
+        IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForReadWithoutCache());
   }
 
   public static QueryResourceManager getInstance() {
     return QueryTokenManagerHelper.INSTANCE;
   }
 
+  public int getMaxDeduplicatedPathNum(int fetchSize) {
+    return Math.max((int) ((totalFreeMemoryForRead.get() / fetchSize) / POINT_ESTIMATED_SIZE), 0);
+  }
+
   /**
    * Register a new query. When a query request is created firstly, this method must be invoked.
    */
-  public long assignQueryId(boolean isDataQuery) {
+  public long assignQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
     long queryId = queryIdAtom.incrementAndGet();
     if (isDataQuery) {
       filePathsManager.addQueryId(queryId);
+      if (deduplicatedPathNum > 0) {
+        long estimatedMemoryUsage = deduplicatedPathNum * POINT_ESTIMATED_SIZE * fetchSize;
+        // apply the memory successfully
+        if (totalFreeMemoryForRead.addAndGet(-estimatedMemoryUsage) >= 0) {
+          queryIdEstimatedMemoryMap.put(queryId, estimatedMemoryUsage);
+        } else {
+          totalFreeMemoryForRead.addAndGet(estimatedMemoryUsage);
+        }
+      }
     }
     return queryId;
   }
@@ -110,6 +134,13 @@ public class QueryResourceManager {
       }
       externalSortFileMap.remove(queryId);
     }
+
+    // put back the memory usage
+    Long estimatedMemoryUsage = queryIdEstimatedMemoryMap.remove(queryId);
+    if (estimatedMemoryUsage != null) {
+      totalFreeMemoryForRead.addAndGet(estimatedMemoryUsage);
+    }
+
     // remove usage of opened file paths of current thread
     filePathsManager.removeUsedFilesForQuery(queryId);
   }

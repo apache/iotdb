@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -94,6 +95,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -105,7 +107,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
  */
 public class PhysicalGenerator {
 
-  public PhysicalPlan transformToPhysicalPlan(Operator operator) throws QueryProcessException {
+  public PhysicalPlan transformToPhysicalPlan(Operator operator, int fetchSize)
+      throws QueryProcessException {
     List<Path> paths;
     switch (operator.getType()) {
       case AUTHOR:
@@ -199,7 +202,7 @@ public class PhysicalGenerator {
         return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
-        return transformQuery(query);
+        return transformQuery(query, fetchSize);
       case TTL:
         switch (operator.getTokenIntType()) {
           case SQLConstant.TOK_SET:
@@ -320,7 +323,8 @@ public class PhysicalGenerator {
     return SchemaUtils.getSeriesTypesByPath(paths);
   }
 
-  private PhysicalPlan transformQuery(QueryOperator queryOperator) throws QueryProcessException {
+  private PhysicalPlan transformQuery(QueryOperator queryOperator, int fetchSize)
+      throws QueryProcessException {
     QueryPlan queryPlan;
 
     if (queryOperator.isGroupByTime() && queryOperator.isFill()) {
@@ -527,6 +531,13 @@ public class PhysicalGenerator {
         measurements = slimitTrimColumn(measurements, seriesSlimit, seriesOffset);
       }
 
+      int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
+          .getMaxDeduplicatedPathNum(fetchSize);
+
+      if (measurements.size() > maxDeduplicatedPathNum) {
+        throw new PathNumOverLimitException(maxDeduplicatedPathNum, measurements.size());
+      }
+
       // assigns to alignByDevicePlan
       alignByDevicePlan.setMeasurements(measurements);
       alignByDevicePlan.setDevices(devices);
@@ -567,7 +578,7 @@ public class PhysicalGenerator {
       }
     }
     try {
-      deduplicate(queryPlan);
+      deduplicate(queryPlan, fetchSize);
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -643,7 +654,8 @@ public class PhysicalGenerator {
     basicOperator.setSinglePath(concatPath);
   }
 
-  private void deduplicate(QueryPlan queryPlan) throws MetadataException {
+  private void deduplicate(QueryPlan queryPlan, int fetchSize)
+      throws MetadataException, PathNumOverLimitException {
     // generate dataType first
     List<Path> paths = queryPlan.getPaths();
     List<TSDataType> dataTypes = getSeriesTypes(paths);
@@ -683,6 +695,9 @@ public class PhysicalGenerator {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
+    int maxDeduplicatedPathNum = QueryResourceManager.getInstance()
+        .getMaxDeduplicatedPathNum(fetchSize);
+    int deduplicatedPathNum = 0;
     int index = 0;
     for (Pair<Path, Integer> indexedPath : indexedPaths) {
       String column;
@@ -698,6 +713,10 @@ public class PhysicalGenerator {
         TSDataType seriesType = dataTypes.get(indexedPath.right);
         rawDataQueryPlan.addDeduplicatedPaths(indexedPath.left);
         rawDataQueryPlan.addDeduplicatedDataTypes(seriesType);
+        deduplicatedPathNum++;
+        if (deduplicatedPathNum > maxDeduplicatedPathNum) {
+          throw new PathNumOverLimitException(maxDeduplicatedPathNum, deduplicatedPathNum);
+        }
         columnSet.add(column);
         rawDataQueryPlan.addPathToIndex(column, index++);
         if (queryPlan instanceof AggregationPlan) {

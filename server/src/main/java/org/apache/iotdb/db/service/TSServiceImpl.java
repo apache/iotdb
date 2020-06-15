@@ -25,15 +25,22 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -53,8 +60,15 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -125,6 +139,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int DELETE_SIZE = 20;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
+
+  private static final int DEFAULT_FETCH_SIZE = 1024;
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
   protected Planner processor;
   protected IPlanExecutor executor;
@@ -137,9 +153,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private AtomicLong sessionIdGenerator = new AtomicLong();
   // The statementId is unique in one IoTDB instance.
   private AtomicLong statementIdGenerator = new AtomicLong();
-
-  // current total free memory for reading process(not including the cache memory)
-  private final AtomicLong totalFreeMemoryForRead;
 
   // (sessionId -> Set(statementId))
   private Map<Long, Set<Long>> sessionId2StatementId = new ConcurrentHashMap<>();
@@ -157,8 +170,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSServiceImpl() throws QueryProcessException {
     processor = new Planner();
     executor = new PlanExecutor();
-    totalFreeMemoryForRead = new AtomicLong(
-        IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForReadWithoutCache());
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
@@ -405,8 +416,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   // on finding queries in a batch, such query will be ignored and an error will be generated
   private boolean executeStatementInBatch(String statement, List<TSStatus> result, long sessionId) {
     try {
-      PhysicalPlan physicalPlan =
-          processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
+      PhysicalPlan physicalPlan = processor
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
       if (physicalPlan.isQuery()) {
         throw new QueryInBatchStatementException(statement);
       }
@@ -458,8 +469,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       String statement = req.getStatement();
 
-      PhysicalPlan physicalPlan =
-          processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
+      PhysicalPlan physicalPlan = processor
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()),
+              req.fetchSize);
       if (physicalPlan.isQuery()) {
         return internalExecuteQueryStatement(statement, req.statementId, physicalPlan,
             req.fetchSize,
@@ -496,8 +508,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       String statement = req.getStatement();
       PhysicalPlan physicalPlan;
       try {
-        physicalPlan =
-            processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()));
+        physicalPlan = processor
+            .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(req.getSessionId()),
+                req.fetchSize);
       } catch (QueryProcessException | SQLParserException e) {
         logger.info(ERROR_PARSING_SQL, e.getMessage());
         return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
@@ -552,8 +565,19 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setIgnoreTimeStamp(true);
       } // else default ignoreTimeStamp is false
       resp.setOperationType(plan.getOperatorType().toString());
+
+      // get deduplicated path num
+      int deduplicatedPathNum = -1;
+      if (plan instanceof AlignByDevicePlan) {
+        deduplicatedPathNum = ((AlignByDevicePlan) plan).getMeasurements().size();
+      } else if (plan instanceof LastQueryPlan) {
+        deduplicatedPathNum = 0;
+      } else if (plan instanceof RawDataQueryPlan) {
+        deduplicatedPathNum = ((RawDataQueryPlan) plan).getDeduplicatedPaths().size();
+      }
+
       // generate the queryId for the operation
-      queryId = generateQueryId(true);
+      queryId = generateQueryId(true, fetchSize, deduplicatedPathNum);
       // put it into the corresponding Set
 
       statementId2QueryId.computeIfAbsent(statementId, k -> new HashSet<>()).add(queryId);
@@ -962,7 +986,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     status = executePlan(plan);
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(status);
-    long queryId = generateQueryId(false);
+    long queryId = generateQueryId(false, DEFAULT_FETCH_SIZE, -1);
     resp.setQueryId(queryId);
     return resp;
   }
@@ -980,7 +1004,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
     PhysicalPlan physicalPlan;
     try {
-      physicalPlan = processor.parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId));
+      physicalPlan = processor
+          .parseSQLToPhysicalPlan(statement, sessionIdZoneIdMap.get(sessionId), DEFAULT_FETCH_SIZE);
     } catch (QueryProcessException | SQLParserException e) {
       logger.warn(ERROR_PARSING_SQL, statement, e);
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SQL_PARSE_ERROR, e.getMessage());
@@ -1458,8 +1483,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
   }
 
-  private long generateQueryId(boolean isDataQuery) {
-    return QueryResourceManager.getInstance().assignQueryId(isDataQuery);
+  private long generateQueryId(boolean isDataQuery, int fetchSize, int deduplicatedPathNum) {
+    return QueryResourceManager.getInstance()
+        .assignQueryId(isDataQuery, fetchSize, deduplicatedPathNum);
   }
 
   protected List<TSDataType> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)

@@ -54,15 +54,18 @@ public class Planner {
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr)
       throws QueryProcessException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return parseSQLToPhysicalPlan(sqlStr, config.getZoneID());
+    return parseSQLToPhysicalPlan(sqlStr, config.getZoneID(), 1024);
   }
 
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
+  /**
+   * @param fetchSize this parameter only take effect when it is a query plan
+   */
+  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
     Operator operator = parseDriver.parse(sqlStr, zoneId);
     operator = logicalOptimize(operator);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
-    return physicalGenerator.transformToPhysicalPlan(operator);
+    return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
   }
 
 
