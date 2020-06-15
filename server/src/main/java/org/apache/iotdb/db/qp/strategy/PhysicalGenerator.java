@@ -260,7 +260,6 @@ public class PhysicalGenerator {
     }
   }
 
-
   protected PhysicalPlan generateLoadConfigurationPlan(LoadConfigurationOperatorType type)
       throws QueryProcessException {
     switch (type) {
@@ -337,6 +336,7 @@ public class PhysicalGenerator {
       }
       ((GroupByTimePlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
+
       ((GroupByTimePlan) queryPlan).setLevel(queryOperator.getLevel());
 
       if (queryOperator.getLevel() >= 0) {
