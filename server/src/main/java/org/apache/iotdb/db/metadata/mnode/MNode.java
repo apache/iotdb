@@ -53,10 +53,10 @@ public class MNode implements Serializable {
    */
   protected String fullPath;
 
-  Map<String, MNode> children;
-  Map<String, MNode> aliasChildren;
+  transient Map<String, MNode> children;
+  transient Map<String, MNode> aliasChildren;
 
-  protected ReadWriteLock lock = new ReentrantReadWriteLock();
+  protected transient ReadWriteLock lock = new ReentrantReadWriteLock();
 
   /**
    * Constructor of MNode.
@@ -117,8 +117,10 @@ public class MNode implements Serializable {
    * get the child with the name
    */
   public MNode getChild(String name) {
-    return children.containsKey(name) ? children.get(name)
-        : (aliasChildren == null ? null : aliasChildren.get(name));
+    if (children.containsKey(name)) {
+      return children.get(name);
+    }
+    return aliasChildren == null ? null : aliasChildren.get(name);
   }
 
   /**
@@ -186,14 +188,6 @@ public class MNode implements Serializable {
 
   public void setName(String name) {
     this.name = name;
-  }
-
-  public void setChildren(Map<String, MNode> children) {
-    this.children = children;
-  }
-
-  public void setAliasChildren(Map<String, MNode> aliasChildren) {
-    this.aliasChildren = aliasChildren;
   }
 
   public void serializeTo(BufferedWriter bw) throws IOException {
