@@ -71,8 +71,10 @@ public class BatchTest {
   @Test
   public void testExecuteBatchSQL1() throws SQLException, TException {
     Statement statement = connection.createStatement();
+    statement.addBatch("sql1");
     resp = new TSStatus();
-    resp = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    resp =
+        RpcUtils.getStatus(Collections.singletonList(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS)));
     when(client.executeBatchStatement(any(TSExecuteBatchStatementReq.class))).thenReturn(resp);
     int[] result = statement.executeBatch();
     assertEquals(1, result.length);
@@ -92,6 +94,7 @@ public class BatchTest {
     };
     resp.setSubStatus(resExpected);
 
+    statement.clearBatch();
     statement.addBatch("SET STORAGE GROUP TO root.ln.wf01.wt01");
     statement.addBatch(
         "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
@@ -120,6 +123,7 @@ public class BatchTest {
   @Test(expected = BatchUpdateException.class)
   public void testExecuteBatchSQL2() throws SQLException, TException {
     Statement statement = connection.createStatement();
+    statement.addBatch("sql1");
     resp =
         RpcUtils.getStatus(Collections.singletonList(RpcUtils.getStatus(TSStatusCode.SQL_PARSE_ERROR)));
 
@@ -132,6 +136,8 @@ public class BatchTest {
   public void testExecuteBatchSQL3() throws SQLException, TException {
     Statement statement = connection.createStatement();
     resp = RpcUtils.getStatus(Collections.singletonList(errorStatus));
+    statement.addBatch("sql1");
+    statement.addBatch("sql1");
     List<TSStatus> resExpected = new ArrayList<TSStatus>() {
       {
         add(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));

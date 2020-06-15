@@ -272,6 +272,8 @@ public class IoTDBStatement implements Statement {
           message = execResp.getSubStatus().get(i).message;
         }
       } else {
+        allSuccess =
+            allSuccess && execResp.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode();
         result[i] = execResp.getCode();
       }
     }
