@@ -23,7 +23,6 @@ package org.apache.iotdb.cluster.exception;
  * syncLeader failed
  */
 public class CheckConsistencyException extends Exception {
-
   public CheckConsistencyException(String errMag) {
     super(String.format("check consistency failed, error message=%s ", errMag));
   }
