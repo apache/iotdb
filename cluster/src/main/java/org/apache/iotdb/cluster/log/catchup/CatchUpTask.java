@@ -72,8 +72,9 @@ public class CatchUpTask implements Runnable {
         logs = raftMember.getLogManager().getEntries(lo, hi);
         if (isLogDebug) {
           logger.debug(
-              "node [{}] use {} logs of [{}, {}] to fix log inconsistency with node [{}], local first index: {}",
-              raftMember.getName(), node, logs.size(), lo, hi, localFirstIndex);
+              "{}: use {} logs of [{}, {}] to fix log inconsistency with node [{}], "
+              + "local first index: {}",
+              raftMember.getName(), logs.size(), lo, hi, node, localFirstIndex);
         }
       } catch (Exception e) {
         logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
@@ -84,6 +85,7 @@ public class CatchUpTask implements Runnable {
     // if index >= 0 but there is no matched log, still send Snapshot and all the logs in logManager
     while (index >= 0) {
       if (checkMatchIndex(index)) {
+        logger.debug("{}: Find a match index {} of {}", raftMember.getName(), index, node);
         return true;
       }
       index--;
@@ -131,8 +133,12 @@ public class CatchUpTask implements Runnable {
       // if follower return RESPONSE.AGREE with this empty log, then start sending real logs from index.
       logs.subList(0, index).clear();
       if (isLogDebug) {
-        logger.debug("{} makes {} catch up with {} cached logs", raftMember.getName(), node,
-            logs.size());
+        if (logs.isEmpty()) {
+          logger.debug("{}: {} has caught up by previous catch up", raftMember.getName(), node);
+        } else {
+          logger.debug("{}: makes {} catch up with {} and other {} logs", raftMember.getName(),
+              node, logs.get(0), logs.size());
+        }
       }
       return true;
     }
@@ -155,22 +161,34 @@ public class CatchUpTask implements Runnable {
   public void run() {
     try {
       boolean findMatchedIndex = checkMatchIndex();
+      boolean catchUpSucceeded;
       if (!findMatchedIndex) {
         doSnapshot();
         SnapshotCatchUpTask task = new SnapshotCatchUpTask(logs, snapshot, node, raftMember);
-        task.call();
+        catchUpSucceeded = task.call();
       } else {
         LogCatchUpTask task = new LogCatchUpTask(logs, node, raftMember);
-        task.call();
+        catchUpSucceeded = task.call();
       }
-      // there must be at least one log if catchUp is called.
-      peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
-      // update peer's status so raftMember can send logs in main thread.
-      peer.setCatchUp(true);
-      if (logger.isDebugEnabled()) {
-        logger.debug("Catch up {} finished, update it's matchIndex to {}", node,
-            logs.get(logs.size() - 1).getCurrLogIndex());
+      if (catchUpSucceeded) {
+        // the catch up may be triggered by an old heartbeat, and the node may have already
+        // caught up, so logs can be empty
+        if (!logs.isEmpty()) {
+          peer.setMatchIndex(logs.get(logs.size() - 1).getCurrLogIndex());
+          // update peer's status so raftMember can send logs in main thread.
+          peer.setCatchUp(true);
+          if (logger.isDebugEnabled()) {
+            logger.debug("{}: Catch up {} finished, update it's matchIndex to {}",
+                raftMember.getName(), node,
+                logs.get(logs.size() - 1).getCurrLogIndex());
+          }
+        } else {
+          logger.debug("{}: Logs are empty when catching up {}, it may have been caught up",
+              raftMember.getName(), node);
+        }
+
       }
+
     } catch (LeaderUnknownException e) {
       logger.warn("Catch up {} failed because leadership is lost", node);
     } catch (Exception e) {

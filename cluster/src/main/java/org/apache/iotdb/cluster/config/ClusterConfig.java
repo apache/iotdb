@@ -68,6 +68,20 @@ public class ClusterConfig {
    */
   private int maxClientPerNodePerMember = 100;
 
+  /**
+   * each ClientPool will have so many selector threads (TAsyncClientManager) to distribute to its
+   * clients.
+   */
+  private int selectorNumOfClientPool = 10;
+
+  public int getSelectorNumOfClientPool() {
+    return selectorNumOfClientPool;
+  }
+
+  public void setSelectorNumOfClientPool(int selectorNumOfClientPool) {
+    this.selectorNumOfClientPool = selectorNumOfClientPool;
+  }
+
   public int getMaxClientPerNodePerMember() {
     return maxClientPerNodePerMember;
   }

@@ -1230,7 +1230,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   @Override
   public void matchTerm(long index, long term, Node header,
       AsyncMethodCallback<Boolean> resultHandler) {
-    resultHandler.onComplete(logManager.matchTerm(term, index));
+    boolean matched = logManager.matchTerm(term, index);
+    logger.debug("Log {}-{} matched: {}", index, term, matched);
+    resultHandler.onComplete(matched);
   }
 
   void waitLeader() {

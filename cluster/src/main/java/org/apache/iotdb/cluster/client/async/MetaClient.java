@@ -20,6 +20,8 @@
 package org.apache.iotdb.cluster.client.async;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
@@ -27,6 +29,8 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.thrift.async.TAsyncClientManager;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TNonblockingSocket;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Notice: Because a client will be returned to a pool immediately after a successful request,
@@ -34,6 +38,7 @@ import org.apache.thrift.transport.TNonblockingSocket;
  */
 public class MetaClient extends AsyncClient {
 
+  private static final Logger logger = LoggerFactory.getLogger(MetaClient.class);
   private Node node;
   private ClientPool pool;
 
@@ -56,15 +61,30 @@ public class MetaClient extends AsyncClient {
   }
 
   public static class Factory implements ClientFactory {
+
     private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
+    private TAsyncClientManager[] managers;
+    private AtomicInteger clientCnt = new AtomicInteger();
+
     public Factory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
+      this.managers =
+          new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
+      for (int i = 0; i < this.managers.length; i++) {
+        try {
+          managers[i] = new TAsyncClientManager();
+        } catch (IOException e) {
+          logger.error("Cannot create client manager for factory", e);
+        }
+      }
     }
 
     @Override
     public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool)
         throws IOException {
-      return new MetaClient(protocolFactory, new TAsyncClientManager(), node, pool);
+      TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
+      manager = manager == null ? new TAsyncClientManager() : manager;
+      return new MetaClient(protocolFactory, manager, node, pool);
     }
   }
 

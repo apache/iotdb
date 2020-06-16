@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * LogCatchUpTask sends a list of logs to a node to make the node keep up with the leader.
  */
 @SuppressWarnings("java:S2274") // enable timeout
-public class LogCatchUpTask implements Callable<Void> {
+public class LogCatchUpTask implements Callable<Boolean> {
 
   // sending logs may take longer than normal communications
   private static final long SEND_LOGS_WAIT_MS = 5 * 60 * 1000L;
@@ -55,6 +55,7 @@ public class LogCatchUpTask implements Callable<Void> {
   RaftMember raftMember;
   private List<Log> logs;
   private boolean useBatch = ClusterDescriptor.getInstance().getConfig().isUseBatchInLogCatchUp();
+  boolean abort = false;
 
   public LogCatchUpTask(List<Log> logs, Node node, RaftMember raftMember) {
     this.logs = logs;
@@ -79,7 +80,6 @@ public class LogCatchUpTask implements Callable<Void> {
 
     AppendEntryRequest request = new AppendEntryRequest();
     AtomicBoolean appendSucceed = new AtomicBoolean(false);
-    boolean abort = false;
 
     LogCatchUpHandler handler = new LogCatchUpHandler();
     handler.setAppendSucceed(appendSucceed);
@@ -116,6 +116,7 @@ public class LogCatchUpTask implements Callable<Void> {
       logger.debug("{}: Catching up {} with log {}", raftMember.getName(), node, log);
 
       synchronized (appendSucceed) {
+        appendSucceed.set(false);
         AsyncClient client = raftMember.connectNode(node);
         if (client == null) {
           return;
@@ -131,7 +132,6 @@ public class LogCatchUpTask implements Callable<Void> {
   void doLogCatchUpInBatch() throws TException, InterruptedException {
     AppendEntriesRequest request = new AppendEntriesRequest();
     AtomicBoolean appendSucceed = new AtomicBoolean(false);
-    boolean abort = false;
 
     LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
     handler.setAppendSucceed(appendSucceed);
@@ -160,6 +160,7 @@ public class LogCatchUpTask implements Callable<Void> {
         // make sure this node is still a leader
         if (raftMember.getCharacter() != NodeCharacter.LEADER) {
           logger.debug("Leadership is lost when doing a catch-up to {}, aborting", node);
+          abort = true;
           break;
         }
         request.setTerm(raftMember.getTerm().get());
@@ -178,6 +179,7 @@ public class LogCatchUpTask implements Callable<Void> {
 
       // do append entries
       synchronized (appendSucceed) {
+        appendSucceed.set(false);
         AsyncClient client = raftMember.connectNode(node);
 
         client.appendEntries(request, handler);
@@ -188,7 +190,7 @@ public class LogCatchUpTask implements Callable<Void> {
     }
   }
 
-  public Void call() throws TException, InterruptedException, LeaderUnknownException {
+  public Boolean call() throws TException, InterruptedException, LeaderUnknownException {
     if (useBatch) {
       doLogCatchUpInBatch();
     } else {
@@ -198,6 +200,6 @@ public class LogCatchUpTask implements Callable<Void> {
 
     // the next catch up is enabled
     raftMember.getLastCatchUpResponseTime().remove(node);
-    return null;
+    return !abort;
   }
 }
