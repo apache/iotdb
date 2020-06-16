@@ -60,7 +60,7 @@ public class QueryResourceManager {
   private final AtomicLong totalFreeMemoryForRead;
 
   // estimated size for one point memory size, the unit is byte
-  private static final int POINT_ESTIMATED_SIZE = 16;
+  private static final long POINT_ESTIMATED_SIZE = 16L;
 
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
@@ -86,7 +86,8 @@ public class QueryResourceManager {
     if (isDataQuery) {
       filePathsManager.addQueryId(queryId);
       if (deduplicatedPathNum > 0) {
-        long estimatedMemoryUsage = deduplicatedPathNum * POINT_ESTIMATED_SIZE * fetchSize;
+        long estimatedMemoryUsage =
+            (long) deduplicatedPathNum * POINT_ESTIMATED_SIZE * (long) fetchSize;
         // apply the memory successfully
         if (totalFreeMemoryForRead.addAndGet(-estimatedMemoryUsage) >= 0) {
           queryIdEstimatedMemoryMap.put(queryId, estimatedMemoryUsage);

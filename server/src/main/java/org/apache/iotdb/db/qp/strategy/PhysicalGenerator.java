@@ -114,13 +114,8 @@ public class PhysicalGenerator {
       case AUTHOR:
         AuthorOperator author = (AuthorOperator) operator;
         try {
-          return new AuthorPlan(
-              author.getAuthorType(),
-              author.getUserName(),
-              author.getRoleName(),
-              author.getPassWord(),
-              author.getNewPassword(),
-              author.getPrivilegeList(),
+          return new AuthorPlan(author.getAuthorType(), author.getUserName(), author.getRoleName(),
+              author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
               author.getNodeName());
         } catch (AuthException e) {
           throw new QueryProcessException(e.getMessage());
@@ -141,10 +136,9 @@ public class PhysicalGenerator {
         return new DeleteStorageGroupPlan(deleteStorageGroup.getDeletePathList());
       case CREATE_TIMESERIES:
         CreateTimeSeriesOperator createOperator = (CreateTimeSeriesOperator) operator;
-        if (createOperator.getTags() != null
-            && !createOperator.getTags().isEmpty()
-            && createOperator.getAttributes() != null
-            && !createOperator.getAttributes().isEmpty()) {
+        if (createOperator.getTags() != null && !createOperator.getTags().isEmpty()
+            && createOperator.getAttributes() != null && !createOperator.getAttributes()
+            .isEmpty()) {
           for (String tagKey : createOperator.getTags().keySet()) {
             if (createOperator.getAttributes().containsKey(tagKey)) {
               throw new QueryProcessException(
@@ -153,26 +147,17 @@ public class PhysicalGenerator {
             }
           }
         }
-        return new CreateTimeSeriesPlan(
-            createOperator.getPath(),
-            createOperator.getDataType(),
-            createOperator.getEncoding(),
-            createOperator.getCompressor(),
-            createOperator.getProps(),
-            createOperator.getTags(),
-            createOperator.getAttributes(),
-            createOperator.getAlias());
+        return new CreateTimeSeriesPlan(createOperator.getPath(), createOperator.getDataType(),
+            createOperator.getEncoding(), createOperator.getCompressor(), createOperator.getProps(),
+            createOperator.getTags(), createOperator.getAttributes(), createOperator.getAlias());
       case DELETE_TIMESERIES:
         DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
         return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
       case ALTER_TIMESERIES:
         AlterTimeSeriesOperator alterTimeSeriesOperator = (AlterTimeSeriesOperator) operator;
-        return new AlterTimeSeriesPlan(
-            alterTimeSeriesOperator.getPath(),
-            alterTimeSeriesOperator.getAlterType(),
-            alterTimeSeriesOperator.getAlterMap(),
-            alterTimeSeriesOperator.getAlias(),
-            alterTimeSeriesOperator.getTagsMap(),
+        return new AlterTimeSeriesPlan(alterTimeSeriesOperator.getPath(),
+            alterTimeSeriesOperator.getAlterType(), alterTimeSeriesOperator.getAlterMap(),
+            alterTimeSeriesOperator.getAlias(), alterTimeSeriesOperator.getTagsMap(),
             alterTimeSeriesOperator.getAttributesMap());
       case DELETE:
         DeleteDataOperator delete = (DeleteDataOperator) operator;
@@ -186,11 +171,8 @@ public class PhysicalGenerator {
               "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
 
-        return new InsertPlan(
-            paths.get(0).getFullPath(),
-            insert.getTime(),
-            insert.getMeasurementList(),
-            insert.getValueList());
+        return new InsertPlan(paths.get(0).getFullPath(), insert.getTime(),
+            insert.getMeasurementList(), insert.getValueList());
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
           return new MergePlan(OperatorType.FULL_MERGE);
@@ -215,9 +197,8 @@ public class PhysicalGenerator {
             ShowTTLOperator showTTLOperator = (ShowTTLOperator) operator;
             return new ShowTTLPlan(showTTLOperator.getStorageGroups());
           default:
-            throw new LogicalOperatorException(
-                String.format(
-                    "not supported operator type %s in ttl operation.", operator.getType()));
+            throw new LogicalOperatorException(String
+                .format("not supported operator type %s in ttl operation.", operator.getType()));
         }
       case LOAD_CONFIGURATION:
         LoadConfigurationOperatorType type = ((LoadConfigurationOperator) operator)
@@ -240,17 +221,13 @@ public class PhysicalGenerator {
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowPlan(ShowContentType.STORAGE_GROUP);
           case SQLConstant.TOK_DEVICES:
-            return new ShowDevicesPlan(
-                ShowContentType.DEVICES, ((ShowDevicesOperator) operator).getPath());
+            return new ShowDevicesPlan(ShowContentType.DEVICES,
+                ((ShowDevicesOperator) operator).getPath());
           case SQLConstant.TOK_COUNT_NODE_TIMESERIES:
-            return new CountPlan(
-                ShowContentType.COUNT_NODE_TIMESERIES,
-                ((CountOperator) operator).getPath(),
-                ((CountOperator) operator).getLevel());
+            return new CountPlan(ShowContentType.COUNT_NODE_TIMESERIES,
+                ((CountOperator) operator).getPath(), ((CountOperator) operator).getLevel());
           case SQLConstant.TOK_COUNT_NODES:
-            return new CountPlan(
-                ShowContentType.COUNT_NODES,
-                ((CountOperator) operator).getPath(),
+            return new CountPlan(ShowContentType.COUNT_NODES, ((CountOperator) operator).getPath(),
                 ((CountOperator) operator).getLevel());
           case SQLConstant.TOK_COUNT_TIMESERIES:
             return new CountPlan(
@@ -264,19 +241,15 @@ public class PhysicalGenerator {
                     "not supported operator type %s in show operation.", operator.getType()));
         }
       case LOAD_FILES:
-        return new OperateFilePlan(
-            ((LoadFilesOperator) operator).getFile(),
-            OperatorType.LOAD_FILES,
-            ((LoadFilesOperator) operator).isAutoCreateSchema(),
+        return new OperateFilePlan(((LoadFilesOperator) operator).getFile(),
+            OperatorType.LOAD_FILES, ((LoadFilesOperator) operator).isAutoCreateSchema(),
             ((LoadFilesOperator) operator).getSgLevel());
       case REMOVE_FILE:
-        return new OperateFilePlan(
-            ((RemoveFileOperator) operator).getFile(), OperatorType.REMOVE_FILE);
+        return new OperateFilePlan(((RemoveFileOperator) operator).getFile(),
+            OperatorType.REMOVE_FILE);
       case MOVE_FILE:
-        return new OperateFilePlan(
-            ((MoveFileOperator) operator).getFile(),
-            ((MoveFileOperator) operator).getTargetDir(),
-            OperatorType.MOVE_FILE);
+        return new OperateFilePlan(((MoveFileOperator) operator).getFile(),
+            ((MoveFileOperator) operator).getTargetDir(), OperatorType.MOVE_FILE);
       case CLEAR_CACHE:
         return new ClearCachePlan();
       default:
