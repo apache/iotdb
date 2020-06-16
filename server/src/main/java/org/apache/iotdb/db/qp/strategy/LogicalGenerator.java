@@ -1110,8 +1110,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     CompressionType compressor;
     List<PropertyContext> properties = ctx.property();
     Map<String, String> props = new HashMap<>(properties.size());
-    if (ctx.propertyValue() != null) {
-      compressor = CompressionType.valueOf(ctx.propertyValue().getText().toUpperCase());
+    if (ctx.compressor() != null) {
+      compressor = CompressionType.valueOf(ctx.compressor().getText().toUpperCase());
     } else {
       compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
