@@ -84,7 +84,7 @@
 * IOTDB-597 Rename methods in Session: insertBatch to insertTablet, insertInBatch to insertRecords, insert to insertRecord
 * RPC is incompatible, you can not use client-v0.9 to connect with server-v0.10
 * TsFile format is incompatible, will be upgraded when starting 0.10
-* Refine exception code in narive api
+* Refine exception code in native api
 
 ## Miscellaneous changes
 

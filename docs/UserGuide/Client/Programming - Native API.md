@@ -111,7 +111,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
   void deleteData(List<String> paths, long time)
   ```
 
-* Insert a Record，which contains multiple measurement value of a device at a timestamp
+* Insert a Record，which contains multiple measurement value of a device at a timestamp. Without type info the server has to do type inference, which may cost some time
 
   ```
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
@@ -129,11 +129,26 @@ Here we show the commonly used interfaces and their parameters in the Native API
   void insertTablets(Map<String, Tablet> tablet)
   ```
   
-* Insert multiple Records
+* Insert multiple Records. Without type info the server has to do type inference, which may cost some time
 
   ```
   void insertRecords(List<String> deviceIds, List<Long> times, 
                        List<List<String>> measurementsList, List<List<String>> valuesList)
+  ```
+  
+* Insert a Record，which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
+
+  ```
+  void insertRecord(String deviceId, long time, List<String> measurements,
+       List<TSDataType> types, List<Object> values)
+  ```
+
+* Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
+
+  ```
+  void insertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
   ```
 
 ## Native APIs for profiling network cost
@@ -144,11 +159,22 @@ Here we show the commonly used interfaces and their parameters in the Native API
   void testInsertRecords(List<String> deviceIds, List<Long> times,
                   List<List<String>> measurementsList, List<List<String>> valuesList)
   ```
+  or
+  ```
+  void testInsertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+  ```
 
 * Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
 
   ```
   void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  ```
+  or
+  ```
+  void testInsertRecord(String deviceId, long time, List<String> measurements,
+        List<TSDataType> types, List<Object> values)
   ```
 
 * Test the network and client cost of insertTablet. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
