@@ -699,19 +699,19 @@ public class MTree implements Serializable {
       if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
         nodeName = "\"" + node + "\"";
       } else {
-          nodeName = node.getName();
-        }
-        String nodePath = parent + nodeName;
-        String[] tsRow = new String[8];
-        tsRow[0] = nodePath;
-        tsRow[1] = ((MeasurementMNode) node).getAlias();
-        MeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
-        tsRow[2] = getStorageGroupName(nodePath);
-        tsRow[3] = measurementSchema.getType().toString();
-        tsRow[4] = measurementSchema.getEncodingType().toString();
-        tsRow[5] = measurementSchema.getCompressor().toString();
-        tsRow[6] = String.valueOf(((MeasurementMNode) node).getOffset());
-        tsRow[7] = String.valueOf(getLastTimeStamp((MeasurementMNode) node));
+        nodeName = node.getName();
+      }
+      String nodePath = parent + nodeName;
+      String[] tsRow = new String[8];
+      tsRow[0] = nodePath;
+      tsRow[1] = ((MeasurementMNode) node).getAlias();
+      MeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
+      tsRow[2] = getStorageGroupName(nodePath);
+      tsRow[3] = measurementSchema.getType().toString();
+      tsRow[4] = measurementSchema.getEncodingType().toString();
+      tsRow[5] = measurementSchema.getCompressor().toString();
+      tsRow[6] = String.valueOf(((MeasurementMNode) node).getOffset());
+      tsRow[7] = String.valueOf(getLastTimeStamp((MeasurementMNode) node));
       timeseriesSchemaList.add(tsRow);
 
       if (hasLimit) {
