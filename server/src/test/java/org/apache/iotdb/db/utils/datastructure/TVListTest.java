@@ -31,28 +31,28 @@ public class TVListTest {
   @Test
   public void testDoubleTVList1(){
     TVList tvList = new DoubleTVList();
+    double j = 1.2345678;
     for (long i = 0; i < 1000; i++) {
-      double j = 1.2345678;
       tvList.putDouble(i, j);
     }
     tvList.sort();
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(1.2345678, tvList.getDouble((int)i));
-      Assert.assertEquals(1.2345678, tvList.getTime((int)i));
+      Assert.assertEquals(j, tvList.getDouble((int)i));
+      Assert.assertEquals(i, tvList.getTime((int)i));
     }
   }
 
   @Test
   public void testFloatTVList1(){
     TVList tvList = new FloatTVList();
+    float j = (float) 1.2345678;
     for (long i = 0; i < 1000; i++) {
-      float j = (float) 1.2345678;
       tvList.putFloat(i, j);
     }
     tvList.sort();
     for (long i = 0; i < tvList.size; i++) {
-      Assert.assertEquals(1.2345678, tvList.getFloat((int)i));
-      Assert.assertEquals(1.2345678, tvList.getTime((int)i));
+      Assert.assertEquals(j, tvList.getFloat((int)i));
+      Assert.assertEquals(i, tvList.getTime((int)i));
     }
   }
 
