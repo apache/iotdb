@@ -184,6 +184,9 @@ public class MNode implements Serializable {
   }
 
   public Map<String, MNode> getChildren() {
+    if (children == null) {
+      return new LinkedHashMap<>();
+    }
     return children;
   }
 
