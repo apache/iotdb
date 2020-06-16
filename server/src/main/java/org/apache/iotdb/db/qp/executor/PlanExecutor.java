@@ -987,7 +987,7 @@ public class PlanExecutor implements IPlanExecutor {
       measurementSchema = measurementNode.getSchema();
     } else {
       // device in not in MTree, try the cache
-      measurementSchema = MManager.getInstance().getSeriesSchema(deviceId, measurement);
+      measurementSchema = mManager.getSeriesSchema(deviceId, measurement);
     }
     return measurementSchema;
   }
