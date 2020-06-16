@@ -90,6 +90,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -276,6 +277,8 @@ public class PhysicalGenerator {
             OperatorType.MOVE_FILE);
       case CLEAR_CACHE:
         return new ClearCachePlan();
+      case SHOW_MERGE_STATUS:
+        return new ShowMergeStatusPlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }

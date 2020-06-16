@@ -114,10 +114,11 @@ public class TimeSeriesMetadataCache {
 
     try {
       lock.readLock().lock();
-      if (lruCache.containsKey(key)) {
+      TimeseriesMetadata timeseriesMetadata = lruCache.get(key);
+      if (timeseriesMetadata != null) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return new TimeseriesMetadata(lruCache.get(key));
+        return new TimeseriesMetadata(timeseriesMetadata);
       }
     } finally {
       lock.readLock().unlock();
@@ -125,10 +126,11 @@ public class TimeSeriesMetadataCache {
 
     try {
       lock.writeLock().lock();
-      if (lruCache.containsKey(key)) {
+      TimeseriesMetadata tsMetadata = lruCache.get(key);
+      if (tsMetadata != null) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return new TimeseriesMetadata(lruCache.get(key));
+        return new TimeseriesMetadata(tsMetadata);
       }
       printCacheLog(false);
       // bloom filter part
@@ -141,14 +143,14 @@ public class TimeSeriesMetadataCache {
       List<TimeseriesMetadata> timeSeriesMetadataList = reader
           .readTimeseriesMetadata(key.device, allSensors);
       // put TimeSeriesMetadata of all sensors used in this query into cache
-      timeSeriesMetadataList.forEach(timeseriesMetadata ->
+      timeSeriesMetadataList.forEach(t ->
           lruCache.put(new TimeSeriesMetadataCacheKey(key.filePath, key.device,
-              timeseriesMetadata.getMeasurementId()), timeseriesMetadata));
-      TimeseriesMetadata metadata = lruCache.get(key);
-      if (metadata == null) {
+              t.getMeasurementId()), t));
+      tsMetadata = lruCache.get(key);
+      if (tsMetadata == null) {
         return null;
       } else {
-        return new TimeseriesMetadata(metadata);
+        return new TimeseriesMetadata(tsMetadata);
       }
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", key.filePath);
