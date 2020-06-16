@@ -33,16 +33,17 @@ public class VersionUtils {
     }
     int versionIndex = 0;
     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+
       while (chunkMetadata.getOffsetOfChunkHeader() >= versionInfo.get(versionIndex).left) {
         versionIndex++;
+        // When the TsFile is uncompleted,
+        // skip the chunkMetadatas those don't have their version information
+        if (versionIndex >= versionInfo.size()) {
+          return;
+        }
       }
-      // When the TsFile is uncompleted, 
-      // skip the chunkMetadatas those don't have their version information
-      if (versionIndex >= versionInfo.size()) {
-        break;
-      }
+
       chunkMetadata.setVersion(versionInfo.get(versionIndex).right);
     }
   }
-
 }
