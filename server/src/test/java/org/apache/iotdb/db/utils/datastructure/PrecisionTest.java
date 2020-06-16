@@ -40,7 +40,7 @@ public class PrecisionTest {
       statement.execute("SET STORAGE GROUP TO root.turbine1");
       statement.execute("create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=PLAIN, compression=SNAPPY");
 
-      statement.execute("insert into root.turbine1.d1(timestamp,s2) values(1,1.2345678);");
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678);");
 
       ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
 
@@ -62,7 +62,7 @@ public class PrecisionTest {
       statement.execute("SET STORAGE GROUP TO root.turbine1");
       statement.execute("create timeseries root.turbine1.d1.s1 with datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
 
-      statement.execute("insert into root.turbine1.d1(timestamp,s2) values(1,1.2345678);");
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678);");
 
       ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
 
@@ -84,7 +84,7 @@ public class PrecisionTest {
       statement.execute("SET STORAGE GROUP TO root.turbine1");
       statement.execute("create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=PLAIN, compression=SNAPPY");
 
-      statement.execute("insert into root.turbine1.d1(timestamp,s2) values(1,1.2345678);");
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678);");
 
       ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
 
@@ -106,7 +106,7 @@ public class PrecisionTest {
       statement.execute("SET STORAGE GROUP TO root.turbine1");
       statement.execute("create timeseries root.turbine1.d1.s1 with datatype=FLOAT, encoding=RLE, compression=SNAPPY");
 
-      statement.execute("insert into root.turbine1.d1(timestamp,s2) values(1,1.2345678);");
+      statement.execute("insert into root.turbine1.d1(timestamp,s1) values(1,1.2345678);");
 
       ResultSet resultSet = statement.executeQuery("select * from root.turbine1");
 
