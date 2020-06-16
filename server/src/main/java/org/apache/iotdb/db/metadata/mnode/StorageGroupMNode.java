@@ -53,8 +53,7 @@ public class StorageGroupMNode extends MNode {
     String s = String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
     s += "," + name + ",";
     s += dataTTL + ",";
-    s += children.size() + ",";
-    s += aliasChildren == null ? 0 : aliasChildren.size();
+    s += children == null ? "0" : children.size();
     bw.write(s);
     bw.newLine();
   }

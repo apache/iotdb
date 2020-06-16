@@ -129,28 +129,38 @@ public class MeasurementMNode extends MNode {
     if (alias != null) {
       s.append(alias);
     }
-    s.append(",").append(schema.getType().name()).append(",");
-    s.append(schema.getEncodingType().name()).append(",");
-    s.append(schema.getCompressor().name()).append(",");
+    s.append(",").append(schema.getType().ordinal()).append(",");
+    s.append(schema.getEncodingType().ordinal()).append(",");
+    s.append(schema.getCompressor().ordinal()).append(",");
     for (Map.Entry<String, String> entry : schema.getProps().entrySet()) {
       s.append(entry.getKey()).append(":").append(entry.getValue()).append(";");
     }
     s.append(",").append(offset).append(",");
-    s.append(children.size()).append(",");
-    s.append(aliasChildren == null ? 0 : aliasChildren.size());
+    s.append(children == null ? "0" : children.size());
     bw.write(s.toString());
     bw.newLine();
   }
 
+  /**
+   * deserialize MeasuremetMNode from string array
+   *
+   * @param nodeInfo node information array. For example: "2,s0,speed,2,2,1,year:2020;month:jan;,-1,0"
+   * representing: [0] nodeType [1] name [2] alias [3] TSDataType.ordinal() [4] TSEncoding.ordinal()
+   * [5] CompressionType.ordinal() [6] props [7] offset [8] children size
+   */
   public static MeasurementMNode deserializeFrom(String[] nodeInfo) {
     String name = nodeInfo[1];
     String alias = nodeInfo[2].equals("") ? null : nodeInfo[2];
     Map<String, String> props = new HashMap<>();
-    for (String propInfo : nodeInfo[6].split(";")) {
-      props.put(propInfo.split(":")[0], propInfo.split(":")[1]);
+    if (!nodeInfo[6].equals("")) {
+      for (String propInfo : nodeInfo[6].split(";")) {
+        props.put(propInfo.split(":")[0], propInfo.split(":")[1]);
+      }
     }
-    MeasurementSchema schema = new MeasurementSchema(name, TSDataType.valueOf(nodeInfo[3]),
-        TSEncoding.valueOf(nodeInfo[4]), CompressionType.valueOf(nodeInfo[5]), props);
+    MeasurementSchema schema = new MeasurementSchema(name,
+        TSDataType.deserialize(Short.valueOf(nodeInfo[3])),
+        TSEncoding.deserialize(Short.valueOf(nodeInfo[4])),
+        CompressionType.deserialize(Short.valueOf(nodeInfo[5])), props);
     MeasurementMNode node = new MeasurementMNode(null, name, schema, alias);
     node.setOffset(Long.valueOf(nodeInfo[7]));
 

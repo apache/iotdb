@@ -64,14 +64,13 @@ public class MNode implements Serializable {
   public MNode(MNode parent, String name) {
     this.parent = parent;
     this.name = name;
-    this.children = new LinkedHashMap<>();
   }
 
   /**
    * check whether the MNode has a child with the name
    */
   public boolean hasChild(String name) {
-    return this.children.containsKey(name) ||
+    return (children != null && children.containsKey(name)) ||
         (aliasChildren != null && aliasChildren.containsKey(name));
   }
 
@@ -79,6 +78,9 @@ public class MNode implements Serializable {
    * node key, name or alias
    */
   public void addChild(String name, MNode child) {
+    if (children == null) {
+      children = new LinkedHashMap<>();
+    }
     children.put(name, child);
   }
 
@@ -86,7 +88,7 @@ public class MNode implements Serializable {
    * If delete a leafMNode, lock its parent, if delete an InternalNode, lock itself
    */
   public void deleteChild(String name) throws DeleteFailedException {
-    if (children.containsKey(name)) {
+    if (children != null && children.containsKey(name)) {
       // acquire the write lock of its child node.
       Lock writeLock = (children.get(name)).lock.writeLock();
       if (writeLock.tryLock()) {
@@ -117,7 +119,7 @@ public class MNode implements Serializable {
    * get the child with the name
    */
   public MNode getChild(String name) {
-    if (children.containsKey(name)) {
+    if (children != null && children.containsKey(name)) {
       return children.get(name);
     }
     return aliasChildren == null ? null : aliasChildren.get(name);
@@ -127,8 +129,11 @@ public class MNode implements Serializable {
    * get the count of all leaves whose ancestor is current node
    */
   public int getLeafCount() {
+    if (children == null) {
+      return 0;
+    }
     int leafCount = 0;
-    for (MNode child : this.children.values()) {
+    for (MNode child : children.values()) {
       leafCount += child.getLeafCount();
     }
     return leafCount;
@@ -190,25 +195,26 @@ public class MNode implements Serializable {
     this.name = name;
   }
 
+  public void setChildren(Map<String, MNode> children) {
+    this.children = children;
+  }
+
   public void serializeTo(BufferedWriter bw) throws IOException {
     serializeChildren(bw);
 
     String s = String.valueOf(MetadataConstant.MNODE_TYPE);
     s += "," + name + ",";
-    s += children.size() + ",";
-    s += aliasChildren == null ? 0 : aliasChildren.size();
+    s += children == null ? "0" : children.size();
     bw.write(s);
     bw.newLine();
   }
 
   void serializeChildren(BufferedWriter bw) throws IOException {
+    if (children == null) {
+      return;
+    }
     for (Entry<String, MNode> entry : children.entrySet()) {
       entry.getValue().serializeTo(bw);
-    }
-    if (aliasChildren != null) {
-      for (Entry<String, MNode> entry : aliasChildren.entrySet()) {
-        entry.getValue().serializeTo(bw);
-      }
     }
   }
 
