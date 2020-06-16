@@ -26,8 +26,19 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class LongTVListTest {
+public class TVListTest {
 
+  @Test
+  public void testDoubleTVList1(){
+    TVList tvList = new DoubleTVList();
+//    tvList.getTimeValuePair();
+    for (long i = 0; i < 1000; i++) {
+      double j = 1.2345678+Math.random();
+      tvList.putDouble(i, j);
+    }
+    tvList.sort();
+    tvList.getTimeValuePair(0);
+  }
 
   @Test
   public void testLongTVList1() {
