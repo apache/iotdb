@@ -31,7 +31,9 @@ public class ClusterConfig {
   private int localDataPort = 40010;
   private int localClientPort = 55560;
 
-  // each one is a "<IP | domain name>:<meta port>:<data port>" string tuple
+  /**
+   * each one is a "<IP | domain name>:<meta port>:<data port>" string tuple
+   */
   private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010", "127.0.0.1"
       + ":9004:40011", "127.0.0.1:9005:40012");
 
