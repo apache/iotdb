@@ -165,11 +165,12 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setDeviceId(TestUtils.getTestSg(1));
     insertPlan.setTime(1);
     insertPlan.setInferType(true);
-    insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
+    insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
-    insertPlan.setValues(new Object[] {"1.0"});
+    insertPlan.setValues(new Object[]{"1.0"});
     insertPlan.setInferType(true);
-    insertPlan.setSchemasAndTransferType(new MeasurementSchema[] {TestUtils.getTestMeasurementSchema(0)});
+    insertPlan
+        .setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
@@ -197,7 +198,9 @@ public class DataLogApplierTest extends IoTDBTest {
       applier.apply(log);
       fail("exception should be thrown");
     } catch (QueryProcessException e) {
-      assertEquals("org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test5.s0] does not exist", e.getMessage());
+      assertEquals(
+          "org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test5.s0] does not exist",
+          e.getMessage());
     }
 
     // this storage group is not even set
@@ -206,7 +209,9 @@ public class DataLogApplierTest extends IoTDBTest {
       applier.apply(log);
       fail("exception should be thrown");
     } catch (QueryProcessException e) {
-      assertEquals("org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test6.s0]", e.getMessage());
+      assertEquals(
+          "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test6.s0]",
+          e.getMessage());
     }
   }
 
@@ -221,7 +226,7 @@ public class DataLogApplierTest extends IoTDBTest {
     int cnt = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      assertEquals(cnt + 51L , record.getTimestamp());
+      assertEquals(cnt + 51L, record.getTimestamp());
       assertEquals((cnt + 51) * 1.0, record.getFields().get(0).getDoubleV(), 0.00001);
       cnt++;
     }

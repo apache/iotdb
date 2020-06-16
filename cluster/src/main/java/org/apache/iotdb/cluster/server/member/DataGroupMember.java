@@ -47,6 +47,7 @@ import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PullFileException;
@@ -416,7 +417,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public void applySnapshot(Map<Integer, Snapshot> snapshotMap)
       throws SnapshotApplicationException {
     // ensure StorageGroups are synchronized
-    metaGroupMember.syncLeader();
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new SnapshotApplicationException(e);
+    }
 
     for (Snapshot value : snapshotMap.values()) {
       if (value instanceof FileSnapshot) {
@@ -458,7 +463,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       logger.debug("{}: applying snapshot {}", name, snapshot);
     }
     // ensure storage groups are synchronized
-    metaGroupMember.syncLeader();
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new SnapshotApplicationException(e);
+    }
     if (snapshot instanceof FileSnapshot) {
       try {
         applyFileSnapshot((FileSnapshot) snapshot, slot);
@@ -1015,7 +1024,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
-    if (!syncLeader()) {
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
       // if this node cannot synchronize with the leader with in a given time, forward the
       // request to the leader
       waitLeader();
@@ -1026,8 +1037,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
       try {
         client.pullTimeSeriesSchema(request, resultHandler);
-      } catch (TException e) {
-        resultHandler.onError(e);
+      } catch (TException e1) {
+        resultHandler.onError(e1);
       }
       return;
     }
@@ -1062,8 +1073,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IPointReader of "path" with “timeFilter” and "valueFilter". A synchronization with
-   * the leader will be performed first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * the leader will be performed first to preserve strong consistency. TODO-Cluster: also support
+   * weak consistency
    *
    * @param path
    * @param dataType
@@ -1078,19 +1089,21 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       Filter valueFilter, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
-    if (syncLeader()) {
-      return new SeriesRawDataPointReader(
-          getSeriesReader(path, allSensors, dataType, timeFilter,
-              valueFilter, context));
-    } else {
-      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
     }
+    return new SeriesRawDataPointReader(
+        getSeriesReader(path, allSensors, dataType, timeFilter,
+            valueFilter, context));
+
   }
 
   /**
    * Create an IBatchReader of "path" with “timeFilter” and "valueFilter". A synchronization with
-   * the leader will be performed first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * the leader will be performed first to preserve strong consistency. TODO-Cluster: also support
+   * weak consistency
    *
    * @param path
    * @param dataType
@@ -1105,16 +1118,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       Filter valueFilter, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
-    if (syncLeader()) {
-      SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType, timeFilter,
-          valueFilter, context);
-      if (seriesReader.isEmpty()) {
-        return null;
-      }
-      return new SeriesRawDataBatchReader(seriesReader);
-    } else {
-      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
     }
+
+    SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType, timeFilter,
+        valueFilter, context);
+    if (seriesReader.isEmpty()) {
+      return null;
+    }
+    return new SeriesRawDataBatchReader(seriesReader);
   }
 
   /**
@@ -1144,8 +1159,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IReaderByTimestamp of "path". A synchronization with the leader will be performed
-   * first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * first to preserve strong consistency. TODO-Cluster: also support weak consistency
    *
    * @param path
    * @param dataType
@@ -1157,17 +1171,19 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       dataType,
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    if (syncLeader()) {
-      SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType,
-          TimeFilter.gtEq(Long.MIN_VALUE),
-          null, context);
-      if (seriesReader.isEmpty()) {
-        return null;
-      }
-      return new SeriesReaderByTimestamp(seriesReader);
-    } else {
-      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
     }
+    SeriesReader seriesReader = getSeriesReader(path, allSensors, dataType,
+        TimeFilter.gtEq(Long.MIN_VALUE),
+        null, context);
+    if (seriesReader.isEmpty()) {
+      return null;
+    }
+    return new SeriesReaderByTimestamp(seriesReader);
+
   }
 
   /**
@@ -1183,8 +1199,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       AsyncMethodCallback<Long> resultHandler) {
     logger.debug("{}: {} is querying {}, queryId: {}", name, request.getRequester(),
         request.getPath(), request.getQueryId());
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      resultHandler.onError(e);
       return;
     }
 
@@ -1245,8 +1263,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     logger
         .debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
             request.getPath(), request.getQueryId());
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      resultHandler.onError(e);
       return;
     }
 
@@ -1479,10 +1499,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void getNodeList(Node header, String path, int nodeLevel,
       AsyncMethodCallback<List<String>> resultHandler) {
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      resultHandler.onError(e);
       return;
     }
+
     try {
       resultHandler.onComplete(MManager.getInstance().getNodesList(path, nodeLevel));
     } catch (MetadataException e) {
@@ -1493,10 +1516,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void getChildNodePathInNextLevel(Node header, String path,
       AsyncMethodCallback<Set<String>> resultHandler) {
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      resultHandler.onError(e);
       return;
     }
+
     try {
       resultHandler.onComplete(MManager.getInstance().getChildNodePathInNextLevel(path));
     } catch (MetadataException e) {
@@ -1507,10 +1533,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void getAllMeasurementSchema(Node header, ByteBuffer planBuffer,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      resultHandler.onError(e);
       return;
     }
+
     try {
       ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
       List<ShowTimeSeriesResult> allTimeseriesSchema;
@@ -1563,7 +1592,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter,
           queryContext);
       logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
-    } catch (StorageEngineException | IOException | QueryProcessException | LeaderUnknownException e) {
+    } catch (StorageEngineException | IOException | QueryProcessException e) {
       resultHandler.onError(e);
       return;
     }
@@ -1596,16 +1625,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws IOException
    * @throws StorageEngineException
    * @throws QueryProcessException
-   * @throws LeaderUnknownException
    */
   public List<AggregateResult> getAggrResult(List<String> aggregations,
       Set<String> allSensors, TSDataType dataType, String path,
       Filter timeFilter, QueryContext context)
-      throws IOException, StorageEngineException, QueryProcessException, LeaderUnknownException {
-    if (!syncLeader()) {
-      throw new LeaderUnknownException(getAllNodes());
-
+      throws IOException, StorageEngineException, QueryProcessException {
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new QueryProcessException(e.getMessage());
     }
+
     ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
     List<AggregateResult> results = new ArrayList<>();
     for (String aggregation : aggregations) {
@@ -1645,20 +1675,23 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       List<Integer> aggregationTypes, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     // pull the newest data
-    if (syncLeader()) {
-      ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
-      List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
-      LocalGroupByExecutor executor = new LocalGroupByExecutor(path, deviceMeasurements,
-          dataType
-          , context, timeFilter, new SlotTsFileFilter(nodeSlots));
-      for (Integer aggregationType : aggregationTypes) {
-        executor.addAggregateResult(AggregateResultFactory
-            .getAggrResultByType(AggregationType.values()[aggregationType], dataType));
-      }
-      return executor;
-    } else {
-      throw new StorageEngineException(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
     }
+
+    ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
+    List<Integer> nodeSlots = metaGroupMember.getPartitionTable().getNodeSlots(getHeader());
+    LocalGroupByExecutor executor = new LocalGroupByExecutor(path, deviceMeasurements,
+        dataType
+        , context, timeFilter, new SlotTsFileFilter(nodeSlots));
+    for (Integer aggregationType : aggregationTypes) {
+      executor.addAggregateResult(AggregateResultFactory
+          .getAggrResultByType(AggregationType.values()[aggregationType], dataType));
+    }
+    return executor;
+
   }
 
   /**
@@ -1763,7 +1796,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
           deviceMeasurements, queryContext);
       SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
       resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-    } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
+    } catch (QueryProcessException | StorageEngineException | IOException e) {
       resultHandler.onError(e);
     }
   }
@@ -1785,10 +1818,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   public TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime,
       long beforeRange,
       Set<String> deviceMeasurements, QueryContext context)
-      throws QueryProcessException, StorageEngineException, IOException, LeaderUnknownException {
-    if (!syncLeader()) {
-      throw new LeaderUnknownException(getAllNodes());
+      throws QueryProcessException, StorageEngineException, IOException {
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new QueryProcessException(e.getMessage());
     }
+
     PreviousFill previousFill = new PreviousFill(dataType, queryTime, beforeRange);
     previousFill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
     return previousFill.getFillResult();
@@ -1796,10 +1832,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   @Override
   public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      resultHandler.onError(e);
       return;
     }
+
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.getQueryId());
     try {
@@ -1821,10 +1860,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void getPathCount(Node header, List<String> pathsToQuery, int level,
       AsyncMethodCallback<Integer> resultHandler) {
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      resultHandler.onError(e);
       return;
     }
+
     int count = 0;
     for (String s : pathsToQuery) {
       if (level == -1) {

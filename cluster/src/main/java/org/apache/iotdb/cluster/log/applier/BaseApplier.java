@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.applier;
 
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -62,7 +63,11 @@ abstract class BaseApplier implements LogApplier {
         getQueryExecutor().processNonQuery(plan);
       } catch (QueryProcessException e) {
         if (e.getCause() instanceof StorageGroupNotSetException) {
-          metaGroupMember.syncLeader();
+          try {
+            metaGroupMember.syncLeaderWithConsistencyCheck();
+          } catch (CheckConsistencyException checkConsistencyException) {
+            throw e;
+          }
           getQueryExecutor().processNonQuery(plan);
         } else {
           throw e;
@@ -101,7 +106,11 @@ abstract class BaseApplier implements LogApplier {
         }
         getQueryExecutor().processNonQuery(plan);
       } else if (causedByStorageGroupNotSet) {
-        metaGroupMember.syncLeader();
+        try {
+          metaGroupMember.syncLeaderWithConsistencyCheck();
+        } catch (CheckConsistencyException checkConsistencyException) {
+          throw new QueryProcessException(checkConsistencyException.getMessage());
+        }
         getQueryExecutor().processNonQuery(plan);
       } else {
         throw e;
