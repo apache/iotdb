@@ -105,6 +105,8 @@ public class SqueezeMergeTask implements Callable<Void> {
       unmergedSeries.add(new Path(path));
     }
 
+    mergeLogger.logMergeStart();
+
     MergeSeriesTask mergeChunkTask = new MergeSeriesTask(mergeContext, taskName, mergeLogger,
         resource, unmergedSeries);
     newResources = mergeChunkTask.mergeSeries();

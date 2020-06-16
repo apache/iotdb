@@ -91,12 +91,7 @@ public abstract class BaseMergeSeriesTask {
   }
 
   private File createNewFile(PriorityQueue<File> mergeFileNameHeap, String mergeSuffix) {
-    File originFile;
-    if (mergeFileNameHeap.size() > 1) {
-      originFile = mergeFileNameHeap.poll();
-    } else {
-      originFile = mergeFileNameHeap.peek();
-    }
+    File originFile = mergeFileNameHeap.poll();
     String[] splits = originFile.getName().replace(TSFILE_SUFFIX, "")
         .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
     int mergeVersion = Integer.parseInt(splits[2]) + 1;

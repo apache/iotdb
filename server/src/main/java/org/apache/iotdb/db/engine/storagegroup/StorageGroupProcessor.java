@@ -54,6 +54,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.seqMerge.SeqMergeFileStrategy;
 import org.apache.iotdb.db.engine.merge.sizeMerge.SizeMergeFileStrategy;
+import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask;
 import org.apache.iotdb.db.engine.merge.utils.SelectorContext;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -82,6 +83,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -618,8 +620,10 @@ public class StorageGroupProcessor {
     long ver1 = Long.parseLong(items1[0]);
     long ver2 = Long.parseLong(items2[0]);
     int cmp = Long.compare(ver1, ver2);
+    int cmpFileVersion = Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
     if (cmp == 0) {
-      return Long.compare(Long.parseLong(items1[1]), Long.parseLong(items2[1]));
+      return cmpFileVersion == 0 ? Long
+          .compare(Long.parseLong(items1[2]), Long.parseLong(items2[2])) : cmpFileVersion;
     } else {
       return cmp;
     }
@@ -1824,10 +1828,11 @@ public class StorageGroupProcessor {
           mergingModification.remove();
           mergingModification = null;
         }
+        restoreMergeFile(tsFileResource);
         tsFileResource.close();
       }
       sequenceFileTreeSet.addAll(newFile);
-      mergeLog.delete();
+
     } catch (IOException e) {
       logger.error("{} fails to do the after merge action,", storageGroupName, e);
     } finally {
@@ -1839,6 +1844,20 @@ public class StorageGroupProcessor {
 
     removeUnseqFiles(unseqFiles);
     removeSeqFiles(seqFiles);
+    mergeLog.delete();
+  }
+
+  private void restoreMergeFile(TsFileResource tsFileResource) throws IOException{
+    File oldTsFile = tsFileResource.getFile();
+    if (oldTsFile.getName().contains(RegularizationMergeTask.MERGE_SUFFIX)) {
+      tsFileResource.removeResourceFile();
+      File newTsFile = new File(oldTsFile.getParent(),
+          oldTsFile.getName().replace(RegularizationMergeTask.MERGE_SUFFIX, ""));
+      oldTsFile.renameTo(newTsFile);
+      tsFileResource.setFile(newTsFile);
+      FileLoaderUtils.checkTsFileResource(tsFileResource);
+      tsFileResource.serialize();
+    }
   }
 
   /**

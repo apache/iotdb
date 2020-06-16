@@ -71,11 +71,11 @@ public class RecoverSqueezeMergeTask extends SqueezeMergeTask implements IRecove
         logFile.delete();
         break;
       case MERGE_START:
-        removeMergedFile();
+        removeMergedFile(analyzer.getNewResource());
         // set the files to empty to let the StorageGroupProcessor do a clean up
         resource.setSeqFiles(Collections.emptyList());
         resource.setUnseqFiles(Collections.emptyList());
-        cleanUp(true);
+        cleanUp(false);
         break;
       case ALL_TS_MERGED:
         newResources = analyzer.getNewResource();
@@ -90,14 +90,10 @@ public class RecoverSqueezeMergeTask extends SqueezeMergeTask implements IRecove
     }
   }
 
-  private void removeMergedFile() {
-    File sgDir =
-        FSFactoryProducer.getFSFactory()
-            .getFile(resource.getSeqFiles().get(0).getFile().getParent());
-    File[] mergeFiles = sgDir.listFiles(file -> file.getName().endsWith(MERGE_SUFFIX));
-    if (mergeFiles != null) {
-      for (File file : mergeFiles) {
-        file.delete();
+  private void removeMergedFile(List<TsFileResource> tsFileResources) {
+    if (tsFileResources != null) {
+      for (TsFileResource tsFileResource : tsFileResources) {
+        tsFileResource.remove();
       }
     }
   }

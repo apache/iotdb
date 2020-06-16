@@ -38,6 +38,7 @@ public class SqueezeMergeLogger implements MergeLogger {
   static final String STR_SEQ_FILES = "seqFiles";
   static final String STR_UNSEQ_FILES = "unseqFiles";
   static final String STR_ALL_TS_END = "all ts end";
+  static final String STR_MERGE_START = "merge start";
 
   private BufferedWriter logStream;
 
@@ -80,6 +81,12 @@ public class SqueezeMergeLogger implements MergeLogger {
       logStream.write(tsFileResource.getFile().getAbsolutePath());
       logStream.newLine();
     }
+    logStream.flush();
+  }
+
+  public void logMergeStart() throws IOException {
+    logStream.write(STR_MERGE_START);
+    logStream.newLine();
     logStream.flush();
   }
 

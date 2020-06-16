@@ -102,12 +102,13 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
       mergePaths(pathList);
       mergedSeriesCnt += pathList.size();
       logMergeProgress();
-      if (currentMergeResource.getFileSize() >= IoTDBDescriptor.getInstance().getConfig()
-          .getTsFileSizeThreshold()) {
+      if (!mergeFileNameHeap.isEmpty() && currentMergeResource.getFileSize() >=
+          IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold()) {
         currentFileWriter.endFile();
         newTsFilePair = createNewFileWriter(mergeFileNameHeap, MERGE_SUFFIX);
         currentFileWriter = newTsFilePair.left;
         currentMergeResource = newTsFilePair.right;
+        newResources.add(currentMergeResource);
       }
     }
     currentFileWriter.endFile();
@@ -142,9 +143,6 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
   private void constructMergeFileNameHeap() {
     for (TsFileResource seqFile : this.resource.getSeqFiles()) {
       mergeFileNameHeap.add(seqFile.getFile());
-    }
-    for (TsFileResource unseqFile : this.resource.getUnseqFiles()) {
-      mergeFileNameHeap.add(unseqFile.getFile());
     }
   }
 }
