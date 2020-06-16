@@ -790,6 +790,5 @@ public class TsFileProcessor {
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
-    writer = null;
   }
 }
