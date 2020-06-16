@@ -235,7 +235,6 @@ public class ClusterDescriptor {
     }
   }
 
-
   private List<String> getSeedUrlList(String seedUrls) {
     if (seedUrls == null) {
       return null;

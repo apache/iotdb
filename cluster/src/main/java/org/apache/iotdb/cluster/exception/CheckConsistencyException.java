@@ -27,4 +27,7 @@ public class CheckConsistencyException extends Exception {
   public CheckConsistencyException(String errMag) {
     super(String.format("check consistency failed, error message=%s ", errMag));
   }
+
+  public static CheckConsistencyException CHECK_STRONG_CONSISTENCY_EXCEPTION = new CheckConsistencyException(
+      "strong consistency, sync with leader failed");
 }

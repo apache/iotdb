@@ -102,8 +102,8 @@ public class DataLogApplier extends BaseApplier {
       // synchronization
       try {
         metaGroupMember.syncLeaderWithConsistencyCheck();
-      } catch (CheckConsistencyException checkConsistencyException) {
-        throw new QueryProcessException(checkConsistencyException.getMessage());
+      } catch (CheckConsistencyException ce) {
+        throw new QueryProcessException(ce.getMessage());
       }
       if (plan instanceof InsertPlan) {
         InsertPlan insertPlan = (InsertPlan) plan;
