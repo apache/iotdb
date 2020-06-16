@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javafx.util.Pair;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -1324,8 +1325,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     switch (operatorType) {
       case SQLConstant.TOK_DELETE:
         deleteDataOp.setFilterOperator(whereOp.getChildren().get(0));
-        long deleteTime = parseDeleteTimeFilter(deleteDataOp);
-        deleteDataOp.setTime(deleteTime);
+        Pair<Long, Long> timeRange = parseDeleteTimeRange(deleteDataOp);
+        deleteDataOp.setStartTime(timeRange.getKey());
+        deleteDataOp.setEndTime(timeRange.getValue());
         break;
       case SQLConstant.TOK_QUERY:
         queryOp.setFilterOperator(whereOp.getChildren().get(0));
@@ -1531,18 +1533,49 @@ public class LogicalGenerator extends SqlBaseBaseListener {
    *
    * @param operator delete logical plan
    */
-  private long parseDeleteTimeFilter(DeleteDataOperator operator) {
+  private Pair<Long, Long> parseDeleteTimeRange(DeleteDataOperator operator) {
     FilterOperator filterOperator = operator.getFilterOperator();
-    if (filterOperator.getTokenIntType() != SQLConstant.LESSTHAN
-            && filterOperator.getTokenIntType() != SQLConstant.LESSTHANOREQUALTO) {
+    if (!filterOperator.isLeaf() && filterOperator.getTokenIntType() != SQLConstant.KW_AND) {
       throw new SQLParserException(
-              "For delete command, where clause must be like : time < XXX or time <= XXX");
+          "For delete command, where clause must be like : time > XXX and time <= XXX");
     }
+
+    if (filterOperator.isLeaf()) {
+      return calcOperatorRange(filterOperator);
+    }
+
+    List<FilterOperator> children = filterOperator.getChildren();
+    FilterOperator lOperator = children.get(0);
+    FilterOperator rOperator = children.get(1);
+    if (!lOperator.isLeaf() || !rOperator.isLeaf()) {
+      throw new SQLParserException(
+          "For delete command, where clause must be like : time > XXX and time <= XXX");
+    }
+
+    Pair<Long, Long> leftOpRange = calcOperatorRange(lOperator);
+    Pair<Long, Long> rightOpRange = calcOperatorRange(rOperator);
+
+    return new Pair<>(Math.max(leftOpRange.getKey(), rightOpRange.getKey()),
+        Math.min(leftOpRange.getValue(), rightOpRange.getValue()));
+  }
+
+  private Pair<Long, Long> calcOperatorRange(FilterOperator filterOperator) {
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
-    if (filterOperator.getTokenIntType() == SQLConstant.LESSTHAN) {
-      time = time - 1;
+    switch (filterOperator.getTokenIntType()) {
+      case SQLConstant.LESSTHAN:
+        return new Pair<>(Long.MIN_VALUE, time - 1);
+      case SQLConstant.LESSTHANOREQUALTO:
+        return new Pair<>(Long.MIN_VALUE, time);
+      case SQLConstant.GREATERTHAN:
+        return new Pair<>(time + 1, Long.MAX_VALUE);
+      case SQLConstant.GREATERTHANOREQUALTO:
+        return new Pair<>(time, Long.MAX_VALUE);
+      case SQLConstant.EQUAL:
+        return new Pair<>(time, time);
+      default:
+        throw new SQLParserException(
+            "For delete command, where clause must be like : time > XXX and time <= XXX");
     }
-    return time;
   }
 
   private void checkMetadataArgs(String dataType, String encoding, String compressor) {
