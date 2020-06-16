@@ -1049,7 +1049,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     switch (consistencyLevel) {
       case STRONG_CONSISTENCY:
         if (!syncLeader()) {
-          throw new CheckConsistencyException("strong consistency, sync with leader failed");
+          throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
         }
         return;
       case MID_CONSISTENCY:
@@ -1060,6 +1060,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         // do nothing
         return;
       default:
+        // this should not happen in theory
         throw new CheckConsistencyException("unknown consistency" + consistencyLevel.name());
     }
   }

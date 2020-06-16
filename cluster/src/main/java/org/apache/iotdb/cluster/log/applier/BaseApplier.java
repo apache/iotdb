@@ -65,8 +65,8 @@ abstract class BaseApplier implements LogApplier {
         if (e.getCause() instanceof StorageGroupNotSetException) {
           try {
             metaGroupMember.syncLeaderWithConsistencyCheck();
-          } catch (CheckConsistencyException checkConsistencyException) {
-            throw e;
+          } catch (CheckConsistencyException ce) {
+            throw new QueryProcessException(ce.getMessage());
           }
           getQueryExecutor().processNonQuery(plan);
         } else {
@@ -108,8 +108,8 @@ abstract class BaseApplier implements LogApplier {
       } else if (causedByStorageGroupNotSet) {
         try {
           metaGroupMember.syncLeaderWithConsistencyCheck();
-        } catch (CheckConsistencyException checkConsistencyException) {
-          throw new QueryProcessException(checkConsistencyException.getMessage());
+        } catch (CheckConsistencyException ce) {
+          throw new QueryProcessException(ce.getMessage());
         }
         getQueryExecutor().processNonQuery(plan);
       } else {
