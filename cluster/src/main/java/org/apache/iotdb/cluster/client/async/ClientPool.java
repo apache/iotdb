@@ -54,7 +54,7 @@ public class ClientPool {
   public AsyncClient getClient(Node node) throws IOException {
     //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
-    synchronized (clientStack) {
+    synchronized (this) {
       if (clientStack.isEmpty()) {
         int nodeClientNum = nodeClientNumMap.getOrDefault(node, 0);
         if (nodeClientNum >= maxConnectionForEachNode) {
@@ -76,7 +76,7 @@ public class ClientPool {
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
       try {
-        clientStack.wait(WAIT_CLIENT_TIMEOUT_MS);
+        this.wait(WAIT_CLIENT_TIMEOUT_MS);
         if (System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
           logger.warn("Cannot get an available client after {}ms, create a new one",
               WAIT_CLIENT_TIMEOUT_MS);
@@ -100,9 +100,9 @@ public class ClientPool {
   public void putClient(Node node, AsyncClient client) {
     //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<AsyncClient> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
-    synchronized (clientStack) {
+    synchronized (this) {
       clientStack.push(client);
-      clientStack.notifyAll();
+      this.notifyAll();
     }
   }
 }

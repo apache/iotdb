@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,6 +42,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.ClientPool;
+import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -564,10 +567,16 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     synchronized (voteCounter) {
       // synchronized: avoid concurrent modification
-      synchronized (allNodes) {
+      try {
         for (Node node : allNodes) {
           sendLogToFollower(log, voteCounter, node, leaderShipStale, newLeaderTerm, request);
+          if (character != NodeCharacter.LEADER) {
+            return AppendLogResult.LEADERSHIP_STALE;
+          }
         }
+      } catch (ConcurrentModificationException e) {
+        // retry if allNodes has changed
+        return AppendLogResult.TIME_OUT;
       }
 
       try {
@@ -581,6 +590,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     // some node has a larger term than the local node, this node is no longer a valid leader
     if (leaderShipStale.get()) {
       stepDown(newLeaderTerm.get());
+      return AppendLogResult.LEADERSHIP_STALE;
+    }
+    if (character != NodeCharacter.LEADER) {
       return AppendLogResult.LEADERSHIP_STALE;
     }
 
@@ -598,25 +610,37 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return;
     }
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
-    if (!peer.isCatchUp()) {
-      logger.warn("{} can't append log {} to node {} because it needs catchUp", name, log, node);
-    } else {
-      AsyncClient client = connectNode(node);
-      if (client != null) {
-        AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
-        handler.setReceiver(node);
-        handler.setVoteCounter(voteCounter);
-        handler.setLeaderShipStale(leaderShipStale);
-        handler.setLog(log);
-        handler.setMember(this);
-        handler.setPeer(peer);
-        handler.setReceiverTerm(newLeaderTerm);
+    while (peer.getMatchIndex() < log.getCurrLogIndex() - 1 && character == NodeCharacter.LEADER) {
+      synchronized (peer) {
         try {
-          client.appendEntry(request, handler);
-          logger.debug("{} sending a log to {}: {}", name, node, log);
-        } catch (Exception e) {
-          logger.warn("{} cannot append log to node {}", name, node, e);
+          peer.wait(RaftServer.getConnectionTimeoutInMS());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.warn("Waiting for peer to catch up interrupted");
+          return;
         }
+      }
+    }
+
+    if (character != NodeCharacter.LEADER) {
+      return;
+    }
+
+    AsyncClient client = connectNode(node);
+    if (client != null) {
+      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+      handler.setReceiver(node);
+      handler.setVoteCounter(voteCounter);
+      handler.setLeaderShipStale(leaderShipStale);
+      handler.setLog(log);
+      handler.setMember(this);
+      handler.setPeer(peer);
+      handler.setReceiverTerm(newLeaderTerm);
+      try {
+        client.appendEntry(request, handler);
+        logger.debug("{} sending a log to {}: {}", name, node, log);
+      } catch (Exception e) {
+        logger.warn("{} cannot append log to node {}", name, node, e);
       }
     }
   }
@@ -634,11 +658,21 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     AsyncClient client = null;
     try {
-      client = clientPool.getClient(node);
+      do {
+        client = clientPool.getClient(node);
+      } while (!isClientReady(client));
     } catch (IOException e) {
       logger.warn("{} cannot connect to node {}", name, node, e);
     }
     return client;
+  }
+
+  private boolean isClientReady(AsyncClient client) {
+    if (client instanceof DataClient) {
+      return ((DataClient) client).isReady();
+    } else {
+      return ((MetaClient) client).isReady();
+    }
   }
 
   public NodeCharacter getCharacter() {
@@ -883,6 +917,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     if (client != null) {
       return forwardPlan(plan, client, node, header);
     }
+    logger.warn("{}: Forward {} to {} timed out", name, plan, node);
     return StatusUtils.TIME_OUT;
   }
 
@@ -899,7 +934,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
-      return tsStatus == null ? StatusUtils.TIME_OUT : tsStatus;
+      if (tsStatus == null) {
+        tsStatus = StatusUtils.TIME_OUT;
+        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+      }
+      return tsStatus;
     } catch (IOException | TException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
       status.setMessage(e.getMessage());
@@ -908,6 +947,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return status;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
+      logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
       return StatusUtils.TIME_OUT;
     }
   }

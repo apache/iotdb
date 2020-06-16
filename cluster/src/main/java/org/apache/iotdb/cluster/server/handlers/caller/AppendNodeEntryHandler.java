@@ -50,6 +50,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   private AtomicBoolean leaderShipStale;
   private Node receiver;
   private Peer peer;
+  private int failedCnt;
 
   @Override
   public void onComplete(Long response) {
@@ -68,6 +69,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
           logger.debug("{}: Log {} is accepted by the quorum", member.getName(), log);
           voteCounter.notifyAll();
         }
+        peer.setMatchIndex(Math.max(log.getCurrLogIndex(), peer.getMatchIndex()));
       } else if (resp > 0) {
         // a response > 0 is the follower's term
         // the leader ship is stale, wait for the new leader's heartbeat

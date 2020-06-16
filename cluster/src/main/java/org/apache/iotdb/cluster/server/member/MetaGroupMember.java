@@ -1590,8 +1590,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
       if (status != StatusUtils.TIME_OUT) {
         return status;
+      } else {
+        logger.warn("Forward {} to {} timed out", plan, node);
       }
     }
+    logger.warn("Forward {} to {} timed out", plan, group);
     return StatusUtils.TIME_OUT;
   }
 

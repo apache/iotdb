@@ -225,9 +225,17 @@ public class RaftLogManager {
       long newLastIndex = lastIndex + entries.size();
       long ci = findConflict(entries);
       if (ci <= commitIndex) {
-        logger
-            .error("entry {} conflict with committed entry [commitIndex({})]", ci,
-                commitIndex);
+        if (ci != -1) {
+          logger
+              .error("entry {} conflict with committed entry [commitIndex({})]", ci,
+                  commitIndex);
+        } else {
+          if (logger.isDebugEnabled() && !entries.isEmpty()) {
+            logger.debug("Appending entries [{} and other {} logs] all exist locally",
+                entries.get(0), entries.size() - 1);
+          }
+        }
+
       } else {
         long offset = lastIndex + 1;
         append(entries.subList((int) (ci - offset), entries.size()));

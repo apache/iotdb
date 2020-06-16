@@ -33,20 +33,22 @@ public class Peer {
     this.isCatchUp = true;
   }
 
-  public long getNextIndex() {
+  public synchronized long getNextIndex() {
     return nextIndex;
   }
 
-  public void setNextIndex(long nextIndex) {
+  public synchronized void setNextIndex(long nextIndex) {
     this.nextIndex = nextIndex;
   }
 
-  public long getMatchIndex() {
+  public synchronized long getMatchIndex() {
     return matchIndex;
   }
 
-  public void setMatchIndex(long matchIndex) {
+  public synchronized void setMatchIndex(long matchIndex) {
     this.matchIndex = matchIndex;
+    this.setNextIndex(Math.max(nextIndex, matchIndex + 1));
+    this.notifyAll();
   }
 
   public boolean isCatchUp() {

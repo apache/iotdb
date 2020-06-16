@@ -138,10 +138,10 @@ public class UnCommittedEntryManagerTest {
       }}, 5, 4, -1, null));
       // entries which are unavailable.
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
-      }}, 0, 0, -1, EntryUnavailableException.class));
+      }}, 0, 0, -1, null));
       add(new UnCommittedEntryManagerTester(new ArrayList<Log>() {{
         add(new EmptyContentLog(5, 1));
-      }}, 5, 6, -1, EntryUnavailableException.class));
+      }}, 5, 6, -1, null));
     }};
     for (UnCommittedEntryManagerTester test : tests) {
       UnCommittedEntryManager instance = new UnCommittedEntryManager(test.offset, test.entries);

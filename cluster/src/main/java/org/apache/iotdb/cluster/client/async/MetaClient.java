@@ -62,21 +62,23 @@ public class MetaClient extends AsyncClient {
 
   public static class Factory implements ClientFactory {
 
-    private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
-    private TAsyncClientManager[] managers;
-    private AtomicInteger clientCnt = new AtomicInteger();
-
-    public Factory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
-      this.protocolFactory = protocolFactory;
-      this.managers =
+    private static TAsyncClientManager[] managers;
+    static {
+      managers =
           new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
-      for (int i = 0; i < this.managers.length; i++) {
+      for (int i = 0; i < managers.length; i++) {
         try {
           managers[i] = new TAsyncClientManager();
         } catch (IOException e) {
           logger.error("Cannot create client manager for factory", e);
         }
       }
+    }
+    private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
+    private AtomicInteger clientCnt = new AtomicInteger();
+
+    public Factory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
+      this.protocolFactory = protocolFactory;
     }
 
     @Override
@@ -90,5 +92,9 @@ public class MetaClient extends AsyncClient {
 
   public Node getNode() {
     return node;
+  }
+
+  public boolean isReady() {
+    return ___currentMethod == null;
   }
 }

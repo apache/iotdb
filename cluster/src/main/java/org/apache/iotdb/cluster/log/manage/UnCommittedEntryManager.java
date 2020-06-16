@@ -69,11 +69,11 @@ public class UnCommittedEntryManager {
    * Return the entry's term for given index. Note that the called should ensure index >= offset.
    *
    * @param index request entry index
-   * @return -1 if index < offset, throw EntryUnavailableException if index > last or entries is
+   * @return -1 if index < offset, or index > last or entries is
    * empty, or return the entry's term for given index
    * @throws EntryUnavailableException
    */
-  public long maybeTerm(long index) throws EntryUnavailableException {
+  public long maybeTerm(long index) {
     if (index < offset) {
       logger.debug(
           "invalid unCommittedEntryManager maybeTerm : parameter: index({}) < offset({})",
@@ -82,11 +82,7 @@ public class UnCommittedEntryManager {
     }
     long last = maybeLastIndex();
     if (last == -1 || index > last) {
-      long boundary = last == -1 ? offset - 1 : last;
-      logger.info(
-          "unCommittedEntryManager maybeTerm out of bound : parameter: index({}) > lastIndex({})",
-          index, boundary);
-      throw new EntryUnavailableException(index, boundary);
+      return -1;
     }
     return entries.get((int) (index - offset)).getCurrLogTerm();
   }
@@ -124,6 +120,18 @@ public class UnCommittedEntryManager {
    * @param appendingEntries request entries
    */
   public void truncateAndAppend(List<Log> appendingEntries) {
+    if (appendingEntries.isEmpty()) {
+      return;
+    }
+    Log firstAppendingEntry = appendingEntries.get(0);
+    Log lastAppendingEntry = appendingEntries.get(appendingEntries.size() - 1);
+    if (maybeTerm(firstAppendingEntry.getCurrLogIndex()) == firstAppendingEntry.getCurrLogTerm()
+        &&
+        maybeTerm(lastAppendingEntry.getCurrLogIndex()) == lastAppendingEntry.getCurrLogTerm()) {
+      // skip existing entry
+      return;
+    }
+
     long after = appendingEntries.get(0).getCurrLogIndex();
     long len = after - offset;
     if (len < 0) {
@@ -154,6 +162,11 @@ public class UnCommittedEntryManager {
    * @param appendingEntry request entry
    */
   public void truncateAndAppend(Log appendingEntry) {
+    if (maybeTerm(appendingEntry.getCurrLogIndex()) == appendingEntry.getCurrLogTerm()) {
+      // skip existing entry
+      return;
+    }
+
     long after = appendingEntry.getCurrLogIndex();
     long len = after - offset;
     if (len < 0) {

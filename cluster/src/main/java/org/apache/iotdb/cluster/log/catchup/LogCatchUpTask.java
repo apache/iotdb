@@ -191,6 +191,10 @@ public class LogCatchUpTask implements Callable<Boolean> {
   }
 
   public Boolean call() throws TException, InterruptedException, LeaderUnknownException {
+    if (logs.isEmpty()) {
+      return true;
+    }
+
     if (useBatch) {
       doLogCatchUpInBatch();
     } else {
