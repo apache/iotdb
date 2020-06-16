@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -52,8 +52,8 @@ According to the [sample data](https://raw.githubusercontent.com/apache/incubato
 We can create two users for ln and sgcc groups, named ln\_write\_user and sgcc\_write\_user, with both passwords being write\_pwd. The SQL statement is:
 
 ```
-CREATE USER ln_write_user write_pwd
-CREATE USER sgcc_write_user write_pwd
+CREATE USER ln_write_user 'write_pwd'
+CREATE USER sgcc_write_user 'write_pwd'
 ```
 Then use the following SQL statement to show the user:
 
