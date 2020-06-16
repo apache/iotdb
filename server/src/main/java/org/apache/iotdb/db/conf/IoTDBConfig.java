@@ -287,6 +287,11 @@ public class IoTDBConfig {
   private int mManagerCacheSize = 400000;
 
   /**
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   */
+  private int mRemoteSchemaCacheSize = 100000;
+
+  /**
    * Is external sort enable.
    */
   private boolean enableExternalSort = true;
@@ -379,6 +384,11 @@ public class IoTDBConfig {
    * register time series as which type when receiving a floating number string "6.7"
    */
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
+
+  /**
+   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT
+   */
+  private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
   /**
    * Storage group level when creating schema automatically is enabled
@@ -932,11 +942,19 @@ public class IoTDBConfig {
     this.mManagerCacheSize = mManagerCacheSize;
   }
 
+  public int getmRemoteSchemaCacheSize() {
+    return mRemoteSchemaCacheSize;
+  }
+
+  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
+    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
+  }
+
   public boolean isSyncEnable() {
     return isSyncEnable;
   }
 
-  void setSyncEnable(boolean syncEnable) {
+  public void setSyncEnable(boolean syncEnable) {
     isSyncEnable = syncEnable;
   }
 
@@ -1308,6 +1326,19 @@ public class IoTDBConfig {
   public void setFloatingStringInferType(
       TSDataType floatingNumberStringInferType) {
     this.floatingStringInferType = floatingNumberStringInferType;
+  }
+
+  public TSDataType getNanStringInferType() {
+    return nanStringInferType;
+  }
+
+  public void setNanStringInferType(TSDataType nanStringInferType) {
+    if (nanStringInferType != TSDataType.DOUBLE &&
+        nanStringInferType != TSDataType.FLOAT &&
+        nanStringInferType != TSDataType.TEXT) {
+      throw new IllegalArgumentException("Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is " + nanStringInferType);
+    }
+    this.nanStringInferType = nanStringInferType;
   }
 
   public int getDefaultStorageGroupLevel() {

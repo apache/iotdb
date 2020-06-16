@@ -633,6 +633,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return StaticResps.COUNT_NODES;
       case COUNT_TIMESERIES:
         return StaticResps.COUNT_TIMESERIES;
+      case MERGE_STATUS:
+        return StaticResps.MERGE_STATUS_RESP;
       default:
         logger.error("Unsupported show content type: {}", showPlan.getShowContentType());
         throw new QueryProcessException(
@@ -760,7 +762,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
 
     Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
-    Map<String, TSDataType> measurementDataTypeMap = plan.getMeasurementDataTypeMap();
+    Map<String, TSDataType> measurementDataTypeMap = plan.getColumnDataTypeMap();
 
     // build column header with constant and non exist column and deduplication
     List<String> measurements = plan.getMeasurements();
@@ -918,7 +920,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private QueryDataSet createQueryDataSet(long queryId, PhysicalPlan physicalPlan)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
-      IOException, MetadataException, SQLException {
+      IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context = genQueryContext(queryId);
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);

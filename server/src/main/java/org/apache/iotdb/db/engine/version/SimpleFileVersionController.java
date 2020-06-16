@@ -64,7 +64,6 @@ public class SimpleFileVersionController implements VersionController {
     restore();
   }
 
-
   public static long getSaveInterval() {
     return saveInterval;
   }

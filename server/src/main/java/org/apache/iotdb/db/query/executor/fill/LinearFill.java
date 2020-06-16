@@ -44,13 +44,14 @@ import java.io.IOException;
 
 public class LinearFill extends IFill {
 
-  private Path seriesPath;
-  private long beforeRange;
-  private long afterRange;
-  private Filter beforeFilter;
-  private Filter afterFilter;
-  private QueryContext context;
-  private Set<String> allSensors;
+  protected Path seriesPath;
+  protected long beforeRange;
+  protected long afterRange;
+  protected Filter beforeFilter;
+  protected Filter afterFilter;
+  protected QueryContext context;
+  // all measurements sharing the same device as "seriesPath"
+  protected Set<String> deviceMeasurements;
 
   public LinearFill(long beforeRange, long afterRange) {
     this.beforeRange = beforeRange;
@@ -106,20 +107,16 @@ public class LinearFill extends IFill {
     this.dataType = dataType;
     this.queryTime = queryTime;
     this.context = context;
-    this.allSensors = sensors;
+    this.deviceMeasurements = sensors;
     constructFilter();
   }
 
   @Override
   public TimeValuePair getFillResult()
       throws IOException, QueryProcessException, StorageEngineException {
-    QueryDataSource dataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, beforeFilter);
-    LastPointReader lastReader =
-        new LastPointReader(seriesPath, dataType, allSensors, context, dataSource, queryTime, beforeFilter);
 
-    TimeValuePair beforePair = lastReader.readLastPoint();
-    TimeValuePair afterPair = calculateFirstPointAfterQueryTime();
+    TimeValuePair beforePair = calculatePrecedingPoint();
+    TimeValuePair afterPair = calculateSucceedingPoint();
 
     // no before data or has data on the query timestamp
     if (beforePair.getValue() == null || beforePair.getTimestamp() == queryTime) {
@@ -136,7 +133,17 @@ public class LinearFill extends IFill {
     return average(beforePair, afterPair);
   }
 
-  private TimeValuePair calculateFirstPointAfterQueryTime()
+  protected TimeValuePair calculatePrecedingPoint()
+      throws QueryProcessException, StorageEngineException, IOException {
+    QueryDataSource dataSource =
+        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, beforeFilter);
+    LastPointReader lastReader =
+        new LastPointReader(seriesPath, dataType, deviceMeasurements, context, dataSource, queryTime, beforeFilter);
+
+    return lastReader.readLastPoint();
+  }
+
+  protected TimeValuePair calculateSucceedingPoint()
       throws IOException, StorageEngineException, QueryProcessException {
     TimeValuePair result = new TimeValuePair(0, null);
 
@@ -146,7 +153,7 @@ public class LinearFill extends IFill {
     aggregateResultList.add(minTimeResult);
     aggregateResultList.add(firstValueResult);
     AggregationExecutor.aggregateOneSeries(
-        seriesPath, allSensors, context, afterFilter, dataType, aggregateResultList, null);
+        seriesPath, deviceMeasurements, context, afterFilter, dataType, aggregateResultList, null);
 
     if (minTimeResult.getResult() != null) {
       long timestamp = (long)(minTimeResult.getResult());

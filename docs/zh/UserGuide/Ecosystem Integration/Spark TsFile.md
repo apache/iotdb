@@ -58,7 +58,7 @@ TsFile-Spark-Connector对Tsfile类型的外部数据源实现Spark的支持。 �
 在分布式模式下使用TsFile-Spark-Connector启动Spark（即，Spark集群通过spark-shell连接）：
 
 ```
-. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-0.8.0-jar-with-dependencies.jar  --master spark://ip:7077
+. /<spark-shell-path>   --jars  tsfile-spark-connector.jar,tsfile-{version}-jar-with-dependencies.jar  --master spark://ip:7077
 ```
 
 注意：

@@ -47,6 +47,7 @@ import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
+import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
 import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
@@ -64,6 +65,7 @@ import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
@@ -140,6 +142,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowAllTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowChildPathsContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowDevicesContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowMergeStatusContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowTimeseriesContext;
@@ -318,7 +321,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterLoadConfigurationStatement(LoadConfigurationStatementContext ctx) {
     super.enterLoadConfigurationStatement(ctx);
-    initializedOperator = new LoadConfigurationOperator();
+    if (ctx.GLOBAL() != null) {
+      initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.GLOBAL);
+    } else {
+      initializedOperator = new LoadConfigurationOperator(LoadConfigurationOperatorType.LOCAL);
+    }
+
   }
 
   @Override
@@ -794,7 +802,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     queryOp.setFill(true);
     queryOp.setLeftCRightO(ctx.timeInterval().LS_BRACKET() != null);
 
-
     // parse timeUnit
     queryOp.setUnit(parseDuration(ctx.DURATION().getText()));
     queryOp.setSlidingStep(queryOp.getUnit());
@@ -1112,7 +1119,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : properties) {
         props.put(property.ID().getText().toLowerCase(),
-                property.propertyValue().getText().toLowerCase());
+            property.propertyValue().getText().toLowerCase());
       }
     }
     createTimeSeriesOperator.setCompressor(compressor);
@@ -1604,5 +1611,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       throw new SQLParserException(
               String.format("encoding %s does not support %s", tsEncoding, tsDataType));
     }
+  }
+
+  @Override
+  public void enterShowMergeStatus(ShowMergeStatusContext ctx) {
+    super.enterShowMergeStatus(ctx);
+    initializedOperator = new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
   }
 }

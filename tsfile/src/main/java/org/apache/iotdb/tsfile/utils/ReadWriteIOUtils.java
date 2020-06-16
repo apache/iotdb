@@ -365,6 +365,15 @@ public class ReadWriteIOUtils {
   }
 
   /**
+   * write byteBuffer.array to outputStream without capacity.
+   */
+  public static int writeWithoutSize(ByteBuffer byteBuffer, OutputStream outputStream) throws IOException {
+    byte[] bytes = byteBuffer.array();
+    outputStream.write(bytes);
+    return bytes.length;
+  }
+
+  /**
    * write byteBuffer.capacity and byteBuffer.array to byteBuffer.
    */
   public static int write(ByteBuffer byteBuffer, ByteBuffer buffer) {

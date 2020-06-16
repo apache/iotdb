@@ -132,7 +132,7 @@ Compared with the corresponding .sha512, the same is fine.
 ```
 nohup ./sbin/start-server.sh >/dev/null 2>&1 &
 
-./sbin/start-client.sh
+./sbin/start-cli.sh
 
 SET STORAGE GROUP TO root.turbine;
 CREATE TIMESERIES root.turbine.d1.s0 WITH DATATYPE=DOUBLE, ENCODING=GORILLA;

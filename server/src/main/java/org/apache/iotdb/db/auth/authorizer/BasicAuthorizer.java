@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.auth.authorizer;
 
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.PrivilegeType;
 import org.apache.iotdb.db.auth.entity.Role;
@@ -33,15 +39,12 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 public abstract class BasicAuthorizer implements IAuthorizer, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(BasicAuthorizer.class);
   private static final Set<Integer> ADMIN_PRIVILEGES;
   private static final String NO_SUCH_ROLE_EXCEPTION = "No such role : %s";
+  private static final String NO_SUCH_USER_EXCEPTION = "No such user : %s";
 
   static {
     ADMIN_PRIVILEGES = new HashSet<>();
@@ -186,7 +189,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     if (!PrivilegeType.isPathRelevant(privilegeId)) {
       p = IoTDBConstant.PATH_ROOT;
     }
-    if(!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
+    if (!roleManager.grantPrivilegeToRole(roleName, p, privilegeId)) {
       throw new AuthException(String.format("Role %s already has %s on %s", roleName,
           PrivilegeType.values()[privilegeId], path));
     }
@@ -220,7 +223,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
       }
     } else {
       throw new AuthException(String.format("User %s already has role %s",
-       username, roleName));
+          username, roleName));
     }
   }
 
@@ -243,7 +246,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     User user = userManager.getUser(username);
     if (user == null) {
-      throw new AuthException(String.format("No such user : %s", username));
+      throw new AuthException(String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
     Set<Integer> privileges = user.getPrivileges(path);
@@ -272,7 +275,7 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     User user = userManager.getUser(username);
     if (user == null) {
-      throw new AuthException(String.format("No such user : %s", username));
+      throw new AuthException(String.format(NO_SUCH_USER_EXCEPTION, username));
     }
     // get privileges of the user
     if (user.checkPrivilege(path, privilegeId)) {
@@ -287,6 +290,50 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
     }
     return false;
   }
+
+  @Override
+  public Map<String, Boolean> getAllUserWaterMarkStatus() {
+    Map<String, Boolean> userWaterMarkStatus = new HashMap<>();
+    List<String> allUsers = listAllUsers();
+    for (String user : allUsers) {
+      try {
+        userWaterMarkStatus.put(user, isUserUseWaterMark(user));
+      } catch (AuthException e) {
+        logger.error(String.format(NO_SUCH_USER_EXCEPTION, user));
+      }
+    }
+    return userWaterMarkStatus;
+  }
+
+  @Override
+  public Map<String, User> getAllUsers() {
+    Map<String, User> allUsers = new HashMap<>();
+    List<String> userNames = listAllUsers();
+    for (String userName : userNames) {
+      try {
+        allUsers.put(userName, getUser(userName));
+      } catch (AuthException e) {
+        logger.error(String.format("get all users failed, No such user : %s", userName));
+      }
+    }
+    return allUsers;
+  }
+
+
+  @Override
+  public Map<String, Role> getAllRoles() {
+    Map<String, Role> allRoles = new HashMap<>();
+    List<String> roleNames = listAllRoles();
+    for (String roleName : roleNames) {
+      try {
+        allRoles.put(roleName, getRole(roleName));
+      } catch (AuthException e) {
+        logger.error(String.format("get all roles failed, No such role : %s", roleName));
+      }
+    }
+    return allRoles;
+  }
+
 
   @Override
   public void reset() throws AuthException {
@@ -340,5 +387,15 @@ public abstract class BasicAuthorizer implements IAuthorizer, IService {
   @Override
   public void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException {
     userManager.setUserUseWaterMark(userName, useWaterMark);
+  }
+
+  @Override
+  public void replaceAllUsers(Map<String, User> users) throws AuthException {
+    userManager.replaceAllUsers(users);
+  }
+
+  @Override
+  public void replaceAllRoles(Map<String, Role> roles) throws AuthException {
+    roleManager.replaceAllRoles(roles);
   }
 }

@@ -80,7 +80,7 @@ public class WalCheckerTest {
         TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          new InsertPlan(deviceId, j, measurements, types, values).serializeTo(binaryPlans);
+          new InsertPlan(deviceId, j, measurements, values).serialize(binaryPlans);
         }
         binaryPlans.flip();
         logWriter.write(binaryPlans);
@@ -114,7 +114,7 @@ public class WalCheckerTest {
         TSDataType[] types = new TSDataType[]{TSDataType.INT64, TSDataType.INT64, TSDataType.INT64};
         String[] values = new String[]{"5", "6", "7"};
         for (int j = 0; j < 10; j++) {
-          new InsertPlan(deviceId, j, measurements, types, values).serializeTo(binaryPlans);
+          new InsertPlan(deviceId, j, measurements, types, values).serialize(binaryPlans);
         }
         if (i > 2) {
           binaryPlans.put("not a wal".getBytes());
