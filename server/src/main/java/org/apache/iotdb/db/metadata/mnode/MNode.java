@@ -119,8 +119,12 @@ public class MNode implements Serializable {
    * get the child with the name
    */
   public MNode getChild(String name) {
-    if (children != null && children.containsKey(name)) {
-      return children.get(name);
+    MNode child = null;
+    if (children != null) {
+      child = children.get(name);
+    }
+    if (child != null) {
+      return child;
     }
     return aliasChildren == null ? null : aliasChildren.get(name);
   }
