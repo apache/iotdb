@@ -22,10 +22,16 @@ package org.apache.iotdb.cluster;
 import static org.apache.iotdb.db.tools.logvisual.VisualUtils.parseIntArray;
 
 import java.nio.ByteBuffer;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -35,6 +41,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -159,7 +166,7 @@ public class ClientMain {
   };
 
   public static void main(String[] args)
-      throws TException, StatementExecutionException, IoTDBConnectionException, ParseException {
+      throws TException, StatementExecutionException, IoTDBConnectionException, ParseException, SQLException, ClassNotFoundException {
     CommandLineParser parser = new DefaultParser();
     CommandLine commandLine = parser.parse(options, args);
     boolean noOption = args.length == 0;
@@ -222,6 +229,9 @@ public class ClientMain {
       testDeleteStorageGroup(client, sessionId);
       client.closeSession(new TSCloseSessionReq(sessionId));
     }
+
+    System.out.println("Test batch create sgs");
+    testBatch();
   }
 
   protected static long connectClient(Client client) throws TException {
@@ -406,6 +416,34 @@ public class ClientMain {
       byte[] bytes = value.getBytes(TSFileConfig.STRING_CHARSET);
       ReadWriteIOUtils.write(bytes.length, buffer);
       buffer.put(bytes);
+    }
+  }
+
+  private static void testBatch() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:55560/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.addBatch("SET STORAGE GROUP TO root.batch1");
+      statement.addBatch("SET STORAGE GROUP TO root.batch2");
+      statement.addBatch("SET STORAGE GROUP TO root.batch3");
+      statement.addBatch("SET STORAGE GROUP TO root.batch4");
+
+      statement.executeBatch();
+      statement.clearBatch();
+
+      try (ResultSet set = statement.executeQuery("SHOW STORAGE GROUP")) {
+        int colNum = set.getMetaData().getColumnCount();
+        while (set.next()) {
+          StringBuilder stringBuilder = new StringBuilder();
+          for (int i = 0; i < colNum; i++) {
+            stringBuilder.append(set.getString(i + 1)).append(",");
+          }
+          System.out.println(stringBuilder.toString());
+        }
+      }
     }
   }
 }
