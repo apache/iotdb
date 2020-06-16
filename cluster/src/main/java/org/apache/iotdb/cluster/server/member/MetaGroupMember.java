@@ -63,6 +63,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -702,7 +703,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Node n : allNodes) {
       idNodeMap.put(n.getNodeIdentifier(), n);
     }
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      logger.error("check consistency failed when accept partition table: {}", e.getMessage());
+    }
 
     startSubServers();
   }
@@ -1479,15 +1484,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
-    if (syncLeader()) {
+    try {
+      syncLeaderWithConsistencyCheck();
       List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
       Map<PhysicalPlan, PartitionGroup> planGroupMap = new HashMap<>();
       for (PartitionGroup globalGroup : globalGroups) {
         planGroupMap.put(plan, globalGroup);
       }
       return forwardPlan(planGroupMap);
+    } catch (CheckConsistencyException e) {
+      return forwardPlan(plan, leader, null);
     }
-    return forwardPlan(plan, leader, null);
   }
 
   /**
@@ -1511,7 +1518,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     try {
       planGroupMap = router.splitAndRoutePlan(plan);
     } catch (StorageGroupNotSetException e) {
-      syncLeader();
+      try {
+        syncLeaderWithConsistencyCheck();
+      } catch (CheckConsistencyException checkConsistencyException) {
+        logger.error("check consistency failed, error={}", checkConsistencyException.getMessage());
+      }
       try {
         planGroupMap = router.splitAndRoutePlan(plan);
       } catch (MetadataException ex) {
@@ -1612,11 +1623,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } catch (StorageGroupNotSetException e) {
         // the storage group is not found locally, but may be found in the leader, retry after
         // synchronizing with the leader
-        if (syncLeader()) {
-          partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
-        } else {
-          throw e;
+
+        try {
+          syncLeaderWithConsistencyCheck();
+        } catch (CheckConsistencyException checkConsistencyException) {
+          throw new MetadataException(checkConsistencyException.getMessage());
         }
+        partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
+
       }
       partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
     }
@@ -1697,7 +1711,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         if (logger.isDebugEnabled()) {
           logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
               name,
-              schemas.size(), prefixPaths.get(0), prefixPaths.size() - 1, node, partitionGroup.getHeader());
+              schemas.size(), prefixPaths.get(0), prefixPaths.size() - 1, node,
+              partitionGroup.getHeader());
         }
         results.addAll(schemas);
         break;
@@ -1715,7 +1730,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    * @throws MetadataException
    */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths,
+      List<String> aggregations) throws
       MetadataException {
     try {
       // try locally first
@@ -1758,7 +1774,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           MeasurementSchema schema = schemas.get(i);
           columnType.add(schema.getType());
           MManager.getInstance().cacheSchema(paths.get(i).getDevice() +
-                  IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
+              IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
         } else {
           columnType.add(dataType);
         }
@@ -1778,7 +1794,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    * @throws MetadataException
    */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs, String aggregation) throws
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs,
+      String aggregation) throws
       MetadataException {
     try {
       // try locally first
@@ -1790,7 +1807,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } else {
         // if the aggregation function is not null,
         // we should recalculate the type of column in result set
-        List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
+        List<TSDataType> columnDataTypes = SchemaUtils
+            .getSeriesTypesByString(pathStrs, aggregation);
         return new Pair<>(columnDataTypes, measurementDataTypes);
       }
     } catch (PathNotExistException e) {
@@ -1834,7 +1852,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
     // get all data groups
     List<PartitionGroup> partitionGroups = routeFilter(null, path);
     logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
@@ -1937,7 +1959,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       Filter valueFilter, QueryContext context)
       throws StorageEngineException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
     // find the groups that should be queried using the timeFilter
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
     logger.debug("{}: Sending data query of {} to {} groups", name, path,
@@ -1977,7 +2003,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       TSDataType dataType, Filter timeFilter,
       QueryContext context) throws StorageEngineException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
     logger.debug("{}: Sending aggregation query of {} to {} groups", name, path,
         partitionGroups.size());
@@ -2032,7 +2062,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             .debug("{}: queried aggregation {} of {} in {} locally are {}", name, aggregations,
                 path, partitionGroup.getHeader(), aggrResult);
         return aggrResult;
-      } catch (IOException | QueryProcessException | LeaderUnknownException e) {
+      } catch (IOException | QueryProcessException e) {
         throw new StorageEngineException(e);
       }
     }
@@ -2260,7 +2290,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   public List<String> getMatchedPaths(String originPath) throws MetadataException {
     // make sure this node knows all storage groups
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -2281,7 +2315,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   public Set<String> getMatchedDevices(String originPath) throws MetadataException {
     // make sure this node knows all storage groups
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -2827,7 +2865,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       QueryContext context, Filter timeFilter, List<Integer> aggregationTypes)
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
     // find out the groups that should be queried
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
     if (logger.isDebugEnabled()) {
@@ -2956,7 +2998,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       long beforeRange, Set<String> deviceMeasurements, QueryContext context)
       throws StorageEngineException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
     // find the groups that should be queried using the time range
     Intervals intervals = new Intervals();
     long lowerBound = beforeRange == -1 ? Long.MIN_VALUE : queryTime - beforeRange;
@@ -3007,7 +3053,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               localDataMember.localPreviousFill(arguments.getPath(), arguments.getDataType(),
                   arguments.getQueryTime(), arguments.getBeforeRange(),
                   arguments.getDeviceMeasurements(), context));
-    } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
+    } catch (QueryProcessException | StorageEngineException | IOException e) {
       fillHandler.onError(e);
     }
   }

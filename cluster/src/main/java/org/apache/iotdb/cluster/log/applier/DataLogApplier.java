@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.log.applier;
 
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
@@ -99,7 +100,11 @@ public class DataLogApplier extends BaseApplier {
     } catch (StorageGroupNotSetException e) {
       // the sg may not exist because the node does not catch up with the leader, retry after
       // synchronization
-      metaGroupMember.syncLeader();
+      try {
+        metaGroupMember.syncLeaderWithConsistencyCheck();
+      } catch (CheckConsistencyException checkConsistencyException) {
+        throw new QueryProcessException(checkConsistencyException.getMessage());
+      }
       if (plan instanceof InsertPlan) {
         InsertPlan insertPlan = (InsertPlan) plan;
         sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
