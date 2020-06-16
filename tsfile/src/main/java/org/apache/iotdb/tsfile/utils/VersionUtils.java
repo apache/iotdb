@@ -39,7 +39,7 @@ public class VersionUtils {
         // When the TsFile is uncompleted,
         // skip the chunkMetadatas those don't have their version information
         if (versionIndex >= versionInfo.size()) {
-          break;
+          return;
         }
       }
 
