@@ -35,7 +35,7 @@ public class DoubleTVList extends TVList {
 
   private double[][] sortedValues;
 
-  private double pivotValue;
+  private double pivotValue
 
   DoubleTVList() {
     super();
