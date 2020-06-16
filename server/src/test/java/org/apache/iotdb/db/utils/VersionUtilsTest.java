@@ -30,7 +30,7 @@ import org.junit.Test;
 public class VersionUtilsTest {
 
   @Test
-  public void isNumberTest() {
+  public void uncompleteFileTest() {
     List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
     chunkMetadataList.add(new ChunkMetadata("s1", TSDataType.INT32, 10, null));
     chunkMetadataList.add(new ChunkMetadata("s1", TSDataType.INT32, 20, null));
