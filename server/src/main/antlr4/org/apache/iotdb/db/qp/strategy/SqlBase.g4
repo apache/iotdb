@@ -140,10 +140,20 @@ aliasClause
 
 attributeClauses
     : DATATYPE OPERATOR_EQ dataType COMMA ENCODING OPERATOR_EQ encoding
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=propertyValue)?
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor)?
     (COMMA property)*
     tagClause
     attributeClause
+    ;
+
+compressor
+    : UNCOMPRESSED
+    | SNAPPY
+    | GZIP
+    | LZO
+    | SDT
+    | PAA
+    | PLA
     ;
 
 attributeClause
@@ -369,6 +379,7 @@ nodeName
     | MINUS? INT
     | booleanClause
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
+    | compressor
     ;
 
 nodeNameWithoutStar
@@ -382,6 +393,7 @@ nodeNameWithoutStar
     | MINUS? INT
     | booleanClause
     | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
+    | compressor
     ;
 
 dataType
@@ -879,6 +891,33 @@ FALSE
     : F A L S E
     ;
 
+UNCOMPRESSED
+    : U N C O M P R E S S E D
+    ;
+
+SNAPPY
+    : S N A P P Y
+    ;
+
+GZIP
+    : G Z I P
+    ;
+
+LZO
+    : L Z O
+    ;
+
+SDT
+    : S D T
+    ;
+
+PAA
+    : P A A
+    ;
+
+PLA
+   : P L A
+   ;
 //============================
 // End of the keywords list
 //============================
