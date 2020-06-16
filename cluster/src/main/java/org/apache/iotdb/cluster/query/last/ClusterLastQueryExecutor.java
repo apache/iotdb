@@ -32,6 +32,7 @@ import java.util.concurrent.Future;
 import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
@@ -42,7 +43,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -69,7 +69,11 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       QueryContext context, Set<String> deviceMeasurements)
       throws IOException {
     // calculate the global last from all data groups
-    metaGroupMember.syncLeader();
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new IOException(e);
+    }
     TimeValuePair resultPair = new TimeValuePair(Long.MIN_VALUE, null);
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     List<Future<TimeValuePair>> groupFutures = new ArrayList<>(globalGroups.size());
@@ -134,8 +138,13 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         TSDataType dataType, QueryContext context, Set<String> deviceMeasurements)
         throws StorageEngineException, QueryProcessException, IOException {
       DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
-      localDataMember.syncLeader();
-      return calculateLastPairForOneSeriesLocally(seriesPath, dataType, context, deviceMeasurements);
+      try {
+        localDataMember.syncLeaderWithConsistencyCheck();
+      } catch (CheckConsistencyException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
+      return calculateLastPairForOneSeriesLocally(seriesPath, dataType, context,
+          deviceMeasurements);
     }
 
     private TimeValuePair calculateSeriesLastRemotely(PartitionGroup group, Path seriesPath,
