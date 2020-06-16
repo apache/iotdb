@@ -29,6 +29,17 @@ import org.junit.Test;
 public class TVListTest {
 
   @Test
+  public void testFloatTVList1(){
+    TVList tvList = new FloatTVList();
+    for (long i = 0; i < 1000; i++) {
+      double j = 1.2345678+Math.random();
+      tvList.putDouble(i, j);
+    }
+    tvList.sort();
+    tvList.getTimeValuePair(0);
+  }
+
+  @Test
   public void testDoubleTVList1(){
     TVList tvList = new DoubleTVList();
     for (long i = 0; i < 1000; i++) {
