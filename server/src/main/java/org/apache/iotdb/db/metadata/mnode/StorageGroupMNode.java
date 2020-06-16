@@ -50,11 +50,11 @@ public class StorageGroupMNode extends MNode {
   public void serializeTo(BufferedWriter bw) throws IOException {
     serializeChildren(bw);
 
-    String s = String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE);
-    s += "," + name + ",";
-    s += dataTTL + ",";
-    s += children == null ? "0" : children.size();
-    bw.write(s);
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE));
+    s.append(",").append(name).append(",");
+    s.append(",").append(dataTTL).append(",");
+    s.append(children == null ? "0" : children.size());
+    bw.write(s.toString());
     bw.newLine();
   }
 

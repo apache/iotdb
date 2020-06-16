@@ -209,10 +209,10 @@ public class MNode implements Serializable {
   public void serializeTo(BufferedWriter bw) throws IOException {
     serializeChildren(bw);
 
-    String s = String.valueOf(MetadataConstant.MNODE_TYPE);
-    s += "," + name + ",";
-    s += children == null ? "0" : children.size();
-    bw.write(s);
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.MNODE_TYPE));
+    s.append(",").append(name).append(",");
+    s.append(children == null ? "0" : children.size());
+    bw.write(s.toString());
     bw.newLine();
   }
 
