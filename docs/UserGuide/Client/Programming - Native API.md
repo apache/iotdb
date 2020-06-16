@@ -136,14 +136,14 @@ Here we show the commonly used interfaces and their parameters in the Native API
                        List<List<String>> measurementsList, List<List<String>> valuesList)
   ```
   
-* Insert a Record，which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which lead a better performance
+* Insert a Record，which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
 
   ```
   void insertRecord(String deviceId, long time, List<String> measurements,
        List<TSDataType> types, List<Object> values)
   ```
 
-* Insert multiple Records. With type info the server has no need to do type inference, which lead a better performance
+* Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
 
   ```
   void insertRecords(List<String> deviceIds, List<Long> times,
