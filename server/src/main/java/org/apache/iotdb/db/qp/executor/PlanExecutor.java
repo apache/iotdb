@@ -18,15 +18,20 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COUNT;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CREATED_TIME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DONE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PARAMETER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TASK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
@@ -48,9 +53,9 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
-
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -67,6 +72,8 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
+import org.apache.iotdb.db.engine.merge.manage.MergeManager;
+import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -76,16 +83,25 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
@@ -94,8 +110,8 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -116,7 +132,6 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -190,6 +205,9 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case INSERT:
         insert((InsertPlan) plan);
+        return true;
+      case BATCHINSERT:
+        insertTablet((InsertTabletPlan) plan);
         return true;
       case CREATE_ROLE:
       case DELETE_ROLE:
@@ -349,6 +367,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processCountNodeTimeSeries((CountPlan) showPlan);
       case COUNT_NODES:
         return processCountNodes((CountPlan) showPlan);
+      case MERGE_STATUS:
+        return processShowMergeStatus();
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -810,7 +830,8 @@ public class PlanExecutor implements IPlanExecutor {
                   schema.getEncodingType(),
                   schema.getCompressor(),
                   Collections.emptyMap());
-            } else if (!(node.getChild(chunkMetadata.getMeasurementUid()) instanceof MeasurementMNode)) {
+            } else if (!(node
+                .getChild(chunkMetadata.getMeasurementUid()) instanceof MeasurementMNode)) {
               throw new QueryProcessException(
                   String.format("Current Path is not leaf node. %s", series));
             }
@@ -818,7 +839,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
       } finally {
         if (node != null) {
-          ((InternalMNode) node).readUnlock();
+          node.readUnlock();
         }
       }
     }
@@ -893,7 +914,8 @@ public class PlanExecutor implements IPlanExecutor {
       insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
       if (insertPlan.getFailedMeasurements() != null) {
-        throw new StorageEngineException("failed to insert points " + insertPlan.getFailedMeasurements());
+        throw new StorageEngineException(
+            "failed to insert points " + insertPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
@@ -908,6 +930,8 @@ public class PlanExecutor implements IPlanExecutor {
     MNode node = null;
     try {
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      // To reduce the String number in memory, set the deviceId from MManager to insertPlan
+      insertPlan.setDeviceId(node.getFullPath());
     } catch (PathNotExistException e) {
       // ignore
     }
@@ -919,7 +943,8 @@ public class PlanExecutor implements IPlanExecutor {
             measurementList[i] = schemas[i].getMeasurementId();
           }
         } catch (MetadataException e) {
-          logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i], e.getMessage());
+          logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i],
+              e.getMessage());
           if (enablePartialInsert) {
             insertPlan.markMeasurementInsertionFailed(i);
           } else {
@@ -929,7 +954,7 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
     return schemas;
@@ -938,7 +963,8 @@ public class PlanExecutor implements IPlanExecutor {
   /**
    * @param loc index of measurement in insertPlan
    */
-  private MeasurementSchema getSeriesSchema(MNode deviceNode, InsertPlan insertPlan, int loc) throws MetadataException {
+  private MeasurementSchema getSeriesSchema(MNode deviceNode, InsertPlan insertPlan, int loc)
+      throws MetadataException {
     String measurement = insertPlan.getMeasurements()[loc];
     String deviceId = insertPlan.getDeviceId();
     Object value = insertPlan.getValues()[loc];
@@ -959,19 +985,21 @@ public class PlanExecutor implements IPlanExecutor {
         Path path = new Path(deviceId, measurement);
         internalCreateTimeseries(path.toString(), dataType);
 
-        MeasurementMNode measurementNode = (MeasurementMNode) mManager.getChild(deviceNode, measurement);
+        MeasurementMNode measurementNode = (MeasurementMNode) mManager
+            .getChild(deviceNode, measurement);
         measurementSchema = measurementNode.getSchema();
-        if(!isInferType) {
+        if (!isInferType) {
           checkType(insertPlan, loc, measurementNode.getSchema().getType());
         }
       }
     } else if (deviceNode != null) {
       // device and measurement exists in MTree
-      MeasurementMNode measurementNode = (MeasurementMNode) MManager.getInstance().getChild(deviceNode, measurement);
+      MeasurementMNode measurementNode = (MeasurementMNode) MManager.getInstance()
+          .getChild(deviceNode, measurement);
       measurementSchema = measurementNode.getSchema();
     } else {
       // device in not in MTree, try the cache
-      measurementSchema = MManager.getInstance().getSeriesSchema(deviceId, measurement);
+      measurementSchema = mManager.getSeriesSchema(deviceId, measurement);
     }
     return measurementSchema;
   }
@@ -1063,12 +1091,15 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
+  public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     MNode node = null;
     try {
       String[] measurementList = insertTabletPlan.getMeasurements();
       String deviceId = insertTabletPlan.getDeviceId();
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      // To reduce the String number in memory, use the deviceId from MManager
+      deviceId = node.getFullPath();
+      insertTabletPlan.setDeviceId(deviceId);
       TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
       IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
       MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
@@ -1101,12 +1132,12 @@ public class PlanExecutor implements IPlanExecutor {
         measurementList[i] = measurementNode.getName();
       }
       insertTabletPlan.setSchemas(schemas);
-      return StorageEngine.getInstance().insertTablet(insertTabletPlan);
+      StorageEngine.getInstance().insertTablet(insertTabletPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
   }
@@ -1492,5 +1523,44 @@ public class PlanExecutor implements IPlanExecutor {
   @SuppressWarnings("unused") // for the distributed version
   protected void loadConfiguration(LoadConfigurationPlan plan) throws QueryProcessException {
     IoTDBDescriptor.getInstance().loadHotModifiedProps();
+  }
+
+  private QueryDataSet processShowMergeStatus() {
+    List<Path> headerList = new ArrayList<>();
+    List<TSDataType> typeList = new ArrayList<>();
+    headerList.add(new Path(COLUMN_STORAGE_GROUP));
+    headerList.add(new Path(COLUMN_TASK_NAME));
+    headerList.add(new Path(COLUMN_CREATED_TIME));
+    headerList.add(new Path(COLUMN_PROGRESS));
+    headerList.add(new Path(COLUMN_CANCELLED));
+    headerList.add(new Path(COLUMN_DONE));
+
+    typeList.add(TSDataType.TEXT);
+    typeList.add(TSDataType.TEXT);
+    typeList.add(TSDataType.TEXT);
+    typeList.add(TSDataType.TEXT);
+    typeList.add(TSDataType.BOOLEAN);
+    typeList.add(TSDataType.BOOLEAN);
+    ListDataSet dataSet = new ListDataSet(headerList, typeList);
+    Map<String, List<TaskStatus>>[] taskStatus = MergeManager.getINSTANCE().collectTaskStatus();
+    for (Map<String, List<TaskStatus>> statusMap : taskStatus) {
+      for (Entry<String, List<TaskStatus>> stringListEntry : statusMap.entrySet()) {
+        for (TaskStatus status : stringListEntry.getValue()) {
+          dataSet.putRecord(toRowRecord(status, stringListEntry.getKey()));
+        }
+      }
+    }
+    return dataSet;
+  }
+
+  public RowRecord toRowRecord(TaskStatus status, String storageGroup) {
+    RowRecord record = new RowRecord(0);
+    record.addField(new Binary(storageGroup), TSDataType.TEXT);
+    record.addField(new Binary(status.getTaskName()), TSDataType.TEXT);
+    record.addField(new Binary(status.getCreatedTime()), TSDataType.TEXT);
+    record.addField(new Binary(status.getProgress()), TSDataType.TEXT);
+    record.addField(status.isCancelled(), TSDataType.BOOLEAN);
+    record.addField(status.isDone(), TSDataType.BOOLEAN);
+    return record;
   }
 }

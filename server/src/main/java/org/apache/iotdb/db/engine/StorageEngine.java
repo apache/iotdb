@@ -49,6 +49,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -310,15 +311,14 @@ public class StorageEngine implements IService {
    *
    * @return result of each row
    */
-  public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws StorageEngineException {
+  public void insertTablet(InsertTabletPlan insertTabletPlan)
+      throws StorageEngineException, BatchInsertionException {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
     } catch (StorageEngineException e) {
-      logger.warn("get StorageGroupProcessor of device {} failed, because {}",
-          insertTabletPlan.getDeviceId(),
-          e.getMessage(), e);
-      throw new StorageEngineException(e);
+      throw new StorageEngineException(String.format("Get StorageGroupProcessor of device %s "
+          + "failed", insertTabletPlan.getDeviceId()), e);
     }
 
     // TODO monitor: update statistics
@@ -326,7 +326,7 @@ public class StorageEngine implements IService {
     Metrics.summary("iotdb.storage.insert.batch.size", GROUP_TAG, storageGroupName).record(insertTabletPlan.getRowCount());
     LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.storage.insert.batch.latency", GROUP_TAG, storageGroupName).start();
     try {
-      return storageGroupProcessor.insertTablet(insertTabletPlan);
+      storageGroupProcessor.insertTablet(insertTabletPlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     } finally {

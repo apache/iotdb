@@ -11,7 +11,6 @@
     </parent>
     <groupId>org.apache.iotdb</groupId>
     <artifactId>micrometer-registry-iotdb</artifactId>
-    <version>0.10.0-SNAPSHOT</version>
     <description>This is an Implementation of IoTDB as Micrometer Registry.</description>
     <dependencies>
         <dependency>

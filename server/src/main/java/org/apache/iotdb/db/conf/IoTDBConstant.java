@@ -28,6 +28,8 @@ public class IoTDBConstant {
   public static final String GLOBAL_DB_NAME = "IoTDB";
   public static final String VERSION = "0.10.0-SNAPSHOT";
 
+  public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
+
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
@@ -72,6 +74,12 @@ public class IoTDBConstant {
 
   public static final String COLUMN_STORAGE_GROUP = "storage group";
   public static final String COLUMN_TTL = "ttl";
+
+  public static final String COLUMN_TASK_NAME = "task name";
+  public static final String COLUMN_CREATED_TIME = "created time";
+  public static final String COLUMN_PROGRESS = "progress";
+  public static final String COLUMN_CANCELLED = "cancelled";
+  public static final String COLUMN_DONE = "done";
 
   public static final String PATH_WILDCARD = "*";
 

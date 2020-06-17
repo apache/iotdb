@@ -69,10 +69,11 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | SHOW TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
+    | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
+    | SHOW MERGE #showMergeStatus
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
@@ -876,6 +877,10 @@ TRUE
 
 FALSE
     : F A L S E
+    ;
+
+LATEST
+    : L A T E S T
     ;
 
 //============================

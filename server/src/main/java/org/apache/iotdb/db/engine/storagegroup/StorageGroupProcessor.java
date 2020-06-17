@@ -25,6 +25,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -66,6 +67,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
+import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.MergeException;
@@ -76,7 +78,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -626,10 +627,19 @@ public class StorageGroupProcessor {
     }
   }
 
-  public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws WriteProcessException {
+  /**
+   * Insert a tablet (rows belonging to the same devices) into this storage group.
+   * @param insertTabletPlan
+   * @throws WriteProcessException when update last cache failed
+   * @throws BatchInsertionException if some of the rows failed to be inserted
+   */
+  public void insertTablet(InsertTabletPlan insertTabletPlan) throws WriteProcessException,
+      BatchInsertionException {
     writeLock();
     try {
       TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
+      Arrays.fill(results, RpcUtils.SUCCESS_STATUS);
+      boolean noFailure = true;
 
       /*
        * assume that batch has been sorted by client
@@ -642,13 +652,14 @@ public class StorageGroupProcessor {
           results[loc] = RpcUtils.getStatus(TSStatusCode.OUT_OF_TTL_ERROR,
               "time " + currTime + " in current line is out of TTL: " + dataTTL);
           loc++;
+          noFailure = false;
         } else {
           break;
         }
       }
       // loc pointing at first legal position
       if (loc == insertTabletPlan.getRowCount()) {
-        return results;
+        throw new BatchInsertionException(results);
       }
       // before is first start point
       int before = loc;
@@ -663,12 +674,12 @@ public class StorageGroupProcessor {
       while (loc < insertTabletPlan.getRowCount()) {
         long time = insertTabletPlan.getTimes()[loc];
         long curTimePartition = StorageEngine.getTimePartition(time);
-        results[loc] = RpcUtils.SUCCESS_STATUS;
         // start next partition
         if (curTimePartition != beforeTimePartition) {
           // insert last time partition
-          insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence, results,
-              beforeTimePartition);
+          noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
+              results,
+              beforeTimePartition) && noFailure;
           // re initialize
           before = loc;
           beforeTimePartition = curTimePartition;
@@ -682,8 +693,8 @@ public class StorageGroupProcessor {
           // judge if we should insert sequence
           if (!isSequence && time > lastFlushTime) {
             // insert into unsequence and then start sequence
-            insertTabletToTsFileProcessor(insertTabletPlan, before, loc, false, results,
-                beforeTimePartition);
+            noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, false, results,
+                beforeTimePartition) && noFailure;
             before = loc;
             isSequence = true;
           }
@@ -693,14 +704,16 @@ public class StorageGroupProcessor {
 
       // do not forget last part
       if (before < loc) {
-        insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence, results,
-            beforeTimePartition);
+        noFailure = insertTabletToTsFileProcessor(insertTabletPlan, before, loc, isSequence,
+            results, beforeTimePartition) && noFailure;
       }
       long globalLatestFlushedTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
           insertTabletPlan.getDeviceId(), Long.MIN_VALUE);
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
-      return results;
+      if (!noFailure) {
+        throw new BatchInsertionException(results);
+      }
     } finally {
       writeUnlock();
     }
@@ -723,12 +736,13 @@ public class StorageGroupProcessor {
    * @param end end index of rows to be inserted in insertTabletPlan
    * @param results result array
    * @param timePartitionId time partition id
+   * @return false if any failure occurs when inserting the tablet, true otherwise
    */
-  private void insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
+  private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
       int start, int end, boolean sequence, TSStatus[] results, long timePartitionId) {
     // return when start >= end
     if (start >= end) {
-      return;
+      return true;
     }
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
@@ -737,14 +751,14 @@ public class StorageGroupProcessor {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR,
             "can not create TsFileProcessor, timePartitionId: " + timePartitionId);
       }
-      return;
+      return false;
     }
 
     try {
       tsFileProcessor.insertTablet(insertTabletPlan, start, end, results);
     } catch (WriteProcessException e) {
       logger.error("insert to TsFileProcessor error ", e);
-      return;
+      return false;
     }
 
     latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>());
@@ -760,6 +774,7 @@ public class StorageGroupProcessor {
     if (tsFileProcessor.shouldFlush()) {
       fileFlushPolicy.apply(this, tsFileProcessor, sequence);
     }
+    return true;
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime)
@@ -778,7 +793,7 @@ public class StorageGroupProcessor {
       throw new WriteProcessException(e);
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
   }
@@ -836,7 +851,7 @@ public class StorageGroupProcessor {
       throw new WriteProcessException(e);
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
   }
@@ -1255,7 +1270,7 @@ public class StorageGroupProcessor {
                   .query(deviceId, measurementId, schema.getType(), schema.getEncodingType(),
                       schema.getProps(), context);
 
-          tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(), 
+          tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(),
               tsFileResource.getDeviceToIndexMap(),
               tsFileResource.getStartTimes(), tsFileResource.getEndTimes(), pair.left,
               pair.right));
@@ -1517,8 +1532,8 @@ public class StorageGroupProcessor {
     List<TsFileResource> upgradedResources = tsFileResource.getUpgradedResources();
     for (TsFileResource resource : upgradedResources) {
       long partitionId = resource.getTimePartition();
-      resource.getDeviceToIndexMap().forEach((device, index) -> 
-        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, 
+      resource.getDeviceToIndexMap().forEach((device, index) ->
+        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device,
             resource.getEndTime(index))
       );
     }
@@ -1533,7 +1548,7 @@ public class StorageGroupProcessor {
     }
     mergeLock.writeLock().unlock();
     insertLock.writeLock().unlock();
-    
+
     // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
     if (countUpgradeFiles() == 0) {
       for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice

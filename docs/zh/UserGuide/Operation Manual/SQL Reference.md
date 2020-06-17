@@ -197,6 +197,14 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* 显示Merge状态语句
+
+```
+SHOW MERGE
+Eg: IoTDB > SHOW MERGE
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 * 显示指定路径下时间序列数语句
 
 ```

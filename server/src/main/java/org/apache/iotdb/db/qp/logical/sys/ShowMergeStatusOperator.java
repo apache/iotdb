@@ -16,20 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
 
-public class MetadataConstant {
+package org.apache.iotdb.db.qp.logical.sys;
 
-  private MetadataConstant() {
-    // allowed to do nothing
+import org.apache.iotdb.db.qp.logical.RootOperator;
+
+public class ShowMergeStatusOperator extends RootOperator {
+
+  public ShowMergeStatusOperator(int tokenIntType) {
+    super(tokenIntType);
+    setOperatorType(OperatorType.SHOW_MERGE_STATUS);
   }
-
-  public static final String ROOT = "root";
-  public static final String METADATA_LOG = "mlog.txt";
-  public static final String TAG_LOG = "tlog.txt";
-  public static final String MTREE_SNAPSHOT = "mtree.snapshot";
-
-  public static final short MNODE_TYPE = 0;
-  public static final short STORAGE_GROUP_MNODE_TYPE = 1;
-  public static final short MEASUREMENT_MNODE_TYPE = 2;
 }
