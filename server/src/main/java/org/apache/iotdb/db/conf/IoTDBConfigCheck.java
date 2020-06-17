@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.MLogWriter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
@@ -71,6 +72,9 @@ public class IoTDBConfigCheck {
 
   private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
   private static final String tagAttributeTotalSize = String.valueOf(IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize());
+
+  private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
+  private static final String maxDegreeOfIndexNode = String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
@@ -123,6 +127,7 @@ public class IoTDBConfigCheck {
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
+    systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
   }
 
 
@@ -202,6 +207,7 @@ public class IoTDBConfigCheck {
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
       properties.setProperty(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
+      properties.setProperty(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
@@ -276,6 +282,12 @@ public class IoTDBConfigCheck {
     if (!(properties.getProperty(TAG_ATTRIBUTE_SIZE_STRING).equals(tagAttributeTotalSize))) {
       logger.error(String.format(ERROR_LOG, TAG_ATTRIBUTE_SIZE_STRING, properties
           .getProperty(TAG_ATTRIBUTE_SIZE_STRING)));
+      System.exit(-1);
+    }
+
+    if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
+      logger.error(String.format(ERROR_LOG, MAX_DEGREE_OF_INDEX_STRING, properties
+          .getProperty(MAX_DEGREE_OF_INDEX_STRING)));
       System.exit(-1);
     }
   }
