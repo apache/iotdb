@@ -65,4 +65,21 @@ public class RegisterManager {
     iServices.clear();
     logger.info("deregister all service.");
   }
+  
+  /**
+   * stop all service and clear iService list.
+   */
+  public void shutdownAll() {
+    //we stop JMXServer at last
+    Collections.reverse(iServices);
+    for (IService service : iServices) {
+      try {
+        service.waitAndStop(10000);
+      } catch (Exception e) {
+        logger.error("Failed to stop {} because:", service.getID().getName(), e);
+      }
+    }
+    iServices.clear();
+    logger.info("deregister all service.");
+  }
 }

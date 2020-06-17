@@ -151,12 +151,12 @@ public class IoTDBRecoverUnclosedIT {
       fail(e.getMessage());
     }
 
-    EnvironmentUtils.stopDaemon();
+    EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.reactiveDaemon();
     
     insertMoreData();
 
-    EnvironmentUtils.stopDaemon();
+    EnvironmentUtils.shutdownDaemon();
     EnvironmentUtils.reactiveDaemon();
 
     // maxminValueTest

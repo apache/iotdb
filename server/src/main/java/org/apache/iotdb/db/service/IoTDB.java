@@ -125,7 +125,6 @@ public class IoTDB implements IoTDBMBean {
 
   private void deactivate() {
     logger.info("Deactivating IoTDB...");
-    MManager.getInstance().clear();
     registerManager.deregisterAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB is deactivated.");
@@ -145,6 +144,14 @@ public class IoTDB implements IoTDBMBean {
   @Override
   public void stop() {
     deactivate();
+  }
+
+  public void shutdown() {
+    logger.info("Deactivating IoTDB...");
+    MManager.getInstance().clear();
+    registerManager.shutdownAll();
+    JMXService.deregisterMBean(mbeanName);
+    logger.info("IoTDB is deactivated.");
   }
 
   private void setUncaughtExceptionHandler() {

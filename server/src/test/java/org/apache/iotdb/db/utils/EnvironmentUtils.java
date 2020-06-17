@@ -213,6 +213,12 @@ public class EnvironmentUtils {
     }
   }
 
+  public static void shutdownDaemon() {
+    if(daemon != null) {
+      daemon.shutdown();
+    }
+  }
+
   public static void activeDaemon() {
     if(daemon != null) {
       daemon.active();
