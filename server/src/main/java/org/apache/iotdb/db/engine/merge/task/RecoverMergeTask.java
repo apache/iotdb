@@ -104,7 +104,7 @@ public class RecoverMergeTask extends MergeTask {
       }
 
       MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
-          fullMerge, analyzer.getUnmergedPaths(), concurrentMergeSeriesNum);
+          fullMerge, analyzer.getUnmergedPaths(), concurrentMergeSeriesNum, storageGroupName);
       analyzer.setUnmergedPaths(null);
       mergeChunkTask.mergeSeries();
 
@@ -158,9 +158,8 @@ public class RecoverMergeTask extends MergeTask {
       long maxChunkNum = chunkNums[1];
       long fileMetaSize = MergeUtils.getFileMetaSize(seqFile, resource.getFileReader(seqFile));
       long newSingleSeriesSeqReadCost =  fileMetaSize * maxChunkNum / totalChunkNum;
-      singleSeriesSeqReadCost = newSingleSeriesSeqReadCost > singleSeriesSeqReadCost ?
-          newSingleSeriesSeqReadCost : singleSeriesSeqReadCost;
-      maxSeqReadCost = fileMetaSize > maxSeqReadCost ? fileMetaSize : maxSeqReadCost;
+      singleSeriesSeqReadCost = Math.max(newSingleSeriesSeqReadCost, singleSeriesSeqReadCost);
+      maxSeqReadCost = Math.max(fileMetaSize, maxSeqReadCost);
       seqWriteCost += fileMetaSize;
     }
 
@@ -169,10 +168,8 @@ public class RecoverMergeTask extends MergeTask {
     int ub = MaxSeriesMergeFileSelector.MAX_SERIES_NUM;
     int mid = (lb + ub) / 2;
     while (mid != lb) {
-      long unseqCost = singleSeriesUnseqCost * mid < maxUnseqCost ? singleSeriesUnseqCost * mid :
-          maxUnseqCost;
-      long seqReadCos = singleSeriesSeqReadCost * mid < maxSeqReadCost ?
-          singleSeriesSeqReadCost * mid : maxSeqReadCost;
+      long unseqCost = Math.min(singleSeriesUnseqCost * mid, maxUnseqCost);
+      long seqReadCos = Math.min(singleSeriesSeqReadCost * mid, maxSeqReadCost);
       long totalCost = unseqCost + seqReadCos + seqWriteCost;
       if (totalCost <= memBudget) {
         lb = mid;
