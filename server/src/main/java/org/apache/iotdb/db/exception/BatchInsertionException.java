@@ -16,31 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rpc;
 
-import java.util.List;
+package org.apache.iotdb.db.exception;
+
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-public class BatchExecutionException extends StatementExecutionException {
+public class BatchInsertionException extends QueryProcessException {
 
-  private List<TSStatus> statusList;
+  private TSStatus[] failingStatus;
 
-  public BatchExecutionException(String message) {
-    super(message);
+  public BatchInsertionException(TSStatus[] failingStatus) {
+    super("Batch insertion failed");
+    this.failingStatus = failingStatus;
   }
 
-  public BatchExecutionException(List<TSStatus> statusList) {
-    super("");
-    this.statusList = statusList;
+  public void setFailingStatus(TSStatus[] failingStatus) {
+    this.failingStatus = failingStatus;
   }
 
-  public BatchExecutionException(List<TSStatus> statusList, String message) {
-    super(message);
-    this.statusList = statusList;
+  public TSStatus[] getFailingStatus() {
+    return failingStatus;
   }
-
-  public List<TSStatus> getStatusList() {
-    return statusList;
-  }
-
 }

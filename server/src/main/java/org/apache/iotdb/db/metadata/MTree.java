@@ -18,34 +18,19 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static java.util.stream.Collectors.toList;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import static org.apache.iotdb.db.query.executor.LastQueryExecutor.calculateLastPairForOneSeries;
+
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
-import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -57,9 +42,30 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+import java.util.stream.Stream;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -609,6 +615,7 @@ public class MTree implements Serializable {
 
   /**
    * Traverse the MTree to get the count of timeseries in the given level.
+   *
    * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
   private int getCountInGivenLevel(MNode node, int targetLevel) {
@@ -623,6 +630,34 @@ public class MTree implements Serializable {
     }
     return cnt;
   }
+
+  /**
+   * Get all time series schema under the given path order by insert frequency
+   *
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
+   */
+  List<String[]> getAllMeasurementSchemaByHeatOrder(ShowTimeSeriesPlan plan)
+      throws MetadataException {
+    String[] nodes = MetaUtils.getNodeNames(plan.getPath().getFullPath());
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(plan.getPath().getFullPath());
+    }
+    List<String[]> allMatchedNodes = new ArrayList<>();
+
+    findPath(root, nodes, 1, "", allMatchedNodes, false);
+
+    Stream<String[]> sortedStream = allMatchedNodes.stream().sorted(
+        Comparator.comparingLong((String[] s) -> Long.parseLong(s[7])).reversed()
+            .thenComparing((String[] array) -> array[0]));
+
+    // no limit
+    if (plan.getLimit() == 0) {
+      return sortedStream.collect(toList());
+    } else {
+      return sortedStream.skip(plan.getOffset()).limit(plan.getLimit()).collect(toList());
+    }
+  }
+
 
   /**
    * Get all time series schema under the given path
@@ -640,10 +675,10 @@ public class MTree implements Serializable {
     curOffset.set(-1);
     count.set(0);
     if (offset.get() != 0 || limit.get() != 0) {
-      res = new ArrayList<>(limit.get());
+      res = new LinkedList<>();
       findPath(root, nodes, 1, "", res, true);
     } else {
-      res = new ArrayList<>();
+      res = new LinkedList<>();
       findPath(root, nodes, 1, "", res, false);
     }
     // avoid memory leaks
@@ -658,6 +693,7 @@ public class MTree implements Serializable {
    * Iterate through MTree to fetch metadata info of all leaf nodes under the given seriesPath
    *
    * @param timeseriesSchemaList List<timeseriesSchema>
+   * result: [name, alias, storage group, dataType, encoding, compression, offset, lastTimeStamp]
    */
   private void findPath(MNode node, String[] nodes, int idx, String parent,
       List<String[]> timeseriesSchemaList, boolean hasLimit) throws MetadataException {
@@ -675,7 +711,7 @@ public class MTree implements Serializable {
           nodeName = node.getName();
         }
         String nodePath = parent + nodeName;
-        String[] tsRow = new String[7];
+        String[] tsRow = new String[8];
         tsRow[0] = nodePath;
         tsRow[1] = ((MeasurementMNode) node).getAlias();
         MeasurementSchema measurementSchema = ((MeasurementMNode) node).getSchema();
@@ -684,7 +720,8 @@ public class MTree implements Serializable {
         tsRow[4] = measurementSchema.getEncodingType().toString();
         tsRow[5] = measurementSchema.getCompressor().toString();
         tsRow[6] = String.valueOf(((MeasurementMNode) node).getOffset());
-        timeseriesSchemaList.add(tsRow);
+        tsRow[7] = String.valueOf(getLastTimeStamp((MeasurementMNode) node));
+      timeseriesSchemaList.add(tsRow);
 
         if (hasLimit) {
           count.set(count.get() + 1);
@@ -703,6 +740,21 @@ public class MTree implements Serializable {
         }
         findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
             timeseriesSchemaList, hasLimit);
+      }
+    }
+  }
+
+  static long getLastTimeStamp(MeasurementMNode node) {
+    TimeValuePair last = node.getCachedLast();
+    if (last != null) {
+      return node.getCachedLast().getTimestamp();
+    } else {
+      try {
+        last = calculateLastPairForOneSeries(new Path(node.getFullPath()),
+            node.getSchema().getType(), new QueryContext(-1), Collections.emptySet());
+        return last.getTimestamp();
+      } catch (Exception e) {
+        return Long.MIN_VALUE;
       }
     }
   }
@@ -838,6 +890,7 @@ public class MTree implements Serializable {
 
   /**
    * Get all paths under the given level.
+   *
    * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
   private void findNodes(MNode node, String path, List<String> res, int targetLevel) {

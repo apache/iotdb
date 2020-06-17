@@ -22,6 +22,7 @@ namespace java org.apache.iotdb.service.rpc.thrift
 struct TSStatus {
   1: required i32 code
   2: optional string message
+  3: optional list<TSStatus> subStatus
 }
 
 struct TSExecuteStatementResp {
@@ -89,10 +90,6 @@ struct TSExecuteStatementReq {
   3: required i64 statementId
 
   4: optional i32 fetchSize
-}
-
-struct TSExecuteBatchStatementResp{
-	1: required list<TSStatus> statusList
 }
 
 struct TSExecuteBatchStatementReq{
@@ -255,7 +252,6 @@ struct TSQueryNonAlignDataSet{
     2: required list<binary> valueList
 }
 
-
 service TSIService {
 	TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
@@ -263,7 +259,7 @@ service TSIService {
 
 	TSExecuteStatementResp executeStatement(1:TSExecuteStatementReq req);
 
-	TSExecuteBatchStatementResp executeBatchStatement(1:TSExecuteBatchStatementReq req);
+	TSStatus executeBatchStatement(1:TSExecuteBatchStatementReq req);
 
 	TSExecuteStatementResp executeQueryStatement(1:TSExecuteStatementReq req);
 
@@ -287,7 +283,7 @@ service TSIService {
 
 	TSStatus createTimeseries(1:TSCreateTimeseriesReq req);
 
-	TSExecuteBatchStatementResp createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
+	TSStatus createMultiTimeseries(1:TSCreateMultiTimeseriesReq req);
 
   TSStatus deleteTimeseries(1:i64 sessionId, 2:list<string> path)
 
@@ -295,19 +291,19 @@ service TSIService {
 
   TSStatus insertRecord(1:TSInsertRecordReq req);
 
-  TSExecuteBatchStatementResp insertTablet(1:TSInsertTabletReq req);
+  TSStatus insertTablet(1:TSInsertTabletReq req);
 
-  TSExecuteBatchStatementResp insertTablets(1:TSInsertTabletsReq req);
+  TSStatus insertTablets(1:TSInsertTabletsReq req);
 
-	TSExecuteBatchStatementResp insertRecords(1:TSInsertRecordsReq req);
+	TSStatus insertRecords(1:TSInsertRecordsReq req);
 
-	TSExecuteBatchStatementResp testInsertTablet(1:TSInsertTabletReq req);
+	TSStatus testInsertTablet(1:TSInsertTabletReq req);
 
-  TSExecuteBatchStatementResp testInsertTablets(1:TSInsertTabletsReq req);
+  TSStatus testInsertTablets(1:TSInsertTabletsReq req);
 
   TSStatus testInsertRecord(1:TSInsertRecordReq req);
 
-  TSExecuteBatchStatementResp testInsertRecords(1:TSInsertRecordsReq req);
+  TSStatus testInsertRecords(1:TSInsertRecordsReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 
