@@ -635,7 +635,7 @@ public class MTree implements Serializable {
     }
     List<String[]> allMatchedNodes = new ArrayList<>();
 
-    findPath(root, nodes, 1, "", allMatchedNodes, false);
+    findPath(root, nodes, 1, "", allMatchedNodes, false, true);
 
     Stream<String[]> sortedStream = allMatchedNodes.stream().sorted(
         Comparator.comparingLong((String[] s) -> Long.parseLong(s[7])).reversed()
@@ -667,10 +667,10 @@ public class MTree implements Serializable {
     count.set(0);
     if (offset.get() != 0 || limit.get() != 0) {
       res = new LinkedList<>();
-      findPath(root, nodes, 1, "", res, true);
+      findPath(root, nodes, 1, "", res, true, false);
     } else {
       res = new LinkedList<>();
-      findPath(root, nodes, 1, "", res, false);
+      findPath(root, nodes, 1, "", res, false, false);
     }
     // avoid memory leaks
     limit.remove();
@@ -683,11 +683,13 @@ public class MTree implements Serializable {
   /**
    * Iterate through MTree to fetch metadata info of all leaf nodes under the given seriesPath
    *
-   * @param timeseriesSchemaList List<timeseriesSchema>
-   * result: [name, alias, storage group, dataType, encoding, compression, offset, lastTimeStamp]
+   * @param needLast if false, lastTimeStamp in timeseriesSchemaList will be null
+   * @param timeseriesSchemaList List<timeseriesSchema> result: [name, alias, storage group,
+   *                             dataType, encoding, compression, offset, lastTimeStamp]
    */
   private void findPath(MNode node, String[] nodes, int idx, String parent,
-      List<String[]> timeseriesSchemaList, boolean hasLimit) throws MetadataException {
+      List<String[]> timeseriesSchemaList, boolean hasLimit, boolean needLast)
+      throws MetadataException {
     if (node instanceof MeasurementMNode && nodes.length <= idx) {
       if (hasLimit) {
         curOffset.set(curOffset.get() + 1);
@@ -711,7 +713,7 @@ public class MTree implements Serializable {
       tsRow[4] = measurementSchema.getEncodingType().toString();
       tsRow[5] = measurementSchema.getCompressor().toString();
       tsRow[6] = String.valueOf(((MeasurementMNode) node).getOffset());
-      tsRow[7] = String.valueOf(getLastTimeStamp((MeasurementMNode) node));
+      tsRow[7] = needLast ? String.valueOf(getLastTimeStamp((MeasurementMNode) node)) : null;
       timeseriesSchemaList.add(tsRow);
 
       if (hasLimit) {
@@ -722,7 +724,7 @@ public class MTree implements Serializable {
     if (!nodeReg.contains(PATH_WILDCARD)) {
       if (node.hasChild(nodeReg)) {
         findPath(node.getChild(nodeReg), nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList, hasLimit);
+            timeseriesSchemaList, hasLimit, needLast);
       }
     } else {
       for (MNode child : node.getChildren().values()) {
@@ -730,7 +732,7 @@ public class MTree implements Serializable {
           continue;
         }
         findPath(child, nodes, idx + 1, parent + node.getName() + PATH_SEPARATOR,
-            timeseriesSchemaList, hasLimit);
+            timeseriesSchemaList, hasLimit, needLast);
       }
     }
   }
@@ -831,10 +833,10 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to match all devices with prefix path.
    *
-   * @param node   the current traversing node
-   * @param nodes  split the prefix path with '.'
-   * @param idx    the current index of array nodes
-   * @param res    store all matched device names
+   * @param node  the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx   the current index of array nodes
+   * @param res   store all matched device names
    */
   private void findDevices(MNode node, String[] nodes, int idx, Set<String> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
