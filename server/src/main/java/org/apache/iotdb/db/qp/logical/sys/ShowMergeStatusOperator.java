@@ -16,31 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.rpc;
 
-import java.util.List;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
+package org.apache.iotdb.db.qp.logical.sys;
 
-public class BatchExecutionException extends StatementExecutionException {
+import org.apache.iotdb.db.qp.logical.RootOperator;
 
-  private List<TSStatus> statusList;
+public class ShowMergeStatusOperator extends RootOperator {
 
-  public BatchExecutionException(String message) {
-    super(message);
+  public ShowMergeStatusOperator(int tokenIntType) {
+    super(tokenIntType);
+    setOperatorType(OperatorType.SHOW_MERGE_STATUS);
   }
-
-  public BatchExecutionException(List<TSStatus> statusList) {
-    super("");
-    this.statusList = statusList;
-  }
-
-  public BatchExecutionException(List<TSStatus> statusList, String message) {
-    super(message);
-    this.statusList = statusList;
-  }
-
-  public List<TSStatus> getStatusList() {
-    return statusList;
-  }
-
 }

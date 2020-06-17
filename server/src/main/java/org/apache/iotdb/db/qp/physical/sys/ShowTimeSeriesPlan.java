@@ -33,6 +33,8 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   private String value;
   private int limit = 0;
   private int offset = 0;
+  // if is true, the result will be sorted according to the inserting frequency of the timeseries
+  private boolean orderByHeat;
 
   public ShowTimeSeriesPlan(Path path) {
     super(ShowContentType.TIMESERIES);
@@ -40,7 +42,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   }
 
   public ShowTimeSeriesPlan(Path path, boolean isContains, String key, String value, int limit,
-      int offset) {
+      int offset, boolean orderByHeat) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
     this.isContains = isContains;
@@ -48,6 +50,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.value = value;
     this.limit = limit;
     this.offset = offset;
+    this.orderByHeat = orderByHeat;
   }
 
   public ShowTimeSeriesPlan() {
@@ -78,6 +81,14 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     return offset;
   }
 
+  public boolean isOrderByHeat() {
+    return orderByHeat;
+  }
+
+  public void setOrderByHeat(boolean orderByHeat) {
+    this.orderByHeat = orderByHeat;
+  }
+
   @Override
   public void serialize(DataOutputStream outputStream) throws IOException {
     outputStream.write(PhysicalPlanType.SHOW_TIMESERIES.ordinal());
@@ -89,6 +100,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
     outputStream.writeInt(limit);
     outputStream.writeInt(offset);
+    outputStream.writeBoolean(orderByHeat);
   }
 
   @Override
@@ -100,6 +112,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
     limit = buffer.getInt();
     limit = buffer.getInt();
+    orderByHeat = buffer.get() == 1;
   }
 
   public void setLimit(int limit) {
