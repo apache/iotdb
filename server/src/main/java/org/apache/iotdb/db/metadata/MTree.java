@@ -26,6 +26,12 @@ import static org.apache.iotdb.db.query.executor.LastQueryExecutor.calculateLast
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -40,11 +46,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -72,15 +80,22 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class MTree implements Serializable {
 
   private static final long serialVersionUID = -4200394435237291964L;
-  private MNode root;
 
-  private transient ThreadLocal<Integer> limit = new ThreadLocal<>();
-  private transient ThreadLocal<Integer> offset = new ThreadLocal<>();
-  private transient ThreadLocal<Integer> count = new ThreadLocal<>();
-  private transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
+  private MNode root;
+  private int snapshotLineNumber;
+
+  private transient static ThreadLocal<Integer> limit = new ThreadLocal<>();
+  private transient static ThreadLocal<Integer> offset = new ThreadLocal<>();
+  private transient static ThreadLocal<Integer> count = new ThreadLocal<>();
+  private transient static ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   MTree() {
     this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
+  }
+
+  private MTree(MNode root, int snapshotLineNumber) {
+    this.root = root;
+    this.snapshotLineNumber = snapshotLineNumber;
   }
 
   /**
@@ -897,6 +912,70 @@ public class MTree implements Serializable {
     for (MNode child : node.getChildren().values()) {
       findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1);
     }
+  }
+
+  public int getSnapshotLineNumber() {
+    return snapshotLineNumber;
+  }
+
+  public void serializeTo(String snapshotPath, int lineNumber) throws IOException {
+    BufferedWriter bw = new BufferedWriter(
+        new FileWriter(SystemFileFactory.INSTANCE.getFile(snapshotPath)));
+    bw.write(String.valueOf(lineNumber));
+    bw.newLine();
+    root.serializeTo(bw);
+    bw.close();
+  }
+
+  public static MTree deserializeFrom(String mtreeSnapshotPath) throws IOException {
+    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+    if (!mtreeSnapshot.exists()) {
+      return new MTree();
+    }
+    BufferedReader br = new BufferedReader(new FileReader(mtreeSnapshot));
+    int snapshotLineNumber = Integer.valueOf(br.readLine());
+    String s;
+    Deque<MNode> nodeStack = new ArrayDeque<>();
+    MNode node = null;
+
+    while ((s = br.readLine()) != null) {
+      String[] nodeInfo = s.split(",");
+      short nodeType = Short.valueOf(nodeInfo[0]);
+      if (nodeType == MetadataConstant.STORAGE_GROUP_MNODE_TYPE) {
+        node = StorageGroupMNode.deserializeFrom(nodeInfo);
+      } else if (nodeType == MetadataConstant.MEASUREMENT_MNODE_TYPE) {
+        node = MeasurementMNode.deserializeFrom(nodeInfo);
+      } else {
+        node = new MNode(null, nodeInfo[1]);
+      }
+
+      int childrenSize = Integer.valueOf(nodeInfo[nodeInfo.length - 1]);
+      if (childrenSize == 0) {
+        nodeStack.push(node);
+      } else {
+        Map<String, MNode> childrenMap = new TreeMap<>();
+        for (int i = 0; i < childrenSize; i++) {
+          MNode child = nodeStack.removeFirst();
+          child.setParent(node);
+          childrenMap.put(child.getName(), child);
+          if (child instanceof MeasurementMNode) {
+            String alias = ((MeasurementMNode) child).getAlias();
+            if (alias != null) {
+              node.addAlias(alias, child);
+            }
+          }
+        }
+        node.setChildren(childrenMap);
+        nodeStack.push(node);
+      }
+    }
+    br.close();
+
+    limit = new ThreadLocal<>();
+    offset = new ThreadLocal<>();
+    count = new ThreadLocal<>();
+    curOffset = new ThreadLocal<>();
+    return new MTree(node, snapshotLineNumber);
   }
 
   @Override

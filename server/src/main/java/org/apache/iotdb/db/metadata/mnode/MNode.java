@@ -85,7 +85,7 @@ public class MNode implements Serializable {
   }
 
   /**
-   * If delete a leafMNode, lock its parent, if delete an InternalNode, lock itself
+   * delete a child
    */
   public void deleteChild(String name) throws DeleteFailedException {
     if (children != null && children.containsKey(name)) {
