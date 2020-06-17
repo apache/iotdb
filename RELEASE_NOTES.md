@@ -139,7 +139,7 @@
 * IOTDB-643 Concurrent queries cause BufferUnderflowException when storage in HDFS
 * IOTDB-663 Fix query cache OOM while executing query
 * IOTDB-664 Win -e option
-* IOTDB-669 fix getting two columns bug while ”show devices“ in session
+* IOTDB-669 fix getting two columns bug while "show devices" in session
 * IOTDB-692 merge behaves incorrectly
 * IOTDB-712 Meet BufferUnderflowException and can not recover
 * IOTDB-718 Fix wrong time precision of NOW()
