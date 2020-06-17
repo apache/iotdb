@@ -23,7 +23,9 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 import org.apache.iotdb.db.engine.merge.MergeLogger;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 /**
@@ -33,6 +35,7 @@ public class RegularizationMergeLogger implements MergeLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log.regularization";
 
+  static final String STR_SEQ_FILES = "seqFiles";
   static final String STR_ALL_TS_END = "all ts end";
   static final String STR_MERGE_START = "merge start";
 
@@ -63,6 +66,20 @@ public class RegularizationMergeLogger implements MergeLogger {
   public void logNewFile(TsFileResource resource) throws IOException {
     logStream.write(resource.getFile().getAbsolutePath());
     logStream.newLine();
+    logStream.flush();
+  }
+
+  public void logFiles(MergeResource resource) throws IOException {
+    logSeqFiles(resource.getSeqFiles());
+  }
+
+  private void logSeqFiles(List<TsFileResource> seqFiles) throws IOException {
+    logStream.write(STR_SEQ_FILES);
+    logStream.newLine();
+    for (TsFileResource tsFileResource : seqFiles) {
+      logStream.write(tsFileResource.getFile().getAbsolutePath());
+      logStream.newLine();
+    }
     logStream.flush();
   }
 }

@@ -1661,7 +1661,7 @@ public class StorageGroupProcessor {
         return;
       }
       logger.info("{} will close all files for starting a merge", storageGroupName);
-      syncCloseAllWorkingTsFileProcessors();
+
       if (sequenceFileTreeSet.isEmpty()) {
         logger.info("{} no files to be merged", storageGroupName);
         return;

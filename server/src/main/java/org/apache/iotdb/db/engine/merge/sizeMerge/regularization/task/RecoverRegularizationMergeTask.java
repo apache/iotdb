@@ -63,7 +63,7 @@ public class RecoverRegularizationMergeTask extends RegularizationMergeTask impl
     }
     long startTime = System.currentTimeMillis();
 
-    LogAnalyzer analyzer = new LogAnalyzer(taskName, logFile);
+    LogAnalyzer analyzer = new LogAnalyzer(resource, taskName, logFile);
     Status status = analyzer.analyze();
     if (logger.isInfoEnabled()) {
       logger.info("{} merge recovery status determined: {} after {}ms", taskName, status,
@@ -74,7 +74,7 @@ public class RecoverRegularizationMergeTask extends RegularizationMergeTask impl
         logFile.delete();
         break;
       case MERGE_START:
-        removeMergedFile();
+        removeMergedFile(analyzer.getNewResource());
         // set the files to empty to let the StorageGroupProcessor do a clean up
         resource.setSeqFiles(Collections.emptyList());
         resource.setUnseqFiles(Collections.emptyList());
@@ -93,14 +93,10 @@ public class RecoverRegularizationMergeTask extends RegularizationMergeTask impl
     }
   }
 
-  private void removeMergedFile() {
-    File sgDir =
-        FSFactoryProducer.getFSFactory()
-            .getFile(resource.getSeqFiles().get(0).getFile().getParent());
-    File[] mergeFiles = sgDir.listFiles(file -> file.getName().endsWith(MERGE_SUFFIX));
-    if (mergeFiles != null) {
-      for (File file : mergeFiles) {
-        file.delete();
+  private void removeMergedFile(List<TsFileResource> tsFileResources) {
+    if (tsFileResources != null) {
+      for (TsFileResource tsFileResource : tsFileResources) {
+        tsFileResource.remove();
       }
     }
   }

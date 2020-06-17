@@ -116,12 +116,14 @@ public abstract class BaseSizeFileSelector implements IMergeFileSelector {
             tmpEndIdx = seqIndex;
           } else {
             tmpStartIdx = seqIndex;
+            tmpEndIdx = seqIndex;
           }
+          logger.debug("Adding a new {} seqFile as candidates", seqFile);
         }
       }
       startIdx = tmpStartIdx;
       endIdx = tmpEndIdx;
-      logger.debug("Adding a new {} seqFile as candidates", seqFile);
+
       seqIndex++;
       this.selectorContext.updateTimeConsumption();
     }

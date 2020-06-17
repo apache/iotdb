@@ -79,7 +79,7 @@ public class RegularizationMergeLogTest extends MergeTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
-    assertEquals(3, lineCnt);
+    assertEquals(9, lineCnt);
     try {
       for (TsFileResource fileResource : newFile) {
         fileResource.close();

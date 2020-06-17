@@ -100,6 +100,8 @@ public class RegularizationMergeTask implements Callable<Void> {
         resource.getUnseqFiles());
     mergeLogger = new RegularizationMergeLogger(storageGroupSysDir);
 
+    mergeLogger.logFiles(resource);
+
     resource.setChunkWriterCache(MergeUtils.constructChunkWriterCache(storageGroupName));
 
     List<String> storageGroupPaths = MManager.getInstance()
@@ -133,10 +135,6 @@ public class RegularizationMergeTask implements Callable<Void> {
 
   void cleanUp(boolean executeCallback) throws IOException {
     logger.info("{} is cleaning up", taskName);
-
-    for (TsFileResource seqFile : resource.getSeqFiles()) {
-      seqFile.setDeleted(true);
-    }
 
     resource.clear();
     mergeContext.clear();

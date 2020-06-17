@@ -22,14 +22,19 @@ package org.apache.iotdb.db.engine.merge.sizeMerge.regularization.recover;
 
 import static org.apache.iotdb.db.engine.merge.sizeMerge.regularization.recover.RegularizationMergeLogger.STR_ALL_TS_END;
 import static org.apache.iotdb.db.engine.merge.sizeMerge.regularization.recover.RegularizationMergeLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.merge.sizeMerge.regularization.recover.RegularizationMergeLogger.STR_SEQ_FILES;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.merge.sizeMerge.regularization.task.RegularizationMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +49,7 @@ public class LogAnalyzer {
   private static final Logger logger = LoggerFactory.getLogger(
       LogAnalyzer.class);
 
+  private MergeResource resource;
   private String taskName;
   private File logFile;
 
@@ -52,8 +58,9 @@ public class LogAnalyzer {
   private List<TsFileResource> newResources;
   private Status status;
 
-  public LogAnalyzer(String taskName, File logFile) {
+  public LogAnalyzer(MergeResource resource, String taskName, File logFile) {
     this.newResources = new ArrayList<>();
+    this.resource = resource;
     this.taskName = taskName;
     this.logFile = logFile;
   }
@@ -70,12 +77,42 @@ public class LogAnalyzer {
       currLine = bufferedReader.readLine();
       if (currLine != null) {
         analyzeSeqFiles(bufferedReader);
+
+        analyzeMergedFile(bufferedReader);
       }
     }
     return status;
   }
 
   private void analyzeSeqFiles(BufferedReader bufferedReader) throws IOException {
+    if (!STR_SEQ_FILES.equals(currLine)) {
+      return;
+    }
+    long startTime = System.currentTimeMillis();
+    List<TsFileResource> mergeSeqFiles = new ArrayList<>();
+    while ((currLine = bufferedReader.readLine()) != null) {
+      if (STR_MERGE_START.equals(currLine)) {
+        break;
+      }
+      Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
+      while (iterator.hasNext()) {
+        TsFileResource seqFile = iterator.next();
+        if (seqFile.getFile().getAbsolutePath().equals(currLine)) {
+          mergeSeqFiles.add(seqFile);
+          // remove to speed-up next iteration
+          iterator.remove();
+          break;
+        }
+      }
+    }
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} found {} seq files after {}ms", taskName, mergeSeqFiles.size(),
+          (System.currentTimeMillis() - startTime));
+    }
+    resource.setSeqFiles(mergeSeqFiles);
+  }
+
+  private void analyzeMergedFile(BufferedReader bufferedReader) throws IOException {
     if (!STR_MERGE_START.equals(currLine)) {
       return;
     }
@@ -86,7 +123,19 @@ public class LogAnalyzer {
         status = Status.ALL_TS_MERGED;
         return;
       }
-      newResources.add(new TsFileResource(new File(currLine)));
+      File newFile = FSFactoryProducer.getFSFactory().getFile(currLine);
+      if (newFile.exists()) {
+        TsFileResource resource = new TsFileResource(newFile);
+        newResources.add(resource);
+      } else if (FSFactoryProducer.getFSFactory().getFile(newFile.getAbsolutePath().replace(
+          RegularizationMergeTask.MERGE_SUFFIX, "")).exists()) {
+        TsFileResource resource = new TsFileResource(
+            FSFactoryProducer.getFSFactory().getFile(newFile.getAbsolutePath().replace(
+                RegularizationMergeTask.MERGE_SUFFIX, "")));
+        newResources.add(resource);
+      } else {
+        return;
+      }
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{} found {} merge files after {}ms", taskName, newResources.size(),

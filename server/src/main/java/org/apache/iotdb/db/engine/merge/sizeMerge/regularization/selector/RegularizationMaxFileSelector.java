@@ -21,9 +21,11 @@ package org.apache.iotdb.db.engine.merge.sizeMerge.regularization.selector;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 import org.apache.iotdb.db.engine.merge.sizeMerge.BaseSizeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 /**
  * RegularizationMaxFileSelector selects the most files from given seqFiles which can be merged as
@@ -41,10 +43,16 @@ public class RegularizationMaxFileSelector extends BaseSizeFileSelector {
   }
 
   protected boolean isSmallFile(TsFileResource seqFile) throws IOException {
-    for (ChunkMetadata chunkMetadata : resource.queryChunkMetadata(seqFile)) {
-      if (!this.mergeSizeSelectorStrategy
-          .isChunkEnoughLarge(chunkMetadata, minChunkPointNum, timeBlock)) {
-        return true;
+    List<Path> paths = resource.getFileReader(seqFile).getAllPaths();
+    for (Path currentPath : paths) {
+      List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(currentPath, seqFile);
+      int cnt = 0;
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        if (cnt != chunkMetadataList.size() - 1 && !this.mergeSizeSelectorStrategy
+            .isChunkEnoughLarge(chunkMetadata, minChunkPointNum, timeBlock)) {
+          return true;
+        }
+        cnt++;
       }
     }
     return false;
