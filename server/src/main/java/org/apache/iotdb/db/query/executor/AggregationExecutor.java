@@ -330,14 +330,14 @@ public class AggregationExecutor {
     if (((AggregationPlan)plan).getLevel() >= 0) {
       // current only support count operation
       Map<Integer, String> pathIndex = new HashMap<>();
-      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan.getDeduplicatedPaths(), ((AggregationPlan)plan).getLevel(), pathIndex);
+      Map<String, TSDataType> finalPaths = FilePathUtils.getPathByLevel((AggregationPlan) plan, pathIndex);
 
       RowRecord curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex);
 
       List<Path> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();
       for (int i = 0; i < finalPaths.size(); i++) {
-        dataTypes.add(TSDataType.INT64);
+        dataTypes.add(TSDataType.DOUBLE);
       }
 
       dataSet = new SingleDataSet(paths, dataTypes);

@@ -362,15 +362,6 @@ public class PhysicalGenerator {
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
 
       ((GroupByTimePlan) queryPlan).setLevel(queryOperator.getLevel());
-
-      if (queryOperator.getLevel() >= 0) {
-        for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
-          if (!SQLConstant.COUNT
-              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
-            throw new QueryProcessException("group by level only support count now.");
-          }
-        }
-      }
     } else if (queryOperator.isFill()) {
       queryPlan = new FillQueryPlan();
       FilterOperator timeFilter = queryOperator.getFilterOperator();
@@ -385,14 +376,6 @@ public class PhysicalGenerator {
       ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
       ((AggregationPlan) queryPlan)
           .setAggregations(queryOperator.getSelectOperator().getAggregations());
-      if (queryOperator.getLevel() >= 0) {
-        for (int i = 0; i < queryOperator.getSelectOperator().getAggregations().size(); i++) {
-          if (!SQLConstant.COUNT
-              .equals(queryOperator.getSelectOperator().getAggregations().get(i))) {
-            throw new QueryProcessException("group by level only support count now.");
-          }
-        }
-      }
     } else if (queryOperator.isLastQuery()) {
       queryPlan = new LastQueryPlan();
     } else {

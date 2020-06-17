@@ -25,6 +25,7 @@ import java.util.TreeMap;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.MetaUtils;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -63,10 +64,13 @@ public class FilePathUtils {
    * @param pathIndex
    * @return
    */
-  public static Map<String, Long> getPathByLevel(List<Path> rawPaths, int level, Map<Integer, String> pathIndex) {
+  public static Map<String, TSDataType> getPathByLevel(AggregationPlan plan, Map<Integer, String> pathIndex) {
     // pathGroupByLevel -> count
-    Map<String, Long> finalPaths = new TreeMap<>();
+    Map<String, TSDataType> finalPaths = new TreeMap<>();
 
+    List<Path> rawPaths = plan.getPaths();
+    int level = plan.getLevel();
+    String aggregation = plan.getAggregations().get(0);
     int i = 0;
     for (Path value : rawPaths) {
       String[] tmpPath = MetaUtils.getNodeNames(value.getFullPath());
@@ -85,7 +89,15 @@ public class FilePathUtils {
         }
         key = path.toString();
       }
-      finalPaths.putIfAbsent(key, 0L);
+      switch (aggregation) {
+        case "sum" :
+          finalPaths.putIfAbsent(key, TSDataType.INT64);
+          break;
+        case "avg" :
+          finalPaths.putIfAbsent(key, TSDataType.INT64);
+          break;
+      }
+      finalPaths.putIfAbsent(key, (float) 0);
       if (pathIndex != null) {
         pathIndex.put(i++, key);
       }
@@ -106,15 +118,15 @@ public class FilePathUtils {
    * @return
    */
   public static RowRecord mergeRecordByPath(RowRecord newRecord,
-                                      Map<String, Long> finalPaths,
+                                      Map<String, Float> finalPaths,
                                       Map<Integer, String> pathIndex) {
     if (newRecord.getFields().size() < finalPaths.size()) {
       return null;
     }
 
     // reset final paths
-    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-      entry.setValue(0L);
+    for (Map.Entry<String, Float> entry : finalPaths.entrySet()) {
+      entry.setValue((float) 0);
     }
 
     RowRecord tmpRecord = new RowRecord(newRecord.getTimestamp());
@@ -122,12 +134,12 @@ public class FilePathUtils {
     for (int i = 0; i < newRecord.getFields().size(); i++) {
       if (newRecord.getFields().get(i) != null) {
         finalPaths.put(pathIndex.get(i),
-          finalPaths.get(pathIndex.get(i)) + newRecord.getFields().get(i).getLongV());
+          finalPaths.get(pathIndex.get(i)) + newRecord.getFields().get(i).getFloatV());
       }
     }
 
-    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-      tmpRecord.addField(Field.getField(entry.getValue(), TSDataType.INT64));
+    for (Map.Entry<String, Float> entry : finalPaths.entrySet()) {
+      tmpRecord.addField(Field.getField(entry.getValue(), TSDataType.FLOAT));
     }
 
     return tmpRecord;
