@@ -40,6 +40,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
@@ -216,6 +218,7 @@ public class DataGroupMemberTest extends MemberTest {
     dataGroupMember.setLogManager(getLogManager(nodes, dataGroupMember));
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
+    dataGroupMember.setAppendLogThreadPool(testThreadPool);
     return dataGroupMember;
   }
 
@@ -498,6 +501,9 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testLeaderExecuteNonQuery()");
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     dataGroupMember.setLeader(TestUtils.getNode(1));
+    ExecutorService testThreadPool = Executors.newFixedThreadPool(4);
+    dataGroupMember.setAppendLogThreadPool(testThreadPool);
+
     TimeseriesSchema timeseriesSchema = TestUtils.getTestTimeSeriesSchema(0, 100);
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(new Path(timeseriesSchema.getFullPath()),
@@ -506,6 +512,8 @@ public class DataGroupMemberTest extends MemberTest {
             Collections.emptyMap(), Collections.emptyMap(), null);
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
     assertTrue(MManager.getInstance().isPathExist(timeseriesSchema.getFullPath()));
+
+    testThreadPool.shutdownNow();
   }
 
   @Test

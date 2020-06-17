@@ -137,6 +137,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   // when the commit progress is updated by a heart beat, this object is notified so that we may
   // know if this node is synchronized with the leader
   private Object syncLock = new Object();
+  private ExecutorService appendLogThreadPool;
 
   public RaftMember() {
   }
@@ -173,6 +174,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
             name + "-HeartbeatThread@" + System.currentTimeMillis()));
     catchUpService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    appendLogThreadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     logger.info("{} started", name);
   }
 
@@ -194,9 +196,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     heartBeatService.shutdownNow();
     catchUpService.shutdownNow();
+    appendLogThreadPool.shutdownNow();
     try {
       heartBeatService.awaitTermination(10, TimeUnit.SECONDS);
       catchUpService.awaitTermination(10, TimeUnit.SECONDS);
+      appendLogThreadPool.awaitTermination(10, TimeUnit.SECONDS);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for heartBeatService and catchUpService "
@@ -204,6 +208,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
     catchUpService = null;
     heartBeatService = null;
+    appendLogThreadPool = null;
     logger.info("{} heartbeats stopped", name);
   }
 
@@ -569,7 +574,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       // synchronized: avoid concurrent modification
       try {
         for (Node node : allNodes) {
-          sendLogToFollower(log, voteCounter, node, leaderShipStale, newLeaderTerm, request);
+          appendLogThreadPool.submit(() -> sendLogToFollower(log, voteCounter, node,
+              leaderShipStale, newLeaderTerm, request));
           if (character != NodeCharacter.LEADER) {
             return AppendLogResult.LEADERSHIP_STALE;
           }
@@ -610,7 +616,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       return;
     }
     Peer peer = peerMap.computeIfAbsent(node, k -> new Peer(logManager.getLastLogIndex()));
-    while (peer.getMatchIndex() < log.getCurrLogIndex() - 1 && character == NodeCharacter.LEADER) {
+    long waitStart = System.currentTimeMillis();
+    long alreadyWait = 0;
+    while (peer.getMatchIndex() < log.getCurrLogIndex() - 1
+        && character == NodeCharacter.LEADER
+        && alreadyWait <= RaftServer.getConnectionTimeoutInMS()) {
       synchronized (peer) {
         try {
           peer.wait(RaftServer.getConnectionTimeoutInMS());
@@ -620,6 +630,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           return;
         }
       }
+      alreadyWait = System.currentTimeMillis() - waitStart;
+    }
+    if (alreadyWait > RaftServer.getConnectionTimeoutInMS()) {
+      logger.warn("{}: node {} timed out when appending {}", name, node, log);
+      return;
     }
 
     if (character != NodeCharacter.LEADER) {
@@ -995,7 +1010,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       tsStatus.setMessage(cause.getClass().getName() + ":" + cause.getMessage());
       return tsStatus;
     }
-    return null;
+    return StatusUtils.TIME_OUT;
   }
 
   private Throwable getRootCause(Throwable e) {
@@ -1028,6 +1043,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
           retryTime++;
+          if (retryTime > 5) {
+            return false;
+          }
           break;
         case LEADERSHIP_STALE:
           // abort the appending, the new leader will fix the local logs by catch-up
@@ -1291,5 +1309,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         break;
       }
     }
+  }
+
+  @TestOnly
+  public void setAppendLogThreadPool(ExecutorService appendLogThreadPool) {
+    this.appendLogThreadPool = appendLogThreadPool;
   }
 }

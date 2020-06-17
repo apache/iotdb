@@ -41,6 +41,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -384,6 +386,7 @@ public class MetaGroupMemberTest extends MemberTest {
     metaGroupMember.setLeader(node);
     metaGroupMember.setAllNodes(allNodes);
     metaGroupMember.setCharacter(NodeCharacter.LEADER);
+    metaGroupMember.setAppendLogThreadPool(testThreadPool);
     return metaGroupMember;
   }
 
@@ -416,6 +419,8 @@ public class MetaGroupMemberTest extends MemberTest {
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
+    ExecutorService testThreadPool = Executors.newFixedThreadPool(4);
+    testMetaMember.setAppendLogThreadPool(testThreadPool);
     testMetaMember.closePartition(TestUtils.getTestSg(0), 0, true);
 
     StorageGroupProcessor processor =
@@ -434,21 +439,6 @@ public class MetaGroupMemberTest extends MemberTest {
       }
       // the net work is down
       dummyResponse.set(Long.MIN_VALUE);
-
-      for (Node node : testMetaMember.getAllNodes()) {
-        Peer peer = new Peer(0);
-        peer.setCatchUp(true);
-        testMetaMember.getPeerMap().put(node, peer);
-        DataGroupMember localDataMember = testMetaMember.getLocalDataMember(node);
-        if (localDataMember != null) {
-          for (Node dNode : localDataMember.getAllNodes()) {
-            peer = new Peer(0);
-            peer.setCatchUp(true);
-            localDataMember.getPeerMap().put(dNode, peer);
-          }
-        }
-      }
-
 
       // network resume in 100ms
       new Thread(() -> {
@@ -475,6 +465,7 @@ public class MetaGroupMemberTest extends MemberTest {
     } finally {
       RaftServer.setConnectionTimeoutInMS(prevTimeout);
     }
+    testThreadPool.shutdownNow();
   }
 
   @Test
@@ -636,6 +627,7 @@ public class MetaGroupMemberTest extends MemberTest {
     mockDataClusterServer = true;
     // as a leader
     testMetaMember.setCharacter(LEADER);
+    testMetaMember.setAppendLogThreadPool(testThreadPool);
     for (int i = 10; i < 20; i++) {
       // process a non partitioned plan
       SetStorageGroupPlan setStorageGroupPlan =
@@ -654,6 +646,7 @@ public class MetaGroupMemberTest extends MemberTest {
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
       assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(i, 0)));
     }
+    testThreadPool.shutdownNow();
   }
 
   @Test

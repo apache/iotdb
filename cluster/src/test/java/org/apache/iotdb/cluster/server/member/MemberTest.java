@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
@@ -69,12 +71,15 @@ public class MemberTest {
   RaftLogManager metaLogManager;
   PartitionTable partitionTable;
   PlanExecutor planExecutor;
+  ExecutorService testThreadPool;
 
   private List<String> prevUrls;
   private long prevLeaderWait;
 
+
   @Before
   public void setUp() throws Exception {
+    testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     RaftMember.setWaitLeaderTimeMs(10);
     EnvironmentUtils.envSetUp();
@@ -131,6 +136,7 @@ public class MemberTest {
     new File(MetaGroupMember.PARTITION_FILE_NAME).delete();
     new File(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME).delete();
     RaftMember.setWaitLeaderTimeMs(prevLeaderWait);
+    testThreadPool.shutdownNow();
   }
 
   DataGroupMember getDataGroupMember(Node node) {
@@ -163,6 +169,7 @@ public class MemberTest {
     newMember.setLeader(node);
     newMember.setCharacter(NodeCharacter.LEADER);
     newMember.setLogManager(new TestPartitionedLogManager());
+    newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;
   }
 
@@ -227,6 +234,7 @@ public class MemberTest {
     ret.setLogManager(metaLogManager);
     ret.setLeader(node);
     ret.setCharacter(NodeCharacter.LEADER);
+    ret.setAppendLogThreadPool(testThreadPool);
     return ret;
   }
 }

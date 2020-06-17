@@ -91,3 +91,4 @@ remote/
 # gitpod
 .theia/
 
+classes/
