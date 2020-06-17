@@ -83,13 +83,13 @@ public class MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
   private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
-  private final int MTREE_SNAPSHOT_INTERVAL;
 
   // the lock for read/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   // the log file seriesPath
   private String logFilePath;
   private String mtreeSnapshotPath;
+  private final int mtreeSnapshotInterval;
   private MTree mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
@@ -119,7 +119,7 @@ public class MManager {
 
   private MManager() {
     config = IoTDBDescriptor.getInstance().getConfig();
-    MTREE_SNAPSHOT_INTERVAL = config.getMtreeSnapshotInterval();
+    mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!schemaFolder.exists()) {
@@ -210,7 +210,7 @@ public class MManager {
         String cmd;
         int idx = 0;
         while (idx <= mtree.getSnapshotLineNumber()) {
-          br.readLine();
+          cmd = br.readLine();
           idx++;
         }
         while ((cmd = br.readLine()) != null) {
@@ -368,7 +368,7 @@ public class MManager {
           offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
         }
         int logLineNumber = logWriter.createTimeseries(plan, offset);
-        if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+        if (logLineNumber % mtreeSnapshotInterval == 0) {
           mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
         }
       }
@@ -438,7 +438,7 @@ public class MManager {
               StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
             }
             int logLineNumber = logWriter.deleteTimeseries(p);
-            if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+            if (logLineNumber % mtreeSnapshotInterval == 0) {
               mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
             }
           }
@@ -545,7 +545,7 @@ public class MManager {
       }
       if (!isRecovering) {
         int logLineNumber = logWriter.setStorageGroup(storageGroup);
-        if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+        if (logLineNumber % mtreeSnapshotInterval == 0) {
           mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
         }
       }
@@ -594,7 +594,7 @@ public class MManager {
         // if success
         if (!isRecovering) {
           int logLineNumber = logWriter.deleteStorageGroup(storageGroup);
-          if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+          if (logLineNumber % mtreeSnapshotInterval == 0) {
             mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
           }
         }
@@ -1155,7 +1155,7 @@ public class MManager {
       getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
       if (!isRecovering) {
         int logLineNumber = logWriter.setTTL(storageGroup, dataTTL);
-        if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+        if (logLineNumber % mtreeSnapshotInterval == 0) {
           mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
         }
       }
@@ -1244,7 +1244,7 @@ public class MManager {
         leafMNode.setAlias(alias);
         // persist to WAL
         int logLineNumber = logWriter.changeAlias(fullPath, alias);
-        if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+        if (logLineNumber % mtreeSnapshotInterval == 0) {
           mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
         }
       }
@@ -1256,7 +1256,7 @@ public class MManager {
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, attributesMap);
         int logLineNumber = logWriter.changeOffset(fullPath, offset);
-        if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+        if (logLineNumber % mtreeSnapshotInterval == 0) {
           mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
         }
         leafMNode.setOffset(offset);
@@ -1344,7 +1344,7 @@ public class MManager {
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
         int logLineNumber = logWriter.changeOffset(fullPath, offset);
-        if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+        if (logLineNumber % mtreeSnapshotInterval == 0) {
           mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
         }
         leafMNode.setOffset(offset);
@@ -1390,7 +1390,7 @@ public class MManager {
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
         int logLineNumber = logWriter.changeOffset(fullPath, offset);
-        if (logLineNumber % MTREE_SNAPSHOT_INTERVAL == 0) {
+        if (logLineNumber % mtreeSnapshotInterval == 0) {
           mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
         }
         leafMNode.setOffset(offset);

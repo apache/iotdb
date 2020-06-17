@@ -87,9 +87,6 @@ public class IoTDBConfigCheck {
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
-  private static final String ERROR_LOG = "Wrong %s, please set as: %s !";
-
-
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
@@ -116,9 +113,8 @@ public class IoTDBConfigCheck {
     // check time stamp precision
     if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
         || timestampPrecision.equals("ns"))) {
-      logger.error(
-          "Wrong " + TIMESTAMP_PRECISION_STRING + ", please set as: ms, us or ns ! Current is: "
-              + timestampPrecision);
+      logger.error("Wrong {}, please set as: ms, us or ns ! Current is: {}",
+          TIMESTAMP_PRECISION_STRING, timestampPrecision);
       System.exit(-1);
     }
 
@@ -273,40 +269,33 @@ public class IoTDBConfigCheck {
     }
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
-      logger.error(String.format(ERROR_LOG, TIMESTAMP_PRECISION_STRING, properties
-          .getProperty(TIMESTAMP_PRECISION_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(TIMESTAMP_PRECISION_STRING);
     }
 
     if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
-      logger.error(String.format(ERROR_LOG, PARTITION_INTERVAL_STRING, properties
-          .getProperty(PARTITION_INTERVAL_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(PARTITION_INTERVAL_STRING);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {
-      logger.error(String.format(ERROR_LOG, TSFILE_FILE_SYSTEM_STRING, properties
-          .getProperty(TSFILE_FILE_SYSTEM_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(TSFILE_FILE_SYSTEM_STRING);
     }
 
     if (!(properties.getProperty(TAG_ATTRIBUTE_SIZE_STRING).equals(tagAttributeTotalSize))) {
-      logger.error(String.format(ERROR_LOG, TAG_ATTRIBUTE_SIZE_STRING, properties
-          .getProperty(TAG_ATTRIBUTE_SIZE_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(TAG_ATTRIBUTE_SIZE_STRING);
     }
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
-      logger.error(String.format(ERROR_LOG, MAX_DEGREE_OF_INDEX_STRING, properties
-          .getProperty(MAX_DEGREE_OF_INDEX_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(MAX_DEGREE_OF_INDEX_STRING);
     }
 
     if (!(properties.getProperty(MTREE_SNAPSHOT_INTERVAL).equals(mtreeSnapshotInterval))) {
-      logger.error(String.format(ERROR_LOG, MTREE_SNAPSHOT_INTERVAL, properties
-          .getProperty(MTREE_SNAPSHOT_INTERVAL)));
-      System.exit(-1);
+      printErrorLogAndExit(MTREE_SNAPSHOT_INTERVAL);
     }
+  }
+
+  private void printErrorLogAndExit(String property) {
+    logger.error("Wrong {}, please set as: {} !", property, properties.getProperty(property));
+    System.exit(-1);
   }
 
   /**
