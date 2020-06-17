@@ -131,7 +131,7 @@ git checkout release/x.x.x
 * 系统配置模块(`iotdb-engine.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1)和[Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1)。
+有关详细信息，请参见[Chapter3: Server](http://iotdb.apache.org/zh/UserGuide/Master/Server/Config%20Manual.html)。
 
 ## 开始
 
@@ -294,7 +294,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[Chapter 5: IoTDB SQL文档](https://iotdb.apache.org/#/Documents/0.10.0/chap5/sec1)。
+有关IoTDB SQL支持的命令的更多信息，请参见[Chapter 5: IoTDB SQL文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
 
 ### 停止 IoTDB
 
