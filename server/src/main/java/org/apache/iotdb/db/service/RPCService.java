@@ -94,8 +94,8 @@ public class RPCService implements RPCServiceMBean, IService {
 
   @Override
   public void start() throws StartupException {
-      JMXService.registerMBean(getInstance(), mbeanName);
-      startService();
+    JMXService.registerMBean(getInstance(), mbeanName);
+    startService();
   }
 
   @Override
