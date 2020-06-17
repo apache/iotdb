@@ -68,7 +68,6 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
@@ -282,7 +281,7 @@ public class StorageEngine implements IService {
     StorageGroupProcessor storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
 
     // TODO monitor: update statistics
-    String storageGroupName = getStorageGroupName(insertPlan.getDeviceId());
+    String storageGroupName = storageGroupProcessor.getStorageGroupName();
     Metrics.counter("iotdb.storage.insert.count", GROUP_TAG, storageGroupName).increment();
     long start = System.nanoTime();
     try {
@@ -295,16 +294,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  private String getStorageGroupName(String deviceId) {
-    String storageGroupName;
-    try {
-      storageGroupName = MManager.getInstance().getStorageGroupName(deviceId);
-    } catch (MetadataException e) {
-      // Do nothing
-      storageGroupName = "unknown";
-    }
-    return storageGroupName;
-  }
 
   /**
    * insert a InsertTabletPlan to a storage group
@@ -322,7 +311,7 @@ public class StorageEngine implements IService {
     }
 
     // TODO monitor: update statistics
-    String storageGroupName = getStorageGroupName(insertTabletPlan.getDeviceId());
+    String storageGroupName = storageGroupProcessor.getStorageGroupName();
     Metrics.summary("iotdb.storage.insert.batch.size", GROUP_TAG, storageGroupName).record(insertTabletPlan.getRowCount());
     LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.storage.insert.batch.latency", GROUP_TAG, storageGroupName).start();
     try {
