@@ -65,7 +65,6 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
@@ -236,6 +235,7 @@ public class StorageEngine implements IService {
         ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         logger.warn("TTL check thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
       }
     }
     recoveryThreadPool.shutdownNow();
