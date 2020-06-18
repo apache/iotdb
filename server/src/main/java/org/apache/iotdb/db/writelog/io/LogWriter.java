@@ -84,7 +84,7 @@ public class LogWriter implements ILogWriter {
 
   @Override
   public void force() throws IOException {
-    if (channel != null) {
+    if (channel != null && channel.isOpen()) {
       channel.force(true);
     }
   }
