@@ -83,4 +83,6 @@ public interface WriteLogNode {
    * @return an ILogReader which can iterate each log in this log node.
    */
   ILogReader getLogReader();
+
+  void shutdown() throws IOException;;
 }

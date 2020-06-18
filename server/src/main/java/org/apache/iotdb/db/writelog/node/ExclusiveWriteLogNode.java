@@ -128,6 +128,38 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   @Override
+  public void shutdown() {
+    lock.writeLock().lock();
+    try {
+      if (bufferedLogNum != 0) {
+        try {
+          getCurrentFileWriter().force();
+        } catch (IOException e) {
+          logger.error("Log node {} sync failed, change system mode to read-only", identifier, e);
+        }
+        logBuffer.clear();
+        bufferedLogNum = 0;
+        logger.debug("Log node {} ends sync.", identifier);
+      }
+    } finally {
+      lock.writeLock().unlock();
+    }
+    //forceWal();
+    lock.writeLock().lock();
+    try {
+      if (this.currentFileWriter != null) {
+        this.currentFileWriter.close();
+        this.currentFileWriter = null;
+      }
+      logger.debug("Log node {} closed successfully", identifier);
+    } catch (IOException e) {
+      logger.error("Cannot close log node {} because:", identifier, e);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  @Override
   public void forceSync() {
     sync();
     forceWal();

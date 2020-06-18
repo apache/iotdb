@@ -166,6 +166,14 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       return;
     }
     logger.info("LogNodeManager starts closing..");
+    for (WriteLogNode node : nodeMap.values()) {
+      try {
+        node.shutdown();
+      } catch (IOException e) {
+        logger.error("failed to close {}", node, e);
+      }
+    }
+    nodeMap.clear();
     if (isActivated(forceThread)) {
       forceThread.interrupt();
       logger.info("Waiting for force thread to stop");
@@ -173,7 +181,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         // wait for forceThread
       }
     }
-    nodeMap.clear();
     logger.info("LogNodeManager closed.");
   }
 
