@@ -235,7 +235,7 @@ public class EnvironmentUtils {
   }
 
   public static void restartDaemon() {
-    stopDaemon();
+    shutdownDaemon();
     reactiveDaemon();
   }
 

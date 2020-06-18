@@ -129,8 +129,13 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   @Override
   public void forceSync() {
-    sync();
-    forceWal();
+    lock.writeLock().lock();
+    try {
+      sync();
+      forceWal();
+    } finally {
+      lock.writeLock().unlock();
+    }
   }
 
 

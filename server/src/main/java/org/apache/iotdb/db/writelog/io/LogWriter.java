@@ -22,6 +22,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.ClosedByInterruptException;
 import java.nio.channels.FileChannel;
 import java.util.zip.CRC32;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -84,7 +85,7 @@ public class LogWriter implements ILogWriter {
 
   @Override
   public void force() throws IOException {
-    if (channel != null && channel.isOpen()) {
+    if (channel != null) {
       channel.force(true);
     }
   }

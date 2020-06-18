@@ -157,8 +157,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
     }
 
-    EnvironmentUtils.shutdownDaemon();
-    EnvironmentUtils.activeDaemon();
+    EnvironmentUtils.restartDaemon();
 
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -168,8 +167,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(4,2)");
     }
 
-    EnvironmentUtils.shutdownDaemon();
-    EnvironmentUtils.activeDaemon();
+    EnvironmentUtils.restartDaemon();
 
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -211,8 +209,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s1) values(2,2)");
     }
 
-    EnvironmentUtils.shutdownDaemon();
-    EnvironmentUtils.activeDaemon();
+    EnvironmentUtils.restartDaemon();
 
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
@@ -222,8 +219,7 @@ public class IoTDBRestartIT {
       statement.execute("insert into root.turbine.d1(timestamp,s2) values(2,2)");
     }
 
-    EnvironmentUtils.shutdownDaemon();
-    EnvironmentUtils.activeDaemon();
+    EnvironmentUtils.restartDaemon();
 
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
