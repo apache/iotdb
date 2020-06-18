@@ -1584,6 +1584,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     resultHandler.onComplete(resultBuffers);
   }
 
+  /**
+   * Check if the given measurements are registered or not
+   * @param header
+   * @param measurements
+   * @param resultHandler
+   * @throws TException
+   */
   @Override
   public void isMeasurementsRegistered(Node header, List<String> measurements,
       AsyncMethodCallback<Map<String, Boolean>> resultHandler) throws TException {

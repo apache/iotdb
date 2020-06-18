@@ -1537,7 +1537,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (planGroupMap == null || planGroupMap.isEmpty()) {
       if (plan instanceof InsertPlan && IoTDBDescriptor.getInstance().getConfig()
           .isAutoCreateSchemaEnabled()) {
-        System.out.println("try to set storage group");
+        // try to set storage group
         String deviceId = ((InsertPlan) plan).getDeviceId();
         try {
           String storageGroupName = MetaUtils
@@ -1554,10 +1554,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           logger.info("Failed to set storage group of device id {}", deviceId);
         }
       }
-      logger.debug("{}: Cannot found storage groups for {}", name, plan);
+      logger.error("{}: Cannot found storage groups for {}", name, plan);
       return StatusUtils.NO_STORAGE_GROUP;
     }
-    logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
+    logger.error("{}: The data groups of {} are {}", name, plan, planGroupMap);
     return forwardPlan(planGroupMap);
   }
 
@@ -1586,6 +1586,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         if (entry.getKey() instanceof InsertPlan
             && subStatus.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
             && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+          // try to create timeseries
           boolean hasCreate = autoCreateTimeseries((InsertPlan) entry.getKey(), entry.getValue());
           if (hasCreate) {
             Map<PhysicalPlan, PartitionGroup> subPlan = new HashMap<>();
@@ -1614,6 +1615,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return status;
   }
 
+  /**
+   * Create timeseries automatically
+   * @param insertPlan, some of the timeseries in it are not created yet
+   * @param partitionGroup
+   * @return true of all uncreated timeseries are created
+   */
   boolean autoCreateTimeseries(InsertPlan insertPlan, PartitionGroup partitionGroup) {
     List<String> seriesList = new ArrayList<>();
     String deviceId = insertPlan.getDeviceId();
@@ -1622,8 +1629,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           new StringContainer(new String[]{deviceId, measurementId}, TsFileConstant.PATH_SEPARATOR)
               .toString());
     }
-    List<String> unregistedSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
-    for (String seriesPath : unregistedSeriesList) {
+    List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
+    for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
       TSDataType dataType = TypeInferenceUtils
           .getPredictedDataType(insertPlan.getValues()[index], true);
@@ -1661,6 +1668,12 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
   }
 
+  /**
+   * To check which timeseries in the input list is unregistered
+   * @param seriesList
+   * @param partitionGroup
+   * @return
+   */
   List<String> getUnregisteredSeriesList(List<String> seriesList, PartitionGroup partitionGroup) {
     Set<String> unregistered = new HashSet<>();
     for (Node node : partitionGroup) {
