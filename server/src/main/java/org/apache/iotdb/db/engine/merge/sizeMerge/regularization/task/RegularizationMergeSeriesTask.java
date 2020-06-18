@@ -114,12 +114,21 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
     currentFileWriter.endFile();
     mergeLogger.logAllTsEnd();
 
+    for (TsFileResource tsFileResource : newResources) {
+      File oldTsFile = tsFileResource.getFile();
+      File newTsFile = new File(oldTsFile.getParent(),
+          oldTsFile.getName().replace(MERGE_SUFFIX, ""));
+      oldTsFile.renameTo(newTsFile);
+      tsFileResource.setFile(newTsFile);
+      tsFileResource.serialize();
+    }
+
     if (logger.isInfoEnabled()) {
       logger.info("{} all series are merged after {}ms", taskName,
           System.currentTimeMillis() - startTime);
       long totalChunkPoint = 0;
       long chunkNum = 0;
-      for (TsFileResource seqFile : resource.getSeqFiles()) {
+      for (TsFileResource seqFile : newResources) {
         List<ChunkMetadata> chunkMetadataList = resource.queryChunkMetadata(seqFile);
         for (ChunkMetadata chunkMetadata : chunkMetadataList) {
           chunkNum++;
@@ -129,14 +138,6 @@ public class RegularizationMergeSeriesTask extends BaseMergeSeriesTask {
       logger.info("merge after seqFile chunk large = {}", totalChunkPoint * 1.0 / chunkNum);
     }
 
-    for (TsFileResource tsFileResource : newResources) {
-      File oldTsFile = tsFileResource.getFile();
-      File newTsFile = new File(oldTsFile.getParent(),
-          oldTsFile.getName().replace(MERGE_SUFFIX, ""));
-      oldTsFile.renameTo(newTsFile);
-      tsFileResource.setFile(newTsFile);
-      tsFileResource.serialize();
-    }
     return newResources;
   }
 
