@@ -1481,12 +1481,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
     if (syncLeader()) {
       List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
-      Map<PhysicalPlan, PartitionGroup> planGroupMap = new HashMap<>();
-      for (PartitionGroup globalGroup : globalGroups) {
-        planGroupMap.put(plan, globalGroup);
-      }
-      return forwardPlan(planGroupMap);
+      logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
+      return forwardPlan(plan, globalGroups);
     }
+    logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader);
     return forwardPlan(plan, leader, null);
   }
 
@@ -1544,16 +1542,56 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
       if (entry.getValue().contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
+        logger.debug("Execute {} in a local group of {}", entry.getKey(), entry.getValue().getHeader());
         subStatus = getLocalDataMember(entry.getValue().getHeader())
             .executeNonQuery(entry.getKey());
       } else {
         // forward the query to the group that should handle it
+        logger.debug("Forward {} to a remote group of {}", entry.getKey(),
+            entry.getValue().getHeader());
         subStatus = forwardPlan(entry.getKey(), entry.getValue());
       }
       if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
             subStatus.getCode(), entry.getValue().getHeader(),
+            subStatus.getMessage()));
+      }
+    }
+    if (errorCodePartitionGroups.size() <= 1) {
+      // when size = 0, no error occurs, the plan is successfully executed, return OK
+      // when size = 1, one error occurs, set status = subStatus and return
+      status = subStatus;
+    } else {
+      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+      status.setMessage("The following errors occurred when executing the query, "
+          + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
+    }
+    return status;
+  }
+
+  TSStatus forwardPlan(PhysicalPlan plan, List<PartitionGroup> partitionGroups) {
+    TSStatus status;
+    // the error codes from the groups that cannot execute the plan
+    List<String> errorCodePartitionGroups = new ArrayList<>();
+    TSStatus subStatus = StatusUtils.OK;
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      if (partitionGroup.contains(thisNode)) {
+        // the query should be handled by a group the local node is in, handle it with in the group
+        logger.debug("Execute {} in a local group of {}", plan,
+            partitionGroup.getHeader());
+        subStatus = getLocalDataMember(partitionGroup.getHeader())
+            .executeNonQuery(plan);
+      } else {
+        // forward the query to the group that should handle it
+        logger.debug("Forward {} to a remote group of {}", plan,
+            partitionGroup.getHeader());
+        subStatus = forwardPlan(plan, partitionGroup);
+      }
+      if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // execution failed, record the error message
+        errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
+            subStatus.getCode(), partitionGroup.getHeader(),
             subStatus.getMessage()));
       }
     }
@@ -2349,8 +2387,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         DataClient client = getDataClient(node);
         List<String> paths = SyncClientAdaptor.getAllPaths(client, partitionGroup.getHeader(),
             pathsToQuery);
-        logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
-            node, paths);
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: get matched paths of {} and other {} paths from {} in {}, result {}",
+              name, pathsToQuery.get(0), pathsToQuery.size() - 1, node, partitionGroup.getHeader(),
+              paths);
+        }
         if (paths != null) {
           // query next group
           return paths;

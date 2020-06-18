@@ -423,7 +423,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
 
     if (logger.isDebugEnabled()) {
-      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPaths(),
+      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPath(),
           globalGroups.size());
     }
     for (PartitionGroup group : globalGroups) {
@@ -447,6 +447,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         showTimeSeriesResults.add(iterator.next());
       }
     }
+    logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
     return showTimeSeriesResults;
   }
 
@@ -465,11 +466,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeader();
     try {
+      List<ShowTimeSeriesResult> localResult;
       if (plan.getKey() != null && plan.getValue() != null) {
-        resultSet.addAll(MManager.getInstance().getAllTimeseriesSchema(plan));
+        localResult = MManager.getInstance().getAllTimeseriesSchema(plan);
       } else {
-        resultSet.addAll(MManager.getInstance().showTimeseries(plan));
+        localResult = MManager.getInstance().showTimeseries(plan);
       }
+      resultSet.addAll(localResult);
+      logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
       logger
           .error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
