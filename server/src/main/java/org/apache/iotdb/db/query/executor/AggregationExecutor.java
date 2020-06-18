@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.*;
@@ -319,26 +320,39 @@ public class AggregationExecutor {
    *
    * @param aggregateResultList aggregate result list
    */
-  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList, RawDataQueryPlan plan) {
+  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList, AggregationPlan plan) {
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
       TSDataType dataType = resultData.getResultDataType();
       record.addField(resultData.getResult(), dataType);
     }
 
+    String aggregation = plan.getAggregations().get(0);
     SingleDataSet dataSet = null;
-    if (((AggregationPlan)plan).getLevel() >= 0) {
+    if (plan.getLevel() >= 0) {
       // current only support count operation
       Map<Integer, String> pathIndex = new HashMap<>();
-      Map<String, TSDataType> finalPaths = FilePathUtils.getPathByLevel((AggregationPlan) plan, pathIndex);
-
-      RowRecord curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex);
-
       List<Path> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();
-      for (int i = 0; i < finalPaths.size(); i++) {
-        dataTypes.add(TSDataType.DOUBLE);
+      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
+      RowRecord curRecord = null;
+      switch (aggregation) {
+        case "count":
+          curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex);
+          for (int i = 0; i < finalPaths.size(); i++) {
+            dataTypes.add(TSDataType.INT64);
+          }
+          break;
+        case "avg":
+          curRecord = FilePathUtils.avgRecordByPath(record, finalPaths, pathIndex);
+          for (int i = 0; i < finalPaths.size(); i++) {
+            dataTypes.add(TSDataType.FLOAT);
+          }
+          break;
       }
+
+      
+      
 
       dataSet = new SingleDataSet(paths, dataTypes);
       dataSet.setRecord(curRecord);

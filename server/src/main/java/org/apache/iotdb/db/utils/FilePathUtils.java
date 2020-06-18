@@ -64,13 +64,12 @@ public class FilePathUtils {
    * @param pathIndex
    * @return
    */
-  public static Map<String, TSDataType> getPathByLevel(AggregationPlan plan, Map<Integer, String> pathIndex) {
+  public static Map<String, Long> getPathByLevel(AggregationPlan plan, Map<Integer, String> pathIndex) {
     // pathGroupByLevel -> count
-    Map<String, TSDataType> finalPaths = new TreeMap<>();
+    Map<String, Long> finalPaths = new TreeMap<>();
 
     List<Path> rawPaths = plan.getPaths();
     int level = plan.getLevel();
-    String aggregation = plan.getAggregations().get(0);
     int i = 0;
     for (Path value : rawPaths) {
       String[] tmpPath = MetaUtils.getNodeNames(value.getFullPath());
@@ -89,15 +88,7 @@ public class FilePathUtils {
         }
         key = path.toString();
       }
-      switch (aggregation) {
-        case "sum" :
-          finalPaths.putIfAbsent(key, TSDataType.INT64);
-          break;
-        case "avg" :
-          finalPaths.putIfAbsent(key, TSDataType.INT64);
-          break;
-      }
-      finalPaths.putIfAbsent(key, (float) 0);
+      finalPaths.putIfAbsent(key, 0L);
       if (pathIndex != null) {
         pathIndex.put(i++, key);
       }
@@ -118,15 +109,42 @@ public class FilePathUtils {
    * @return
    */
   public static RowRecord mergeRecordByPath(RowRecord newRecord,
-                                      Map<String, Float> finalPaths,
+                                      Map<String, Long> finalPaths,
                                       Map<Integer, String> pathIndex) {
     if (newRecord.getFields().size() < finalPaths.size()) {
       return null;
     }
 
     // reset final paths
-    for (Map.Entry<String, Float> entry : finalPaths.entrySet()) {
-      entry.setValue((float) 0);
+    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+      entry.setValue(0L);
+    }
+
+    RowRecord tmpRecord = new RowRecord(newRecord.getTimestamp());
+
+    for (int i = 0; i < newRecord.getFields().size(); i++) {
+      if (newRecord.getFields().get(i) != null) {
+        finalPaths.put(pathIndex.get(i),
+          finalPaths.get(pathIndex.get(i)) + newRecord.getFields().get(i).getLongV());
+      }
+    }
+
+    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+      tmpRecord.addField(Field.getField(entry.getValue(), TSDataType.INT64));
+    }
+
+    return tmpRecord;
+  }
+
+  public static RowRecord avgRecordByPath(RowRecord newRecord, Map<String, Long> finalPaths,
+      Map<Integer, String> pathIndex) {
+    if (newRecord.getFields().size() < finalPaths.size()) {
+      return null;
+    }
+
+    // reset final paths
+    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+      entry.setValue(0L);
     }
 
     RowRecord tmpRecord = new RowRecord(newRecord.getTimestamp());
@@ -138,8 +156,8 @@ public class FilePathUtils {
       }
     }
 
-    for (Map.Entry<String, Float> entry : finalPaths.entrySet()) {
-      tmpRecord.addField(Field.getField(entry.getValue(), TSDataType.FLOAT));
+    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+      tmpRecord.addField(Field.getField(entry.getValue(), TSDataType.INT64));
     }
 
     return tmpRecord;
