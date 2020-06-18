@@ -69,7 +69,7 @@ public class RegisterManager {
   /**
    * stop all service and clear iService list.
    */
-  public void shutdownAll() {
+  public void shutdownAll() throws Exception {
     //we stop JMXServer at last
     Collections.reverse(iServices);
     for (IService service : iServices) {
@@ -77,6 +77,7 @@ public class RegisterManager {
         service.shutdown(10000);
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
+        throw e;
       }
     }
     iServices.clear();

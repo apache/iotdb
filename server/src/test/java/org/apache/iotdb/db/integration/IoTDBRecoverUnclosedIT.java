@@ -151,16 +151,19 @@ public class IoTDBRecoverUnclosedIT {
       fail(e.getMessage());
     }
 
-    EnvironmentUtils.shutdownDaemon();
-    EnvironmentUtils.reactiveDaemon();
-    
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
     insertMoreData();
-
-    EnvironmentUtils.shutdownDaemon();
-    EnvironmentUtils.reactiveDaemon();
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
 
     // maxminValueTest
-
     retArray = new String[]{
         "0,8499,500.0",
         "0,2499,500.0"

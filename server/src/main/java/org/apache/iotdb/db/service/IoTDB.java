@@ -146,7 +146,7 @@ public class IoTDB implements IoTDBMBean {
     deactivate();
   }
 
-  public void shutdown() {
+  public void shutdown() throws Exception {
     logger.info("Deactivating IoTDB...");
     MManager.getInstance().clear();
     registerManager.shutdownAll();
