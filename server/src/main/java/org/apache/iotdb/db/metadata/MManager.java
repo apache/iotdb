@@ -209,7 +209,7 @@ public class MManager {
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
         int idx = 0;
-        while (idx <= mtree.getSnapshotLineNumber()) {
+        while (idx < mtree.getSnapshotLineNumber()) {
           cmd = br.readLine();
           idx++;
         }

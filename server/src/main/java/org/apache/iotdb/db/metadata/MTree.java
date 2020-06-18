@@ -40,13 +40,13 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -73,6 +73,8 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -80,6 +82,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class MTree implements Serializable {
 
   private static final long serialVersionUID = -4200394435237291964L;
+  private static final Logger logger = LoggerFactory.getLogger(MTree.class);
 
   private MNode root;
   private int snapshotLineNumber;
@@ -91,6 +94,7 @@ public class MTree implements Serializable {
 
   MTree() {
     this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
+    this.snapshotLineNumber = 0;
   }
 
   private MTree(MNode root, int snapshotLineNumber) {
@@ -927,7 +931,7 @@ public class MTree implements Serializable {
     }
   }
 
-  public static MTree deserializeFrom(String mtreeSnapshotPath) throws IOException {
+  public static MTree deserializeFrom(String mtreeSnapshotPath) {
     File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
     if (!mtreeSnapshot.exists()) {
       return new MTree();
@@ -954,7 +958,7 @@ public class MTree implements Serializable {
         if (childrenSize == 0) {
           nodeStack.push(node);
         } else {
-          Map<String, MNode> childrenMap = new TreeMap<>();
+          Map<String, MNode> childrenMap = new LinkedHashMap<>();
           for (int i = 0; i < childrenSize; i++) {
             MNode child = nodeStack.removeFirst();
             child.setParent(node);
@@ -975,6 +979,9 @@ public class MTree implements Serializable {
       count = new ThreadLocal<>();
       curOffset = new ThreadLocal<>();
       return new MTree(node, snapshotLineNumber);
+    } catch (IOException e) {
+      logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
+      return new MTree();
     }
   }
 

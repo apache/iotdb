@@ -166,6 +166,6 @@ public class MLogWriter {
     writer.flush();
 
     // Every MTREE_SNAPSHOT_INTERVAL lines, create a checkpoint and save the MTree as a snapshot
-    return lineNumber++;
+    return ++lineNumber;
   }
 }

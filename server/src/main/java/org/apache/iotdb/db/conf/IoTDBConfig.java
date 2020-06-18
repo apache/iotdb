@@ -568,14 +568,14 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /**
-   * whether enable data partition if disabled, all data belongs to partition 0
+   * whether enable data partition. If disabled, all data belongs to partition 0
    */
   private boolean enablePartition = false;
 
   /**
    * Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree
    */
-  private int mtreeSnapshotInterval = 100000;
+  private int mtreeSnapshotInterval = 10;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second
