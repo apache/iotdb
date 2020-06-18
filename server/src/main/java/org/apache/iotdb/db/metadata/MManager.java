@@ -53,9 +53,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -443,9 +442,6 @@ public class MManager {
 
   /**
    * remove the node from the tag inverted index
-   *
-   * @param node
-   * @throws IOException
    */
   private void removeFromTagInvertedIndex(MeasurementMNode node) throws IOException {
     if (node.getOffset() < 0) {
@@ -926,8 +922,7 @@ public class MManager {
       throws MetadataException {
     lock.readLock().lock();
     try {
-      InternalMNode node = (InternalMNode) mtree.getNodeByPath(device);
-      MNode leaf = node.getChild(measurement);
+      MNode leaf = mtree.getNodeByPath(device).getChild(measurement);
       if (leaf != null) {
         return ((MeasurementMNode) leaf).getSchema();
       } else {
@@ -1036,7 +1031,7 @@ public class MManager {
       }
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readLock();
+        node.readLock();
       }
       lock.readLock().unlock();
     }
@@ -1062,7 +1057,7 @@ public class MManager {
       return node;
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readLock();
+        node.readLock();
       }
       lock.writeLock().unlock();
     }
@@ -1093,7 +1088,7 @@ public class MManager {
    * To reduce the String number in memory, 
    * use the deviceId from MManager instead of the deviceId read from disk
    * 
-   * @param deviceId read from disk
+   * @param path read from disk
    * @return deviceId
    */
   public String getDeviceId(String path) {
@@ -1731,9 +1726,6 @@ public class MManager {
   /**
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
-   *
-   * @param path
-   * @param schema
    */
   public void cacheSchema(String path, MeasurementSchema schema) {
     // check schema is in local

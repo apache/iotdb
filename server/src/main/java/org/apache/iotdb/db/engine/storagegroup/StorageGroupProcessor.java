@@ -74,7 +74,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -806,7 +805,7 @@ public class StorageGroupProcessor {
       throw new WriteProcessException(e);
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
   }
@@ -863,7 +862,7 @@ public class StorageGroupProcessor {
       // skip last cache update if the local MTree does not contain the schema
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
   }
@@ -1278,7 +1277,7 @@ public class StorageGroupProcessor {
                   .query(deviceId, measurementId, schema.getType(), schema.getEncodingType(),
                       schema.getProps(), context);
 
-          tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(), 
+          tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(),
               tsFileResource.getDeviceToIndexMap(),
               tsFileResource.getStartTimes(), tsFileResource.getEndTimes(), pair.left,
               pair.right));
@@ -1540,8 +1539,8 @@ public class StorageGroupProcessor {
     List<TsFileResource> upgradedResources = tsFileResource.getUpgradedResources();
     for (TsFileResource resource : upgradedResources) {
       long partitionId = resource.getTimePartition();
-      resource.getDeviceToIndexMap().forEach((device, index) -> 
-        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device, 
+      resource.getDeviceToIndexMap().forEach((device, index) ->
+        updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(partitionId, device,
             resource.getEndTime(index))
       );
     }
@@ -1556,7 +1555,7 @@ public class StorageGroupProcessor {
     }
     mergeLock.writeLock().unlock();
     insertLock.writeLock().unlock();
-    
+
     // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
     if (countUpgradeFiles() == 0) {
       for (Entry<Long, Map<String, Long>> entry : newlyFlushedPartitionLatestFlushedTimeForEachDevice

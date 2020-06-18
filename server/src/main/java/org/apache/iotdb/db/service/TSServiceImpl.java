@@ -118,6 +118,7 @@ import org.slf4j.LoggerFactory;
  */
 public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
+  private static final Logger auditLogger = LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
@@ -162,11 +163,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
-    logger.info(
-        "{}: receive open session request from username {}",
-        IoTDBConstant.GLOBAL_DB_NAME,
-        req.getUsername());
-
     boolean status;
     IAuthorizer authorizer;
     try {
@@ -206,6 +202,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
       tsStatus.setMessage(loginMessage);
     }
+    auditLogger.info("User {} opens Session-{}", req.getUsername(), sessionId);
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
         TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
     resp.setSessionId(sessionId);
@@ -222,8 +219,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus closeSession(TSCloseSessionReq req) {
-    logger.info("{}: receive close session", IoTDBConstant.GLOBAL_DB_NAME);
-    long sessionId = currSessionId.get();
+    long sessionId = req.getSessionId();
+    auditLogger.info("Session-{} is closing", sessionId);
     currSessionId.remove();
 
     TSStatus tsStatus;
@@ -249,6 +246,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         }
       }
     }
+
     if (!exceptions.isEmpty()) {
       return new TSStatus(
           RpcUtils.getStatus(
@@ -268,11 +266,12 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus closeOperation(TSCloseOperationReq req) {
-    if (logger.isDebugEnabled()) {
-      logger.debug("{}: receive close operation", IoTDBConstant.GLOBAL_DB_NAME);
-    }
+    if (auditLogger.isDebugEnabled()) {
+    auditLogger.debug("{}: receive close operation from Session {}", IoTDBConstant.GLOBAL_DB_NAME,
+        currSessionId.get());
+  }
     if (!checkLogin(req.getSessionId())) {
-      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      auditLogger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
     try {
@@ -526,6 +525,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
+    auditLogger.info("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
     long queryId = -1;
     try {
@@ -1060,6 +1060,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   @Override
   public TSStatus insertRecords(TSInsertRecordsReq req) {
+    if (auditLogger.isDebugEnabled()) {
+      auditLogger
+          .debug("Session {} insertRecords, first device {}, first time {}", currSessionId.get(),
+              req.deviceIds.get(0), req.getTimestamps().get(0));
+    }
     if (!checkLogin(req.getSessionId())) {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
@@ -1118,6 +1123,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   @Override
   public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
+      auditLogger
+          .info("Session {} insertRecord, device {}, time {}", currSessionId.get(),
+              req.getDeviceId(), req.getTimestamp());
       if (!checkLogin(req.getSessionId())) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
         return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
@@ -1282,6 +1290,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
+    auditLogger.info("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
     TSStatus status = checkPathValidity(req.path);
     if (status != null) {
       return status;
@@ -1304,6 +1313,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
+    auditLogger.info("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
+        req.getPaths().size(), req.getPaths().get(0));
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPaths().get(i)),
