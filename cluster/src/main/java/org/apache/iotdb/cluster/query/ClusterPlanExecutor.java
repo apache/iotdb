@@ -55,7 +55,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -533,7 +532,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
 
