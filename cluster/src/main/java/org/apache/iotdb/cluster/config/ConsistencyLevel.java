@@ -19,6 +19,9 @@
 package org.apache.iotdb.cluster.config;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public enum ConsistencyLevel {
   /**
    * Strong consistency means the server will first try to synchronize with the leader to get the
@@ -39,11 +42,11 @@ public enum ConsistencyLevel {
   ;
 
   private String consistencyLevel;
+  private static final Logger logger = LoggerFactory.getLogger(ConsistencyLevel.class);
 
   ConsistencyLevel(String consistencyLevel) {
     this.consistencyLevel = consistencyLevel;
   }
-
 
   public static ConsistencyLevel getConsistencyLevel(String consistencyLevel) {
     if (consistencyLevel == null) {
@@ -57,6 +60,8 @@ public enum ConsistencyLevel {
       case "weak":
         return ConsistencyLevel.WEAK_CONSISTENCY;
       default:
+        logger.warn("Unsupported consistency level={}, use default consistency level={}",
+            consistencyLevel, ConsistencyLevel.MID_CONSISTENCY.consistencyLevel);
         return ConsistencyLevel.MID_CONSISTENCY;
     }
   }

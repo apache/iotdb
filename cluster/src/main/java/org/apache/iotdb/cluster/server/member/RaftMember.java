@@ -47,7 +47,6 @@ import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.config.ConsistencyLevel;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -140,11 +139,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   // know if this node is synchronized with the leader
   private Object syncLock = new Object();
   private ExecutorService appendLogThreadPool;
-
-  /**
-   * consistency level, now three consistency levels are supported: strong, mid and weak.
-   */
-  private ConsistencyLevel consistencyLevel = config.getConsistencyLevel();
 
   public RaftMember() {
   }
@@ -1096,7 +1090,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     }
   }
 
-
   /**
    * according to the consistency configuration, decide whether to execute syncLeader or not and
    * throws exception when failed
@@ -1104,7 +1097,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @throws CheckConsistencyException
    */
   public void syncLeaderWithConsistencyCheck() throws CheckConsistencyException {
-    switch (consistencyLevel) {
+    switch (ClusterDescriptor.getInstance().getConfig().getConsistencyLevel()) {
       case STRONG_CONSISTENCY:
         if (!syncLeader()) {
           throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
@@ -1119,7 +1112,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return;
       default:
         // this should not happen in theory
-        throw new CheckConsistencyException("unknown consistency" + consistencyLevel.name());
+        throw new CheckConsistencyException(
+            "unknown consistency=" + ClusterDescriptor.getInstance().getConfig()
+                .getConsistencyLevel().name());
     }
   }
 
