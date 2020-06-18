@@ -350,6 +350,8 @@ service TSDataService extends RaftService {
 
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
+  map<string, bool> isMeasurementsRegistered(1: Node header, 2: list<string> measurements)
+
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
 
   /**

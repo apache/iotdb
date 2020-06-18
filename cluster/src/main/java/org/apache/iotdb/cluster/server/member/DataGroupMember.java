@@ -98,7 +98,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -120,6 +122,7 @@ import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -998,7 +1001,6 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         return status;
       }
     }
-
     return forwardPlan(plan, leader, getHeader());
   }
 
@@ -1062,8 +1064,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IPointReader of "path" with “timeFilter” and "valueFilter". A synchronization with
-   * the leader will be performed first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * the leader will be performed first to preserve strong consistency. TODO-Cluster: also support
+   * weak consistency
    *
    * @param path
    * @param dataType
@@ -1089,8 +1091,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IBatchReader of "path" with “timeFilter” and "valueFilter". A synchronization with
-   * the leader will be performed first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * the leader will be performed first to preserve strong consistency. TODO-Cluster: also support
+   * weak consistency
    *
    * @param path
    * @param dataType
@@ -1144,8 +1146,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IReaderByTimestamp of "path". A synchronization with the leader will be performed
-   * first to preserve strong consistency.
-   * TODO-Cluster: also support weak consistency
+   * first to preserve strong consistency. TODO-Cluster: also support weak consistency
    *
    * @param path
    * @param dataType
@@ -1581,6 +1582,28 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       byteArrayOutputStream.reset();
     }
     resultHandler.onComplete(resultBuffers);
+  }
+
+  @Override
+  public void isMeasurementsRegistered(Node header, List<String> measurements,
+      AsyncMethodCallback<Map<String, Boolean>> resultHandler) throws TException {
+    if (!syncLeader()) {
+      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
+      return;
+    }
+    Map<String, Boolean> result = new HashMap<>();
+    for (String seriesPath : measurements) {
+      try {
+        List<String> path = MManager.getInstance().getAllTimeseriesName(seriesPath);
+        if (path.size() != 1) {
+          throw new MetadataException("Size of the path is not 1.");
+        }
+        result.put(seriesPath, true);
+      } catch (MetadataException e) {
+        result.put(seriesPath, false);
+      }
+    }
+    resultHandler.onComplete(result);
   }
 
   /**

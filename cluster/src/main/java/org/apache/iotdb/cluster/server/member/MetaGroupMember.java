@@ -126,9 +126,11 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -139,9 +141,13 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -152,15 +158,22 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -1520,8 +1533,27 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     } catch (MetadataException e) {
       logger.error("Cannot route plan {}", plan, e);
     }
-    // the storage group is not found locally, forward it to the leader
+    // the storage group is not found locally
     if (planGroupMap == null || planGroupMap.isEmpty()) {
+      if (plan instanceof InsertPlan && IoTDBDescriptor.getInstance().getConfig()
+          .isAutoCreateSchemaEnabled()) {
+        System.out.println("try to set storage group");
+        String deviceId = ((InsertPlan) plan).getDeviceId();
+        try {
+          String storageGroupName = MetaUtils
+              .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
+                  .getConfig().getDefaultStorageGroupLevel());
+          SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
+              new Path(storageGroupName));
+          TSStatus setStorageGroupResult = executeNonQuery(setStorageGroupPlan);
+          if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            throw new MetadataException("Failed to set storage group " + storageGroupName);
+          }
+          return executeNonQuery(plan);
+        } catch (MetadataException e) {
+          logger.info("Failed to set storage group of device id {}", deviceId);
+        }
+      }
       logger.debug("{}: Cannot found storage groups for {}", name, plan);
       return StatusUtils.NO_STORAGE_GROUP;
     }
@@ -1551,6 +1583,19 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         subStatus = forwardPlan(entry.getKey(), entry.getValue());
       }
       if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (entry.getKey() instanceof InsertPlan
+            && subStatus.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
+            && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+          boolean hasCreate = autoCreateTimeseries((InsertPlan) entry.getKey(), entry.getValue());
+          if (hasCreate) {
+            Map<PhysicalPlan, PartitionGroup> subPlan = new HashMap<>();
+            subPlan.put(entry.getKey(), entry.getValue());
+            subStatus = forwardPlan(subPlan);
+            continue;
+          } else {
+            logger.error("{}, Cannot auto create timeseries.", thisNode);
+          }
+        }
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
             subStatus.getCode(), entry.getValue().getHeader(),
@@ -1567,6 +1612,77 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
     }
     return status;
+  }
+
+  boolean autoCreateTimeseries(InsertPlan insertPlan, PartitionGroup partitionGroup) {
+    List<String> seriesList = new ArrayList<>();
+    String deviceId = insertPlan.getDeviceId();
+    for (String measurementId : insertPlan.getMeasurements()) {
+      seriesList.add(
+          new StringContainer(new String[]{deviceId, measurementId}, TsFileConstant.PATH_SEPARATOR)
+              .toString());
+    }
+    List<String> unregistedSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
+    for (String seriesPath : unregistedSeriesList) {
+      int index = seriesList.indexOf(seriesPath);
+      TSDataType dataType = TypeInferenceUtils
+          .getPredictedDataType(insertPlan.getValues()[index], true);
+      TSEncoding encoding = getDefaultEncoding(dataType);
+      CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+      CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path(seriesPath),
+          dataType, encoding, compressionType, null, null, null, null);
+      TSStatus result = executeNonQuery(createTimeSeriesPlan);
+      if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        logger.error("{} failed to execute create timeseries {}", thisNode, seriesPath);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private TSEncoding getDefaultEncoding(TSDataType dataType) {
+    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+    switch (dataType) {
+      case BOOLEAN:
+        return conf.getDefaultBooleanEncoding();
+      case INT32:
+        return conf.getDefaultInt32Encoding();
+      case INT64:
+        return conf.getDefaultInt64Encoding();
+      case FLOAT:
+        return conf.getDefaultFloatEncoding();
+      case DOUBLE:
+        return conf.getDefaultDoubleEncoding();
+      case TEXT:
+        return conf.getDefaultTextEncoding();
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType.toString()));
+    }
+  }
+
+  List<String> getUnregisteredSeriesList(List<String> seriesList, PartitionGroup partitionGroup) {
+    Set<String> unregistered = new HashSet<>();
+    for (Node node : partitionGroup) {
+      try {
+        DataClient client = getDataClient(node);
+        Map<String, Boolean> result = SyncClientAdaptor
+            .getUnregisteredMeasurements(client, partitionGroup.getHeader(), seriesList);
+        for (Map.Entry<String, Boolean> entry : result.entrySet()) {
+          if (!entry.getValue()) {
+            unregistered.add(entry.getKey());
+          }
+        }
+      } catch (TException | IOException e) {
+        logger.error("{}: cannot getting unregistered series list {} from {}", name,
+            Arrays.toString(seriesList.toArray(new String[0])), node, e);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("{}: getting unregistered series list {} is interrupted from {}", name,
+            Arrays.toString(seriesList.toArray(new String[0])), node, e);
+      }
+    }
+    return new ArrayList<String>(unregistered);
   }
 
   /**
@@ -1700,7 +1816,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         if (logger.isDebugEnabled()) {
           logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
               name,
-              schemas.size(), prefixPaths.get(0), prefixPaths.size() - 1, node, partitionGroup.getHeader());
+              schemas.size(), prefixPaths.get(0), prefixPaths.size() - 1, node,
+              partitionGroup.getHeader());
         }
         results.addAll(schemas);
         break;
@@ -1718,7 +1835,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    * @throws MetadataException
    */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths, List<String> aggregations) throws
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths,
+      List<String> aggregations) throws
       MetadataException {
     try {
       // try locally first
@@ -1761,7 +1879,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           MeasurementSchema schema = schemas.get(i);
           columnType.add(schema.getType());
           MManager.getInstance().cacheSchema(paths.get(i).getDevice() +
-                  IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
+              IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
         } else {
           columnType.add(dataType);
         }
@@ -1781,7 +1899,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    * @throws MetadataException
    */
-  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs, String aggregation) throws
+  public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs,
+      String aggregation) throws
       MetadataException {
     try {
       // try locally first
@@ -1793,7 +1912,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } else {
         // if the aggregation function is not null,
         // we should recalculate the type of column in result set
-        List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByString(pathStrs, aggregation);
+        List<TSDataType> columnDataTypes = SchemaUtils
+            .getSeriesTypesByString(pathStrs, aggregation);
         return new Pair<>(columnDataTypes, measurementDataTypes);
       }
     } catch (PathNotExistException e) {

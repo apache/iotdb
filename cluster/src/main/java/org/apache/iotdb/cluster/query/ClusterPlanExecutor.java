@@ -97,8 +97,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   public QueryDataSet processQuery(PhysicalPlan queryPlan, QueryContext context)
-          throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
-          MetadataException {
+      throws IOException, StorageEngineException, QueryFilterOptimizationException, QueryProcessException,
+      MetadataException {
     if (queryPlan instanceof QueryPlan) {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
@@ -155,7 +155,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
    *
    * @param sgPathMap the key is the storage group name and the value is the path to be queried with
    *                  storage group added
-   * @param level the max depth to match the pattern, -1 means matching the whole pattern
+   * @param level     the max depth to match the pattern, -1 means matching the whole pattern
    * @return the number of paths that match the pattern at given level
    * @throws MetadataException
    */
@@ -168,7 +168,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
       String storageGroupName = sgPathEntry.getKey();
       String pathUnderSG = sgPathEntry.getValue();
       // find the data group that should hold the timeseries schemas of the storage group
-      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable().route(storageGroupName, 0);
+      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable()
+          .route(storageGroupName, 0);
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
@@ -234,7 +235,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return localResult;
   }
 
-  private int getRemotePathCount(PartitionGroup partitionGroup, List<String> pathsToQuery, int level)
+  private int getRemotePathCount(PartitionGroup partitionGroup, List<String> pathsToQuery,
+      int level)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
@@ -308,7 +310,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return MManager.getInstance().getNodesList(schemaPattern, level,
           new SlotSgFilter(metaGroupMember.getPartitionTable().getNodeSlots(header)));
     } catch (MetadataException e) {
-      logger.error("Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
+      logger
+          .error("Cannot not get node list of {}@{} from {} locally", schemaPattern, level, group);
       return Collections.emptyList();
     }
   }
@@ -570,7 +573,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected AlignByDeviceDataSet getAlignByDeviceDataSet(AlignByDevicePlan plan,
-                                                         QueryContext context, IQueryRouter router)
+      QueryContext context, IQueryRouter router)
       throws MetadataException {
     return new ClusterAlignByDeviceDataSet(plan, context, router, metaGroupMember);
   }
@@ -588,8 +591,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
         break;
       default:
         throw new QueryProcessException(String
-                .format("Unrecognized load configuration plan type: %s",
-                        plan.getLoadConfigurationPlanType()));
+            .format("Unrecognized load configuration plan type: %s",
+                plan.getLoadConfigurationPlanType()));
     }
   }
 
