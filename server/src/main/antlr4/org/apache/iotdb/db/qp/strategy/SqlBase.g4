@@ -69,7 +69,7 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | SHOW TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
+    | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
@@ -918,6 +918,10 @@ PAA
 PLA
    : P L A
    ;
+
+LATEST
+    : L A T E S T
+    ;
 //============================
 // End of the keywords list
 //============================
