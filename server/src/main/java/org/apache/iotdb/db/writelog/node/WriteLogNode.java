@@ -84,5 +84,4 @@ public interface WriteLogNode {
    */
   ILogReader getLogReader();
 
-  void shutdown() throws IOException;;
 }

@@ -157,34 +157,6 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
   }
 
   @Override
-  public void shutdown(long time) {
-    if (!config.isEnableWal()) {
-      return;
-    }
-    if (!isActivated(forceThread)) {
-      logger.debug("MultiFileLogNodeManager has not yet started");
-      return;
-    }
-    logger.info("LogNodeManager starts closing..");
-    for (WriteLogNode node : nodeMap.values()) {
-      try {
-        node.shutdown();
-      } catch (IOException e) {
-        logger.error("failed to close {}", node, e);
-      }
-    }
-    nodeMap.clear();
-    if (isActivated(forceThread)) {
-      forceThread.interrupt();
-      logger.info("Waiting for force thread to stop");
-      while (forceThread.isAlive()) {
-        // wait for forceThread
-      }
-    }
-    logger.info("LogNodeManager closed.");
-  }
-
-  @Override
   public ServiceType getID() {
     return ServiceType.WAL_SERVICE;
   }
