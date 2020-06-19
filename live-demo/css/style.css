@@ -1,0 +1,157 @@
+/*
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+ */
+/* command links */
+a[href^='#'] {
+    text-decoration: none;
+    font-family: monospace; }
+  
+  .tip {
+    font-size: 0.85em; }
+  
+  a:hover {
+    background-color: black;
+    color: white; }
+  
+  div.nopad {
+    padding: 0px; }
+  
+  #header {
+    margin: auto;
+    margin-top: 1em;
+    padding: 0em;
+    padding-top: 0.25em;
+    padding-bottom: 0.25em;
+    border: 5px solid #595540;
+    text-align: center;
+    width: 600px;
+    background-color: #cc8139; }
+  
+  #log {
+    width: 90%;
+    height: 75%;
+    /* background-color: papayawhip; */
+    margin: auto;
+    position: relative;
+    margin-top: -5px;
+    padding: 1em 1em 1em 1em;
+    border-radius: 3px;
+    border: 1px solid #000;
+    overflow: auto;
+    font-family: monospace;
+    color: #262626;
+    font-size: 1.25em;
+    word-wrap: break-word; }
+    #log h1 {
+      font-size: 1.5em;
+      line-height: 1.25em; }
+    #log .line {
+      margin: 0em 0em 1em 0em;
+      line-height: 1.25em; }
+    #log span.prompt {
+      font-weight: normal;
+      color: #595540; }
+    #log .input {
+      font-weight: bold;
+      color: #595540; }
+      #log .input a {
+        color: #595540; }
+    #log .response {
+      font-weight: bold;
+      color: #262626; }
+    #log .notification {
+      font-weight: normal;
+      background-color: #262626;
+      color: #cc8139;
+      font-family: sans-serif;
+      font-size: 0.75em;
+      padding: 1em; }
+    #log .error {
+      font-weight: normal;
+      /* background-color: darkred; */
+      color: darkred;
+      font-family: sans-serif;
+      font-size: 0.75em;
+       }
+    #log a {
+      color: peachpuff; }
+    #log a.comment {
+      color: gray; }
+    #log .tutorial_next {
+      margin: 0px;
+      text-align: right; }
+    #log pre {
+      margin-left: 2em; }
+    #log li {
+      padding: 0.25em; }
+  
+  #toolbar {
+    width: 100%;
+  }
+
+  #toolbar #input{
+    width: 95%;
+    padding: 0;
+    font-size: 1em;
+    font-weight: bold;
+    color: #595540;
+    border: none;
+    outline: none;
+    font-family: monospace;
+  }
+
+    /* #toolbar #input {
+      padding: 0.5em;
+      width: 100%;
+      font-size: 1.5em;
+      background-color: #eceff1;
+      font-family: monospace;
+      outline: none;
+      background-image: url("../images/prompt.png");
+      background-repeat: no-repeat;
+      padding-left: 45px; 
+
+      outline-style: none ;
+      border: 1px solid #ccc; 
+      border-radius: 3px;
+    } */
+
+  
+  #footer {
+    width: 600px;
+    margin: auto;
+    text-align: center;
+    /* color: papayawhip; */
+    font-size: 0.75em; }
+    #footer a {
+      color: peachpuff; }
+  
+  /* body {
+    background-color: #746363; } */
+
+    th,td{
+      border: 1px solid #000;
+    }
+
+    table{
+      font-weight: normal;
+      /* background-color: darkred; */
+      /* color: darkred; */
+      font-family: sans-serif;
+      font-size: 0.75em;
+    }
