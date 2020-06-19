@@ -48,7 +48,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.*;
@@ -275,7 +274,7 @@ public class AggregationExecutor {
       aggregateResults.add(result);
     }
     aggregateWithValueFilter(aggregateResults, timestampGenerator, readersOfSelectedSeries);
-    return constructDataSet(aggregateResults, queryPlan);
+    return constructDataSet(aggregateResults, (AggregationPlan) queryPlan);
   }
 
   protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan) throws StorageEngineException {
@@ -334,26 +333,33 @@ public class AggregationExecutor {
       Map<Integer, String> pathIndex = new HashMap<>();
       List<Path> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();
-      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
       RowRecord curRecord = null;
       switch (aggregation) {
         case "count":
+          Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
           curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex);
           for (int i = 0; i < finalPaths.size(); i++) {
             dataTypes.add(TSDataType.INT64);
           }
           break;
+        case "sum":
+          Map<String, Long> finalPathsSum = FilePathUtils.getPathByLevel(plan, pathIndex);
+          curRecord = FilePathUtils.mergeRecordByPath(record, finalPathsSum, pathIndex);
+          for (int i = 0; i < finalPathsSum.size(); i++) {
+            dataTypes.add(TSDataType.INT64);
+          }
+          break;
         case "avg":
-          curRecord = FilePathUtils.avgRecordByPath(record, finalPaths, pathIndex);
-          for (int i = 0; i < finalPaths.size(); i++) {
+          Map<String, Float> finalPathsAvg = FilePathUtils.getPathByLevelAvg(plan, pathIndex);
+          curRecord = FilePathUtils.avgRecordByPath(record, finalPathsAvg, pathIndex);
+          for (int i = 0; i < finalPathsAvg.size(); i++) {
             dataTypes.add(TSDataType.FLOAT);
           }
           break;
+        default:
+          break;
       }
-
       
-      
-
       dataSet = new SingleDataSet(paths, dataTypes);
       dataSet.setRecord(curRecord);
     } else {
