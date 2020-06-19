@@ -48,7 +48,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -65,7 +67,6 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
@@ -228,6 +229,26 @@ public class StorageEngine implements IService {
   }
 
   @Override
+  public void shutdown(long millseconds) throws ShutdownException {
+    try {
+      forceCloseAllProcessor();
+    } catch (TsFileProcessorException e) {
+      throw new ShutdownException(e);
+    }
+    if (ttlCheckThread != null) {
+      ttlCheckThread.shutdownNow();
+      try {
+        ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("TTL check thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
+      }
+    }
+    recoveryThreadPool.shutdownNow();
+    this.reset();
+  }
+
+  @Override
   public ServiceType getID() {
     return ServiceType.STORAGE_ENGINE_SERVICE;
   }
@@ -315,6 +336,13 @@ public class StorageEngine implements IService {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.syncCloseAllWorkingTsFileProcessors();
+    }
+  }
+
+  public void forceCloseAllProcessor() throws TsFileProcessorException {
+    logger.info("Start closing all storage group processor");
+    for (StorageGroupProcessor processor : processorMap.values()) {
+      processor.forceCloseAllWorkingTsFileProcessors();
     }
   }
 
