@@ -47,6 +47,7 @@ import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -1090,13 +1091,40 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   /**
+   * according to the consistency configuration, decide whether to execute syncLeader or not and
+   * throws exception when failed
+   *
+   * @throws CheckConsistencyException
+   */
+  public void syncLeaderWithConsistencyCheck() throws CheckConsistencyException {
+    switch (ClusterDescriptor.getInstance().getConfig().getConsistencyLevel()) {
+      case STRONG_CONSISTENCY:
+        if (!syncLeader()) {
+          throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
+        }
+        return;
+      case MID_CONSISTENCY:
+        // do not care success or not
+        syncLeader();
+        return;
+      case WEAK_CONSISTENCY:
+        // do nothing
+        return;
+      default:
+        // this should not happen in theory
+        throw new CheckConsistencyException(
+            "unknown consistency=" + ClusterDescriptor.getInstance().getConfig()
+                .getConsistencyLevel().name());
+    }
+  }
+
+  /**
    * Request and check the leader's commitId to see whether this node has caught up. If not, wait
    * until this node catches up.
    *
    * @return true if the node has caught up, false otherwise
    */
   public boolean syncLeader() {
-
     if (character == NodeCharacter.LEADER) {
       return true;
     }

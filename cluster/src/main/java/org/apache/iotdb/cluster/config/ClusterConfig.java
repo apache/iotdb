@@ -31,7 +31,9 @@ public class ClusterConfig {
   private int localDataPort = 40010;
   private int localClientPort = 55560;
 
-  // each one is a "<IP | domain name>:<meta port>:<data port>" string tuple
+  /**
+   * each one is a "<IP | domain name>:<meta port>:<data port>" string tuple
+   */
   private List<String> seedNodeUrls = Arrays.asList("127.0.0.1:9003:40010", "127.0.0.1"
       + ":9004:40011", "127.0.0.1:9005:40012");
 
@@ -73,6 +75,16 @@ public class ClusterConfig {
    * clients.
    */
   private int selectorNumOfClientPool = Runtime.getRuntime().availableProcessors() * 2;
+
+  /**
+   * consistency level, now three consistency levels are supported: strong, mid and weak. Strong
+   * consistency means the server will first try to synchronize with the leader to get the newest
+   * meta data, if failed(timeout), directly report an error to the user; While mid consistency
+   * means the server will first try to synchronize with the leader, but if failed(timeout), it will
+   * give up and just use current data it has cached before; Weak consistency do not synchronize
+   * with the leader and simply use the local data
+   */
+  private ConsistencyLevel consistencyLevel = ConsistencyLevel.MID_CONSISTENCY;
 
   public int getSelectorNumOfClientPool() {
     return selectorNumOfClientPool;
@@ -200,5 +212,13 @@ public class ClusterConfig {
 
   public void setLogDeleteCheckIntervalSecond(int logDeleteCheckIntervalSecond) {
     this.logDeleteCheckIntervalSecond = logDeleteCheckIntervalSecond;
+  }
+
+  public ConsistencyLevel getConsistencyLevel() {
+    return consistencyLevel;
+  }
+
+  public void setConsistencyLevel(ConsistencyLevel consistencyLevel) {
+    this.consistencyLevel = consistencyLevel;
   }
 }

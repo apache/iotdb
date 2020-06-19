@@ -223,6 +223,11 @@ public class ClusterDescriptor {
         .getProperty("LOG_DELETION_CHECK_INTERVAL_SECOND",
             String.valueOf(config.getLogDeleteCheckIntervalSecond()))));
 
+    String consistencyLevel = properties.getProperty("CONSISTENCY_LEVEL");
+    if (consistencyLevel != null) {
+      config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));
+    }
+
     String seedUrls = properties.getProperty("SEED_NODES");
     if (seedUrls != null) {
       List<String> urlList = getSeedUrlList(seedUrls);
