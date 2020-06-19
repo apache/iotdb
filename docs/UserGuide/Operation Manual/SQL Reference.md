@@ -32,7 +32,7 @@ All of these statements are write in IoTDB's own syntax, for details about the s
 
 ## Keywords
 
-Please not use these keywords as identifiers. If you really want to use these keywords in your iotdb path, please contact us.
+Do not use the following keywords as identifiers. You can open an [issue](https://issues.apache.org/jira/projects/IOTDB/issues) to provide new requirements or suggestions. 
 
 ```
 CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,

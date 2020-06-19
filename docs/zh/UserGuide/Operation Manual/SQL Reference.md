@@ -23,7 +23,7 @@
 
 ## 关键字
 
-不要使用这些关键字作为标识符。如果你真的想需要使用这些关键字在你的iotdb路径上，请联系我们。
+不要使用这些关键字作为标识符。如果有需求或者建议，可以在[issue](https://issues.apache.org/jira/projects/IOTDB/issues)上提出。
 
 ```
 CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,
