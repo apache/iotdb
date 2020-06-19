@@ -1193,7 +1193,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public void forceCloseAllWorkingTsFileProcessors() {
+  public void forceCloseAllWorkingTsFileProcessors() throws TsFileProcessorException {
     writeLock();
     try {
       logger.info("force close all processors in storage group: {}", storageGroupName);
@@ -1207,8 +1207,6 @@ public class StorageGroupProcessor {
           workUnsequenceTsFileProcessors.values())) {
         tsFileProcessor.putMemTableBackAndClose();
       }
-    } catch (TsFileProcessorException e) {
-      logger.error("error when force closing TsFileProcessors in storage group: {}", storageGroupName, e);
     } finally {
       writeUnlock();
     }

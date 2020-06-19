@@ -48,7 +48,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -227,8 +229,12 @@ public class StorageEngine implements IService {
   }
 
   @Override
-  public void shutdown(long millseconds) {
-    forceCloseAllProcessor();
+  public void shutdown(long millseconds) throws ShutdownException {
+    try {
+      forceCloseAllProcessor();
+    } catch (TsFileProcessorException e) {
+      throw new ShutdownException(e);
+    }
     if (ttlCheckThread != null) {
       ttlCheckThread.shutdownNow();
       try {
@@ -333,7 +339,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  public void forceCloseAllProcessor() {
+  public void forceCloseAllProcessor() throws TsFileProcessorException {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.forceCloseAllWorkingTsFileProcessors();
