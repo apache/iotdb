@@ -202,12 +202,12 @@ public abstract class TVList {
     PrimitiveArrayPool.getInstance().release(timestamps.remove(timestamps.size() - 1));
   }
 
-  public int delete(long upperBound) {
+  public int delete(long lowerBound, long upperBound) {
     int newSize = 0;
     minTime = Long.MAX_VALUE;
     for (int i = 0; i < size; i++) {
       long time = getTime(i);
-      if (time > upperBound) {
+      if (time < lowerBound || time > upperBound) {
         set(i, newSize++);
         minTime = time < minTime ? time : minTime;
       }

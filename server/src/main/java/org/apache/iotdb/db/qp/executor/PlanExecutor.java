@@ -712,7 +712,7 @@ public class PlanExecutor implements IPlanExecutor {
         throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
       }
       for (String path : existingPaths) {
-        delete(new Path(path), deletePlan.getDeleteTime());
+        delete(new Path(path), deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
@@ -881,7 +881,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void delete(Path path, long timestamp) throws QueryProcessException {
+  public void delete(Path path, long startTime, long endTime) throws QueryProcessException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
@@ -890,7 +890,7 @@ public class PlanExecutor implements IPlanExecutor {
             String.format("Time series %s does not exist.", path.getFullPath()));
       }
       mManager.getStorageGroupName(path.getFullPath());
-      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
+      StorageEngine.getInstance().delete(deviceId, measurementId, startTime, endTime);
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }

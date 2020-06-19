@@ -223,14 +223,14 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public void delete(String deviceId, String measurementId, long timestamp) {
+  public void delete(String deviceId, String measurementId, long startTimestamp, long endTimestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
     if (deviceMap != null) {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
       if (chunk == null) {
         return;
       }
-      int deletedPointsNumber = chunk.delete(timestamp);
+      int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
       totalPointsNum -= deletedPointsNumber;
     }
   }

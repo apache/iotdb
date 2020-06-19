@@ -1303,9 +1303,11 @@ public class StorageGroupProcessor {
    *
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the delete range is (0, timestamp].
+   * @param startTime the startTime of delete range.
+   * @param endTime the endTime of delete range.
    */
-  public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
+  public void delete(String deviceId, String measurementId, long startTime, long endTime)
+      throws IOException {
     // TODO: how to avoid partial deletion?
     //FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1330,14 +1332,11 @@ public class StorageGroupProcessor {
         return;
       }
 
-      // time partition to divide storage group
-      long timePartitionId = StorageEngine.getTimePartition(timestamp);
       // write log to impacted working TsFileProcessors
-      logDeletion(timestamp, deviceId, measurementId, timePartitionId);
+      logDeletion(startTime, endTime, deviceId, measurementId);
 
       Path fullPath = new Path(deviceId, measurementId);
-      Deletion deletion = new Deletion(fullPath,
-          getVersionControllerByTimePartitionId(timePartitionId).nextVersion(), timestamp);
+      Deletion deletion = new Deletion(fullPath, 0, startTime, endTime);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
@@ -1358,18 +1357,20 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void logDeletion(long timestamp, String deviceId, String measurementId, long timePartitionId)
+  private void logDeletion(long startTime, long endTime, String deviceId, String measurementId)
       throws IOException {
+    long timePartitionStartId = StorageEngine.getTimePartition(startTime);
+    long timePartitionEndId = StorageEngine.getTimePartition(startTime);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      DeletePlan deletionPlan = new DeletePlan(timestamp, new Path(deviceId, measurementId));
+      DeletePlan deletionPlan = new DeletePlan(startTime, endTime, new Path(deviceId, measurementId));
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-        if (entry.getKey() <= timePartitionId) {
+        if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
           entry.getValue().getLogNode().write(deletionPlan);
         }
       }
 
       for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-        if (entry.getKey() <= timePartitionId) {
+        if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
           entry.getValue().getLogNode().write(deletionPlan);
         }
       }
@@ -1383,7 +1384,8 @@ public class StorageGroupProcessor {
     String deviceId = deletion.getDevice();
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!tsFileResource.containsDevice(deviceId) ||
-          deletion.getTimestamp() < tsFileResource.getStartTime(deviceId)) {
+          deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
+          deletion.getStartTime() > tsFileResource.getEndTime(deviceId)) {
         continue;
       }
 

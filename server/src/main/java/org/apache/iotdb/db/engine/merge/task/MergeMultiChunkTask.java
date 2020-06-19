@@ -326,6 +326,7 @@ public class MergeMultiChunkTask {
 
     int unclosedChunkPoint = lastUnclosedChunkPoint;
     boolean chunkModified = currMeta.getDeletedAt() > Long.MIN_VALUE;
+    chunkModified = !currMeta.getDeleteRangeList().isEmpty();
 
     // no need to write the chunk to .merge file
     if (!fullMerge && lastUnclosedChunkPoint == 0 && !chunkTooSmall && !chunkOverflowed

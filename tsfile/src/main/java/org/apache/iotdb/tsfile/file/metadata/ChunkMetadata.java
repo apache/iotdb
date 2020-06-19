@@ -21,11 +21,14 @@ package org.apache.iotdb.tsfile.file.metadata;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -53,6 +56,8 @@ public class ChunkMetadata implements Accountable {
    * All data with timestamp <= deletedAt are considered deleted.
    */
   private long deletedAt = Long.MIN_VALUE;
+
+  private List<Pair<Long, Long>> deleteRangeList = new ArrayList<>();
 
   private boolean modified;
 
@@ -177,6 +182,14 @@ public class ChunkMetadata implements Accountable {
 
   public void setDeletedAt(long deletedAt) {
     this.deletedAt = deletedAt;
+  }
+
+  public List<Pair<Long, Long>> getDeleteRangeList() {
+    return deleteRangeList;
+  }
+
+  public void setDeleteRangeList(List<Pair<Long, Long>> list) {
+    this.deleteRangeList = list;
   }
 
   public IChunkLoader getChunkLoader() {

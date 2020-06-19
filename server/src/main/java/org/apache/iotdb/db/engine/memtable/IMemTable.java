@@ -91,9 +91,10 @@ public interface IMemTable {
    *
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the upper-bound of deletion time.
+   * @param startTimestamp the lower-bound of deletion time.
+   * @param endTimestamp the upper-bound of deletion time
    */
-  void delete(String deviceId, String measurementId, long timestamp);
+  void delete(String deviceId, String measurementId, long startTimestamp, long endTimestamp);
 
   /**
    * Delete data in it whose timestamp <= 'timestamp' and belonging to timeseries

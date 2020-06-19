@@ -101,5 +101,5 @@ public interface IWritableMemChunk {
   /**
    * @return how many points are deleted
    */
-  int delete(long upperBound);
+  int delete(long lowerBound, long upperBound);
 }

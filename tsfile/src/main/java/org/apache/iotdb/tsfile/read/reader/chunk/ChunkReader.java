@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
+import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -32,6 +33,7 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.v1.file.utils.HeaderUtils;
 
 import java.io.IOException;
@@ -59,6 +61,8 @@ public class ChunkReader implements IChunkReader {
    */
   protected long deletedAt;
 
+  private List<Pair<Long, Long>> deleteRangeList = new ArrayList<>();
+
   /**
    * constructor of ChunkReader.
    *
@@ -69,6 +73,7 @@ public class ChunkReader implements IChunkReader {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
     this.deletedAt = chunk.getDeletedAt();
+    this.deleteRangeList = chunk.getDeleteRangeList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
 
@@ -80,6 +85,7 @@ public class ChunkReader implements IChunkReader {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
     this.deletedAt = chunk.getDeletedAt();
+    this.deleteRangeList = chunk.getDeleteRangeList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     this.isFromOldTsFile = isFromOldFile;
@@ -157,6 +163,7 @@ public class ChunkReader implements IChunkReader {
     PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
     reader.setDeletedAt(deletedAt);
+    reader.setDeleteRangeList(deleteRangeList);
     return reader;
   }
 
