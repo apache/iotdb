@@ -45,7 +45,7 @@ function submitCommand(text, dontClearInput) {
     $("#input").val("");
   }
 
-  var url = "http://115.159.109.227:8181/rest/sql"
+  var url = "http://localhost:8181/rest/sql"
 
   const data = { "sql": text };
 
