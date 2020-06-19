@@ -56,7 +56,7 @@ public class IoTDBConfig {
 
   // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
   private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER +"(" + NODE_MATCHER+ ")*[\"|\']";
+      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER + "(" + NODE_MATCHER + ")*[\"|\']";
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
@@ -386,7 +386,8 @@ public class IoTDBConfig {
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
 
   /**
-   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT
+   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
+   * or TEXT
    */
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
@@ -439,6 +440,21 @@ public class IoTDBConfig {
    * How many threads will be set up to perform main merge tasks.
    */
   private int mergeThreadNum = 1;
+
+  /**
+   * Is vm merge enable
+   */
+  private boolean enableVm = true;
+
+  /**
+   * When a memTable's point num exceeds this, the vm memtable is flushed to disk
+   */
+  private int memtablePointThreshold = 1024;
+
+  /**
+   * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
+   */
+  private int maxVmNum = 5;
 
   /**
    * How many threads will be set up to perform merge chunk sub-tasks.
@@ -556,9 +572,9 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL will
-   * also be affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
+   * property is changed, previous created storage group which are not set TTL will also be
+   * affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -568,8 +584,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition if disabled, all data belongs to partition 0
    */
   private boolean enablePartition = false;
 
@@ -1175,6 +1190,30 @@ public class IoTDBConfig {
     this.mergeFileStrategy = mergeFileStrategy;
   }
 
+  public boolean isEnableVm() {
+    return enableVm;
+  }
+
+  public void setEnableVm(boolean enableVm) {
+    this.enableVm = enableVm;
+  }
+
+  public int getMemtablePointThreshold() {
+    return memtablePointThreshold;
+  }
+
+  public void setMemtablePointThreshold(int memtablePointThreshold) {
+    this.memtablePointThreshold = memtablePointThreshold;
+  }
+
+  public int getMaxVmNum() {
+    return maxVmNum;
+  }
+
+  public void setMaxVmNum(int maxVmNum) {
+    this.maxVmNum = maxVmNum;
+  }
+
   public int getMergeChunkSubThreadNum() {
     return mergeChunkSubThreadNum;
   }
@@ -1211,7 +1250,8 @@ public class IoTDBConfig {
     return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
@@ -1336,7 +1376,9 @@ public class IoTDBConfig {
     if (nanStringInferType != TSDataType.DOUBLE &&
         nanStringInferType != TSDataType.FLOAT &&
         nanStringInferType != TSDataType.TEXT) {
-      throw new IllegalArgumentException("Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is " + nanStringInferType);
+      throw new IllegalArgumentException(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
+              + nanStringInferType);
     }
     this.nanStringInferType = nanStringInferType;
   }

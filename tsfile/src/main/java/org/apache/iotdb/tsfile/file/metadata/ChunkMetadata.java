@@ -62,7 +62,7 @@ public class ChunkMetadata implements Accountable {
   private IChunkLoader chunkLoader;
 
   private Statistics statistics;
-  
+
   private boolean isFromOldTsFile = false;
 
   private long ramSize;
@@ -77,9 +77,9 @@ public class ChunkMetadata implements Accountable {
    * constructor of ChunkMetaData.
    *
    * @param measurementUid measurement id
-   * @param tsDataType     time series data type
-   * @param fileOffset     file offset
-   * @param statistics     value statistics
+   * @param tsDataType time series data type
+   * @param fileOffset file offset
+   * @param statistics value statistics
    */
   public ChunkMetadata(String measurementUid, TSDataType tsDataType, long fileOffset,
       Statistics statistics) {
@@ -238,5 +238,11 @@ public class ChunkMetadata implements Accountable {
   @Override
   public long getRamSize() {
     return ramSize;
+  }
+
+  public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
+    this.statistics.mergeStatistics(chunkMetadata.getStatistics());
+    this.ramSize = calculateRamSize();
+    this.offsetOfChunkHeader += chunkMetadata.getOffsetOfChunkHeader();
   }
 }
