@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
 import java.io.BufferedInputStream;
@@ -1647,26 +1648,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return true;
   }
 
-  private TSEncoding getDefaultEncoding(TSDataType dataType) {
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    switch (dataType) {
-      case BOOLEAN:
-        return conf.getDefaultBooleanEncoding();
-      case INT32:
-        return conf.getDefaultInt32Encoding();
-      case INT64:
-        return conf.getDefaultInt64Encoding();
-      case FLOAT:
-        return conf.getDefaultFloatEncoding();
-      case DOUBLE:
-        return conf.getDefaultDoubleEncoding();
-      case TEXT:
-        return conf.getDefaultTextEncoding();
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType.toString()));
-    }
-  }
+
 
   /**
    * To check which timeseries in the input list is unregistered
