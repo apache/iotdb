@@ -31,6 +31,8 @@ public class IoTDBConstant {
       IoTDBConstant.class.getPackage().getImplementationVersion() != null ? IoTDBConstant.class
           .getPackage().getImplementationVersion() : "UNKNOWN";
 
+  public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
+
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
