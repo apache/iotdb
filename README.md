@@ -62,7 +62,7 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
-  - [Build from source](#build-from-source)
+    - [Build from source](#build-from-source)
     - [Configurations](#configurations)
   - [Start](#start)
     - [Start IoTDB](#start-iotdb)
