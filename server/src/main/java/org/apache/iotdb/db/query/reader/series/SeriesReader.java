@@ -137,14 +137,6 @@ public class SeriesReader {
     return seqFileResource.isEmpty() && unseqFileResource.isEmpty();
   }
 
-  public List<TsFileResource> getSeqFileResource() {
-    return seqFileResource;
-  }
-
-  public List<TsFileResource> getUnseqFileResource() {
-    return unseqFileResource;
-  }
-
   boolean hasNextFile() throws IOException {
 
     if (!cachedPageReaders.isEmpty()

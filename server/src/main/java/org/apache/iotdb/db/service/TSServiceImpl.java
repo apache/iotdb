@@ -600,7 +600,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (plan instanceof QueryPlan && IoTDBDescriptor.getInstance().getConfig()
           .isEnablePerformanceTracing()) {
         performanceLogger.info(
-            "Number of tsfiles: {} \nNumber of sequence files: {} \nNumber of unsequence files: {} \nNumber of chunks: {}\nAverage size of chunks: {}",
+            "Number of tsfiles: {} \nNumber of sequence files: {} \nNumber of unsequence files: {} \n"
+                + "Number of chunks: {}\nAverage size of chunks: {}",
             StorageGroupProcessor.seqFile.size() + StorageGroupProcessor.unseqFile.size(),
             StorageGroupProcessor.seqFile.size(), StorageGroupProcessor.unseqFile.size(),
             SeriesReader.totalChunkNum,
