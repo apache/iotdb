@@ -68,7 +68,27 @@ The main logic is the buildReader function in src / main / scala / org / apache 
 The main logic of the SQL analysis of the wide table structure is in src / main / scala / org / apache / iotdb / spark / tsfile / WideConverter.scala. This structure is basically the same as the Tsfile native query structure. No special processing is required, and the SQL statement is directly converted into  Corresponding query expression
 
 #### 4. Narrow table structure
-The main logic of the SQL analysis of the wide table structure is src / main / scala / org / apache / iotdb / spark / tsfile / NarrowConverter.scala. After the SQL is converted to an expression, the narrow table structure is different from the Tsfile native query structure.  The expression is converted into a disjunction expression related to the device before it can be converted into a query of Tsfile. The conversion code is in src / main / java / org / apache / iotdb / spark / tsfile / qp
+The main logic of the SQL analysis of the wide table structure is src / main / scala / org / apache / iotdb / spark / tsfile / NarrowConverter.scala. 
+
+Firstly we use required schema to decide which timeseries we should get from time file
+```
+requiredSchema.foreach((field: StructField) => {
+  if (field.name != QueryConstant.RESERVED_TIME
+    && field.name != NarrowConverter.DEVICE_NAME) {
+    measurementNames += field.name
+  }
+})
+```
+
+After the SQL is converted to an expression, the narrow table structure is different from the Tsfile native query structure.  The expression is converted into a disjunction expression related to the device before it can be converted into a query of Tsfile. The conversion code is in src / main / java / org / apache / iotdb / spark / tsfile / qp
+
+example：
+```
+select time, device_name, s1 from tsfile_table where time > 1588953600000 and time < 1589040000000 and device_name = 'root.group1.d1'
+```
+Obviously we only need timeseries 'root.group1.d1.s1' and our expression is [time > 1588953600000] and [time < 1589040000000]
+
+
 
 #### 5. Query execution
 The actual data query execution is performed by the Tsfile native component, see:

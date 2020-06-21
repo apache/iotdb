@@ -103,17 +103,17 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write if the object not equals null. Eg, object eauals null, then write false.
+   * write if the object equals null. Eg, object equals null, then write true.
    */
-  public static int writeIsNotNull(Object object, OutputStream outputStream) throws IOException {
-    return write(object != null, outputStream);
+  public static int writeIsNull(Object object, OutputStream outputStream) throws IOException {
+    return write(object == null, outputStream);
   }
 
   /**
-   * write if the object not equals null. Eg, object eauals null, then write false.
+   * write if the object equals null. Eg, object equals null, then write true.
    */
-  public static int writeIsNotNull(Object object, ByteBuffer buffer) {
-    return write(object != null, buffer);
+  public static int writeIsNull(Object object, ByteBuffer buffer) {
+    return write(object == null, buffer);
   }
 
   /**

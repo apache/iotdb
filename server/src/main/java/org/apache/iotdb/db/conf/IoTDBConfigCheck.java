@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.MLogWriter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
@@ -69,8 +70,15 @@ public class IoTDBConfigCheck {
   private static final String ENABLE_PARTITION_STRING = "enable_partition";
   private static boolean enablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
 
+  private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
+  private static final String tagAttributeTotalSize = String.valueOf(IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize());
+
+  private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
+  private static final String maxDegreeOfIndexNode = String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
+
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
-  private static String iotdbVersion = "0.10.0";
+
+  private static final String ERROR_LOG = "Wrong %s, please set as: %s !";
 
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
@@ -81,7 +89,7 @@ public class IoTDBConfigCheck {
   }
 
   private IoTDBConfigCheck() {
-    logger.info("Starting IoTDB " + iotdbVersion);
+    logger.info("Starting IoTDB " + IoTDBConstant.VERSION);
 
     // check whether SCHEMA_DIR exists, create if not exists
     File dir = SystemFileFactory.INSTANCE.getFile(SCHEMA_DIR);
@@ -112,11 +120,13 @@ public class IoTDBConfigCheck {
       System.exit(-1);
     }
 
+    systemProperties.put(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
     systemProperties.put(TIMESTAMP_PRECISION_STRING, timestampPrecision);
     systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
-    systemProperties.put(IOTDB_VERSION_STRING, iotdbVersion);
+    systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
+    systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
   }
 
 
@@ -193,8 +203,10 @@ public class IoTDBConfigCheck {
     try (FileOutputStream tmpFOS = new FileOutputStream(tmpPropertiesFile.toString())) {
       properties.setProperty(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
       properties.setProperty(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
-      properties.setProperty(IOTDB_VERSION_STRING, iotdbVersion);
+      properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
+      properties.setProperty(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
+      properties.setProperty(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
@@ -237,6 +249,9 @@ public class IoTDBConfigCheck {
     }
   }
 
+  /**
+   * Check all immutable properties
+   */
   private void checkProperties() throws IOException {
     for (Entry<String, String> entry : systemProperties.entrySet()) {
       if (!properties.containsKey(entry.getKey())) {
@@ -246,20 +261,32 @@ public class IoTDBConfigCheck {
     }
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
-      logger.error("Wrong {}, please set as: {} !", TIMESTAMP_PRECISION_STRING, properties
-          .getProperty(TIMESTAMP_PRECISION_STRING));
+      logger.error(String.format(ERROR_LOG, TIMESTAMP_PRECISION_STRING, properties
+          .getProperty(TIMESTAMP_PRECISION_STRING)));
       System.exit(-1);
     }
 
     if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
-      logger.error("Wrong {}, please set as: {} !", PARTITION_INTERVAL_STRING, properties
-          .getProperty(PARTITION_INTERVAL_STRING));
+      logger.error(String.format(ERROR_LOG, PARTITION_INTERVAL_STRING, properties
+          .getProperty(PARTITION_INTERVAL_STRING)));
       System.exit(-1);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {
-      logger.error("Wrong {}, please set as: {} !", TSFILE_FILE_SYSTEM_STRING, properties
-          .getProperty(TSFILE_FILE_SYSTEM_STRING));
+      logger.error(String.format(ERROR_LOG, TSFILE_FILE_SYSTEM_STRING, properties
+          .getProperty(TSFILE_FILE_SYSTEM_STRING)));
+      System.exit(-1);
+    }
+
+    if (!(properties.getProperty(TAG_ATTRIBUTE_SIZE_STRING).equals(tagAttributeTotalSize))) {
+      logger.error(String.format(ERROR_LOG, TAG_ATTRIBUTE_SIZE_STRING, properties
+          .getProperty(TAG_ATTRIBUTE_SIZE_STRING)));
+      System.exit(-1);
+    }
+
+    if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
+      logger.error(String.format(ERROR_LOG, MAX_DEGREE_OF_INDEX_STRING, properties
+          .getProperty(MAX_DEGREE_OF_INDEX_STRING)));
       System.exit(-1);
     }
   }
