@@ -51,6 +51,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -106,11 +107,6 @@ public class MemTableFlushTask {
       throws ExecutionException, InterruptedException, IOException {
     long start = System.currentTimeMillis();
     long sortTime = 0;
-    if (isFull) {
-      File tmpFile = createNewTmpFile();
-      tmpWriter = new RestorableTsFileIOWriter(tmpFile);
-      encodingTaskQueue.add(new MergeVmIoTask(tmpWriter));
-    }
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.add(new StartFlushGroupIOTask(deviceId));
       for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
@@ -126,6 +122,11 @@ public class MemTableFlushTask {
         }
       }
       encodingTaskQueue.add(new EndChunkGroupIoTask());
+    }
+    if (isFull) {
+      File tmpFile = createNewTmpFile();
+      tmpWriter = new RestorableTsFileIOWriter(tmpFile);
+      encodingTaskQueue.add(new MergeVmIoTask(tmpWriter));
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && !isVm) {
       encodingTaskQueue.add(new MergeVmIoTask(writer));
@@ -150,7 +151,15 @@ public class MemTableFlushTask {
     ioTaskFuture.get();
 
     try {
-      writer.writeVersion(memTable.getVersion());
+      if (isVm) {
+        if (isFull) {
+          tmpWriter.writeVersion(memTable.getVersion());
+        } else {
+          vmWriters.get(vmWriters.size() - 1).writeVersion(memTable.getVersion());
+        }
+      } else {
+        writer.writeVersion(memTable.getVersion());
+      }
     } catch (IOException e) {
       throw new ExecutionException(e);
     }
@@ -285,18 +294,27 @@ public class MemTableFlushTask {
         long starTime = System.currentTimeMillis();
         try {
           if (ioMessage instanceof StartFlushGroupIOTask) {
-            writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
+            if (isVm) {
+              this.vmWriters
+                  .get(MemTableFlushTask.this.vmWriters.size() - 1)
+                  .startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
+            } else {
+              writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
+            }
           } else if (ioMessage instanceof MergeVmIoTask) {
             RestorableTsFileIOWriter mergeWriter = ((MergeVmIoTask) ioMessage).mergeWriter;
             for (String deviceId : memTable.getMemTableMap().keySet()) {
+              mergeWriter.startChunkGroup(deviceId);
               for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
                 ChunkMetadata newChunkMetadata = null;
                 Chunk newChunk = null;
                 for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+                  TsFileSequenceReader reader = new TsFileSequenceReader(
+                      vmWriter.getFile().getAbsolutePath());
                   List<ChunkMetadata> chunkMetadataList = vmWriter.getMetadatasForQuery()
                       .get(deviceId).get(measurementId);
                   for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-                    Chunk chunk = chunkMetadata.getChunkLoader().loadChunk(chunkMetadata);
+                    Chunk chunk = reader.readMemChunk(chunkMetadata);
                     if (newChunkMetadata == null) {
                       newChunkMetadata = chunkMetadata;
                       newChunk = chunk;
@@ -310,21 +328,22 @@ public class MemTableFlushTask {
                   mergeWriter.writeChunk(newChunk, newChunkMetadata);
                 }
               }
+              mergeWriter.endChunkGroup();
             }
           } else if (ioMessage instanceof IChunkWriter) {
             ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
             if (isVm) {
-              if (isFull) {
-                chunkWriter.writeToFileWriter(MemTableFlushTask.this.vmWriters.get(0));
-              } else {
-                chunkWriter.writeToFileWriter(MemTableFlushTask.this.vmWriters
-                    .get(MemTableFlushTask.this.vmWriters.size() - 1));
-              }
+              chunkWriter.writeToFileWriter(MemTableFlushTask.this.vmWriters
+                  .get(MemTableFlushTask.this.vmWriters.size() - 1));
             } else {
               chunkWriter.writeToFileWriter(MemTableFlushTask.this.writer);
             }
           } else {
-            writer.endChunkGroup();
+            if (isVm) {
+              this.vmWriters.get(MemTableFlushTask.this.vmWriters.size() - 1).endChunkGroup();
+            } else {
+              writer.endChunkGroup();
+            }
           }
         } catch (IOException e) {
           logger.error("Storage group {} memtable {}, io task meets error.", storageGroup,

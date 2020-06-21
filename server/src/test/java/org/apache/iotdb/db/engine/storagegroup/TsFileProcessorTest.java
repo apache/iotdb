@@ -23,10 +23,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
@@ -66,24 +68,28 @@ public class TsFileProcessorTest {
   private Map<String, String> props = Collections.emptyMap();
   private QueryContext context;
   private static Logger logger = LoggerFactory.getLogger(TsFileProcessorTest.class);
+
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
     MetadataManagerHelper.initMetadata();
     ActiveTimeSeriesCounter.getInstance().init(storageGroup);
     context = EnvironmentUtils.TEST_QUERY_CONTEXT;
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(false);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     EnvironmentUtils.cleanDir(TestConstant.OUTPUT_DATA_DIR);
+    IoTDBDescriptor.getInstance().getConfig().setEnableVm(true);
   }
 
   @Test
   public void testWriteAndFlush() throws IOException, WriteProcessException {
     logger.info("testWriteAndFlush begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -129,9 +135,10 @@ public class TsFileProcessorTest {
   }
 
   @Test
-  public void testWriteAndRestoreMetadata() throws IOException, WriteProcessException{
+  public void testWriteAndRestoreMetadata() throws IOException, WriteProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -182,8 +189,10 @@ public class TsFileProcessorTest {
         SystemFileFactory.INSTANCE.getFile(filePath));
     Map<String, List<ChunkMetadata>> restoredChunkMetaDataListInChunkGroups = restorableTsFileIOWriter
         .getDeviceChunkMetadataMap();
-    assertEquals(chunkMetaDataListInChunkGroups.size(), restoredChunkMetaDataListInChunkGroups.size());
-    for (Map.Entry<String, List<ChunkMetadata>> entry1 : chunkMetaDataListInChunkGroups.entrySet()) {
+    assertEquals(chunkMetaDataListInChunkGroups.size(),
+        restoredChunkMetaDataListInChunkGroups.size());
+    for (Map.Entry<String, List<ChunkMetadata>> entry1 : chunkMetaDataListInChunkGroups
+        .entrySet()) {
       for (Map.Entry<String, List<ChunkMetadata>> entry2
           : restoredChunkMetaDataListInChunkGroups.entrySet()) {
         assertEquals(entry1.getKey(), entry2.getKey());
@@ -203,9 +212,10 @@ public class TsFileProcessorTest {
 
 
   @Test
-  public void testMultiFlush() throws IOException, WriteProcessException{
+  public void testMultiFlush() throws IOException, WriteProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -238,9 +248,10 @@ public class TsFileProcessorTest {
 
 
   @Test
-  public void testWriteAndClose() throws IOException, WriteProcessException{
+  public void testWriteAndClose() throws IOException, WriteProcessException {
     logger.info("testWriteAndRestoreMetadata begin..");
     processor = new TsFileProcessor(storageGroup, SystemFileFactory.INSTANCE.getFile(filePath),
+        new ArrayList<>(),
         SysTimeVersionController.INSTANCE, this::closeTsFileProcessor,
         (tsFileProcessor) -> true, true);
 
@@ -279,7 +290,9 @@ public class TsFileProcessorTest {
     assertTrue(processor.getTsFileResource().isClosed());
 
   }
-  private void closeTsFileProcessor(TsFileProcessor unsealedTsFileProcessor) throws TsFileProcessorException {
+
+  private void closeTsFileProcessor(TsFileProcessor unsealedTsFileProcessor)
+      throws TsFileProcessorException {
     TsFileResource resource = unsealedTsFileProcessor.getTsFileResource();
     synchronized (resource) {
       for (Entry<String, Integer> entry : resource.getDeviceToIndexMap().entrySet()) {

@@ -280,9 +280,9 @@ public class StorageGroupProcessor {
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
-      Map<Long, List<TsFileResource>> vmSeqFiles = getAllVms(
+      Map<String, List<TsFileResource>> vmSeqFiles = getAllVms(
           DirectoryManager.getInstance().getAllSequenceFileFolders());
-      Map<Long, List<TsFileResource>> vmUnseqFiles = getAllVms(
+      Map<String, List<TsFileResource>> vmUnseqFiles = getAllVms(
           DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
       recoverSeqFiles(tmpSeqTsFiles, vmSeqFiles);
@@ -509,7 +509,7 @@ public class StorageGroupProcessor {
     return new Pair<>(ret, upgradeRet);
   }
 
-  private Map<Long, List<TsFileResource>> getAllVms(List<String> folders) throws IOException {
+  private Map<String, List<TsFileResource>> getAllVms(List<String> folders) throws IOException {
     List<File> vmFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
@@ -520,19 +520,19 @@ public class StorageGroupProcessor {
           .addAll(vmFiles, fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), VM_SUFFIX));
     }
 
-    Map<Long, List<TsFileResource>> vmTsFileResourceMap = new HashMap<>();
+    Map<String, List<TsFileResource>> vmTsFileResourceMap = new HashMap<>();
     for (File f : vmFiles) {
       TsFileResource fileResource = new TsFileResource(f);
       fileResource.setClosed(false);
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserialize();
-      long tsfileTime = Long.parseLong(f.getName().split(TSFILE_SEPARATOR)[0]);
+      String tsfilePrefix = f.getName().split(TSFILE_SEPARATOR)[0];
       List<TsFileResource> vmTsFileResource = new ArrayList<>();
-      if (vmTsFileResourceMap.containsKey(tsfileTime)) {
-        vmTsFileResource = vmTsFileResourceMap.get(tsfileTime);
+      if (vmTsFileResourceMap.containsKey(tsfilePrefix)) {
+        vmTsFileResource = vmTsFileResourceMap.get(tsfilePrefix);
       }
       vmTsFileResource.add(fileResource);
-      vmTsFileResourceMap.put(tsfileTime, vmTsFileResource);
+      vmTsFileResourceMap.put(tsfilePrefix, vmTsFileResource);
     }
     return vmTsFileResourceMap;
   }
@@ -552,7 +552,7 @@ public class StorageGroupProcessor {
   }
 
   private void recoverSeqFiles(List<TsFileResource> tsFiles,
-      Map<Long, List<TsFileResource>> vmFiles) {
+      Map<String, List<TsFileResource>> vmFiles) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -573,10 +573,9 @@ public class StorageGroupProcessor {
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
-        long tsfileTime = Long
-            .parseLong(tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0]);
+        String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            vmFiles.get(tsfileTime),
+            vmFiles.get(tsfilePrefix),
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
             this::updateLatestFlushTimeCallback, true, writer);
@@ -592,7 +591,7 @@ public class StorageGroupProcessor {
   }
 
   private void recoverUnseqFiles(List<TsFileResource> tsFiles,
-      Map<Long, List<TsFileResource>> vmTsFilesMap) {
+      Map<String, List<TsFileResource>> vmTsFilesMap) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -612,10 +611,9 @@ public class StorageGroupProcessor {
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
-        long tsfileTime = Long
-            .parseLong(tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0]);
+        String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            vmTsFilesMap.get(tsfileTime),
+            vmTsFilesMap.get(tsfilePrefix),
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
             this::unsequenceFlushCallback, false, writer);
@@ -1427,7 +1425,6 @@ public class StorageGroupProcessor {
       }
     }
   }
-
 
   private void deleteDataInFiles(Collection<TsFileResource> tsFileResourceList, Deletion deletion,
       List<ModificationFile> updatedModFiles)
