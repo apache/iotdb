@@ -26,7 +26,12 @@ public class IoTDBConstant {
   public static final String ENV_FILE_NAME = "iotdb-env";
   public static final String IOTDB_CONF = "IOTDB_CONF";
   public static final String GLOBAL_DB_NAME = "IoTDB";
-  public static final String VERSION = "0.10.0-SNAPSHOT";
+  //when running the program in IDE, we can not get the version info using getImplementationVersion()
+  public static final String VERSION =
+      IoTDBConstant.class.getPackage().getImplementationVersion() != null ? IoTDBConstant.class
+          .getPackage().getImplementationVersion() : "UNKNOWN";
+
+  public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 

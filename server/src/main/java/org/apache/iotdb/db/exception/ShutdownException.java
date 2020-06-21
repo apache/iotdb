@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,20 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.db.exception;
 
-public class MetadataConstant {
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  private MetadataConstant() {
-    // allowed to do nothing
+public class ShutdownException extends IoTDBException {
+
+
+  public ShutdownException(String message, int errorCode) {
+    super(message, errorCode);
   }
 
-  public static final String ROOT = "root";
-  public static final String METADATA_LOG = "mlog.txt";
-  public static final String TAG_LOG = "tlog.txt";
-  public static final String MTREE_SNAPSHOT = "mtree.snapshot";
+  public ShutdownException(Throwable cause) {
+    super(cause.getMessage(), TSStatusCode.SHUT_DOWN_ERROR.getStatusCode());
+  }
 
-  public static final short MNODE_TYPE = 0;
-  public static final short STORAGE_GROUP_MNODE_TYPE = 1;
-  public static final short MEASUREMENT_MNODE_TYPE = 2;
+  public ShutdownException(String message, Throwable cause, int errorCode) {
+    super(message, cause, errorCode);
+  }
+
+  public ShutdownException(Throwable cause, int errorCode) {
+    super(cause, errorCode);
+  }
 }

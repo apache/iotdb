@@ -113,13 +113,8 @@ public class PhysicalGenerator {
       case AUTHOR:
         AuthorOperator author = (AuthorOperator) operator;
         try {
-          return new AuthorPlan(
-              author.getAuthorType(),
-              author.getUserName(),
-              author.getRoleName(),
-              author.getPassWord(),
-              author.getNewPassword(),
-              author.getPrivilegeList(),
+          return new AuthorPlan(author.getAuthorType(), author.getUserName(), author.getRoleName(),
+              author.getPassWord(), author.getNewPassword(), author.getPrivilegeList(),
               author.getNodeName());
         } catch (AuthException e) {
           throw new QueryProcessException(e.getMessage());
@@ -152,26 +147,17 @@ public class PhysicalGenerator {
             }
           }
         }
-        return new CreateTimeSeriesPlan(
-            createOperator.getPath(),
-            createOperator.getDataType(),
-            createOperator.getEncoding(),
-            createOperator.getCompressor(),
-            createOperator.getProps(),
-            createOperator.getTags(),
-            createOperator.getAttributes(),
-            createOperator.getAlias());
+        return new CreateTimeSeriesPlan(createOperator.getPath(), createOperator.getDataType(),
+            createOperator.getEncoding(), createOperator.getCompressor(), createOperator.getProps(),
+            createOperator.getTags(), createOperator.getAttributes(), createOperator.getAlias());
       case DELETE_TIMESERIES:
         DeleteTimeSeriesOperator deletePath = (DeleteTimeSeriesOperator) operator;
         return new DeleteTimeSeriesPlan(deletePath.getDeletePathList());
       case ALTER_TIMESERIES:
         AlterTimeSeriesOperator alterTimeSeriesOperator = (AlterTimeSeriesOperator) operator;
-        return new AlterTimeSeriesPlan(
-            alterTimeSeriesOperator.getPath(),
-            alterTimeSeriesOperator.getAlterType(),
-            alterTimeSeriesOperator.getAlterMap(),
-            alterTimeSeriesOperator.getAlias(),
-            alterTimeSeriesOperator.getTagsMap(),
+        return new AlterTimeSeriesPlan(alterTimeSeriesOperator.getPath(),
+            alterTimeSeriesOperator.getAlterType(), alterTimeSeriesOperator.getAlterMap(),
+            alterTimeSeriesOperator.getAlias(), alterTimeSeriesOperator.getTagsMap(),
             alterTimeSeriesOperator.getAttributesMap());
       case DELETE:
         DeleteDataOperator delete = (DeleteDataOperator) operator;
@@ -185,11 +171,8 @@ public class PhysicalGenerator {
               "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
 
-        return new InsertPlan(
-            paths.get(0).getFullPath(),
-            insert.getTime(),
-            insert.getMeasurementList(),
-            insert.getValueList());
+        return new InsertPlan(paths.get(0).getFullPath(), insert.getTime(),
+            insert.getMeasurementList(), insert.getValueList());
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {
           return new MergePlan(OperatorType.FULL_MERGE);
@@ -234,10 +217,10 @@ public class PhysicalGenerator {
             return new ShowPlan(ShowContentType.VERSION);
           case SQLConstant.TOK_TIMESERIES:
             ShowTimeSeriesOperator showTimeSeriesOperator = (ShowTimeSeriesOperator) operator;
-            return new ShowTimeSeriesPlan(
-                showTimeSeriesOperator.getPath(), showTimeSeriesOperator.isContains(),
-                showTimeSeriesOperator.getKey(), showTimeSeriesOperator.getValue(),
-                showTimeSeriesOperator.getLimit(), showTimeSeriesOperator.getOffset());
+            return new ShowTimeSeriesPlan(showTimeSeriesOperator.getPath(),
+                showTimeSeriesOperator.isContains(), showTimeSeriesOperator.getKey(),
+                showTimeSeriesOperator.getValue(), showTimeSeriesOperator.getLimit(),
+                showTimeSeriesOperator.getOffset(), showTimeSeriesOperator.isOrderByHeat());
           case SQLConstant.TOK_STORAGE_GROUP:
             return new ShowPlan(ShowContentType.STORAGE_GROUP);
           case SQLConstant.TOK_DEVICES:
@@ -265,19 +248,15 @@ public class PhysicalGenerator {
                     "not supported operator type %s in show operation.", operator.getType()));
         }
       case LOAD_FILES:
-        return new OperateFilePlan(
-            ((LoadFilesOperator) operator).getFile(),
-            OperatorType.LOAD_FILES,
-            ((LoadFilesOperator) operator).isAutoCreateSchema(),
+        return new OperateFilePlan(((LoadFilesOperator) operator).getFile(),
+            OperatorType.LOAD_FILES, ((LoadFilesOperator) operator).isAutoCreateSchema(),
             ((LoadFilesOperator) operator).getSgLevel());
       case REMOVE_FILE:
-        return new OperateFilePlan(
-            ((RemoveFileOperator) operator).getFile(), OperatorType.REMOVE_FILE);
+        return new OperateFilePlan(((RemoveFileOperator) operator).getFile(),
+            OperatorType.REMOVE_FILE);
       case MOVE_FILE:
-        return new OperateFilePlan(
-            ((MoveFileOperator) operator).getFile(),
-            ((MoveFileOperator) operator).getTargetDir(),
-            OperatorType.MOVE_FILE);
+        return new OperateFilePlan(((MoveFileOperator) operator).getFile(),
+            ((MoveFileOperator) operator).getTargetDir(), OperatorType.MOVE_FILE);
       case CLEAR_CACHE:
         return new ClearCachePlan();
       case SHOW_MERGE_STATUS:
