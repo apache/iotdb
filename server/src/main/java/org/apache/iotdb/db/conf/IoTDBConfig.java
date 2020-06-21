@@ -561,8 +561,8 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
-   * property is changed, previous created storage group which are not set TTL will also be
+   * default TTL for storage groups that are not set TTL by statements, in ms
+   * Notice: if this property is changed, previous created storage group which are not set TTL will also be
    * affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
@@ -573,7 +573,8 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /**
-   * whether enable data partition if disabled, all data belongs to partition 0
+   * whether enable data partition
+   * if disabled, all data belongs to partition 0
    */
   private boolean enablePartition = false;
 

@@ -23,7 +23,6 @@
     <jmxConfigurator/>
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
-    <property name="IOTDB_HOME" value="D:/incubator-iotdb/server"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
         <file>${IOTDB_HOME}/logs/log_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">

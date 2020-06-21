@@ -601,8 +601,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           .isEnablePerformanceTracing()) {
         performanceLogger.info(
             "Number of tsfiles: {} \nNumber of sequence files: {} \nNumber of unsequence files: {} \nNumber of chunks: {}\nAverage size of chunks: {}",
-            StorageGroupProcessor.seqFileNum + StorageGroupProcessor.unseqFileNum,
-            StorageGroupProcessor.seqFileNum, StorageGroupProcessor.unseqFileNum,
+            StorageGroupProcessor.seqFile.size() + StorageGroupProcessor.unseqFile.size(),
+            StorageGroupProcessor.seqFile.size(), StorageGroupProcessor.unseqFile.size(),
             SeriesReader.totalChunkNum,
             SeriesReader.totalChunkSize / SeriesReader.totalChunkNum);
       }
