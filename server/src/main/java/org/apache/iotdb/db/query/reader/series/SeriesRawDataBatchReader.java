@@ -64,6 +64,10 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
         seqFileResource, unseqFileResource, timeFilter, valueFilter);
   }
 
+  public SeriesReader getSeriesReader() {
+    return seriesReader;
+  }
+
   /**
    * This method overrides the AbstractDataReader.hasNextOverlappedPage for pause reads, to achieve
    * a continuous read

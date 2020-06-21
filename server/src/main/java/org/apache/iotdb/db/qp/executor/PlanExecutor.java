@@ -248,6 +248,8 @@ public class PlanExecutor implements IPlanExecutor {
       case FULL_MERGE:
         operateMerge((MergePlan) plan);
         return true;
+      case TRACING:
+        return true;
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
         return true;

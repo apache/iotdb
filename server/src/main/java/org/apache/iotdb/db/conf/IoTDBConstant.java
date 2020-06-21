@@ -33,6 +33,8 @@ public class IoTDBConstant {
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
   public static final String JMX_TYPE = "type";
 
+  public static final String PERFORMANCE_LOGGER_NAME = "IoTDB_PERFORMANCE_LOGGER";
+
   public static final long GB = 1024 * 1024 * 1024L;
   public static final long MB = 1024 * 1024L;
   public static final long KB = 1024L;

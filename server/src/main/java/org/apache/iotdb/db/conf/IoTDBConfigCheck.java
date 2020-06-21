@@ -18,9 +18,17 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -32,11 +40,6 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.*;
-import java.nio.file.Files;
-import java.util.List;
-import java.util.Properties;
 
 public class IoTDBConfigCheck {
 
@@ -58,25 +61,34 @@ public class IoTDBConfigCheck {
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
 
   private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
-  private static String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+  private static String timestampPrecision = IoTDBDescriptor.getInstance().getConfig()
+      .getTimestampPrecision();
 
   private static final String PARTITION_INTERVAL_STRING = "partition_interval";
-  private static long partitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+  private static long partitionInterval = IoTDBDescriptor.getInstance().getConfig()
+      .getPartitionInterval();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
-  private static String tsfileFileSystem = IoTDBDescriptor.getInstance().getConfig().getTsFileStorageFs().toString();
+  private static String tsfileFileSystem = IoTDBDescriptor.getInstance().getConfig()
+      .getTsFileStorageFs().toString();
 
   private static final String ENABLE_PARTITION_STRING = "enable_partition";
-  private static boolean enablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+  private static boolean enablePartition = IoTDBDescriptor.getInstance().getConfig()
+      .isEnablePartition();
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
   private static String iotdbVersion = "0.10.0";
+
+  private static final String ENABLE_PERFORMANCE_TRACING = "enable_performance_tracing";
+  private static boolean enablePerformanceTracing = IoTDBDescriptor.getInstance().getConfig()
+      .isEnablePerformanceTracing();
 
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
   private static class IoTDBConfigCheckHolder {
+
     private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   }
 
@@ -97,8 +109,9 @@ public class IoTDBConfigCheck {
     // check time stamp precision
     if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
         || timestampPrecision.equals("ns"))) {
-      logger.error("Wrong " + TIMESTAMP_PRECISION_STRING + ", please set as: ms, us or ns ! Current is: "
-          + timestampPrecision);
+      logger.error(
+          "Wrong " + TIMESTAMP_PRECISION_STRING + ", please set as: ms, us or ns ! Current is: "
+              + timestampPrecision);
       System.exit(-1);
     }
 
@@ -117,22 +130,21 @@ public class IoTDBConfigCheck {
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(IOTDB_VERSION_STRING, iotdbVersion);
+    systemProperties.put(ENABLE_PERFORMANCE_TRACING, String.valueOf(enablePerformanceTracing));
   }
 
 
   /**
    * check configuration in system.properties when starting IoTDB
-   *
+   * <p>
    * When init: create system.properties directly
-   *
-   * When upgrading the system.properties:
-   * (1) create system.properties.tmp
-   * (2) delete system.properties
-   * (2) rename system.properties.tmp to system.properties
+   * <p>
+   * When upgrading the system.properties: (1) create system.properties.tmp (2) delete
+   * system.properties (2) rename system.properties.tmp to system.properties
    */
   public void checkConfig() throws IOException {
     propertiesFile = SystemFileFactory.INSTANCE
-            .getFile(IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
+        .getFile(IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
     tmpPropertiesFile = new File(propertiesFile.getAbsoluteFile() + ".tmp");
 
     // system init first time, no need to check, write system.properties and return
@@ -195,6 +207,7 @@ public class IoTDBConfigCheck {
       properties.setProperty(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
       properties.setProperty(IOTDB_VERSION_STRING, iotdbVersion);
       properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
+      properties.setProperty(ENABLE_PERFORMANCE_TRACING, String.valueOf(enablePerformanceTracing));
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
@@ -208,7 +221,7 @@ public class IoTDBConfigCheck {
 
 
   /**
-   *  repair 0.10 properties
+   * repair 0.10 properties
    */
   private void upgradePropertiesFileFromBrokenFile()
       throws IOException {
@@ -262,13 +275,20 @@ public class IoTDBConfigCheck {
           .getProperty(TSFILE_FILE_SYSTEM_STRING));
       System.exit(-1);
     }
+
+    if (Boolean.parseBoolean(properties.getProperty(ENABLE_PERFORMANCE_TRACING))
+        != enablePerformanceTracing) {
+      logger.error("Wrong {}, please set as: {} !", ENABLE_PERFORMANCE_TRACING, properties
+          .getProperty(ENABLE_PERFORMANCE_TRACING));
+      System.exit(-1);
+    }
   }
 
   /**
    * ensure all tsfiles are closed in 0.9 when starting 0.10
    */
   private void checkUnClosedTsFileV1() {
-    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory() 
+    if (SystemFileFactory.INSTANCE.getFile(WAL_DIR).isDirectory()
         && SystemFileFactory.INSTANCE.getFile(WAL_DIR).list().length != 0) {
       logger.error("Unclosed Version-1 TsFile detected, please run 'flush' on V0.9 IoTDB"
           + " before upgrading to V0.10");

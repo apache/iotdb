@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.DatetimeUtils;
@@ -69,6 +70,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AliasContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
@@ -153,6 +155,8 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TracingOffContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TracingOnContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
@@ -174,7 +178,6 @@ import org.slf4j.LoggerFactory;
  * This class is a listener and you can get an operator which is a logical plan.
  */
 public class LogicalGenerator extends SqlBaseBaseListener {
-  private static Logger logger = LoggerFactory.getLogger(LogicalGenerator.class);
 
   private RootOperator initializedOperator = null;
   private ZoneId zoneId;
@@ -225,6 +228,20 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
 
     initializedOperator = flushOperator;
+  }
+
+  @Override
+  public void enterTracingOn(TracingOnContext ctx) {
+    super.enterTracingOn(ctx);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(true);
+    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING);
+  }
+
+  @Override
+  public void enterTracingOff(TracingOffContext ctx) {
+    super.enterTracingOff(ctx);
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(false);
+    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING);
   }
 
   @Override

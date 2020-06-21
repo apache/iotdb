@@ -95,6 +95,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -198,6 +199,8 @@ public class PhysicalGenerator {
       case FLUSH:
         FlushOperator flushOperator = (FlushOperator) operator;
         return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
+      case TRACING:
+        return new TracingPlan();
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);

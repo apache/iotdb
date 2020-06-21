@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -40,9 +41,12 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SeriesReader {
 
+  public static final Logger performanceLogger = LoggerFactory.getLogger(IoTDBConstant.PERFORMANCE_LOGGER_NAME);
   private final Path seriesPath;
 
   // all the sensors in this device;
@@ -129,6 +133,14 @@ public class SeriesReader {
 
   public boolean isEmpty() {
     return seqFileResource.isEmpty() && unseqFileResource.isEmpty();
+  }
+
+  public List<TsFileResource> getSeqFileResource() {
+    return seqFileResource;
+  }
+
+  public List<TsFileResource> getUnseqFileResource() {
+    return unseqFileResource;
   }
 
   boolean hasNextFile() throws IOException {

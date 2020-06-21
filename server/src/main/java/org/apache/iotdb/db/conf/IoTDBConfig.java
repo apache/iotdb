@@ -21,6 +21,10 @@ package org.apache.iotdb.db.conf;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
+import java.io.File;
+import java.time.ZoneId;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -32,11 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.time.ZoneId;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class IoTDBConfig {
 
@@ -56,7 +55,7 @@ public class IoTDBConfig {
 
   // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
   private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER +"(" + NODE_MATCHER+ ")*[\"|\']";
+      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER + "(" + NODE_MATCHER + ")*[\"|\']";
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
@@ -332,6 +331,11 @@ public class IoTDBConfig {
   private boolean enablePerformanceStat = false;
 
   /**
+   * Is performance tracing enable.
+   */
+  private boolean enablePerformanceTracing = false;
+
+  /**
    * The display of stat performance interval in ms.
    */
   private long performanceStatDisplayInterval = 60000;
@@ -386,7 +390,8 @@ public class IoTDBConfig {
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
 
   /**
-   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT
+   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
+   * or TEXT
    */
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
@@ -556,9 +561,9 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL will
-   * also be affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
+   * property is changed, previous created storage group which are not set TTL will also be
+   * affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -568,8 +573,7 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition if disabled, all data belongs to partition 0
    */
   private boolean enablePartition = false;
 
@@ -1110,6 +1114,14 @@ public class IoTDBConfig {
     this.enablePerformanceStat = enablePerformanceStat;
   }
 
+  public boolean isEnablePerformanceTracing() {
+    return enablePerformanceTracing;
+  }
+
+  public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {
+    this.enablePerformanceTracing = enablePerformanceTracing;
+  }
+
   public long getPerformanceStatDisplayInterval() {
     return performanceStatDisplayInterval;
   }
@@ -1211,7 +1223,8 @@ public class IoTDBConfig {
     return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
@@ -1336,7 +1349,9 @@ public class IoTDBConfig {
     if (nanStringInferType != TSDataType.DOUBLE &&
         nanStringInferType != TSDataType.FLOAT &&
         nanStringInferType != TSDataType.TEXT) {
-      throw new IllegalArgumentException("Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is " + nanStringInferType);
+      throw new IllegalArgumentException(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
+              + nanStringInferType);
     }
     this.nanStringInferType = nanStringInferType;
   }

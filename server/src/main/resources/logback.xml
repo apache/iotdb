@@ -22,7 +22,6 @@
 <configuration scan="true" scanPeriod="60 seconds">
     <jmxConfigurator/>
     <!-- prevent logback from outputting its own status at the start of every log -->
-    <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
     <property name="IOTDB_HOME" value="D:/incubator-iotdb/server"/>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
         <file>${IOTDB_HOME}/logs/log_error.log</file>
@@ -172,9 +171,9 @@
         </filter>
     </appender>
     <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="PERFORMANCE">
-        <file>${IOTDB_HOME}/logs/performance_trace.log</file>
+        <file>D:/incubator-iotdb/server/logs/performance_trace.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${IOTDB_HOME}/logs/log-performance-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <fileNamePattern>D:/incubator-iotdb/server/logs/log-performance-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
             <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
                 <maxFileSize>50MB</maxFileSize>
                 <maxBackupIndex>50</maxBackupIndex>
