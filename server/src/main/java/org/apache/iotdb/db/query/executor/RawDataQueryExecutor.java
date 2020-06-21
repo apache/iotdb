@@ -73,20 +73,6 @@ public class RawDataQueryExecutor {
 
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context, queryPlan);
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-      Set<TsFileResource> seqSet = new HashSet<>();
-      Set<TsFileResource> unseqSet = new HashSet<>();
-      for (ManagedSeriesReader reader : readersOfSelectedSeries) {
-        seqSet.addAll(((SeriesRawDataBatchReader) reader).getSeriesReader()
-            .getSeqFileResource());
-        unseqSet.addAll(((SeriesRawDataBatchReader) reader).getSeriesReader()
-            .getUnseqFileResource());
-      }
-      SeriesReader.performanceLogger.info(
-          "Number of tsfiles: {} \nNumber of sequence files: {} \nNumber of unsequence files: {}",
-          seqSet.size() + unseqSet.size(), seqSet.size(), unseqSet.size());
-    }
-
     try {
       return new RawQueryDataSetWithoutValueFilter(deduplicatedPaths, deduplicatedDataTypes,
           readersOfSelectedSeries);

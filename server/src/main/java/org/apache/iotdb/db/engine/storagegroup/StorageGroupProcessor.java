@@ -73,13 +73,14 @@ import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
@@ -121,6 +122,8 @@ public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
+  public static Set<TsFileResource> seqFile = null;
+  public static Set<TsFileResource> unseqFile = null;
 
   /**
    * indicating the file to be loaded already exists locally.
@@ -1195,6 +1198,20 @@ public class StorageGroupProcessor {
       // is null only in tests
       if (filePathsManager != null) {
         filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
+      }
+
+      // exclude repetitive tsFile to calculate the number of tsfile
+      if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+        if (seqFile.isEmpty()) {
+          seqFile = new HashSet<>(seqResources);
+        } else {
+          seqFile.addAll(seqResources);
+        }
+        if (unseqFile.isEmpty()) {
+          unseqFile = new HashSet<>(unseqResources);
+        } else {
+          unseqFile.addAll(unseqResources);
+        }
       }
       dataSource.setDataTTL(dataTTL);
       return dataSource;

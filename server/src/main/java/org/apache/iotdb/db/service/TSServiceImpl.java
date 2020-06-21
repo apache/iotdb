@@ -24,21 +24,30 @@ import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMES
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
-import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -53,8 +62,14 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.*;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -65,6 +80,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -119,6 +135,8 @@ import org.slf4j.LoggerFactory;
 public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
+  public static final Logger performanceLogger = LoggerFactory
+      .getLogger(IoTDBConstant.PERFORMANCE_LOGGER_NAME);
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
@@ -420,7 +438,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } catch (SQLParserException e) {
       logger.error("Error occurred when executing {}, check metadata error: ", statement, e);
       result.add(RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
+          TSStatusCode.SQL_PARSE_ERROR,
+          ERROR_PARSING_SQL + " " + statement + " " + e.getMessage()));
       return false;
     } catch (QueryProcessException e) {
       logger.info(
@@ -528,6 +547,14 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       long statementId, PhysicalPlan plan, int fetchSize, String username) {
     long startTime = System.currentTimeMillis();
     long queryId = -1;
+    if (plan instanceof QueryPlan && IoTDBDescriptor.getInstance().getConfig()
+        .isEnablePerformanceTracing()) {
+      performanceLogger.info(
+          "Query Plan: {}\n---------------- \nStart time: {} \nNumber of deduplicated paths: {}",
+          statement,
+          new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()),
+          plan.getPaths().size());
+    }
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
 
@@ -569,6 +596,16 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setQueryDataSet(result);
       }
       resp.setQueryId(queryId);
+
+      if (plan instanceof QueryPlan && IoTDBDescriptor.getInstance().getConfig()
+          .isEnablePerformanceTracing()) {
+        performanceLogger.info(
+            "Number of tsfiles: {} \nNumber of sequence files: {} \nNumber of unsequence files: {} \nNumber of chunks: {}\nAverage size of chunks: {}",
+            StorageGroupProcessor.seqFileNum + StorageGroupProcessor.unseqFileNum,
+            StorageGroupProcessor.seqFileNum, StorageGroupProcessor.unseqFileNum,
+            SeriesReader.totalChunkNum,
+            SeriesReader.totalChunkSize / SeriesReader.totalChunkNum);
+      }
 
       if (enableMetric) {
         long endTime = System.currentTimeMillis();
@@ -689,8 +726,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // Last Query should return different respond instead of the static one
       // because the query dataset and query id is different although the header of last query is same.
       return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan instanceof AggregationPlan && ((AggregationPlan)plan).getLevel() >= 0) {
-      Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(((AggregationPlan)plan).getDeduplicatedPaths(), ((AggregationPlan)plan).getLevel(), null);
+    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
+      Map<String, Long> finalPaths = FilePathUtils
+          .getPathByLevel(((AggregationPlan) plan).getDeduplicatedPaths(),
+              ((AggregationPlan) plan).getLevel(), null);
       for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
         respColumns.add("count(" + entry.getKey() + ")");
         columnsTypes.add(TSDataType.INT64.toString());

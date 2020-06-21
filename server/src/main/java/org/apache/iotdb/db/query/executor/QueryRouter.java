@@ -66,14 +66,6 @@ public class QueryRouter implements IQueryRouter {
       throws StorageEngineException, QueryProcessException {
     IExpression expression = queryPlan.getExpression();
     List<Path> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
-
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-      SeriesReader.performanceLogger
-          .info("Query Plan: \n----------------\nStart time: {}\nNumber of deduplicated paths: {}",
-              new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()),
-              deduplicatedPaths.size());
-    }
-
     IExpression optimizedExpression;
     try {
       optimizedExpression = expression == null ? null : ExpressionOptimizer.getInstance()

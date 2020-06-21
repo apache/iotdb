@@ -18,7 +18,14 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -38,15 +45,10 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 public class SeriesReader {
 
-  public static final Logger performanceLogger = LoggerFactory.getLogger(IoTDBConstant.PERFORMANCE_LOGGER_NAME);
+  public static int totalChunkNum = 0;
+  public static long totalChunkSize = 0;
   private final Path seriesPath;
 
   // all the sensors in this device;
@@ -263,6 +265,13 @@ public class SeriesReader {
       unpackOneTimeSeriesMetadata(firstTimeSeriesMetadata);
       firstTimeSeriesMetadata = null;
     }
+
+    // try to calculate the total number of chunk and time-value points in chunk
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      totalChunkNum += cachedChunkMetadata.size();
+      cachedChunkMetadata.forEach(chunkMetadata -> totalChunkSize += chunkMetadata.getStatistics().getCount());
+    }
+
     if (init && firstChunkMetadata == null && !cachedChunkMetadata.isEmpty()) {
       firstChunkMetadata = cachedChunkMetadata.poll();
     }
