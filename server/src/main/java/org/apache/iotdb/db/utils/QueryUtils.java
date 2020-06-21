@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.utils;
 
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -27,6 +30,7 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 import java.util.List;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class QueryUtils {
 
@@ -45,46 +49,52 @@ public class QueryUtils {
    */
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
                                          List<Modification> modifications) {
-    int modIndex = 0;
+    List<Modification> sortedModifications = sortModifications(modifications);
 
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       ChunkMetadata metaData = chunkMetaData.get(metaIndex);
-      for (int j = modIndex; j < modifications.size(); j++) {
-        // iterate each modification to find the max deletion time
-        Modification modification = modifications.get(j);
+      for (Modification modification : sortedModifications) {
         if (modification.getVersionNum() > metaData.getVersion()) {
-          // this modification is after the Chunk, try modifying the chunk
-          // if this modification succeeds, update modIndex so in the next loop the previous
-          // modifications will not be examined
-          modIndex = doModifyChunkMetaData(modification, metaData)? j : modIndex;
-        } else {
-          // skip old modifications for next metadata
-          modIndex++;
+          doModifyChunkMetaData(modification, metaData);
         }
       }
     }
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(metaData -> {
-      if (metaData.getDeletedAt() >= metaData.getEndTime()) {
-        return true;
-      } else {
-        if (metaData.getDeletedAt() >= metaData.getStartTime()) {
-          metaData.setModified(true);
+      long lower = metaData.getStartTime();
+      long upper = metaData.getEndTime();
+      for (Pair<Long, Long> range : metaData.getDeleteRangeList()) {
+        if (lower >= upper) {
+          return true;
         }
-        return false;
+
+        if (range.left <= lower && lower <= range.right) {
+          metaData.setModified(true);
+          lower = range.right;
+        } else {
+          if (upper >= range.left) {
+            metaData.setModified(true);
+          }
+          break;
+        }
       }
+      return false;
     });
   }
 
-  private static boolean doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
+  private static LinkedList<Modification> sortModifications(List<Modification> modifications) {
+    return modifications.stream()
+        .sorted(
+            Comparator.comparingLong(
+                mods -> ((Deletion)mods).getStartTime()))
+        .collect(Collectors.toCollection(LinkedList::new));
+  }
+
+  private static void doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
-      if (metaData.getDeletedAt() < deletion.getTimestamp()) {
-        metaData.setDeletedAt(deletion.getTimestamp());
-        return true;
-      }
+      metaData.addDeletion(deletion.getStartTime(), deletion.getEndTime());
     }
-    return false;
   }
 
   // remove files that do not satisfy the filter

@@ -192,6 +192,10 @@ public class ChunkMetadata implements Accountable {
     this.deleteRangeList = list;
   }
 
+  public void addDeletion(long startTime, long endTime) {
+    this.deleteRangeList.add(new Pair<>(startTime, endTime));
+  }
+
   public IChunkLoader getChunkLoader() {
     return chunkLoader;
   }

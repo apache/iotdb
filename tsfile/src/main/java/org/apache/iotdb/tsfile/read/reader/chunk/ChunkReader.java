@@ -137,10 +137,23 @@ public class ChunkReader implements IChunkReader {
   }
 
   public boolean pageSatisfied(PageHeader pageHeader) {
-    if (pageHeader.getEndTime() <= deletedAt) {
-      return false;
-    } else if (pageHeader.getStartTime() <= deletedAt) {
-      pageHeader.setModified(true);
+    long lower = pageHeader.getStartTime();
+    long upper = pageHeader.getEndTime();
+    // deleteRangeList is sorted in terms of startTime
+    for (Pair<Long, Long> range : deleteRangeList) {
+      if (lower >= upper) {
+        return true;
+      }
+
+      if (range.left <= lower && lower <= range.right) {
+        pageHeader.setModified(true);
+        lower = range.right;
+      } else {
+        if (upper >= range.left) {
+          pageHeader.setModified(true);
+        }
+        break;
+      }
     }
     return filter == null || filter.satisfy(pageHeader.getStatistics());
   }
