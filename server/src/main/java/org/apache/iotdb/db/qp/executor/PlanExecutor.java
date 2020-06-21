@@ -960,6 +960,61 @@ public class PlanExecutor implements IPlanExecutor {
     return schemas;
   }
 
+  protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
+      throws MetadataException, QueryProcessException {
+    String[] measurementList = insertTabletPlan.getMeasurements();
+    String deviceId = insertTabletPlan.getDeviceId();
+    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
+
+    MNode node = null;
+    try {
+      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      // To reduce the String number in memory, set the deviceId from MManager to insertPlan
+      insertTabletPlan.setDeviceId(node.getFullPath());
+    } catch (PathNotExistException e) {
+      // ignore
+    }
+    try {
+      TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
+      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
+      String measurement;
+      for (int i = 0; i < measurementList.length; i++) {
+        measurement = measurementList[i];
+        if (node == null) {
+          schemas[i] = mManager.getSeriesSchema(deviceId, measurement);
+        } else {
+          if (!node.hasChild(measurement)) {
+            if (!conf.isAutoCreateSchemaEnabled()) {
+              throw new QueryProcessException(String.format(
+                  "Current deviceId[%s] does not contain measurement:%s", deviceId, measurement));
+            }
+            Path path = new Path(deviceId, measurement);
+            TSDataType dataType = dataTypes[i];
+            internalCreateTimeseries(path.getFullPath(), dataType);
+          }
+          MeasurementMNode measurementNode = (MeasurementMNode) mManager
+              .getChild(node, measurement);
+
+          // check data type
+          if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
+            throw new QueryProcessException(String.format(
+                "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
+                measurement, insertTabletPlan.getDataTypes()[i],
+                measurementNode.getSchema().getType()));
+          }
+          schemas[i] = measurementNode.getSchema();
+          // reset measurement to common name instead of alias
+          measurementList[i] = measurementNode.getName();
+        }
+      }
+    } finally {
+      if (node != null) {
+        node.readUnlock();
+      }
+    }
+    return schemas;
+  }
+
   /**
    * @param loc index of measurement in insertPlan
    */
@@ -1092,53 +1147,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
-    MNode node = null;
     try {
-      String[] measurementList = insertTabletPlan.getMeasurements();
-      String deviceId = insertTabletPlan.getDeviceId();
-      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
-      // To reduce the String number in memory, use the deviceId from MManager
-      deviceId = node.getFullPath();
-      insertTabletPlan.setDeviceId(deviceId);
-      TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
-      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-      MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
-
-      String measurement;
-      for (int i = 0; i < measurementList.length; i++) {
-        measurement = measurementList[i];
-        // check if timeseries exists
-        if (!node.hasChild(measurement)) {
-          if (!conf.isAutoCreateSchemaEnabled()) {
-            throw new QueryProcessException(String.format(
-                "Current deviceId[%s] does not contain measurement:%s", deviceId, measurement));
-          }
-          Path path = new Path(deviceId, measurement);
-          TSDataType dataType = dataTypes[i];
-          internalCreateTimeseries(path.getFullPath(), dataType);
-
-        }
-        MeasurementMNode measurementNode = (MeasurementMNode) mManager.getChild(node, measurement);
-
-        // check data type
-        if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
-          throw new QueryProcessException(String.format(
-              "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
-              measurement, insertTabletPlan.getDataTypes()[i],
-              measurementNode.getSchema().getType()));
-        }
-        schemas[i] = measurementNode.getSchema();
-        // reset measurement to common name instead of alias
-        measurementList[i] = measurementNode.getName();
-      }
+      MeasurementSchema[] schemas = getSeriesSchemas(insertTabletPlan);
       insertTabletPlan.setSchemas(schemas);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    } finally {
-      if (node != null) {
-        node.readUnlock();
-      }
     }
   }
 

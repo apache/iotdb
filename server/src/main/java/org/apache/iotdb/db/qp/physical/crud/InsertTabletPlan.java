@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -57,12 +58,15 @@ public class InsertTabletPlan extends PhysicalPlan {
   private Object[] columns;
   private ByteBuffer valueBuffer;
   private int rowCount = 0;
+  // indicate whether this plan has been set 'start' or 'end' in order to support plan transmission without data loss in cluster version
+  boolean isExecuting = false;
   // cached values
   private Long maxTime = null;
   private Long minTime = null;
   private List<Path> paths;
   private int start;
   private int end;
+  private List<Integer> range;
 
   public InsertTabletPlan() {
     super(false, OperatorType.BATCHINSERT);
@@ -92,6 +96,7 @@ public class InsertTabletPlan extends PhysicalPlan {
   }
 
   public void setStart(int start) {
+    this.isExecuting = true;
     this.start = start;
   }
 
@@ -100,7 +105,16 @@ public class InsertTabletPlan extends PhysicalPlan {
   }
 
   public void setEnd(int end) {
+    this.isExecuting = true;
     this.end = end;
+  }
+
+  public List<Integer> getRange() {
+    return range;
+  }
+
+  public void setRange(List<Integer> range) {
+    this.range = range;
   }
 
   @Override
@@ -132,11 +146,21 @@ public class InsertTabletPlan extends PhysicalPlan {
       stream.writeShort(dataType.serialize());
     }
 
-    stream.writeInt(end - start);
+    if (isExecuting) {
+      stream.writeInt(end - start);
+    } else {
+      stream.writeInt(rowCount);
+    }
 
     if (timeBuffer == null) {
-      for (int i = start; i < end; i++) {
-        stream.writeLong(times[i]);
+      if (isExecuting) {
+        for (int i = start; i < end; i++) {
+          stream.writeLong(times[i]);
+        }
+      } else {
+        for (long time : times) {
+          stream.writeLong(time);
+        }
       }
     } else {
       stream.write(timeBuffer.array());
@@ -168,11 +192,21 @@ public class InsertTabletPlan extends PhysicalPlan {
       dataType.serializeTo(buffer);
     }
 
-    buffer.putInt(end - start);
+    if (isExecuting) {
+      buffer.putInt(end - start);
+    } else {
+      buffer.putInt(rowCount);
+    }
 
     if (timeBuffer == null) {
-      for (int i = start; i < end; i++) {
-        buffer.putLong(times[i]);
+      if (isExecuting) {
+        for (int i = start; i < end; i++) {
+          buffer.putLong(times[i]);
+        }
+      } else {
+        for (long time : times) {
+          buffer.putLong(time);
+        }
       }
     } else {
       buffer.put(timeBuffer.array());
@@ -201,40 +235,42 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   private void serializeColumn(TSDataType dataType, Object column, ByteBuffer buffer,
       int start, int end) {
+    int curStart = isExecuting ? start : 0;
+    int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putInt(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           buffer.putInt(binaryValues[j].getLength());
           buffer.put(binaryValues[j].getValues());
         }
@@ -247,40 +283,42 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   private void serializeColumn(TSDataType dataType, Object column, DataOutputStream outputStream,
       int start, int end) throws IOException {
+    int curStart = isExecuting ? start : 0;
+    int curEnd = isExecuting ? end : rowCount;
     switch (dataType) {
       case INT32:
         int[] intValues = (int[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeInt(intValues[j]);
         }
         break;
       case INT64:
         long[] longValues = (long[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeLong(longValues[j]);
         }
         break;
       case FLOAT:
         float[] floatValues = (float[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeFloat(floatValues[j]);
         }
         break;
       case DOUBLE:
         double[] doubleValues = (double[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeDouble(doubleValues[j]);
         }
         break;
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeByte(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
         Binary[] binaryValues = (Binary[]) column;
-        for (int j = start; j < end; j++) {
+        for (int j = curStart; j < curEnd; j++) {
           outputStream.writeInt(binaryValues[j].getLength());
           outputStream.write(binaryValues[j].getValues());
         }
@@ -460,4 +498,17 @@ public class InsertTabletPlan extends PhysicalPlan {
     this.rowCount = size;
   }
 
+  @Override
+  public String toString() {
+    return "InsertTabletPlan {" +
+        "deviceId:" + deviceId +
+        ", dataTypes:" + Arrays.toString(dataTypes) +
+        ", schemas:" + Arrays.toString(schemas) +
+        ", times:" + Arrays.toString(times) +
+        ", columns:" + Arrays.toString(columns) +
+        ", rowCount:" + rowCount +
+        ", start:" + start +
+        ", end:" + end +
+        '}';
+  }
 }

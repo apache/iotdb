@@ -156,7 +156,7 @@ public class ClusterPlanRouter {
     int startLoc = 0; //included
 
     Map<PartitionGroup, List<Integer>> splitMap = new HashMap<>();
-    //for each List in split, they are range1.start, range.end, range2.start, range2.end, ...
+    //for each List in split, they are range1.start, range1.end, range2.start, range2.end, ...
     for (int i = 1; i < times.length; i++) {// times are sorted in session API.
       if (times[i] >= endTime) {
         // a new range.
@@ -200,6 +200,7 @@ public class ClusterPlanRouter {
         destLoc += end - start;
       }
       InsertTabletPlan newBatch = PartitionUtils.copy(plan, subTimes, values);
+      newBatch.setRange(locs);
       result.put(newBatch, entry.getKey());
     }
     return result;

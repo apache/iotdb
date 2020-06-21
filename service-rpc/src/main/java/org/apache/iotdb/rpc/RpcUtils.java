@@ -19,6 +19,7 @@
 package org.apache.iotdb.rpc;
 
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
@@ -89,6 +90,12 @@ public class RpcUtils {
   public static TSStatus getStatus(int code, String message) {
     TSStatus status = new TSStatus(code);
     status.setMessage(message);
+    return status;
+  }
+
+  public static TSStatus[] getStatus(int length) {
+    TSStatus[] status = new TSStatus[length];
+    Arrays.fill(status, RpcUtils.SUCCESS_STATUS);
     return status;
   }
 
