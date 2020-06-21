@@ -1122,10 +1122,15 @@ public class PlanExecutor implements IPlanExecutor {
 
         // check data type
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
-          throw new QueryProcessException(String.format(
+          if (!enablePartialInsert) {
+            throw new QueryProcessException(String.format(
               "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
               measurement, insertTabletPlan.getDataTypes()[i],
               measurementNode.getSchema().getType()));
+          } else {
+            insertTabletPlan.markMeasurementInsertionFailed(i);
+            continue;
+          }
         }
         schemas[i] = measurementNode.getSchema();
         // reset measurement to common name instead of alias
@@ -1133,6 +1138,10 @@ public class PlanExecutor implements IPlanExecutor {
       }
       insertTabletPlan.setSchemas(schemas);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
+      if (insertTabletPlan.getFailedMeasurements() != null) {
+        throw new StorageEngineException(
+          "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
+      }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
