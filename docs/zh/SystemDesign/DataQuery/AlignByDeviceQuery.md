@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-    
+
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -34,12 +34,14 @@ AlignByDevicePlan 即按设备对齐查询对应的表结构为：
 ### AlignByDevicePlan 中重要字段含义
 
 首先解释一下 AlignByDevicePlan 中一些重要字段的含义：
+
 - `List<String> measurements`：查询中出现的 measurement 列表。
 - `List<String> devices`: 由前缀路径得到的设备列表。
 - `Map<String, IExpression> deviceToFilterMap`: 用来存储设备对应的过滤条件。
-- `Map<String, TSDataType> measurementDataTypeMap`：AlignByDevicePlan 要求不同设备的同名 sensor 数据类型一致，该字段是一个 `measurementName -> dataType` 的 Map 结构，用来验证同名 sensor 的数据类型一致性。如 `root.sg.d1.s1` 和 `root.sg.d2.s1` 应该是同一数据类型。
+- `Map<String, TSDataType> measurementDataTypeMap`：该字段用于记录时间序列的实际数据类型，用于实际查询，其键值不包含聚合函数。
+- `Map<String, TSDataType> columnDataTypeMap`：该字段用来记录结果集中每列的数据类型，用于构造表头，输出结果集，可含有聚合函数。
 - `enum MeasurementType`：记录三种 measurement 类型。在任何设备中都不存在的 measurement 为 `NonExist` 类型；有单引号或双引号的 measurement 为 `Constant` 类型；存在的 measurement 为 `Exist` 类型。
-- `Map<String, MeasurementType> measurementTypeMap`: 该字段是一个 `measureName -> measurementType` 的 Map 结构，用来记录查询中所有 measurement 的类型。
+- `Map<String, MeasurementType> measurementTypeMap`: 该字段用来记录查询中所有 measurement 的类型。
 - groupByTimePlan, fillQueryPlan, aggregationPlan：为了避免冗余，这三个执行计划被设定为 RawDataQueryPlan 的子类，而在 AlignByDevicePlan 中被设置为变量。如果查询计划属于这三个计划中的一种，则该字段会被赋值并保存。
 
 在进行具体实现过程的讲解前，先给出一个覆盖较为完整的例子，下面的解释过程中将结合该示例进行说明。
@@ -62,9 +64,11 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
 - org.apache.iotdb.db.qp.Planner
 
-与原始数据查询不同，按设备对齐查询并不在此阶段进行 SELECT 语句和 WHERE 语句中后缀路径的拼接，而将在后续生成物理计划时，计算出每个设备对应的映射值和过滤条件。因此，按设备对齐在此阶段所做的工作只包括对 WHERE 语句中过滤条件的优化。
+与原始数据查询不同，按设备对齐查询并不在此阶段进行 SELECT 语句和 WHERE 语句中后缀路径的拼接，而将在后续生成物理计划时，计算出每个设备对应的映射值和过滤条件。
 
-对过滤条件的优化主要包括三部分：去非、转化析取范式、合并同路径过滤条件。对应的优化器分别为：RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer。该部分逻辑可参考：[Planner](/#/SystemDesign/progress/chap2/sec2).
+因此，按设备对齐在此阶段所做的工作只包括对 WHERE 语句中过滤条件的优化。
+
+对过滤条件的优化主要包括三部分：去非、转化析取范式、合并同路径过滤条件。对应的优化器分别为：RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer。该部分逻辑可参考：[Planner](/zh/SystemDesign/QueryEngine/Planner.html).
 
 ### 物理计划生成
 
@@ -74,20 +78,124 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
 **该阶段所做的主要工作为生成查询对应的** `AlignByDevicePlan`，**填充其中的变量信息。**
 
-首先解释一下 `transformQuery()` 方法中一些重要字段的含义(与 AlignByDevicePlan 中重复的字段见上文)：
-
-- prefixPaths, suffixPaths：前者为 FROM 子句中的前缀路径，示例中为 `[root.sg.d1, root.sg.*]`; 后者为 SELECT 子句中的后缀路径，示例中为 `[s1, "1", *, s2, s5]`.
-- devices：对前缀路径去通配符和设备去重后得到的设备列表，示例中为 `[root.sg.d1, root.sg.d2]`。
-- measurementSetOfGivenSuffix：中间变量，记录某一 suffix 对应的 measurement，示例中，对于后缀 \*, `measurementSetOfGivenSuffix = {s1,s2}`，对于后缀 s1, `measurementSetOfGivenSuffix = {s1}`;
-
 接下来介绍 AlignByDevicePlan 的计算过程：
 
-1. 检查查询类型是否为 groupByTimePlan, fillQueryPlan, aggregationPlan 这三类查询中的一种，如果是则对相应的变量进行赋值，并更改 `AlignByDevicePlan` 的查询类型。
-2. 遍历 SELECT 后缀路径，对每一个后缀路径设置一个中间变量为 `measurementSetOfGivenSuffix`，用来记录该后缀路径对应的所有 measurement。如果后缀路径以单引号或双引号开头，则直接在 `measurements` 中增加该值，并记录其类型为 `Constant` 类型。
-3. 否则将设备列表与该后缀路径拼接，得到完整的路径，如果拼接后的路径不存在，需要进一步判断该 measurement 是否在其它设备中存在，如果都没有则暂时识别为 `NonExist`，如果后续出现设备存在该 measurement，则覆盖 `NonExist` 值为 `Exist`。
-4. 如果拼接后路径存在，则证明 measurement 是 `Exist` 类型，需要检验数据类型的一致性，不满足返回错误信息，满足则记录下该 Measurement，对 `measurementSetOfGivenSuffix` 等进行更新。
-5. 在一层 suffix 循环结束后，将该层循环中出现的 `measurementSetOfGivenSuffix` 加入 `measurements` 中。在整个循环结束后，将循环中得到的变量信息赋值到 AlignByDevicePlan 中。此处得到的 measurements 列表是未经过去重的，在生成 `ColumnHeader` 时将进行去重。
-6. 最后调用 `concatFilterByDevice()` 方法计算 `deviceToFilterMap`，得到将每个设备分别拼接后对应的 Filter 信息。
+```java
+  // 检查查询类型是否为以下这三类子查询中的一种
+  // 如果是则对相应的变量进行赋值，并更改 AlignByDevicePlan 的查询类型
+  if (queryPlan instanceof GroupByTimePlan) {
+    alignByDevicePlan.setGroupByTimePlan((GroupByTimePlan) queryPlan);
+  } else if (queryPlan instanceof FillQueryPlan) {
+    ...
+  } else if (queryPlan instanceof AggregationPlan) {
+    ...
+  }
+
+  // 取得 FROM子句中的前缀路径，SELECT 子句中的后缀路径及聚合函数
+  List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
+  // 对前缀路径去通配符和设备去重后得到的设备列表
+  List<String> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
+  List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
+  List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
+
+  // 新建 AlignByDevicePlan 中的字段，作用可见上文
+  List<String> measurements = new ArrayList<>();
+  ...
+
+  // 遍历后缀路径
+  for (int i = 0; i < suffixPaths.size(); i++) {
+    Path suffixPath = suffixPaths.get(i);
+    // 用于记录某一后缀路径对应的 measurement，示例见下文
+    Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
+    // 该后缀路径为常量，记录后继续遍历下一后缀路径
+    if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
+      ...
+      continue;
+    }
+
+    // 后缀路径不为常量，则将其与各个设备拼接得到完整路径
+    for (String device : devices) {
+      Path fullPath = Path.addPrefixPath(suffixPath, device);
+      try {
+        // 设备列表中已经去除通配符，但是后缀路径仍可能含有通配符
+        // 去除通配符后得到实际的时间序列路径
+        List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());
+        // 如果拼接后的路径不存在，需要进一步判断该 measurement 是否在其它设备中存在
+        // 如果都没有则暂时识别为 `NonExist`
+        // 如果后续出现设备存在该 measurement，则覆盖 `NonExist` 值为 `Exist`
+        if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
+          ...
+        }
+
+        // 分别取得带聚合函数和不带聚合函数（实际时间序列）的数据类型
+        // 带聚合函数的数据类型用于 1.数据类型一致性检查 2.表头计算，输出结果集
+        // 时间序列的实际数据类型则用于 AlignByDeviceDataSet 中的实际查询
+        String aggregation =
+            originAggregations != null && !originAggregations.isEmpty()
+                ? originAggregations.get(i) : null;
+        Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(actualPaths,
+            aggregation);
+        List<TSDataType> columnDataTypes = pair.left;
+        List<TSDataType> measurementDataTypes = pair.right;
+
+        for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
+          Path path = new Path(actualPaths.get(pathIdx));
+
+          // 检查同名传感器的数据类型一致性
+          String measurementChecked;
+          if (originAggregations != null && !originAggregations.isEmpty()) {
+            measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
+          } else {
+            measurementChecked = path.getMeasurement();
+          }
+          TSDataType columnDataType = columnDataTypes.get(pathIdx);
+          // 如果有同名传感器则进行数据类型比较
+          if (columnDataTypeMap.containsKey(measurementChecked)) {
+            // 数据类型不一致则抛出异常，结束
+            if (!columnDataType.equals(columnDataTypeMap.get(measurementChecked))) {
+              throw new QueryProcessException(...);
+            }
+          } else {
+            // 当前没有该 Measurement 则进行记录
+            ...
+          }
+
+          // 进行到这一步说明该 Measurement 在该设备下存在且正确，
+          // 首先更新 measurementSetOfGivenSuffix，重复则不可再加入
+          // 其次如果该 measurement 之前其被识别为 NonExist类型，则将其更新为 Exist
+          if (measurementSetOfGivenSuffix.add(measurementChecked)
+              || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
+            measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
+          }
+        }
+          // 更新 paths
+          paths.add(path);
+      } catch (MetadataException e) {
+        throw new LogicalOptimizeException(...);
+      }
+    }
+
+    // 更新 measurements
+    // 注意在一个后缀路径的循环内部，使用了 set 避免重复的 measurement
+    // 而在循环外部使用了 List 来保证输出包含用户输入的所有 measurements
+    // 示例中，对于后缀 *, measurementSetOfGivenSuffix = {s1,s2}
+    // 对于后缀 s1, measurementSetOfGivenSuffix = {s1}
+    // 因此最终 measurements 为 [s1,s2,s1].
+    measurements.addAll(measurementSetOfGivenSuffix);
+  }
+
+  // 赋值到 alignByDevicePlan
+  alignByDevicePlan.setMeasurements(measurements);
+  ...
+
+  // 按设备对过滤条件进行拼接，得到每个设备对应的过滤条件
+  FilterOperator filterOperator = queryOperator.getFilterOperator();
+  if (filterOperator != null) {
+    alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devices, filterOperator));
+  }
+```
+
+`concatFilterByDevice()` 方法的主要处理逻辑在 `concatFilterPath()` 中：
 
 ```java
 Map<String, IExpression> concatFilterByDevice(List<String> devices,
@@ -96,9 +204,9 @@ Map<String, IExpression> concatFilterByDevice(List<String> devices,
 输入：经过拼接后的 deviceToFilterMap，记录了每个设备对应的 Filter 信息
 ```
 
-`concatFilterByDevice()` 方法的主要处理逻辑在 `concatFilterPath()` 中：
+`concatFilterPath()` 方法遍历未拼接的 FilterOperator 二叉树，判断节点是否为叶子节点，如果是，则取该叶子结点的路径，如果路径以 time 或 root 开头则不做处理，否则将设备名与节点路径进行拼接后返回；如果不是，则对该节点的所有子节点进行迭代处理。
 
-`concatFilterPath()` 方法遍历未拼接的 FilterOperator 二叉树，判断节点是否为叶子节点，如果是，则取该叶子结点的路径，如果路径以 time 或 root 开头则不做处理，否则将设备名与节点路径进行拼接后返回；如果不是，则对该节点的所有子节点进行迭代处理。示例中，设备1过滤条件拼接后的结果为 `time = 1 AND root.sg.d1.s1 < 25`，设备2为 `time = 1 AND root.sg.d2.s1 < 25`。
+示例中，设备1过滤条件拼接后的结果为 `time = 1 AND root.sg.d1.s1 < 25`，设备2为 `time = 1 AND root.sg.d2.s1 < 25`。
 
 下面用示例总结一下通过该阶段计算得到的变量信息：
 
@@ -132,7 +240,7 @@ private void getAlignByDeviceQueryHeaders(
 其具体实现逻辑如下：
 
 1. 首先加入 `Device` 列，其数据类型为 `TEXT`；
-2. 遍历未去重的 measurements 列表，判断当前遍历 measurement 的类型，如果是 `Exist` 类型则从 `measurementTypeMap` 中取得其类型；其余两种类型设其类型为 `TEXT`，然后将 measurement 及其类型加入表头数据结构中。
+2. 遍历未去重的 measurements 列表，判断当前遍历 measurement 的类型，如果是 `Exist` 类型则从 `columnDataTypeMap` 中取得其类型；其余两种类型设其类型为 `TEXT`，然后将 measurement 及其类型加入表头数据结构中。
 3. 根据中间变量 `deduplicatedMeasurements` 对 measurements 进行去重。
 
 最终得到的 Header 为：
