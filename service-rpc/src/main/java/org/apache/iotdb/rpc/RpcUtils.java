@@ -93,6 +93,11 @@ public class RpcUtils {
     return status;
   }
 
+  /**
+   *
+   * @param length
+   * @return A TSStatusArray of given length, each element will be a SUCCESS_STATUS.
+   */
   public static TSStatus[] getStatus(int length) {
     TSStatus[] status = new TSStatus[length];
     Arrays.fill(status, RpcUtils.SUCCESS_STATUS);
