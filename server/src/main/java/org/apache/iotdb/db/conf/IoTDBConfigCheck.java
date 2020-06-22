@@ -18,17 +18,9 @@
  */
 package org.apache.iotdb.db.conf;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -41,6 +33,11 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.Properties;
 
 public class IoTDBConfigCheck {
 
@@ -144,8 +141,10 @@ public class IoTDBConfigCheck {
    *
    * When init: create system.properties directly
    *
-   * When upgrading the system.properties: (1) create system.properties.tmp (2) delete
-   * system.properties (2) rename system.properties.tmp to system.properties
+   * When upgrading the system.properties:
+   * (1) create system.properties.tmp
+   * (2) delete system.properties
+   * (2) rename system.properties.tmp to system.properties
    */
   public void checkConfig() throws IOException {
     propertiesFile = SystemFileFactory.INSTANCE
