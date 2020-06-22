@@ -120,7 +120,8 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end);
-      totalPointsNum += insertTabletPlan.getMeasurements().length * (end - start);
+      totalPointsNum += (insertTabletPlan.getMeasurements().length - insertTabletPlan.getFailedMeasurementNumber())
+        * (end - start);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e.getMessage());
     }
@@ -137,6 +138,9 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getColumns()[i] == null) {
+        continue;
+      }
       IWritableMemChunk memSeries = createIfNotExistAndGet(insertTabletPlan.getDeviceId(),
           insertTabletPlan.getMeasurements()[i], insertTabletPlan.getSchemas()[i]);
       memSeries.write(insertTabletPlan.getTimes(), insertTabletPlan.getColumns()[i],

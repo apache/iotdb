@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,31 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.exception.ShutdownException;
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public interface IService {
+public class ShutdownException extends IoTDBException {
 
-  /**
-   * Start current service.
-   */
-  void start() throws StartupException;
 
-  /**
-   * Stop current service. If current service uses thread or thread pool,
-   * current service should guarantee to putBack thread or thread pool.
-   */
-  void stop();
+  public ShutdownException(String message, int errorCode) {
+    super(message, errorCode);
+  }
 
-  default void waitAndStop(long millseconds) {stop();}
+  public ShutdownException(Throwable cause) {
+    super(cause.getMessage(), TSStatusCode.SHUT_DOWN_ERROR.getStatusCode());
+  }
 
-  default void shutdown(long millseconds) throws ShutdownException {waitAndStop(millseconds);}
+  public ShutdownException(String message, Throwable cause, int errorCode) {
+    super(message, cause, errorCode);
+  }
 
-  /**
-   * Get the name of the the service.
-   * @return current service name
-   */
-  ServiceType getID();
+  public ShutdownException(Throwable cause, int errorCode) {
+    super(cause, errorCode);
+  }
 }
