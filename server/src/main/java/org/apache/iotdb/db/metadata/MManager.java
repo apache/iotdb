@@ -24,6 +24,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -221,7 +222,7 @@ public class MManager {
     File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
     if (tmpFile.exists()) {
       logger.warn("Creating MTree snapshot not successful before crashing...");
-      tmpFile.delete();
+      Files.delete(tmpFile.toPath());
     }
 
     File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
@@ -1777,14 +1778,14 @@ public class MManager {
         File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
         File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
         if (snapshotFile.exists()) {
-          snapshotFile.delete();
+          Files.delete(snapshotFile.toPath());
         }
         if (tmpFile.renameTo(snapshotFile)) {
-          tmpFile.delete();
+          Files.delete(tmpFile.toPath());
           logger.info("Finish creating MTree snapshot to {}.", mtreeSnapshotPath);
         }
       } catch (IOException e) {
-        logger.warn("Failed to create MTree snapshot to {}, {}", mtreeSnapshotPath, e);
+        logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
       } finally {
         lock.writeLock().unlock();
       }
