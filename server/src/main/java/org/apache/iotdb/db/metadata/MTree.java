@@ -932,7 +932,7 @@ public class MTree implements Serializable {
       if (nodes.length <= idx) {
         String fileName = node.getDataFileName();
         String nodeName;
-        if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
+        if (node.getName().contains(TsFileConstant.PATH_SEPARATOR) || node.getName().contains(" ")) {
           nodeName = "\"" + node + "\"";
         } else {
           nodeName = "" + node;
