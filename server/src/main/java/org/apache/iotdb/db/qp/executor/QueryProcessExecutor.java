@@ -706,7 +706,13 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
    */
   private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
       throws PathException, MetadataException, StorageEngineException {
-    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+    String fullPath;
+    if(measurementId.indexOf(IoTDBConstant.PATH_SEPARATOR) != -1) {
+         fullPath =  deviceId + IoTDBConstant.PATH_SEPARATOR
+             + IoTDBConstant.DOUBLE_QUOTATION + measurementId + IoTDBConstant.DOUBLE_QUOTATION;
+    } else {
+      fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+    }
     TSEncoding defaultEncoding = getDefaultEncoding(dataType);
     CompressionType defaultCompressor =
         CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());
