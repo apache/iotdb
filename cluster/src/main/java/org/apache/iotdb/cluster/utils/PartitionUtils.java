@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.utils;
 import static org.apache.iotdb.cluster.config.ClusterConstant.HASH_SALT;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -40,6 +41,7 @@ import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeEq;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
@@ -129,6 +131,17 @@ public class PartitionUtils {
     newPlan.setRowCount(times.length);
     newPlan.setSchemas(plan.getSchemas());
     return newPlan;
+  }
+
+  public static void reordering(InsertTabletPlan plan, TSStatus[] status, TSStatus[] subStatus) {
+    List<Integer> range = plan.getRange();
+    int destLoc = 0;
+    for (int i = 0; i < range.size(); i += 2) {
+      int start = range.get(i);
+      int end = range.get(i + 1);
+      System.arraycopy(subStatus, destLoc, status, start, end - start);
+      destLoc += end - start;
+    }
   }
 
   public static Intervals extractTimeInterval(Filter filter) {
@@ -301,10 +314,11 @@ public class PartitionUtils {
     }
 
     /**
-     * Merge an interval of [lowerBound, upperBound] with the last interval if they can be
-     * merged, or just add it as the last interval if its lowerBound is larger than the
-     * upperBound of the last interval. If the upperBound of the new interval is less than the
-     * lowerBound of the last interval, nothing will be done.
+     * Merge an interval of [lowerBound, upperBound] with the last interval if they can be merged,
+     * or just add it as the last interval if its lowerBound is larger than the upperBound of the
+     * last interval. If the upperBound of the new interval is less than the lowerBound of the last
+     * interval, nothing will be done.
+     *
      * @param lowerBound
      * @param upperBound
      */

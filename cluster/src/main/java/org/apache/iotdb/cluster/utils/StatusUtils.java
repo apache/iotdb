@@ -47,6 +47,9 @@ public class StatusUtils {
     TSStatus status = new TSStatus();
     status.setCode(statusCode.getStatusCode());
     switch (statusCode) {
+      case SUCCESS_STATUS:
+        status.setMessage("Executed successfully. ");
+        break;
       case TIME_OUT:
         status.setMessage("Request timed out. ");
         break;
@@ -60,7 +63,6 @@ public class StatusUtils {
         status
             .setMessage("Current node is read-only, please retry to find another available node. ");
         break;
-
       case INCOMPATIBLE_VERSION:
         status.setMessage("Incompatible version. ");
         break;

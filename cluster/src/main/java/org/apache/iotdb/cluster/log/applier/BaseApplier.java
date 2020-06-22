@@ -35,6 +35,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
@@ -56,8 +57,8 @@ abstract class BaseApplier implements LogApplier {
 
   void applyPhysicalPlan(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (plan instanceof InsertPlan) {
-      processInsertPlan((InsertPlan) plan);
+    if (plan instanceof InsertPlan || plan instanceof InsertTabletPlan) {
+      processPlanWithTolerance(plan);
     } else if (!plan.isQuery()) {
       try {
         getQueryExecutor().processNonQuery(plan);
@@ -78,7 +79,8 @@ abstract class BaseApplier implements LogApplier {
     }
   }
 
-  private void processInsertPlan(InsertPlan plan)
+
+  private void processPlanWithTolerance(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     try {
       getQueryExecutor().processNonQuery(plan);
@@ -94,11 +96,17 @@ abstract class BaseApplier implements LogApplier {
               metaGroupMember.getName(), e.getCause().getMessage());
         }
         try {
+          String path;
+          if (plan instanceof InsertPlan) {
+            path = ((InsertPlan) plan).getDeviceId();
+          } else {
+            path = ((InsertTabletPlan) plan).getDeviceId();
+          }
           List<MeasurementSchema> schemas = metaGroupMember
-              .pullTimeSeriesSchemas(Collections.singletonList(plan.getDeviceId()));
+              .pullTimeSeriesSchemas(Collections.singletonList(path));
           for (MeasurementSchema schema : schemas) {
             registerMeasurement(
-                plan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
+                path + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
                 schema);
           }
         } catch (MetadataException e1) {

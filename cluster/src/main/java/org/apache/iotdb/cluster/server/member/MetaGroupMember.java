@@ -143,6 +143,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -1488,8 +1489,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       syncLeaderWithConsistencyCheck();
       List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
       logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
-      return forwardPlan(plan, globalGroups);
-    }catch (CheckConsistencyException e) {
+      return forwardPlan(globalGroups, plan);
+    } catch (CheckConsistencyException e) {
       logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader);
       return forwardPlan(plan, leader, null);
     }
@@ -1535,7 +1536,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return StatusUtils.NO_STORAGE_GROUP;
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
-    return forwardPlan(planGroupMap);
+    return forwardPlan(planGroupMap, plan);
   }
 
   /**
@@ -1545,76 +1546,141 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param planGroupMap
    * @return
    */
-  TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
-    TSStatus status;
+  TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
-    List<String> errorCodePartitionGroups = new ArrayList<>();
-    TSStatus subStatus = StatusUtils.OK;
-    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+    TSStatus status;
+    if (planGroupMap.size() == 1) {
+      Map.Entry<PhysicalPlan, PartitionGroup> entry = planGroupMap.entrySet().iterator().next();
       if (entry.getValue().contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
-        logger.debug("Execute {} in a local group of {}", entry.getKey(), entry.getValue().getHeader());
-        subStatus = getLocalDataMember(entry.getValue().getHeader())
+        logger.debug("Execute {} in a local group of {}", entry.getKey(),
+            entry.getValue().getHeader());
+        status = getLocalDataMember(entry.getValue().getHeader())
             .executeNonQuery(entry.getKey());
       } else {
         // forward the query to the group that should handle it
         logger.debug("Forward {} to a remote group of {}", entry.getKey(),
             entry.getValue().getHeader());
-        subStatus = forwardPlan(entry.getKey(), entry.getValue());
+        status = forwardPlan(entry.getKey(), entry.getValue());
       }
-      if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        // execution failed, record the error message
-        errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-            subStatus.getCode(), entry.getValue().getHeader(),
-            subStatus.getMessage()));
-      }
-    }
-    if (errorCodePartitionGroups.size() <= 1) {
-      // when size = 0, no error occurs, the plan is successfully executed, return OK
-      // when size = 1, one error occurs, set status = subStatus and return
-      status = subStatus;
     } else {
-      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.setMessage("The following errors occurred when executing the query, "
-          + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
+      TSStatus tmpStatus;
+      List<String> errorCodePartitionGroups = new ArrayList<>();
+      if (plan instanceof InsertTabletPlan) {
+        TSStatus[] subStatus = new TSStatus[((InsertTabletPlan) plan).getRowCount()];
+        boolean noFailure = true;
+        boolean isBatchFailure = false;
+        for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+          if (entry.getValue().contains(thisNode)) {
+            // the query should be handled by a group the local node is in, handle it with in the group
+            logger.debug("Execute {} in a local group of {}", entry.getKey(),
+                entry.getValue().getHeader());
+            tmpStatus = getLocalDataMember(entry.getValue().getHeader())
+                .executeNonQuery(entry.getKey());
+          } else {
+            // forward the query to the group that should handle it
+            logger.debug("Forward {} to a remote group of {}", entry.getKey(),
+                entry.getValue().getHeader());
+            tmpStatus = forwardPlan(entry.getKey(), entry.getValue());
+          }
+          logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
+          noFailure =
+              (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
+          isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+              || isBatchFailure;
+          PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
+              tmpStatus.subStatus == null ? RpcUtils
+                  .getStatus(((InsertTabletPlan) entry.getKey()).getRowCount())
+                  : tmpStatus.subStatus.toArray(new TSStatus[]{}));
+          if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            // execution failed, record the error message
+            errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
+                tmpStatus.getCode(), entry.getValue().getHeader(),
+                tmpStatus.getMessage(), tmpStatus.subStatus));
+          }
+        }
+        if (noFailure) {
+          status = StatusUtils.OK;
+        } else if (isBatchFailure) {
+          status = RpcUtils.getStatus(Arrays.asList(subStatus));
+        } else {
+          status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+          status.setMessage("The following errors occurred when executing the query, "
+              + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
+        }
+      } else {
+        for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+          if (entry.getValue().contains(thisNode)) {
+            // the query should be handled by a group the local node is in, handle it with in the group
+            logger.debug("Execute {} in a local group of {}", entry.getKey(),
+                entry.getValue().getHeader());
+            tmpStatus = getLocalDataMember(entry.getValue().getHeader())
+                .executeNonQuery(entry.getKey());
+          } else {
+            // forward the query to the group that should handle it
+            logger.debug("Forward {} to a remote group of {}", entry.getKey(),
+                entry.getValue().getHeader());
+            tmpStatus = forwardPlan(entry.getKey(), entry.getValue());
+          }
+          if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            // execution failed, record the error message
+            errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
+                tmpStatus.getCode(), entry.getValue().getHeader(),
+                tmpStatus.getMessage()));
+          }
+        }
+        if (errorCodePartitionGroups.size() == 0) {
+          status = StatusUtils.OK;
+        } else {
+          status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+          status.setMessage("The following errors occurred when executing the query, "
+              + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
+        }
+      }
     }
+    logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
   }
 
-  TSStatus forwardPlan(PhysicalPlan plan, List<PartitionGroup> partitionGroups) {
-    TSStatus status;
+  /**
+   * Forward plans to all DataGroupMember groups. Only when all nodes time out, will a TIME_OUT be
+   * returned.
+   *
+   * @param partitionGroups
+   * @return
+   * @para plan
+   */
+  TSStatus forwardPlan(List<PartitionGroup> partitionGroups, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
+    TSStatus status;
     List<String> errorCodePartitionGroups = new ArrayList<>();
-    TSStatus subStatus = StatusUtils.OK;
     for (PartitionGroup partitionGroup : partitionGroups) {
       if (partitionGroup.contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
-        logger.debug("Execute {} in a local group of {}", plan,
-            partitionGroup.getHeader());
-        subStatus = getLocalDataMember(partitionGroup.getHeader())
+        logger.debug("Execute {} in a local group of {}", plan, partitionGroup.getHeader());
+        status = getLocalDataMember(partitionGroup.getHeader())
             .executeNonQuery(plan);
       } else {
         // forward the query to the group that should handle it
         logger.debug("Forward {} to a remote group of {}", plan,
             partitionGroup.getHeader());
-        subStatus = forwardPlan(plan, partitionGroup);
+        status = forwardPlan(plan, partitionGroup);
       }
-      if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-            subStatus.getCode(), partitionGroup.getHeader(),
-            subStatus.getMessage()));
+            status.getCode(), partitionGroup.getHeader(),
+            status.getMessage()));
       }
     }
-    if (errorCodePartitionGroups.size() <= 1) {
-      // when size = 0, no error occurs, the plan is successfully executed, return OK
-      // when size = 1, one error occurs, set status = subStatus and return
-      status = subStatus;
+    if (errorCodePartitionGroups.size() == 0) {
+      status = StatusUtils.OK;
     } else {
       status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
       status.setMessage("The following errors occurred when executing the query, "
           + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
     }
+    logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
   }
 
