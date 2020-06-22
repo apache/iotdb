@@ -21,7 +21,6 @@ package org.apache.iotdb.db.metadata;
 public class MetaUtils {
   public static String[] getNodeNames(String path, String separator) {
     String[] nodeNames;
-    path = path.trim();
     if (path.contains("\"") || path.contains("\'")) {
       String[] deviceAndMeasurement;
       if (path.contains("\"")) {

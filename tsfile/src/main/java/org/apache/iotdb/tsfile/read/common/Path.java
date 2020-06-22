@@ -79,7 +79,6 @@ public class Path implements Serializable {
    * @return str[0] is the device string, and str[1] is the measurement string
    */
   private void init(String pathSc) {
-    pathSc = pathSc.trim();
     int i = 0;
     int j = 0;
     for (char c : pathSc.toCharArray()) {
@@ -104,7 +103,7 @@ public class Path implements Serializable {
         subStrs = pathSc.split("\'");
       }
       device = subStrs[0];
-      if (!device.trim().equals("")) {
+      if (!device.equals("")) {
         device = device.substring(0, subStrs[0].length() - 1);
       }
       measurement = subStrs[1];

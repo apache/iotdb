@@ -707,7 +707,7 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
       throws PathException, MetadataException, StorageEngineException {
     String fullPath;
-    if(measurementId.indexOf(IoTDBConstant.PATH_SEPARATOR) != -1) {
+    if(measurementId.indexOf(IoTDBConstant.PATH_SEPARATOR) != -1 || measurementId.contains(" ")) {
          fullPath =  deviceId + IoTDBConstant.PATH_SEPARATOR
              + IoTDBConstant.DOUBLE_QUOTATION + measurementId + IoTDBConstant.DOUBLE_QUOTATION;
     } else {
