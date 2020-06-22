@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -45,6 +46,8 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 
 public class FileLoaderUtils {
 
+  public static int totalChunkNum = 0;
+  public static long totalChunkSize = 0;
   private FileLoaderUtils() {
 
   }
@@ -126,7 +129,13 @@ public class FileLoaderUtils {
    */
   public static List<ChunkMetadata> loadChunkMetadataList(TimeseriesMetadata timeSeriesMetadata)
       throws IOException {
-    return timeSeriesMetadata.loadChunkMetadataList();
+    List<ChunkMetadata> chunkMetadataList = timeSeriesMetadata.loadChunkMetadataList();
+    // try to calculate the total number of chunk and time-value points in chunk
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      totalChunkNum += chunkMetadataList.size();
+      chunkMetadataList.forEach(chunkMetadata -> totalChunkSize += chunkMetadata.getStatistics().getCount());
+    }
+    return chunkMetadataList;
   }
 
 

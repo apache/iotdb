@@ -18,17 +18,9 @@
  */
 package org.apache.iotdb.db.conf;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Properties;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -41,6 +33,11 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.Properties;
 
 public class IoTDBConfigCheck {
 
@@ -62,20 +59,16 @@ public class IoTDBConfigCheck {
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
 
   private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
-  private static String timestampPrecision = IoTDBDescriptor.getInstance().getConfig()
-      .getTimestampPrecision();
+  private static String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
 
   private static final String PARTITION_INTERVAL_STRING = "partition_interval";
-  private static long partitionInterval = IoTDBDescriptor.getInstance().getConfig()
-      .getPartitionInterval();
+  private static long partitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
-  private static String tsfileFileSystem = IoTDBDescriptor.getInstance().getConfig()
-      .getTsFileStorageFs().toString();
+  private static String tsfileFileSystem = IoTDBDescriptor.getInstance().getConfig().getTsFileStorageFs().toString();
 
   private static final String ENABLE_PARTITION_STRING = "enable_partition";
-  private static boolean enablePartition = IoTDBDescriptor.getInstance().getConfig()
-      .isEnablePartition();
+  private static boolean enablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
 
   private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
   private static final String tagAttributeTotalSize = String.valueOf(IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize());
@@ -87,16 +80,11 @@ public class IoTDBConfigCheck {
 
   private static final String ERROR_LOG = "Wrong %s, please set as: %s !";
 
-  private static final String ENABLE_PERFORMANCE_TRACING = "enable_performance_tracing";
-  private static boolean enablePerformanceTracing = IoTDBDescriptor.getInstance().getConfig()
-      .isEnablePerformanceTracing();
-
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
   private static class IoTDBConfigCheckHolder {
-
     private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   }
 
@@ -117,9 +105,8 @@ public class IoTDBConfigCheck {
     // check time stamp precision
     if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
         || timestampPrecision.equals("ns"))) {
-      logger.error(
-          "Wrong " + TIMESTAMP_PRECISION_STRING + ", please set as: ms, us or ns ! Current is: "
-              + timestampPrecision);
+      logger.error("Wrong " + TIMESTAMP_PRECISION_STRING + ", please set as: ms, us or ns ! Current is: "
+          + timestampPrecision);
       System.exit(-1);
     }
 
@@ -138,7 +125,6 @@ public class IoTDBConfigCheck {
     systemProperties.put(PARTITION_INTERVAL_STRING, String.valueOf(partitionInterval));
     systemProperties.put(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
-    systemProperties.put(ENABLE_PERFORMANCE_TRACING, String.valueOf(enablePerformanceTracing));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
   }
@@ -146,11 +132,13 @@ public class IoTDBConfigCheck {
 
   /**
    * check configuration in system.properties when starting IoTDB
-   * <p>
+   *
    * When init: create system.properties directly
-   * <p>
-   * When upgrading the system.properties: (1) create system.properties.tmp (2) delete
-   * system.properties (2) rename system.properties.tmp to system.properties
+   *
+   * When upgrading the system.properties:
+   * (1) create system.properties.tmp
+   * (2) delete system.properties
+   * (2) rename system.properties.tmp to system.properties
    */
   public void checkConfig() throws IOException {
     propertiesFile = SystemFileFactory.INSTANCE
@@ -217,7 +205,6 @@ public class IoTDBConfigCheck {
       properties.setProperty(TSFILE_FILE_SYSTEM_STRING, tsfileFileSystem);
       properties.setProperty(IOTDB_VERSION_STRING, IoTDBConstant.VERSION);
       properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
-      properties.setProperty(ENABLE_PERFORMANCE_TRACING, String.valueOf(enablePerformanceTracing));
       properties.setProperty(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
       properties.setProperty(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
@@ -233,7 +220,7 @@ public class IoTDBConfigCheck {
 
 
   /**
-   * repair 0.10 properties
+   *  repair 0.10 properties
    */
   private void upgradePropertiesFileFromBrokenFile()
       throws IOException {
@@ -300,13 +287,6 @@ public class IoTDBConfigCheck {
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
       logger.error(String.format(ERROR_LOG, MAX_DEGREE_OF_INDEX_STRING, properties
           .getProperty(MAX_DEGREE_OF_INDEX_STRING)));
-      System.exit(-1);
-    }
-
-    if (Boolean.parseBoolean(properties.getProperty(ENABLE_PERFORMANCE_TRACING))
-        != enablePerformanceTracing) {
-      logger.error("Wrong {}, please set as: {} !", ENABLE_PERFORMANCE_TRACING, properties
-          .getProperty(ENABLE_PERFORMANCE_TRACING));
       System.exit(-1);
     }
   }

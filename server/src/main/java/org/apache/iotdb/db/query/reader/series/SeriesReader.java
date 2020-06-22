@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -47,8 +46,6 @@ import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
 public class SeriesReader {
 
-  public static int totalChunkNum = 0;
-  public static long totalChunkSize = 0;
   private final Path seriesPath;
 
   // all the sensors in this device;
@@ -256,12 +253,6 @@ public class SeriesReader {
         && endTime >= firstTimeSeriesMetadata.getStatistics().getStartTime()) {
       unpackOneTimeSeriesMetadata(firstTimeSeriesMetadata);
       firstTimeSeriesMetadata = null;
-    }
-
-    // try to calculate the total number of chunk and time-value points in chunk
-    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-      totalChunkNum += cachedChunkMetadata.size();
-      cachedChunkMetadata.forEach(chunkMetadata -> totalChunkSize += chunkMetadata.getStatistics().getCount());
     }
 
     if (init && firstChunkMetadata == null && !cachedChunkMetadata.isEmpty()) {

@@ -88,6 +88,7 @@ import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -617,9 +618,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         builder.append(StorageGroupProcessor.seqFile.size() + StorageGroupProcessor.unseqFile.size())
             .append("\nNumber of sequence files: ").append(StorageGroupProcessor.seqFile.size())
             .append("\nNumber of unsequence files: ").append(StorageGroupProcessor.unseqFile.size())
-            .append("\nNumber of chunks: ").append(SeriesReader.totalChunkNum)
+            .append("\nNumber of chunks: ").append(FileLoaderUtils.totalChunkNum)
             .append("\nAverage size of chunks: ")
-            .append(SeriesReader.totalChunkSize / SeriesReader.totalChunkNum);
+            .append(FileLoaderUtils.totalChunkSize / FileLoaderUtils.totalChunkNum);
 
         performanceWriter.write(builder.toString());
         performanceWriter.newLine();
