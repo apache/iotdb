@@ -381,15 +381,6 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| 100000 |
 |Effective|After restart system|
 
-* mtree\_snapshot\_thread\_check\_time
-
-|Name| mtree\_snapshot\_thread\_check\_time |
-|:---:|:---|
-|Description| A thread will check whether the MTree is modified lately and the line number of mlog.txt each such interval. Unit: second|
-|Type| Int32 |
-|Default| 600 |
-|Effective|After restart system|
-
 * flush\_wal\_threshold
 
 |Name| flush\_wal\_threshold |

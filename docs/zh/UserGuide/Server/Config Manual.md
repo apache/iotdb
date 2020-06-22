@@ -235,15 +235,6 @@
 |默认值| 100000 |
 |改后生效方式|重启服务器生效|
 
-* mtree\_snapshot\_thread\_check\_time
-
-|名字| mtree\_snapshot\_thread\_check\_time |
-|:---:|:---|
-|描述| 检查 MTree 最近是否修改和累积 mlog 日志行数的线程被触发的间隔时间。单位为秒|
-|类型| Int32 |
-|默认值| 600 |
-|改后生效方式|重启服务器生效|
-
 * fetch\_size
 
 |名字| fetch\_size |

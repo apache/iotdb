@@ -88,6 +88,17 @@ public class MManager {
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
   private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
+  /**
+   * A thread will check whether the MTree is modified lately each such interval. Unit: second
+   */
+  private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
+
+  /**
+   * Threshold interval time of MTree modification. If the last modification time is less than this
+   * threshold, MTree snapshot will not be created
+   */
+  private static final long MTREE_SNAPSHOT_THRESHOLD_INTERVAL = 60 * 60 * 1000L;
+
   // the lock for read/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   // the log file seriesPath
@@ -177,11 +188,9 @@ public class MManager {
     lastSnapshotLogLineNumber = 0;
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
-
-    int mtreeSnapshotThreadCheckTime = config.getMtreeSnapshotThreadCheckTime();
     timedCreateMTreeSnapshotThread
-        .scheduleAtFixedRate(this::checkMTreeModified, mtreeSnapshotThreadCheckTime,
-            mtreeSnapshotThreadCheckTime, TimeUnit.SECONDS);
+        .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
+            MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
   }
 
   public static MManager getInstance() {
@@ -1768,12 +1777,14 @@ public class MManager {
   }
 
   private void checkMTreeModified() {
-    if (System.currentTimeMillis() - logFile.lastModified() < 60 * 60 * 1000) {
+    if (System.currentTimeMillis() - logFile.lastModified() < MTREE_SNAPSHOT_THRESHOLD_INTERVAL) {
       logger.info("MTree snapshot is not created because of active modification");
     } else if (logWriter.getLineNumber() - lastSnapshotLogLineNumber < mtreeSnapshotInterval) {
-      logger.info("MTree snapshot need not be created");
+      logger.info(
+          "MTree snapshot need not be created. Current mlog line number: {}, last snapshot line number: {}",
+          logWriter.getLineNumber(), lastSnapshotLogLineNumber);
     } else {
-      lock.writeLock().lock();
+      lock.readLock().lock();
       logger.info("Start creating MTree snapshot. This may take a while...");
       try {
         mtree.serializeTo(mtreeSnapshotTmpPath, logWriter.getLineNumber());
@@ -1789,7 +1800,7 @@ public class MManager {
       } catch (IOException e) {
         logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
       } finally {
-        lock.writeLock().unlock();
+        lock.readLock().unlock();
       }
     }
   }

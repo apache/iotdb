@@ -318,10 +318,6 @@ public class IoTDBDescriptor {
       conf.setMtreeSnapshotInterval(Integer.parseInt(properties.getProperty(
           "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
 
-      conf.setMtreeSnapshotThreadCheckTime(Integer.parseInt(properties.getProperty(
-          "mtree_snapshot_thread_check_time",
-          Integer.toString(conf.getMtreeSnapshotThreadCheckTime()))));
-
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
               Boolean.toString(conf.isEnablePerformanceStat())).trim()));

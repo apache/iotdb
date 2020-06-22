@@ -85,6 +85,10 @@ public class MTree implements Serializable {
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
 
   private MNode root;
+
+  /**
+   * The number of mlog lines that has been snapshot in mtree.snapshot
+   */
   private int snapshotLineNumber;
 
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();

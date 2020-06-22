@@ -575,13 +575,7 @@ public class IoTDBConfig {
   /**
    * Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree
    */
-  private int mtreeSnapshotInterval = 1000000;
-
-  /**
-   * A thread will check whether the MTree is modified lately and the line number of mlog.txt each
-   * such interval. Unit: second
-   */
-  private int mtreeSnapshotThreadCheckTime = 600;
+  private int mtreeSnapshotInterval = 100000;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second
@@ -644,14 +638,6 @@ public class IoTDBConfig {
 
   public void setMtreeSnapshotInterval(int mtreeSnapshotInterval) {
     this.mtreeSnapshotInterval = mtreeSnapshotInterval;
-  }
-
-  public int getMtreeSnapshotThreadCheckTime() {
-    return mtreeSnapshotThreadCheckTime;
-  }
-
-  public void setMtreeSnapshotThreadCheckTime(int mtreeSnapshotThreadCheckTime) {
-    this.mtreeSnapshotThreadCheckTime = mtreeSnapshotThreadCheckTime;
   }
 
   public long getPartitionInterval() {
