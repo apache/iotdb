@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -43,6 +44,8 @@ import java.util.stream.Collectors;
 
 public class SeriesReader {
 
+  public static int totalChunkNum = 0;
+  public static long totalChunkSize = 0;
   private final Path seriesPath;
 
   // all the sensors in this device;
@@ -259,7 +262,13 @@ public class SeriesReader {
 
   private void unpackOneTimeSeriesMetadata(TimeseriesMetadata timeSeriesMetadata)
       throws IOException {
-    cachedChunkMetadata.addAll(FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata));
+    List<ChunkMetadata> chunkMetadataList = FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
+    // try to calculate the total number of chunk and time-value points in chunk
+    if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+      totalChunkNum += chunkMetadataList.size();
+      chunkMetadataList.forEach(chunkMetadata -> totalChunkSize += chunkMetadata.getStatistics().getCount());
+    }
+    cachedChunkMetadata.addAll(chunkMetadataList);
   }
 
   boolean isChunkOverlapped() throws IOException {
