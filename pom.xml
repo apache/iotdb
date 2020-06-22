@@ -956,6 +956,12 @@
                                  -->
                                 <configuration combine.self="append">
                                     <finalName>apache-iotdb-${project.version}-incubating</finalName>
+                                    <archive>
+                                        <manifest>
+                                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                                        </manifest>
+                                    </archive>
                                 </configuration>
                             </execution>
                         </executions>

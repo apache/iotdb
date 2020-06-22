@@ -78,8 +78,24 @@ SQL解析分宽表结构与窄表结构
 
 宽表结构的SQL解析主要逻辑在 src/main/scala/org/apache/iotdb/spark/tsfile/NarrowConverter.scala中
 
+首先我们根据查询的schema确定要查询的时间序列，仅在tsfile中查询那些sql中存在的时间序列
+```
+requiredSchema.foreach((field: StructField) => {
+  if (field.name != QueryConstant.RESERVED_TIME
+    && field.name != NarrowConverter.DEVICE_NAME) {
+    measurementNames += field.name
+  }
+})
+```
+
 SQL转化为表达式后，由于窄表结构与 TsFile 原生查询结构不同，需要先将表达式转化为与 device 有关的析取表达式
 ，才可以转化为对 TsFile 的查询，转化代码在src/main/java/org/apache/iotdb/spark/tsfile/qp中
+
+例子：
+```
+select time, device_name, s1 from tsfile_table where time > 1588953600000 and time < 1589040000000 and device_name = 'root.group1.d1'
+```
+此时仅查询时间序列root.group1.d1.s1，条件表达式为[time > 1588953600000] and [time < 1589040000000]
 
 #### 5. 查询实际执行
 

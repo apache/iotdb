@@ -177,6 +177,7 @@ public class MManager {
     try {
       tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
 
+      isRecovering = true;
       initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
