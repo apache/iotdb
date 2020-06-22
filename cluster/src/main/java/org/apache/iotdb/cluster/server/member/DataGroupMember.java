@@ -1626,19 +1626,19 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   /**
    * Check if the given measurements are registered or not
    * @param header
-   * @param measurements
+   * @param timeseriesList
    * @param resultHandler
    * @throws TException
    */
   @Override
-  public void isMeasurementsRegistered(Node header, List<String> measurements,
+  public void getUnregisteredTimeSeries(Node header, List<String> timeseriesList,
       AsyncMethodCallback<List<String>> resultHandler) throws TException {
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
     List<String> result = new ArrayList<>();
-    for (String seriesPath : measurements) {
+    for (String seriesPath : timeseriesList) {
       try {
         List<String> path = MManager.getInstance().getAllTimeseriesName(seriesPath);
         if (path.size() != 1) {

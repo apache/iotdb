@@ -350,7 +350,7 @@ service TSDataService extends RaftService {
 
   list<binary> getAggrResult(1:GetAggrResultRequest request)
 
-  list<string> isMeasurementsRegistered(1: Node header, 2: list<string> measurements)
+  list<string> getUnregisteredTimeSeries(1: Node header, 2: list<string> timeseriesList)
 
   PullSnapshotResp pullSnapshot(1:PullSnapshotRequest request)
 
