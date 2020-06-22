@@ -21,6 +21,9 @@ package org.apache.iotdb.db.service;
 import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.sql.SQLException;
@@ -47,6 +50,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -136,8 +140,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
   private static final Logger auditLogger = LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
-  public static final Logger performanceLogger = LoggerFactory
-      .getLogger(IoTDBConstant.PERFORMANCE_LOGGER_NAME);
+  private BufferedWriter performanceWriter;
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
@@ -543,17 +546,29 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
    *             AuthorPlan
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
-      long statementId, PhysicalPlan plan, int fetchSize, String username) {
+      long statementId, PhysicalPlan plan, int fetchSize, String username) throws IOException {
     auditLogger.info("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
     long queryId = -1;
-    if (plan instanceof QueryPlan && IoTDBDescriptor.getInstance().getConfig()
-        .isEnablePerformanceTracing()) {
-      performanceLogger.info(
-          "Query Plan: {}\n---------------- \nStart time: {} \nNumber of deduplicated paths: {}",
-          statement,
-          new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()),
-          plan.getPaths().size());
+    if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
+      File performanceDir = SystemFileFactory.INSTANCE.getFile(config.getPerformanceDir());
+      if (!performanceDir.exists()) {
+        performanceDir.mkdirs();
+      }
+      File logFile = SystemFileFactory.INSTANCE
+          .getFile(performanceDir + File.separator + "performance.txt");
+
+      FileWriter fileWriter;
+      fileWriter = new FileWriter(logFile, true);
+      performanceWriter = new BufferedWriter(fileWriter);
+      StringBuilder builder = new StringBuilder("Query Plan: ");
+      builder.append(statement).append("\n----------------\n")
+          .append("Start time: ")
+          .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
+          .append("\nNumber of series paths: ").append(plan.getPaths().size());
+      performanceWriter.write(builder.toString());
+      performanceWriter.newLine();
+      performanceWriter.flush();
     }
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
@@ -597,15 +612,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       }
       resp.setQueryId(queryId);
 
-      if (plan instanceof QueryPlan && IoTDBDescriptor.getInstance().getConfig()
-          .isEnablePerformanceTracing()) {
-        performanceLogger.info(
-            "Number of tsfiles: {} \nNumber of sequence files: {} \nNumber of unsequence files: {} \n"
-                + "Number of chunks: {}\nAverage size of chunks: {}",
-            StorageGroupProcessor.seqFile.size() + StorageGroupProcessor.unseqFile.size(),
-            StorageGroupProcessor.seqFile.size(), StorageGroupProcessor.unseqFile.size(),
-            SeriesReader.totalChunkNum,
-            SeriesReader.totalChunkSize / SeriesReader.totalChunkNum);
+      if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
+        StringBuilder builder = new StringBuilder("Number of tsfiles: ");
+        builder.append(StorageGroupProcessor.seqFile.size() + StorageGroupProcessor.unseqFile.size())
+            .append("\nNumber of sequence files: ").append(StorageGroupProcessor.seqFile.size())
+            .append("\nNumber of unsequence files: ").append(StorageGroupProcessor.unseqFile.size())
+            .append("\nNumber of chunks: ").append(SeriesReader.totalChunkNum)
+            .append("\nAverage size of chunks: ")
+            .append(SeriesReader.totalChunkSize / SeriesReader.totalChunkNum);
+
+        performanceWriter.write(builder.toString());
+        performanceWriter.newLine();
+        performanceWriter.flush();
       }
 
       if (enableMetric) {

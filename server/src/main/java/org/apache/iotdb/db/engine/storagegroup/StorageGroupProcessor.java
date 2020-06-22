@@ -42,6 +42,7 @@ import java.util.TreeSet;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.io.FileUtils;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
@@ -124,6 +125,7 @@ public class StorageGroupProcessor {
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
   public static Set<TsFileResource> seqFile = null;
   public static Set<TsFileResource> unseqFile = null;
+  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * indicating the file to be loaded already exists locally.
@@ -1236,14 +1238,14 @@ public class StorageGroupProcessor {
         filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
       }
 
-      // exclude repetitive tsFile to calculate the number of tsfile
-      if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-        if (seqFile.isEmpty()) {
+      // exclude repetitive tsFile to calculate the number of it
+      if (config.isEnablePerformanceTracing()) {
+        if (seqFile == null) {
           seqFile = new HashSet<>(seqResources);
         } else {
           seqFile.addAll(seqResources);
         }
-        if (unseqFile.isEmpty()) {
+        if (unseqFile == null) {
           unseqFile = new HashSet<>(unseqResources);
         } else {
           unseqFile.addAll(unseqResources);

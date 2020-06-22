@@ -185,6 +185,11 @@ public class IoTDBConfig {
   private String syncDir = "data" + File.separator + "system" + File.separator + "sync";
 
   /**
+   * Performance tracing directory, stores performance tracing files
+   */
+  private String performanceDir = "data" + File.separator + "system" + File.separator + "performance";
+
+  /**
    * Query directory, stores temporary files of query
    */
   private String queryDir = "data" + File.separator + "query";
@@ -663,6 +668,7 @@ public class IoTDBConfig {
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
     walFolder = addHomeDir(walFolder);
+    performanceDir = addHomeDir(performanceDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -833,6 +839,14 @@ public class IoTDBConfig {
 
   void setSyncDir(String syncDir) {
     this.syncDir = syncDir;
+  }
+
+  public String getPerformanceDir() {
+    return performanceDir;
+  }
+
+  void setPerformanceDir(String performanceDir) {
+    this.performanceDir = performanceDir;
   }
 
   public String getQueryDir() {
