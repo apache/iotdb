@@ -93,12 +93,6 @@ public class MManager {
    */
   private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
 
-  /**
-   * Threshold interval time of MTree modification. If the last modification time is less than this
-   * threshold, MTree snapshot will not be created
-   */
-  private static final long MTREE_SNAPSHOT_THRESHOLD_INTERVAL = 60 * 60 * 1000L;
-
   // the lock for read/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   // the log file seriesPath
@@ -125,6 +119,7 @@ public class MManager {
 
   private File logFile;
   private final int mtreeSnapshotInterval;
+  private final long mtreeSnapshotThresholdTime;
   private int lastSnapshotLogLineNumber;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
 
@@ -140,6 +135,7 @@ public class MManager {
   private MManager() {
     config = IoTDBDescriptor.getInstance().getConfig();
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
+    mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!schemaFolder.exists()) {
@@ -1777,7 +1773,7 @@ public class MManager {
   }
 
   private void checkMTreeModified() {
-    if (System.currentTimeMillis() - logFile.lastModified() < MTREE_SNAPSHOT_THRESHOLD_INTERVAL) {
+    if (System.currentTimeMillis() - logFile.lastModified() < mtreeSnapshotThresholdTime) {
       logger.info("MTree snapshot is not created because of active modification");
     } else if (logWriter.getLineNumber() - lastSnapshotLogLineNumber < mtreeSnapshotInterval) {
       logger.info(
