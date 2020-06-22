@@ -1632,21 +1632,20 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   @Override
   public void isMeasurementsRegistered(Node header, List<String> measurements,
-      AsyncMethodCallback<Map<String, Boolean>> resultHandler) throws TException {
+      AsyncMethodCallback<List<String>> resultHandler) throws TException {
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));
       return;
     }
-    Map<String, Boolean> result = new HashMap<>();
+    List<String> result = new ArrayList<>();
     for (String seriesPath : measurements) {
       try {
         List<String> path = MManager.getInstance().getAllTimeseriesName(seriesPath);
         if (path.size() != 1) {
           throw new MetadataException("Size of the path is not 1.");
         }
-        result.put(seriesPath, true);
       } catch (MetadataException e) {
-        result.put(seriesPath, false);
+        result.add(seriesPath);
       }
     }
     resultHandler.onComplete(result);

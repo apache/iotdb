@@ -387,7 +387,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void isMeasurementsRegistered(Node header, List<String> measurements, AsyncMethodCallback<Map<String, Boolean>> resultHandler) throws TException {
+  public void isMeasurementsRegistered(Node header, List<String> measurements, AsyncMethodCallback<List<String>> resultHandler) throws TException {
     DataGroupMember dataMember = getDataMember(header, resultHandler,
             "Check if measurements are registered");
     dataMember.isMeasurementsRegistered(header,measurements, resultHandler);

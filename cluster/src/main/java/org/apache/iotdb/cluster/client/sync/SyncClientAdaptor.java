@@ -242,9 +242,9 @@ public class SyncClientAdaptor {
     return resultReference.get();
   }
 
-  public static Map<String, Boolean> getUnregisteredMeasurements(DataClient client, Node header, List<String> seriesPaths) throws TException, InterruptedException {
-    AtomicReference<Map<String, Boolean>> remoteResult = new AtomicReference<>();
-    GenericHandler<Map<String, Boolean>> handler = new GenericHandler<>(client.getNode(), remoteResult);
+  public static List<String> getUnregisteredMeasurements(DataClient client, Node header, List<String> seriesPaths) throws TException, InterruptedException {
+    AtomicReference<List<String>> remoteResult = new AtomicReference<>();
+    GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
     synchronized (remoteResult) {
       client.isMeasurementsRegistered(header, seriesPaths, handler);
       remoteResult.wait(RaftServer.getConnectionTimeoutInMS());

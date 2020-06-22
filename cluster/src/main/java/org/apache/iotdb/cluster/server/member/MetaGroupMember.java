@@ -1774,13 +1774,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Node node : partitionGroup) {
       try {
         DataClient client = getDataClient(node);
-        Map<String, Boolean> result = SyncClientAdaptor
+        List<String> result = SyncClientAdaptor
             .getUnregisteredMeasurements(client, partitionGroup.getHeader(), seriesList);
-        for (Map.Entry<String, Boolean> entry : result.entrySet()) {
-          if (!entry.getValue()) {
-            unregistered.add(entry.getKey());
-          }
-        }
+        unregistered.addAll(result);
       } catch (TException | IOException e) {
         logger.error("{}: cannot getting unregistered series list {} from {}", name,
             Arrays.toString(seriesList.toArray(new String[0])), node, e);
