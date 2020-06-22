@@ -1568,7 +1568,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       logger.error("{}: Cannot found storage groups for {}", name, plan);
       return StatusUtils.NO_STORAGE_GROUP;
     }
-    logger.error("{}: The data groups of {} are {}", name, plan, planGroupMap);
+    logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
     return forwardPlan(planGroupMap, plan);
   }
 
