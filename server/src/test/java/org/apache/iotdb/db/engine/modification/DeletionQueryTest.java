@@ -131,7 +131,7 @@ public class DeletionQueryTest {
 
     StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
     StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 30, 30);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));

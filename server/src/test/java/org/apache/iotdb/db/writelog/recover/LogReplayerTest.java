@@ -112,7 +112,7 @@ public class LogReplayerTest {
         node.write(new InsertPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
             String.valueOf(i)));
       }
-      DeletePlan deletePlan = new DeletePlan(200, new Path("root.sg.device0", "sensor0"));
+      DeletePlan deletePlan = new DeletePlan(0, 200, new Path("root.sg.device0", "sensor0"));
       node.write(deletePlan);
       node.close();
 

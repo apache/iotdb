@@ -24,6 +24,7 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import javafx.util.Pair;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -47,6 +48,8 @@ public abstract class TVList {
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
   private long timeOffset = Long.MIN_VALUE;
+
+  private List<Pair<Long, Long>> deletionList = new ArrayList<>();
   private long version;
 
   protected long pivotTime;
@@ -352,6 +355,10 @@ public abstract class TVList {
     this.timeOffset = timeOffset;
   }
 
+  public void setDeletionList(List<Pair<Long, Long>> list) {
+    this.deletionList = list;
+  }
+
   protected int compare(int idx1, int idx2) {
     long t1 = getTime(idx1);
     long t2 = getTime(idx2);
@@ -519,7 +526,7 @@ public abstract class TVList {
 
       while (cur < size) {
         long time = getTime(cur);
-        if (time < getTimeOffset() || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+        if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
           cur++;
           continue;
         }
@@ -529,6 +536,15 @@ public abstract class TVList {
         return true;
       }
       return hasCachedPair;
+    }
+
+    private boolean isPointDeleted(long timestamp) {
+      for (Pair<Long, Long> del : deletionList) {
+        if (del.getKey() <= timestamp && timestamp <= del.getValue()) {
+          return true;
+        }
+      }
+      return false;
     }
 
     @Override

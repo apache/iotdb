@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import javafx.util.Pair;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -203,27 +204,26 @@ public abstract class AbstractMemTable implements IMemTable {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
-    long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
+    List<Pair<Long, Long>> deletionList = findUndeletedTime(deviceId, measurement, timeLowerBound);
     IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
     TVList chunkCopy = memChunk.getTVList().clone();
 
-    chunkCopy.setTimeOffset(undeletedTime);
+    chunkCopy.setDeletionList(deletionList);
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());
   }
 
 
-  private long findUndeletedTime(String deviceId, String measurement, long timeLowerBound) {
-    long undeletedTime = Long.MIN_VALUE;
+  private List<Pair<Long, Long>> findUndeletedTime(String deviceId, String measurement, long timeLowerBound) {
+    List<Pair<Long, Long>> deletionList = new ArrayList<>();
     for (Modification modification : modifications) {
-      if (modification instanceof Deletion) {
-        Deletion deletion = (Deletion) modification;
-        if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
-            && deletion.getTimestamp() > undeletedTime) {
-          undeletedTime = deletion.getTimestamp();
-        }
+      Deletion deletion = (Deletion) modification;
+      if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
+          && deletion.getEndTime() > timeLowerBound) {
+        long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+        deletionList.add(new Pair<>(lowerBound, deletion.getEndTime()));
       }
     }
-    return Math.max(undeletedTime + 1, timeLowerBound);
+    return deletionList;
   }
 
   @Override

@@ -1422,7 +1422,7 @@ public class StorageGroupProcessor {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!tsFileResource.containsDevice(deviceId) ||
           deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
-          deletion.getStartTime() > tsFileResource.getEndTime(deviceId)) {
+          deletion.getStartTime() > tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE)) {
         continue;
       }
 
