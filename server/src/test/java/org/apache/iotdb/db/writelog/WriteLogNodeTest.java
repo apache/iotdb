@@ -38,6 +38,7 @@ import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -84,13 +85,13 @@ public class WriteLogNodeTest {
     Object[] columns = new Object[4];
     columns[0] = new double[4];
     columns[1] = new long[4];
-    columns[2] = new String[4];
+    columns[2] = new Binary[4];
     columns[3] = new boolean[4];
 
     for (int r = 0; r < 4; r++) {
       ((double[]) columns[0])[r] = 1.0;
       ((long[]) columns[1])[r] = 1;
-      ((String[]) columns[2])[r] = "hh" + r;
+      ((Binary[]) columns[2])[r] = new Binary("hh" + r);
       ((boolean[]) columns[3])[r] = false;
     }
 
@@ -102,7 +103,7 @@ public class WriteLogNodeTest {
     tabletPlan.setStart(0);
     tabletPlan.setEnd(4);
 
-    tabletPlan.markMeasurementInsertionFailed(2);
+    tabletPlan.markMeasurementInsertionFailed(1);
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
