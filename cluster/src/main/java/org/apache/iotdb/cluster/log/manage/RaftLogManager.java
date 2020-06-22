@@ -460,7 +460,7 @@ public class RaftLogManager {
         logApplier.apply(entry);
       } catch (Exception e) {
         if (ignoreExecutionException) {
-          logger.error("Cannot apply a log {} in snapshot, ignored", entry, e);
+          logger.error("Cannot apply a log {}, ignored", entry, e);
         } else {
           throw new LogExecutionException(e);
         }

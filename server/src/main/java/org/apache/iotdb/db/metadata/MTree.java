@@ -53,7 +53,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -82,7 +81,7 @@ public class MTree implements Serializable {
   private transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   MTree() {
-    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
   }
 
   /**
@@ -120,7 +119,7 @@ public class MTree implements Serializable {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
-        cur.addChild(nodeName, new InternalMNode(cur, nodeName));
+        cur.addChild(nodeName, new MNode(cur, nodeName));
       }
       cur = cur.getChild(nodeName);
     }
@@ -158,7 +157,7 @@ public class MTree implements Serializable {
           cur.addChild(nodeNames[i], new StorageGroupMNode(cur, nodeNames[i],
               IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
         } else {
-          cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+          cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
         }
       }
       cur = cur.getChild(nodeNames[i]);
@@ -204,7 +203,7 @@ public class MTree implements Serializable {
     while (i < nodeNames.length - 1) {
       MNode temp = cur.getChild(nodeNames[i]);
       if (temp == null) {
-        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+        cur.addChild(nodeNames[i], new MNode(cur, nodeNames[i]));
       } else if (temp instanceof StorageGroupMNode) {
         // before set storage group, check whether the exists or not
         throw new StorageGroupAlreadySetException(temp.getFullPath());
@@ -374,13 +373,6 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Get device node, if the give path is not a device, throw exception
-   */
-  MNode getDeviceNode(String path) throws MetadataException {
-    return getNodeByPath(path);
-  }
-
-  /**
    * Get node by the path
    *
    * @return last node in given seriesPath
@@ -476,7 +468,7 @@ public class MTree implements Serializable {
       MNode current = nodeStack.pop();
       if (current instanceof StorageGroupMNode) {
         ret.add((StorageGroupMNode) current);
-      } else if (current instanceof InternalMNode) {
+      } else {
         nodeStack.addAll(current.getChildren().values());
       }
     }
@@ -625,10 +617,8 @@ public class MTree implements Serializable {
       return 1;
     }
     int cnt = 0;
-    if (node instanceof InternalMNode) {
-      for (MNode child : node.getChildren().values()) {
-        cnt += getCountInGivenLevel(child, targetLevel - 1);
-      }
+    for (MNode child : node.getChildren().values()) {
+      cnt += getCountInGivenLevel(child, targetLevel - 1);
     }
     return cnt;
   }
@@ -802,7 +792,7 @@ public class MTree implements Serializable {
             parent + node.getName() + PATH_SEPARATOR, res, length);
       }
     } else {
-      if (node instanceof InternalMNode && node.getChildren().size() > 0) {
+      if (node.getChildren().size() > 0) {
         for (MNode child : node.getChildren().values()) {
           if (!Pattern.matches(nodeReg.replace("*", ".*"), child.getName())) {
             continue;
@@ -914,10 +904,8 @@ public class MTree implements Serializable {
       res.add(path);
       return;
     }
-    if (node instanceof InternalMNode) {
-      for (MNode child : node.getChildren().values()) {
-        findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1, filter);
-      }
+    for (MNode child : node.getChildren().values()) {
+      findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1, filter);
     }
   }
 

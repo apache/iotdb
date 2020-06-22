@@ -40,6 +40,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.dataset.ClusterAlignByDeviceDataSet;
 import org.apache.iotdb.cluster.query.filter.SlotSgFilter;
@@ -55,13 +56,13 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -103,10 +104,18 @@ public class ClusterPlanExecutor extends PlanExecutor {
       logger.debug("Executing a query: {}", queryPlan);
       return processDataQuery((QueryPlan) queryPlan, context);
     } else if (queryPlan instanceof ShowPlan) {
-      metaGroupMember.syncLeader();
+      try {
+        metaGroupMember.syncLeaderWithConsistencyCheck();
+      } catch (CheckConsistencyException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       return processShowQuery((ShowPlan) queryPlan);
     } else if (queryPlan instanceof AuthorPlan) {
-      metaGroupMember.syncLeader();
+      try {
+        metaGroupMember.syncLeaderWithConsistencyCheck();
+      } catch (CheckConsistencyException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       return processAuthorQuery((AuthorPlan) queryPlan);
     } else {
       throw new QueryProcessException(String.format("Unrecognized query plan %s", queryPlan));
@@ -121,7 +130,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected int getPathsNum(String path) throws MetadataException {
     // make sure this node knows all storage groups
-    metaGroupMember.syncLeader();
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e.getMessage());
+    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -129,7 +142,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
     Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(path);
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret = getPathCount(sgPathMap, -1);
+    int ret = 0;
+    try {
+      ret = getPathCount(sgPathMap, -1);
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e.getMessage());
+    }
     logger.debug("The number of paths satisfying {} is {}", path, ret);
     return ret;
   }
@@ -137,7 +155,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   protected int getNodesNumInGivenLevel(String path, int level) throws MetadataException {
     // make sure this node knows all storage groups
-    metaGroupMember.syncLeader();
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e.getMessage());
+    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -145,7 +167,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
     Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(path);
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret = getPathCount(sgPathMap, level);
+    int ret = 0;
+    try {
+      ret = getPathCount(sgPathMap, level);
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e.getMessage());
+    }
     logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
     return ret;
   }
@@ -160,7 +187,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
    * @throws MetadataException
    */
   private int getPathCount(Map<String, String> sgPathMap, int level)
-      throws MetadataException {
+      throws MetadataException, CheckConsistencyException {
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
@@ -173,7 +200,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
-        metaGroupMember.getLocalDataMember(partitionGroup.getHeader()).syncLeader();
+        metaGroupMember.getLocalDataMember(partitionGroup.getHeader())
+            .syncLeaderWithConsistencyCheck();
         int localResult = getLocalPathCount(pathUnderSG, level);
         logger.debug("{}: get path count of {} locally, result {}", metaGroupMember.getName(),
             partitionGroup, localResult);
@@ -267,21 +295,35 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<String> getNodesList(String schemaPattern, int level) {
+  protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
 
     ConcurrentSkipListSet<String> nodeSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
+    List<Future> futureList = new ArrayList<>();
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
-      pool.submit(() -> {
-        List<String> paths = getNodesList(group, schemaPattern, level);
+      futureList.add(pool.submit(() -> {
+        List<String> paths = null;
+        try {
+          paths = getNodesList(group, schemaPattern, level);
+        } catch (CheckConsistencyException e) {
+          throw new RuntimeException(e);
+        }
         if (paths != null) {
           nodeSet.addAll(paths);
         } else {
           logger.error("Fail to get node list of {}@{} from {}", schemaPattern, level, group);
         }
-      });
+      }));
     }
+    for (Future future : futureList) {
+      try {
+        future.get();
+      } catch (RuntimeException | InterruptedException | ExecutionException e) {
+        throw new MetadataException(e.getMessage());
+      }
+    }
+
     pool.shutdown();
     try {
       pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
@@ -293,7 +335,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private List<String> getNodesList(PartitionGroup group, String schemaPattern,
-      int level) {
+      int level) throws CheckConsistencyException {
     if (group.contains(metaGroupMember.getThisNode())) {
       return getLocalNodesList(group, schemaPattern, level);
     } else {
@@ -302,10 +344,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private List<String> getLocalNodesList(PartitionGroup group, String schemaPattern,
-      int level) {
+      int level) throws CheckConsistencyException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-    localDataMember.syncLeader();
+    localDataMember.syncLeaderWithConsistencyCheck();
     try {
       return MManager.getInstance().getNodesList(schemaPattern, level,
           new SlotSgFilter(metaGroupMember.getPartitionTable().getNodeSlots(header)));
@@ -339,20 +381,36 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Set<String> getPathNextChildren(String path) {
+  protected Set<String> getPathNextChildren(String path) throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
 
+    List<Future> futureList = new ArrayList<>();
+
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
-      pool.submit(() -> {
-        List<String> nextChildren = getNextChildren(group, path);
+      futureList.add(pool.submit(() -> {
+        List<String> nextChildren = null;
+        try {
+          nextChildren = getNextChildren(group, path);
+        } catch (CheckConsistencyException e) {
+          throw new RuntimeException(e.getMessage());
+        }
         if (nextChildren != null) {
           resultSet.addAll(nextChildren);
         } else {
           logger.error("Fail to get next children of {} from {}", path, group);
         }
-      });
+      }));
     }
+
+    for (Future future : futureList) {
+      try {
+        future.get();
+      } catch (RuntimeException | InterruptedException | ExecutionException e) {
+        throw new MetadataException(e.getMessage());
+      }
+    }
+
     pool.shutdown();
     try {
       pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
@@ -363,7 +421,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return resultSet;
   }
 
-  private List<String> getNextChildren(PartitionGroup group, String path) {
+  private List<String> getNextChildren(PartitionGroup group, String path)
+      throws CheckConsistencyException {
     if (group.contains(metaGroupMember.getThisNode())) {
       return getLocalNextChildren(group, path);
     } else {
@@ -371,10 +430,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
   }
 
-  private List<String> getLocalNextChildren(PartitionGroup group, String path) {
+  private List<String> getLocalNextChildren(PartitionGroup group, String path)
+      throws CheckConsistencyException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-    localDataMember.syncLeader();
+    localDataMember.syncLeaderWithConsistencyCheck();
     try {
       return new ArrayList<>(
           MManager.getInstance().getChildNodePathInNextLevel(path));
@@ -407,12 +467,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan) {
+  protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
+      throws MetadataException {
     return showTimeseries(plan);
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan) {
+  protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+      throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool = new ScheduledThreadPoolExecutor(THREAD_POOL_SIZE);
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
@@ -427,12 +489,29 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
 
     if (logger.isDebugEnabled()) {
-      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPaths(),
+      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPath(),
           globalGroups.size());
     }
+
+    List<Future> futureList = new ArrayList<>();
     for (PartitionGroup group : globalGroups) {
-      pool.submit(() -> showTimeseries(group, plan, resultSet));
+      futureList.add(pool.submit(() -> {
+        try {
+          showTimeseries(group, plan, resultSet);
+        } catch (CheckConsistencyException e) {
+          throw new RuntimeException(e.getMessage());
+        }
+      }));
     }
+
+    for (Future future : futureList) {
+      try {
+        future.get();
+      } catch (RuntimeException | InterruptedException | ExecutionException e) {
+        throw new MetadataException(e.getMessage());
+      }
+    }
+
     pool.shutdown();
     try {
       pool.awaitTermination(WAIT_REMOTE_QUERY_TIME, WAIT_REMOTE_QUERY_TIME_UNIT);
@@ -451,11 +530,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
         showTimeSeriesResults.add(iterator.next());
       }
     }
+    logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
     return showTimeSeriesResults;
   }
 
   private void showTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet) {
+      Set<ShowTimeSeriesResult> resultSet) throws CheckConsistencyException {
     if (group.contains(metaGroupMember.getThisNode())) {
       showLocalTimeseries(group, plan, resultSet);
     } else {
@@ -464,16 +544,19 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private void showLocalTimeseries(PartitionGroup group, ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet) {
+      Set<ShowTimeSeriesResult> resultSet) throws CheckConsistencyException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
-    localDataMember.syncLeader();
+    localDataMember.syncLeaderWithConsistencyCheck();
     try {
+      List<ShowTimeSeriesResult> localResult;
       if (plan.getKey() != null && plan.getValue() != null) {
-        resultSet.addAll(MManager.getInstance().getAllTimeseriesSchema(plan));
+        localResult = MManager.getInstance().getAllTimeseriesSchema(plan);
       } else {
-        resultSet.addAll(MManager.getInstance().showTimeseries(plan));
+        localResult = MManager.getInstance().showTimeseries(plan);
       }
+      resultSet.addAll(localResult);
+      logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
       logger
           .error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
@@ -517,6 +600,38 @@ public class ClusterPlanExecutor extends PlanExecutor {
     String[] measurementList = insertPlan.getMeasurements();
     String deviceId = insertPlan.getDeviceId();
 
+    if (getSeriesSchemas(deviceId, measurementList)) {
+      return super.getSeriesSchemas(insertPlan);
+    }
+
+    // some schemas does not exist locally, fetch them from the remote side
+    pullSeriesSchemas(deviceId, measurementList);
+
+    // we have pulled schemas as much as we can, those not pulled will depend on whether
+    // auto-creation is enabled
+    return super.getSeriesSchemas(insertPlan);
+  }
+
+  @Override
+  protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
+      throws MetadataException, QueryProcessException {
+    String[] measurementList = insertTabletPlan.getMeasurements();
+    String deviceId = insertTabletPlan.getDeviceId();
+
+    if (getSeriesSchemas(deviceId, measurementList)) {
+      return super.getSeriesSchemas(insertTabletPlan);
+    }
+
+    // some schemas does not exist locally, fetch them from the remote side
+    pullSeriesSchemas(deviceId, measurementList);
+
+    // we have pulled schemas as much as we can, those not pulled will depend on whether
+    // auto-creation is enabled
+    return super.getSeriesSchemas(insertTabletPlan);
+  }
+
+  public boolean getSeriesSchemas(String deviceId, String[] measurementList)
+      throws MetadataException {
     MNode node = null;
     boolean allSeriesExists = true;
     try {
@@ -536,15 +651,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
       }
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
+    return allSeriesExists;
+  }
 
-    if (allSeriesExists) {
-      return super.getSeriesSchemas(insertPlan);
-    }
-
-    // some schemas does not exist locally, fetch them from the remote side
+  public void pullSeriesSchemas(String deviceId, String[] measurementList)
+      throws MetadataException {
     List<String> schemasToPull = new ArrayList<>();
     for (String s : measurementList) {
       schemasToPull.add(deviceId + IoTDBConstant.PATH_SEPARATOR + s);
@@ -555,10 +669,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
           .cacheSchema(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
-
-    // we have pulled schemas as much as we can, those not pulled will depend on whether
-    // auto-creation is enabled
-    return super.getSeriesSchemas(insertPlan);
   }
 
   @Override

@@ -80,7 +80,6 @@ public class IoTDBConfigCheck {
 
   private static final String ERROR_LOG = "Wrong %s, please set as: %s !";
 
-
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
   }

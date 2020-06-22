@@ -16,20 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
+package org.apache.iotdb.cluster.exception;
 
-public class MetadataConstant {
+/**
+ * Raised when check consistency failed, now only happens if there is a strong-consistency and
+ * syncLeader failed
+ */
+public class CheckConsistencyException extends Exception {
 
-  private MetadataConstant() {
-    // allowed to do nothing
+  public CheckConsistencyException(String errMag) {
+    super(String.format("check consistency failed, error message=%s ", errMag));
   }
 
-  public static final String ROOT = "root";
-  public static final String METADATA_LOG = "mlog.txt";
-  public static final String TAG_LOG = "tlog.txt";
-  public static final String MTREE_SNAPSHOT = "mtree.snapshot";
-
-  public static final short MNODE_TYPE = 0;
-  public static final short STORAGE_GROUP_MNODE_TYPE = 1;
-  public static final short MEASUREMENT_MNODE_TYPE = 2;
+  public static CheckConsistencyException CHECK_STRONG_CONSISTENCY_EXCEPTION = new CheckConsistencyException(
+      "strong consistency, sync with leader failed");
 }

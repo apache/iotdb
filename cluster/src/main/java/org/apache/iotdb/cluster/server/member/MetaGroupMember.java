@@ -64,6 +64,7 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -149,6 +150,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -716,7 +718,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     for (Node n : allNodes) {
       idNodeMap.put(n.getNodeIdentifier(), n);
     }
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      logger.error("check consistency failed when accept partition table: {}", e.getMessage());
+    }
 
     startSubServers();
   }
@@ -1493,15 +1499,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
-    if (syncLeader()) {
+    try {
+      syncLeaderWithConsistencyCheck();
       List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
-      Map<PhysicalPlan, PartitionGroup> planGroupMap = new HashMap<>();
-      for (PartitionGroup globalGroup : globalGroups) {
-        planGroupMap.put(plan, globalGroup);
-      }
-      return forwardPlan(planGroupMap);
+      logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
+      return forwardPlan(globalGroups, plan);
+    } catch (CheckConsistencyException e) {
+      logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader);
+      return forwardPlan(plan, leader, null);
     }
-    return forwardPlan(plan, leader, null);
   }
 
   /**
@@ -1525,7 +1531,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     try {
       planGroupMap = router.splitAndRoutePlan(plan);
     } catch (StorageGroupNotSetException e) {
-      syncLeader();
+      try {
+        syncLeaderWithConsistencyCheck();
+      } catch (CheckConsistencyException checkConsistencyException) {
+        logger.error("check consistency failed, error={}", checkConsistencyException.getMessage());
+      }
       try {
         planGroupMap = router.splitAndRoutePlan(plan);
       } catch (MetadataException ex) {
@@ -1559,7 +1569,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return StatusUtils.NO_STORAGE_GROUP;
     }
     logger.error("{}: The data groups of {} are {}", name, plan, planGroupMap);
-    return forwardPlan(planGroupMap);
+    return forwardPlan(planGroupMap, plan);
   }
 
   /**
@@ -1569,30 +1579,134 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param planGroupMap
    * @return
    */
-  TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
-    TSStatus status;
+  TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     // the error codes from the groups that cannot execute the plan
-    List<String> errorCodePartitionGroups = new ArrayList<>();
-    TSStatus subStatus = StatusUtils.OK;
-    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+    TSStatus status;
+    if (planGroupMap.size() == 1) {
+      Map.Entry<PhysicalPlan, PartitionGroup> entry = planGroupMap.entrySet().iterator().next();
       if (entry.getValue().contains(thisNode)) {
         // the query should be handled by a group the local node is in, handle it with in the group
-        subStatus = getLocalDataMember(entry.getValue().getHeader())
+        logger.debug("Execute {} in a local group of {}", entry.getKey(),
+            entry.getValue().getHeader());
+        status = getLocalDataMember(entry.getValue().getHeader())
             .executeNonQuery(entry.getKey());
       } else {
         // forward the query to the group that should handle it
-        subStatus = forwardPlan(entry.getKey(), entry.getValue());
+        logger.debug("Forward {} to a remote group of {}", entry.getKey(),
+            entry.getValue().getHeader());
+        status = forwardPlan(entry.getKey(), entry.getValue());
       }
-      if (subStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (entry.getKey() instanceof InsertPlan
-            && subStatus.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
+    } else {
+      TSStatus tmpStatus;
+      List<String> errorCodePartitionGroups = new ArrayList<>();
+      if (plan instanceof InsertTabletPlan) {
+        TSStatus[] subStatus = new TSStatus[((InsertTabletPlan) plan).getRowCount()];
+        boolean noFailure = true;
+        boolean isBatchFailure = false;
+        for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+          if (entry.getValue().contains(thisNode)) {
+            // the query should be handled by a group the local node is in, handle it with in the group
+            logger.debug("Execute {} in a local group of {}", entry.getKey(),
+                entry.getValue().getHeader());
+            tmpStatus = getLocalDataMember(entry.getValue().getHeader())
+                .executeNonQuery(entry.getKey());
+          } else {
+            // forward the query to the group that should handle it
+            logger.debug("Forward {} to a remote group of {}", entry.getKey(),
+                entry.getValue().getHeader());
+            tmpStatus = forwardPlan(entry.getKey(), entry.getValue());
+          }
+          logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
+          noFailure =
+              (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
+          isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+              || isBatchFailure;
+          PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
+              tmpStatus.subStatus == null ? RpcUtils
+                  .getStatus(((InsertTabletPlan) entry.getKey()).getRowCount())
+                  : tmpStatus.subStatus.toArray(new TSStatus[]{}));
+          if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            // execution failed, record the error message
+            errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
+                tmpStatus.getCode(), entry.getValue().getHeader(),
+                tmpStatus.getMessage(), tmpStatus.subStatus));
+          }
+        }
+        if (noFailure) {
+          status = StatusUtils.OK;
+        } else if (isBatchFailure) {
+          status = RpcUtils.getStatus(Arrays.asList(subStatus));
+        } else {
+          status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+          status.setMessage("The following errors occurred when executing the query, "
+              + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
+        }
+      } else {
+        for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+          if (entry.getValue().contains(thisNode)) {
+            // the query should be handled by a group the local node is in, handle it with in the group
+            logger.debug("Execute {} in a local group of {}", entry.getKey(),
+                entry.getValue().getHeader());
+            tmpStatus = getLocalDataMember(entry.getValue().getHeader())
+                .executeNonQuery(entry.getKey());
+          } else {
+            // forward the query to the group that should handle it
+            logger.debug("Forward {} to a remote group of {}", entry.getKey(),
+                entry.getValue().getHeader());
+            tmpStatus = forwardPlan(entry.getKey(), entry.getValue());
+          }
+          if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+            // execution failed, record the error message
+            errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
+                tmpStatus.getCode(), entry.getValue().getHeader(),
+                tmpStatus.getMessage()));
+          }
+        }
+        if (errorCodePartitionGroups.size() == 0) {
+          status = StatusUtils.OK;
+        } else {
+          status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+          status.setMessage("The following errors occurred when executing the query, "
+              + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
+        }
+      }
+    }
+    logger.debug("{}: executed {} with answer {}", name, plan, status);
+    return status;
+  }
+
+  /**
+   * Forward plans to all DataGroupMember groups. Only when all nodes time out, will a TIME_OUT be
+   * returned.
+   *
+   * @param partitionGroups
+   * @return
+   * @para plan
+   */
+  TSStatus forwardPlan(List<PartitionGroup> partitionGroups, PhysicalPlan plan) {
+    // the error codes from the groups that cannot execute the plan
+    TSStatus status;
+    List<String> errorCodePartitionGroups = new ArrayList<>();
+    for (PartitionGroup partitionGroup : partitionGroups) {
+      if (partitionGroup.contains(thisNode)) {
+        // the query should be handled by a group the local node is in, handle it with in the group
+        logger.debug("Execute {} in a local group of {}", plan, partitionGroup.getHeader());
+        status = getLocalDataMember(partitionGroup.getHeader())
+            .executeNonQuery(plan);
+      } else {
+        // forward the query to the group that should handle it
+        logger.debug("Forward {} to a remote group of {}", plan,
+            partitionGroup.getHeader());
+        status = forwardPlan(plan, partitionGroup);
+      }
+      if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        if (plan instanceof InsertPlan
+            && status.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
             && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
           // try to create timeseries
-          boolean hasCreate = autoCreateTimeseries((InsertPlan) entry.getKey(), entry.getValue());
+          boolean hasCreate = autoCreateTimeseries((InsertPlan) plan, partitionGroup);
           if (hasCreate) {
-            Map<PhysicalPlan, PartitionGroup> subPlan = new HashMap<>();
-            subPlan.put(entry.getKey(), entry.getValue());
-            subStatus = forwardPlan(subPlan);
+            status = forwardPlan(plan, partitionGroup);
             continue;
           } else {
             logger.error("{}, Cannot auto create timeseries.", thisNode);
@@ -1600,19 +1714,18 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-            subStatus.getCode(), entry.getValue().getHeader(),
-            subStatus.getMessage()));
+            status.getCode(), partitionGroup.getHeader(),
+            status.getMessage()));
       }
     }
-    if (errorCodePartitionGroups.size() <= 1) {
-      // when size = 0, no error occurs, the plan is successfully executed, return OK
-      // when size = 1, one error occurs, set status = subStatus and return
-      status = subStatus;
+    if (errorCodePartitionGroups.size() == 0) {
+      status = StatusUtils.OK;
     } else {
       status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
       status.setMessage("The following errors occurred when executing the query, "
           + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
     }
+    logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
   }
 
@@ -1726,11 +1839,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       } catch (StorageGroupNotSetException e) {
         // the storage group is not found locally, but may be found in the leader, retry after
         // synchronizing with the leader
-        if (syncLeader()) {
-          partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
-        } else {
-          throw e;
+
+        try {
+          syncLeaderWithConsistencyCheck();
+        } catch (CheckConsistencyException checkConsistencyException) {
+          throw new MetadataException(checkConsistencyException.getMessage());
         }
+        partitionGroup = partitionTable.partitionByPathTime(prefixPath, 0);
+
       }
       partitionGroupPathMap.computeIfAbsent(partitionGroup, g -> new ArrayList<>()).add(prefixPath);
     }
@@ -1952,7 +2068,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       QueryContext context)
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
     // get all data groups
     List<PartitionGroup> partitionGroups = routeFilter(null, path);
     logger.debug("{}: Sending query of {} to {} groups", name, path, partitionGroups.size());
@@ -2055,7 +2175,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       Filter valueFilter, QueryContext context)
       throws StorageEngineException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
     // find the groups that should be queried using the timeFilter
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
     logger.debug("{}: Sending data query of {} to {} groups", name, path,
@@ -2095,7 +2219,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       TSDataType dataType, Filter timeFilter,
       QueryContext context) throws StorageEngineException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
     logger.debug("{}: Sending aggregation query of {} to {} groups", name, path,
         partitionGroups.size());
@@ -2150,7 +2278,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             .debug("{}: queried aggregation {} of {} in {} locally are {}", name, aggregations,
                 path, partitionGroup.getHeader(), aggrResult);
         return aggrResult;
-      } catch (IOException | QueryProcessException | LeaderUnknownException e) {
+      } catch (IOException | QueryProcessException e) {
         throw new StorageEngineException(e);
       }
     }
@@ -2378,7 +2506,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   public List<String> getMatchedPaths(String originPath) throws MetadataException {
     // make sure this node knows all storage groups
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -2399,7 +2531,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   public Set<String> getMatchedDevices(String originPath) throws MetadataException {
     // make sure this node knows all storage groups
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
     // get all storage groups this path may belong to
     // the key is the storage group name and the value is the path to be queried with storage group
     // added, e.g:
@@ -2464,8 +2600,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         DataClient client = getDataClient(node);
         List<String> paths = SyncClientAdaptor.getAllPaths(client, partitionGroup.getHeader(),
             pathsToQuery);
-        logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
-            node, paths);
+        if (logger.isDebugEnabled()) {
+          logger.debug("{}: get matched paths of {} and other {} paths from {} in {}, result {}",
+              name, pathsToQuery.get(0), pathsToQuery.size() - 1, node, partitionGroup.getHeader(),
+              paths);
+        }
         if (paths != null) {
           // query next group
           return paths;
@@ -2945,7 +3084,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       QueryContext context, Filter timeFilter, List<Integer> aggregationTypes)
       throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new QueryProcessException(e.getMessage());
+    }
     // find out the groups that should be queried
     List<PartitionGroup> partitionGroups = routeFilter(timeFilter, path);
     if (logger.isDebugEnabled()) {
@@ -3074,7 +3217,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       long beforeRange, Set<String> deviceMeasurements, QueryContext context)
       throws StorageEngineException {
     // make sure the partition table is new
-    syncLeader();
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      throw new StorageEngineException(e);
+    }
     // find the groups that should be queried using the time range
     Intervals intervals = new Intervals();
     long lowerBound = beforeRange == -1 ? Long.MIN_VALUE : queryTime - beforeRange;
@@ -3125,7 +3272,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               localDataMember.localPreviousFill(arguments.getPath(), arguments.getDataType(),
                   arguments.getQueryTime(), arguments.getBeforeRange(),
                   arguments.getDeviceMeasurements(), context));
-    } catch (QueryProcessException | StorageEngineException | IOException | LeaderUnknownException e) {
+    } catch (QueryProcessException | StorageEngineException | IOException e) {
       fillHandler.onError(e);
     }
   }

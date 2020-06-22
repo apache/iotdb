@@ -38,6 +38,8 @@ import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.config.ConsistencyLevel;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -58,7 +60,9 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Test;
 
 public class MemberTest {
 
@@ -145,6 +149,7 @@ public class MemberTest {
 
   private DataGroupMember newDataGroupMember(Node node) {
     DataGroupMember newMember = new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+
       @Override
       public boolean syncLeader() {
         return true;
@@ -180,16 +185,18 @@ public class MemberTest {
   private MetaGroupMember newMetaGroupMember(Node node) {
     MetaGroupMember ret = new TestMetaGroupMember() {
       @Override
-      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths, List<String> aggregations)
+      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPath(List<Path> paths,
+          List<String> aggregations)
           throws MetadataException {
         return new Pair<>(SchemaUtils.getSeriesTypesByPath(paths, aggregations),
             SchemaUtils.getSeriesTypesByPath(paths, (List<String>) null));
       }
 
       @Override
-      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs, String aggregation)
+      public Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByString(List<String> pathStrs,
+          String aggregation)
           throws MetadataException {
-        return  new Pair<>(SchemaUtils.getSeriesTypesByString(pathStrs, aggregation),
+        return new Pair<>(SchemaUtils.getSeriesTypesByString(pathStrs, aggregation),
             SchemaUtils.getSeriesTypesByString(pathStrs, null));
       }
 
@@ -236,5 +243,118 @@ public class MemberTest {
     ret.setCharacter(NodeCharacter.LEADER);
     ret.setAppendLogThreadPool(testThreadPool);
     return ret;
+  }
+
+  private DataGroupMember newDataGroupMemberWithSyncLeader(Node node, boolean syncLeader) {
+    DataGroupMember newMember = new TestDataGroupMember(node, partitionTable.getHeaderGroup(node)) {
+
+      @Override
+      public boolean syncLeader() {
+        return syncLeader;
+      }
+
+      @Override
+      public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+        new Thread(() -> resultHandler.onComplete(Response.RESPONSE_AGREE)).start();
+      }
+
+      @Override
+      public AsyncClient connectNode(Node node) {
+        try {
+          return new TestDataClient(node, dataGroupMemberMap);
+        } catch (IOException e) {
+          return null;
+        }
+      }
+    };
+    newMember.setThisNode(node);
+    newMember.setMetaGroupMember(testMetaMember);
+    newMember.setLeader(node);
+    newMember.setCharacter(NodeCharacter.LEADER);
+    newMember.setLogManager(new TestPartitionedLogManager());
+    newMember.setAppendLogThreadPool(testThreadPool);
+    return newMember;
+  }
+
+  @Test
+  public void testSyncLeaderWithConsistencyCheck() {
+    // 1. Strong consistency level with syncLeader false
+    DataGroupMember dataGroupMemberWithStrongConsistencyFalse = newDataGroupMemberWithSyncLeader(
+        TestUtils.getNode(0), false);
+    ClusterDescriptor.getInstance().getConfig()
+        .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
+    CheckConsistencyException exception = null;
+    try {
+      dataGroupMemberWithStrongConsistencyFalse.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      exception = e;
+    }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION, exception);
+
+    // 2. Strong consistency level with syncLeader true
+    DataGroupMember dataGroupMemberWithStrongConsistencyTrue = newDataGroupMemberWithSyncLeader(
+        TestUtils.getNode(0), true);
+    ClusterDescriptor.getInstance().getConfig()
+        .setConsistencyLevel(ConsistencyLevel.STRONG_CONSISTENCY);
+    exception = null;
+    try {
+      dataGroupMemberWithStrongConsistencyTrue.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      exception = e;
+    }
+    Assert.assertNull(exception);
+
+    // 3. Mid consistency level with syncLeader false
+    DataGroupMember dataGroupMemberWithMidConsistencyFalse = newDataGroupMemberWithSyncLeader(
+        TestUtils.getNode(0), false);
+    ClusterDescriptor.getInstance().getConfig()
+        .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
+    exception = null;
+    try {
+      dataGroupMemberWithMidConsistencyFalse.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      exception = e;
+    }
+    Assert.assertNull(exception);
+
+    // 4. Mid consistency level with syncLeader true
+    DataGroupMember dataGroupMemberWithMidConsistencyTrue = newDataGroupMemberWithSyncLeader(
+        TestUtils.getNode(0), true);
+    ClusterDescriptor.getInstance().getConfig()
+        .setConsistencyLevel(ConsistencyLevel.MID_CONSISTENCY);
+    exception = null;
+    try {
+      dataGroupMemberWithMidConsistencyTrue.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      exception = e;
+    }
+    Assert.assertNull(exception);
+
+    // 5. Weak consistency level with syncLeader false
+    DataGroupMember dataGroupMemberWithWeakConsistencyFalse = newDataGroupMemberWithSyncLeader(
+        TestUtils.getNode(0), false);
+    ClusterDescriptor.getInstance().getConfig()
+        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
+    exception = null;
+    try {
+      dataGroupMemberWithWeakConsistencyFalse.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      exception = e;
+    }
+    Assert.assertNull(exception);
+
+    // 6. Weak consistency level with syncLeader true
+    DataGroupMember dataGroupMemberWithWeakConsistencyTrue = newDataGroupMemberWithSyncLeader(
+        TestUtils.getNode(0), true);
+    ClusterDescriptor.getInstance().getConfig()
+        .setConsistencyLevel(ConsistencyLevel.WEAK_CONSISTENCY);
+    exception = null;
+    try {
+      dataGroupMemberWithWeakConsistencyTrue.syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      exception = e;
+    }
+    Assert.assertNull(exception);
   }
 }

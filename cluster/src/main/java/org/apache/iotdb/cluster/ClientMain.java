@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -61,7 +60,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
@@ -391,10 +389,10 @@ public class ClientMain {
     List<String> paths = new ArrayList<>();
     for (String measurement : MEASUREMENTS) {
       for (String device : DEVICES) {
-        paths.add(measurement + "." + device);
+        paths.add(device + "." + measurement);
       }
     }
-    client.deleteTimeseries(sessionId, paths);
+    logger.info(client.deleteTimeseries(sessionId, paths).toString());
   }
 
   private static int calculateStrLength(List<String> values) {

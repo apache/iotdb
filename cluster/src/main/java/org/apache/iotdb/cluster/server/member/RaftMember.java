@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.ConcurrentModificationException;
 import java.util.List;
@@ -47,6 +48,7 @@ import org.apache.iotdb.cluster.client.async.MetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
@@ -72,6 +74,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
@@ -79,6 +82,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -995,8 +999,12 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return StatusUtils.OK;
       }
     } catch (LogExecutionException e) {
-      TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
       Throwable cause = getRootCause(e);
+      if (cause instanceof BatchInsertionException) {
+        return RpcUtils
+            .getStatus(Arrays.asList(((BatchInsertionException) cause).getFailingStatus()));
+      }
+      TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
       if (cause instanceof IoTDBException) {
         tsStatus.setCode(((IoTDBException) cause).getErrorCode());
       }
@@ -1081,10 +1089,39 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     try {
       // process the plan locally
       PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-      logger.debug("{}: Received a plan {}", name, plan);
-      resultHandler.onComplete(executeNonQuery(plan));
+      TSStatus answer = executeNonQuery(plan);
+      logger.debug("{}: Received a plan {}, executed answer: {}", name, plan, answer);
+      resultHandler.onComplete(answer);
     } catch (Exception e) {
       resultHandler.onError(e);
+    }
+  }
+
+  /**
+   * according to the consistency configuration, decide whether to execute syncLeader or not and
+   * throws exception when failed
+   *
+   * @throws CheckConsistencyException
+   */
+  public void syncLeaderWithConsistencyCheck() throws CheckConsistencyException {
+    switch (ClusterDescriptor.getInstance().getConfig().getConsistencyLevel()) {
+      case STRONG_CONSISTENCY:
+        if (!syncLeader()) {
+          throw CheckConsistencyException.CHECK_STRONG_CONSISTENCY_EXCEPTION;
+        }
+        return;
+      case MID_CONSISTENCY:
+        // do not care success or not
+        syncLeader();
+        return;
+      case WEAK_CONSISTENCY:
+        // do nothing
+        return;
+      default:
+        // this should not happen in theory
+        throw new CheckConsistencyException(
+            "unknown consistency=" + ClusterDescriptor.getInstance().getConfig()
+                .getConsistencyLevel().name());
     }
   }
 
@@ -1095,7 +1132,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @return true if the node has caught up, false otherwise
    */
   public boolean syncLeader() {
-
     if (character == NodeCharacter.LEADER) {
       return true;
     }

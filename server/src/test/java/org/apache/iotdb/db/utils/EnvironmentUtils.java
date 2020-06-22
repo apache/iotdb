@@ -213,6 +213,12 @@ public class EnvironmentUtils {
     }
   }
 
+  public static void shutdownDaemon() throws Exception {
+    if(daemon != null) {
+      daemon.shutdown();
+    }
+  }
+
   public static void activeDaemon() {
     if(daemon != null) {
       daemon.active();
@@ -228,8 +234,8 @@ public class EnvironmentUtils {
     }
   }
 
-  public static void restartDaemon() {
-    stopDaemon();
+  public static void restartDaemon() throws Exception {
+    shutdownDaemon();
     reactiveDaemon();
   }
 
