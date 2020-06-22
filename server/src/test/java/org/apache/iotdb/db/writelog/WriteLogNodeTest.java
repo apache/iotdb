@@ -99,6 +99,8 @@ public class WriteLogNodeTest {
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
+    tabletPlan.setStart(0);
+    tabletPlan.setEnd(4);
 
     tabletPlan.markMeasurementInsertionFailed(2);
 
