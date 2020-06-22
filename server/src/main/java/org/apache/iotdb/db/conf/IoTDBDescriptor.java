@@ -203,7 +203,7 @@ public class IoTDBDescriptor {
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
       conf.setPerformanceDir(FilePathUtils
-          .regularizePath(conf.getSystemDir() + IoTDBConstant.PERFORMANCE_FOLDER_NAME));
+          .regularizePath(conf.getBaseDir() + IoTDBConstant.PERFORMANCE_FOLDER_NAME));
 
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);

@@ -187,7 +187,7 @@ public class IoTDBConfig {
   /**
    * Performance tracing directory, stores performance tracing files
    */
-  private String performanceDir = "data" + File.separator + "system" + File.separator + "performance";
+  private String performanceDir = "data" + File.separator + "performance";
 
   /**
    * Query directory, stores temporary files of query
