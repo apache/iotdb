@@ -372,6 +372,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Default| true |
 |Effective|After restart system|
 
+* mtree\_snapshot\_interval
+
+|Name| mtree\_snapshot\_interval |
+|:---:|:---|
+|Description| The least interval line numbers of mlog.txt when creating a checkpoint and saving snapshot of MTree. Unit: line numbers|
+|Type| Int32 |
+|Default| 100000 |
+|Effective|After restart system|
+
+* mtree\_snapshot\_thread\_check\_time
+
+|Name| mtree\_snapshot\_thread\_check\_time |
+|:---:|:---|
+|Description| A thread will check whether the MTree is modified lately and the line number of mlog.txt each such interval. Unit: second|
+|Type| Int32 |
+|Default| 600 |
+|Effective|After restart system|
+
 * flush\_wal\_threshold
 
 |Name| flush\_wal\_threshold |
