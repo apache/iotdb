@@ -7,9 +7,9 @@
     to you under the Apache License, Version 2.0 (the
     "License"); you may not use this file except in compliance
     with the License.  You may obtain a copy of the License at
-
+    
         http://www.apache.org/licenses/LICENSE-2.0
-
+    
     Unless required by applicable law or agreed to in writing,
     software distributed under the License is distributed on an
     "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -195,14 +195,14 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
   }
 ```
 
-`concatFilterByDevice()` 方法的主要处理逻辑在 `concatFilterPath()` 中：
-
 ```java
 Map<String, IExpression> concatFilterByDevice(List<String> devices,
       FilterOperator operator)
 输入：去重后的 devices 列表和未拼接的 FilterOperator
 输入：经过拼接后的 deviceToFilterMap，记录了每个设备对应的 Filter 信息
 ```
+
+`concatFilterByDevice()` 方法的主要处理逻辑在 `concatFilterPath()` 中：
 
 `concatFilterPath()` 方法遍历未拼接的 FilterOperator 二叉树，判断节点是否为叶子节点，如果是，则取该叶子结点的路径，如果路径以 time 或 root 开头则不做处理，否则将设备名与节点路径进行拼接后返回；如果不是，则对该节点的所有子节点进行迭代处理。
 
