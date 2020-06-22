@@ -177,8 +177,11 @@ public class MManager {
     lastSnapshotLogLineNumber = 0;
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
-    timedCreateMTreeSnapshotThread.scheduleAtFixedRate(this::checkMTreeModified, 600,
-        600, TimeUnit.SECONDS);
+
+    int mtreeSnapshotThreadCheckTime = config.getMtreeSnapshotThreadCheckTime();
+    timedCreateMTreeSnapshotThread
+        .scheduleAtFixedRate(this::checkMTreeModified, mtreeSnapshotThreadCheckTime,
+            mtreeSnapshotThreadCheckTime, TimeUnit.SECONDS);
   }
 
   public static MManager getInstance() {
@@ -1781,7 +1784,6 @@ public class MManager {
           Files.delete(snapshotFile.toPath());
         }
         if (tmpFile.renameTo(snapshotFile)) {
-          Files.delete(tmpFile.toPath());
           logger.info("Finish creating MTree snapshot to {}.", mtreeSnapshotPath);
         }
       } catch (IOException e) {

@@ -82,9 +82,6 @@ public class IoTDBConfigCheck {
   private static String maxDegreeOfIndexNode = String
       .valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
-  private static final String MTREE_SNAPSHOT_INTERVAL = "mtree_snapshot_interval";
-  private static String mtreeSnapshotInterval = String.valueOf(config.getMtreeSnapshotInterval());
-
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
 
   public static IoTDBConfigCheck getInstance() {
@@ -135,7 +132,6 @@ public class IoTDBConfigCheck {
     systemProperties.put(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
     systemProperties.put(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
     systemProperties.put(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
-    systemProperties.put(MTREE_SNAPSHOT_INTERVAL, mtreeSnapshotInterval);
   }
 
 
@@ -216,7 +212,6 @@ public class IoTDBConfigCheck {
       properties.setProperty(ENABLE_PARTITION_STRING, String.valueOf(enablePartition));
       properties.setProperty(TAG_ATTRIBUTE_SIZE_STRING, tagAttributeTotalSize);
       properties.setProperty(MAX_DEGREE_OF_INDEX_STRING, maxDegreeOfIndexNode);
-      properties.setProperty(MTREE_SNAPSHOT_INTERVAL, mtreeSnapshotInterval);
       properties.store(tmpFOS, SYSTEM_PROPERTIES_STRING);
 
       // upgrade finished, delete old system.properties file
@@ -288,10 +283,6 @@ public class IoTDBConfigCheck {
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
       printErrorLogAndExit(MAX_DEGREE_OF_INDEX_STRING);
-    }
-
-    if (!(properties.getProperty(MTREE_SNAPSHOT_INTERVAL).equals(mtreeSnapshotInterval))) {
-      printErrorLogAndExit(MTREE_SNAPSHOT_INTERVAL);
     }
   }
 
