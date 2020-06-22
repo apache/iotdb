@@ -1546,8 +1546,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     // the storage group is not found locally
     if (planGroupMap == null || planGroupMap.isEmpty()) {
-      if (plan instanceof InsertPlan && IoTDBDescriptor.getInstance().getConfig()
-          .isAutoCreateSchemaEnabled()) {
+      if (plan instanceof InsertPlan && ClusterDescriptor.getInstance().getConfig()
+          .isEnableAutoCreateSchema()) {
         // try to set storage group
         String deviceId = ((InsertPlan) plan).getDeviceId();
         try {
@@ -1702,7 +1702,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         if (plan instanceof InsertPlan
             && status.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
-            && IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
+            && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
           // try to create timeseries
           boolean hasCreate = autoCreateTimeseries((InsertPlan) plan, partitionGroup);
           if (hasCreate) {
