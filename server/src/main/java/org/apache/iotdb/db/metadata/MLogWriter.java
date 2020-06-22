@@ -56,7 +56,7 @@ public class MLogWriter {
     writer.close();
   }
 
-  public int createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
+  public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
     writer.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
         plan.getPath().getFullPath(), plan.getDataType().serialize(),
         plan.getEncoding().serialize(), plan.getCompressor().serialize()));
@@ -83,38 +83,37 @@ public class MLogWriter {
     if (offset >= 0) {
       writer.write(String.valueOf(offset));
     }
-
-    return newLine();
+    newLine();
   }
 
-  public int deleteTimeseries(String path) throws IOException {
+  public void deleteTimeseries(String path) throws IOException {
     writer.write(MetadataOperationType.DELETE_TIMESERIES + "," + path);
-    return newLine();
+    newLine();
   }
 
-  public int setStorageGroup(String storageGroup) throws IOException {
+  public void setStorageGroup(String storageGroup) throws IOException {
     writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
-    return newLine();
+    newLine();
   }
 
-  public int deleteStorageGroup(String storageGroup) throws IOException {
+  public void deleteStorageGroup(String storageGroup) throws IOException {
     writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + "," + storageGroup);
-    return newLine();
+    newLine();
   }
 
-  public int setTTL(String storageGroup, long ttl) throws IOException {
+  public void setTTL(String storageGroup, long ttl) throws IOException {
     writer.write(String.format("%s,%s,%s", MetadataOperationType.SET_TTL, storageGroup, ttl));
-    return newLine();
+    newLine();
   }
 
-  public int changeOffset(String path, long offset) throws IOException {
+  public void changeOffset(String path, long offset) throws IOException {
     writer.write(String.format("%s,%s,%s", MetadataOperationType.CHANGE_OFFSET, path, offset));
-    return newLine();
+    newLine();
   }
 
-  public int changeAlias(String path, String alias) throws IOException {
+  public void changeAlias(String path, String alias) throws IOException {
     writer.write(String.format("%s,%s,%s", MetadataOperationType.CHANGE_ALIAS, path, alias));
-    return newLine();
+    newLine();
   }
 
   public static void upgradeMLog(String schemaDir, String logFileName) throws IOException {
@@ -161,11 +160,13 @@ public class MLogWriter {
     FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
   }
 
-  private int newLine() throws IOException {
+  private void newLine() throws IOException {
     writer.newLine();
     writer.flush();
+    ++lineNumber;
+  }
 
-    // Every MTREE_SNAPSHOT_INTERVAL lines, create a checkpoint and save the MTree as a snapshot
-    return ++lineNumber;
+  int getLineNumber() {
+    return lineNumber;
   }
 }

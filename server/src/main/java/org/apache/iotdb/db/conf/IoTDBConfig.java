@@ -575,7 +575,7 @@ public class IoTDBConfig {
   /**
    * Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree
    */
-  private int mtreeSnapshotInterval = 10;
+  private int mtreeSnapshotInterval = 1000000;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second

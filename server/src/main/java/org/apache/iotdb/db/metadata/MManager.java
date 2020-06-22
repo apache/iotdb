@@ -38,6 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -89,7 +92,7 @@ public class MManager {
   // the log file seriesPath
   private String logFilePath;
   private String mtreeSnapshotPath;
-  private final int mtreeSnapshotInterval;
+  private String mtreeSnapshotTmpPath;
   private MTree mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
@@ -107,6 +110,11 @@ public class MManager {
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
   private IoTDBConfig config;
+
+  private File logFile;
+  private final int mtreeSnapshotInterval;
+  private int lastSnapshotLogLineNumber;
+  private ScheduledExecutorService timedCreateMTreeSnapshotThread;
 
   private static class MManagerHolder {
 
@@ -131,6 +139,7 @@ public class MManager {
     }
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
     mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
+    mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
 
     // do not write log when recover
     isRecovering = true;
@@ -163,6 +172,12 @@ public class MManager {
         cache.keySet().removeIf(s -> s.startsWith(key));
       }
     };
+
+    lastSnapshotLogLineNumber = 0;
+    timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
+        "timedCreateMTreeSnapshotThread"));
+    timedCreateMTreeSnapshotThread.scheduleAtFixedRate(this::checkMTreeModified, 600,
+        600, TimeUnit.SECONDS);
   }
 
   public static MManager getInstance() {
@@ -175,7 +190,7 @@ public class MManager {
     if (initialized) {
       return;
     }
-    File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
       tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
@@ -202,8 +217,19 @@ public class MManager {
   }
 
   private void initFromLog(File logFile) throws IOException {
+    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+    if (tmpFile.exists()) {
+      logger.warn("Creating MTree snapshot not successful before crashing...");
+      tmpFile.delete();
+    }
+
+    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+    if (!mtreeSnapshot.exists()) {
+      mtree = new MTree();
+    } else {
+      mtree = MTree.deserializeFrom(mtreeSnapshot);
+    }
     // init the metadata from the operation log
-    mtree = MTree.deserializeFrom(mtreeSnapshotPath);
     if (logFile.exists()) {
       try (FileReader fr = new FileReader(logFile);
           BufferedReader br = new BufferedReader(fr)) {
@@ -244,6 +270,10 @@ public class MManager {
         tagLogFile = null;
       }
       initialized = false;
+      if (timedCreateMTreeSnapshotThread != null) {
+        timedCreateMTreeSnapshotThread.shutdownNow();
+        timedCreateMTreeSnapshotThread = null;
+      }
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     } finally {
@@ -367,10 +397,7 @@ public class MManager {
             || (plan.getAttributes() != null && !plan.getAttributes().isEmpty())) {
           offset = tagLogFile.write(plan.getTags(), plan.getAttributes());
         }
-        int logLineNumber = logWriter.createTimeseries(plan, offset);
-        if (logLineNumber % mtreeSnapshotInterval == 0) {
-          mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-        }
+        logWriter.createTimeseries(plan, offset);
       }
       leafMNode.setOffset(offset);
 
@@ -437,10 +464,7 @@ public class MManager {
             if (emptyStorageGroup != null) {
               StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
             }
-            int logLineNumber = logWriter.deleteTimeseries(p);
-            if (logLineNumber % mtreeSnapshotInterval == 0) {
-              mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-            }
+            logWriter.deleteTimeseries(p);
           }
         } catch (DeleteFailedException e) {
           failedNames.add(e.getName());
@@ -544,10 +568,7 @@ public class MManager {
         seriesNumberInStorageGroups.put(storageGroup, 0);
       }
       if (!isRecovering) {
-        int logLineNumber = logWriter.setStorageGroup(storageGroup);
-        if (logLineNumber % mtreeSnapshotInterval == 0) {
-          mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-        }
+        logWriter.setStorageGroup(storageGroup);
       }
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
@@ -593,10 +614,7 @@ public class MManager {
         }
         // if success
         if (!isRecovering) {
-          int logLineNumber = logWriter.deleteStorageGroup(storageGroup);
-          if (logLineNumber % mtreeSnapshotInterval == 0) {
-            mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-          }
+          logWriter.deleteStorageGroup(storageGroup);
         }
       }
     } catch (ConfigAdjusterException e) {
@@ -1154,10 +1172,7 @@ public class MManager {
     try {
       getStorageGroupNode(storageGroup).setDataTTL(dataTTL);
       if (!isRecovering) {
-        int logLineNumber = logWriter.setTTL(storageGroup, dataTTL);
-        if (logLineNumber % mtreeSnapshotInterval == 0) {
-          mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-        }
+        logWriter.setTTL(storageGroup, dataTTL);
       }
     } finally {
       lock.writeLock().unlock();
@@ -1243,10 +1258,7 @@ public class MManager {
         leafMNode.getParent().addAlias(alias, leafMNode);
         leafMNode.setAlias(alias);
         // persist to WAL
-        int logLineNumber = logWriter.changeAlias(fullPath, alias);
-        if (logLineNumber % mtreeSnapshotInterval == 0) {
-          mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-        }
+        logWriter.changeAlias(fullPath, alias);
       }
 
       if (tagsMap == null && attributesMap == null) {
@@ -1255,10 +1267,7 @@ public class MManager {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, attributesMap);
-        int logLineNumber = logWriter.changeOffset(fullPath, offset);
-        if (logLineNumber % mtreeSnapshotInterval == 0) {
-          mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-        }
+        logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
         if (tagsMap != null) {
@@ -1343,10 +1352,7 @@ public class MManager {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
-        int logLineNumber = logWriter.changeOffset(fullPath, offset);
-        if (logLineNumber % mtreeSnapshotInterval == 0) {
-          mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-        }
+        logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         return;
       }
@@ -1389,10 +1395,7 @@ public class MManager {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
-        int logLineNumber = logWriter.changeOffset(fullPath, offset);
-        if (logLineNumber % mtreeSnapshotInterval == 0) {
-          mtree.serializeTo(mtreeSnapshotPath, logLineNumber);
-        }
+        logWriter.changeOffset(fullPath, offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
         for (Entry<String, String> entry : tagsMap.entrySet()) {
@@ -1756,6 +1759,34 @@ public class MManager {
       }
     } catch (MetadataException e) {
       mRemoteSchemaCache.put(path, schema);
+    }
+  }
+
+  private void checkMTreeModified() {
+    if (System.currentTimeMillis() - logFile.lastModified() < 60 * 60 * 1000) {
+      logger.info("MTree snapshot is not created because of active modification");
+    } else if (logWriter.getLineNumber() - lastSnapshotLogLineNumber < mtreeSnapshotInterval) {
+      logger.info("MTree snapshot need not be created");
+    } else {
+      lock.writeLock().lock();
+      logger.info("Start creating MTree snapshot. This may take a while...");
+      try {
+        mtree.serializeTo(mtreeSnapshotTmpPath, logWriter.getLineNumber());
+        lastSnapshotLogLineNumber = logWriter.getLineNumber();
+        File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+        File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+        if (snapshotFile.exists()) {
+          snapshotFile.delete();
+        }
+        if (tmpFile.renameTo(snapshotFile)) {
+          tmpFile.delete();
+          logger.info("Finish creating MTree snapshot to {}.", mtreeSnapshotPath);
+        }
+      } catch (IOException e) {
+        logger.warn("Failed to create MTree snapshot to {}, {}", mtreeSnapshotPath, e);
+      } finally {
+        lock.writeLock().unlock();
+      }
     }
   }
 }

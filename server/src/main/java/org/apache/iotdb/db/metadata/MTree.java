@@ -931,12 +931,7 @@ public class MTree implements Serializable {
     }
   }
 
-  public static MTree deserializeFrom(String mtreeSnapshotPath) {
-    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-    if (!mtreeSnapshot.exists()) {
-      return new MTree();
-    }
-
+  public static MTree deserializeFrom(File mtreeSnapshot) {
     try (BufferedReader br = new BufferedReader(new FileReader(mtreeSnapshot))) {
       int snapshotLineNumber = Integer.parseInt(br.readLine());
       String s;
@@ -974,14 +969,15 @@ public class MTree implements Serializable {
           nodeStack.push(node);
         }
       }
-      limit = new ThreadLocal<>();
-      offset = new ThreadLocal<>();
-      count = new ThreadLocal<>();
-      curOffset = new ThreadLocal<>();
       return new MTree(node, snapshotLineNumber);
     } catch (IOException e) {
       logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       return new MTree();
+    } finally {
+      limit = new ThreadLocal<>();
+      offset = new ThreadLocal<>();
+      count = new ThreadLocal<>();
+      curOffset = new ThreadLocal<>();
     }
   }
 
