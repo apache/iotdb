@@ -280,7 +280,7 @@ public class InsertTabletPlan extends PhysicalPlan {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
         for (int j = curStart; j < curEnd; j++) {
-          buffer.putInt(BytesUtils.boolToByte(boolValues[j]));
+          buffer.put(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
