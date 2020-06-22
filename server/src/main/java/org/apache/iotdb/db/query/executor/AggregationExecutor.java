@@ -337,16 +337,16 @@ public class AggregationExecutor {
       switch (aggregation) {
         case "count":
           Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
-          curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex);
+          curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex, TSDataType.INT64);
           for (int i = 0; i < finalPaths.size(); i++) {
             dataTypes.add(TSDataType.INT64);
           }
           break;
         case "sum":
           Map<String, Long> finalPathsSum = FilePathUtils.getPathByLevel(plan, pathIndex);
-          curRecord = FilePathUtils.mergeRecordByPath(record, finalPathsSum, pathIndex);
+          curRecord = FilePathUtils.mergeRecordByPath(record, finalPathsSum, pathIndex, TSDataType.DOUBLE);
           for (int i = 0; i < finalPathsSum.size(); i++) {
-            dataTypes.add(TSDataType.INT64);
+            dataTypes.add(TSDataType.DOUBLE);
           }
           break;
         case "avg":

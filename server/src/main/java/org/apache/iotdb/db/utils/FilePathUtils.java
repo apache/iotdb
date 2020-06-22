@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -151,30 +152,59 @@ public class FilePathUtils {
    */
   public static RowRecord mergeRecordByPath(RowRecord newRecord,
                                       Map<String, Long> finalPaths,
-                                      Map<Integer, String> pathIndex) {
+                                      Map<Integer, String> pathIndex,
+                                      TSDataType type) {
     if (newRecord.getFields().size() < finalPaths.size()) {
       return null;
     }
 
+    Map<String, Object> finalPathMap = new HashMap<>();
     // reset final paths
-    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-      entry.setValue(0L);
-    }
+    initFinalPathMap(finalPathMap, finalPaths, type);
 
     RowRecord tmpRecord = new RowRecord(newRecord.getTimestamp());
 
     for (int i = 0; i < newRecord.getFields().size(); i++) {
       if (newRecord.getFields().get(i) != null) {
-        finalPaths.put(pathIndex.get(i),
-          finalPaths.get(pathIndex.get(i)) + newRecord.getFields().get(i).getLongV());
+        finalPathMap.put(pathIndex.get(i), getValue(type, newRecord.getFields().get(i), finalPathMap.get(pathIndex.get(i))));
       }
     }
 
-    for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-      tmpRecord.addField(Field.getField(entry.getValue(), TSDataType.INT64));
+    for (Map.Entry<String, Object> entry : finalPathMap.entrySet()) {
+      tmpRecord.addField(Field.getField(entry.getValue(), type));
     }
 
     return tmpRecord;
+  }
+
+  private static void initFinalPathMap(Map<String, Object> finalPathMap, Map<String, Long> finalPaths, TSDataType type) {
+    switch (type) {
+      case INT64 :
+        for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+          finalPathMap.put(entry.getKey(), 0L);
+        }
+        break;
+      case DOUBLE :
+        for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+          finalPathMap.put(entry.getKey(), 0D);
+        }
+        break;
+      default :
+        for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
+          finalPathMap.put(entry.getKey(), 0L);
+        }
+    }
+  }
+
+  private static Object getValue(TSDataType type, Field field, Object before) {
+    switch (type) {
+      case INT64 :
+        return ((Long) before) + field.getLongV(); 
+      case DOUBLE :
+        return ((Double) before) + field.getDoubleV(); 
+      default :
+        return ((Long) before) + field.getLongV(); 
+    }
   }
 
   public static RowRecord avgRecordByPath(RowRecord newRecord, Map<String, Float> finalPaths,
@@ -202,6 +232,18 @@ public class FilePathUtils {
     }
 
     return tmpRecord;
+  }
+
+  public static TSDataType getTSDataType(AggregationPlan plan) {
+    String aggregation = plan.getAggregations().get(0);
+    switch (aggregation) {
+      case "count" :
+        return TSDataType.INT64;
+      case "sum" :
+        return TSDataType.DOUBLE;
+      default :
+        return TSDataType.INT64;
+    }
   }
 
 }

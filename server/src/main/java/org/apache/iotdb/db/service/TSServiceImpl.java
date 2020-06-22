@@ -691,9 +691,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return StaticResps.LAST_RESP.deepCopy();
     } else if (plan instanceof AggregationPlan && ((AggregationPlan)plan).getLevel() >= 0) {
       Map<String, Long> finalPaths = FilePathUtils.getPathByLevel((AggregationPlan) plan, null);
+      TSDataType type = FilePathUtils.getTSDataType((AggregationPlan) plan);
       for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
         respColumns.add(((AggregationPlan) plan).getAggregations().get(0) + "(" + entry.getKey() + ")");
-        columnsTypes.add(TSDataType.INT64.toString());
+        columnsTypes.add(type.toString());
       }
     } else {
       getWideQueryHeaders(plan, respColumns, columnsTypes);

@@ -65,7 +65,8 @@ public class GroupByTimeDataSet extends QueryDataSet {
       logger.debug("only group by level, paths:" + groupByTimePlan.getPaths());
     }
     while (dataSet != null && dataSet.hasNextWithoutConstraint()) {
-      RowRecord curRecord = FilePathUtils.mergeRecordByPath(dataSet.nextWithoutConstraint(), finalPaths, pathIndex);
+      RowRecord curRecord = FilePathUtils
+          .mergeRecordByPath(dataSet.nextWithoutConstraint(), finalPaths, pathIndex, dataTypes.get(0));
       if (curRecord != null) {
         records.add(curRecord);
       }
