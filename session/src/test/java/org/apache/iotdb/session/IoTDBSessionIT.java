@@ -136,6 +136,8 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.s3", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
+    session.createTimeseries("root.sg1.d1.\"s.4\"", TSDataType.INT64, TSEncoding.RLE,
+        CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d2.s1", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d2.s2", TSDataType.INT64, TSEncoding.RLE,
@@ -183,11 +185,13 @@ public class IoTDBSessionIT {
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
+    measurements.add("\"s.4\"");
     for (long time = 0; time < 100; time++) {
       List<String> values = new ArrayList<>();
       values.add("1");
       values.add("2");
       values.add("3");
+      values.add("4");
       session.insert(deviceId, time, measurements, values);
     }
   }
@@ -226,12 +230,14 @@ public class IoTDBSessionIT {
     String path1 = "root.sg1.d1.s1";
     String path2 = "root.sg1.d1.s2";
     String path3 = "root.sg1.d1.s3";
+    String path4 = "root.sg1.d1.\"s.4\"";
     long deleteTime = 100;
 
     List<String> paths = new ArrayList<>();
     paths.add(path1);
     paths.add(path2);
     paths.add(path3);
+    paths.add(path4);
     session.deleteData(paths, deleteTime);
   }
 
@@ -242,7 +248,7 @@ public class IoTDBSessionIT {
   private void query() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
-        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n"
+        "Time\n" + "root.sg1.d1.s1\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n" + "root.sg1.d1.\"s.4\"\n"
             + "root.sg1.d2.s1\n" + "root.sg1.d2.s2\n" + "root.sg1.d2.s3\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -267,7 +273,7 @@ public class IoTDBSessionIT {
   private void query2() throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     String standard =
-        "Time\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n"
+        "Time\n" + "root.sg1.d1.s2\n" + "root.sg1.d1.s3\n" + "root.sg1.d1.\"s.4\"\n"
             + "root.sg1.d2.s1\n" + "root.sg1.d2.s2\n" + "root.sg1.d2.s3\n";
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -363,7 +369,7 @@ public class IoTDBSessionIT {
 
   private void insert_via_sql() throws TException, IoTDBRPCException {
     session.executeNonQueryStatement(
-        "insert into root.sg1.d1(timestamp,s1, s2, s3) values(100, 1,2,3)");
+        "insert into root.sg1.d1(timestamp,s1, s2, s3, \"s.4\") values(100, 1,2,3,4)");
   }
 
   @Test
