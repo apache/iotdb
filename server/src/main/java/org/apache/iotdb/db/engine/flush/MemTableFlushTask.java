@@ -135,10 +135,12 @@ public class MemTableFlushTask {
       encodingTaskQueue.add(new EndChunkGroupIoTask());
     }
     RestorableTsFileIOWriter mergeWriter = null;
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && !isVm) {
+      // merge all vm files into the formal TsFile
       mergeWriter = writer;
-    }
-    if (isFull) {
+    } else if (isFull) {
+      // merge all vm files into a new vm file
       File tmpFile = createNewTmpFile();
       tmpWriter = new RestorableTsFileIOWriter(tmpFile);
       mergeWriter = tmpWriter;
