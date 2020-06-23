@@ -110,7 +110,7 @@ public class MemTableFlushTask {
     if (isVm) {
       currWriter = vmWriters.get(vmWriters.size() - 1);
     } else {
-      if (!isFull) {
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableVm()) {
         File file = createNewTmpFile();
         currWriter = new RestorableTsFileIOWriter(file);
         vmWriters.add(currWriter);
@@ -380,9 +380,11 @@ public class MemTableFlushTask {
                     if (reader == null) {
                       continue;
                     }
-                    vmWriter.makeMetadataVisible();
                     List<ChunkMetadata> chunkMetadataList = vmWriter.getMetadatasForQuery()
                         .get(deviceId).get(measurementId);
+                    if (chunkMetadataList == null) {
+                      continue;
+                    }
                     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
                       Chunk chunk = reader.readMemChunk(chunkMetadata);
                       if (newChunkMetadata == null) {
