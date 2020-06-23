@@ -613,10 +613,10 @@ public class TsFileProcessor {
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
             Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = vmWriter
                 .getMetadatasForQuery();
-            for (String device : metadatasForQuery.keySet()) {
-              Map<String, List<ChunkMetadata>> chunkMetadataListMap = metadatasForQuery.get(device);
-              for (String sensor : chunkMetadataListMap.keySet()) {
-                for (ChunkMetadata chunkMetadata : chunkMetadataListMap.get(sensor)) {
+            for (Map<String, List<ChunkMetadata>> chunkMetadataListMap : metadatasForQuery
+                .values()) {
+              for (List<ChunkMetadata> chunkMetadataList : chunkMetadataListMap.values()) {
+                for (ChunkMetadata chunkMetadata : chunkMetadataList) {
                   vmPointNum += chunkMetadata.getNumOfPoints();
                 }
               }
@@ -630,8 +630,8 @@ public class TsFileProcessor {
             isVm = false;
             isFull = false;
             flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                false,
-                false,
+                isVm,
+                isFull,
                 storageGroupName);
           } else {
             // merge vm files
@@ -639,7 +639,7 @@ public class TsFileProcessor {
               isVm = true;
               isFull = true;
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  true, true,
+                  isVm, isFull,
                   storageGroupName);
             } else {
               isVm = true;
@@ -648,7 +648,7 @@ public class TsFileProcessor {
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  true, false,
+                  isVm, isFull,
                   storageGroupName);
             }
           }

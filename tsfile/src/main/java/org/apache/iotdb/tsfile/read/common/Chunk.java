@@ -65,6 +65,7 @@ public class Chunk implements Accountable {
         .allocate(chunkData.array().length + chunk.chunkData.array().length);
     newChunkData.put(chunkData.array());
     newChunkData.put(chunk.chunkData.array());
+    chunkData = newChunkData;
   }
 
   @Override

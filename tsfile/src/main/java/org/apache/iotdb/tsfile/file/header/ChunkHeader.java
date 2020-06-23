@@ -206,7 +206,6 @@ public class ChunkHeader {
 
   public void mergeChunkHeader(ChunkHeader chunkHeader) {
     this.dataSize += chunkHeader.getDataSize();
-    this.serializedSize += chunkHeader.getSerializedSize();
     this.numOfPages += chunkHeader.getNumOfPages();
   }
 }
