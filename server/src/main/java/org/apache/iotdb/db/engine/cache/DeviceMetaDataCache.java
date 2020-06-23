@@ -131,7 +131,7 @@ public class DeviceMetaDataCache {
       TsFileMetaData fileMetaData = TsFileMetaDataCache.getInstance().get(resource);
       // bloom filter part
       BloomFilter bloomFilter = fileMetaData.getBloomFilter();
-      if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath())) {
+      if (bloomFilter != null && !bloomFilter.contains(seriesPath.getFullPath().replaceAll("\"", ""))) {
         if (logger.isDebugEnabled()) {
           logger.debug("path not found by bloom filter, file is: " + resource.getFile() + " path is: " + seriesPath);
         }
