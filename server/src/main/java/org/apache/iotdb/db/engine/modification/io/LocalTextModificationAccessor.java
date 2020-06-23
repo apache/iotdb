@@ -128,28 +128,36 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   }
 
   private static Deletion decodeDeletion(String[] fields) throws IOException {
-    if (fields.length != 5) {
+    if (fields.length != 4 && fields.length != 5) {
       throw new IOException("Incorrect deletion fields number: " + fields.length);
     }
 
     String path = fields[1];
     long versionNum;
-    long startTimestamp;
+    long startTimestamp = Long.MIN_VALUE;
     long endTimestamp;
     try {
       versionNum = Long.parseLong(fields[2]);
     } catch (NumberFormatException e) {
       throw new IOException("Invalid version number: " + fields[2]);
     }
-    try {
-      startTimestamp = Long.parseLong(fields[3]);
-    } catch (NumberFormatException e) {
-      throw new IOException("Invalid timestamp: " + fields[3]);
-    }
-    try {
-      endTimestamp = Long.parseLong(fields[4]);
-    } catch (NumberFormatException e) {
-      throw new IOException("Invalid timestamp: " + fields[4]);
+    if (fields.length == 4) {
+      try {
+        endTimestamp = Long.parseLong(fields[3]);
+      } catch (NumberFormatException e) {
+        throw new IOException("Invalid timestamp: " + fields[3]);
+      }
+    } else {
+      try {
+        startTimestamp = Long.parseLong(fields[3]);
+      } catch (NumberFormatException e) {
+        throw new IOException("Invalid timestamp: " + fields[3]);
+      }
+      try {
+        endTimestamp = Long.parseLong(fields[4]);
+      } catch (NumberFormatException e) {
+        throw new IOException("Invalid timestamp: " + fields[4]);
+      }
     }
 
     return new Deletion(new Path(path), versionNum, startTimestamp, endTimestamp);
