@@ -915,4 +915,16 @@ public class TsFileProcessor {
   public void setTimeRangeId(long timeRangeId) {
     this.timeRangeId = timeRangeId;
   }
+
+  public void putMemTableBackAndClose() throws TsFileProcessorException {
+    if (workMemTable != null) {
+      workMemTable.release();
+      MemTablePool.getInstance().putBack(workMemTable, storageGroupName);
+    }
+    try {
+      writer.close();
+    } catch (IOException e) {
+      throw new TsFileProcessorException(e);
+    }
+  }
 }

@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-public class StorageGroupMNode extends InternalMNode {
+import java.io.BufferedWriter;
+import java.io.IOException;
+import org.apache.iotdb.db.metadata.MetadataConstant;
+
+public class StorageGroupMNode extends MNode {
 
   private static final long serialVersionUID = 7999036474525817732L;
 
@@ -27,7 +31,6 @@ public class StorageGroupMNode extends InternalMNode {
    * be eventually deleted.
    */
   private long dataTTL;
-
 
   public StorageGroupMNode(MNode parent, String name, long dataTTL) {
     super(parent, name);
@@ -43,4 +46,19 @@ public class StorageGroupMNode extends InternalMNode {
     this.dataTTL = dataTTL;
   }
 
+  @Override
+  public void serializeTo(BufferedWriter bw) throws IOException {
+    serializeChildren(bw);
+
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.STORAGE_GROUP_MNODE_TYPE));
+    s.append(",").append(name).append(",");
+    s.append(dataTTL).append(",");
+    s.append(children == null ? "0" : children.size());
+    bw.write(s.toString());
+    bw.newLine();
+  }
+
+  public static StorageGroupMNode deserializeFrom(String[] nodeInfo) {
+    return new StorageGroupMNode(null, nodeInfo[1], Long.valueOf(nodeInfo[2]));
+  }
 }

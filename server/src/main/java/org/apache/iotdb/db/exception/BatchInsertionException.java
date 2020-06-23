@@ -16,22 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
 
-public class MetadataConstant {
+package org.apache.iotdb.db.exception;
 
-  private MetadataConstant() {
-    // allowed to do nothing
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
+
+public class BatchInsertionException extends QueryProcessException {
+
+  private TSStatus[] failingStatus;
+
+  public BatchInsertionException(TSStatus[] failingStatus) {
+    super("Batch insertion failed");
+    this.failingStatus = failingStatus;
   }
 
-  public static final String ROOT = "root";
-  public static final String METADATA_LOG = "mlog.txt";
-  public static final String TAG_LOG = "tlog.txt";
-  public static final String MTREE_SNAPSHOT = "mtree.snapshot";
-  public static final String MTREE_SNAPSHOT_TMP = "mtree.snapshot.tmp";
+  public void setFailingStatus(TSStatus[] failingStatus) {
+    this.failingStatus = failingStatus;
+  }
 
-
-  public static final short MNODE_TYPE = 0;
-  public static final short STORAGE_GROUP_MNODE_TYPE = 1;
-  public static final short MEASUREMENT_MNODE_TYPE = 2;
+  public TSStatus[] getFailingStatus() {
+    return failingStatus;
+  }
 }
