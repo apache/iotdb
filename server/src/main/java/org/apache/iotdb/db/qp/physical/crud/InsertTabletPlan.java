@@ -517,13 +517,7 @@ public class InsertTabletPlan extends PhysicalPlan {
   public String toString() {
     return "InsertTabletPlan {" +
         "deviceId:" + deviceId +
-        ", dataTypes:" + Arrays.toString(dataTypes) +
-        ", schemas:" + Arrays.toString(schemas) +
-        ", times:" + Arrays.toString(times) +
-        ", columns:" + Arrays.toString(columns) +
-        ", rowCount:" + rowCount +
-        ", start:" + start +
-        ", end:" + end +
+        ", timesRange[" + times[0] + "," + times[times.length - 1] + "]" +
         '}';
   }
 
