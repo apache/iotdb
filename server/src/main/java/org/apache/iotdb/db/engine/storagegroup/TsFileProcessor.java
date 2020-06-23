@@ -67,7 +67,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -851,7 +850,7 @@ public class TsFileProcessor {
    * @param encoding encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
-  public Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> query(String deviceId,
+  public Pair<List<ReadOnlyMemChunk>, List<List<ChunkMetadata>>> query(String deviceId,
       String measurementId, TSDataType dataType, TSEncoding encoding, Map<String, String> props,
       QueryContext context) {
     if (logger.isDebugEnabled()) {
@@ -883,18 +882,26 @@ public class TsFileProcessor {
       List<Modification> modifications = context.getPathModifications(modificationFile,
           deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId);
 
+      List<List<ChunkMetadata>> rightResult = new ArrayList<>();
+
+      // get unseal tsfile data
       List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);
-      for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-        chunkMetadataList
-            .addAll(vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType));
-      }
       QueryUtils.modifyChunkMetaData(chunkMetadataList,
           modifications);
-
       chunkMetadataList.removeIf(context::chunkNotSatisfy);
+      rightResult.add(chunkMetadataList);
 
-      return new Pair<>(readOnlyMemChunks, chunkMetadataList);
+      // get vm tsfile data
+      for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+        chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType);
+        QueryUtils.modifyChunkMetaData(chunkMetadataList,
+            modifications);
+        chunkMetadataList.removeIf(context::chunkNotSatisfy);
+        rightResult.add(chunkMetadataList);
+      }
+
+      return new Pair<>(readOnlyMemChunks, rightResult);
     } catch (Exception e) {
       logger.error("{}: {} get ReadOnlyMemChunk has error", storageGroupName,
           tsFileResource.getFile().getName(), e);
@@ -926,5 +933,9 @@ public class TsFileProcessor {
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
+  }
+
+  public List<TsFileResource> getVmTsFileResources() {
+    return vmTsFileResources;
   }
 }
