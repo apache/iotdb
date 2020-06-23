@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,6 +37,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
+import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
@@ -48,9 +51,10 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -61,6 +65,9 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -79,6 +86,8 @@ public class TsFileProcessor {
   private final ConcurrentLinkedDeque<IMemTable> flushingMemTables = new ConcurrentLinkedDeque<>();
   private RestorableTsFileIOWriter writer;
   private TsFileResource tsFileResource;
+  private List<TsFileResource> vmTsFileResources;
+  private List<RestorableTsFileIOWriter> vmWriters;
   // time range index to indicate this processor belongs to which time range
   private long timeRangeId;
   /**
@@ -109,7 +118,7 @@ public class TsFileProcessor {
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE = "{}: {} get flushQueryLock write lock released";
 
-  TsFileProcessor(String storageGroupName, File tsfile,
+  TsFileProcessor(String storageGroupName, File tsfile, List<File> vmFiles,
       VersionController versionController,
       CloseTsFileCallBack closeTsFileCallback,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence)
@@ -118,6 +127,12 @@ public class TsFileProcessor {
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
+    this.vmTsFileResources = new ArrayList<>();
+    this.vmWriters = new ArrayList<>();
+    for (File file : vmFiles) {
+      this.vmTsFileResources.add(new TsFileResource(file, this));
+      this.vmWriters.add(new RestorableTsFileIOWriter(file));
+    }
     this.closeTsFileCallback = closeTsFileCallback;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -136,11 +151,13 @@ public class TsFileProcessor {
   }
 
   public TsFileProcessor(String storageGroupName, TsFileResource tsFileResource,
+      List<TsFileResource> vmTsFileResources,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
       RestorableTsFileIOWriter writer) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
+    this.vmTsFileResources = vmTsFileResources;
     this.versionController = versionController;
     this.writer = writer;
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
@@ -182,8 +199,8 @@ public class TsFileProcessor {
   }
 
   /**
-   * insert batch data of insertTabletPlan into the workingMemtable
-   * The rows to be inserted are in the range [start, end)
+   * insert batch data of insertTabletPlan into the workingMemtable The rows to be inserted are in
+   * the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
    * @param start start index of rows to be inserted in insertTabletPlan
@@ -291,11 +308,12 @@ public class TsFileProcessor {
    * size. We need to adjust it according to the number of timeseries in a specific storage group.
    */
   private long getMemtableSizeThresholdBasedOnSeriesNum() {
-    if(!config.isEnableParameterAdapter()){
+    if (!config.isEnableParameterAdapter()) {
       return config.getMemtableSizeThreshold();
     }
     long memTableSize = (long) (config.getMemtableSizeThreshold() * config.getMaxMemtableNumber()
-        / IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition() / MEMTABLE_NUM_FOR_EACH_PARTITION
+        / IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition()
+        / MEMTABLE_NUM_FOR_EACH_PARTITION
         * ActiveTimeSeriesCounter.getInstance()
         .getActiveRatio(storageGroupName));
     return Math.max(memTableSize, config.getMemtableSizeThreshold());
@@ -325,13 +343,14 @@ public class TsFileProcessor {
         while (!flushingMemTables.isEmpty()) {
           flushingMemTables.wait(60_000);
           if (System.currentTimeMillis() - startTime > 60_000) {
-            logger.warn("{} has spent {}s for waiting flushing one memtable; {} left (first: {}). FlushingManager info: {}",
+            logger.warn(
+                "{} has spent {}s for waiting flushing one memtable; {} left (first: {}). FlushingManager info: {}",
                 this.tsFileResource.getFile().getAbsolutePath(),
-                (System.currentTimeMillis() - startTime)/1000,
+                (System.currentTimeMillis() - startTime) / 1000,
                 flushingMemTables.size(),
                 flushingMemTables.getFirst(),
                 FlushManager.getInstance()
-                );
+            );
           }
 
         }
@@ -400,8 +419,8 @@ public class TsFileProcessor {
   }
 
   /**
-   * TODO if the flushing thread is too fast, the tmpMemTable.wait() may never wakeup
-   * Tips: I am trying to solve this issue by checking whether the table exist before wait()
+   * TODO if the flushing thread is too fast, the tmpMemTable.wait() may never wakeup Tips: I am
+   * trying to solve this issue by checking whether the table exist before wait()
    */
   public void syncFlush() throws IOException {
     IMemTable tmpMemTable;
@@ -475,8 +494,8 @@ public class TsFileProcessor {
    * flushManager again.
    */
   private void addAMemtableIntoFlushingList(IMemTable tobeFlushed) throws IOException {
-    if(!tobeFlushed.isSignalMemTable() &&
-        (!updateLatestFlushTimeCallback.call(this) || tobeFlushed.memSize() == 0)){
+    if (!tobeFlushed.isSignalMemTable() &&
+        (!updateLatestFlushTimeCallback.call(this) || tobeFlushed.memSize() == 0)) {
       logger.warn("This normal memtable is empty, skip it in flush. {}: {} Memetable info: {}",
           storageGroupName, tsFileResource.getFile().getName(), tobeFlushed.getMemTableMap());
       return;
@@ -512,11 +531,14 @@ public class TsFileProcessor {
     }
     try {
       writer.makeMetadataVisible();
+      for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+        vmWriter.makeMetadataVisible();
+      }
       if (!flushingMemTables.remove(memTable)) {
         logger.warn(
             "{}: {} put the memtable (signal={}) out of flushingMemtables but it is not in the queue.",
             storageGroupName, tsFileResource.getFile().getName(), memTable.isSignalMemTable());
-      } else if (logger.isDebugEnabled()){
+      } else if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: {} memtable (signal={}) is removed from the queue. {} left.", storageGroupName,
             tsFileResource.getFile().getName(),
@@ -526,7 +548,7 @@ public class TsFileProcessor {
       MemTablePool.getInstance().putBack(memTable, storageGroupName);
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
-            + "flushing memtable list size: {}", storageGroupName,
+                + "flushing memtable list size: {}", storageGroupName,
             tsFileResource.getFile().getName(), flushingMemTables.size());
       }
     } catch (Exception e) {
@@ -541,6 +563,36 @@ public class TsFileProcessor {
   }
 
   /**
+   * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
+   *
+   * @return a TsFileSequenceReader
+   */
+  private TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
+    return new TsFileSequenceReader(tsFileResource.getPath(), true);
+  }
+
+  private File createNewVMFile() {
+    String tsFilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
+    File parent = tsFileResource.getFile().getParentFile();
+    return FSFactoryProducer.getFSFactory().getFile(parent,
+        tsFilePrefix + TSFILE_SEPARATOR + System.currentTimeMillis() + VM_SUFFIX);
+  }
+
+  private void deleteVmFile(TsFileResource seqFile) {
+    seqFile.writeLock();
+    try {
+      ChunkMetadataCache.getInstance().remove(seqFile);
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
+      seqFile.setDeleted(true);
+      seqFile.getFile().delete();
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+    } finally {
+      seqFile.writeUnlock();
+    }
+  }
+
+  /**
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
    * the flush manager pool
    */
@@ -549,15 +601,89 @@ public class TsFileProcessor {
     memTableToFlush = flushingMemTables.getFirst();
     if (logger.isInfoEnabled()) {
       logger.info("{}: {} starts to flush a memtable in a flush thread", storageGroupName,
-              tsFileResource.getFile().getName());
+          tsFileResource.getFile().getName());
     }
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
-      MemTableFlushTask flushTask = new MemTableFlushTask(memTableToFlush, writer,
-          storageGroupName);
       try {
+        boolean isVm = false;
+        boolean isFull = false;
+        MemTableFlushTask flushTask;
+        if (config.isEnableVm()) {
+          long vmPointNum = 0;
+          for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+            Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = vmWriter
+                .getMetadatasForQuery();
+            for (String device : metadatasForQuery.keySet()) {
+              Map<String, List<ChunkMetadata>> chunkMetadataListMap = metadatasForQuery.get(device);
+              for (String sensor : chunkMetadataListMap.keySet()) {
+                for (ChunkMetadata chunkMetadata : chunkMetadataListMap.get(sensor)) {
+                  vmPointNum += chunkMetadata.getNumOfPoints();
+                }
+              }
+            }
+          }
+          // all flush to target file
+          if ((
+              (vmPointNum + memTableToFlush.getTotalPointsNum()) / memTableToFlush.getSeriesNumber()
+                  > config
+                  .getMemtablePointThreshold()) || (shouldClose && flushingMemTables.size() == 1)) {
+            isVm = false;
+            isFull = false;
+            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
+                false,
+                false,
+                storageGroupName);
+          } else {
+            // merge vm files
+            if (config.getMaxVmNum() <= vmTsFileResources.size()) {
+              isVm = true;
+              isFull = true;
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
+                  vmTsFileResources,
+                  true, true,
+                  storageGroupName);
+            } else {
+              isVm = true;
+              isFull = false;
+              File newVmFile = createNewVMFile();
+              vmTsFileResources.add(new TsFileResource(newVmFile));
+              vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
+                  vmTsFileResources,
+                  true, false,
+                  storageGroupName);
+            }
+          }
+        } else {
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
+              false, false,
+              storageGroupName);
+        }
         writer.mark();
-        flushTask.syncFlushMemTable();
+        for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+          vmWriter.mark();
+        }
+        RestorableTsFileIOWriter tmpWriter = flushTask.syncFlushMemTable();
+        if (isVm && isFull && tmpWriter != null) {
+          for (TsFileResource vmTsFileResource : vmTsFileResources) {
+            deleteVmFile(vmTsFileResource);
+          }
+          vmWriters.clear();
+          vmTsFileResources.clear();
+          File newVmFile = createNewVMFile();
+          tmpWriter.getFile().renameTo(newVmFile);
+          vmTsFileResources.add(new TsFileResource(newVmFile));
+          tsFileResource.serialize();
+          vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
+        }
+        if (config.isEnableVm() && !isVm) {
+          for (TsFileResource vmTsFileResource : vmTsFileResources) {
+            deleteVmFile(vmTsFileResource);
+          }
+          vmWriters.clear();
+          vmTsFileResources.clear();
+        }
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
             storageGroupName, tsFileResource.getFile().getName(), e);
@@ -606,7 +732,8 @@ public class TsFileProcessor {
           if (compressionRatio == 0 && !memTableToFlush.isSignalMemTable()) {
             logger.error(
                 "{} The compression ratio of tsfile {} is 0, totalMemTableSize: {}, the file size: {}",
-                storageGroupName, writer.getFile().getAbsolutePath(), totalMemTableSize, writer.getPos());
+                storageGroupName, writer.getFile().getAbsolutePath(), totalMemTableSize,
+                writer.getPos());
           }
           CompressionRatio.getInstance().updateRatio(compressionRatio);
         } catch (IOException e) {
@@ -614,10 +741,15 @@ public class TsFileProcessor {
               tsFileResource.getFile().getName(), e);
         }
         if (logger.isDebugEnabled()) {
-          logger.debug("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
-              tsFileResource.getFile().getName());
+          logger
+              .debug("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
+                  tsFileResource.getFile().getName());
         }
         endFile();
+        if (logger.isDebugEnabled()) {
+          logger.debug("{} flushingMemtables is clear {} vm files", storageGroupName,
+              vmTsFileResources.size());
+        }
       } catch (Exception e) {
         logger.error("{} meet error when flush FileMetadata to {}, change system mode to read-only",
             storageGroupName, tsFileResource.getFile().getAbsolutePath(), e);
@@ -753,6 +885,10 @@ public class TsFileProcessor {
 
       List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);
+      for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+        chunkMetadataList
+            .addAll(vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType));
+      }
       QueryUtils.modifyChunkMetaData(chunkMetadataList,
           modifications);
 

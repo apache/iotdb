@@ -23,6 +23,7 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -198,7 +199,8 @@ public class TsFileRecoverPerformer {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
-            restorableTsFileIOWriter, resource.getFile().getParentFile().getParentFile().getName());
+            restorableTsFileIOWriter, new ArrayList<>(), new ArrayList<>(), false, false,
+            resource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
       }
 
