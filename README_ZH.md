@@ -53,33 +53,37 @@ IoTDB的主要特点如下:
 
 ## 目录
 
-- 快速开始
- - 环境准备
- - 安装
-    - 从源码构建
-       - 配置
- - 开始
-    - 启动 IoTDB
-    - 使用 IoTDB
-       - 使用 Cli 命令行
-       - 基本的 IoTDB 命令
-    - 停止 IoTDB
- - 只编译 server
- - 只编译 cli
- - 使用 import-csv.sh
-    - 创建元数据
-    - 从 csv 文件导入数据的示例
-    - 运行 import shell
-    - 错误的数据文件
- - 使用 export-csv.sh
-    - 运行 export shell
-    - 执行查询
+- [IoTDB](#iotdb)
+- [简介](#简介)
+- [主要特点](#主要特点)
+  - [目录](#目录)
+- [快速开始](#快速开始)
+  - [环境准备](#环境准备)
+  - [安装](#安装)
+    - [从源码构建](#从源码构建)
+      - [配置](#配置)
+  - [开始](#开始)
+    - [启动 IoTDB](#启动-iotdb)
+    - [使用 IoTDB](#使用-iotdb)
+      - [使用 Cli 命令行](#使用-cli-命令行)
+      - [基本的 IoTDB 命令](#基本的-iotdb-命令)
+    - [停止 IoTDB](#停止-iotdb)
+  - [只编译 server](#只编译-server)
+  - [只编译 cli](#只编译-cli)
+  - [使用 import-csv.sh](#使用-import-csvsh)
+    - [创建元数据](#创建元数据)
+    - [从 csv 文件导入数据的示例](#从-csv-文件导入数据的示例)
+    - [运行 import shell](#运行-import-shell)
+    - [错误的数据文件](#错误的数据文件)
+  - [使用 export-csv.sh](#使用-export-csvsh)
+    - [运行 export shell](#运行-export-shell)
+    - [执行查询](#执行查询)
 
 <!-- /TOC -->
 
 # 快速开始
 
-这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](https://iotdb.apache.org/#/Documents/0.9.x/chap1/sec1)。
+这篇简短的指南将带您了解使用IoTDB的基本过程。如需更详细的介绍，请访问我们的网站[用户指南](http://iotdb.apache.org/zh/UserGuide/Master/Get%20Started/QuickStart.html)。
 
 ## 环境准备
 
@@ -131,7 +135,7 @@ git checkout release/x.x.x
 * 系统配置模块(`iotdb-engine.properties`)
 * 日志配置模块(`logback.xml`)。
 
-有关详细信息，请参见[Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1)和[Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1)。
+有关详细信息，请参见[Chapter3: Server](http://iotdb.apache.org/zh/UserGuide/Master/Server/Config%20Manual.html)。
 
 ## 开始
 
@@ -143,7 +147,9 @@ git checkout release/x.x.x
 
 ```
 # Unix/OS X
-> sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port>
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+or
+> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
 
 # Windows
 > sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>
@@ -292,7 +298,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[Chapter 5: IoTDB SQL文档](https://iotdb.apache.org/#/Documents/0.10.0/chap5/sec1)。
+有关IoTDB SQL支持的命令的更多信息，请参见[Chapter 5: IoTDB SQL文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
 
 ### 停止 IoTDB
 

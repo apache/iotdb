@@ -33,6 +33,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.manager.WriteLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.After;
 import org.junit.Before;
@@ -86,6 +87,7 @@ public class WriteLogNodeManagerTest {
 
     InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
+        new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
     DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
 

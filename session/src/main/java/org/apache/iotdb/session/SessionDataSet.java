@@ -43,9 +43,10 @@ public class SessionDataSet {
 
   public SessionDataSet(String sql, List<String> columnNameList, List<String> columnTypeList,
       Map<String, Integer> columnNameIndex,
-      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet) {
+      long queryId, TSIService.Iface client, long sessionId, TSQueryDataSet queryDataSet,
+      boolean ignoreTimeStamp) {
     this.ioTDBRpcDataSet = new IoTDBRpcDataSet(sql, columnNameList, columnTypeList,
-        columnNameIndex, false, queryId, client, sessionId, queryDataSet, 1024);
+        columnNameIndex, ignoreTimeStamp, queryId, client, sessionId, queryDataSet, 1024);
   }
 
   public int getFetchSize() {
@@ -57,7 +58,11 @@ public class SessionDataSet {
   }
 
   public List<String> getColumnNames() {
-    return ioTDBRpcDataSet.columnNameList;
+    return new ArrayList<>(ioTDBRpcDataSet.columnNameList);
+  }
+
+  public List<TSDataType> getColumnTypes() {
+    return new ArrayList<>(ioTDBRpcDataSet.columnTypeList);
   }
 
 
@@ -66,17 +71,23 @@ public class SessionDataSet {
   }
 
 
-  private RowRecord constructRowRecordFromValueArray() {
+  private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
     List<Field> outFields = new ArrayList<>();
     for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
       Field field;
 
+      int index = i + 1;
+      int datasetColumnIndex = i + START_INDEX;
+      if (ioTDBRpcDataSet.ignoreTimeStamp) {
+        index--;
+        datasetColumnIndex--;
+      }
       int loc =
-          ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(i + 1))
+          ioTDBRpcDataSet.columnOrdinalMap.get(ioTDBRpcDataSet.columnNameList.get(index))
               - START_INDEX;
-      byte[] valueBytes = ioTDBRpcDataSet.values[loc];
 
-      if (valueBytes != null) {
+      if (!ioTDBRpcDataSet.isNull(datasetColumnIndex)) {
+        byte[] valueBytes = ioTDBRpcDataSet.values[loc];
         TSDataType dataType = ioTDBRpcDataSet.columnTypeDeduplicatedList.get(loc);
         field = new Field(dataType);
         switch (dataType) {
@@ -144,6 +155,14 @@ public class SessionDataSet {
 
     public boolean next() throws StatementExecutionException, IoTDBConnectionException {
       return ioTDBRpcDataSet.next();
+    }
+
+    public boolean isNull(int columnIndex) throws StatementExecutionException {
+      return ioTDBRpcDataSet.isNull(columnIndex);
+    }
+
+    public boolean isNull(String columnName) throws StatementExecutionException {
+      return ioTDBRpcDataSet.isNull(columnName);
     }
 
     public boolean getBoolean(int columnIndex) throws StatementExecutionException {

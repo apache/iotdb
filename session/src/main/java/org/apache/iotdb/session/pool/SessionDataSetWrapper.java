@@ -23,9 +23,11 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.SessionDataSet.DataIterator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-public class SessionDataSetWrapper {
+public class SessionDataSetWrapper implements AutoCloseable{
 
   SessionDataSet sessionDataSet;
   Session session;
@@ -75,7 +77,25 @@ public class SessionDataSetWrapper {
     return sessionDataSet.next();
   }
 
+  /**
+   * retrieve data set like jdbc
+   */
+  public DataIterator iterator() {
+    return sessionDataSet.iterator();
+  }
+
   public List<String> getColumnNames() {
     return sessionDataSet.getColumnNames();
+  }
+
+  public List<TSDataType> getColumnTypes() {
+    return sessionDataSet.getColumnTypes();
+  }
+
+  /**
+   * close this dataset to release the session
+   */
+  public void close() {
+    pool.closeResultSet(this);
   }
 }

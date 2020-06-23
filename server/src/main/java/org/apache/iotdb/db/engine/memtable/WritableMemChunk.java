@@ -215,8 +215,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void delete(long upperBound) {
-    list.delete(upperBound);
+  public int delete(long upperBound) {
+    return list.delete(upperBound);
   }
 
   @Override

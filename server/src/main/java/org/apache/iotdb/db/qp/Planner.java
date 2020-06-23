@@ -97,6 +97,9 @@ public class Planner {
       case MOVE_FILE:
       case FLUSH:
       case MERGE:
+      case CLEAR_CACHE:
+      case NULL:
+      case SHOW_MERGE_STATUS:
         return operator;
       case QUERY:
       case UPDATE:

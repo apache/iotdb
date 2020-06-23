@@ -31,10 +31,11 @@
 ![](https://img.shields.io/badge/java--language-1.8-blue.svg)
 [![IoTDB Website](https://img.shields.io/website-up-down-green-red/https/shields.io.svg?label=iotdb-website)](https://iotdb.apache.org/)
 [![Maven Version](https://maven-badges.herokuapp.com/maven-central/org.apache.iotdb/iotdb-parent/badge.svg)](http://search.maven.org/#search|gav|1|g:"org.apache.iotdb")
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/apache/incubator-iotdb) 
 
 # Overview
 
-IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input and complex data analysis in the industrial IoTDB field.
+IoTDB (Internet of Things Database) is a data management system for time series data, which can provide users specific services, such as, data collection, storage and analysis. Due to its light weight structure, high performance and usable features together with its seamless integration with the Hadoop and Spark ecology, IoTDB meets the requirements of massive dataset storage, high throughput data input, and complex data analysis in the industrial IoT field.
 
 # Main Features
 
@@ -54,33 +55,37 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 
 ## Outline
 
-- Quick Start
- - Prerequisites
- - Installation
-    - Build from source
-       - Configurations
- - Start
-    - Start IoTDB
-    - Use IoTDB
-       - Use Cli
-       - Basic commands for IoTDB
-    - Stop IoTDB
- - Only build server
- - Only build cli
- - Usage of import-csv.sh
-    - Create metadata
-    - An Example of import csv file
-    - Run import shell
-    - Error data file
- - Usage of export-csv.sh
-    - Run export shell
-    - Input query
+- [IoTDB](#iotdb)
+- [Overview](#overview)
+- [Main Features](#main-features)
+  - [Outline](#outline)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+    - [Build from source](#build-from-source)
+    - [Configurations](#configurations)
+  - [Start](#start)
+    - [Start IoTDB](#start-iotdb)
+    - [Use IoTDB](#use-iotdb)
+      - [Use Cli](#use-cli)
+      - [Basic commands for IoTDB](#basic-commands-for-iotdb)
+    - [Stop IoTDB](#stop-iotdb)
+  - [Only build server](#only-build-server)
+  - [Only build cli](#only-build-cli)
+  - [Usage of import-csv.sh](#usage-of-import-csvsh)
+    - [Create metadata](#create-metadata)
+    - [An example of import csv file](#an-example-of-import-csv-file)
+    - [Run import shell](#run-import-shell)
+    - [Error data file](#error-data-file)
+  - [Usage of export-csv.sh](#usage-of-export-csvsh)
+    - [Run export shell](#run-export-shell)
+    - [Input query](#input-query)
 
 <!-- /TOC -->
 
 # Quick Start
 
-This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/#/Documents/0.9.x/chap1/sec1).
+This short guide will walk you through the basic process of using IoTDB. For a more detailed introduction, please visit our website's [User Guide](https://iotdb.apache.org/UserGuide/Master/Get%20Started/QuickStart.html).
 
 ## Prerequisites
 
@@ -134,7 +139,7 @@ configuration files are under "conf" folder
   * system config module (`iotdb-engine.properties`)
   * log config module (`logback.xml`).
 
-For more information, please see [Chapter3: Server](https://iotdb.apache.org/#/Documents/progress/chap3/sec1) and [Chapter4: Client](https://iotdb.apache.org/#/Documents/progress/chap4/sec1) in detail.
+For more information, please see [Chapter3: Server](http://iotdb.apache.org/UserGuide/Master/Server/Config%20Manual.html).
 
 ## Start
 
@@ -146,7 +151,9 @@ Users can start IoTDB by the start-server script under the sbin folder.
 
 ```
 # Unix/OS X
-> sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port>
+> nohup sbin/start-server.sh >/dev/null 2>&1 &
+or
+> nohup sbin/start-server.sh -c <conf_path> -rpc_port <rpc_port> >/dev/null 2>&1 &
 
 # Windows
 > sbin\start-server.bat -c <conf_path> -rpc_port <rpc_port>

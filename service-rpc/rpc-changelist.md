@@ -19,10 +19,30 @@
 
 -->
 
+# 0.10.x (version-2) -> 0.11.x (version-3)
 
-# 0.10.0 (version-1) -> version-2
+Last Updated on 2020-6-15 by Tian Jiang.
 
-Last Updated on 2020-4-24 by Jialin Qiao.
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+| Remove TSBatchExecuteStatementResp            | Tian Jiang         |
+
+
+
+## 2. Add New
+
+## 3. Update
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| Add sub-status in TSStatus  | Tian Jiang  |
+
+
+# 0.9.x (version-1) -> 0.10.x (version-2)
+
+Last Updated on 2020-5-25 by Kaifeng Xue.
 
 
 ## 1. Delete Old
@@ -32,6 +52,7 @@ Last Updated on 2020-4-24 by Jialin Qiao.
 | Remove TS_SessionHandle,TSHandleIdentifier            | Tian Jiang         |
 | Remove TSStatus,TSExecuteInsertRowInBatchResp            | Jialin Qiao|
 
+
 ## 2. Add New
 
 | Latest Changes                                               | Related Committers                 |
@@ -40,6 +61,7 @@ Last Updated on 2020-4-24 by Jialin Qiao.
 | Add struct TSQueryNonAlignDataSet                            | Haonan Hou|
 | Add struct TSInsertTabletsReq                            | Jialin Qiao|
 | Add method insertTablets                            | Jialin Qiao|
+| Add method testInsertTablets                            | Xiangdong Huang |
 
 ## 3. Update
 
@@ -50,9 +72,11 @@ Last Updated on 2020-4-24 by Jialin Qiao.
 | Rename TSStatusType to TSStatus   | Jialin Qiao   |
 | Remove sessionId in TSExecuteBatchStatementResp   | Jialin Qiao   |
 | Rename insertRows to insertReords, insert to insertRecord, insertBatch to insertTablet   | Jialin Qiao   |
+| Use TsDataType and binary rather than string in TSInsertInBatchReq and TSInsertReq  | Kaifeng Xue  |
 
 
-# 0.8.0 (version-0) -> version-1
+
+# 0.8.x -> 0.9.x (version-1)
 
 Last Updated on 2019-10-27 by Lei Rui.
 
@@ -121,3 +145,4 @@ Last Updated on 2019-10-27 by Lei Rui.
 | Add required i64 statementId in TSExecuteStatementReq        | Yuan Tian |
 | Add required binary time, required list<binary> valueList, required list<binary> bitmapList and remove required binary values, required i32 rowCount in TSQueryDataSet| Yuan Tian |
 | Add optional i32 fetchSize in TSExecuteStatementReq,<br />Add optional TSQueryDataSet in TSExecuteStatementResp| liutaohua |
+| Add optional map<string, string> props, optional map<string, string> tags, optional map<string, string> attributes and optional string aliasPath in TSCreateTimeseriesReq | Yuan Tian | 

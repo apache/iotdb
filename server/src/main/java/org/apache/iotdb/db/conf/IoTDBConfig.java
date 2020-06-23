@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
@@ -47,12 +48,15 @@ public class IoTDBConfig {
       "org.apache.iotdb.db.conf.directories.strategy.";
   private static final String DEFAULT_MULTI_DIR_STRATEGY = "MaxDiskUsableSpaceFirstStrategy";
 
-  private static final String NODE_MATCHER =
-      "[" + PATH_SEPARATOR + "]" + "([a-zA-Z0-9\u2E80-\u9FFF_]+)";
+  // e.g., a31+/$%#&[]{}3e4
+  private static final String ID_MATCHER = "([a-zA-Z0-9/@#$%&{}\\[\\]\\-+\\u2E80-\\u9FFF_]+)";
+
+  // e.g.,  .s1
+  private static final String NODE_MATCHER = "[" + PATH_SEPARATOR + "]" + ID_MATCHER;
 
   // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
   private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']([a-zA-Z0-9\u2E80-\u9FFF_]+)(" + NODE_MATCHER + ")+[\"|\']";
+      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER +"(" + NODE_MATCHER+ ")*[\"|\']";
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
@@ -89,6 +93,12 @@ public class IoTDBConfig {
   private String mqttPayloadFormatter = "json";
 
   /**
+   * max mqtt message size
+   */
+  private int mqttMaxMessageSize = 1048576;
+
+
+  /**
    * Rpc binding address.
    */
   private String rpcAddress = "0.0.0.0";
@@ -109,16 +119,6 @@ public class IoTDBConfig {
   private int rpcMaxConcurrentClientNum = 65535;
 
   /**
-   * JMX user name
-   */
-  private String jmxUser = "admin";
-
-  /**
-   * JMX user password
-   */
-  private String jmxPassword = "password";
-
-  /**
    * Memory allocated for the read process
    */
   private long allocateMemoryForWrite = Runtime.getRuntime().maxMemory() * 6 / 10;
@@ -131,7 +131,9 @@ public class IoTDBConfig {
   /**
    * Is dynamic parameter adapter enable.
    */
-  private boolean enableParameterAdapter = true;
+  //the default value of this parameter should be kept true in iotdb-engine.properties,
+  //we set it as false here for convenient testing.
+  private boolean enableParameterAdapter = false;
 
   /**
    * Is the write ahead log enable.
@@ -236,6 +238,11 @@ public class IoTDBConfig {
   private long memtableSizeThreshold = 128 * 1024 * 1024L;
 
   /**
+   * When average series point number reaches this, flush the memtable to disk
+   */
+  private int avgSeriesPointNumberThreshold = 10000;
+
+  /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
    */
   private boolean metaDataCacheEnable = true;
@@ -278,6 +285,11 @@ public class IoTDBConfig {
    * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
    */
   private int mManagerCacheSize = 400000;
+
+  /**
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   */
+  private int mRemoteSchemaCacheSize = 100000;
 
   /**
    * Is external sort enable.
@@ -357,6 +369,26 @@ public class IoTDBConfig {
    * Switch of creating schema automatically
    */
   private boolean enableAutoCreateSchema = true;
+
+  /**
+   * register time series as which type when receiving boolean string "true" or "false"
+   */
+  private TSDataType booleanStringInferType = TSDataType.BOOLEAN;
+
+  /**
+   * register time series as which type when receiving an integer string "67"
+   */
+  private TSDataType integerStringInferType = TSDataType.FLOAT;
+
+  /**
+   * register time series as which type when receiving a floating number string "6.7"
+   */
+  private TSDataType floatingStringInferType = TSDataType.FLOAT;
+
+  /**
+   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT
+   */
+  private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
   /**
    * Storage group level when creating schema automatically is enabled
@@ -509,14 +541,14 @@ public class IoTDBConfig {
   private String kerberosKeytabFilePath = "/path";
 
   /**
-   * kerberos pricipal
+   * kerberos principal
    */
   private String kerberosPrincipal = "principal";
 
   /**
    * the num of memtable in each storage group
    */
-  private int memtableNumInEachStorageGroup = 10;
+  private int concurrentWritingTimePartition = 1;
 
   /**
    * the default fill interval in LinearFill and PreviousFill, -1 means infinite past time
@@ -529,6 +561,28 @@ public class IoTDBConfig {
    * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
+
+  /**
+   * The default value of primitive array size in array pool
+   */
+  private int primitiveArraySize = 64;
+
+  /**
+   * whether enable data partition. If disabled, all data belongs to partition 0
+   */
+  private boolean enablePartition = false;
+
+  /**
+   * Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree
+   */
+  private int mtreeSnapshotInterval = 100000;
+
+  /**
+   * Threshold interval time of MTree modification. If the last modification time is less than this
+   * threshold, MTree snapshot will not be created. Unit: second. Default: 1 hour(3600 seconds)
+   */
+  private int mtreeSnapshotThresholdTime = 3600;
+
   /**
    * Time range for partitioning data inside each storage group, the unit is second
    */
@@ -543,16 +597,29 @@ public class IoTDBConfig {
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
+  // In one insert (one device, one timestamp, multiple measurements),
+  // if enable partial insert, one measurement failure will not impact other measurements
+  private boolean enablePartialInsert = true;
+
+  // Open ID Secret
+  private String openIdProviderUrl = null;
+
+  // the authorizer provider class which extends BasicAuthorizer
+  private String authorizerProvider = "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer";
+
+  // time in nanosecond precision when starting up
+  private long startUpNanosecond = System.nanoTime();
+
   public IoTDBConfig() {
     // empty constructor
   }
 
-  public int getMemtableNumInEachStorageGroup() {
-    return memtableNumInEachStorageGroup;
+  public int getConcurrentWritingTimePartition() {
+    return concurrentWritingTimePartition;
   }
 
-  void setMemtableNumInEachStorageGroup(int memtableNumInEachStorageGroup) {
-    this.memtableNumInEachStorageGroup = memtableNumInEachStorageGroup;
+  void setConcurrentWritingTimePartition(int concurrentWritingTimePartition) {
+    this.concurrentWritingTimePartition = concurrentWritingTimePartition;
   }
 
   public int getDefaultFillInterval() {
@@ -561,6 +628,30 @@ public class IoTDBConfig {
 
   public void setDefaultFillInterval(int defaultFillInterval) {
     this.defaultFillInterval = defaultFillInterval;
+  }
+
+  public boolean isEnablePartition() {
+    return enablePartition;
+  }
+
+  public void setEnablePartition(boolean enablePartition) {
+    this.enablePartition = enablePartition;
+  }
+
+  public int getMtreeSnapshotInterval() {
+    return mtreeSnapshotInterval;
+  }
+
+  public void setMtreeSnapshotInterval(int mtreeSnapshotInterval) {
+    this.mtreeSnapshotInterval = mtreeSnapshotInterval;
+  }
+
+  public int getMtreeSnapshotThresholdTime() {
+    return mtreeSnapshotThresholdTime;
+  }
+
+  public void setMtreeSnapshotThresholdTime(int mtreeSnapshotThresholdTime) {
+    this.mtreeSnapshotThresholdTime = mtreeSnapshotThresholdTime;
   }
 
   public long getPartitionInterval() {
@@ -683,22 +774,6 @@ public class IoTDBConfig {
     this.enableMetricService = enableMetricService;
   }
 
-  public String getJmxUser() {
-    return jmxUser;
-  }
-
-  public void setJmxUser(String jmxUser) {
-    this.jmxUser = jmxUser;
-  }
-
-  public String getJmxPassword() {
-    return jmxPassword;
-  }
-
-  public void setJmxPassword(String jmxPassword) {
-    this.jmxPassword = jmxPassword;
-  }
-
   void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
   }
@@ -723,7 +798,13 @@ public class IoTDBConfig {
     return timestampPrecision;
   }
 
-  void setTimestampPrecision(String timestampPrecision) {
+  public void setTimestampPrecision(String timestampPrecision) {
+    if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
+        || timestampPrecision.equals("ns"))) {
+      logger.error("Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
+          + timestampPrecision);
+      System.exit(-1);
+    }
     this.timestampPrecision = timestampPrecision;
   }
 
@@ -887,11 +968,19 @@ public class IoTDBConfig {
     this.mManagerCacheSize = mManagerCacheSize;
   }
 
+  public int getmRemoteSchemaCacheSize() {
+    return mRemoteSchemaCacheSize;
+  }
+
+  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
+    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
+  }
+
   public boolean isSyncEnable() {
     return isSyncEnable;
   }
 
-  void setSyncEnable(boolean syncEnable) {
+  public void setSyncEnable(boolean syncEnable) {
     isSyncEnable = syncEnable;
   }
 
@@ -1063,6 +1152,14 @@ public class IoTDBConfig {
     this.performanceStatMemoryInKB = performanceStatMemoryInKB;
   }
 
+  public boolean isEnablePartialInsert() {
+    return enablePartialInsert;
+  }
+
+  public void setEnablePartialInsert(boolean enablePartialInsert) {
+    this.enablePartialInsert = enablePartialInsert;
+  }
+
   public boolean isForceFullMerge() {
     return forceFullMerge;
   }
@@ -1085,6 +1182,14 @@ public class IoTDBConfig {
 
   public void setMemtableSizeThreshold(long memtableSizeThreshold) {
     this.memtableSizeThreshold = memtableSizeThreshold;
+  }
+
+  public int getAvgSeriesPointNumberThreshold() {
+    return avgSeriesPointNumberThreshold;
+  }
+
+  public void setAvgSeriesPointNumberThreshold(int avgSeriesPointNumberThreshold) {
+    this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
   public MergeFileStrategy getMergeFileStrategy() {
@@ -1132,7 +1237,8 @@ public class IoTDBConfig {
     return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
@@ -1220,6 +1326,48 @@ public class IoTDBConfig {
 
   public void setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     this.enableAutoCreateSchema = enableAutoCreateSchema;
+  }
+
+  public TSDataType getBooleanStringInferType() {
+    return booleanStringInferType;
+  }
+
+  public void setBooleanStringInferType(
+      TSDataType booleanStringInferType) {
+    this.booleanStringInferType = booleanStringInferType;
+  }
+
+  public TSDataType getIntegerStringInferType() {
+    return integerStringInferType;
+  }
+
+  public void setIntegerStringInferType(
+      TSDataType integerStringInferType) {
+    this.integerStringInferType = integerStringInferType;
+  }
+
+  public TSDataType getFloatingStringInferType() {
+    return floatingStringInferType;
+  }
+
+  public void setFloatingStringInferType(
+      TSDataType floatingNumberStringInferType) {
+    this.floatingStringInferType = floatingNumberStringInferType;
+  }
+
+  public TSDataType getNanStringInferType() {
+    return nanStringInferType;
+  }
+
+  public void setNanStringInferType(TSDataType nanStringInferType) {
+    if (nanStringInferType != TSDataType.DOUBLE &&
+        nanStringInferType != TSDataType.FLOAT &&
+        nanStringInferType != TSDataType.TEXT) {
+      throw new IllegalArgumentException(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
+              + nanStringInferType);
+    }
+    this.nanStringInferType = nanStringInferType;
   }
 
   public int getDefaultStorageGroupLevel() {
@@ -1486,11 +1634,47 @@ public class IoTDBConfig {
     this.mqttPayloadFormatter = mqttPayloadFormatter;
   }
 
+  public int getMqttMaxMessageSize() {
+    return mqttMaxMessageSize;
+  }
+
+  public void setMqttMaxMessageSize(int mqttMaxMessageSize) {
+    this.mqttMaxMessageSize = mqttMaxMessageSize;
+  }
+
   public int getTagAttributeTotalSize() {
     return tagAttributeTotalSize;
   }
 
   public void setTagAttributeTotalSize(int tagAttributeTotalSize) {
     this.tagAttributeTotalSize = tagAttributeTotalSize;
+  }
+
+  public int getPrimitiveArraySize() {
+    return primitiveArraySize;
+  }
+
+  public void setPrimitiveArraySize(int primitiveArraySize) {
+    this.primitiveArraySize = primitiveArraySize;
+  }
+
+  public String getOpenIdProviderUrl() {
+    return openIdProviderUrl;
+  }
+
+  public void setOpenIdProviderUrl(String openIdProviderUrl) {
+    this.openIdProviderUrl = openIdProviderUrl;
+  }
+
+  public String getAuthorizerProvider() {
+    return authorizerProvider;
+  }
+
+  public void setAuthorizerProvider(String authorizerProvider) {
+    this.authorizerProvider = authorizerProvider;
+  }
+
+  public long getStartUpNanosecond() {
+    return startUpNanosecond;
   }
 }

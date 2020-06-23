@@ -20,19 +20,20 @@
 -->
 
 
-# version-1 -> version-2
+# 0.9.x (version-1) -> 0.10.x (version-2)
 
 Last Updated on 2019-11-28 by Jialin Qiao.
 
 | PR#   | Name                                                        | Author          | Changes                                                      |
 | ---- | ------------------------------------------------------------ | --------------- | ------------------------------------------------------------ |
+| 553  | [IOTDB-279] Merge TsDigest into Statistics                   | jack870131      | Merge the function of TsDigest into Statistics class, which TsDisgest is the ByteBuffer format of Statistics |
 | 587  | [IOTDB-325] Refactor Statistics                              | qiaojialin      | Move start time, end time, count in PageHeader and ChunkMetadata into Statistics; Remove maxTombstoneTime in ChunkHeader |
 | 855  | [IOTDB-587] New TsFile version 2                             | HTHou           | Remove ChunkGroupMetadata, store ChunkMetadata list by series, Add TimeseriesMetadata for each series |
 | 1024 | [IOTDB-585] Fix recover version bug                          | qiaojialin      | Add MetaMarker.VERSION and version behind each flushing memtable (flushAllChunkGroups) |
 | 1047 | [IOTDB-593] Add metaOffset in TsFileMetadata                 | qiaojialin      | Add metaOffset in TsFileMetadata |
 | 1100 | [IOTDB-605] Add more levels of index in TsFileMetadata       | sunzesong       | Update the structure of deviceMetadata to a tree-level indexed TsFileMetadata |
 
-# 0.8.0 (version-0) -> version-1
+# 0.8.0 -> 0.9.x (version-1)
 
 Last Updated on 2019-10-27 by Lei Rui.
 

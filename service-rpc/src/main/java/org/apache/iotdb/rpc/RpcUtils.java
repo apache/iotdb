@@ -20,13 +20,16 @@ package org.apache.iotdb.rpc;
 
 import java.lang.reflect.Proxy;
 import java.util.List;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class RpcUtils {
+
+  private RpcUtils() {
+    // util class
+  }
 
   public static final TSStatus SUCCESS_STATUS = new TSStatus(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
@@ -41,9 +44,12 @@ public class RpcUtils {
    * @param status -status
    */
   public static void verifySuccess(TSStatus status) throws StatementExecutionException {
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      verifySuccess(status.getSubStatus());
+      return;
+    }
     if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-      throw new StatementExecutionException(String.format("%d: %s",
-          status.code, status.message));
+      throw new StatementExecutionException(status);
     }
   }
 
@@ -60,6 +66,12 @@ public class RpcUtils {
    */
   public static TSStatus getStatus(TSStatusCode tsStatusCode) {
     return new TSStatus(tsStatusCode.getStatusCode());
+  }
+
+  public static TSStatus getStatus(List<TSStatus> statusList) {
+    TSStatus status = new TSStatus(TSStatusCode.MULTIPLE_ERROR.getStatusCode());
+    status.setSubStatus(statusList);
+    return status;
   }
 
   /**
@@ -96,30 +108,6 @@ public class RpcUtils {
     resp.setStatus(tsStatus);
     return resp;
   }
-
-
-  public static TSExecuteBatchStatementResp getTSBatchExecuteStatementResp(TSStatusCode tsStatusCode) {
-    TSStatus status = getStatus(tsStatusCode);
-    return getTSBatchExecuteStatementResp(status);
-  }
-
-  public static TSExecuteBatchStatementResp getTSBatchExecuteStatementResp(TSStatusCode tsStatusCode, String message) {
-    TSStatus status = getStatus(tsStatusCode, message);
-    return getTSBatchExecuteStatementResp(status);
-  }
-
-  public static TSExecuteBatchStatementResp getTSBatchExecuteStatementResp(TSStatus status) {
-    TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
-    resp.addToStatusList(status);
-    return resp;
-  }
-
-  public static TSExecuteBatchStatementResp getTSBatchExecuteStatementResp(List<TSStatus> statusList) {
-    TSExecuteBatchStatementResp resp = new TSExecuteBatchStatementResp();
-    resp.setStatusList(statusList);
-    return resp;
-  }
-
 
   public static TSFetchResultsResp getTSFetchResultsResp(TSStatusCode tsStatusCode) {
     TSStatus status = getStatus(tsStatusCode);

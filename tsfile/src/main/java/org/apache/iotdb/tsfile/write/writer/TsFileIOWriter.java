@@ -87,6 +87,9 @@ public class TsFileIOWriter {
   private String currentChunkGroupDeviceId;
   private long currentChunkGroupStartOffset;
   protected List<Pair<Long, Long>> versionInfo = new ArrayList<>();
+  
+  // for upgrade tool
+  Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap;
 
   /**
    * empty construct function.
@@ -283,29 +286,27 @@ public class TsFileIOWriter {
       Map<Path, List<ChunkMetadata>> chunkMetadataListMap) throws IOException {
 
     // convert ChunkMetadataList to this field
-    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap = new LinkedHashMap<>();
+    deviceTimeseriesMetadataMap = new LinkedHashMap<>();
     // create device -> TimeseriesMetaDataList Map
     for (Map.Entry<Path, List<ChunkMetadata>> entry : chunkMetadataListMap.entrySet()) {
       Path path = entry.getKey();
       String device = path.getDevice();
-      // create TimeseriesMetaData
-      TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
-      timeseriesMetaData.setMeasurementId(path.getMeasurement());
-      TSDataType dataType = entry.getValue().get(0).getDataType();
-      timeseriesMetaData.setTSDataType(dataType);
-      timeseriesMetaData.setOffsetOfChunkMetaDataList(out.getPosition());
 
+      // create TimeseriesMetaData
+      TSDataType dataType = entry.getValue().get(0).getDataType();
+      long offsetOfChunkMetadataList = out.getPosition();
       Statistics seriesStatistics = Statistics.getStatsByType(dataType);
+
       int chunkMetadataListLength = 0;
       // flush chunkMetadataList one by one
       for (ChunkMetadata chunkMetadata : entry.getValue()) {
         chunkMetadataListLength += chunkMetadata.serializeTo(out.wrapAsStream());
         seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
       }
-      timeseriesMetaData.setStatistics(seriesStatistics);
-      timeseriesMetaData.setDataSizeOfChunkMetaDataList(chunkMetadataListLength);
+      TimeseriesMetadata timeseriesMetadata = new TimeseriesMetadata(offsetOfChunkMetadataList,
+          chunkMetadataListLength, path.getMeasurement(), dataType, seriesStatistics);
       deviceTimeseriesMetadataMap.computeIfAbsent(device, k -> new ArrayList<>())
-          .add(timeseriesMetaData);
+          .add(timeseriesMetadata);
     }
 
     // construct TsFileMetadata and return
@@ -434,5 +435,14 @@ public class TsFileIOWriter {
    */
   public TsFileOutput getIOWriterOut() {
     return out;
+  }
+
+  /**
+   * this function is only for Upgrade Tool.
+   *
+   * @return DeviceTimeseriesMetadataMap
+   */
+  public Map<String, List<TimeseriesMetadata>> getDeviceTimeseriesMetadataMap() {
+    return deviceTimeseriesMetadataMap;
   }
 }
