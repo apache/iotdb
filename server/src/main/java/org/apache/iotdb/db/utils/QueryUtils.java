@@ -64,17 +64,17 @@ public class QueryUtils {
       long lower = metaData.getStartTime();
       long upper = metaData.getEndTime();
       for (Pair<Long, Long> range : metaData.getDeleteRangeList()) {
-        if (lower >= upper) {
-          return true;
+        if (upper < range.left) {
+          break;
         }
-
         if (range.left <= lower && lower <= range.right) {
           metaData.setModified(true);
-          lower = range.right;
-        } else {
-          if (upper >= range.left) {
-            metaData.setModified(true);
+          if (upper <= range.right) {
+            return true;
           }
+          lower = range.right;
+        } else if (lower < range.left) {
+          metaData.setModified(true);
           break;
         }
       }

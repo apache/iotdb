@@ -1559,8 +1559,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     Pair<Long, Long> leftOpRange = calcOperatorRange(lOperator);
     Pair<Long, Long> rightOpRange = calcOperatorRange(rOperator);
 
-    return new Pair<>(Math.max(leftOpRange.left, rightOpRange.right),
-        Math.min(leftOpRange.left, rightOpRange.right));
+    return new Pair<>(Math.max(leftOpRange.left, rightOpRange.left),
+        Math.min(leftOpRange.right, rightOpRange.right));
   }
 
   private Pair<Long, Long> calcOperatorRange(FilterOperator filterOperator) {

@@ -141,17 +141,17 @@ public class ChunkReader implements IChunkReader {
     long upper = pageHeader.getEndTime();
     // deleteRangeList is sorted in terms of startTime
     for (Pair<Long, Long> range : deleteRangeList) {
-      if (lower >= upper) {
-        return true;
+      if (upper < range.left) {
+        break;
       }
-
       if (range.left <= lower && lower <= range.right) {
         pageHeader.setModified(true);
-        lower = range.right;
-      } else {
-        if (upper >= range.left) {
-          pageHeader.setModified(true);
+        if (upper <= range.right) {
+          return true;
         }
+        lower = range.right;
+      } else if (lower < range.left) {
+        pageHeader.setModified(true);
         break;
       }
     }
