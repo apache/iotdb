@@ -138,7 +138,6 @@ public class LogReplayerTest {
       assertEquals(1, mods.length);
       assertEquals(mods[0].getPathString(), "root.sg.device0.sensor0");
       assertEquals(mods[0].getVersionNum(), 5);
-      assertEquals(((Deletion)mods[0]).getStartTime(), Long.MIN_VALUE);
       assertEquals(((Deletion)mods[0]).getEndTime(), 200);
 
       assertEquals(2, (long) tsFileResource.getStartTime("root.sg.device0"));
