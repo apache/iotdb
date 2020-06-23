@@ -61,11 +61,33 @@ public class TracingManager {
   public void writeQueryInfo(long queryId, String statement, int pathsNum) throws IOException {
     StringBuilder builder = new StringBuilder("-----------------------------\n");
     builder.append("Query Id: ").append(queryId)
-        .append("\nStart time: ")
+        .append(" - Query Statement: ").append(statement)
+        .append("\nQuery Id: ").append(queryId)
+        .append(" - Start time: ")
         .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
-        .append("\nQuery Statement: ").append(statement)
-        .append("\nNumber of series paths: ").append(pathsNum);
+        .append("\nQuery Id: ").append(queryId)
+        .append(" - Number of series paths: ").append(pathsNum);
     writer.write(builder.toString());
+    writer.newLine();
+    writer.flush();
+  }
+
+  // for align by device query
+  public void writeQueryInfo(long queryId, String statement) throws IOException {
+    StringBuilder builder = new StringBuilder("-----------------------------\n");
+    builder.append("Query Id: ").append(queryId)
+        .append(" - Query Statement: ").append(statement)
+        .append("\nQuery Id: ").append(queryId)
+        .append(" - Start time: ")
+        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()));
+    writer.write(builder.toString());
+    writer.newLine();
+    writer.flush();
+  }
+
+  public void writePathsNum(long queryId, int pathsNum) throws IOException {
+    writer.write(new StringBuilder("Query Id: ").append(queryId)
+        .append(" - Number of series paths: ").append(pathsNum).toString());
     writer.newLine();
     writer.flush();
   }
@@ -74,17 +96,29 @@ public class TracingManager {
     // to avoid the disorder info of multi query
     // add query id as prefix of each info
     writer.write(new StringBuilder("Query Id: ").append(queryId)
-        .append("-Number of tsfiles: ").append(seqFileNum + unseqFileNum)
-        .append("\nNumber of sequence files: ").append(seqFileNum)
-        .append("\nNumber of unsequence files: ").append(unseqFileNum).toString());
+        .append(" - Number of tsfiles: ").append(seqFileNum + unseqFileNum)
+        .append("\nQuery Id: ").append(queryId)
+        .append(" - Number of sequence files: ").append(seqFileNum)
+        .append("\nQuery Id: ").append(queryId)
+        .append(" - Number of unsequence files: ").append(unseqFileNum).toString());
     writer.newLine();
     writer.flush();
   }
 
   public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkSize) throws IOException {
     writer.write(new StringBuilder("Query Id: ").append(queryId)
-        .append("-Number of chunks: ").append(totalChunkNum)
-        .append("\nAverage size of chunks: ").append(totalChunkSize / totalChunkNum).toString());
+        .append(" - Number of chunks: ").append(totalChunkNum)
+        .append("\nQuery Id: ").append(queryId)
+        .append(" - Average size of chunks: ").append(totalChunkSize / totalChunkNum).toString());
+    writer.newLine();
+    writer.flush();
+  }
+
+  public void writeEndTime(long queryId) throws IOException {
+    writer.write(new StringBuilder("Query Id: ").append(queryId)
+        .append(" - End time: ")
+        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
+        .toString());
     writer.newLine();
     writer.flush();
   }

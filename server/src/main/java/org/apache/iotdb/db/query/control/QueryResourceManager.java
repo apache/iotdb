@@ -119,18 +119,10 @@ public class QueryResourceManager {
         .query(singleSeriesExpression, context, filePathsManager);
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
-      Set<TsFileResource> seqFileNum = seqFileNumMap.get(context.getQueryId());
-      Set<TsFileResource> unseqFileNum = unseqFileNumMap.get(context.getQueryId());
-      if (seqFileNum == null) {
-        seqFileNumMap.put(context.getQueryId(), new HashSet<>(queryDataSource.getSeqResources()));
-      } else {
-        seqFileNum.addAll(queryDataSource.getSeqResources());
-      }
-      if (unseqFileNum == null) {
-        unseqFileNumMap.put(context.getQueryId(), new HashSet<>(queryDataSource.getUnseqResources()));
-      } else {
-        unseqFileNum.addAll(queryDataSource.getUnseqResources());
-      }
+      seqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
+          .addAll(queryDataSource.getSeqResources());
+      unseqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
+          .addAll(queryDataSource.getUnseqResources());
     }
     return queryDataSource;
   }
@@ -142,13 +134,18 @@ public class QueryResourceManager {
   public void endQuery(long queryId) throws StorageEngineException {
     try {
       if (config.isEnablePerformanceTracing()) {
+        boolean isprinted = false;
         if (seqFileNumMap.get(queryId) != null && unseqFileNumMap.get(queryId) != null) {
           TracingManager.getInstance().writeTsFileInfo(queryId, seqFileNumMap.remove(queryId).size(),
-              unseqFileNumMap.remove(queryId).size());
+                  unseqFileNumMap.remove(queryId).size());
+          isprinted = true;
         }
         if (chunkNumMap.get(queryId) != null && chunkSizeMap.get(queryId) != null) {
           TracingManager.getInstance()
               .writeChunksInfo(queryId, chunkNumMap.remove(queryId), chunkSizeMap.remove(queryId));
+        }
+        if (isprinted) {
+          TracingManager.getInstance().writeEndTime(queryId);
         }
       }
     } catch (IOException e) {

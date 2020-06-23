@@ -78,6 +78,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
+import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
@@ -565,7 +566,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // generate the queryId for the operation
       queryId = generateQueryId(true);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-        TracingManager.getInstance().writeQueryInfo(queryId, statement, plan.getPaths().size());
+        if (!(plan instanceof AlignByDevicePlan)) {
+          TracingManager.getInstance().writeQueryInfo(queryId, statement, plan.getPaths().size());
+        } else {
+          TracingManager.getInstance().writeQueryInfo(queryId, statement);
+        }
       }
       // put it into the corresponding Set
 
@@ -588,6 +593,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setQueryDataSet(result);
       }
       resp.setQueryId(queryId);
+
+      if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
+        TracingManager.getInstance()
+            .writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
+      }
 
       if (enableMetric) {
         long endTime = System.currentTimeMillis();
