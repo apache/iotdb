@@ -18,18 +18,25 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
 public class MetaUtils {
+
+  private MetaUtils() { throw new IllegalStateException("Utility class"); }
+
   public static String[] getNodeNames(String path, String separator) {
     String[] nodeNames;
     if (path.contains("\"") || path.contains("\'")) {
       String[] deviceAndMeasurement;
+      String measurement;
       if (path.contains("\"")) {
         deviceAndMeasurement = path.split("\"");
+        measurement = TsFileConstant.DOUBLE_QUOTATION + deviceAndMeasurement[1] + TsFileConstant.DOUBLE_QUOTATION;
       } else {
         deviceAndMeasurement = path.split("\'");
+        measurement = TsFileConstant.SINGLE_QUOTATION + deviceAndMeasurement[1] + TsFileConstant.SINGLE_QUOTATION;
       }
       String device = deviceAndMeasurement[0];
-      String measurement = deviceAndMeasurement[1];
       String[] deviceNodeName = device.split(separator);
       int nodeNumber = deviceNodeName.length + 1;
       nodeNames = new String[nodeNumber];
