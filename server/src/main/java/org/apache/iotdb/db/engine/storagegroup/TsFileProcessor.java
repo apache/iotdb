@@ -613,10 +613,9 @@ public class TsFileProcessor {
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
             Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = vmWriter
                 .getMetadatasForQuery();
-            for (String device : metadatasForQuery.keySet()) {
-              Map<String, List<ChunkMetadata>> chunkMetadataListMap = metadatasForQuery.get(device);
-              for (String sensor : chunkMetadataListMap.keySet()) {
-                for (ChunkMetadata chunkMetadata : chunkMetadataListMap.get(sensor)) {
+            for (Map<String, List<ChunkMetadata>> chunkMetadataListMap : metadatasForQuery.values()) {
+              for (List<ChunkMetadata> chunkMetadataList: chunkMetadataListMap.values()) {
+                for (ChunkMetadata chunkMetadata : chunkMetadataList) {
                   vmPointNum += chunkMetadata.getNumOfPoints();
                 }
               }
