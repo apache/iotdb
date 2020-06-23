@@ -68,6 +68,7 @@ import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -707,8 +708,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
   private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
       throws PathException, MetadataException, StorageEngineException {
     String fullPath;
-    if(measurementId.indexOf(IoTDBConstant.PATH_SEPARATOR) != -1 || measurementId.contains(" ")) {
-         fullPath =  deviceId + IoTDBConstant.PATH_SEPARATOR
+    if(measurementId.contains(TsFileConstant.PATH_SEPARATOR) || measurementId.contains(" ")) {
+         fullPath =  deviceId + TsFileConstant.PATH_SEPARATOR
              + IoTDBConstant.DOUBLE_QUOTATION + measurementId + IoTDBConstant.DOUBLE_QUOTATION;
     } else {
       fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
