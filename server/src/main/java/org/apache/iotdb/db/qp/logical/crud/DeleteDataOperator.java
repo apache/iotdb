@@ -25,21 +25,12 @@ import org.apache.iotdb.db.qp.logical.Operator;
  */
 public class DeleteDataOperator extends SFWOperator {
 
-  private long time;
   private long startTime;
   private long endTime;
 
   public DeleteDataOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = Operator.OperatorType.DELETE;
-  }
-
-  public long getTime() {
-    return time;
-  }
-
-  public void setTime(long time) {
-    this.time = time;
   }
 
   public long getStartTime() {

@@ -74,14 +74,6 @@ public interface IWritableMemChunk {
   MeasurementSchema getSchema();
 
   /**
-   * using offset to mark which data is deleted: the data whose timestamp is less than offset are
-   * deleted.
-   *
-   * @param offset
-   */
-  void setTimeOffset(long offset);
-
-  /**
    * served for query requests.
    *
    * @return

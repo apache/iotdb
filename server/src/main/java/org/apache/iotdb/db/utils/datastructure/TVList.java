@@ -47,8 +47,6 @@ public abstract class TVList {
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
-  private long timeOffset = Long.MIN_VALUE;
-
   private List<Pair<Long, Long>> deletionList = new ArrayList<>();
   private long version;
 
@@ -240,7 +238,7 @@ public abstract class TVList {
 
   public void clear() {
     size = 0;
-    timeOffset = Long.MIN_VALUE;
+    deletionList.clear();
     sorted = true;
     minTime = Long.MIN_VALUE;
     clearTime();
@@ -347,14 +345,6 @@ public abstract class TVList {
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
-  public long getTimeOffset() {
-    return timeOffset;
-  }
-
-  public void setTimeOffset(long timeOffset) {
-    this.timeOffset = timeOffset;
-  }
-
   public void setDeletionList(List<Pair<Long, Long>> list) {
     this.deletionList = list;
   }

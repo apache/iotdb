@@ -28,29 +28,20 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class Deletion extends Modification {
 
   /**
-   * data whose timestamp <= this field are to be deleted.
+   * data within the interval [startTime, endTime] are to be deleted.
    */
-  private long timestamp;
   private long startTime;
   private long endTime;
 
-  public Deletion(Path path, long versionNum, long timestamp) {
+  public Deletion(Path path, long versionNum, long endTime) {
     super(Type.DELETION, path, versionNum);
-    this.timestamp = timestamp;
+    this.endTime = endTime;
   }
 
   public Deletion(Path path, long versionNum, long startTime, long endTime) {
     super(Type.DELETION, path, versionNum);
     this.startTime = startTime;
     this.endTime = endTime;
-  }
-
-  public long getTimestamp() {
-    return timestamp;
-  }
-
-  public void setTimestamp(long timestamp) {
-    this.timestamp = timestamp;
   }
 
   public long getStartTime() {
