@@ -153,12 +153,13 @@ public class TsFileProcessor {
       List<TsFileResource> vmTsFileResources,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
-      RestorableTsFileIOWriter writer) {
+      RestorableTsFileIOWriter writer, List<RestorableTsFileIOWriter> vmWriters) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
     this.vmTsFileResources = vmTsFileResources;
     this.versionController = versionController;
     this.writer = writer;
+    this.vmWriters = vmWriters;
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;

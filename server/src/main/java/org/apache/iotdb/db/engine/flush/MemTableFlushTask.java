@@ -107,9 +107,13 @@ public class MemTableFlushTask {
     if (isVm) {
       currWriter = vmWriters.get(vmWriters.size() - 1);
     } else {
-      File file = createNewTmpFile();
-      currWriter = new RestorableTsFileIOWriter(file);
-      vmWriters.add(currWriter);
+      if (!isFull) {
+        File file = createNewTmpFile();
+        currWriter = new RestorableTsFileIOWriter(file);
+        vmWriters.add(currWriter);
+      } else {
+        currWriter = writer;
+      }
     }
     RestorableTsFileIOWriter mergeWriter = null;
     if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && !isVm) {
@@ -368,7 +372,7 @@ public class MemTableFlushTask {
           } else {
             this.currWriter.endChunkGroup();
             // file may be a tmp file to be used
-            if (this.currWriter.getFile().getName().contains(PATH_UPGRADE)) {
+            if (this.currWriter.getMetadatasForQuery().isEmpty()) {
               this.currWriter.makeMetadataVisible();
             }
           }
