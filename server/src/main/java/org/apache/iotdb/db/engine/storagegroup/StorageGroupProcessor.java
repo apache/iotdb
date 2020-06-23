@@ -20,7 +20,9 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -279,9 +281,13 @@ public class StorageGroupProcessor {
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
+      Map<String, List<TsFileResource>> vmSeqFiles = getAllVms(
+          DirectoryManager.getInstance().getAllSequenceFileFolders());
+      Map<String, List<TsFileResource>> vmUnseqFiles = getAllVms(
+          DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
-      recoverSeqFiles(tmpSeqTsFiles);
-      recoverUnseqFiles(tmpUnseqTsFiles);
+      recoverSeqFiles(tmpSeqTsFiles, vmSeqFiles);
+      recoverUnseqFiles(tmpUnseqTsFiles, vmUnseqFiles);
 
       for (TsFileResource resource : sequenceFileTreeSet) {
         long partitionNum = resource.getTimePartition();
@@ -504,6 +510,34 @@ public class StorageGroupProcessor {
     return new Pair<>(ret, upgradeRet);
   }
 
+  private Map<String, List<TsFileResource>> getAllVms(List<String> folders) throws IOException {
+    List<File> vmFiles = new ArrayList<>();
+    for (String baseDir : folders) {
+      File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
+      if (!fileFolder.exists()) {
+        continue;
+      }
+      Collections
+          .addAll(vmFiles, fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), VM_SUFFIX));
+    }
+
+    Map<String, List<TsFileResource>> vmTsFileResourceMap = new HashMap<>();
+    for (File f : vmFiles) {
+      TsFileResource fileResource = new TsFileResource(f);
+      fileResource.setClosed(false);
+      // make sure the flush command is called before IoTDB is down.
+      fileResource.deserialize();
+      String tsfilePrefix = f.getName().split(TSFILE_SEPARATOR)[0];
+      List<TsFileResource> vmTsFileResource = new ArrayList<>();
+      if (vmTsFileResourceMap.containsKey(tsfilePrefix)) {
+        vmTsFileResource = vmTsFileResourceMap.get(tsfilePrefix);
+      }
+      vmTsFileResource.add(fileResource);
+      vmTsFileResourceMap.put(tsfilePrefix, vmTsFileResource);
+    }
+    return vmTsFileResourceMap;
+  }
+
   private void continueFailedRenames(File fileFolder, String suffix) {
     File[] files = fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), suffix);
     if (files != null) {
@@ -518,7 +552,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverSeqFiles(List<TsFileResource> tsFiles) {
+  private void recoverSeqFiles(List<TsFileResource> tsFiles,
+      Map<String, List<TsFileResource>> vmFiles) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -539,7 +574,9 @@ public class StorageGroupProcessor {
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
+        String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+            vmFiles.get(tsfilePrefix),
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
             this::updateLatestFlushTimeCallback, true, writer);
@@ -554,7 +591,8 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void recoverUnseqFiles(List<TsFileResource> tsFiles) {
+  private void recoverUnseqFiles(List<TsFileResource> tsFiles,
+      Map<String, List<TsFileResource>> vmFiles) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
@@ -574,7 +612,9 @@ public class StorageGroupProcessor {
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
+        String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+            vmFiles.get(tsfilePrefix),
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
             this::unsequenceFlushCallback, false, writer);
@@ -957,12 +997,12 @@ public class StorageGroupProcessor {
     VersionController versionController = getVersionControllerByTimePartitionId(timePartitionId);
     if (sequence) {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
-          fsFactory.getFileWithParent(filePath),
+          fsFactory.getFileWithParent(filePath), new ArrayList<>(),
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::updateLatestFlushTimeCallback, true);
     } else {
       tsFileProcessor = new TsFileProcessor(storageGroupName,
-          fsFactory.getFileWithParent(filePath),
+          fsFactory.getFileWithParent(filePath), new ArrayList<>(),
           versionController, this::closeUnsealedTsFileProcessorCallBack,
           this::unsequenceFlushCallback, false);
     }
@@ -1770,8 +1810,6 @@ public class StorageGroupProcessor {
 
   /**
    * acquire the write locks of the resource and the merge lock
-   *
-   * @param seqFile
    */
   private void doubleWriteLock(TsFileResource seqFile) {
     boolean fileLockGot;
@@ -1796,8 +1834,6 @@ public class StorageGroupProcessor {
 
   /**
    * release the write locks of the resource and the merge lock
-   *
-   * @param seqFile
    */
   private void doubleWriteUnlock(TsFileResource seqFile) {
     mergeLock.writeLock().unlock();
@@ -1906,9 +1942,6 @@ public class StorageGroupProcessor {
 
   /**
    * Set the version in "partition" to "version" if "version" is larger than the current version.
-   *
-   * @param partition
-   * @param version
    */
   public void setPartitionFileVersionToMax(long partition, long version) {
     partitionMaxFileVersions
@@ -1926,8 +1959,6 @@ public class StorageGroupProcessor {
    * Find the position of "newTsFileResource" in the sequence files if it can be inserted into
    * them.
    *
-   * @param newTsFileResource
-   * @param newFilePartitionId
    * @return POS_ALREADY_EXIST(- 2) if some file has the same name as the one to be inserted
    * POS_OVERLAP(-3) if some file overlaps the new file an insertion position i >= -1 if the new
    * file can be inserted between [i, i+1]
@@ -1972,8 +2003,6 @@ public class StorageGroupProcessor {
   /**
    * Compare each device in the two files to find the time relation of them.
    *
-   * @param fileA
-   * @param fileB
    * @return -1 if fileA is totally older than fileB (A < B) 0 if fileA is partially older than
    * fileB and partially newer than fileB (A X B) 1 if fileA is totally newer than fileB (B < A)
    */
@@ -2014,8 +2043,6 @@ public class StorageGroupProcessor {
    * If the historical versions of a file is a sub-set of the given file's, (close and) remove it to
    * reduce unnecessary merge. Only used when the file sender and the receiver share the same file
    * close policy. Warning: DO NOT REMOVE
-   *
-   * @param resource
    */
   @SuppressWarnings("unused")
   public void removeFullyOverlapFiles(TsFileResource resource) {
@@ -2057,10 +2084,6 @@ public class StorageGroupProcessor {
   /**
    * remove the given tsFileResource. If the corresponding tsFileProcessor is in the working status,
    * close it before remove the related resource files. maybe time-consuming for closing a tsfile.
-   *
-   * @param tsFileResource
-   * @param iterator
-   * @param isSeq
    */
   private void removeFullyOverlapFile(TsFileResource tsFileResource,
       Iterator<TsFileResource> iterator
@@ -2402,8 +2425,6 @@ public class StorageGroupProcessor {
    * version in "tsFileResource" equals to a version of a working file, false is returned because
    * "tsFileResource" may have unwritten data of that file.
    *
-   * @param tsFileResource
-   * @param partitionNum
    * @return true if the historicalVersions of "tsFileResource" is a subset of
    * partitionDirectFileVersions, or false if it is not a subset and it contains any version of a
    * working file USED by cluster module
