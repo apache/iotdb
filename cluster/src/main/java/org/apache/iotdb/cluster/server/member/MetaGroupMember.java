@@ -1561,9 +1561,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             throw new MetadataException("Failed to set storage group " + storageGroupName);
           }
           // try to create timeseries
+          boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan)plan);
+          if(!isAutoCreateTimeseriesSuccess){
+            throw new MetadataException("Failed to create timeseries automatically.");
+          }
           return executeNonQuery(plan);
         } catch (MetadataException e) {
-          logger.info("Failed to set storage group of device id {}", deviceId);
+          logger.error("Failed to set storage group or create timeseries, because {}", e.getMessage());
         }
       }
       logger.error("{}: Cannot found storage groups for {}", name, plan);
@@ -1705,7 +1709,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             && status.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
             && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
           // try to create timeseries
-          boolean hasCreate = autoCreateTimeseries((InsertPlan) plan, partitionGroup);
+          boolean hasCreate = autoCreateTimeseries((InsertPlan) plan);
           if (hasCreate) {
             status = forwardPlan(plan, partitionGroup);
             continue;
@@ -1732,18 +1736,28 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   /**
    * Create timeseries automatically
-   * @param insertPlan, some of the timeseries in it are not created yet
-   * @param partitionGroup
+   *
+   * @param insertPlan,    some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
-  boolean autoCreateTimeseries(InsertPlan insertPlan, PartitionGroup partitionGroup) {
+  boolean autoCreateTimeseries(InsertPlan insertPlan) {
     List<String> seriesList = new ArrayList<>();
     String deviceId = insertPlan.getDeviceId();
+    String storageGroupName;
+    try {
+      storageGroupName = MetaUtils
+          .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
+              .getConfig().getDefaultStorageGroupLevel());
+    } catch (MetadataException e) {
+      logger.error("Failed to infer storage group from deviceId {}", deviceId);
+      return false;
+    }
     for (String measurementId : insertPlan.getMeasurements()) {
       seriesList.add(
           new StringContainer(new String[]{deviceId, measurementId}, TsFileConstant.PATH_SEPARATOR)
               .toString());
     }
+    PartitionGroup partitionGroup = partitionTable.route(storageGroupName, 0);
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
@@ -1764,9 +1778,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
 
-
   /**
    * To check which timeseries in the input list is unregistered
+   *
    * @param seriesList
    * @param partitionGroup
    * @return
