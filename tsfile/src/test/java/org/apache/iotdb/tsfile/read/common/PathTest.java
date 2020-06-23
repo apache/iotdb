@@ -43,7 +43,7 @@ public class PathTest {
     testPath(path, "", "", "");
     // with quote;
     path = new Path("root.d1.r1.\"x1.x2.x3\"");
-    testPath(path, "root.d1.r1", "x1.x2.x3", "root.d1.r1.\"x1.x2.x3\"");
+    testPath(path, "root.d1.r1", "\"x1.x2.x3\"", "root.d1.r1.\"x1.x2.x3\"");
   }
 
   @Test
@@ -66,7 +66,7 @@ public class PathTest {
     Path suffix2 = new Path("d.\"e.f\"");
     testPath(Path.mergePath(prefix, suffix), "a.b.c.d", "e", "a.b.c.d.e");
     testPath(Path.mergePath(prefix, suffix1), "a.b", "c", "a.b.c");
-    testPath(Path.mergePath(prefix, suffix2), "a.b.c.d", "e.f", "a.b.c.d.\"e.f\"");
+    testPath(Path.mergePath(prefix, suffix2), "a.b.c.d", "\"e.f\"", "a.b.c.d.\"e.f\"");
   }
 
   @Test
@@ -83,7 +83,7 @@ public class PathTest {
     Path desc = new Path("a.b.\"c\"");
     Path head = new Path("d.e");
     Path head1 = new Path("");
-    testPath(Path.addPrefixPath(desc, head), "d.e.a.b", "c", "d.e.a.b.\"c\"");
-    testPath(Path.mergePath(desc, head1), "a.b", "c", "a.b.\"c\"");
+    testPath(Path.addPrefixPath(desc, head), "d.e.a.b", "\"c\"", "d.e.a.b.\"c\"");
+    testPath(Path.mergePath(desc, head1), "a.b", "\"c\"", "a.b.\"c\"");
   }
 }
