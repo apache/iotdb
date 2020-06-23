@@ -41,7 +41,7 @@ We choose 3 kinds of TSDBs here.
   
   Interface: Restful API
 
-* TimeSacleDB - Time series database based on Relational Database
+* TimesacleDB - Time series database based on Relational Database
 
   Interface: SQL
 
@@ -104,15 +104,15 @@ Legend:
   
 * Schema:
 
-  * IoTDB: IoTDB proposes a [Tree based schema](http://iotdb.apache.org/UserGuide/Master/2-Concept/1-Data%20Model%20and%20Terminology.html#data-model-and-terminology). 
+  * IoTDB: IoTDB proposes a [Tree based schema](http://iotdb.apache.org/UserGuide/Master/Concept/Data%20Model%20and%20Terminology.html). 
    It is quite different with other TSDBs. However, the kind of schema has the following advantages:
     
     * In many industrial scenarios, the management of devices are hierarchical, rather than flat.
     That is why we think a tree based schema is better than tag-value based schema.
     
     * In many real world applications, tag names are constant. For example, a wind turbine manufacturer
-    always identify their wind turbines by which country it locates, the farm name it belongs to, and it ID in the farm.
-    So, a 4-depth tree ("root.the-country.the-farm.the-id") is fine. 
+    always identify their wind turbines by which country it locates, the farm name it belongs to, and its ID in the farm.
+    So, a 4-depth tree ("root.the-country-name.the-farm-name.the-id") is fine. 
     You do not need to repeat to tell IoTDB the 2nd level of the tree is for country name, 
     the 3rd level is for farm id, etc..
     
@@ -124,7 +124,7 @@ Legend:
 
 * Order by time:
   
-  Order by time seems quite trivil for time series database. But... if we consider another featuer, called align by time,
+  Order by time seems quite trivil for time series database. But... if we consider another feature, called align by time,
   something becomes interesting.  And, that is why we mark OpenTSDB and KairosDB unsupported.
   
   Actually, in each time series, all these TSDBs support order data by timestamps.
@@ -229,7 +229,7 @@ I listed some interesting features that these systems may differ.
 
 * Compression: 
   * IoTDB supports many encoding and compression for time series, like RLE, 2DIFF, Gorilla, etc.. and Snappy compression.
-  In IoTDB, you can choose which encoding method you want, according to the data distribution. For more info, see [here](http://iotdb.apache.org/UserGuide/Master/2-Concept/3-Encoding.html).
+  In IoTDB, you can choose which encoding method you want, according to the data distribution. For more info, see [here](http://iotdb.apache.org/UserGuide/Master/Concept/Encoding.html).
   * InfluxDB also supports encoding and compression, but you can not define which encoding method you want.
   It just depends on the data type. For more info, see [here](https://docs.influxdata.com/influxdb/v1.7/concepts/storage_engine/).
   * OpenTSDB and KairosDB use HBase and Cassandra in backend, and have no special encoding for time series.
@@ -273,7 +273,7 @@ I listed some interesting features that these systems may differ.
     
 **Conclusion**:    
   
-  We can find that IoTDB has many interesting features that other TSDBs do not support.
+  We can find that IoTDB has many powerful features that other TSDBs do not support.
 
 ### Performance Comparison
 
