@@ -244,11 +244,8 @@ public class MemTableFlushTask {
             break;
           }
         } else {
-          if (task instanceof StartFlushGroupIOTask) {
-            ioTaskQueue.add(task);
-          } else if (task instanceof EndChunkGroupIoTask) {
-            ioTaskQueue.add(task);
-          } else if (task instanceof MergeVmIoTask) {
+          if (task instanceof StartFlushGroupIOTask || task instanceof EndChunkGroupIoTask
+              || task instanceof MergeVmIoTask) {
             ioTaskQueue.add(task);
           } else {
             long starTime = System.currentTimeMillis();
