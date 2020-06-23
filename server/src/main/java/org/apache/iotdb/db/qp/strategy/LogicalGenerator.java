@@ -50,6 +50,7 @@ import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
@@ -81,6 +82,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeletePartitionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteTimeseriesContext;
@@ -1621,5 +1623,21 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterShowMergeStatus(ShowMergeStatusContext ctx) {
     super.enterShowMergeStatus(ctx);
     initializedOperator = new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
+  }
+
+  @Override
+  public void enterDeletePartition(DeletePartitionContext ctx) {
+    super.enterDeletePartition(ctx);
+    DeletePartitionOperator deletePartitionOperator = new DeletePartitionOperator(
+        SQLConstant.TOK_DELETE_PARTITION);
+    deletePartitionOperator.setStorageGroupName(ctx.prefixPath().getText());
+    String intListStr = ctx.INT_LIST().getText();
+    String[] split = intListStr.split(",");
+    Set<Long> idSet = new HashSet<>();
+    for (String s : split) {
+      idSet.add(Long.parseLong(s));
+    }
+    deletePartitionOperator.setPartitionIds(idSet);
+    initializedOperator = deletePartitionOperator;
   }
 }

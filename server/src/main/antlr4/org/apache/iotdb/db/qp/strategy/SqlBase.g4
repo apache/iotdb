@@ -80,6 +80,7 @@ statement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
+    | DELETE PARTITION prefixPath INT_LIST #deletePartition
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -883,6 +884,10 @@ LATEST
     : L A T E S T
     ;
 
+PARTITION
+    : P A R T I T I O N
+    ;
+
 //============================
 // End of the keywords list
 //============================
@@ -969,6 +974,8 @@ DATETIME
 
 /** Allow unicode rule/token names */
 ID : FIRST_NAME_CHAR NAME_CHAR*;
+
+INT_LIST : INT(COMMA INT)*;
 
 fragment
 NAME_CHAR

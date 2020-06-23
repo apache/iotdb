@@ -898,6 +898,14 @@ Eg.2 SHOW TTL ON root.group1,root.group2,root.group3
 一部分之前不可见的数据可能重新可见，而那些已经被物理删除的数据则将永久丢失。也就是说，TTL操作不会原子性地删除
 对应的数据。因此我们不推荐您频繁修改TTL，除非您能接受该操作带来的一定程度的不可预知性。
 
+* 删除时间分区 (实验性功能)
+```
+DELETE PARTITION StorageGroupName INT(COMMA INT)*
+Eg DELETE PARTITION root.sg1 0,1,2
+该例子将删除存储组root.sg1的前三个时间分区
+```
+partitionId 可以通过查看数据文件夹获取，或者是计算 `timestamp / partitionInterval`得到。 
+
 # 参考
 
 ## 关键字

@@ -937,6 +937,14 @@ atomicity of data deletion is not guaranteed for efficiency concerns. So we reco
 not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
 to suffer the unpredictability. 
 
+* Delete Partition (experimental)
+```
+DELETE PARTITION StorageGroupName INT(COMMA INT)*
+Eg DELETE PARTITION root.sg1 0,1,2
+This example will delete the first 3 time partitions of storage group root.sg1.
+```
+The partitionId can be found in data folders or converted using `timestamp / partitionInterval`.
+
 # Reference
 
 ## Keywords

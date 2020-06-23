@@ -100,6 +100,7 @@ public class Planner {
       case CLEAR_CACHE:
       case NULL:
       case SHOW_MERGE_STATUS:
+      case DELETE_PARTITION:
         return operator;
       case QUERY:
       case UPDATE:

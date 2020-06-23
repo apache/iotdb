@@ -2410,4 +2410,64 @@ public class StorageGroupProcessor {
 
     void call(TsFileResource caller);
   }
+
+  /**
+   * remove all partitions that satisfy a filter.
+   * @param filter
+   */
+  public void removePartitions(TimePartitionFilter filter) {
+    // this requires blocking all other activities
+    insertLock.writeLock().lock();
+    mergeLock.writeLock().lock();
+    try {
+      // abort ongoing merges
+      MergeManager.getINSTANCE().abortMerge(storageGroupName);
+      // close all working files that should be removed
+      for (Iterator<Entry<Long, TsFileProcessor>> iterator = workSequenceTsFileProcessors
+          .entrySet().iterator(); iterator.hasNext(); ) {
+        Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
+        long partitionId = longTsFileProcessorEntry.getKey();
+        TsFileProcessor processor = longTsFileProcessorEntry.getValue();
+        if (filter.satisfy(storageGroupName, partitionId)) {
+          processor.syncClose();
+          iterator.remove();
+        }
+      }
+      for (Iterator<Entry<Long, TsFileProcessor>> iterator = workUnsequenceTsFileProcessors
+          .entrySet().iterator(); iterator.hasNext(); ) {
+        Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
+        long partitionId = longTsFileProcessorEntry.getKey();
+        TsFileProcessor processor = longTsFileProcessorEntry.getValue();
+        if (filter.satisfy(storageGroupName, partitionId)) {
+          processor.syncClose();
+          iterator.remove();
+        }
+      }
+      // remove data files
+      for (Iterator<TsFileResource> iterator = sequenceFileTreeSet.iterator();
+          iterator.hasNext(); ) {
+        TsFileResource tsFileResource = iterator.next();
+        if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
+          tsFileResource.remove();
+          iterator.remove();
+        }
+      }
+      for (Iterator<TsFileResource> iterator = unSequenceFileList.iterator();
+          iterator.hasNext(); ) {
+        TsFileResource tsFileResource = iterator.next();
+        if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
+          tsFileResource.remove();
+          iterator.remove();
+        }
+      }
+    } finally {
+      insertLock.writeLock().unlock();
+      mergeLock.writeLock().unlock();
+    }
+  }
+
+  @FunctionalInterface
+  public interface TimePartitionFilter {
+    boolean satisfy(String storageGroupName, long timePartitionId);
+  }
 }

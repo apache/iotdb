@@ -863,3 +863,15 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
+
+## 删除时间分区 (实验性功能)
+您可以通过如下语句来删除某一个存储组下的指定时间分区:
+
+```
+DELETE PARTITION root.ln 0,1,2
+```
+
+上例中的0,1,2为待删除时间分区的id，您可以通过查看IoTDB的数据文件夹找到它，或者可以通过计算`timestamp / partitionInterval`(向下取整),
+手动地将一个时间戳转换为对应的id，其中的`partitionInterval`可以在IoTDB的配置文件中找到（如果您使用的版本支持时间分区）。
+
+请注意该功能目前只是实验性的，如果您不是开发者，使用时请务必谨慎。
