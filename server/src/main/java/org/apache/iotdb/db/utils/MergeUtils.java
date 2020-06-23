@@ -72,11 +72,13 @@ public class MergeUtils {
     }
   }
 
-  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader) throws IOException {
+  private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader)
+      throws IOException {
     return sequenceReader.getAllPaths();
   }
 
-  public static long collectFileSizes(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
+  public static long collectFileSizes(List<TsFileResource> seqFiles,
+      List<TsFileResource> unseqFiles) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : seqFiles) {
       totalSize += tsFileResource.getFileSize();
@@ -87,7 +89,8 @@ public class MergeUtils {
     return totalSize;
   }
 
-  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter) throws IOException {
+  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter)
+      throws IOException {
     ChunkReader chunkReader = new ChunkReader(chunk, null);
     int ptWritten = 0;
     while (chunkReader.hasNextSatisfiedPage()) {
@@ -125,6 +128,31 @@ public class MergeUtils {
     }
   }
 
+  public static void writeTimeValuePair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
+    switch (chunkWriter.getDataType()) {
+      case TEXT:
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
+        break;
+      case DOUBLE:
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
+        break;
+      case BOOLEAN:
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
+        break;
+      case INT64:
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
+        break;
+      case INT32:
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
+        break;
+      case FLOAT:
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
+        break;
+      default:
+        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
+    }
+  }
+
   // returns totalChunkNum of a file and the max number of chunks of a series
   public static long[] findTotalAndLargestSeriesChunkNum(TsFileResource tsFileResource,
       TsFileSequenceReader sequenceReader)
@@ -140,7 +168,7 @@ public class MergeUtils {
     }
     logger.debug("In file {}, total chunk num {}, series max chunk num {}", tsFileResource,
         totalChunkNum, maxChunkNum);
-    return new long[] {totalChunkNum, maxChunkNum};
+    return new long[]{totalChunkNum, maxChunkNum};
   }
 
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) {
@@ -148,14 +176,11 @@ public class MergeUtils {
   }
 
   /**
-   * Reads chunks of paths in unseqResources and put them in separated lists. When reading a
-   * file, this method follows the order of positions of chunks instead of the order of
-   * timeseries, which reduce disk seeks.
+   * Reads chunks of paths in unseqResources and put them in separated lists. When reading a file,
+   * this method follows the order of positions of chunks instead of the order of timeseries, which
+   * reduce disk seeks.
+   *
    * @param paths names of the timeseries
-   * @param unseqResources
-   * @param mergeResource
-   * @return
-   * @throws IOException
    */
   public static List<Chunk>[] collectUnseqChunks(List<Path> paths,
       List<TsFileResource> unseqResources, MergeResource mergeResource) throws IOException {
@@ -178,7 +203,8 @@ public class MergeUtils {
   }
 
   private static void buildMetaHeap(List<Path> paths, TsFileSequenceReader tsFileReader,
-      MergeResource resource, TsFileResource tsFileResource, PriorityQueue<MetaListEntry> chunkMetaHeap)
+      MergeResource resource, TsFileResource tsFileResource,
+      PriorityQueue<MetaListEntry> chunkMetaHeap)
       throws IOException {
     for (int i = 0; i < paths.size(); i++) {
       Path path = paths.get(i);
@@ -220,7 +246,8 @@ public class MergeUtils {
 
   public static boolean isChunkTooSmall(int ptWritten, ChunkMetadata chunkMetaData,
       boolean isLastChunk, int minChunkPointNum) {
-    return ptWritten > 0 || (minChunkPointNum >= 0 && chunkMetaData.getNumOfPoints() < minChunkPointNum
+    return ptWritten > 0 || (minChunkPointNum >= 0
+        && chunkMetaData.getNumOfPoints() < minChunkPointNum
         && !isLastChunk);
   }
 
@@ -251,7 +278,8 @@ public class MergeUtils {
     return ret;
   }
 
-  public static class MetaListEntry implements Comparable<MetaListEntry>{
+  public static class MetaListEntry implements Comparable<MetaListEntry> {
+
     private int pathId;
     private int listIdx;
     private List<ChunkMetadata> chunkMetadataList;

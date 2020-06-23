@@ -629,7 +629,7 @@ public class TsFileProcessor {
                   .getMemtablePointThreshold()) || (shouldClose && flushingMemTables.size() == 1)) {
             isVm = false;
             isFull = false;
-            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
+            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
                 false,
                 false,
                 storageGroupName);
@@ -639,7 +639,6 @@ public class TsFileProcessor {
               isVm = true;
               isFull = true;
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  vmTsFileResources,
                   true, true,
                   storageGroupName);
             } else {
@@ -649,13 +648,12 @@ public class TsFileProcessor {
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  vmTsFileResources,
                   true, false,
                   storageGroupName);
             }
           }
         } else {
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
               false, false,
               storageGroupName);
         }
