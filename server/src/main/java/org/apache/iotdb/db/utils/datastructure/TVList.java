@@ -24,13 +24,13 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayPool.ARRAY_SIZE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import javafx.util.Pair;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public abstract class TVList {
 
@@ -540,7 +540,7 @@ public abstract class TVList {
 
     private boolean isPointDeleted(long timestamp) {
       for (Pair<Long, Long> del : deletionList) {
-        if (del.getKey() <= timestamp && timestamp <= del.getValue()) {
+        if (del.left <= timestamp && timestamp <= del.right) {
           return true;
         }
       }

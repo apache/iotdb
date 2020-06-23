@@ -27,7 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javafx.util.Pair;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
@@ -166,6 +165,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
@@ -1328,8 +1328,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       case SQLConstant.TOK_DELETE:
         deleteDataOp.setFilterOperator(whereOp.getChildren().get(0));
         Pair<Long, Long> timeRange = parseDeleteTimeRange(deleteDataOp);
-        deleteDataOp.setStartTime(timeRange.getKey());
-        deleteDataOp.setEndTime(timeRange.getValue());
+        deleteDataOp.setStartTime(timeRange.left);
+        deleteDataOp.setEndTime(timeRange.right);
         break;
       case SQLConstant.TOK_QUERY:
         queryOp.setFilterOperator(whereOp.getChildren().get(0));
@@ -1559,8 +1559,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     Pair<Long, Long> leftOpRange = calcOperatorRange(lOperator);
     Pair<Long, Long> rightOpRange = calcOperatorRange(rOperator);
 
-    return new Pair<>(Math.max(leftOpRange.getKey(), rightOpRange.getKey()),
-        Math.min(leftOpRange.getValue(), rightOpRange.getValue()));
+    return new Pair<>(Math.max(leftOpRange.left, rightOpRange.right),
+        Math.min(leftOpRange.left, rightOpRange.right));
   }
 
   private Pair<Long, Long> calcOperatorRange(FilterOperator filterOperator) {

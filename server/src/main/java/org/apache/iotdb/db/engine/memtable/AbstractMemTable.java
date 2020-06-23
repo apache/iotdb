@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import javafx.util.Pair;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -38,6 +37,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -213,7 +213,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
 
-  private List<Pair<Long, Long>> findUndeletedTime(String deviceId, String measurement, long timeLowerBound) {
+  private List<Pair<Long, Long>> findUndeletedTime(String deviceId, String measurement,
+      long timeLowerBound) {
     List<Pair<Long, Long>> deletionList = new ArrayList<>();
     for (Modification modification : modifications) {
       Deletion deletion = (Deletion) modification;
