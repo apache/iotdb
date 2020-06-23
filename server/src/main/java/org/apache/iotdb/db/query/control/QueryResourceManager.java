@@ -58,6 +58,7 @@ public class QueryResourceManager {
   private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
   // record the total number and size of chunks for each query id
   private Map<Long, Long> chunkNumMap = new ConcurrentHashMap<>();
+  // chunk size represents the number of time-value points in the chunk
   private Map<Long, Long> chunkSizeMap = new ConcurrentHashMap<>();
   // record the distinct tsfile numbers for each query id
   private Map<Long, Set<TsFileResource>> seqFileNumMap = new ConcurrentHashMap<>();
@@ -140,16 +141,20 @@ public class QueryResourceManager {
    */
   public void endQuery(long queryId) throws StorageEngineException {
     try {
-      if (config.isEnablePerformanceTracing() && chunkNumMap.get(queryId) != null) {
-        TracingManager.getInstance().writeTsFileInfo(seqFileNumMap.remove(queryId).size(),
-            unseqFileNumMap.remove(queryId).size());
-        TracingManager.getInstance()
-            .writeChunksInfo(chunkNumMap.remove(queryId), chunkSizeMap.remove(queryId));
+      if (config.isEnablePerformanceTracing()) {
+        if (seqFileNumMap.get(queryId) != null && unseqFileNumMap.get(queryId) != null) {
+          TracingManager.getInstance().writeTsFileInfo(queryId, seqFileNumMap.remove(queryId).size(),
+              unseqFileNumMap.remove(queryId).size());
+        }
+        if (chunkNumMap.get(queryId) != null && chunkSizeMap.get(queryId) != null) {
+          TracingManager.getInstance()
+              .writeChunksInfo(queryId, chunkNumMap.remove(queryId), chunkSizeMap.remove(queryId));
+        }
       }
     } catch (IOException e) {
       logger.error(
           "Error while writing performance info to {}, {}",
-          config.getPerformanceDir() + File.separator + IoTDBConstant.PERFORMANCE_LOG, e);
+          config.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG, e);
     }
 
     // close file stream of external sort files, and delete

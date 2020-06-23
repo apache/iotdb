@@ -58,48 +58,32 @@ public class TracingManager {
     return TracingManagerHelper.INSTANCE;
   }
 
-  public void writeSeperator() throws IOException {
-    writer.write("-----------------------------");
+  public void writeQueryInfo(long queryId, String statement, int pathsNum) throws IOException {
+    StringBuilder builder = new StringBuilder("-----------------------------\n");
+    builder.append("Query Id: ").append(queryId)
+        .append("\nStart time: ")
+        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
+        .append("\nQuery Statement: ").append(statement)
+        .append("\nNumber of series paths: ").append(pathsNum);
+    writer.write(builder.toString());
     writer.newLine();
     writer.flush();
   }
 
-  public void writeStatement(String statement) throws IOException {
-    writer.write(new StringBuilder("Query Statement: ").append(statement).toString());
-    writer.newLine();
-    writer.flush();
-  }
-
-  public void writeStartTime() throws IOException {
-    writer.write(new StringBuilder("Start time: ").append(
-        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
-        .toString());
-    writer.newLine();
-    writer.flush();
-  }
-
-  public void writePathsNum(int pathsNum) throws IOException {
-    writer.write(new StringBuilder("Number of series paths: ").append(pathsNum).toString());
-    writer.newLine();
-    writer.flush();
-  }
-
-  public void writeQueryId(Long queryId) throws IOException {
-    writer.write(new StringBuilder("Query Id: ").append(queryId).toString());
-    writer.newLine();
-    writer.flush();
-  }
-
-  public void writeTsFileInfo(int seqFileNum, int unseqFileNum) throws IOException {
-    writer.write(new StringBuilder("Number of tsfiles: ").append(seqFileNum + unseqFileNum)
+  public void writeTsFileInfo(long queryId, int seqFileNum, int unseqFileNum) throws IOException {
+    // to avoid the disorder info of multi query
+    // add query id as prefix of each info
+    writer.write(new StringBuilder("Query Id: ").append(queryId)
+        .append("-Number of tsfiles: ").append(seqFileNum + unseqFileNum)
         .append("\nNumber of sequence files: ").append(seqFileNum)
         .append("\nNumber of unsequence files: ").append(unseqFileNum).toString());
     writer.newLine();
     writer.flush();
   }
 
-  public void writeChunksInfo(long totalChunkNum, long totalChunkSize) throws IOException {
-    writer.write(new StringBuilder("Number of chunks: ").append(totalChunkNum)
+  public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkSize) throws IOException {
+    writer.write(new StringBuilder("Query Id: ").append(queryId)
+        .append("-Number of chunks: ").append(totalChunkNum)
         .append("\nAverage size of chunks: ").append(totalChunkSize / totalChunkNum).toString());
     writer.newLine();
     writer.flush();
@@ -108,8 +92,8 @@ public class TracingManager {
   private static class TracingManagerHelper {
 
     private static final TracingManager INSTANCE = new TracingManager(
-        IoTDBDescriptor.getInstance().getConfig().getPerformanceDir(),
-        IoTDBConstant.PERFORMANCE_LOG);
+        IoTDBDescriptor.getInstance().getConfig().getTracingDir(),
+        IoTDBConstant.TRACING_LOG);
 
     private TracingManagerHelper() {
     }

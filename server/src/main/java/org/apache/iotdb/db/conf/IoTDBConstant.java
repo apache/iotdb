@@ -97,8 +97,8 @@ public class IoTDBConstant {
   public static final String SCHEMA_FOLDER_NAME = "schema";
   public static final String SYNC_FOLDER_NAME = "sync";
   public static final String QUERY_FOLDER_NAME = "query";
-  public static final String PERFORMANCE_FOLDER_NAME = "performance";
-  public static final String PERFORMANCE_LOG = "performance.txt";
+  public static final String TRACING_FOLDER_NAME = "tracing";
+  public static final String TRACING_LOG = "tracing.txt";
 
   // mqtt  
   public static final String ENABLE_MQTT = "enable_mqtt_service";

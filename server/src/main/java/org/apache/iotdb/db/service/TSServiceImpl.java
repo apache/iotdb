@@ -544,10 +544,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     auditLogger.info("Session {} execute Query: {}", currSessionId.get(), statement);
     long startTime = System.currentTimeMillis();
     long queryId = -1;
-    if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-      TracingManager.getInstance().writeSeperator();
-      TracingManager.getInstance().writeStatement(statement);
-    }
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
 
@@ -569,9 +565,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // generate the queryId for the operation
       queryId = generateQueryId(true);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-        TracingManager.getInstance().writeQueryId(queryId);
-        TracingManager.getInstance().writeStartTime();
-        TracingManager.getInstance().writePathsNum(plan.getPaths().size());
+        TracingManager.getInstance().writeQueryInfo(queryId, statement, plan.getPaths().size());
       }
       // put it into the corresponding Set
 
