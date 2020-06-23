@@ -627,7 +627,7 @@ public class TsFileProcessor {
           if ((
               (vmPointNum + memTableToFlush.getTotalPointsNum()) / memTableToFlush.getSeriesNumber()
                   > config
-                  .getMemtablePointThreshold()) || (shouldClose && flushingMemTables.size() == 1)) {
+                  .getAvgSeriesPointNumberThreshold()) || (shouldClose && flushingMemTables.size() == 1)) {
             isVm = false;
             isFull = false;
             flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,

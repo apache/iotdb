@@ -447,11 +447,6 @@ public class IoTDBConfig {
   private boolean enableVm = true;
 
   /**
-   * When a memTable's point num exceeds this, the vm memtable is flushed to disk
-   */
-  private int memtablePointThreshold = 1024;
-
-  /**
    * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
    */
   private int maxVmNum = 100000;
@@ -1223,14 +1218,6 @@ public class IoTDBConfig {
 
   public void setEnableVm(boolean enableVm) {
     this.enableVm = enableVm;
-  }
-
-  public int getMemtablePointThreshold() {
-    return memtablePointThreshold;
-  }
-
-  public void setMemtablePointThreshold(int memtablePointThreshold) {
-    this.memtablePointThreshold = memtablePointThreshold;
   }
 
   public int getMaxVmNum() {
