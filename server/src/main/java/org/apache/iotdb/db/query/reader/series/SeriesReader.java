@@ -18,10 +18,18 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -38,14 +46,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-
 public class SeriesReader {
 
-  public static int totalChunkNum = 0;
-  public static long totalChunkSize = 0;
   private final Path seriesPath;
 
   // all the sensors in this device;
@@ -76,7 +78,7 @@ public class SeriesReader {
   private final List<TimeseriesMetadata> seqTimeSeriesMetadata = new LinkedList<>();
   private final PriorityQueue<TimeseriesMetadata> unSeqTimeSeriesMetadata =
       new PriorityQueue<>(Comparator.comparingLong(
-              timeSeriesMetadata -> timeSeriesMetadata.getStatistics().getStartTime()));
+          timeSeriesMetadata -> timeSeriesMetadata.getStatistics().getStartTime()));
 
   /*
    * chunk cache
@@ -103,7 +105,8 @@ public class SeriesReader {
   private boolean hasCachedNextOverlappedPage;
   private BatchData cachedBatchData;
 
-  public SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType, QueryContext context,
+  public SeriesReader(Path seriesPath, Set<String> allSensors, TSDataType dataType,
+      QueryContext context,
       QueryDataSource dataSource, Filter timeFilter, Filter valueFilter, TsFileFilter fileFilter) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
@@ -169,11 +172,11 @@ public class SeriesReader {
 
     Statistics fileStatistics = firstTimeSeriesMetadata.getStatistics();
     return !seqTimeSeriesMetadata.isEmpty()
-            && fileStatistics.getEndTime()
-                >= seqTimeSeriesMetadata.get(0).getStatistics().getStartTime()
+        && fileStatistics.getEndTime()
+        >= seqTimeSeriesMetadata.get(0).getStatistics().getStartTime()
         || !unSeqTimeSeriesMetadata.isEmpty()
-            && fileStatistics.getEndTime()
-                >= unSeqTimeSeriesMetadata.peek().getStatistics().getStartTime();
+        && fileStatistics.getEndTime()
+        >= unSeqTimeSeriesMetadata.peek().getStatistics().getStartTime();
   }
 
   Statistics currentFileStatistics() {
@@ -262,12 +265,21 @@ public class SeriesReader {
 
   private void unpackOneTimeSeriesMetadata(TimeseriesMetadata timeSeriesMetadata)
       throws IOException {
-    List<ChunkMetadata> chunkMetadataList = FileLoaderUtils.loadChunkMetadataList(timeSeriesMetadata);
+    List<ChunkMetadata> chunkMetadataList = FileLoaderUtils
+        .loadChunkMetadataList(timeSeriesMetadata);
     // try to calculate the total number of chunk and time-value points in chunk
     if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
-      totalChunkNum += chunkMetadataList.size();
-      chunkMetadataList.forEach(chunkMetadata -> totalChunkSize += chunkMetadata.getStatistics().getCount());
+      QueryResourceManager queryResourceManager = QueryResourceManager.getInstance();
+      queryResourceManager.getChunkNumMap()
+          .compute(context.getQueryId(),
+              (k, v) -> v == null ? chunkMetadataList.size() : v + chunkMetadataList.size());
+
+      long totalChunkSize = chunkMetadataList.stream()
+          .mapToLong(chunkMetadata -> chunkMetadata.getStatistics().getCount()).sum();
+      queryResourceManager.getChunkSizeMap()
+          .compute(context.getQueryId(), (k, v) -> v == null ? totalChunkSize : v + totalChunkSize);
     }
+
     cachedChunkMetadata.addAll(chunkMetadataList);
   }
 
@@ -441,7 +453,9 @@ public class SeriesReader {
     firstPageReader = null;
   }
 
-  /** This method should only be used when the method isPageOverlapped() return true. */
+  /**
+   * This method should only be used when the method isPageOverlapped() return true.
+   */
   BatchData nextPage() throws IOException {
 
     if (!hasNextPage()) {
@@ -509,7 +523,7 @@ public class SeriesReader {
 
           if (valueFilter == null
               || valueFilter.satisfy(
-                  timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
+              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
             cachedBatchData.putAnObject(
                 timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
           }
@@ -594,9 +608,9 @@ public class SeriesReader {
   /**
    * unpack all overlapped seq/unseq files and find the first TimeSeriesMetadata
    *
-   * <p>Because there may be too many files in the scenario used by the user, we cannot open all the
-   * chunks at once, which may cause OOM, so we can only unpack one file at a time when needed. This
-   * approach is likely to be ubiquitous, but it keeps the system running smoothly
+   * <p>Because there may be too many files in the scenario used by the user, we cannot open all
+   * the chunks at once, which may cause OOM, so we can only unpack one file at a time when needed.
+   * This approach is likely to be ubiquitous, but it keeps the system running smoothly
    */
   private void tryToUnpackAllOverlappedFilesToTimeSeriesMetadata() throws IOException {
     /*

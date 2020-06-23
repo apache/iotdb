@@ -123,9 +123,6 @@ public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
-  public static Set<TsFileResource> seqFile = null;
-  public static Set<TsFileResource> unseqFile = null;
-  private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * indicating the file to be loaded already exists locally.
@@ -1238,19 +1235,6 @@ public class StorageGroupProcessor {
         filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
       }
 
-      // exclude repetitive tsFile to calculate the number of it
-      if (config.isEnablePerformanceTracing()) {
-        if (seqFile == null) {
-          seqFile = new HashSet<>(seqResources);
-        } else {
-          seqFile.addAll(seqResources);
-        }
-        if (unseqFile == null) {
-          unseqFile = new HashSet<>(unseqResources);
-        } else {
-          unseqFile.addAll(unseqResources);
-        }
-      }
       dataSource.setDataTTL(dataTTL);
       return dataSource;
     } catch (MetadataException e) {

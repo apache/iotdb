@@ -46,7 +46,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -81,7 +80,6 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
-import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.FilePathUtils;
@@ -137,7 +135,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final Logger auditLogger = LoggerFactory
       .getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   private static final Logger logger = LoggerFactory.getLogger(TSServiceImpl.class);
-  private TracingManager tracingManager;
   private static final String INFO_NOT_LOGIN = "{}: Not login.";
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
@@ -548,9 +545,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     long startTime = System.currentTimeMillis();
     long queryId = -1;
     if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-      tracingManager = new TracingManager(config.getPerformanceDir(), "performance.txt");
-      tracingManager.writeSeperator();
-      tracingManager.writeStatement(statement);
+      TracingManager.getInstance().writeSeperator();
+      TracingManager.getInstance().writeStatement(statement);
     }
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
@@ -573,9 +569,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // generate the queryId for the operation
       queryId = generateQueryId(true);
       if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-        tracingManager.writeQueryId(queryId);
-        tracingManager.writeStartTime();
-        tracingManager.writePathsNum(plan.getPaths().size());
+        TracingManager.getInstance().writeQueryId(queryId);
+        TracingManager.getInstance().writeStartTime();
+        TracingManager.getInstance().writePathsNum(plan.getPaths().size());
       }
       // put it into the corresponding Set
 
@@ -598,12 +594,6 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         resp.setQueryDataSet(result);
       }
       resp.setQueryId(queryId);
-
-      if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-        tracingManager.writeTsFileInfo(StorageGroupProcessor.seqFile.size(),
-            StorageGroupProcessor.unseqFile.size());
-        tracingManager.writeChunksInfo(SeriesReader.totalChunkNum, SeriesReader.totalChunkSize);
-      }
 
       if (enableMetric) {
         long endTime = System.currentTimeMillis();

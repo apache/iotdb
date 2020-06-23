@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +34,7 @@ public class TracingManager {
   private static final Logger logger = LoggerFactory.getLogger(TracingManager.class);
   private BufferedWriter writer;
 
-  public TracingManager(String dirName, String logFileName) throws IOException {
+  public TracingManager(String dirName, String logFileName){
     File performanceDir = SystemFileFactory.INSTANCE.getFile(dirName);
     if (!performanceDir.exists()) {
       if (performanceDir.mkdirs()) {
@@ -41,12 +43,19 @@ public class TracingManager {
         logger.info("create performance folder {} failed.", performanceDir);
       }
     }
-
     File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
 
-    FileWriter fileWriter;
-    fileWriter = new FileWriter(logFile, true);
+    FileWriter fileWriter = null;
+    try {
+      fileWriter = new FileWriter(logFile, true);
+    } catch (IOException e) {
+      logger.error("Meeting error while creating TracingManager: {}", e);
+    }
     writer = new BufferedWriter(fileWriter);
+  }
+
+  public static TracingManager getInstance() {
+    return TracingManagerHelper.INSTANCE;
   }
 
   public void writeSeperator() throws IOException {
@@ -89,10 +98,20 @@ public class TracingManager {
     writer.flush();
   }
 
-  public void writeChunksInfo(int totalChunkNum, long totalChunkSize) throws IOException {
+  public void writeChunksInfo(long totalChunkNum, long totalChunkSize) throws IOException {
     writer.write(new StringBuilder("Number of chunks: ").append(totalChunkNum)
         .append("\nAverage size of chunks: ").append(totalChunkSize / totalChunkNum).toString());
     writer.newLine();
     writer.flush();
+  }
+
+  private static class TracingManagerHelper {
+
+    private static final TracingManager INSTANCE = new TracingManager(
+        IoTDBDescriptor.getInstance().getConfig().getPerformanceDir(),
+        IoTDBConstant.PERFORMANCE_LOG);
+
+    private TracingManagerHelper() {
+    }
   }
 }
