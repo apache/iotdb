@@ -106,7 +106,6 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -263,7 +262,7 @@ public class PlanExecutor implements IPlanExecutor {
         operateClearCache((ClearCachePlan) plan);
         return true;
       case CREATE_SNAPSHOT:
-        operateCreateSnapshot((CreateSnapshotPlan) plan);
+        operateCreateSnapshot();
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -286,7 +285,7 @@ public class PlanExecutor implements IPlanExecutor {
     TimeSeriesMetadataCache.getInstance().clear();
   }
 
-  private void operateCreateSnapshot(CreateSnapshotPlan plan) {
+  private void operateCreateSnapshot() {
     mManager.createMTreeSnapshot();
   }
 

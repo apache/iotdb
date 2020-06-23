@@ -1622,6 +1622,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     initializedOperator = new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
   }
 
+  @Override
   public void enterCreateSnapshot(CreateSnapshotContext ctx) {
     super.enterCreateSnapshot(ctx);
     initializedOperator = new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SNAPSHOT);
