@@ -53,21 +53,21 @@ public class IoTDBQuotedPathIT {
   @Test
   public void test() throws SQLException {
     try(Connection connection = DriverManager
-            .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
-                    "root");
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
         Statement statement = connection.createStatement();){
       String[] exp = new String[]{
-              "1509465600000,true",
-              "1509465600001,true",
-              "1509465600002,false",
-              "1509465600003,false"
+          "1509465600000,true",
+          "1509465600001,true",
+          "1509465600002,false",
+          "1509465600003,false"
       };
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt01.\"status.2.3\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
       statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\"status.2.3\") values(1509465600000,true)");
-      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\'status.2.3\') values(1509465600001,true)");
+      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\"status.2.3\") values(1509465600001,true)");
       statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\"status.2.3\") values(1509465600002,false)");
-      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\'status.2.3\') values(1509465600003,false)");
+      statement.execute("INSERT INTO root.ln.wf01.wt01(timestamp,\"status.2.3\") values(1509465600003,false)");
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt02");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt02.\"abd\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
       statement.execute("CREATE TIMESERIES root.ln.wf01.wt02.\"asf.asd.sdf\" WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
@@ -89,11 +89,11 @@ public class IoTDBQuotedPathIT {
         assertEquals(exp[i], ans.get(i));
       }
 
-      hasResultSet = statement.execute("SELECT  * FROM root.ln.wf01.wt01 WHERE \'status.2.3\' = false");
+      hasResultSet = statement.execute("SELECT  * FROM root.ln.wf01.wt01 WHERE \"status.2.3\" = false");
       assertTrue(hasResultSet);
       exp = new String[]{
-              "1509465600002,false",
-              "1509465600003,false"
+          "1509465600002,false",
+          "1509465600003,false"
       };
       ans = new ArrayList<>();
       resultSet = statement.getResultSet();

@@ -68,6 +68,7 @@ import org.apache.iotdb.db.query.fill.IFill;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -706,7 +707,8 @@ public class QueryProcessExecutor extends AbstractQueryProcessExecutor {
    */
   private void addPathToMTree(String deviceId, String measurementId, TSDataType dataType)
       throws PathException, MetadataException, StorageEngineException {
-    String fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
+    String fullPath;
+    fullPath = deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId;
     TSEncoding defaultEncoding = getDefaultEncoding(dataType);
     CompressionType defaultCompressor =
         CompressionType.valueOf(TSFileDescriptor.getInstance().getConfig().getCompressor());

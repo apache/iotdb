@@ -39,9 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.session.Config.PATH_MATCHER;
+import static org.apache.iotdb.session.Config.PATH_PATTERN;
 
 public class Session {
 
@@ -493,7 +491,7 @@ public class Session {
   }
 
   private void checkPathValidity(String path) throws IoTDBSessionException {
-    if (!Pattern.matches(PATH_MATCHER, path)) {
+    if (!PATH_PATTERN.matcher(path).matches()) {
       throw new IoTDBSessionException(
           String.format("Path [%s] is invalid", StringEscapeUtils.escapeJava(path)));
     }
