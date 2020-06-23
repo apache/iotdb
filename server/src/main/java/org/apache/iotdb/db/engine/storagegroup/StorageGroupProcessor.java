@@ -517,8 +517,15 @@ public class StorageGroupProcessor {
       if (!fileFolder.exists()) {
         continue;
       }
-      Collections
-          .addAll(vmFiles, fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), VM_SUFFIX));
+      File[] subFiles = fileFolder.listFiles();
+      if (subFiles != null) {
+        for (File partitionFolder : subFiles) {
+          if (partitionFolder.isDirectory()) {
+            Collections.addAll(vmFiles,
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX));
+          }
+        }
+      }
     }
 
     Map<String, List<TsFileResource>> vmTsFileResourceMap = new HashMap<>();

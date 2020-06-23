@@ -406,6 +406,7 @@ public class MemTableFlushTask {
             chunkWriter.writeToFileWriter(this.currWriter);
           } else {
             this.currWriter.endChunkGroup();
+            // file may be a tmp file to be used
             if (this.currWriter.getMetadatasForQuery().isEmpty()) {
               this.currWriter.makeMetadataVisible();
             }
