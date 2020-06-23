@@ -169,4 +169,12 @@ public class MLogWriter {
   int getLineNumber() {
     return lineNumber;
   }
+
+  /**
+   * only used for initialize a mlog file writer.
+   * @param number
+   */
+  void settLineNumber(int number) {
+    lineNumber = number;
+  }
 }
