@@ -64,10 +64,8 @@ public class PageReader implements IPageReader {
   private Filter filter;
 
   /**
-   * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
+   * A list of deleted intervals.
    */
-  private long deletedAt = Long.MIN_VALUE;
-
   private List<Pair<Long, Long>> deleteRangeList = new ArrayList<>();
 
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
@@ -162,10 +160,6 @@ public class PageReader implements IPageReader {
   @Override
   public void setFilter(Filter filter) {
     this.filter = filter;
-  }
-
-  public void setDeletedAt(long deletedAt) {
-    this.deletedAt = deletedAt;
   }
 
   public void setDeleteRangeList(List<Pair<Long, Long>> list) {

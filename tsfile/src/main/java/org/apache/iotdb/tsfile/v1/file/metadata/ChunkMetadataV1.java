@@ -53,11 +53,6 @@ public class ChunkMetadataV1 {
    */
   private long version;
 
-  /**
-   * All data with timestamp <= deletedAt are considered deleted.
-   */
-  private long deletedAt = Long.MIN_VALUE;
-
   private TsDigestV1 valuesStatistics;
 
   private ChunkMetadataV1() {
@@ -132,9 +127,5 @@ public class ChunkMetadataV1 {
 
   public void setVersion(long version) {
     this.version = version;
-  }
-
-  public long getDeletedAt() {
-    return deletedAt;
   }
 }

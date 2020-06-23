@@ -57,11 +57,9 @@ public class ChunkReader implements IChunkReader {
   private boolean isFromOldTsFile = false;
 
   /**
-   * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
+   * A list of deleted intervals.
    */
-  protected long deletedAt;
-
-  private List<Pair<Long, Long>> deleteRangeList = new ArrayList<>();
+  private List<Pair<Long, Long>> deleteRangeList;
 
   /**
    * constructor of ChunkReader.
@@ -72,7 +70,6 @@ public class ChunkReader implements IChunkReader {
   public ChunkReader(Chunk chunk, Filter filter) throws IOException {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
-    this.deletedAt = chunk.getDeletedAt();
     this.deleteRangeList = chunk.getDeleteRangeList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
@@ -84,7 +81,6 @@ public class ChunkReader implements IChunkReader {
   public ChunkReader(Chunk chunk, Filter filter, boolean isFromOldFile) throws IOException {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
-    this.deletedAt = chunk.getDeletedAt();
     this.deleteRangeList = chunk.getDeleteRangeList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
@@ -175,7 +171,6 @@ public class ChunkReader implements IChunkReader {
     ByteBuffer pageData = ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody));
     PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
-    reader.setDeletedAt(deletedAt);
     reader.setDeleteRangeList(deleteRangeList);
     return reader;
   }

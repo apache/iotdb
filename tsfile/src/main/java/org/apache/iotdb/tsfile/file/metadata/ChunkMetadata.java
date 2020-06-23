@@ -53,10 +53,8 @@ public class ChunkMetadata implements Accountable {
   private long version;
 
   /**
-   * All data with timestamp <= deletedAt are considered deleted.
+   * A list of deleted intervals.
    */
-  private long deletedAt = Long.MIN_VALUE;
-
   private List<Pair<Long, Long>> deleteRangeList = new ArrayList<>();
 
   private boolean modified;
@@ -96,8 +94,8 @@ public class ChunkMetadata implements Accountable {
 
   @Override
   public String toString() {
-    return String.format("measurementId: %s, datatype: %s, version: %d, deletedAt: %d, "
-        + "Statistics: %s", measurementUid, tsDataType, version, deletedAt, statistics);
+    return String.format("measurementId: %s, datatype: %s, version: %d, "
+        + "Statistics: %s", measurementUid, tsDataType, version, statistics);
   }
 
   public long getNumOfPoints() {
@@ -176,14 +174,6 @@ public class ChunkMetadata implements Accountable {
     this.version = version;
   }
 
-  public long getDeletedAt() {
-    return deletedAt;
-  }
-
-  public void setDeletedAt(long deletedAt) {
-    this.deletedAt = deletedAt;
-  }
-
   public List<Pair<Long, Long>> getDeleteRangeList() {
     return deleteRangeList;
   }
@@ -215,7 +205,6 @@ public class ChunkMetadata implements Accountable {
     ChunkMetadata that = (ChunkMetadata) o;
     return offsetOfChunkHeader == that.offsetOfChunkHeader &&
         version == that.version &&
-        deletedAt == that.deletedAt &&
         Objects.equals(measurementUid, that.measurementUid) &&
         tsDataType == that.tsDataType &&
         Objects.equals(statistics, that.statistics);
@@ -223,7 +212,7 @@ public class ChunkMetadata implements Accountable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(measurementUid, deletedAt, tsDataType, statistics,
+    return Objects.hash(measurementUid, tsDataType, statistics,
         version, offsetOfChunkHeader);
   }
 

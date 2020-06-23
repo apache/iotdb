@@ -30,7 +30,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class DeletePlan extends PhysicalPlan {
 
-  private long deleteTime;
   private long deleteStartTime;
   private long deleteEndTime;
   private List<Path> paths = new ArrayList<>();
@@ -47,7 +46,8 @@ public class DeletePlan extends PhysicalPlan {
    */
   public DeletePlan(long deleteTime, Path path) {
     super(false, Operator.OperatorType.DELETE);
-    this.deleteTime = deleteTime;
+    this.deleteStartTime = Long.MIN_VALUE;
+    this.deleteEndTime = deleteTime;
     this.paths.add(path);
   }
 
@@ -73,7 +73,8 @@ public class DeletePlan extends PhysicalPlan {
    */
   public DeletePlan(long deleteTime, List<Path> paths) {
     super(false, Operator.OperatorType.DELETE);
-    this.deleteTime = deleteTime;
+    this.deleteStartTime = Long.MIN_VALUE;
+    this.deleteEndTime = deleteTime;
     this.paths = paths;
   }
 
@@ -89,14 +90,6 @@ public class DeletePlan extends PhysicalPlan {
     this.deleteStartTime = startTime;
     this.deleteEndTime = endTime;
     this.paths = paths;
-  }
-
-  public long getDeleteTime() {
-    return deleteTime;
-  }
-
-  public void setDeleteTime(long delTime) {
-    this.deleteTime = delTime;
   }
 
   public long getDeleteStartTime() {

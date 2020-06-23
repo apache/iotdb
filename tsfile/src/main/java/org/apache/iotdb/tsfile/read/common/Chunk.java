@@ -34,18 +34,15 @@ public class Chunk implements Accountable {
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkData;
   /**
-   * All data with timestamp <= deletedAt are considered deleted.
+   * A list of deleted intervals.
    */
-  private long deletedAt;
-
-  private List<Pair<Long, Long>> deleteRangeList = new ArrayList<>();
+  private List<Pair<Long, Long>> deleteRangeList;
 
   private long ramSize;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer, long deletedAt, List<Pair<Long, Long>> deleteRangeList) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, List<Pair<Long, Long>> deleteRangeList) {
     this.chunkHeader = header;
     this.chunkData = buffer;
-    this.deletedAt = deletedAt;
     this.deleteRangeList = deleteRangeList;
   }
 
@@ -55,14 +52,6 @@ public class Chunk implements Accountable {
 
   public ByteBuffer getData() {
     return chunkData;
-  }
-
-  public long getDeletedAt() {
-    return deletedAt;
-  }
-
-  public void setDeletedAt(long deletedAt) {
-    this.deletedAt = deletedAt;
   }
 
   public List<Pair<Long, Long>> getDeleteRangeList() {

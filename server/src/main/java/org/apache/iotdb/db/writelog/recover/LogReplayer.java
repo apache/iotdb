@@ -125,7 +125,9 @@ public class LogReplayer {
           .delete(path.getDevice(), path.getMeasurement(), deletePlan.getDeleteStartTime(),
               deletePlan.getDeleteEndTime());
       modFile
-          .write(new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteTime()));
+          .write(
+              new Deletion(path, versionController.nextVersion(), deletePlan.getDeleteStartTime(),
+                  deletePlan.getDeleteEndTime()));
     }
   }
 

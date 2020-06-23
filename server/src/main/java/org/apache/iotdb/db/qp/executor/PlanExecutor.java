@@ -1329,7 +1329,8 @@ public class PlanExecutor implements IPlanExecutor {
     for (Path p : pathList) {
       DeletePlan deletePlan = new DeletePlan();
       deletePlan.addPath(p);
-      deletePlan.setDeleteTime(Long.MAX_VALUE);
+      deletePlan.setDeleteStartTime(Long.MIN_VALUE);
+      deletePlan.setDeleteEndTime(Long.MAX_VALUE);
       processNonQuery(deletePlan);
     }
   }
