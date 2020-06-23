@@ -19,6 +19,8 @@
 
 -->
 
+# Comparison
+
 ## Known Time Series Database
 
 As the time series data is more and more important, 
