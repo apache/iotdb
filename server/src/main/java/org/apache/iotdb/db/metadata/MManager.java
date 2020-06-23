@@ -241,12 +241,16 @@ public class MManager {
     }
 
     File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+    long time = System.currentTimeMillis();
     if (!mtreeSnapshot.exists()) {
       mtree = new MTree();
     } else {
       mtree = MTree.deserializeFrom(mtreeSnapshot);
       lastSnapshotLogLineNumber = mtree.getSnapshotLineNumber();
     }
+    logger.debug("spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
+
+    time = System.currentTimeMillis();
     // init the metadata from the operation log
     if (logFile.exists()) {
       int idx = 0;
@@ -271,6 +275,7 @@ public class MManager {
           }
         }
       }
+      logger.debug("spend {} ms to deserialize mtree from mlog.txt", System.currentTimeMillis() - time);
       return idx;
     } else if (mtreeSnapshot.exists()) {
       throw new IOException("mtree snapshot file exists but mlog.txt does not exist.");
