@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public class ClientPool {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientPool.class);
-  private static final long WAIT_CLIENT_TIMEOUT_MS = 30 * 1000L;
+  private static final long WAIT_CLIENT_TIMEOUT_MS = 5 * 1000L;
   private int maxConnectionForEachNode;
   private Map<Node, Deque<AsyncClient>> clientCaches = new ConcurrentHashMap<>();
   private Map<Node, Integer> nodeClientNumMap = new ConcurrentHashMap<>();

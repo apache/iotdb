@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.server;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
@@ -114,7 +113,7 @@ public class NodeReport {
           ", commitIndex=" + commitIndex +
           ", commitTerm=" + commitTerm +
           ", readOnly=" + isReadOnly +
-          ", lastHeartbeat=" + new Date(lastHeartbeatReceivedTime) +
+          ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
           '}';
     }
   }
@@ -150,7 +149,7 @@ public class NodeReport {
           ", commitTerm=" + commitTerm +
           ", readOnly=" + isReadOnly +
           ", headerLatency=" + headerLatency +
-          ", lastHeartbeat=" + new Date(lastHeartbeatReceivedTime) +
+          ", lastHeartbeat=" + (System.currentTimeMillis() - lastHeartbeatReceivedTime) + "ms ago" +
           '}';
     }
   }

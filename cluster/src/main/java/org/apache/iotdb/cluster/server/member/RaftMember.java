@@ -243,7 +243,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
         // interrupt election
 
-        stepDown(leaderTerm);
+        stepDown(leaderTerm, true);
         setLeader(request.getLeader());
         if (character != NodeCharacter.FOLLOWER) {
           term.notifyAll();
@@ -323,7 +323,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             "{} received an election from elector {} which has bigger term {} than localTerm {}, raftMember should step down first and then continue to decide whether to grant it's vote by log status.",
             name,
             electionRequest.getElector(), electionRequest.getTerm(), currentTerm);
-        stepDown(electionRequest.getTerm());
+        stepDown(electionRequest.getTerm(), false);
       }
 
       // check the log status of the elector
@@ -358,7 +358,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return false;
       } else {
         if (leaderTerm > localTerm) {
-          stepDown(leaderTerm);
+          stepDown(leaderTerm, true);
         } else {
           lastHeartbeatReceivedTime = System.currentTimeMillis();
         }
@@ -504,7 +504,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         return false;
       } else {
         if (leaderTerm > localTerm) {
-          stepDown(leaderTerm);
+          stepDown(leaderTerm, true);
         } else {
           lastHeartbeatReceivedTime = System.currentTimeMillis();
         }
@@ -599,7 +599,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
 
     // some node has a larger term than the local node, this node is no longer a valid leader
     if (leaderShipStale.get()) {
-      stepDown(newLeaderTerm.get());
+      stepDown(newLeaderTerm.get(), false);
       return AppendLogResult.LEADERSHIP_STALE;
     }
     if (character != NodeCharacter.LEADER) {
@@ -801,8 +801,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * heartbeat timer.
    *
    * @param newTerm
+   * @param fromLeader true if the request is from a leader, false if the request is from an
+   *                   elector.
    */
-  public void stepDown(long newTerm) {
+  public void stepDown(long newTerm, boolean fromLeader) {
     synchronized (term) {
       long currTerm = term.get();
       // confirm that the heartbeat of the new leader hasn't come
@@ -813,8 +815,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         setLeader(null);
         updateHardState(newTerm, getVoteFor());
       }
-      setCharacter(NodeCharacter.FOLLOWER);
-      lastHeartbeatReceivedTime = System.currentTimeMillis();
+
+      if (fromLeader) {
+        // only when the request is from a leader should we update lastHeartbeatReceivedTime,
+        // otherwise the node may be stuck in FOLLOWER state by a stale node.
+        setCharacter(NodeCharacter.FOLLOWER);
+        lastHeartbeatReceivedTime = System.currentTimeMillis();
+      }
     }
   }
 
