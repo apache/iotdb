@@ -1072,12 +1072,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IPointReader of "path" with “timeFilter” and "valueFilter". A synchronization with
-<<<<<<< HEAD
-   * the leader will be performed first to preserve strong consistency. TODO-Cluster: also support
-   * weak consistency
-=======
    * the leader will be performed according to consistency level
->>>>>>> origin/cluster_new
    *
    * @param path
    * @param dataType
@@ -1105,12 +1100,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IBatchReader of "path" with “timeFilter” and "valueFilter". A synchronization with
-<<<<<<< HEAD
-   * the leader will be performed first to preserve strong consistency. TODO-Cluster: also support
-   * weak consistency
-=======
    * the leader will be performed according to consistency level
->>>>>>> origin/cluster_new
    *
    * @param path
    * @param dataType
@@ -1166,11 +1156,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Create an IReaderByTimestamp of "path". A synchronization with the leader will be performed
-<<<<<<< HEAD
-   * first to preserve strong consistency. TODO-Cluster: also support weak consistency
-=======
    * according to consistency level
->>>>>>> origin/cluster_new
    *
    * @param path
    * @param dataType
