@@ -152,6 +152,8 @@ public class SQLConstant {
 
   public static final int TOK_SHOW_MERGE_STATUS = 87;
 
+  public static final int TOK_CREATE_SNAPSHOT = 88;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();

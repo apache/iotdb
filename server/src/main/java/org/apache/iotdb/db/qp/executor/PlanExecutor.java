@@ -106,6 +106,7 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -261,6 +262,9 @@ public class PlanExecutor implements IPlanExecutor {
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
         return true;
+      case CREATE_SNAPSHOT:
+        operateCreateSnapshot((CreateSnapshotPlan) plan);
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -280,6 +284,10 @@ public class PlanExecutor implements IPlanExecutor {
     ChunkCache.getInstance().clear();
     ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+  }
+
+  private void operateCreateSnapshot(CreateSnapshotPlan plan) {
+    mManager.createMTreeSnapshot();
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -1124,9 +1132,9 @@ public class PlanExecutor implements IPlanExecutor {
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
           if (!enablePartialInsert) {
             throw new QueryProcessException(String.format(
-              "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
-              measurement, insertTabletPlan.getDataTypes()[i],
-              measurementNode.getSchema().getType()));
+                "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
+                measurement, insertTabletPlan.getDataTypes()[i],
+                measurementNode.getSchema().getType()));
           } else {
             insertTabletPlan.markMeasurementInsertionFailed(i);
             continue;
@@ -1140,7 +1148,7 @@ public class PlanExecutor implements IPlanExecutor {
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
-          "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
+            "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

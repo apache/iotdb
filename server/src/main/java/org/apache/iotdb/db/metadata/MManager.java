@@ -1780,24 +1780,29 @@ public class MManager {
           "MTree snapshot need not be created. Current mlog line number: {}, last snapshot line number: {}",
           logWriter.getLineNumber(), lastSnapshotLogLineNumber);
     } else {
-      lock.readLock().lock();
-      logger.info("Start creating MTree snapshot. This may take a while...");
-      try {
-        mtree.serializeTo(mtreeSnapshotTmpPath, logWriter.getLineNumber());
-        lastSnapshotLogLineNumber = logWriter.getLineNumber();
-        File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-        File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-        if (snapshotFile.exists()) {
-          Files.delete(snapshotFile.toPath());
-        }
-        if (tmpFile.renameTo(snapshotFile)) {
-          logger.info("Finish creating MTree snapshot to {}.", mtreeSnapshotPath);
-        }
-      } catch (IOException e) {
-        logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
-      } finally {
-        lock.readLock().unlock();
+      createMTreeSnapshot();
+    }
+  }
+
+  public void createMTreeSnapshot() {
+    lock.readLock().lock();
+    logger.info("Start creating MTree snapshot. This may take a while...");
+    try {
+      mtree.serializeTo(mtreeSnapshotTmpPath, logWriter.getLineNumber());
+      lastSnapshotLogLineNumber = logWriter.getLineNumber();
+      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+      if (snapshotFile.exists()) {
+        Files.delete(snapshotFile.toPath());
       }
+      if (tmpFile.renameTo(snapshotFile)) {
+        logger.info("Finish creating MTree snapshot to {}, to mlog line number: {}",
+            mtreeSnapshotPath, lastSnapshotLogLineNumber);
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
+    } finally {
+      lock.readLock().unlock();
     }
   }
 }

@@ -76,6 +76,7 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -258,6 +259,8 @@ public class PhysicalGenerator {
         return new ClearCachePlan();
       case SHOW_MERGE_STATUS:
         return new ShowMergeStatusPlan();
+      case CREATE_SNAPSHOT:
+        return new CreateSnapshotPlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
