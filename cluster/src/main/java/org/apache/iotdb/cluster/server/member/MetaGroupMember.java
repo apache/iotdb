@@ -1560,6 +1560,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             throw new MetadataException("Failed to set storage group " + storageGroupName);
           }
+          // try to create timeseries
           return executeNonQuery(plan);
         } catch (MetadataException e) {
           logger.info("Failed to set storage group of device id {}", deviceId);
@@ -1752,6 +1753,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path(seriesPath),
           dataType, encoding, compressionType, null, null, null, null);
+      // TODO-Cluster: add executeNonQueryBatch()
       TSStatus result = executeNonQuery(createTimeSeriesPlan);
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("{} failed to execute create timeseries {}", thisNode, seriesPath);
@@ -1778,8 +1780,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             .getUnregisteredMeasurements(client, partitionGroup.getHeader(), seriesList);
         unregistered.addAll(result);
       } catch (TException | IOException e) {
-        logger.error("{}: cannot getting unregistered series list {} from {}", name,
-            Arrays.toString(seriesList.toArray(new String[0])), node, e);
+        logger.error("{}: cannot getting unregistered {} and other {} paths from {}", name,
+            seriesList.get(0), seriesList.get(seriesList.size() - 1), node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error("{}: getting unregistered series list {} is interrupted from {}", name,

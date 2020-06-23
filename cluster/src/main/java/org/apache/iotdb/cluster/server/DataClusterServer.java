@@ -387,7 +387,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getUnregisteredTimeSeries(Node header, List<String> timeseriesList, AsyncMethodCallback<List<String>> resultHandler) throws TException {
+  public void getUnregisteredTimeseries(Node header, List<String> timeseriesList, AsyncMethodCallback<List<String>> resultHandler) throws TException {
     DataGroupMember dataMember = getDataMember(header, resultHandler,
             "Check if measurements are registered");
     dataMember.getUnregisteredTimeseries(header,timeseriesList, resultHandler);

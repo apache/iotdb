@@ -1631,7 +1631,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws TException
    */
   @Override
-  public void getUnregisteredTimeSeries(Node header, List<String> timeseriesList,
+  public void getUnregisteredTimeseries(Node header, List<String> timeseriesList,
       AsyncMethodCallback<List<String>> resultHandler) throws TException {
     if (!syncLeader()) {
       resultHandler.onError(new LeaderUnknownException(getAllNodes()));

@@ -246,7 +246,7 @@ public class SyncClientAdaptor {
     AtomicReference<List<String>> remoteResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
     synchronized (remoteResult) {
-      client.isMeasurementsRegistered(header, seriesPaths, handler);
+      client.getUnregisteredTimeseries(header, seriesPaths, handler);
       remoteResult.wait(RaftServer.getConnectionTimeoutInMS());
     }
     return remoteResult.get();
