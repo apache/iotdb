@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
@@ -61,17 +62,17 @@ public class MemTableFlushTask {
   private static final Logger logger = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
-  private Future encodingTaskFuture;
-  private Future ioTaskFuture;
-  private RestorableTsFileIOWriter writer;
+  private final Future<?> encodingTaskFuture;
+  private final Future<?> ioTaskFuture;
+  private final RestorableTsFileIOWriter writer;
   private List<RestorableTsFileIOWriter> vmWriters;
   private RestorableTsFileIOWriter tmpWriter;
   private RestorableTsFileIOWriter currWriter;
-  private boolean isVm;
-  private boolean isFull;
+  private final boolean isVm;
+  private final boolean isFull;
 
-  private ConcurrentLinkedQueue ioTaskQueue = new ConcurrentLinkedQueue();
-  private ConcurrentLinkedQueue encodingTaskQueue = new ConcurrentLinkedQueue();
+  private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
   private String storageGroup;
 
   private IMemTable memTable;
@@ -103,21 +104,21 @@ public class MemTableFlushTask {
       throws ExecutionException, InterruptedException, IOException {
     long start = System.currentTimeMillis();
     long sortTime = 0;
+//    if (isVm) {
+//      currWriter = vmWriters.get(vmWriters.size() - 1);
+//    } else {
+//      if (IoTDBDescriptor.getInstance().getConfig().isEnableVm()) {
+//        File file = createNewTmpFile();
+//        currWriter = new RestorableTsFileIOWriter(file);
+//        vmWriters.add(currWriter);
+//      } else {
+//        currWriter = writer;
+//      }
+//    }
     if (isVm) {
       currWriter = vmWriters.get(vmWriters.size() - 1);
     } else {
-      File file = createNewTmpFile();
-      currWriter = new RestorableTsFileIOWriter(file);
-      vmWriters.add(currWriter);
-    }
-    RestorableTsFileIOWriter mergeWriter = null;
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && !isVm) {
-      mergeWriter = writer;
-    }
-    if (isFull) {
-      File tmpFile = createNewTmpFile();
-      tmpWriter = new RestorableTsFileIOWriter(tmpFile);
-      mergeWriter = tmpWriter;
+      currWriter = writer;
     }
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.add(new StartFlushGroupIOTask(deviceId));
@@ -134,6 +135,15 @@ public class MemTableFlushTask {
         }
       }
       encodingTaskQueue.add(new EndChunkGroupIoTask());
+    }
+    RestorableTsFileIOWriter mergeWriter = null;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && !isVm) {
+      mergeWriter = writer;
+    }
+    if (isFull) {
+      File tmpFile = createNewTmpFile();
+      tmpWriter = new RestorableTsFileIOWriter(tmpFile);
+      mergeWriter = tmpWriter;
     }
     if (mergeWriter != null) {
       encodingTaskQueue.add(new MergeVmIoTask(mergeWriter));
@@ -237,7 +247,7 @@ public class MemTableFlushTask {
             break;
           }
           try {
-            Thread.sleep(10);
+            TimeUnit.MILLISECONDS.sleep(10);
           } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
             logger.error("Storage group {} memtable {}, encoding task is interrupted.",
                 storageGroup, memTable.getVersion(), e);
@@ -289,9 +299,9 @@ public class MemTableFlushTask {
           break;
         }
         try {
-          Thread.sleep(10);
+          TimeUnit.MILLISECONDS.sleep(10);
         } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
-          logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
+          logger.error("Storage group {} memtable {}, io task is interrupted.", storageGroup
               , memTable.getVersion(), e);
           // generally it is because the thread pool is shutdown so the task should be aborted
           break;
@@ -344,6 +354,7 @@ public class MemTableFlushTask {
                   for (RestorableTsFileIOWriter vmWriter : vmWriters) {
                     TsFileSequenceReader reader = new TsFileSequenceReader(
                         vmWriter.getFile().getAbsolutePath());
+                    vmWriter.makeMetadataVisible();
                     List<ChunkMetadata> chunkMetadataList = vmWriter.getMetadatasForQuery()
                         .get(deviceId).get(measurementId);
                     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
@@ -369,10 +380,6 @@ public class MemTableFlushTask {
             chunkWriter.writeToFileWriter(this.currWriter);
           } else {
             this.currWriter.endChunkGroup();
-            // file may be a tmp file to be used
-            if (this.currWriter.getFile().getName().contains(PATH_UPGRADE)) {
-              this.currWriter.makeMetadataVisible();
-            }
           }
         } catch (IOException e) {
           logger.error("Storage group {} memtable {}, io task meets error.", storageGroup,
@@ -395,7 +402,7 @@ public class MemTableFlushTask {
 
   static class StartFlushGroupIOTask {
 
-    private String deviceId;
+    private final String deviceId;
 
     StartFlushGroupIOTask(String deviceId) {
       this.deviceId = deviceId;
@@ -404,7 +411,7 @@ public class MemTableFlushTask {
 
   static class MergeVmIoTask {
 
-    private RestorableTsFileIOWriter mergeWriter;
+    private final RestorableTsFileIOWriter mergeWriter;
 
     public MergeVmIoTask(RestorableTsFileIOWriter mergeWriter) {
       this.mergeWriter = mergeWriter;

@@ -128,7 +128,7 @@ public class StorageGroupProcessorTest {
       }
     }
 
-    Assert.assertEquals(0, pair.right.size());
+    Assert.assertEquals(0, pair.right.get(0).size());
   }
 
   @Test

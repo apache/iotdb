@@ -153,12 +153,13 @@ public class TsFileProcessor {
       List<TsFileResource> vmTsFileResources,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
-      RestorableTsFileIOWriter writer) {
+      RestorableTsFileIOWriter writer, List<RestorableTsFileIOWriter> vmWriters) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
     this.vmTsFileResources = vmTsFileResources;
     this.versionController = versionController;
     this.writer = writer;
+    this.vmWriters = vmWriters;
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -630,8 +631,8 @@ public class TsFileProcessor {
             isVm = false;
             isFull = false;
             flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                false,
-                false,
+                isVm,
+                isFull,
                 storageGroupName);
           } else {
             // merge vm files
@@ -639,7 +640,7 @@ public class TsFileProcessor {
               isVm = true;
               isFull = true;
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  true, true,
+                  isVm, isFull,
                   storageGroupName);
             } else {
               isVm = true;
@@ -647,8 +648,7 @@ public class TsFileProcessor {
               File newVmFile = createNewVMFile();
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
-              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  true, false,
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, isVm, isFull,
                   storageGroupName);
             }
           }
