@@ -562,9 +562,16 @@ public class StorageGroupProcessor {
           i == tsFiles.size() - 1);
 
       RestorableTsFileIOWriter writer;
+      List<RestorableTsFileIOWriter> vmWriters = new ArrayList<>();
+      String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
       try {
         writer = recoverPerformer.recover();
-      } catch (StorageGroupProcessorException e) {
+        if (vmFiles.containsKey(tsfilePrefix)) {
+          for (TsFileResource fileResource : vmFiles.get(tsfilePrefix)) {
+            vmWriters.add(new RestorableTsFileIOWriter(fileResource.getFile()));
+          }
+        }
+      } catch (StorageGroupProcessorException | IOException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
       }
@@ -573,12 +580,11 @@ public class StorageGroupProcessor {
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
-        String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            vmFiles.get(tsfilePrefix),
+            vmFiles.getOrDefault(tsfilePrefix, new ArrayList<>()),
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
-            this::updateLatestFlushTimeCallback, true, writer);
+            this::updateLatestFlushTimeCallback, true, writer, vmWriters);
         workSequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
@@ -600,9 +606,16 @@ public class StorageGroupProcessor {
           getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
           i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer;
+      List<RestorableTsFileIOWriter> vmWriters = new ArrayList<>();
+      String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
       try {
         writer = recoverPerformer.recover();
-      } catch (StorageGroupProcessorException e) {
+        if (vmFiles.containsKey(tsfilePrefix)) {
+          for (TsFileResource fileResource : vmFiles.get(tsfilePrefix)) {
+            vmWriters.add(new RestorableTsFileIOWriter(fileResource.getFile()));
+          }
+        }
+      } catch (StorageGroupProcessorException | IOException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
       }
@@ -611,12 +624,11 @@ public class StorageGroupProcessor {
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
-        String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            vmFiles.get(tsfilePrefix),
+            vmFiles.getOrDefault(tsfilePrefix, new ArrayList<>()),
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
-            this::unsequenceFlushCallback, false, writer);
+            this::unsequenceFlushCallback, false, writer, vmWriters);
         workUnsequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
@@ -672,8 +684,7 @@ public class StorageGroupProcessor {
   /**
    * Insert a tablet (rows belonging to the same devices) into this storage group.
    *
-   * @param insertTabletPlan
-   * @throws WriteProcessException   when update last cache failed
+   * @throws WriteProcessException when update last cache failed
    * @throws BatchInsertionException if some of the rows failed to be inserted
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws WriteProcessException,
@@ -775,11 +786,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence         whether is sequence
-   * @param start            start index of rows to be inserted in insertTabletPlan
-   * @param end              end index of rows to be inserted in insertTabletPlan
-   * @param results          result array
-   * @param timePartitionId  time partition id
+   * @param sequence whether is sequence
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
+   * @param timePartitionId time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -930,10 +941,10 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId            time partition range
+   * @param timeRangeId time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param fileList               file list to add new processor
-   * @param sequence               whether is sequence or not
+   * @param fileList file list to add new processor
+   * @param sequence whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1397,9 +1408,9 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId      the deviceId of the timeseries to be deleted.
+   * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp     the delete range is (0, timestamp].
+   * @param timestamp the delete range is (0, timestamp].
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
@@ -2126,9 +2137,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName  origin tsfile name
+   * @param tsfileName origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   *                    1]
+   * 1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2192,8 +2203,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type            load type
-   * @param tsFileResource  tsfile resource to be loaded
+   * @param type load type
+   * @param tsFileResource tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.

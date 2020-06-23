@@ -109,7 +109,7 @@ public class StorageGroupProcessorTest {
 
     processor.delete(deviceId, measurementId, 15L);
 
-    Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair = null;
+    Pair<List<ReadOnlyMemChunk>, List<List<ChunkMetadata>>> pair = null;
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
       pair = tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
@@ -128,7 +128,7 @@ public class StorageGroupProcessorTest {
       }
     }
 
-    Assert.assertEquals(0, pair.right.size());
+    Assert.assertEquals(0, pair.right.get(0).size());
   }
 
   @Test

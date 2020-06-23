@@ -153,12 +153,13 @@ public class TsFileProcessor {
       List<TsFileResource> vmTsFileResources,
       VersionController versionController, CloseTsFileCallBack closeUnsealedTsFileProcessor,
       UpdateEndTimeCallBack updateLatestFlushTimeCallback, boolean sequence,
-      RestorableTsFileIOWriter writer) {
+      RestorableTsFileIOWriter writer, List<RestorableTsFileIOWriter> vmWriters) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
     this.vmTsFileResources = vmTsFileResources;
     this.versionController = versionController;
     this.writer = writer;
+    this.vmWriters = vmWriters;
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -613,8 +614,9 @@ public class TsFileProcessor {
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
             Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = vmWriter
                 .getMetadatasForQuery();
-            for (Map<String, List<ChunkMetadata>> chunkMetadataListMap : metadatasForQuery.values()) {
-              for (List<ChunkMetadata> chunkMetadataList: chunkMetadataListMap.values()) {
+            for (Map<String, List<ChunkMetadata>> chunkMetadataListMap : metadatasForQuery
+                .values()) {
+              for (List<ChunkMetadata> chunkMetadataList : chunkMetadataListMap.values()) {
                 for (ChunkMetadata chunkMetadata : chunkMetadataList) {
                   vmPointNum += chunkMetadata.getNumOfPoints();
                 }
@@ -628,7 +630,7 @@ public class TsFileProcessor {
                   .getMemtablePointThreshold()) || (shouldClose && flushingMemTables.size() == 1)) {
             isVm = false;
             isFull = false;
-            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
+            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
                 isVm,
                 isFull,
                 storageGroupName);
@@ -638,7 +640,6 @@ public class TsFileProcessor {
               isVm = true;
               isFull = true;
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  vmTsFileResources,
                   isVm, isFull,
                   storageGroupName);
             } else {
@@ -648,13 +649,12 @@ public class TsFileProcessor {
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  vmTsFileResources,
                   isVm, isFull,
                   storageGroupName);
             }
           }
         } else {
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
               false, false,
               storageGroupName);
         }
