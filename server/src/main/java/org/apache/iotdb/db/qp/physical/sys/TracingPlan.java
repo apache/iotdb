@@ -26,12 +26,19 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 public class TracingPlan extends PhysicalPlan {
 
-  public TracingPlan() {
+  private boolean isTracingOn;
+
+  public TracingPlan(boolean isTracingOn) {
     super(false, OperatorType.TRACING);
+    this.isTracingOn = isTracingOn;
   }
 
   @Override
   public List<Path> getPaths() {
     return new ArrayList<>();
+  }
+
+  public boolean isTracingOn() {
+    return isTracingOn;
   }
 }

@@ -229,15 +229,13 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterTracingOn(TracingOnContext ctx) {
     super.enterTracingOn(ctx);
-    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(true);
-    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING);
+    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING, true);
   }
 
   @Override
   public void enterTracingOff(TracingOffContext ctx) {
     super.enterTracingOff(ctx);
-    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(false);
-    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING);
+    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING, false);
   }
 
   @Override

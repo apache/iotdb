@@ -121,6 +121,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -259,6 +260,7 @@ public class PlanExecutor implements IPlanExecutor {
         operateMerge((MergePlan) plan);
         return true;
       case TRACING:
+        operateTracing((TracingPlan) plan);
         return true;
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
@@ -282,6 +284,10 @@ public class PlanExecutor implements IPlanExecutor {
     ChunkCache.getInstance().clear();
     ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+  }
+
+  private void operateTracing(TracingPlan plan) {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {

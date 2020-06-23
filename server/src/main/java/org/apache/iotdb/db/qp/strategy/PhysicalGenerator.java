@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -183,7 +184,8 @@ public class PhysicalGenerator {
         FlushOperator flushOperator = (FlushOperator) operator;
         return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
       case TRACING:
-        return new TracingPlan();
+        TracingOperator tracingOperator = (TracingOperator) operator;
+        return new TracingPlan(tracingOperator.isTracingon());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);
