@@ -243,6 +243,5 @@ public class ChunkMetadata implements Accountable {
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {
     this.statistics.mergeStatistics(chunkMetadata.getStatistics());
     this.ramSize = calculateRamSize();
-    this.offsetOfChunkHeader += chunkMetadata.getOffsetOfChunkHeader();
   }
 }

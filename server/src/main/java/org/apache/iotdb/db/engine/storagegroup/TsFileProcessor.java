@@ -563,20 +563,6 @@ public class TsFileProcessor {
   }
 
   /**
-   * Query all ChunkMetadata of a file
-   */
-  private List<ChunkMetadata> queryChunkMetadata(TsFileResource seqFile)
-      throws IOException {
-    TsFileSequenceReader sequenceReader = getFileReader(seqFile);
-    List<Path> paths = sequenceReader.getAllPaths();
-    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-    for (Path path : paths) {
-      chunkMetadataList.addAll(sequenceReader.getChunkMetadataList(path));
-    }
-    return chunkMetadataList;
-  }
-
-  /**
    * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
    *
    * @return a TsFileSequenceReader
@@ -644,7 +630,8 @@ public class TsFileProcessor {
                   .getMemtablePointThreshold()) || (shouldClose && flushingMemTables.size() == 1)) {
             isVm = false;
             isFull = false;
-            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false,
+            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
+                false,
                 false,
                 storageGroupName);
           } else {
@@ -653,6 +640,7 @@ public class TsFileProcessor {
               isVm = true;
               isFull = true;
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
+                  vmTsFileResources,
                   true, true,
                   storageGroupName);
             } else {
@@ -662,12 +650,13 @@ public class TsFileProcessor {
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
+                  vmTsFileResources,
                   true, false,
                   storageGroupName);
             }
           }
         } else {
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
               false, false,
               storageGroupName);
         }
