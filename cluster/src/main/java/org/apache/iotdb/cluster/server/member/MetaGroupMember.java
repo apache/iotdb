@@ -1558,12 +1558,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               new Path(storageGroupName));
           TSStatus setStorageGroupResult = executeNonQuery(setStorageGroupPlan);
           if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            throw new MetadataException("Failed to set storage group " + storageGroupName);
+            throw new MetadataException(
+                String.format("Status Code: %d, failed to set storage group ",
+                    setStorageGroupResult.getCode(), storageGroupName)
+            );
           }
           // try to create timeseries
           boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan)plan);
           if(!isAutoCreateTimeseriesSuccess){
-            throw new MetadataException("Failed to create timeseries automatically.");
+            throw new MetadataException(
+                String.format("Failed to create timeseries from InsertPlan automatically.")
+            );
           }
           return executeNonQuery(plan);
         } catch (MetadataException e) {

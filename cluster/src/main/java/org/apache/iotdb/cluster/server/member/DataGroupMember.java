@@ -1611,6 +1611,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
   /**
    * Check if the given measurements are registered or not
+   *
    * @param header
    * @param timeseriesList
    * @param resultHandler
@@ -1619,16 +1620,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   @Override
   public void getUnregisteredTimeseries(Node header, List<String> timeseriesList,
       AsyncMethodCallback<List<String>> resultHandler) throws TException {
-    if (!syncLeader()) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
-      return;
+    try {
+      syncLeaderWithConsistencyCheck();
+    } catch (CheckConsistencyException e) {
+      resultHandler.onError(new StorageEngineException(e));
     }
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
         List<String> path = MManager.getInstance().getAllTimeseriesName(seriesPath);
         if (path.size() != 1) {
-          throw new MetadataException("Size of the path is not 1.");
+          throw new MetadataException(
+              String.format("Timeseries number of the name [%s] is not 1.", seriesPath));
         }
       } catch (MetadataException e) {
         result.add(seriesPath);
