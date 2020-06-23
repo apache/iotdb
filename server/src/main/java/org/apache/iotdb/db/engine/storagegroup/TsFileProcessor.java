@@ -630,8 +630,8 @@ public class TsFileProcessor {
             isVm = false;
             isFull = false;
             flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, vmTsFileResources,
-                false,
-                false,
+                isVm,
+                isFull,
                 storageGroupName);
           } else {
             // merge vm files
@@ -640,7 +640,7 @@ public class TsFileProcessor {
               isFull = true;
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
                   vmTsFileResources,
-                  true, true,
+                  isVm, isFull,
                   storageGroupName);
             } else {
               isVm = true;
@@ -650,7 +650,7 @@ public class TsFileProcessor {
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
                   vmTsFileResources,
-                  true, false,
+                  isVm, isFull,
                   storageGroupName);
             }
           }

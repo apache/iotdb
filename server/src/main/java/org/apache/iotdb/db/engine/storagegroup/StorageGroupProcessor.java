@@ -528,10 +528,9 @@ public class StorageGroupProcessor {
       // make sure the flush command is called before IoTDB is down.
       fileResource.deserialize();
       String tsfilePrefix = f.getName().split(TSFILE_SEPARATOR)[0];
-      List<TsFileResource> vmTsFileResource = new ArrayList<>();
-      if (vmTsFileResourceMap.containsKey(tsfilePrefix)) {
-        vmTsFileResource = vmTsFileResourceMap.get(tsfilePrefix);
-      }
+      List<TsFileResource> vmTsFileResource = vmTsFileResourceMap
+          .getOrDefault(tsfilePrefix, new ArrayList<>());
+
       vmTsFileResource.add(fileResource);
       vmTsFileResourceMap.put(tsfilePrefix, vmTsFileResource);
     }
@@ -2404,16 +2403,6 @@ public class StorageGroupProcessor {
     return unSequenceFileList;
   }
 
-  private enum LoadTsFileType {
-    LOAD_SEQUENCE, LOAD_UNSEQUENCE
-  }
-
-  @FunctionalInterface
-  public interface CloseTsFileCallBack {
-
-    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
-  }
-
   public String getStorageGroupName() {
     return storageGroupName;
   }
@@ -2452,6 +2441,16 @@ public class StorageGroupProcessor {
     logger.debug("FileVersions/PartitionVersions: {}/{}", tsFileResource.getHistoricalVersions(),
         partitionFileVersions);
     return partitionFileVersions.containsAll(tsFileResource.getHistoricalVersions());
+  }
+
+  private enum LoadTsFileType {
+    LOAD_SEQUENCE, LOAD_UNSEQUENCE
+  }
+
+  @FunctionalInterface
+  public interface CloseTsFileCallBack {
+
+    void call(TsFileProcessor caller) throws TsFileProcessorException, IOException;
   }
 
   @FunctionalInterface
