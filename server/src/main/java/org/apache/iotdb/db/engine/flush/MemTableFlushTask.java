@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
@@ -62,18 +63,18 @@ public class MemTableFlushTask {
   private static final Logger logger = LoggerFactory.getLogger(MemTableFlushTask.class);
   private static final FlushSubTaskPoolManager subTaskPoolManager = FlushSubTaskPoolManager
       .getInstance();
-  private Future encodingTaskFuture;
-  private Future ioTaskFuture;
-  private RestorableTsFileIOWriter writer;
+  private final Future<?> encodingTaskFuture;
+  private final Future<?> ioTaskFuture;
+  private final RestorableTsFileIOWriter writer;
   private List<RestorableTsFileIOWriter> vmWriters;
   private List<TsFileResource> vmResources;
   private RestorableTsFileIOWriter tmpWriter;
   private RestorableTsFileIOWriter currWriter;
-  private boolean isVm;
-  private boolean isFull;
+  private final boolean isVm;
+  private final boolean isFull;
 
-  private ConcurrentLinkedQueue ioTaskQueue = new ConcurrentLinkedQueue();
-  private ConcurrentLinkedQueue encodingTaskQueue = new ConcurrentLinkedQueue();
+  private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
+  private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
   private String storageGroup;
 
   private IMemTable memTable;
@@ -235,7 +236,7 @@ public class MemTableFlushTask {
             break;
           }
           try {
-            Thread.sleep(10);
+            TimeUnit.MILLISECONDS.sleep(10);
           } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
             logger.error("Storage group {} memtable {}, encoding task is interrupted.",
                 storageGroup, memTable.getVersion(), e);
@@ -287,9 +288,9 @@ public class MemTableFlushTask {
           break;
         }
         try {
-          Thread.sleep(10);
+          TimeUnit.MILLISECONDS.sleep(10);
         } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
-          logger.error("Storage group {} memtable, io task is interrupted.", storageGroup
+          logger.error("Storage group {} memtable {}, io task is interrupted.", storageGroup
               , memTable.getVersion(), e);
           // generally it is because the thread pool is shutdown so the task should be aborted
           break;
@@ -379,7 +380,7 @@ public class MemTableFlushTask {
 
   static class StartFlushGroupIOTask {
 
-    private String deviceId;
+    private final String deviceId;
 
     StartFlushGroupIOTask(String deviceId) {
       this.deviceId = deviceId;
@@ -388,7 +389,7 @@ public class MemTableFlushTask {
 
   static class MergeVmIoTask {
 
-    private RestorableTsFileIOWriter mergeWriter;
+    private final RestorableTsFileIOWriter mergeWriter;
 
     public MergeVmIoTask(RestorableTsFileIOWriter mergeWriter) {
       this.mergeWriter = mergeWriter;
