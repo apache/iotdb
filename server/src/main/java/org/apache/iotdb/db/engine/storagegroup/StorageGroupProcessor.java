@@ -2423,46 +2423,40 @@ public class StorageGroupProcessor {
       // abort ongoing merges
       MergeManager.getINSTANCE().abortMerge(storageGroupName);
       // close all working files that should be removed
-      for (Iterator<Entry<Long, TsFileProcessor>> iterator = workSequenceTsFileProcessors
-          .entrySet().iterator(); iterator.hasNext(); ) {
-        Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
-        long partitionId = longTsFileProcessorEntry.getKey();
-        TsFileProcessor processor = longTsFileProcessorEntry.getValue();
-        if (filter.satisfy(storageGroupName, partitionId)) {
-          processor.syncClose();
-          iterator.remove();
-        }
-      }
-      for (Iterator<Entry<Long, TsFileProcessor>> iterator = workUnsequenceTsFileProcessors
-          .entrySet().iterator(); iterator.hasNext(); ) {
-        Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
-        long partitionId = longTsFileProcessorEntry.getKey();
-        TsFileProcessor processor = longTsFileProcessorEntry.getValue();
-        if (filter.satisfy(storageGroupName, partitionId)) {
-          processor.syncClose();
-          iterator.remove();
-        }
-      }
+      removePartitions(filter, workSequenceTsFileProcessors.entrySet());
+      removePartitions(filter, workUnsequenceTsFileProcessors.entrySet());
+
       // remove data files
-      for (Iterator<TsFileResource> iterator = sequenceFileTreeSet.iterator();
-          iterator.hasNext(); ) {
-        TsFileResource tsFileResource = iterator.next();
-        if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
-          tsFileResource.remove();
-          iterator.remove();
-        }
-      }
-      for (Iterator<TsFileResource> iterator = unSequenceFileList.iterator();
-          iterator.hasNext(); ) {
-        TsFileResource tsFileResource = iterator.next();
-        if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
-          tsFileResource.remove();
-          iterator.remove();
-        }
-      }
+      removePartitions(filter, sequenceFileTreeSet.iterator());
+      removePartitions(filter, unSequenceFileList.iterator());
+
     } finally {
       insertLock.writeLock().unlock();
       mergeLock.writeLock().unlock();
+    }
+  }
+
+  //may remove the processorEntrys
+  private void removePartitions(TimePartitionFilter filter, Set<Entry<Long, TsFileProcessor>> processorEntrys) {
+    for (Iterator<Entry<Long, TsFileProcessor>> iterator = processorEntrys.iterator(); iterator.hasNext(); ) {
+      Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
+      long partitionId = longTsFileProcessorEntry.getKey();
+      TsFileProcessor processor = longTsFileProcessorEntry.getValue();
+      if (filter.satisfy(storageGroupName, partitionId)) {
+        processor.syncClose();
+        iterator.remove();
+      }
+    }
+  }
+
+  //may remove the iterator's data
+  private void removePartitions(TimePartitionFilter filter, Iterator<TsFileResource> iterator) {
+    while ( iterator.hasNext()) {
+      TsFileResource tsFileResource = iterator.next();
+      if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
+        tsFileResource.remove();
+        iterator.remove();
+      }
     }
   }
 
