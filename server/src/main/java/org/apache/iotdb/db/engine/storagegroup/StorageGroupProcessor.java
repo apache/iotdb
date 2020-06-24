@@ -90,6 +90,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1456,9 +1457,11 @@ public class StorageGroupProcessor {
 
       MNode measurementNode = manager.getChild(node, measurementId);
       if (measurementNode != null) {
-        long lastTime = ((MeasurementMNode) measurementNode).getCachedLast().getTimestamp();
-        if (startTime <= lastTime && lastTime <= endTime)
-        ((MeasurementMNode) measurementNode).resetCache();
+        TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
+        if (lastPair != null && startTime <= lastPair.getTimestamp()
+            && lastPair.getTimestamp() <= endTime) {
+          ((MeasurementMNode) measurementNode).resetCache();
+        }
       }
     } catch (MetadataException e) {
       throw new WriteProcessException(e);
