@@ -76,6 +76,7 @@ public class MemTableFlushTask {
   private VmLogger vmLogger;
   private final boolean isVm;
   private final boolean isFull;
+  private final boolean sequence;
 
   private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
@@ -89,13 +90,14 @@ public class MemTableFlushTask {
 
   public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, boolean isVm,
-      boolean isFull,
+      boolean isFull, boolean sequence,
       String storageGroup) {
     this.memTable = memTable;
     this.writer = writer;
     this.vmWriters = vmWriters;
     this.isVm = isVm;
     this.isFull = isFull;
+    this.sequence = sequence;
     this.storageGroup = storageGroup;
     this.encodingTaskFuture = subTaskPoolManager.submit(encodingTask);
     this.ioTaskFuture = subTaskPoolManager.submit(ioTask);

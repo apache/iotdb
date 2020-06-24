@@ -52,17 +52,19 @@ public class VmMergeTask {
   private Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
   private VmLogger vmLogger;
   private Set<String> devices;
+  private boolean sequence;
 
   private String storageGroup;
 
   public VmMergeTask(RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
-      Set<String> devices) {
+      Set<String> devices, boolean sequence) {
     this.writer = writer;
     this.vmWriters = vmWriters;
     this.storageGroup = storageGroup;
     this.vmLogger = vmLogger;
     this.devices = devices;
+    this.sequence = sequence;
   }
 
   public void fullMerge() throws IOException {
@@ -88,7 +90,7 @@ public class VmMergeTask {
         }
       }
     }
-    if (writer.getFile().getParent().contains(UNSEQUENCE_FLODER_NAME)) {
+    if (!sequence) {
       for (String deviceId : deviceMeasurementMap.keySet()) {
         writer.startChunkGroup(deviceId);
         for (String measurementId : deviceMeasurementMap.get(deviceId).keySet()) {

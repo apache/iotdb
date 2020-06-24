@@ -618,7 +618,7 @@ public class TsFileProcessor {
         VmMergeTask vmMergeTask = new VmMergeTask(writer, vmWriters,
             storageGroupName,
             new VmLogger(tsFileResource.getFile().getParent(), tsFileResource.getFile().getName()),
-            deviceSet);
+            deviceSet, sequence);
         vmMergeTask.fullMerge();
         for (TsFileResource vmTsFileResource : vmTsFileResources) {
           deleteVmFile(vmTsFileResource);
@@ -699,6 +699,7 @@ public class TsFileProcessor {
             isVm = false;
             isFull = false;
             flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
+                sequence,
                 storageGroupName);
           } else {
             // merge vm files
@@ -706,6 +707,7 @@ public class TsFileProcessor {
               isVm = true;
               isFull = true;
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true, true,
+                  sequence,
                   storageGroupName);
             } else {
               isVm = true;
@@ -714,11 +716,13 @@ public class TsFileProcessor {
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true, false,
+                  sequence,
                   storageGroupName);
             }
           }
         } else {
           flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
+              sequence,
               storageGroupName);
         }
         writer.mark();
