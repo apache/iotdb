@@ -919,9 +919,9 @@ public class PlanExecutor implements IPlanExecutor {
         List<Exception> exceptions = new ArrayList<>(insertPlan.getFailedMeasurements().values());
         boolean isPathNotExistException = true;
         for(Exception e : exceptions){
-          Exception curException = e;
+          Throwable curException = e;
           while(curException.getCause() != null){
-            curException = (Exception) curException.getCause();
+            curException = curException.getCause();
           }
           if(!(curException instanceof PathNotExistException)){
             isPathNotExistException = false;
@@ -929,7 +929,7 @@ public class PlanExecutor implements IPlanExecutor {
           }
         }
         if(isPathNotExistException){
-          throw new PathNotExistException(failedPaths.toString());
+          throw new PathNotExistException(failedPaths);
         }else {
           throw new StorageEngineException(
               "failed to insert points " + insertPlan.getFailedMeasurements());

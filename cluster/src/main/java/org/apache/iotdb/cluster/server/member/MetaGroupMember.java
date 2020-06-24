@@ -1558,22 +1558,23 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               new Path(storageGroupName));
           TSStatus setStorageGroupResult = processNonPartitionedMetaPlan(setStorageGroupPlan);
           if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
-          setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+              setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
+                  .getStatusCode()) {
             throw new MetadataException(
                 String.format("Status Code: %d, failed to set storage group ",
                     setStorageGroupResult.getCode(), storageGroupName)
             );
           }
           // try to create timeseries
-          boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan)plan);
-          if(!isAutoCreateTimeseriesSuccess){
+          boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
+          if (!isAutoCreateTimeseriesSuccess) {
             throw new MetadataException(
                 String.format("Failed to create timeseries from InsertPlan automatically.")
             );
           }
           return executeNonQuery(plan);
         } catch (MetadataException e) {
-          logger.error("Failed to set storage group or create timeseries, because {}", e.getMessage());
+          logger.error("Failed to set storage group or create timeseries, because {}", e);
         }
       }
       logger.error("{}: Cannot found storage groups for {}", name, plan);
@@ -1592,8 +1593,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     InsertPlan backup = null;
-    if(plan instanceof InsertPlan){
-      backup = (InsertPlan) ((InsertPlan)plan).clone();
+    if (plan instanceof InsertPlan) {
+      backup = (InsertPlan) ((InsertPlan) plan).clone();
     }
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
@@ -1746,7 +1747,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   /**
    * Create timeseries automatically
    *
-   * @param insertPlan,    some of the timeseries in it are not created yet
+   * @param insertPlan, some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
   boolean autoCreateTimeseries(InsertPlan insertPlan) {
@@ -1777,7 +1778,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path(seriesPath),
           dataType, encoding, compressionType, null, null, null, null);
       // TODO-Cluster: add executeNonQueryBatch()
-      TSStatus result = executeNonQuery(createTimeSeriesPlan);
+      TSStatus result;
+      try {
+        result = processPartitionedPlan(createTimeSeriesPlan);
+      } catch (UnsupportedPlanException e) {
+        logger.error("Failed to create timeseries {} automatically. Unsupported plan exception {} ",
+            seriesPath, e.getMessage());
+        return false;
+      }
       if (result.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
         logger.error("{} failed to execute create timeseries {}", thisNode, seriesPath);
         return false;
@@ -1795,20 +1803,23 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   List<String> getUnregisteredSeriesList(List<String> seriesList, PartitionGroup partitionGroup) {
-    Set<String> unregistered = new HashSet<>();
+    List<String> unregistered = new ArrayList<>();
     for (Node node : partitionGroup) {
       try {
         DataClient client = getDataClient(node);
         List<String> result = SyncClientAdaptor
             .getUnregisteredMeasurements(client, partitionGroup.getHeader(), seriesList);
-        unregistered.addAll(result);
+        if (result != null) {
+          unregistered.addAll(result);
+          break;
+        }
       } catch (TException | IOException e) {
         logger.error("{}: cannot getting unregistered {} and other {} paths from {}", name,
             seriesList.get(0), seriesList.get(seriesList.size() - 1), node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("{}: getting unregistered series list {} is interrupted from {}", name,
-            Arrays.toString(seriesList.toArray(new String[0])), node, e);
+        logger.error("{}: getting unregistered series list {} ... {} is interrupted from {}", name,
+            seriesList.get(0), seriesList.get(seriesList.size() - 1), node, e);
       }
     }
     return new ArrayList<String>(unregistered);
