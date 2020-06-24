@@ -27,7 +27,8 @@ public class TsFileConstant {
   public static final String PATH_UPGRADE = "tmp";
   public static final String PATH_SEPARATOR = ".";
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";
-
+  public static final String DOUBLE_QUOTATION = "\"";
+  public static final String SINGLE_QUOTATION = "\'";
   private TsFileConstant() {
   }
 }

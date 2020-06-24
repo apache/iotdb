@@ -883,7 +883,7 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,11,0,11,", sb.toString());
+      Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',", sb.toString());
     }
     Assert.assertEquals(1000, count);
     sessionDataSet.closeOperationHandle();
@@ -902,7 +902,7 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,11,0,11,null,0,null,", sb.toString());
+      Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',null,0,null,", sb.toString());
     }
     Assert.assertEquals(1000, count);
     sessionDataSet.closeOperationHandle();
