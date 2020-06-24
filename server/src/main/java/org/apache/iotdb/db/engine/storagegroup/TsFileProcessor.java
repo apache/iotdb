@@ -19,13 +19,13 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -67,7 +67,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -572,10 +574,10 @@ public class TsFileProcessor {
   }
 
   private File createNewVMFile() {
-    String tsFilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
     File parent = tsFileResource.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        tsFilePrefix + TSFILE_SEPARATOR + System.currentTimeMillis() + VM_SUFFIX);
+        tsFileResource.getPath() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
+            + VM_SUFFIX);
   }
 
   private void deleteVmFile(TsFileResource seqFile) {
@@ -624,10 +626,24 @@ public class TsFileProcessor {
             }
           }
           // all flush to target file
+          Map<Path, MeasurementSchema> pathMeasurementSchemaMap = new HashMap<>();
+          for (String device : memTableToFlush.getMemTableMap().keySet()) {
+            for (String measurement : memTableToFlush.getMemTableMap().get(device).keySet()) {
+              pathMeasurementSchemaMap.putIfAbsent(new Path(device, measurement),
+                  memTableToFlush.getMemTableMap().get(device).get(measurement).getSchema());
+            }
+          }
+          for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+            Map<Path, MeasurementSchema> schemaMap = vmWriter.getKnownSchema();
+            for (Path path : schemaMap.keySet()) {
+              schemaMap.putIfAbsent(path, schemaMap.get(path));
+            }
+          }
           if ((
-              (vmPointNum + memTableToFlush.getTotalPointsNum()) / memTableToFlush.getSeriesNumber()
+              (vmPointNum + memTableToFlush.getTotalPointsNum()) / pathMeasurementSchemaMap.size()
                   > config
-                  .getMemtablePointThreshold()) || (shouldClose && flushingMemTables.size() == 1)) {
+                  .getAvgSeriesPointNumberThreshold()) || (shouldClose
+              && flushingMemTables.size() == 1)) {
             isVm = false;
             isFull = false;
             flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
