@@ -28,6 +28,7 @@ import java.util.Objects;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -492,5 +493,18 @@ public class InsertPlan extends PhysicalPlan {
     Object value = values[measurementIndex];
     return new TimeValuePair(time,
         TsPrimitiveType.getByType(schemas[measurementIndex].getType(), value));
+  }
+
+  @Override
+  public Object clone() {
+    long timeClone = this.time;
+    String deviceIdClone = this.deviceId;
+    String[] measurementsClone = new String[this.measurements.length];
+    System.arraycopy(this.measurements, 0, measurementsClone, 0, measurementsClone.length);
+    Object[] valuesClone = new Object[this.values.length];
+    System.arraycopy(this.values, 0, valuesClone, 0, valuesClone.length);
+    TSDataType[] typesClone = new TSDataType[this.types.length];
+    System.arraycopy(this.types, 0, typesClone, 0, typesClone.length);
+    return new InsertPlan(deviceIdClone, timeClone, measurementsClone, typesClone, valuesClone);
   }
 }

@@ -1592,14 +1592,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     InsertPlan backup = null;
     if(plan instanceof InsertPlan){
-      backup = new InsertPlan();
-      backup.setDeviceId(((InsertPlan)plan).getDeviceId());
-      String[] measurements = new String[((InsertPlan)plan).getMeasurements().length];
-      System.arraycopy(((InsertPlan)plan).getMeasurements(), 0, measurements, 0, measurements.length);
-      backup.setMeasurements(measurements);
-      Object[] values = new Object[((InsertPlan)plan).getValues().length]           ;
-      System.arraycopy(((InsertPlan)plan).getValues(), 0, values, 0, values.length);
-      backup.setValues(values);
+      backup = (InsertPlan) ((InsertPlan)plan).clone();
     }
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
