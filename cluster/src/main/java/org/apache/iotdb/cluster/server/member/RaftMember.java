@@ -1349,9 +1349,11 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
       long consumedTime = System.currentTimeMillis() - startTime;
       if (consumedTime >= getWaitLeaderTimeMs()) {
+        logger.warn("{}: leader is still offline after {}ms", name, consumedTime);
         break;
       }
     }
+    logger.debug("{}: current leader is {}", name, leader);
   }
 
   @TestOnly

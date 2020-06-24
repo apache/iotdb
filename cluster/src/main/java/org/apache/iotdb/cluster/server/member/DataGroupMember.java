@@ -1006,9 +1006,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       if (status != null) {
         return status;
       }
+    } else if (leader != null) {
+      return forwardPlan(plan, leader, getHeader());
     }
 
     waitLeader();
+    // the leader can be itself after waiting
+    if (character == NodeCharacter.LEADER) {
+      TSStatus status = processPlanLocally(plan);
+      if (status != null) {
+        return status;
+      }
+    }
     return forwardPlan(plan, leader, getHeader());
   }
 

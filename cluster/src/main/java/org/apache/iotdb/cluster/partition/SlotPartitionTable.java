@@ -207,7 +207,7 @@ public class SlotPartitionTable implements PartitionTable {
       int slot = PartitionUtils
           .calculateStorageGroupSlotByTime(storageGroupName, timestamp, getTotalSlotNumbers());
       Node node = slotNodes[slot];
-      logger.debug("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
+      logger.trace("The slot of {}@{} is {}, held by {}", storageGroupName, timestamp,
           slot, node);
       return node;
     }
