@@ -175,6 +175,16 @@ The root node exists by default. Creating storage groups, deleting storage group
 
 * Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; if in the deletion process, a node is found not to have any child node, needs to be deleted recursively.
 	
+## MTree checkpoint
+
+To speed up restarting of IoTDB, we set checkpoint for MTree. Every 10 minutes, background thread checks the last modified time of MTree. If users haven’t modified MTree for more than 1 hour (which means `mlog.txt` hasn’t been updated for more than 1 hour), and `mlog.txt` has reached the threshold line number of user configuration, MTree snapshot is created. In this way, we could avoid reading mlog.txt and executing the commands line by line. 
+
+The serialization of MTree is depth-first from children to parent. Information of nodes are converted into String according to different node types, which is convenient for deserialization.
+
+* MNode: 0,name,children size
+* StorageGroupMNode: 1,name,TTL,children size
+* MeasurementMNode: 2,name,alias,TSDataType,TSEncoding,CompressionType,props,offset,children size
+
 ## Log management of metadata
 
 * org.apache.iotdb.db.metadata.MLogWriter
