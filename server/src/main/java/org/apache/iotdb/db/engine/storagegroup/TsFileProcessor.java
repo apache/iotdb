@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -67,7 +68,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -203,9 +206,9 @@ public class TsFileProcessor {
    * the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param start            start index of rows to be inserted in insertTabletPlan
-   * @param end              end index of rows to be inserted in insertTabletPlan
-   * @param results          result array
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
@@ -624,9 +627,28 @@ public class TsFileProcessor {
             }
           }
           // all flush to target file
+          Map<Path, MeasurementSchema> pathMeasurementSchemaMap = new HashMap<>();
+          for (String device : memTableToFlush.getMemTableMap().keySet()) {
+            for (String measurement : memTableToFlush.getMemTableMap().get(device).keySet()) {
+              pathMeasurementSchemaMap.putIfAbsent(new Path(device, measurement),
+                  memTableToFlush.getMemTableMap().get(device).get(measurement).getSchema());
+            }
+          }
+          for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+            Map<String, Map<String, List<ChunkMetadata>>> schemaMap = vmWriter
+                .getMetadatasForQuery();
+            for (String device : schemaMap.keySet()) {
+              for (String measurement : schemaMap.get(device).keySet()) {
+                List<ChunkMetadata> chunkMetadataList = schemaMap.get(device).get(measurement);
+                pathMeasurementSchemaMap.putIfAbsent(new Path(device, measurement),
+                    new MeasurementSchema(measurement, chunkMetadataList.get(0).getDataType()));
+              }
+            }
+          }
           if ((
-              (vmPointNum + memTableToFlush.getTotalPointsNum()) / memTableToFlush.getSeriesNumber()
-                  > config.getAvgSeriesPointNumberThreshold()) || (shouldClose
+              (vmPointNum + memTableToFlush.getTotalPointsNum()) / pathMeasurementSchemaMap.size()
+                  > config
+                  .getAvgSeriesPointNumberThreshold()) || (shouldClose
               && flushingMemTables.size() == 1)) {
             isVm = false;
             isFull = false;
@@ -841,10 +863,10 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId      device id
+   * @param deviceId device id
    * @param measurementId measurements id
-   * @param dataType      data type
-   * @param encoding      encoding
+   * @param dataType data type
+   * @param encoding encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
   public Pair<List<ReadOnlyMemChunk>, List<List<ChunkMetadata>>> query(String deviceId,
