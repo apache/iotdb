@@ -737,7 +737,7 @@ public class IoTDBAlignByDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,11,", header.toString());
+        Assert.assertEquals("Time,Device,s0,s1,s2,s3,s4,\"11\",", header.toString());
         Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
@@ -868,7 +868,7 @@ public class IoTDBAlignByDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,Device,s0,s1,11,s2,22,s3,s4,", header.toString());
+        Assert.assertEquals("Time,Device,s0,s1,\"11\",s2,\"22\",s3,s4,", header.toString());
         Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
@@ -937,7 +937,7 @@ public class IoTDBAlignByDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,Device,s0,s1,11,s2,22,s5,s3,s4,", header.toString());
+        Assert.assertEquals("Time,Device,s0,s1,\"11\",s2,\"22\",s5,s3,s4,", header.toString());
         Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
         Assert.assertEquals(Types.INTEGER, resultSetMetaData.getColumnType(3));
@@ -1008,7 +1008,7 @@ public class IoTDBAlignByDeviceIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           header.append(resultSetMetaData.getColumnName(i)).append(",");
         }
-        Assert.assertEquals("Time,Device,s5,s0,s5,11,s2,11,22,s5,s3,s0,", header.toString());
+        Assert.assertEquals("Time,Device,s5,s0,s5,\"11\",s2,\"11\",\"22\",s5,s3,s0,", header.toString());
         Assert.assertEquals(Types.TIMESTAMP, resultSetMetaData.getColumnType(1));
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(2));
         Assert.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(3));

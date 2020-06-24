@@ -42,6 +42,8 @@ public class PathTest {
     // with quote;
     path = new Path("root.d1.r1.\"x1.x2.x3\"");
     testPath(path, "root.d1.r1", "\"x1.x2.x3\"", "root.d1.r1.\"x1.x2.x3\"");
+    path = new Path("root.d1.r1.\'x1\'");
+    testPath(path, "root.d1.r1", "\'x1\'", "root.d1.r1.\'x1\'");
   }
 
   @Test
