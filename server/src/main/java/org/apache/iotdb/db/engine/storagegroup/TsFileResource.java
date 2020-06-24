@@ -72,13 +72,13 @@ public class TsFileResource {
   private static final int INIT_ARRAY_SIZE = 64;
 
   /**
-   * start times array. 
+   * start times array.
    */
   private long[] startTimes;
 
   /**
-   * end times array. 
-   * The values in this array are Long.MIN_VALUE if it's an unsealed sequence tsfile
+   * end times array. The values in this array are Long.MIN_VALUE if it's an unsealed sequence
+   * tsfile
    */
   private long[] endTimes;
 
@@ -130,22 +130,28 @@ public class TsFileResource {
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   /**
-   *  generated upgraded TsFile ResourceList
-   *  used for upgrading v0.9.x/v1 -> 0.10/v2
+   * generated upgraded TsFile ResourceList used for upgrading v0.9.x/v1 -> 0.10/v2
    */
   private List<TsFileResource> upgradedResources;
 
   /**
-   *  load upgraded TsFile Resources to storage group processor
-   *  used for upgrading v0.9.x/v1 -> 0.10/v2
+   * load upgraded TsFile Resources to storage group processor used for upgrading v0.9.x/v1 ->
+   * 0.10/v2
    */
   private UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack;
 
   /**
-   *  indicate if this tsfile resource belongs to a sequence tsfile or not 
-   *  used for upgrading v0.9.x/v1 -> 0.10/v2
+   * indicate if this tsfile resource belongs to a sequence tsfile or not used for upgrading
+   * v0.9.x/v1 -> 0.10/v2
    */
   private boolean isSeq;
+
+  /**
+   * If it is not null, it indicates that the current tsfile resource is a snapshot of the
+   * originTsFileResource, and if so, when we want to used the lock, we should try to acquire the
+   * lock of originTsFileResource
+   */
+  private TsFileResource originTsFileResource;
 
   public TsFileResource() {
   }
@@ -196,18 +202,17 @@ public class TsFileResource {
   /**
    * unsealed TsFile
    */
-  public TsFileResource(File file,
-      Map<String, Integer> deviceToIndex,
-      long[] startTimes,
-      long[] endTimes,
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetadata> chunkMetadataList) throws IOException {
+  public TsFileResource(File file, Map<String, Integer> deviceToIndex, long[] startTimes,
+      long[] endTimes, List<ReadOnlyMemChunk> readOnlyMemChunk,
+      List<ChunkMetadata> chunkMetadataList, TsFileResource originTsFileResource)
+      throws IOException {
     this.file = file;
     this.deviceToIndex = deviceToIndex;
     this.startTimes = startTimes;
     this.endTimes = endTimes;
     this.chunkMetadataList = chunkMetadataList;
     this.readOnlyMemChunk = readOnlyMemChunk;
+    this.originTsFileResource = originTsFileResource;
     generateTimeSeriesMetadata();
   }
 
@@ -216,7 +221,7 @@ public class TsFileResource {
     timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
     timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
 
-    if (!(chunkMetadataList == null ||chunkMetadataList.isEmpty())) {
+    if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
       timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
       TSDataType dataType = chunkMetadataList.get(0).getDataType();
       timeSeriesMetadata.setTSDataType(dataType);
@@ -418,8 +423,7 @@ public class TsFileResource {
     int index;
     if (containsDevice(deviceId)) {
       index = deviceToIndex.get(deviceId);
-    }
-    else {
+    } else {
       index = deviceToIndex.size();
       deviceToIndex.put(deviceId, index);
       if (startTimes.length <= index) {
@@ -434,8 +438,7 @@ public class TsFileResource {
     int index;
     if (containsDevice(deviceId)) {
       index = deviceToIndex.get(deviceId);
-    }
-    else {
+    } else {
       index = deviceToIndex.size();
       deviceToIndex.put(deviceId, index);
       if (endTimes.length <= index) {
@@ -505,19 +508,40 @@ public class TsFileResource {
 
 
   public void writeLock() {
-    tsFileLock.writeLock();
+    if (originTsFileResource == null) {
+      tsFileLock.writeLock();
+    } else {
+      originTsFileResource.writeLock();
+      ;
+    }
   }
 
   public void writeUnlock() {
-    tsFileLock.writUnlock();
+    if (originTsFileResource == null) {
+      tsFileLock.writeUnlock();
+    } else {
+      originTsFileResource.writeUnlock();
+      ;
+    }
   }
 
+  /**
+   * If originTsFileResource is not null, we should acquire the read lock of originTsFileResource
+   * before construct the current TsFileResource
+   */
   public void readLock() {
-    tsFileLock.readLock();
+    if (originTsFileResource == null) {
+      tsFileLock.readLock();
+    }
   }
 
   public void readUnlock() {
-    tsFileLock.readUnlock();
+    if (originTsFileResource == null) {
+      tsFileLock.readUnlock();
+    } else {
+      originTsFileResource.readUnlock();
+      ;
+    }
   }
 
   public boolean tryReadLock() {
@@ -619,7 +643,7 @@ public class TsFileResource {
   }
 
   protected void setEndTimes(long[] endTimes) {
-    this.endTimes= endTimes;
+    this.endTimes = endTimes;
   }
 
   /**
@@ -681,7 +705,8 @@ public class TsFileResource {
     return isSeq;
   }
 
-  public void setUpgradeTsFileResourceCallBack(UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
+  public void setUpgradeTsFileResourceCallBack(
+      UpgradeTsFileResourceCallBack upgradeTsFileResourceCallBack) {
     this.upgradeTsFileResourceCallBack = upgradeTsFileResourceCallBack;
   }
 
@@ -690,8 +715,7 @@ public class TsFileResource {
   }
 
   /**
-   * make sure Either the deviceToIndex is not empty
-   *           Or the path contains a partition folder
+   * make sure Either the deviceToIndex is not empty Or the path contains a partition folder
    */
   public long getTimePartition() {
     if (deviceToIndex != null && !deviceToIndex.isEmpty()) {
@@ -702,9 +726,9 @@ public class TsFileResource {
   }
 
   /**
-   * Used when load new TsFiles not generated by the server
-   * Check and get the time partition
-   * TODO: when the partition violation happens, split the file and load into different partitions
+   * Used when load new TsFiles not generated by the server Check and get the time partition TODO:
+   * when the partition violation happens, split the file and load into different partitions
+   *
    * @throws PartitionViolationException if the data of the file cross partitions or it is empty
    */
   public long getTimePartitionWithCheck() throws PartitionViolationException {
@@ -736,10 +760,11 @@ public class TsFileResource {
   }
 
   /**
-   * Create a hardlink for the TsFile and modification file (if exists)
-   * The hardlink will have a suffix like ".{sysTime}_{randomLong}"
-   * @return a new TsFileResource with its file changed to the hardlink or null the hardlink
-   * cannot be created.
+   * Create a hardlink for the TsFile and modification file (if exists) The hardlink will have a
+   * suffix like ".{sysTime}_{randomLong}"
+   *
+   * @return a new TsFileResource with its file changed to the hardlink or null the hardlink cannot
+   * be created.
    */
   public TsFileResource createHardlink() {
     if (!file.exists()) {

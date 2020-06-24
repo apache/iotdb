@@ -106,6 +106,7 @@ public class MemTableFlushTask {
       throws ExecutionException, InterruptedException, IOException {
     long start = System.currentTimeMillis();
     long sortTime = 0;
+
     if (isVm) {
       currWriter = vmWriters.get(vmWriters.size() - 1);
     } else {

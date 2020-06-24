@@ -248,10 +248,6 @@ public class IoTDBDescriptor {
           .getProperty("max_vm_num",
               Integer.toString(conf.getMaxVmNum()))));
 
-      conf.setAvgSeriesPointNumberThreshold(Integer.parseInt(properties
-          .getProperty("avg_series_point_number_threshold",
-              Integer.toString(conf.getAvgSeriesPointNumberThreshold()))));
-
       conf.setSyncEnable(Boolean
           .parseBoolean(properties.getProperty("is_sync_enable",
               Boolean.toString(conf.isSyncEnable()))));
