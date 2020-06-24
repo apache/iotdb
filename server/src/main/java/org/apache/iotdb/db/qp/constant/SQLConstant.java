@@ -151,7 +151,7 @@ public class SQLConstant {
   public static final int TOK_LOAD_CONFIGURATION_LOCAL = 86;
 
   public static final int TOK_SHOW_MERGE_STATUS = 87;
-  public static final int TOK_DELETE_PARTITION = 87;
+  public static final int TOK_DELETE_PARTITION = 88;
 
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
