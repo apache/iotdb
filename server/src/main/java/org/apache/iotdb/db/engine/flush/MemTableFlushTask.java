@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -315,24 +316,22 @@ public class MemTableFlushTask {
           } else if (ioMessage instanceof MergeVmIoTask) {
             RestorableTsFileIOWriter mergeWriter = ((MergeVmIoTask) ioMessage).mergeWriter;
             Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
+
             for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-              Map<String, Map<String, List<ChunkMetadata>>> pathMeasurementChunkMetadataMap = vmWriter
+              Map<String, Map<String, List<ChunkMetadata>>> deviceMeasurementChunkMetadataMap = vmWriter
                   .getMetadatasForQuery();
-              for (String device : pathMeasurementChunkMetadataMap.keySet()) {
-                for (String measurement : pathMeasurementChunkMetadataMap.get(device).keySet()) {
-                  Map<String, MeasurementSchema> measurementSchemaMap;
-                  ChunkMetadata chunkMetadata = pathMeasurementChunkMetadataMap.get(device)
-                      .get(measurement).get(0);
-                  MeasurementSchema measurementSchema = new MeasurementSchema(measurement,
-                      chunkMetadata.getDataType());
-                  if (deviceMeasurementMap.containsKey(device)) {
-                    measurementSchemaMap = deviceMeasurementMap.get(device);
-                    measurementSchemaMap.putIfAbsent(measurement, measurementSchema);
-                  } else {
-                    measurementSchemaMap = new HashMap<>();
-                    measurementSchemaMap.put(measurement, measurementSchema);
-                  }
-                  deviceMeasurementMap.put(device, measurementSchemaMap);
+              // device, measurement -> chunk metadata list
+              for (Entry<String, Map<String, List<ChunkMetadata>>> deviceEntry :
+                  deviceMeasurementChunkMetadataMap.entrySet()) {
+
+                Map<String, MeasurementSchema> measurementSchemaMap = deviceMeasurementMap
+                    .computeIfAbsent(deviceEntry.getKey(), k -> new HashMap<>());
+
+                // measurement, chunk metadata list
+                for (Entry<String, List<ChunkMetadata>> measurementEntry : deviceEntry.getValue()
+                    .entrySet()) {
+                  measurementSchemaMap.computeIfAbsent(measurementEntry.getKey(), k ->
+                      new MeasurementSchema(k, measurementEntry.getValue().get(0).getDataType()));
                 }
               }
             }
