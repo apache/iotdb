@@ -76,7 +76,7 @@ public class MemTableFlushTask {
   private VmLogger vmLogger;
   private final boolean isVm;
   private final boolean isFull;
-  private final boolean sequence = false;
+  private boolean sequence = false;
 
   private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
