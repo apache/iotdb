@@ -76,7 +76,7 @@ public class MemTableFlushTask {
   private VmLogger vmLogger;
   private final boolean isVm;
   private final boolean isFull;
-  private final boolean sequence;
+  private final boolean sequence = false;
 
   private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
@@ -209,7 +209,6 @@ public class MemTableFlushTask {
         TSDataType dataType) {
       for (int i = 0; i < tvPairs.size(); i++) {
         long time = tvPairs.getTime(i);
-        System.out.println(time);
 
         // skip duplicated data
         if ((i + 1 < tvPairs.size() && (time == tvPairs.getTime(i + 1)))) {
@@ -327,7 +326,7 @@ public class MemTableFlushTask {
           } else if (ioMessage instanceof MergeVmIoTask) {
             RestorableTsFileIOWriter mergeWriter = ((MergeVmIoTask) ioMessage).mergeWriter;
             VmMergeTask vmMergeTask = new VmMergeTask(mergeWriter, vmWriters,
-                storageGroup, vmLogger, new HashSet<>());
+                storageGroup, vmLogger, new HashSet<>(), sequence);
             vmMergeTask.fullMerge();
           } else if (ioMessage instanceof IChunkWriter) {
             ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
