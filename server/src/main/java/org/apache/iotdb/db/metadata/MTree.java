@@ -720,7 +720,13 @@ public class MTree implements Serializable {
           return;
         }
       }
-      String nodePath = parent + node;
+      String nodeName;
+      if (node.getName().contains(TsFileConstant.PATH_SEPARATOR)) {
+        nodeName = "\"" + node + "\"";
+      } else {
+        nodeName = node.getName();
+      }
+      String nodePath = parent + nodeName;
       String[] tsRow = new String[8];
       tsRow[0] = nodePath;
       tsRow[1] = ((MeasurementMNode) node).getAlias();
