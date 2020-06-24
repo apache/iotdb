@@ -425,7 +425,7 @@ public class SerializeUtils {
         int bytesLen = buffer.getInt();
         byte[] bytes = new byte[bytesLen];
         buffer.get(bytes);
-        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, bytes);
+        TsPrimitiveType primitiveType = TsPrimitiveType.getByType(dataType, new Binary(bytes));
         return new TimeValuePair(time, primitiveType);
     }
     throw new UnsupportedDataTypeException(dataType.toString());
