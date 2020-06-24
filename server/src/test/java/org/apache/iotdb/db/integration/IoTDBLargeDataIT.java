@@ -131,7 +131,7 @@ public class IoTDBLargeDataIT {
       }
 
       statement.execute("flush");
-      statement.execute("merge");
+//      statement.execute("merge");
 
       // buffwrite data, unsealed file
       for (int time = 100000; time < 101000; time++) {
@@ -295,7 +295,7 @@ Statement statement = connection.createStatement()) {
           String ans =
               resultSet.getString(TestConstant.TIMESTAMP_STR) + "," + resultSet.getString(
                   TestConstant.d0s0);
-          // System.out.println(ans);
+//           System.out.println(ans);
           cnt++;
         }
 

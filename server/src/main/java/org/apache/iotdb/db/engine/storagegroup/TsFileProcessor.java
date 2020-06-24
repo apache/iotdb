@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -46,7 +45,7 @@ import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
-import org.apache.iotdb.db.engine.flush.RecoverVmFlushTask;
+import org.apache.iotdb.db.engine.flush.VmMergeTask;
 import org.apache.iotdb.db.engine.flush.VmLogAnalyzer;
 import org.apache.iotdb.db.engine.flush.VmLogger;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
@@ -615,11 +614,12 @@ public class TsFileProcessor {
       Pair<Set<String>, Long> result = logAnalyzer.analyze();
       Set<String> deviceSet = result.left;
       if (!deviceSet.isEmpty()) {
-        RecoverVmFlushTask recoverVmFlushTask = new RecoverVmFlushTask(writer, vmWriters,
+        writer.getIOWriterOut().truncate(result.right - 1);
+        VmMergeTask vmMergeTask = new VmMergeTask(writer, vmWriters,
             storageGroupName,
             new VmLogger(tsFileResource.getFile().getParent(), tsFileResource.getFile().getName()),
-            deviceSet, result.right);
-        recoverVmFlushTask.recoverVmToTsfile();
+            deviceSet);
+        vmMergeTask.fullMerge();
         for (TsFileResource vmTsFileResource : vmTsFileResources) {
           deleteVmFile(vmTsFileResource);
         }

@@ -43,38 +43,29 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class RecoverVmFlushTask {
+public class VmMergeTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(RecoverVmFlushTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(VmMergeTask.class);
 
   private final RestorableTsFileIOWriter writer;
   private List<RestorableTsFileIOWriter> vmWriters;
   private Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
   private VmLogger vmLogger;
   private Set<String> devices;
-  private long offset;
 
   private String storageGroup;
 
-  public RecoverVmFlushTask(RestorableTsFileIOWriter writer,
+  public VmMergeTask(RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
-      Set<String> devices, long offset) {
+      Set<String> devices) {
     this.writer = writer;
     this.vmWriters = vmWriters;
     this.storageGroup = storageGroup;
     this.vmLogger = vmLogger;
     this.devices = devices;
-    this.offset = offset;
-    logger.debug("recover flush task of Storage group {} tsfile {} is created ",
-        storageGroup, writer.getFile().getName());
   }
 
-  /**
-   * the function for flushing memtable.
-   */
-  public void recoverVmToTsfile() throws IOException {
-    long start = System.currentTimeMillis();
-    writer.getIOWriterOut().truncate(offset - 1);
+  public void fullMerge() throws IOException {
     Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
 
     for (RestorableTsFileIOWriter vmWriter : vmWriters) {
@@ -198,9 +189,5 @@ public class RecoverVmFlushTask {
         }
       }
     }
-    logger.info(
-        "Storage group {} tsfile {} recover has finished! Time consumption: {}ms",
-        storageGroup, writer.getFile().getName(), System.currentTimeMillis() - start);
   }
-
 }
