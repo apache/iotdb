@@ -174,7 +174,7 @@ public class MLogWriter {
    * only used for initialize a mlog file writer.
    * @param number
    */
-  void settLineNumber(int number) {
+  void setLineNumber(int number) {
     lineNumber = number;
   }
 }
