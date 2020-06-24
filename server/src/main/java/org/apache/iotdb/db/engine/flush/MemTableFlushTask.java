@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.flush;
 import static org.apache.iotdb.db.conf.IoTDBConstant.UNSEQUENCE_FLODER_NAME;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTimeValuePair;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -285,8 +286,9 @@ public class MemTableFlushTask {
   private File createNewTmpFile() {
     File parent = writer.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        "vm" + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
-            + IoTDBConstant.PATH_SEPARATOR
+        writer.getFile().getName() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System
+            .currentTimeMillis()
+            + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
             + PATH_UPGRADE);
   }
 
