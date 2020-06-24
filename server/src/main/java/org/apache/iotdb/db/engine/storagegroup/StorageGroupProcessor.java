@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
@@ -517,22 +516,26 @@ public class StorageGroupProcessor {
       if (!fileFolder.exists()) {
         continue;
       }
-      Collections
-          .addAll(vmFiles, fsFactory.listFilesBySuffix(fileFolder.getAbsolutePath(), VM_SUFFIX));
+      File[] subFiles = fileFolder.listFiles();
+      if (subFiles != null) {
+        for (File partitionFolder : subFiles) {
+          if (partitionFolder.isDirectory()) {
+            Collections.addAll(vmFiles,
+                fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX));
+          }
+        }
+      }
     }
 
     Map<String, List<TsFileResource>> vmTsFileResourceMap = new HashMap<>();
     for (File f : vmFiles) {
       TsFileResource fileResource = new TsFileResource(f);
       fileResource.setClosed(false);
-      // make sure the flush command is called before IoTDB is down.
-      fileResource.deserialize();
-      String tsfilePrefix = f.getName().split(TSFILE_SEPARATOR)[0];
       List<TsFileResource> vmTsFileResource = vmTsFileResourceMap
-          .getOrDefault(tsfilePrefix, new ArrayList<>());
+          .getOrDefault(fileResource.getPath(), new ArrayList<>());
 
       vmTsFileResource.add(fileResource);
-      vmTsFileResourceMap.put(tsfilePrefix, vmTsFileResource);
+      vmTsFileResourceMap.put(fileResource.getPath(), vmTsFileResource);
     }
     return vmTsFileResourceMap;
   }
@@ -563,15 +566,18 @@ public class StorageGroupProcessor {
 
       RestorableTsFileIOWriter writer;
       List<RestorableTsFileIOWriter> vmWriters = new ArrayList<>();
-      String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
       try {
         writer = recoverPerformer.recover();
-        if (vmFiles.containsKey(tsfilePrefix)) {
-          for (TsFileResource fileResource : vmFiles.get(tsfilePrefix)) {
-            vmWriters.add(new RestorableTsFileIOWriter(fileResource.getFile()));
+        if (vmFiles.containsKey(tsFileResource.getPath())) {
+          for (TsFileResource vmResource : vmFiles.get(tsFileResource.getPath())) {
+            TsFileRecoverPerformer vmRecoverPerformer = new TsFileRecoverPerformer(
+                storageGroupName + '-',
+                getVersionControllerByTimePartitionId(timePartitionId), vmResource, false, true);
+            RestorableTsFileIOWriter vmWriter = vmRecoverPerformer.recover();
+            vmWriters.add(vmWriter);
           }
         }
-      } catch (StorageGroupProcessorException | IOException e) {
+      } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
       }
@@ -581,7 +587,7 @@ public class StorageGroupProcessor {
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            vmFiles.getOrDefault(tsfilePrefix, new ArrayList<>()),
+            vmFiles.getOrDefault(tsFileResource.getPath(), new ArrayList<>()),
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
             this::updateLatestFlushTimeCallback, true, writer, vmWriters);
@@ -607,7 +613,8 @@ public class StorageGroupProcessor {
           i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer;
       List<RestorableTsFileIOWriter> vmWriters = new ArrayList<>();
-      String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
+      String tsfilePrefix = tsFileResource.getFile().getName()
+          .split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0];
       try {
         writer = recoverPerformer.recover();
         if (vmFiles.containsKey(tsfilePrefix)) {
@@ -684,7 +691,7 @@ public class StorageGroupProcessor {
   /**
    * Insert a tablet (rows belonging to the same devices) into this storage group.
    *
-   * @throws WriteProcessException when update last cache failed
+   * @throws WriteProcessException   when update last cache failed
    * @throws BatchInsertionException if some of the rows failed to be inserted
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws WriteProcessException,
@@ -786,11 +793,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence whether is sequence
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
-   * @param timePartitionId time partition id
+   * @param sequence         whether is sequence
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
+   * @param timePartitionId  time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -941,10 +948,10 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId time partition range
+   * @param timeRangeId            time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param fileList file list to add new processor
-   * @param sequence whether is sequence or not
+   * @param fileList               file list to add new processor
+   * @param sequence               whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1346,7 +1353,7 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(new TsFileResource(tsFileResource.getFile(),
               tsFileResource.getDeviceToIndexMap(),
               tsFileResource.getStartTimes(), tsFileResource.getEndTimes(), pair.left,
-              pair.right.get(0)));
+              pair.right.get(0), tsFileResource));
 
           List<TsFileResource> vmTsFileResourceList =
               tsFileResource.getUnsealedFileProcessor().getVmTsFileResources();
@@ -1355,7 +1362,7 @@ public class StorageGroupProcessor {
             TsFileResource tmp = vmTsFileResourceList.get(i - 1);
             tsfileResourcesForQuery.add(
                 new TsFileResource(tmp.getFile(), tmp.getDeviceToIndexMap(), tmp.getStartTimes(),
-                    tmp.getEndTimes(), pair.left, pair.right.get(i)));
+                    tmp.getEndTimes(), pair.left, pair.right.get(i), tmp));
           }
         }
       } catch (IOException e) {
@@ -1408,9 +1415,9 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId the deviceId of the timeseries to be deleted.
+   * @param deviceId      the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the delete range is (0, timestamp].
+   * @param timestamp     the delete range is (0, timestamp].
    */
   public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
     // TODO: how to avoid partial deletion?
@@ -2137,9 +2144,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName origin tsfile name
+   * @param tsfileName  origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   * 1]
+   *                    1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2203,8 +2210,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type load type
-   * @param tsFileResource tsfile resource to be loaded
+   * @param type            load type
+   * @param tsFileResource  tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.

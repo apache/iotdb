@@ -1125,7 +1125,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
       auditLogger
-          .info("Session {} insertRecord, device {}, time {}", currSessionId.get(),
+          .debug("Session {} insertRecord, device {}, time {}", currSessionId.get(),
               req.getDeviceId(), req.getTimestamp());
       if (!checkLogin(req.getSessionId())) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);

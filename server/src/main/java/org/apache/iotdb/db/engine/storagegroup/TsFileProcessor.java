@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
@@ -203,9 +202,9 @@ public class TsFileProcessor {
    * the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param start start index of rows to be inserted in insertTabletPlan
-   * @param end end index of rows to be inserted in insertTabletPlan
-   * @param results result array
+   * @param start            start index of rows to be inserted in insertTabletPlan
+   * @param end              end index of rows to be inserted in insertTabletPlan
+   * @param results          result array
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
@@ -572,10 +571,10 @@ public class TsFileProcessor {
   }
 
   private File createNewVMFile() {
-    String tsFilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
     File parent = tsFileResource.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        tsFilePrefix + TSFILE_SEPARATOR + System.currentTimeMillis() + VM_SUFFIX);
+        tsFileResource.getPath() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
+            + VM_SUFFIX);
   }
 
   private void deleteVmFile(TsFileResource seqFile) {
@@ -626,21 +625,18 @@ public class TsFileProcessor {
           // all flush to target file
           if ((
               (vmPointNum + memTableToFlush.getTotalPointsNum()) / memTableToFlush.getSeriesNumber()
-                  > config
-                  .getMemtablePointThreshold()) || (shouldClose && flushingMemTables.size() == 1)) {
+                  > config.getAvgSeriesPointNumberThreshold()) || (shouldClose
+              && flushingMemTables.size() == 1)) {
             isVm = false;
             isFull = false;
-            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                isVm,
-                isFull,
+            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
                 storageGroupName);
           } else {
             // merge vm files
             if (config.getMaxVmNum() <= vmTsFileResources.size()) {
               isVm = true;
               isFull = true;
-              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  isVm, isFull,
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true, true,
                   storageGroupName);
             } else {
               isVm = true;
@@ -648,14 +644,12 @@ public class TsFileProcessor {
               File newVmFile = createNewVMFile();
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
-              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  isVm, isFull,
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true, false,
                   storageGroupName);
             }
           }
         } else {
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-              false, false,
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
               storageGroupName);
         }
         writer.mark();
@@ -842,10 +836,10 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId device id
+   * @param deviceId      device id
    * @param measurementId measurements id
-   * @param dataType data type
-   * @param encoding encoding
+   * @param dataType      data type
+   * @param encoding      encoding
    * @return left: the chunk data in memory; right: the chunkMetadatas of data on disk
    */
   public Pair<List<ReadOnlyMemChunk>, List<List<ChunkMetadata>>> query(String deviceId,
@@ -882,17 +876,20 @@ public class TsFileProcessor {
 
       List<List<ChunkMetadata>> rightResult = new ArrayList<>();
 
-      // get unseal tsfile data
+      // get unseal tsfile data and its read lock
       List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);
+      tsFileResource.readLock();
       QueryUtils.modifyChunkMetaData(chunkMetadataList,
           modifications);
       chunkMetadataList.removeIf(context::chunkNotSatisfy);
       rightResult.add(chunkMetadataList);
 
       // get vm tsfile data
-      for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+      for (int i = 0; i < vmWriters.size(); i++) {
+        RestorableTsFileIOWriter vmWriter = vmWriters.get(i);
         chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType);
+        vmTsFileResources.get(0).readLock();
         QueryUtils.modifyChunkMetaData(chunkMetadataList,
             modifications);
         chunkMetadataList.removeIf(context::chunkNotSatisfy);
