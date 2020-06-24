@@ -198,7 +198,7 @@ public class DeletionFileNodeTest {
     StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
     StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
     StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);

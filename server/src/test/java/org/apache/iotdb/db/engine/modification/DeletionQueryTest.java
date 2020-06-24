@@ -269,7 +269,7 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
     StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
     StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -284,7 +284,7 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(processorName, measurements[3], 0, 250);
     StorageEngine.getInstance().delete(processorName, measurements[4], 0, 250);
     StorageEngine.getInstance().delete(processorName, measurements[5], 0, 230);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 250);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 230, 250);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -299,7 +299,7 @@ public class DeletionQueryTest {
     StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
     StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
     StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
