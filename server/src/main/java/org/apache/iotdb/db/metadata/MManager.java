@@ -233,6 +233,7 @@ public class MManager {
    * @return line number of the logFile
    * @throws IOException
    */
+  @SuppressWarnings("squid:S3776")
   private int initFromLog(File logFile) throws IOException {
     File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
     if (tmpFile.exists()) {
@@ -1809,12 +1810,12 @@ public class MManager {
       logger.info("Start creating MTree snapshot, because of {} new lines are added.", logWriter.getLineNumber() - lastSnapshotLogLineNumber);
       createSnapshot();
     } else {
-      ///if (logger.isDebugEnabled()) {
-        logger.info(
+      if (logger.isDebugEnabled()) {
+        logger.debug(
             "MTree snapshot need not be created. Current mlog line number: {}, last snapshot line number: {}, time difference from last modification: {}ms",
             logWriter.getLineNumber(), lastSnapshotLogLineNumber,
             System.currentTimeMillis() - logFile.lastModified());
-      //}
+      }
     }
   }
 
@@ -1835,7 +1836,11 @@ public class MManager {
     } catch (IOException e) {
       logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
       if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
-        SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).delete();
+        try {
+          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
+        } catch (IOException e1) {
+          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
+        }
       }
     } finally {
       lock.readLock().unlock();
