@@ -133,6 +133,7 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -913,8 +914,26 @@ public class PlanExecutor implements IPlanExecutor {
       insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
       if (insertPlan.getFailedMeasurements() != null) {
-        throw new StorageEngineException(
-            "failed to insert points " + insertPlan.getFailedMeasurements());
+        // check if all path not exist exceptions
+        List<String> failedPaths = new ArrayList<>(insertPlan.getFailedMeasurements().keySet());
+        List<Exception> exceptions = new ArrayList<>(insertPlan.getFailedMeasurements().values());
+        boolean isPathNotExistException = true;
+        for(Exception e : exceptions){
+          Exception curException = e;
+          while(curException.getCause() != null){
+            curException = (Exception) curException.getCause();
+          }
+          if(!(curException instanceof PathNotExistException)){
+            isPathNotExistException = false;
+            break;
+          }
+        }
+        if(isPathNotExistException){
+          throw new PathNotExistException(failedPaths.toString());
+        }else {
+          throw new StorageEngineException(
+              "failed to insert points " + insertPlan.getFailedMeasurements());
+        }
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
@@ -945,7 +964,7 @@ public class PlanExecutor implements IPlanExecutor {
           logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i],
               e.getMessage());
           if (enablePartialInsert) {
-            insertPlan.markMeasurementInsertionFailed(i);
+            insertPlan.markMeasurementInsertionFailed(i, e);
           } else {
             throw e;
           }
@@ -1126,7 +1145,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
 
-
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     try {
@@ -1135,7 +1153,7 @@ public class PlanExecutor implements IPlanExecutor {
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
-          "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
+            "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

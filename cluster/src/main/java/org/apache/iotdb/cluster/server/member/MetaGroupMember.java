@@ -1686,7 +1686,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     if (plan instanceof InsertPlan
-        && status.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
+        && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
       // try to create timeseries
       boolean hasCreate = autoCreateTimeseries(backup);

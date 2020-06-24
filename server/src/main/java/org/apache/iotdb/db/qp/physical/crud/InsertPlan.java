@@ -23,12 +23,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -64,7 +64,7 @@ public class InsertPlan extends PhysicalPlan {
   private boolean inferType = false;
 
   // record the failed measurements
-  private List<String> failedMeasurements;
+  private Map<String, Exception> failedMeasurements;
 
   public InsertPlan() {
     super(false, OperatorType.INSERT);
@@ -180,11 +180,12 @@ public class InsertPlan extends PhysicalPlan {
     if (inferType) {
       for (int i = 0; i < schemas.length; i++) {
         if (schemas[i] == null) {
+          QueryProcessException exception = new QueryProcessException(new PathNotExistException(
+              deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markMeasurementInsertionFailed(i);
+            markMeasurementInsertionFailed(i, exception);
           } else {
-            throw new QueryProcessException(new PathNotExistException(
-                deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
+            throw exception;
           }
           continue;
         }
@@ -195,7 +196,7 @@ public class InsertPlan extends PhysicalPlan {
           logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
               measurements[i], values[i], types[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markMeasurementInsertionFailed(i);
+            markMeasurementInsertionFailed(i, e);
             schemas[i] = null;
           } else {
             throw e;
@@ -208,11 +209,11 @@ public class InsertPlan extends PhysicalPlan {
   /**
    * @param index failed measurement index
    */
-  public void markMeasurementInsertionFailed(int index) {
+  public void markMeasurementInsertionFailed(int index, Exception exception) {
     if (failedMeasurements == null) {
-      failedMeasurements = new ArrayList<>();
+      failedMeasurements = new HashMap<>();
     }
-    failedMeasurements.add(measurements[index]);
+    failedMeasurements.put(measurements[index], exception);
     measurements[index] = null;
     types[index] = null;
     values[index] = null;
@@ -373,7 +374,7 @@ public class InsertPlan extends PhysicalPlan {
     }
   }
 
-  public List<String> getFailedMeasurements() {
+  public Map<String, Exception> getFailedMeasurements() {
     return failedMeasurements;
   }
 
