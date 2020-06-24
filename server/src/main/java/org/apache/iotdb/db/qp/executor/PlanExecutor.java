@@ -504,16 +504,16 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowTimeseriesWithIndex(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = showTimeseriesWithIndex(showTimeSeriesPlan);
-    return getQueryDataSet(timeseriesList);
+    return getQueryDataSet(timeseriesList,showTimeSeriesPlan);
   }
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = showTimeseries(showTimeSeriesPlan);
-    return getQueryDataSet(timeseriesList);
+    return getQueryDataSet(timeseriesList,showTimeSeriesPlan);
   }
 
-  private QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList) {
+  private QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList,ShowTimeSeriesPlan showTimeSeriesPlan) {
     List<Path> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     paths.add(new Path(COLUMN_TIMESERIES));
@@ -538,7 +538,7 @@ public class PlanExecutor implements IPlanExecutor {
       dataTypes.add(TSDataType.TEXT);
     }
 
-    ListDataSet listDataSet = new ListDataSet(paths, dataTypes);
+    ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,showTimeSeriesPlan);
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());
@@ -548,9 +548,9 @@ public class PlanExecutor implements IPlanExecutor {
       updateRecord(record, result.getEncoding());
       updateRecord(record, result.getCompressor());
       updateRecord(record, result.getTagAndAttribute(), paths);
-      listDataSet.putRecord(record);
+      showTimeseriesDataSet.putRecord(record);
     }
-    return listDataSet;
+    return showTimeseriesDataSet;
   }
 
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
