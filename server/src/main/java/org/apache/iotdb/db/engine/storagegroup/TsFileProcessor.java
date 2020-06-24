@@ -574,7 +574,7 @@ public class TsFileProcessor {
   private File createNewVMFile() {
     File parent = tsFileResource.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        tsFileResource.getPath() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
+        tsFileResource.getFile().getName() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
             + VM_SUFFIX);
   }
 
