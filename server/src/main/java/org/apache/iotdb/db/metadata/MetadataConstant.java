@@ -28,6 +28,8 @@ public class MetadataConstant {
   public static final String METADATA_LOG = "mlog.txt";
   public static final String TAG_LOG = "tlog.txt";
   public static final String MTREE_SNAPSHOT = "mtree.snapshot";
+  public static final String MTREE_SNAPSHOT_TMP = "mtree.snapshot.tmp";
+
 
   public static final short MNODE_TYPE = 0;
   public static final short STORAGE_GROUP_MNODE_TYPE = 1;

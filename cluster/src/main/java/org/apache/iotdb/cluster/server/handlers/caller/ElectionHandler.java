@@ -93,7 +93,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           logger
               .info("{}: Election {} rejected from {}: The term of this node is no bigger than {}",
                   memberName, currTerm, voter, voterResp);
-          raftMember.stepDown(voterResp);
+          raftMember.stepDown(voterResp, false);
           // the election is rejected
           terminated.set(true);
           raftMember.getTerm().notifyAll();

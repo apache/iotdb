@@ -35,6 +35,7 @@ public class MLogWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
   private BufferedWriter writer;
+  private int lineNumber;
 
   public MLogWriter(String schemaDir, String logFileName) throws IOException {
     File metadataDir = SystemFileFactory.INSTANCE.getFile(schemaDir);
@@ -47,12 +48,9 @@ public class MLogWriter {
     }
 
     File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
-
-    FileWriter fileWriter;
-    fileWriter = new FileWriter(logFile, true);
+    FileWriter fileWriter = new FileWriter(logFile, true);
     writer = new BufferedWriter(fileWriter);
   }
-
 
   public void close() throws IOException {
     writer.close();
@@ -60,8 +58,8 @@ public class MLogWriter {
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws IOException {
     writer.write(String.format("%s,%s,%s,%s,%s", MetadataOperationType.CREATE_TIMESERIES,
-        plan.getPath().getFullPath(), plan.getDataType().serialize(), plan.getEncoding().serialize(),
-        plan.getCompressor().serialize()));
+        plan.getPath().getFullPath(), plan.getDataType().serialize(),
+        plan.getEncoding().serialize(), plan.getCompressor().serialize()));
 
     writer.write(",");
     if (plan.getProps() != null) {
@@ -85,45 +83,37 @@ public class MLogWriter {
     if (offset >= 0) {
       writer.write(String.valueOf(offset));
     }
-
-    writer.newLine();
-    writer.flush();
+    newLine();
   }
 
   public void deleteTimeseries(String path) throws IOException {
     writer.write(MetadataOperationType.DELETE_TIMESERIES + "," + path);
-    writer.newLine();
-    writer.flush();
+    newLine();
   }
 
   public void setStorageGroup(String storageGroup) throws IOException {
     writer.write(MetadataOperationType.SET_STORAGE_GROUP + "," + storageGroup);
-    writer.newLine();
-    writer.flush();
+    newLine();
   }
 
   public void deleteStorageGroup(String storageGroup) throws IOException {
     writer.write(MetadataOperationType.DELETE_STORAGE_GROUP + "," + storageGroup);
-    writer.newLine();
-    writer.flush();
+    newLine();
   }
 
   public void setTTL(String storageGroup, long ttl) throws IOException {
     writer.write(String.format("%s,%s,%s", MetadataOperationType.SET_TTL, storageGroup, ttl));
-    writer.newLine();
-    writer.flush();
+    newLine();
   }
 
   public void changeOffset(String path, long offset) throws IOException {
     writer.write(String.format("%s,%s,%s", MetadataOperationType.CHANGE_OFFSET, path, offset));
-    writer.newLine();
-    writer.flush();
+    newLine();
   }
 
   public void changeAlias(String path, String alias) throws IOException {
     writer.write(String.format("%s,%s,%s", MetadataOperationType.CHANGE_ALIAS, path, alias));
-    writer.newLine();
-    writer.flush();
+    newLine();
   }
 
   public static void upgradeMLog(String schemaDir, String logFileName) throws IOException {
@@ -158,7 +148,6 @@ public class MLogWriter {
         writer.write(buf.toString());
         writer.newLine();
         writer.flush();
-        
       }
     }
 
@@ -166,9 +155,18 @@ public class MLogWriter {
     if (!logFile.delete()) {
       throw new IOException("Deleting " + logFile + "failed.");
     }
-    
+
     // rename tmpLogFile to mlog
     FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
   }
-  
+
+  private void newLine() throws IOException {
+    writer.newLine();
+    writer.flush();
+    ++lineNumber;
+  }
+
+  int getLineNumber() {
+    return lineNumber;
+  }
 }

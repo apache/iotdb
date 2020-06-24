@@ -37,6 +37,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
@@ -115,6 +116,8 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof InsertPlan) {
       return splitAndRoutePlan((InsertPlan) plan);
+    } else if (plan instanceof AlterTimeSeriesPlan) {
+      return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
     }
     //the if clause can be removed after the program is stable
     if (PartitionUtils.isLocalNonQueryPlan(plan)) {
@@ -135,6 +138,13 @@ public class ClusterPlanRouter {
     return Collections.singletonMap(plan, partitionGroup);
   }
 
+  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(AlterTimeSeriesPlan plan)
+      throws MetadataException {
+    PartitionGroup partitionGroup =
+        partitionTable.partitionByPathTime(plan.getPath().getFullPath(), 0);
+    return Collections.singletonMap(plan, partitionGroup);
+  }
+
   public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(CreateTimeSeriesPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup =
@@ -151,7 +161,8 @@ public class ClusterPlanRouter {
     if (times.length == 0) {
       return Collections.emptyMap();
     }
-    long startTime = (times[0] / StorageEngine.getTimePartitionInterval()) * StorageEngine.getTimePartitionInterval();//included
+    long startTime = (times[0] / StorageEngine.getTimePartitionInterval()) * StorageEngine
+        .getTimePartitionInterval();//included
     long endTime = startTime + StorageEngine.getTimePartitionInterval();//excluded
     int startLoc = 0; //included
 
@@ -168,7 +179,8 @@ public class ClusterPlanRouter {
         startLoc = i;
         startTime = endTime;
         endTime =
-            (times[i] / StorageEngine.getTimePartitionInterval() + 1)  * StorageEngine.getTimePartitionInterval();
+            (times[i] / StorageEngine.getTimePartitionInterval() + 1) * StorageEngine
+                .getTimePartitionInterval();
       }
     }
     //the final range

@@ -1485,6 +1485,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       if (status != null) {
         return status;
       }
+    } else if (leader != null) {
+      return forwardPlan(plan, leader, null);
+    }
+
+    waitLeader();
+    // the leader can be itself after waiting
+    if (character == NodeCharacter.LEADER) {
+      TSStatus status = processPlanLocally(plan);
+      if (status != null) {
+        return status;
+      }
     }
     return forwardPlan(plan, leader, null);
   }
@@ -1506,6 +1517,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       return forwardPlan(globalGroups, plan);
     } catch (CheckConsistencyException e) {
       logger.debug("Forwarding global data plan {} to meta leader {}", plan, leader);
+      waitLeader();
       return forwardPlan(plan, leader, null);
     }
   }
