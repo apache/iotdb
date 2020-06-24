@@ -19,6 +19,8 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
+import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.MERGED_SUFFIX;
 
@@ -29,7 +31,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -42,6 +46,9 @@ import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
+import org.apache.iotdb.db.engine.flush.RecoverVmFlushTask;
+import org.apache.iotdb.db.engine.flush.VmLogAnalyzer;
+import org.apache.iotdb.db.engine.flush.VmLogger;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -577,7 +584,8 @@ public class TsFileProcessor {
   private File createNewVMFile() {
     File parent = tsFileResource.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        tsFileResource.getFile().getName() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
+        tsFileResource.getFile().getName() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System
+            .currentTimeMillis()
             + VM_SUFFIX);
   }
 
@@ -594,6 +602,59 @@ public class TsFileProcessor {
       seqFile.writeUnlock();
     }
   }
+
+  /**
+   * recover vm processor and files
+   */
+  public void recover() {
+    try {
+      File logFile = FSFactoryProducer.getFSFactory()
+          .getFile(tsFileResource.getFile().getParent(),
+              tsFileResource.getFile().getName() + VM_LOG_NAME);
+      VmLogAnalyzer logAnalyzer = new VmLogAnalyzer(logFile);
+      Pair<Set<String>, Long> result = logAnalyzer.analyze();
+      Set<String> deviceSet = result.left;
+      if (!deviceSet.isEmpty()) {
+        RecoverVmFlushTask recoverVmFlushTask = new RecoverVmFlushTask(writer, vmWriters,
+            storageGroupName,
+            new VmLogger(tsFileResource.getFile().getParent(), tsFileResource.getFile().getName()),
+            deviceSet, result.right);
+        recoverVmFlushTask.recoverVmToTsfile();
+        for (TsFileResource vmTsFileResource : vmTsFileResources) {
+          deleteVmFile(vmTsFileResource);
+        }
+        vmWriters.clear();
+        vmTsFileResources.clear();
+        logFile.delete();
+      } else {
+        File[] tmpFiles = FSFactoryProducer.getFSFactory()
+            .listFilesBySuffix(writer.getFile().getParent(), PATH_UPGRADE);
+        if (tmpFiles.length > 0) {
+          for (File file : tmpFiles) {
+            file.delete();
+          }
+        }
+        File[] mergedFiles = FSFactoryProducer.getFSFactory()
+            .listFilesBySuffix(writer.getFile().getParent(), MERGED_SUFFIX);
+        if (mergedFiles.length > 0) {
+          for (TsFileResource vmTsFileResource : vmTsFileResources) {
+            deleteVmFile(vmTsFileResource);
+          }
+          vmWriters.clear();
+          vmTsFileResources.clear();
+          for (File file : mergedFiles) {
+            File newVmFile = createNewVMFile();
+            file.renameTo(newVmFile);
+            vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
+            vmTsFileResources.add(new TsFileResource(newVmFile));
+          }
+        }
+      }
+    } catch (IOException e) {
+      logger.error("recover vm error ", e);
+    }
+  }
+
 
   /**
    * Take the first MemTable from the flushingMemTables and flush it. Called by a flush thread of
@@ -701,6 +762,10 @@ public class TsFileProcessor {
           }
           vmWriters.clear();
           vmTsFileResources.clear();
+          File logFile = FSFactoryProducer.getFSFactory()
+              .getFile(tsFileResource.getFile().getParent(),
+                  tsFileResource.getFile().getName() + VM_LOG_NAME);
+          logFile.delete();
         }
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",

@@ -92,7 +92,7 @@ public class IoTDBRecoverIT {
   }
 
   @Test
-  public void test() throws SQLException, IOException, StartupException {
+  public void mergeTest() throws SQLException, IOException, StartupException {
     String[] retArray = new String[]{
         "0,2",
         "0,4",
@@ -265,8 +265,76 @@ public class IoTDBRecoverIT {
 
   }
 
+  @Test
+  public void vmTest() throws SQLException {
+    try (Connection connection = DriverManager
+        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
+            "root");
+        Statement statement = connection.createStatement()) {
+      // prepare more data to flush
+      for (int i = 2000; i < 2500; i++) {
+        statement.execute(String
+            .format(Locale.ENGLISH, insertTemplate, i, i, i, (double) i, "\'" + i + "\'", "false"));
+      }
+      statement.execute("flush");
+    }
 
-  private void prepareData() throws SQLException {
+    // we want to recover
+    EnvironmentUtils.stopDaemon();
+    // wait for close
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    EnvironmentUtils.activeDaemon();
+
+    // count test
+    String[] retArray = new String[]{
+        "0,2001,2001,2001,2001",
+        "0,7500,7500,7500,7500"
+    };
+    try (Connection connection = DriverManager.
+        getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3) " +
+          "from root.vehicle.d0 where time >= 6000 and time <= 9000");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet();) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+              + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+              + "," + resultSet.getString(count(d0s3));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
+      }
+
+      hasResultSet = statement.execute("select count(s0),count(s1),count(s2),count(s3) " +
+          "from root.vehicle.d0");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TIMESTAMP_STR) + "," + resultSet.getString(count(d0s0))
+              + "," + resultSet.getString(count(d0s1)) + "," + resultSet.getString(count(d0s2))
+              + "," + resultSet.getString(count(d0s3));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  private void prepareData() {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",
             "root");

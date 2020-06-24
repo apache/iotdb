@@ -47,7 +47,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -71,6 +70,7 @@ public class MemTableFlushTask {
   private List<RestorableTsFileIOWriter> vmWriters;
   private RestorableTsFileIOWriter tmpWriter;
   private RestorableTsFileIOWriter currWriter;
+  private VmLogger vmLogger;
   private final boolean isVm;
   private final boolean isFull;
 
@@ -99,7 +99,6 @@ public class MemTableFlushTask {
     logger.debug("flush task of Storage group {} memtable {} is created ",
         storageGroup, memTable.getVersion());
   }
-
 
   /**
    * the function for flushing memtable.
@@ -140,6 +139,7 @@ public class MemTableFlushTask {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && !isVm) {
       // merge all vm files into the formal TsFile
       mergeWriter = writer;
+      vmLogger = new VmLogger(writer.getFile().getParent(), writer.getFile().getName());
     } else if (isFull) {
       // merge all vm files into a new vm file
       File tmpFile = createNewTmpFile();
@@ -170,6 +170,9 @@ public class MemTableFlushTask {
 
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
+    }
+    if (vmLogger != null) {
+      vmLogger.close();
     }
     try {
       if (isVm) {
@@ -283,6 +286,7 @@ public class MemTableFlushTask {
     File parent = writer.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
         "vm" + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
+            + IoTDBConstant.PATH_SEPARATOR
             + PATH_UPGRADE);
   }
 
@@ -376,20 +380,21 @@ public class MemTableFlushTask {
                   }
                   timeValuePairs.sort((o1, o2) -> (int) (o1.getTimestamp() - o2.getTimestamp()));
                   IChunkWriter chunkWriter = new ChunkWriterImpl(
-                      memTable.getMemTableMap().get(deviceId).get(measurementId).getSchema());
+                      deviceMeasurementMap.get(deviceId).get(measurementId));
                   for (TimeValuePair timeValuePair : timeValuePairs) {
                     writeTimeValuePair(timeValuePair, chunkWriter);
                   }
                   chunkWriter.writeToFileWriter(mergeWriter);
                 }
                 mergeWriter.endChunkGroup();
+                if (vmLogger != null) {
+                  vmLogger.logDevice(deviceId, mergeWriter.getPos());
+                }
               }
             } else {
-              for (String deviceId : memTable.getMemTableMap().keySet()) {
+              for (String deviceId : deviceMeasurementMap.keySet()) {
                 mergeWriter.startChunkGroup(deviceId);
-                for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
-                  MeasurementSchema measurementSchema = deviceMeasurementMap.get(deviceId)
-                      .get(measurementId);
+                for (String measurementId : deviceMeasurementMap.get(deviceId).keySet()) {
                   ChunkMetadata newChunkMetadata = null;
                   Chunk newChunk = null;
                   for (RestorableTsFileIOWriter vmWriter : vmWriters) {
@@ -430,6 +435,9 @@ public class MemTableFlushTask {
                   }
                 }
                 mergeWriter.endChunkGroup();
+                if (vmLogger != null) {
+                  vmLogger.logDevice(deviceId, mergeWriter.getPos());
+                }
               }
             }
           } else if (ioMessage instanceof IChunkWriter) {

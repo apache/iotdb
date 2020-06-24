@@ -604,6 +604,7 @@ public class StorageGroupProcessor {
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
             this::updateLatestFlushTimeCallback, true, writer, vmWriters);
+        tsFileProcessor.recover();
         workSequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
@@ -649,6 +650,7 @@ public class StorageGroupProcessor {
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
             this::unsequenceFlushCallback, false, writer, vmWriters);
+        tsFileProcessor.recover();
         workUnsequenceTsFileProcessors
             .put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
