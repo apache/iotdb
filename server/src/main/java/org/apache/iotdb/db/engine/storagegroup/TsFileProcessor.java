@@ -634,9 +634,14 @@ public class TsFileProcessor {
             }
           }
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-            Map<Path, MeasurementSchema> schemaMap = vmWriter.getKnownSchema();
-            for (Path path : schemaMap.keySet()) {
-              schemaMap.putIfAbsent(path, schemaMap.get(path));
+            Map<String, Map<String, List<ChunkMetadata>>> schemaMap = vmWriter
+                .getMetadatasForQuery();
+            for (String device : schemaMap.keySet()) {
+              for (String measurement : schemaMap.get(device).keySet()) {
+                List<ChunkMetadata> chunkMetadataList = schemaMap.get(device).get(measurement);
+                pathMeasurementSchemaMap.putIfAbsent(new Path(device, measurement),
+                    new MeasurementSchema(measurement, chunkMetadataList.get(0).getDataType()));
+              }
             }
           }
           if ((

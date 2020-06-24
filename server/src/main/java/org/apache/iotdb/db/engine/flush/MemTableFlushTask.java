@@ -317,20 +317,24 @@ public class MemTableFlushTask {
             RestorableTsFileIOWriter mergeWriter = ((MergeVmIoTask) ioMessage).mergeWriter;
             Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
             for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-              Map<Path, MeasurementSchema> pathMeasurementSchemaMap = vmWriter.getKnownSchema();
-              for (Path path : pathMeasurementSchemaMap.keySet()) {
-                Map<String, MeasurementSchema> measurementSchemaMap;
-                MeasurementSchema measurementSchema = pathMeasurementSchemaMap.get(path);
-                if (deviceMeasurementMap.containsKey(path.getDevice())) {
-                  measurementSchemaMap = deviceMeasurementMap
-                      .get(path.getDevice());
-                  measurementSchemaMap.putIfAbsent(path.getMeasurement(), measurementSchema);
-                } else {
-                  measurementSchemaMap = new HashMap<>();
-                  measurementSchemaMap
-                      .put(path.getMeasurement(), measurementSchema);
+              Map<String, Map<String, List<ChunkMetadata>>> pathMeasurementChunkMetadataMap = vmWriter
+                  .getMetadatasForQuery();
+              for (String device : pathMeasurementChunkMetadataMap.keySet()) {
+                for (String measurement : pathMeasurementChunkMetadataMap.get(device).keySet()) {
+                  Map<String, MeasurementSchema> measurementSchemaMap;
+                  ChunkMetadata chunkMetadata = pathMeasurementChunkMetadataMap.get(device)
+                      .get(measurement).get(0);
+                  MeasurementSchema measurementSchema = new MeasurementSchema(measurement,
+                      chunkMetadata.getDataType());
+                  if (deviceMeasurementMap.containsKey(device)) {
+                    measurementSchemaMap = deviceMeasurementMap.get(device);
+                    measurementSchemaMap.putIfAbsent(measurement, measurementSchema);
+                  } else {
+                    measurementSchemaMap = new HashMap<>();
+                    measurementSchemaMap.put(measurement, measurementSchema);
+                  }
+                  deviceMeasurementMap.put(device, measurementSchemaMap);
                 }
-                deviceMeasurementMap.put(path.getDevice(), measurementSchemaMap);
               }
             }
             if (mergeWriter.getFile().getParent().contains(UNSEQUENCE_FLODER_NAME)) {
