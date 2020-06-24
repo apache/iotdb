@@ -608,6 +608,7 @@ public class StorageGroupProcessor {
             vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback, true,
             writer, vmWriters);
+        tsFileProcessor.recover();
         workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
         tsFileResource.removeResourceFile();
