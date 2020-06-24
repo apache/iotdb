@@ -104,21 +104,15 @@ public class MemTableFlushTask {
       throws ExecutionException, InterruptedException, IOException {
     long start = System.currentTimeMillis();
     long sortTime = 0;
-//    if (isVm) {
-//      currWriter = vmWriters.get(vmWriters.size() - 1);
-//    } else {
-//      if (IoTDBDescriptor.getInstance().getConfig().isEnableVm()) {
-//        File file = createNewTmpFile();
-//        currWriter = new RestorableTsFileIOWriter(file);
-//        vmWriters.add(currWriter);
-//      } else {
-//        currWriter = writer;
-//      }
-//    }
+
     if (isVm) {
       currWriter = vmWriters.get(vmWriters.size() - 1);
     } else {
-      currWriter = writer;
+      if (!isFull) {
+        currWriter = vmWriters.get(vmWriters.size() - 1);
+      } else {
+        currWriter = writer;
+      }
     }
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.add(new StartFlushGroupIOTask(deviceId));

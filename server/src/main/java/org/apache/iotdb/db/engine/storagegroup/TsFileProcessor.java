@@ -672,7 +672,6 @@ public class TsFileProcessor {
           File newVmFile = createNewVMFile();
           tmpWriter.getFile().renameTo(newVmFile);
           vmTsFileResources.add(new TsFileResource(newVmFile));
-          tsFileResource.serialize();
           vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
         }
         if (config.isEnableVm() && !isVm) {
