@@ -1590,6 +1590,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
+    InsertPlan backup = null;
+    if(plan instanceof InsertPlan){
+      backup = new InsertPlan();
+      backup.setDeviceId(((InsertPlan)plan).getDeviceId());
+      String[] measurements = new String[((InsertPlan)plan).getMeasurements().length];
+      System.arraycopy(((InsertPlan)plan).getMeasurements(), 0, measurements, 0, measurements.length);
+      backup.setMeasurements(measurements);
+      Object[] values = new Object[((InsertPlan)plan).getValues().length]           ;
+      System.arraycopy(((InsertPlan)plan).getValues(), 0, values, 0, values.length);
+      backup.setValues(values);
+    }
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     if (planGroupMap.size() == 1) {
@@ -1681,6 +1692,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         }
       }
     }
+    if (plan instanceof InsertPlan
+        && status.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
+        && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+      // try to create timeseries
+      boolean hasCreate = autoCreateTimeseries(backup);
+      if (hasCreate) {
+        status = forwardPlan(planGroupMap, backup);
+      } else {
+        logger.error("{}, Cannot auto create timeseries.", thisNode);
+      }
+    }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
   }
@@ -1710,18 +1732,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         status = forwardPlan(plan, partitionGroup);
       }
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-        if (plan instanceof InsertPlan
-            && status.getCode() == TSStatusCode.STORAGE_ENGINE_ERROR.getStatusCode()
-            && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-          // try to create timeseries
-          boolean hasCreate = autoCreateTimeseries((InsertPlan) plan);
-          if (hasCreate) {
-            status = forwardPlan(plan, partitionGroup);
-            continue;
-          } else {
-            logger.error("{}, Cannot auto create timeseries.", thisNode);
-          }
-        }
         // execution failed, record the error message
         errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
             status.getCode(), partitionGroup.getHeader(),
