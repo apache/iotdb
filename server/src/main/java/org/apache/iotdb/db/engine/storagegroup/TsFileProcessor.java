@@ -646,17 +646,14 @@ public class TsFileProcessor {
               && flushingMemTables.size() == 1)) {
             isVm = false;
             isFull = false;
-            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                isVm,
-                isFull,
+            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
                 storageGroupName);
           } else {
             // merge vm files
             if (config.getMaxVmNum() <= vmTsFileResources.size()) {
               isVm = true;
               isFull = true;
-              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  isVm, isFull,
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true, true,
                   storageGroupName);
             } else {
               isVm = true;
@@ -664,14 +661,12 @@ public class TsFileProcessor {
               File newVmFile = createNewVMFile();
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
-              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-                  isVm, isFull,
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true, false,
                   storageGroupName);
             }
           }
         } else {
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters,
-              false, false,
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
               storageGroupName);
         }
         writer.mark();
@@ -688,7 +683,6 @@ public class TsFileProcessor {
           File newVmFile = createNewVMFile();
           tmpWriter.getFile().renameTo(newVmFile);
           vmTsFileResources.add(new TsFileResource(newVmFile));
-          tsFileResource.serialize();
           vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
         }
         if (config.isEnableVm() && !isVm) {
@@ -899,17 +893,20 @@ public class TsFileProcessor {
 
       List<List<ChunkMetadata>> rightResult = new ArrayList<>();
 
-      // get unseal tsfile data
+      // get unseal tsfile data and its read lock
       List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);
+      tsFileResource.readLock();
       QueryUtils.modifyChunkMetaData(chunkMetadataList,
           modifications);
       chunkMetadataList.removeIf(context::chunkNotSatisfy);
       rightResult.add(chunkMetadataList);
 
       // get vm tsfile data
-      for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+      for (int i = 0; i < vmWriters.size(); i++) {
+        RestorableTsFileIOWriter vmWriter = vmWriters.get(i);
         chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType);
+        vmTsFileResources.get(0).readLock();
         QueryUtils.modifyChunkMetaData(chunkMetadataList,
             modifications);
         chunkMetadataList.removeIf(context::chunkNotSatisfy);
