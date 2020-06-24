@@ -80,7 +80,7 @@ statement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
-    | DELETE PARTITION prefixPath (INT_LIST=INT(COMMA INT)*) #deletePartition
+    | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA

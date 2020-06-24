@@ -1631,11 +1631,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     DeletePartitionOperator deletePartitionOperator = new DeletePartitionOperator(
         SQLConstant.TOK_DELETE_PARTITION);
     deletePartitionOperator.setStorageGroupName(ctx.prefixPath().getText());
-    String intListStr = ctx.INT_LIST.getText();
-    String[] split = intListStr.split(",");
     Set<Long> idSet = new HashSet<>();
-    for (String s : split) {
-      idSet.add(Long.parseLong(s));
+    for (TerminalNode terminalNode : ctx.INT()) {
+      idSet.add(Long.parseLong(terminalNode.getText()));
     }
     deletePartitionOperator.setPartitionIds(idSet);
     initializedOperator = deletePartitionOperator;
