@@ -916,7 +916,7 @@ public class TsFileProcessor {
       for (int i = 0; i < vmWriters.size(); i++) {
         RestorableTsFileIOWriter vmWriter = vmWriters.get(i);
         chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType);
-        vmTsFileResources.get(0).readLock();
+        vmTsFileResources.get(i).readLock();
         QueryUtils.modifyChunkMetaData(chunkMetadataList,
             modifications);
         chunkMetadataList.removeIf(context::chunkNotSatisfy);

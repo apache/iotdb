@@ -540,7 +540,6 @@ public class TsFileResource {
       tsFileLock.readUnlock();
     } else {
       originTsFileResource.readUnlock();
-      ;
     }
   }
 
