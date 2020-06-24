@@ -26,6 +26,7 @@ public class TsFileConstant {
   public static final String VM_SUFFIX = ".vm";
   public static final String PATH_ROOT = "root";
   public static final String PATH_UPGRADE = "tmp";
+  public static final String MERGED_SUFFIX = ".merged";
   public static final String PATH_SEPARATOR = ".";
   public static final String PATH_SEPARATER_NO_REGEX = "\\.";
 

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.flush;
 import static org.apache.iotdb.db.conf.IoTDBConstant.UNSEQUENCE_FLODER_NAME;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTimeValuePair;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;

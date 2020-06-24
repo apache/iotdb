@@ -22,9 +22,12 @@ import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.MERGED_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -520,6 +523,16 @@ public class StorageGroupProcessor {
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
           if (partitionFolder.isDirectory()) {
+            for (File tmpFile : fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(),
+                PATH_UPGRADE)) {
+              Files.delete(tmpFile.toPath());
+            }
+            for (File mergedFile : fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(),
+                MERGED_SUFFIX)) {
+              File newVMFile = FSFactoryProducer.getFSFactory().getFile(mergedFile.getParent(),
+                  mergedFile.getName().split(MERGED_SUFFIX)[0]);
+              mergedFile.renameTo(newVMFile);
+            }
             Collections.addAll(vmFiles,
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX));
           }

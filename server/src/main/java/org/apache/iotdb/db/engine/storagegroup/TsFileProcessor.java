@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.MERGED_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -663,13 +664,17 @@ public class TsFileProcessor {
         }
         RestorableTsFileIOWriter tmpWriter = flushTask.syncFlushMemTable();
         if (isVm && isFull && tmpWriter != null) {
+          File tmpFile = tmpWriter.getFile();
+          File newVmFile = createNewVMFile();
+          File mergedFile = FSFactoryProducer.getFSFactory().getFile(newVmFile.getPath()
+              + MERGED_SUFFIX);
+          tmpFile.renameTo(mergedFile);
           for (TsFileResource vmTsFileResource : vmTsFileResources) {
             deleteVmFile(vmTsFileResource);
           }
           vmWriters.clear();
           vmTsFileResources.clear();
-          File newVmFile = createNewVMFile();
-          tmpWriter.getFile().renameTo(newVmFile);
+          mergedFile.renameTo(newVmFile);
           vmTsFileResources.add(new TsFileResource(newVmFile));
           tsFileResource.serialize();
           vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
