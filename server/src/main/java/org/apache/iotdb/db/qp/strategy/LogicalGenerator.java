@@ -1062,8 +1062,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     List<String> measurementList = new ArrayList<>();
     for (NodeNameWithoutStarContext nodeNameWithoutStar : nodeNamesWithoutStar) {
       String measurement = nodeNameWithoutStar.getText();
-      if (measurement.contains("\"") || measurement.contains("'")) {
+      if (measurement.contains("'")) {
         measurement = measurement.substring(1, measurement.length() - 1);
+        measurement = TsFileConstant.DOUBLE_QUOTATION + measurement + TsFileConstant.DOUBLE_QUOTATION;
       }
       measurementList.add(measurement);
     }

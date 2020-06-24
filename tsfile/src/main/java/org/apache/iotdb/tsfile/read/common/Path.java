@@ -72,8 +72,7 @@ public class Path implements Serializable, Comparable<Path> {
     }
     this.device = device;
     this.measurement = measurement;
-    this.fullPath = device + TsFileConstant.PATH_SEPARATOR
-        + (measurement.contains(TsFileConstant.PATH_SEPARATOR) ? "\"" + measurement + "\"" : measurement);
+    this.fullPath = device + TsFileConstant.PATH_SEPARATOR + measurement;
   }
 
   /**
@@ -94,8 +93,8 @@ public class Path implements Serializable, Comparable<Path> {
     if ((i != 2 && i != 0) || (j != 2 && j != 0)) {
       throw new IllegalArgumentException("input pathSc single/double quotes error, not in pair or more than one pair!");
     }
-    if ((i == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\""))
-        || (j == 2 && pathSc.length() - 1 != pathSc.lastIndexOf("\'"))) {
+    if ((i == 2 && pathSc.length() - 1 != pathSc.lastIndexOf('\"'))
+        || (j == 2 && pathSc.length() - 1 != pathSc.lastIndexOf('\''))) {
       throw new IllegalArgumentException("input pathSc contains quoted string in the middle!");
     }
     String[] subStrs;
@@ -105,11 +104,11 @@ public class Path implements Serializable, Comparable<Path> {
       } else {
         subStrs = pathSc.split("\'");
       }
+      measurement = TsFileConstant.DOUBLE_QUOTATION + subStrs[1] + TsFileConstant.DOUBLE_QUOTATION;
       device = subStrs[0];
       if (!device.equals("")) {
         device = device.substring(0, subStrs[0].length() - 1);
       }
-      measurement = subStrs[1];
       fullPath = pathSc;
     } else {
       StringContainer sc = new StringContainer(pathSc.split(TsFileConstant.PATH_SEPARATER_NO_REGEX),

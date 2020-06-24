@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
@@ -29,16 +30,22 @@ public class MetaUtils {
   public static final String PATH_SEPARATOR = "\\.";
 
   private MetaUtils() {
-
+    throw new IllegalStateException("Utility class");
   }
 
   public static String[] getNodeNames(String path) {
     String[] nodeNames;
     if (path.contains("\"") || path.contains("'")) {
       // e.g., root.sg.d1."s1.int"  ->  root.sg.d1, s1.int
-      String[] measurementDeviceNode = path.trim().replace("'", "\"").split("\"");
-      // s1.int
-      String measurement = measurementDeviceNode[1];
+      String measurement;
+      String[] measurementDeviceNode;
+      if (path.contains("\"")) {
+        measurementDeviceNode = path.split("\"");
+      } else {
+        measurementDeviceNode = path.split("\'");
+      }
+      // "s1.int"
+      measurement = TsFileConstant.DOUBLE_QUOTATION + measurementDeviceNode[1] + TsFileConstant.DOUBLE_QUOTATION;
       // root.sg.d1 -> root, sg, d1
       String[] deviceNodeName = measurementDeviceNode[0].split(PATH_SEPARATOR);
       int nodeNumber = deviceNodeName.length + 1;
