@@ -125,16 +125,17 @@ public class ChunkMetadataCache {
     }
 
     AccountableString key = new AccountableString(filePath + IoTDBConstant.PATH_SEPARATOR
-        + seriesPath.getDevice() + seriesPath.getMeasurement());
+        + seriesPath.getDevice() + IoTDBConstant.PATH_SEPARATOR + seriesPath.getMeasurement());
 
     cacheRequestNum.incrementAndGet();
 
     lock.readLock().lock();
     try {
-      if (lruCache.containsKey(key)) {
+      List<ChunkMetadata> chunkMetadataList = lruCache.get(key);
+      if (chunkMetadataList != null) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return new ArrayList<>(lruCache.get(key));
+        return new ArrayList<>(chunkMetadataList);
       }
     } finally {
       lock.readLock().unlock();
@@ -142,10 +143,11 @@ public class ChunkMetadataCache {
 
     lock.writeLock().lock();
     try {
-      if (lruCache.containsKey(key)) {
+      List<ChunkMetadata> chunkMetadataList = lruCache.get(key);
+      if (chunkMetadataList != null) {
         printCacheLog(true);
         cacheHitNum.incrementAndGet();
-        return new ArrayList<>(lruCache.get(key));
+        return new ArrayList<>(chunkMetadataList);
       }
       printCacheLog(false);
       // bloom filter part

@@ -46,8 +46,11 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -64,7 +67,6 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.slf4j.Logger;
@@ -111,7 +113,7 @@ public class StorageEngine implements IService {
    * TimestampPrecision
    */
   @ServerConfigConsistent
-  private static long timePartitionInterval;
+  private static long timePartitionInterval = -1;
 
   /**
    * whether enable data partition
@@ -125,26 +127,13 @@ public class StorageEngine implements IService {
     logger = LoggerFactory.getLogger(StorageEngine.class);
     systemDir = FilePathUtils.regularizePath(config.getSystemDir()) + "storage_groups";
 
+    // build time Interval to divide time partition
     if (!enablePartition) {
       timePartitionInterval = Long.MAX_VALUE;
     } else {
-      // build time Interval to divide time partition
-      String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
-      switch (timePrecision) {
-        case "ns":
-          timePartitionInterval = IoTDBDescriptor.getInstance().
-              getConfig().getPartitionInterval() * 1000_000_000L;
-          break;
-        case "us":
-          timePartitionInterval = IoTDBDescriptor.getInstance().
-              getConfig().getPartitionInterval() * 1000_000L;
-          break;
-        default:
-          timePartitionInterval = IoTDBDescriptor.getInstance().
-              getConfig().getPartitionInterval() * 1000;
-          break;
-      }
+      initTimePartition();
     }
+
     // create systemDir
     try {
       FileUtils.forceMkdir(SystemFileFactory.INSTANCE.getFile(systemDir));
@@ -184,6 +173,27 @@ public class StorageEngine implements IService {
     recoveryThreadPool.shutdown();
   }
 
+  private static void initTimePartition() {
+    timePartitionInterval = convertMilliWithPrecision(IoTDBDescriptor.getInstance().
+        getConfig().getPartitionInterval() * 1000L);
+  }
+
+  public static long convertMilliWithPrecision(long milliTime) {
+    long result = milliTime;
+    String timePrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    switch (timePrecision) {
+      case "ns":
+        result = milliTime * 1000_000L;
+        break;
+      case "us":
+        result = milliTime * 1000L;
+        break;
+      default:
+        break;
+    }
+    return result;
+  }
+
   @Override
   public void start() {
     ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
@@ -212,6 +222,26 @@ public class StorageEngine implements IService {
         ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
       } catch (InterruptedException e) {
         logger.warn("TTL check thread still doesn't exit after 30s");
+      }
+    }
+    recoveryThreadPool.shutdownNow();
+    this.reset();
+  }
+
+  @Override
+  public void shutdown(long millseconds) throws ShutdownException {
+    try {
+      forceCloseAllProcessor();
+    } catch (TsFileProcessorException e) {
+      throw new ShutdownException(e);
+    }
+    if (ttlCheckThread != null) {
+      ttlCheckThread.shutdownNow();
+      try {
+        ttlCheckThread.awaitTermination(30, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        logger.warn("TTL check thread still doesn't exit after 30s");
+        Thread.currentThread().interrupt();
       }
     }
     recoveryThreadPool.shutdownNow();
@@ -281,20 +311,19 @@ public class StorageEngine implements IService {
    *
    * @return result of each row
    */
-  public TSStatus[] insertTablet(InsertTabletPlan insertTabletPlan) throws StorageEngineException {
+  public void insertTablet(InsertTabletPlan insertTabletPlan)
+      throws StorageEngineException, BatchInsertionException {
     StorageGroupProcessor storageGroupProcessor;
     try {
       storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
     } catch (StorageEngineException e) {
-      logger.warn("get StorageGroupProcessor of device {} failed, because {}",
-          insertTabletPlan.getDeviceId(),
-          e.getMessage(), e);
-      throw new StorageEngineException(e);
+      throw new StorageEngineException(String.format("Get StorageGroupProcessor of device %s "
+          + "failed", insertTabletPlan.getDeviceId()), e);
     }
 
     // TODO monitor: update statistics
     try {
-      return storageGroupProcessor.insertTablet(insertTabletPlan);
+      storageGroupProcessor.insertTablet(insertTabletPlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -307,6 +336,13 @@ public class StorageEngine implements IService {
     logger.info("Start closing all storage group processor");
     for (StorageGroupProcessor processor : processorMap.values()) {
       processor.syncCloseAllWorkingTsFileProcessors();
+    }
+  }
+
+  public void forceCloseAllProcessor() throws TsFileProcessorException {
+    logger.info("Start closing all storage group processor");
+    for (StorageGroupProcessor processor : processorMap.values()) {
+      processor.forceCloseAllWorkingTsFileProcessors();
     }
   }
 
@@ -329,6 +365,32 @@ public class StorageEngine implements IService {
           for (TsFileProcessor tsfileProcessor : new ArrayList<>(
               processor.getWorkUnsequenceTsFileProcessor())) {
             processor.asyncCloseOneTsFileProcessor(false, tsfileProcessor);
+          }
+        }
+      } finally {
+        processor.writeUnlock();
+      }
+    } else {
+      throw new StorageGroupNotSetException(storageGroupName);
+    }
+  }
+
+  public void asyncCloseProcessor(String storageGroupName, long partitionId, boolean isSeq)
+      throws StorageGroupNotSetException {
+    StorageGroupProcessor processor = processorMap.get(storageGroupName);
+    if (processor != null) {
+      logger.info("async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
+          storageGroupName, isSeq, partitionId);
+      processor.writeLock();
+      // to avoid concurrent modification problem, we need a new array list
+      List<TsFileProcessor> processors = isSeq ?
+          new ArrayList<>(processor.getWorkSequenceTsFileProcessors()) :
+          new ArrayList<>(processor.getWorkUnsequenceTsFileProcessor());
+      try {
+        for (TsFileProcessor tsfileProcessor : processors) {
+          if (tsfileProcessor.getTimeRangeId() == partitionId) {
+            processor.asyncCloseOneTsFileProcessor(isSeq, tsfileProcessor);
+            break;
           }
         }
       } finally {
@@ -530,10 +592,24 @@ public class StorageEngine implements IService {
   }
 
   public static long getTimePartitionInterval() {
+    if (timePartitionInterval == -1) {
+      initTimePartition();
+    }
     return timePartitionInterval;
   }
 
   public static long getTimePartition(long time) {
     return enablePartition ? time / timePartitionInterval : 0;
+  }
+
+  /**
+   * Set the version of given partition to newMaxVersion if it is larger than the current version.
+   * @param storageGroup
+   * @param partitionId
+   * @param newMaxVersion
+   */
+  public void setPartitionVersionToMax(String storageGroup, long partitionId, long newMaxVersion)
+      throws StorageEngineException {
+    getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
 }

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.cache;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -93,40 +92,33 @@ public class ChunkCache {
 
     try {
       lock.readLock().lock();
-      if (lruCache.containsKey(chunkMetaData)) {
+      Chunk chunk = lruCache.get(chunkMetaData);
+      if (chunk != null) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        Chunk chunk = lruCache.get(chunkMetaData);
         return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
       }
     } finally {
       lock.readLock().unlock();
     }
 
-    Lock cacheLock = lock.writeLock();
+    lock.writeLock().lock();
     try {
-      cacheLock.lock();
-      if (lruCache.containsKey(chunkMetaData)) {
-        try {
-          cacheLock = lock.readLock();
-          cacheLock.lock();
-        } finally {
-          lock.writeLock().unlock();
-        }
+      Chunk chunk = lruCache.get(chunkMetaData);
+      if (chunk != null) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        Chunk chunk = lruCache.get(chunkMetaData);
         return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
       }
       printCacheLog(false);
-      Chunk chunk = reader.readMemChunk(chunkMetaData);
+      chunk = reader.readMemChunk(chunkMetaData);
       lruCache.put(chunkMetaData, chunk);
       return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", reader.getFileName());
       throw e;
     } finally {
-      cacheLock.unlock();
+      lock.writeLock().unlock();
     }
 
   }

@@ -718,7 +718,8 @@ public class IoTDBSessionIT {
     session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
   }
 
-  private void insertRecordsByStr(String deviceId, long startTime, long endTime, long recordSplitTime) throws IoTDBConnectionException, BatchExecutionException {
+  private void insertRecordsByStr(String deviceId, long startTime, long endTime,
+      long recordSplitTime) throws IoTDBConnectionException, BatchExecutionException {
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");

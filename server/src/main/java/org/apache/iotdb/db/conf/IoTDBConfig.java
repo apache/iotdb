@@ -287,6 +287,11 @@ public class IoTDBConfig {
   private int mManagerCacheSize = 400000;
 
   /**
+   * Cache size of {@code checkAndGetDataTypeCache} in {@link MManager}.
+   */
+  private int mRemoteSchemaCacheSize = 100000;
+
+  /**
    * Is external sort enable.
    */
   private boolean enableExternalSort = true;
@@ -379,6 +384,11 @@ public class IoTDBConfig {
    * register time series as which type when receiving a floating number string "6.7"
    */
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
+
+  /**
+   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT
+   */
+  private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
   /**
    * Storage group level when creating schema automatically is enabled
@@ -558,10 +568,20 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition. If disabled, all data belongs to partition 0
    */
   private boolean enablePartition = false;
+
+  /**
+   * Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree
+   */
+  private int mtreeSnapshotInterval = 100000;
+
+  /**
+   * Threshold interval time of MTree modification. If the last modification time is less than this
+   * threshold, MTree snapshot will not be created. Unit: second. Default: 1 hour(3600 seconds)
+   */
+  private int mtreeSnapshotThresholdTime = 3600;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second
@@ -616,6 +636,22 @@ public class IoTDBConfig {
 
   public void setEnablePartition(boolean enablePartition) {
     this.enablePartition = enablePartition;
+  }
+
+  public int getMtreeSnapshotInterval() {
+    return mtreeSnapshotInterval;
+  }
+
+  public void setMtreeSnapshotInterval(int mtreeSnapshotInterval) {
+    this.mtreeSnapshotInterval = mtreeSnapshotInterval;
+  }
+
+  public int getMtreeSnapshotThresholdTime() {
+    return mtreeSnapshotThresholdTime;
+  }
+
+  public void setMtreeSnapshotThresholdTime(int mtreeSnapshotThresholdTime) {
+    this.mtreeSnapshotThresholdTime = mtreeSnapshotThresholdTime;
   }
 
   public long getPartitionInterval() {
@@ -932,11 +968,19 @@ public class IoTDBConfig {
     this.mManagerCacheSize = mManagerCacheSize;
   }
 
+  public int getmRemoteSchemaCacheSize() {
+    return mRemoteSchemaCacheSize;
+  }
+
+  public void setmRemoteSchemaCacheSize(int mRemoteSchemaCacheSize) {
+    this.mRemoteSchemaCacheSize = mRemoteSchemaCacheSize;
+  }
+
   public boolean isSyncEnable() {
     return isSyncEnable;
   }
 
-  void setSyncEnable(boolean syncEnable) {
+  public void setSyncEnable(boolean syncEnable) {
     isSyncEnable = syncEnable;
   }
 
@@ -1193,7 +1237,8 @@ public class IoTDBConfig {
     return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
@@ -1308,6 +1353,21 @@ public class IoTDBConfig {
   public void setFloatingStringInferType(
       TSDataType floatingNumberStringInferType) {
     this.floatingStringInferType = floatingNumberStringInferType;
+  }
+
+  public TSDataType getNanStringInferType() {
+    return nanStringInferType;
+  }
+
+  public void setNanStringInferType(TSDataType nanStringInferType) {
+    if (nanStringInferType != TSDataType.DOUBLE &&
+        nanStringInferType != TSDataType.FLOAT &&
+        nanStringInferType != TSDataType.TEXT) {
+      throw new IllegalArgumentException(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
+              + nanStringInferType);
+    }
+    this.nanStringInferType = nanStringInferType;
   }
 
   public int getDefaultStorageGroupLevel() {

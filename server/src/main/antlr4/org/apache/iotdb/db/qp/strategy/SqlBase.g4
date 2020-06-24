@@ -69,13 +69,14 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | SHOW TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
+    | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
+    | SHOW MERGE #showMergeStatus
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
-    | LOAD CONFIGURATION #loadConfigurationStatement
+    | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
@@ -394,6 +395,7 @@ dateFormat
 
 constant
     : dateExpression
+    | NaN
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
@@ -852,6 +854,11 @@ RENAME
     : R E N A M E
     ;
 
+GLOBAL
+  : G L O B A L
+  | G
+  ;
+
 FULL
     : F U L L
     ;
@@ -871,6 +878,11 @@ TRUE
 FALSE
     : F A L S E
     ;
+
+LATEST
+    : L A T E S T
+    ;
+
 //============================
 // End of the keywords list
 //============================
@@ -931,6 +943,8 @@ L_BRACKET : '{';
 R_BRACKET : '}';
 
 UNDERLINE : '_';
+
+NaN : 'NaN';
 
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL

@@ -208,6 +208,14 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Show Merge Status Statement
+
+```
+SHOW MERGE
+Eg: IoTDB > SHOW MERGE
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 * Count Timeseries Statement
 
 ```

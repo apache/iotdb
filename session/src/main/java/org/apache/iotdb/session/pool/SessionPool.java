@@ -271,7 +271,7 @@ public class SessionPool {
    * @param tablet data batch
    */
   public void insertTablet(Tablet tablet)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     insertTablet(tablet, false);
   }
 
@@ -325,7 +325,7 @@ public class SessionPool {
    * @param sorted whether times in Tablet are in ascending order
    */
   public void insertTablet(Tablet tablet, boolean sorted)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -335,7 +335,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }
@@ -349,7 +349,7 @@ public class SessionPool {
    * @param tablets multiple batch
    */
   public void insertTablets(Map<String, Tablet> tablets)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     insertTablets(tablets, false);
   }
 
@@ -378,7 +378,7 @@ public class SessionPool {
    * @param tablets multiple batch
    */
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -388,7 +388,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }
@@ -404,7 +404,7 @@ public class SessionPool {
    */
   public void insertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList) throws IoTDBConnectionException, BatchExecutionException {
+      List<List<Object>> valuesList) throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -414,7 +414,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }
@@ -457,7 +457,7 @@ public class SessionPool {
    */
   public void insertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -467,7 +467,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }
@@ -621,7 +621,7 @@ public class SessionPool {
    * this method should be used to test other time cost in client
    */
   public void testInsertTablet(Tablet tablet)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -631,7 +631,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }
@@ -643,7 +643,7 @@ public class SessionPool {
    * this method should be used to test other time cost in client
    */
   public void testInsertTablets(Map<String, Tablet> tablets)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -653,7 +653,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }
@@ -666,7 +666,7 @@ public class SessionPool {
    */
   public void testInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -676,7 +676,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }
@@ -690,7 +690,7 @@ public class SessionPool {
   public void testInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -700,7 +700,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }
@@ -942,7 +942,7 @@ public class SessionPool {
       List<TSEncoding> encodings, List<CompressionType> compressors,
       List<Map<String, String>> propsList, List<Map<String, String>> tagsList,
       List<Map<String, String>> attributesList, List<String> measurementAliasList)
-      throws IoTDBConnectionException, BatchExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException {
     for (int i = 0; i < RETRY; i++) {
       Session session = getSession();
       try {
@@ -953,7 +953,7 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (BatchExecutionException e) {
+      } catch (StatementExecutionException e) {
         putBack(session);
         throw e;
       }

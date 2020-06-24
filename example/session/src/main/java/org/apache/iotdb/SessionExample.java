@@ -202,7 +202,7 @@ public class SessionExample {
     }
   }
 
-  private static void insertRecords() throws IoTDBConnectionException, BatchExecutionException {
+  private static void insertRecords() throws IoTDBConnectionException, StatementExecutionException {
     String deviceId = "root.sg1.d1";
     List<String> measurements = new ArrayList<>();
     measurements.add("s1");
@@ -278,7 +278,7 @@ public class SessionExample {
    *
    * Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
    */
-  private static void insertTablet() throws IoTDBConnectionException, BatchExecutionException {
+  private static void insertTablet() throws IoTDBConnectionException, StatementExecutionException {
     // The schema of sensors of one device
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
@@ -322,7 +322,7 @@ public class SessionExample {
     }
   }
 
-  private static void insertTablets() throws IoTDBConnectionException, BatchExecutionException {
+  private static void insertTablets() throws IoTDBConnectionException, StatementExecutionException {
     // The schema of sensors of one device
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
