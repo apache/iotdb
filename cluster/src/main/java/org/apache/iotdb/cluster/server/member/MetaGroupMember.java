@@ -1557,7 +1557,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
               new Path(storageGroupName));
           TSStatus setStorageGroupResult = processNonPartitionedMetaPlan(setStorageGroupPlan);
-          if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+          if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
+          setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
             throw new MetadataException(
                 String.format("Status Code: %d, failed to set storage group ",
                     setStorageGroupResult.getCode(), storageGroupName)
