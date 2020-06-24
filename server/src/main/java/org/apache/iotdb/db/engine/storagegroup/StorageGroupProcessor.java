@@ -1371,6 +1371,8 @@ public class StorageGroupProcessor {
 
       // write log to impacted working TsFileProcessors
       logDeletion(startTime, endTime, deviceId, measurementId);
+      // delete Last cache record if necessary
+      tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
 
       Path fullPath = new Path(deviceId, measurementId);
       Deletion deletion = new Deletion(fullPath, 0, startTime, endTime);
@@ -1442,6 +1444,28 @@ public class StorageGroupProcessor {
 
       // add a record in case of rollback
       updatedModFiles.add(tsFileResource.getModFile());
+    }
+  }
+
+  private void tryToDeleteLastCache(String deviceId, String measurementId, long startTime,
+      long endTime) throws WriteProcessException {
+    MNode node = null;
+    try {
+      MManager manager = MManager.getInstance();
+      node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+
+      MNode measurementNode = manager.getChild(node, measurementId);
+      if (measurementNode != null) {
+        long lastTime = ((MeasurementMNode) measurementNode).getCachedLast().getTimestamp();
+        if (startTime <= lastTime && lastTime <= endTime)
+        ((MeasurementMNode) measurementNode).resetCache();
+      }
+    } catch (MetadataException e) {
+      throw new WriteProcessException(e);
+    } finally {
+      if (node != null) {
+        node.readUnlock();
+      }
     }
   }
 

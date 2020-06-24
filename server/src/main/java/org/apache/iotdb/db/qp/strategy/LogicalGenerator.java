@@ -1541,7 +1541,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     FilterOperator filterOperator = operator.getFilterOperator();
     if (!filterOperator.isLeaf() && filterOperator.getTokenIntType() != SQLConstant.KW_AND) {
       throw new SQLParserException(
-          "For delete command, where clause must be like : time > XXX and time <= XXX");
+          "For delete command, where clause can only contain atomic expressions like : "
+              + "time > XXX, time <= XXX, or And with two atomic expressions");
     }
 
     if (filterOperator.isLeaf()) {
@@ -1553,7 +1554,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     FilterOperator rOperator = children.get(1);
     if (!lOperator.isLeaf() || !rOperator.isLeaf()) {
       throw new SQLParserException(
-          "For delete command, where clause must be like : time > XXX and time <= XXX");
+          "For delete command, where clause can only contain atomic expressions like : "
+              + "time > XXX, time <= XXX, or And with two atomic expressions");
     }
 
     Pair<Long, Long> leftOpRange = calcOperatorRange(lOperator);
@@ -1578,7 +1580,8 @@ public class LogicalGenerator extends SqlBaseBaseListener {
         return new Pair<>(time, time);
       default:
         throw new SQLParserException(
-            "For delete command, where clause must be like : time > XXX and time <= XXX");
+            "For delete command, where clause can only contain atomic expressions like : "
+                + "time > XXX, time <= XXX, or And with two atomic expressions");
     }
   }
 
