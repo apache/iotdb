@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -135,7 +136,6 @@ public class MemTableFlushTask {
       encodingTaskQueue.add(new EndChunkGroupIoTask());
     }
     RestorableTsFileIOWriter mergeWriter = null;
-
     if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && !isVm) {
       // merge all vm files into the formal TsFile
       mergeWriter = writer;
@@ -314,10 +314,34 @@ public class MemTableFlushTask {
             currWriter.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
           } else if (ioMessage instanceof MergeVmIoTask) {
             RestorableTsFileIOWriter mergeWriter = ((MergeVmIoTask) ioMessage).mergeWriter;
+            Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
+            for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+              Map<String, Map<String, List<ChunkMetadata>>> pathMeasurementChunkMetadataMap = vmWriter
+                  .getMetadatasForQuery();
+              for (String device : pathMeasurementChunkMetadataMap.keySet()) {
+                for (String measurement : pathMeasurementChunkMetadataMap.get(device).keySet()) {
+                  Map<String, MeasurementSchema> measurementSchemaMap;
+                  ChunkMetadata chunkMetadata = pathMeasurementChunkMetadataMap.get(device)
+                      .get(measurement).get(0);
+                  MeasurementSchema measurementSchema = new MeasurementSchema(measurement,
+                      chunkMetadata.getDataType());
+                  if (deviceMeasurementMap.containsKey(device)) {
+                    measurementSchemaMap = deviceMeasurementMap.get(device);
+                    measurementSchemaMap.putIfAbsent(measurement, measurementSchema);
+                  } else {
+                    measurementSchemaMap = new HashMap<>();
+                    measurementSchemaMap.put(measurement, measurementSchema);
+                  }
+                  deviceMeasurementMap.put(device, measurementSchemaMap);
+                }
+              }
+            }
             if (mergeWriter.getFile().getParent().contains(UNSEQUENCE_FLODER_NAME)) {
-              for (String deviceId : memTable.getMemTableMap().keySet()) {
+              for (String deviceId : deviceMeasurementMap.keySet()) {
                 mergeWriter.startChunkGroup(deviceId);
-                for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
+                for (String measurementId : deviceMeasurementMap.get(deviceId).keySet()) {
+                  MeasurementSchema measurementSchema = deviceMeasurementMap.get(deviceId)
+                      .get(measurementId);
                   List<TimeValuePair> timeValuePairs = new ArrayList<>();
                   for (RestorableTsFileIOWriter vmWriter : vmWriters) {
                     TsFileSequenceReader reader = tsFileSequenceReaderMap
@@ -336,8 +360,9 @@ public class MemTableFlushTask {
                     if (reader == null) {
                       continue;
                     }
-                    List<ChunkMetadata> chunkMetadataList = vmWriter.getMetadatasForQuery()
-                        .get(deviceId).get(measurementId);
+                    List<ChunkMetadata> chunkMetadataList = vmWriter
+                        .getVisibleMetadataList(deviceId, measurementId,
+                            measurementSchema.getType());
                     for (ChunkMetadata chunkMetadata : chunkMetadataList) {
                       IChunkReader chunkReader = new ChunkReaderByTimestamp(
                           reader.readMemChunk(chunkMetadata));
@@ -364,6 +389,8 @@ public class MemTableFlushTask {
               for (String deviceId : memTable.getMemTableMap().keySet()) {
                 mergeWriter.startChunkGroup(deviceId);
                 for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
+                  MeasurementSchema measurementSchema = deviceMeasurementMap.get(deviceId)
+                      .get(measurementId);
                   ChunkMetadata newChunkMetadata = null;
                   Chunk newChunk = null;
                   for (RestorableTsFileIOWriter vmWriter : vmWriters) {
