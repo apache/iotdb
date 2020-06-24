@@ -568,10 +568,20 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition. If disabled, all data belongs to partition 0
    */
   private boolean enablePartition = false;
+
+  /**
+   * Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree
+   */
+  private int mtreeSnapshotInterval = 100000;
+
+  /**
+   * Threshold interval time of MTree modification. If the last modification time is less than this
+   * threshold, MTree snapshot will not be created. Unit: second. Default: 1 hour(3600 seconds)
+   */
+  private int mtreeSnapshotThresholdTime = 3600;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second
@@ -626,6 +636,22 @@ public class IoTDBConfig {
 
   public void setEnablePartition(boolean enablePartition) {
     this.enablePartition = enablePartition;
+  }
+
+  public int getMtreeSnapshotInterval() {
+    return mtreeSnapshotInterval;
+  }
+
+  public void setMtreeSnapshotInterval(int mtreeSnapshotInterval) {
+    this.mtreeSnapshotInterval = mtreeSnapshotInterval;
+  }
+
+  public int getMtreeSnapshotThresholdTime() {
+    return mtreeSnapshotThresholdTime;
+  }
+
+  public void setMtreeSnapshotThresholdTime(int mtreeSnapshotThresholdTime) {
+    this.mtreeSnapshotThresholdTime = mtreeSnapshotThresholdTime;
   }
 
   public long getPartitionInterval() {
@@ -1211,7 +1237,8 @@ public class IoTDBConfig {
     return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
@@ -1336,7 +1363,9 @@ public class IoTDBConfig {
     if (nanStringInferType != TSDataType.DOUBLE &&
         nanStringInferType != TSDataType.FLOAT &&
         nanStringInferType != TSDataType.TEXT) {
-      throw new IllegalArgumentException("Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is " + nanStringInferType);
+      throw new IllegalArgumentException(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
+              + nanStringInferType);
     }
     this.nanStringInferType = nanStringInferType;
   }
