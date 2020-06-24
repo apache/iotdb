@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.flush;
 import static org.apache.iotdb.db.conf.IoTDBConstant.UNSEQUENCE_FLODER_NAME;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTimeValuePair;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -34,6 +33,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
@@ -281,7 +281,8 @@ public class MemTableFlushTask {
   private File createNewTmpFile() {
     File parent = writer.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        PATH_UPGRADE + TSFILE_SEPARATOR + System.currentTimeMillis() + TSFILE_SUFFIX);
+        "vm" + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
+            + PATH_UPGRADE);
   }
 
   @SuppressWarnings("squid:S135")

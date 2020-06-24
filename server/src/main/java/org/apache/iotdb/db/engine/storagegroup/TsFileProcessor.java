@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
@@ -572,10 +571,10 @@ public class TsFileProcessor {
   }
 
   private File createNewVMFile() {
-    String tsFilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
     File parent = tsFileResource.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        tsFilePrefix + TSFILE_SEPARATOR + System.currentTimeMillis() + VM_SUFFIX);
+        tsFileResource.getPath() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System.currentTimeMillis()
+            + VM_SUFFIX);
   }
 
   private void deleteVmFile(TsFileResource seqFile) {

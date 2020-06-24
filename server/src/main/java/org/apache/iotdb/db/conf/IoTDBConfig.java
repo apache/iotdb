@@ -449,7 +449,7 @@ public class IoTDBConfig {
   /**
    * The max vm num of each memtable. When vm num exceeds this, the vm files will merge to one.
    */
-  private int maxVmNum = 100000;
+  private int maxVmNum = 5;
 
   /**
    * How many threads will be set up to perform merge chunk sub-tasks.

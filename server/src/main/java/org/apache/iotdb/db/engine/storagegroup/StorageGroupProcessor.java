@@ -20,7 +20,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
@@ -532,14 +531,11 @@ public class StorageGroupProcessor {
     for (File f : vmFiles) {
       TsFileResource fileResource = new TsFileResource(f);
       fileResource.setClosed(false);
-      // make sure the flush command is called before IoTDB is down.
-      fileResource.deserialize();
-      String tsfilePrefix = f.getName().split(TSFILE_SEPARATOR)[0];
       List<TsFileResource> vmTsFileResource = vmTsFileResourceMap
-          .getOrDefault(tsfilePrefix, new ArrayList<>());
+          .getOrDefault(fileResource.getPath(), new ArrayList<>());
 
       vmTsFileResource.add(fileResource);
-      vmTsFileResourceMap.put(tsfilePrefix, vmTsFileResource);
+      vmTsFileResourceMap.put(fileResource.getPath(), vmTsFileResource);
     }
     return vmTsFileResourceMap;
   }
@@ -570,15 +566,18 @@ public class StorageGroupProcessor {
 
       RestorableTsFileIOWriter writer;
       List<RestorableTsFileIOWriter> vmWriters = new ArrayList<>();
-      String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
       try {
         writer = recoverPerformer.recover();
-        if (vmFiles.containsKey(tsfilePrefix)) {
-          for (TsFileResource fileResource : vmFiles.get(tsfilePrefix)) {
-            vmWriters.add(new RestorableTsFileIOWriter(fileResource.getFile()));
+        if (vmFiles.containsKey(tsFileResource.getPath())) {
+          for (TsFileResource vmResource : vmFiles.get(tsFileResource.getPath())) {
+            TsFileRecoverPerformer vmRecoverPerformer = new TsFileRecoverPerformer(
+                storageGroupName + '-',
+                getVersionControllerByTimePartitionId(timePartitionId), vmResource, false, true);
+            RestorableTsFileIOWriter vmWriter = vmRecoverPerformer.recover();
+            vmWriters.add(vmWriter);
           }
         }
-      } catch (StorageGroupProcessorException | IOException e) {
+      } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
       }
@@ -588,7 +587,7 @@ public class StorageGroupProcessor {
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            vmFiles.getOrDefault(tsfilePrefix, new ArrayList<>()),
+            vmFiles.getOrDefault(tsFileResource.getPath(), new ArrayList<>()),
             getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack,
             this::updateLatestFlushTimeCallback, true, writer, vmWriters);
@@ -614,7 +613,7 @@ public class StorageGroupProcessor {
           i == tsFiles.size() - 1);
       RestorableTsFileIOWriter writer;
       List<RestorableTsFileIOWriter> vmWriters = new ArrayList<>();
-      String tsfilePrefix = tsFileResource.getFile().getName().split(TSFILE_SEPARATOR)[0];
+      String tsfilePrefix = tsFileResource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0];
       try {
         writer = recoverPerformer.recover();
         if (vmFiles.containsKey(tsfilePrefix)) {
