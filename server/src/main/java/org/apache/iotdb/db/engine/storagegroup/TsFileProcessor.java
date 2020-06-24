@@ -634,21 +634,6 @@ public class TsFileProcessor {
             file.delete();
           }
         }
-        File[] mergedFiles = FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix(writer.getFile().getParent(), MERGED_SUFFIX);
-        if (mergedFiles.length > 0) {
-          for (TsFileResource vmTsFileResource : vmTsFileResources) {
-            deleteVmFile(vmTsFileResource);
-          }
-          vmWriters.clear();
-          vmTsFileResources.clear();
-          for (File file : mergedFiles) {
-            File newVmFile = createNewVMFile();
-            file.renameTo(newVmFile);
-            vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
-            vmTsFileResources.add(new TsFileResource(newVmFile));
-          }
-        }
       }
     } catch (IOException e) {
       logger.error("recover vm error ", e);
