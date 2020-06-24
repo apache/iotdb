@@ -19,12 +19,6 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -32,6 +26,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
@@ -47,6 +42,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+
+import static org.junit.Assert.assertTrue;
+
 public class DeviceStringTest {
 
   private File tsF;
@@ -54,7 +55,7 @@ public class DeviceStringTest {
   private String logNodePrefix = TestConstant.OUTPUT_DATA_DIR.concat("testNode/0");
   private Schema schema;
   private TsFileResource resource;
-  private MManager mManager = MManager.getInstance();
+  private MManager mManager = IoTDB.metaManager;
 
   @Before
   public void setup() throws IOException, WriteProcessException, MetadataException {

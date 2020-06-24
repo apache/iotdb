@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
@@ -39,9 +32,9 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -54,6 +47,12 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+
+import static org.junit.Assert.*;
 
 public class LogReplayerTest {
 
@@ -88,11 +87,11 @@ public class LogReplayerTest {
     TsFileResource tsFileResource = new TsFileResource(tsFile);
     IMemTable memTable = new PrimitiveMemTable();
 
-    MManager.getInstance().setStorageGroup("root.sg");
+    IoTDB.metaManager.setStorageGroup("root.sg");
     try {
       for (int i = 0; i < 5; i++) {
         for (int j = 0; j < 5; j++) {
-          MManager.getInstance()
+          IoTDB.metaManager
               .createTimeseries("root.sg.device" + i + ".sensor" + j, TSDataType.INT64,
                   TSEncoding.PLAIN, TSFileDescriptor.getInstance().getConfig().getCompressor(),
                   Collections.emptyMap());
