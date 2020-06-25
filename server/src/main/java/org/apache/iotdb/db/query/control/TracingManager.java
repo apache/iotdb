@@ -34,13 +34,13 @@ public class TracingManager {
   private static final Logger logger = LoggerFactory.getLogger(TracingManager.class);
   private BufferedWriter writer;
 
-  public TracingManager(String dirName, String logFileName){
-    File performanceDir = SystemFileFactory.INSTANCE.getFile(dirName);
-    if (!performanceDir.exists()) {
-      if (performanceDir.mkdirs()) {
-        logger.info("create performance folder {}.", performanceDir);
+  public TracingManager(String dirName, String logFileName) {
+    File tracingDir = SystemFileFactory.INSTANCE.getFile(dirName);
+    if (!tracingDir.exists()) {
+      if (tracingDir.mkdirs()) {
+        logger.info("create performance folder {}.", tracingDir);
       } else {
-        logger.info("create performance folder {} failed.", performanceDir);
+        logger.info("create performance folder {} failed.", tracingDir);
       }
     }
     File logFile = SystemFileFactory.INSTANCE.getFile(dirName + File.separator + logFileName);
@@ -67,9 +67,10 @@ public class TracingManager {
         .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
         .append("\nQuery Id: ").append(queryId)
         .append(" - Number of series paths: ").append(pathsNum);
-    writer.write(builder.toString());
+    synchronized (writer) {
+      writer.write(builder.toString());
+    }
     writer.newLine();
-    writer.flush();
   }
 
   // for align by device query
@@ -80,47 +81,56 @@ public class TracingManager {
         .append("\nQuery Id: ").append(queryId)
         .append(" - Start time: ")
         .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()));
-    writer.write(builder.toString());
+    synchronized (writer) {
+      writer.write(builder.toString());
+    }
     writer.newLine();
-    writer.flush();
   }
 
   public void writePathsNum(long queryId, int pathsNum) throws IOException {
-    writer.write(new StringBuilder("Query Id: ").append(queryId)
-        .append(" - Number of series paths: ").append(pathsNum).toString());
+    StringBuilder builder = new StringBuilder("Query Id: ").append(queryId)
+        .append(" - Number of series paths: ").append(pathsNum);
+    synchronized (writer) {
+      writer.write(builder.toString());
+    }
     writer.newLine();
-    writer.flush();
   }
 
   public void writeTsFileInfo(long queryId, int seqFileNum, int unseqFileNum) throws IOException {
     // to avoid the disorder info of multi query
     // add query id as prefix of each info
-    writer.write(new StringBuilder("Query Id: ").append(queryId)
+    StringBuilder builder = new StringBuilder("Query Id: ").append(queryId)
         .append(" - Number of tsfiles: ").append(seqFileNum + unseqFileNum)
         .append("\nQuery Id: ").append(queryId)
         .append(" - Number of sequence files: ").append(seqFileNum)
         .append("\nQuery Id: ").append(queryId)
-        .append(" - Number of unsequence files: ").append(unseqFileNum).toString());
+        .append(" - Number of unsequence files: ").append(unseqFileNum);
+    synchronized (writer) {
+      writer.write(builder.toString());
+    }
     writer.newLine();
-    writer.flush();
   }
 
-  public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkSize) throws IOException {
-    writer.write(new StringBuilder("Query Id: ").append(queryId)
+  public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkSize)
+      throws IOException {
+    StringBuilder builder = new StringBuilder("Query Id: ").append(queryId)
         .append(" - Number of chunks: ").append(totalChunkNum)
         .append("\nQuery Id: ").append(queryId)
-        .append(" - Average size of chunks: ").append(totalChunkSize / totalChunkNum).toString());
+        .append(" - Average size of chunks: ").append(totalChunkSize / totalChunkNum);
+    synchronized (writer) {
+      writer.write(builder.toString());
+    }
     writer.newLine();
-    writer.flush();
   }
 
   public void writeEndTime(long queryId) throws IOException {
-    writer.write(new StringBuilder("Query Id: ").append(queryId)
+    StringBuilder builder = new StringBuilder("Query Id: ").append(queryId)
         .append(" - End time: ")
-        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
-        .toString());
+        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()));
+    synchronized (writer) {
+      writer.write(builder.toString());
+    }
     writer.newLine();
-    writer.flush();
   }
 
   private static class TracingManagerHelper {
