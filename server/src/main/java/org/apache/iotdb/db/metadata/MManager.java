@@ -218,7 +218,7 @@ public class MManager {
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
-      logWriter.settLineNumber(lineNumber);
+      logWriter.setLineNumber(lineNumber);
       isRecovering = false;
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
