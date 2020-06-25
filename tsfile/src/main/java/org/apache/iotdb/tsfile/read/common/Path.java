@@ -92,7 +92,6 @@ public class Path implements Serializable, Comparable<Path> {
       } else {
         device = pathSc.substring(0, indexOfLeftSingleQuote-1);
       }
-      device = pathSc.substring(0, indexOfLeftSingleQuote-1);
       fullPath = pathSc;
     } else if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == pathSc.length() - 1) {
       measurement = pathSc.substring(indexOfLeftDoubleQuote);
