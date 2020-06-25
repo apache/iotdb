@@ -98,7 +98,7 @@ public class TsFileProcessorTest {
     List<ReadOnlyMemChunk> left = pair.left;
     List<List<ChunkMetadata>> right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(0, right.size());
+    assertEquals(0, right.get(0).size());
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
@@ -128,7 +128,7 @@ public class TsFileProcessorTest {
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(1, right.size());
+    assertEquals(1, right.get(0).size());
     assertEquals(measurementId, right.get(0).get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).get(0).getDataType());
     processor.syncClose();
@@ -147,7 +147,7 @@ public class TsFileProcessorTest {
     List<ReadOnlyMemChunk> left = pair.left;
     List<List<ChunkMetadata>> right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(0, right.size());
+    assertEquals(0, right.get(0).size());
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
@@ -178,7 +178,7 @@ public class TsFileProcessorTest {
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(1, right.size());
+    assertEquals(1, right.get(0).size());
     assertEquals(measurementId, right.get(0).get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).get(0).getDataType());
 
@@ -224,7 +224,7 @@ public class TsFileProcessorTest {
     List<ReadOnlyMemChunk> left = pair.left;
     List<List<ChunkMetadata>> right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(0, right.size());
+    assertEquals(0, right.get(0).size());
 
     for (int flushId = 0; flushId < 10; flushId++) {
       for (int i = 1; i <= 10; i++) {
@@ -240,12 +240,11 @@ public class TsFileProcessorTest {
     left = pair.left;
     right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(10, right.size());
+    assertEquals(10, right.get(0).size());
     assertEquals(measurementId, right.get(0).get(0).getMeasurementUid());
     assertEquals(dataType, right.get(0).get(0).getDataType());
     processor.syncClose();
   }
-
 
   @Test
   public void testWriteAndClose() throws IOException, WriteProcessException {
@@ -260,7 +259,7 @@ public class TsFileProcessorTest {
     List<ReadOnlyMemChunk> left = pair.left;
     List<List<ChunkMetadata>> right = pair.right;
     assertTrue(left.isEmpty());
-    assertEquals(0, right.size());
+    assertEquals(0, right.get(0).size());
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);

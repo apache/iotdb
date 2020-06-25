@@ -71,7 +71,7 @@ public class MemTableFlushTaskTest {
         MemTableTestUtils.measurementId0,
         MemTableTestUtils.dataType0);
     MemTableFlushTask memTableFlushTask = new MemTableFlushTask(memTable, writer, new ArrayList<>(),
-        false, false,
+        false, false, true,
         storageGroup);
     assertTrue(writer
         .getVisibleMetadataList(MemTableTestUtils.deviceId0, MemTableTestUtils.measurementId0,

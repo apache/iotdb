@@ -100,7 +100,7 @@ public class LogReplayerTest {
       }
 
       LogReplayer replayer = new LogReplayer(logNodePrefix, tsFile.getPath(), modFile,
-          versionController, tsFileResource, memTable, true);
+          versionController, tsFileResource, memTable, false);
 
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
