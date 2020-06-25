@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
+
+import java.util.Arrays;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 public class MetaUtils {
 
@@ -35,27 +35,25 @@ public class MetaUtils {
 
   public static String[] getNodeNames(String path) {
     String[] nodeNames;
-    if (path.contains("\"") || path.contains("'")) {
-      // e.g., root.sg.d1."s1.int"  ->  root.sg.d1, s1.int
-      String[] measurementDeviceNode;
-
-      String measurement;
-      if (path.contains("\"")) {
-        measurementDeviceNode = path.split("\"");
-        // "s1.int"
-        measurement = TsFileConstant.DOUBLE_QUOTATION + measurementDeviceNode[1] + TsFileConstant.DOUBLE_QUOTATION;
-      } else {
-        measurementDeviceNode = path.split("\'");
-        // 's1.int'
-        measurement = TsFileConstant.SINGLE_QUOTATION + measurementDeviceNode[1] + TsFileConstant.SINGLE_QUOTATION;
-      }
-      // root.sg.d1 -> root, sg, d1
-      String[] deviceNodeName = measurementDeviceNode[0].split(PATH_SEPARATOR);
-      int nodeNumber = deviceNodeName.length + 1;
-      nodeNames = new String[nodeNumber];
-      System.arraycopy(deviceNodeName, 0, nodeNames, 0, nodeNumber - 1);
-      // nodeNames = [root, sg, d1, s1.int]
-      nodeNames[nodeNumber - 1] = measurement;
+    int indexOfLeftSingleQuote = path.indexOf('\'');
+    int indexOfRightSingleQuote = path.lastIndexOf('\'');
+    int indexOfLeftDoubleQuote = path.indexOf('\"');
+    int indexOfRightDoubleQuote = path.lastIndexOf('\"');
+    String measurement;
+    String device;
+    String[] deviceNodeNames;
+    if (indexOfRightSingleQuote != -1 && indexOfRightSingleQuote == path.length()-1) {
+      measurement = path.substring(indexOfLeftSingleQuote);
+      device = path.substring(0, indexOfLeftSingleQuote-1);
+      deviceNodeNames = device.split(PATH_SEPARATOR);
+      nodeNames = Arrays.copyOf(deviceNodeNames, deviceNodeNames.length + 1);
+      nodeNames[nodeNames.length - 1] = measurement;
+    } else if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == path.length() -1) {
+      measurement = path.substring(indexOfLeftDoubleQuote);
+      device = path.substring(0, indexOfLeftDoubleQuote-1);
+      deviceNodeNames = device.split(PATH_SEPARATOR);
+      nodeNames = Arrays.copyOf(deviceNodeNames, deviceNodeNames.length + 1);
+      nodeNames[nodeNames.length - 1] = measurement;
     } else {
       nodeNames = path.split(PATH_SEPARATOR);
     }
