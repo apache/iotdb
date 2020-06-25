@@ -512,7 +512,6 @@ public class TsFileResource {
       tsFileLock.writeLock();
     } else {
       originTsFileResource.writeLock();
-      ;
     }
   }
 
@@ -521,7 +520,6 @@ public class TsFileResource {
       tsFileLock.writeUnlock();
     } else {
       originTsFileResource.writeUnlock();
-      ;
     }
   }
 
@@ -532,6 +530,8 @@ public class TsFileResource {
   public void readLock() {
     if (originTsFileResource == null) {
       tsFileLock.readLock();
+    } else {
+      originTsFileResource.readLock();
     }
   }
 
