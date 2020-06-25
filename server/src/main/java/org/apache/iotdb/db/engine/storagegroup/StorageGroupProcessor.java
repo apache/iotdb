@@ -584,7 +584,7 @@ public class StorageGroupProcessor {
           .getOrDefault(tsFileResource.getPath(), new ArrayList<>());
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
           storageGroupName + TSFILE_NAME_SEPARATOR,
-          getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, false,
+          getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
           i == tsFiles.size() - 1, vmTsFileResources);
 
       RestorableTsFileIOWriter writer;
@@ -606,7 +606,7 @@ public class StorageGroupProcessor {
         // the last file is not closed, continue writing to in
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
             vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
-            this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback, true,
+            this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback, false,
             writer, vmWriters);
         tsFileProcessor.recover();
         workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);

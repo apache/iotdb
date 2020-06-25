@@ -90,8 +90,7 @@ public class MemTableFlushTask {
 
   public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, boolean isVm,
-      boolean isFull, boolean sequence,
-      String storageGroup) {
+      boolean isFull, boolean sequence, String storageGroup) {
     this.memTable = memTable;
     this.writer = writer;
     this.vmWriters = vmWriters;

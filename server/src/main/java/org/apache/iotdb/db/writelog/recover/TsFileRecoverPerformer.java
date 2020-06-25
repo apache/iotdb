@@ -61,20 +61,24 @@ public class TsFileRecoverPerformer {
   private String logNodePrefix;
   private VersionController versionController;
   private TsFileResource resource;
-  private boolean acceptUnseq;
+  private boolean sequence;
   private boolean isLastFile;
 
   private List<TsFileResource> vmTsFileResources;
 
+  /**
+   * @param isLastFile whether this TsFile is the last file of its partition
+   * @param vmTsFileResources only last file could have non-empty vmTsFileResources
+   */
   public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
-      TsFileResource currentTsFileResource, boolean acceptUnseq, boolean isLastFile,
+      TsFileResource currentTsFileResource, boolean sequence, boolean isLastFile,
       List<TsFileResource> vmTsFileResources) {
     this.filePath = currentTsFileResource.getPath();
     this.logNodePrefix = logNodePrefix;
     this.versionController = versionController;
     this.resource = currentTsFileResource;
-    this.acceptUnseq = acceptUnseq;
-    this.isLastFile = vmTsFileResources.isEmpty() ? isLastFile : true;
+    this.sequence = sequence;
+    this.isLastFile = isLastFile;
     this.vmTsFileResources = vmTsFileResources;
   }
 
@@ -234,13 +238,13 @@ public class TsFileRecoverPerformer {
     IMemTable recoverMemTable = new PrimitiveMemTable();
     recoverMemTable.setVersion(versionController.nextVersion());
     LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, tsFileResource.getModFile(),
-        versionController, tsFileResource, recoverMemTable, acceptUnseq);
+        versionController, tsFileResource, recoverMemTable, sequence);
     logReplayer.replayLogs();
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
-            restorableTsFileIOWriter, new ArrayList<>(), false, false,
+            restorableTsFileIOWriter, new ArrayList<>(), false, false, sequence,
             tsFileResource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
       }

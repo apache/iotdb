@@ -182,7 +182,7 @@ public class RecoverResourceFromReaderTest {
     }
 
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, true, false, Collections.emptyList());
+        versionController, resource, false, false, Collections.emptyList());
     ActiveTimeSeriesCounter.getInstance()
         .init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();

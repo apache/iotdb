@@ -178,7 +178,7 @@ public class UnseqTsFileRecoverTest {
   @Test
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
-        versionController, resource, true, false, Collections.emptyList());
+        versionController, resource, false, false, Collections.emptyList());
     ActiveTimeSeriesCounter.getInstance()
         .init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();
