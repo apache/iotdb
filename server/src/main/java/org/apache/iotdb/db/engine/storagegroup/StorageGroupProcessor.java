@@ -656,6 +656,7 @@ public class StorageGroupProcessor {
             writer, vmWriters);
         workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
+        tsFileProcessor.recover();
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
