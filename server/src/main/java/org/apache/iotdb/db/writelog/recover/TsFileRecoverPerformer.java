@@ -255,10 +255,10 @@ public class TsFileRecoverPerformer {
         // end the file if it is not the last file or it is closed before crush
         restorableTsFileIOWriter.endFile();
         tsFileResource.cleanCloseFlag();
+        tsFileResource.serialize();
       }
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
-      tsFileResource.serialize();
     } catch (IOException | InterruptedException | ExecutionException e) {
       throw new StorageGroupProcessorException(e);
     }
