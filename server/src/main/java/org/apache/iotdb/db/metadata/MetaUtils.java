@@ -44,13 +44,21 @@ public class MetaUtils {
     String[] deviceNodeNames;
     if (indexOfRightSingleQuote != -1 && indexOfRightSingleQuote == path.length()-1) {
       measurement = path.substring(indexOfLeftSingleQuote);
-      device = path.substring(0, indexOfLeftSingleQuote-1);
+      if(indexOfLeftSingleQuote == 0) {
+        device = path;
+      } else {
+        device = path.substring(0, indexOfLeftSingleQuote-1);
+      }
       deviceNodeNames = device.split(PATH_SEPARATOR);
       nodeNames = Arrays.copyOf(deviceNodeNames, deviceNodeNames.length + 1);
       nodeNames[nodeNames.length - 1] = measurement;
     } else if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == path.length() -1) {
       measurement = path.substring(indexOfLeftDoubleQuote);
-      device = path.substring(0, indexOfLeftDoubleQuote-1);
+      if(indexOfLeftDoubleQuote == 0) {
+        device = path;
+      } else {
+        device = path.substring(0, indexOfLeftDoubleQuote-1);
+      }
       deviceNodeNames = device.split(PATH_SEPARATOR);
       nodeNames = Arrays.copyOf(deviceNodeNames, deviceNodeNames.length + 1);
       nodeNames[nodeNames.length - 1] = measurement;
