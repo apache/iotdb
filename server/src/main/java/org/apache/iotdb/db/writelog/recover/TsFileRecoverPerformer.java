@@ -133,9 +133,9 @@ public class TsFileRecoverPerformer {
     if (isComplete) {
       // tsfile is complete
       try {
-        recoverResource(resource);
+        recoverResource(resource, true);
         for (TsFileResource tsFileResource : vmTsFileResources) {
-          recoverResource(tsFileResource);
+          recoverResource(tsFileResource, false);
         }
         return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
       } catch (IOException e) {
@@ -163,7 +163,7 @@ public class TsFileRecoverPerformer {
     return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
   }
 
-  private void recoverResource(TsFileResource tsFileResource) throws IOException {
+  private void recoverResource(TsFileResource tsFileResource, boolean needSerialize) throws IOException {
     if (tsFileResource.fileExists()) {
       // .resource file exists, deserialize it
       recoverResourceFromFile(tsFileResource);
@@ -178,7 +178,9 @@ public class TsFileRecoverPerformer {
           Long.parseLong(
               tsFileResource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
       tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
-      tsFileResource.serialize();
+      if (needSerialize) {
+        tsFileResource.serialize();
+      }
     }
   }
 
