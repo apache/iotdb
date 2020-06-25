@@ -1065,6 +1065,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public ServerProperties getProperties() {
     ServerProperties properties = new ServerProperties();
     properties.setVersion(IoTDBConstant.VERSION);
+    logger.info("IoTDB server version: {}", IoTDBConstant.VERSION);
     properties.setSupportedTimeAggregationOperations(new ArrayList<>());
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MAX_TIME);
     properties.getSupportedTimeAggregationOperations().add(IoTDBConstant.MIN_TIME);
@@ -1139,7 +1140,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   public TSStatus insertRecord(TSInsertRecordReq req) {
     try {
       auditLogger
-          .info("Session {} insertRecord, device {}, time {}", currSessionId.get(),
+          .debug("Session {} insertRecord, device {}, time {}", currSessionId.get(),
               req.getDeviceId(), req.getTimestamp());
       if (!checkLogin(req.getSessionId())) {
         logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
@@ -1305,7 +1306,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
-    auditLogger.info("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
+    auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
     TSStatus status = checkPathValidity(req.path);
     if (status != null) {
       return status;
@@ -1328,7 +1329,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
-    auditLogger.info("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
+    auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
         req.getPaths().size(), req.getPaths().get(0));
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {

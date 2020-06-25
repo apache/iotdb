@@ -24,7 +24,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -66,6 +65,9 @@ public class InsertTabletPlan extends PhysicalPlan {
   private List<Path> paths;
   private int start;
   private int end;
+
+  // record the failed measurements
+  private List<String> failedMeasurements;
 
   public InsertTabletPlan() {
     super(false, OperatorType.BATCHINSERT);
@@ -133,12 +135,18 @@ public class InsertTabletPlan extends PhysicalPlan {
 
     putString(stream, deviceId);
 
-    stream.writeInt(measurements.length);
+    stream.writeInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
+      if (m == null) {
+        continue;
+      }
       putString(stream, m);
     }
 
     for (TSDataType dataType : dataTypes) {
+      if (dataType == null) {
+        continue;
+      }
       stream.writeShort(dataType.serialize());
     }
 
@@ -163,6 +171,9 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   private void serializeValues(DataOutputStream stream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
       serializeColumn(dataTypes[i], columns[i], stream, index);
     }
   }
@@ -221,13 +232,17 @@ public class InsertTabletPlan extends PhysicalPlan {
 
     putString(buffer, deviceId);
 
-    buffer.putInt(measurements.length);
+    buffer.putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
-      putString(buffer, m);
+      if (m != null) {
+        putString(buffer, m);
+      }
     }
 
     for (TSDataType dataType : dataTypes) {
-      dataType.serializeTo(buffer);
+      if (dataType != null) {
+        dataType.serializeTo(buffer);
+      }
     }
 
     buffer.putInt(end - start);
@@ -251,6 +266,9 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   private void serializeValues(ByteBuffer buffer) {
     for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
       serializeColumn(dataTypes[i], columns[i], buffer, start, end);
     }
   }
@@ -285,7 +303,7 @@ public class InsertTabletPlan extends PhysicalPlan {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
         for (int j = start; j < end; j++) {
-          buffer.putInt(BytesUtils.boolToByte(boolValues[j]));
+          buffer.put(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:
@@ -468,6 +486,27 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   public void setRowCount(int size) {
     this.rowCount = size;
+  }
+
+  /**
+   * @param index failed measurement index
+   */
+  public void markMeasurementInsertionFailed(int index) {
+    if (failedMeasurements == null) {
+      failedMeasurements = new ArrayList<>();
+    }
+    failedMeasurements.add(measurements[index]);
+    measurements[index] = null;
+    dataTypes[index] = null;
+    columns[index] = null;
+  }
+
+  public List<String> getFailedMeasurements() {
+    return failedMeasurements;
+  }
+
+  public int getFailedMeasurementNumber() {
+    return failedMeasurements == null ? 0 : failedMeasurements.size();
   }
 
 }

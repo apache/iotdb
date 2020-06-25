@@ -20,9 +20,14 @@ import sys
 import struct
 
 # If you generate IoTDB python library manually, add it to your python path
-sys.path.append("../target")
 
-from thrift.protocol import TBinaryProtocol
+#for example, if you run compile.sh, you can use the following code:
+# sys.path.append("../target")
+
+#if you use maven to compile the thrift api, just use the follwoing code:
+sys.path.append("../../service-rpc/target/generated-sources-python")
+
+from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
 from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, \
@@ -159,9 +164,11 @@ if __name__ == '__main__':
     transport = TSocket.TSocket(ip, port)
 
     # Buffering is critical. Raw sockets are very slow
-    transport = TTransport.TBufferedTransport(transport)
+    transport = TTransport.TFramedTransport(transport)
 
     # Wrap in a protocol
+    # use TCompactProtocol if the server enable thrift compression,
+    # otherwise use TBinaryProtocol
     protocol = TBinaryProtocol.TBinaryProtocol(transport)
 
     # Create a client to use the protocol encoder
@@ -278,8 +285,8 @@ if __name__ == '__main__':
     resp = client.insertTablet(TSInsertTabletReq(sessionId,deviceId,
                                                   measurements, values,
                                                   times, dataTypes, rowCnt))
-    status = resp.statusList
-    print(status[0].message)
+    status = resp.code
+    print(status)
 
     # execute deletion (or other statements)
     resp = client.executeStatement(TSExecuteStatementReq(sessionId, "DELETE FROM "
