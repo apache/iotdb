@@ -1819,7 +1819,7 @@ public class MManager {
     }
   }
 
-  private void createMTreeSnapshot() {
+  public void createMTreeSnapshot() {
     lock.readLock().lock();
     long time = System.currentTimeMillis();
     try {
