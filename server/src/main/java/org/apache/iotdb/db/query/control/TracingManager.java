@@ -66,11 +66,9 @@ public class TracingManager {
         .append(" - Start time: ")
         .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
         .append("\nQuery Id: ").append(queryId)
-        .append(" - Number of series paths: ").append(pathsNum);
-    synchronized (writer) {
-      writer.write(builder.toString());
-    }
-    writer.newLine();
+        .append(" - Number of series paths: ").append(pathsNum)
+        .append("\n");
+    writer.write(builder.toString());
   }
 
   // for align by device query
@@ -80,20 +78,16 @@ public class TracingManager {
         .append(" - Query Statement: ").append(statement)
         .append("\nQuery Id: ").append(queryId)
         .append(" - Start time: ")
-        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()));
-    synchronized (writer) {
-      writer.write(builder.toString());
-    }
-    writer.newLine();
+        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
+        .append("\n");
+    writer.write(builder.toString());
   }
 
   public void writePathsNum(long queryId, int pathsNum) throws IOException {
     StringBuilder builder = new StringBuilder("Query Id: ").append(queryId)
-        .append(" - Number of series paths: ").append(pathsNum);
-    synchronized (writer) {
-      writer.write(builder.toString());
-    }
-    writer.newLine();
+        .append(" - Number of series paths: ").append(pathsNum)
+        .append("\n");
+    writer.write(builder.toString());
   }
 
   public void writeTsFileInfo(long queryId, int seqFileNum, int unseqFileNum) throws IOException {
@@ -104,11 +98,9 @@ public class TracingManager {
         .append("\nQuery Id: ").append(queryId)
         .append(" - Number of sequence files: ").append(seqFileNum)
         .append("\nQuery Id: ").append(queryId)
-        .append(" - Number of unsequence files: ").append(unseqFileNum);
-    synchronized (writer) {
-      writer.write(builder.toString());
-    }
-    writer.newLine();
+        .append(" - Number of unsequence files: ").append(unseqFileNum)
+        .append("\n");
+    writer.write(builder.toString());
   }
 
   public void writeChunksInfo(long queryId, long totalChunkNum, long totalChunkSize)
@@ -116,21 +108,22 @@ public class TracingManager {
     StringBuilder builder = new StringBuilder("Query Id: ").append(queryId)
         .append(" - Number of chunks: ").append(totalChunkNum)
         .append("\nQuery Id: ").append(queryId)
-        .append(" - Average size of chunks: ").append(totalChunkSize / totalChunkNum);
-    synchronized (writer) {
-      writer.write(builder.toString());
-    }
-    writer.newLine();
+        .append(" - Average size of chunks: ").append(totalChunkSize / totalChunkNum)
+        .append("\n");
+    writer.write(builder.toString());
   }
 
   public void writeEndTime(long queryId) throws IOException {
     StringBuilder builder = new StringBuilder("Query Id: ").append(queryId)
         .append(" - End time: ")
-        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()));
-    synchronized (writer) {
-      writer.write(builder.toString());
-    }
-    writer.newLine();
+        .append(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(System.currentTimeMillis()))
+        .append("\n");
+    writer.write(builder.toString());
+    writer.flush();
+  }
+
+  public void close() throws IOException {
+    writer.close();
   }
 
   private static class TracingManagerHelper {
