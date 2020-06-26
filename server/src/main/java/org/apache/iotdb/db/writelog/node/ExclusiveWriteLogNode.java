@@ -70,7 +70,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private long lastFlushedId = 0;
 
   private int bufferedLogNum = 0;
-  private final Counter syncCounter;
+  private final Counter syncCounter = null;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -231,7 +231,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
       if (bufferedLogNum == 0) {
         return;
       }
-      syncCounter.increment();
+      if (StorageEngine.enableMetricService) {
+        syncCounter.increment();
+      }
       try {
         getCurrentFileWriter().write(logBuffer);
       } catch (IOException e) {
