@@ -136,6 +136,12 @@ public class IoTDBRegistry extends PushMeterRegistry {
         Metrics.timer("iotdb.metrics.write.timer").record(this::writeMetrics);
     }
 
+    @Override
+    public void stop() {
+        super.stop();
+        sessionPool.close();
+    }
+
     private void writeMetrics() {
         for (Meter meter : getMeters()) {
 

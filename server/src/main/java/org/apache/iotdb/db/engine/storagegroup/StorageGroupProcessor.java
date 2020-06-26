@@ -20,8 +20,12 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.GROUP_TAG;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.QUERY_SG_ACTIVE;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.QUERY_SG_LATENCY;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
+import io.micrometer.core.instrument.Timer;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -251,6 +255,8 @@ public class StorageGroupProcessor {
    * partition number -> max version number
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
+
+
 
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
@@ -1224,7 +1230,11 @@ public class StorageGroupProcessor {
       QueryFileManager filePathsManager, Filter timeFilter) throws QueryProcessException {
     insertLock.readLock().lock();
     mergeLock.readLock().lock();
-    LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.processor.query.active", "_group", storageGroupName).start();
+    LongTaskTimer.Sample sample = null;
+    if (StorageEngine.enableMetricService) {
+      sample = Metrics.more()
+          .longTaskTimer(QUERY_SG_ACTIVE, GROUP_TAG, storageGroupName).start();
+    }
     long start = System.nanoTime();
     try {
       List<TsFileResource> seqResources = getFileResourceListForQuery(sequenceFileTreeSet,
@@ -1244,8 +1254,11 @@ public class StorageGroupProcessor {
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      Metrics.timer("iotdb.processor.query.latency", "_group", storageGroupName).record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
-      sample.stop();
+      if (StorageEngine.enableMetricService) {
+        Metrics.timer(QUERY_SG_LATENCY, GROUP_TAG, storageGroupName)
+            .record(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+        sample.stop();
+      }
       insertLock.readLock().unlock();
       mergeLock.readLock().unlock();
     }

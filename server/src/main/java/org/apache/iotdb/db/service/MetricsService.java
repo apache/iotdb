@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.service;
 
-import com.sun.net.httpserver.HttpServer;
 import io.github.mweirauch.micrometer.jvm.extras.ProcessMemoryMetrics;
 import io.github.mweirauch.micrometer.jvm.extras.ProcessThreadMetrics;
 import io.micrometer.core.instrument.Clock;
@@ -33,18 +32,16 @@ import io.micrometer.core.instrument.binder.system.FileDescriptorMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.jmx.JmxConfig;
+import io.micrometer.jmx.JmxMeterRegistry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.micrometer.IoTDBRegistry;
-import org.apache.iotdb.micrometer.IoTDBRegistryConfig;
 
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.service.metrics.IMetricRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Metrics Service that is based on micrometer.
@@ -56,11 +53,13 @@ import java.util.List;
 // See command here https://stackoverflow.com/questions/3732109/simple-http-server-in-java-using-only-java-se-api
 @SuppressWarnings({"squid:S1191", "java:S1191"})
 public class MetricsService implements IService {
+    private static Logger logger = LoggerFactory.getLogger(MetricsService.class);
 
     private static final MetricsService INSTANCE = new MetricsService();
 
-    private HttpServer server;
+    private List<IMetricRegistry> registryWrappers = new ArrayList<>();
     private JvmGcMetrics jvmGcMetrics;
+    private JmxMeterRegistry jmxMeterRegistry;
 
     public MetricsService() {
         // Do nothing
@@ -75,29 +74,14 @@ public class MetricsService implements IService {
         // Define Meter Registry
         List<MeterRegistry> registries = new ArrayList<>();
         if (IoTDBDescriptor.getInstance().getConfig().isEnableIotDBMetricsStorage()) {
-            registries.add(new IoTDBRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM));
+            addRegister("org.apache.iotdb.micrometer.IoTDBMeterRegistryWrapper", registries);
         }
         if (IoTDBDescriptor.getInstance().getConfig().isEnablePrometheusMetricsEndpoint()) {
-            PrometheusMeterRegistry prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-            registries.add(prometheusMeterRegistry);
-            // Serve an Endpoint for prometheus
-            int port = IoTDBDescriptor.getInstance().getConfig().getMetricsPrometheusPort();
-            String endpoint = IoTDBDescriptor.getInstance().getConfig().getMetricsPrometheusEndpoint();
-            try {
-                server = HttpServer.create(new InetSocketAddress(port), 0);
-                server.createContext(endpoint, httpExchange -> {
-                    String response = prometheusMeterRegistry.scrape();
-                    httpExchange.sendResponseHeaders(200, response.getBytes().length);
-                    try (OutputStream os = httpExchange.getResponseBody()) {
-                        os.write(response.getBytes());
-                    }
-                });
-
-                new Thread(server::start).start();
-            } catch (IOException e) {
-                throw new IllegalStateException("Unable to start server", e);
-            }
+            addRegister("org.apache.iotdb.micrometer.PrometheusMeterRegistryWrapper", registries);
         }
+        //by default, we allow JMXRegistry
+        jmxMeterRegistry = new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM);
+        registries.add(jmxMeterRegistry);
         MeterRegistry registry = new CompositeMeterRegistry(Clock.SYSTEM,
                 registries);
         // Set this as default, then users can simply write Metrics.xxx
@@ -115,12 +99,34 @@ public class MetricsService implements IService {
         new FileDescriptorMetrics().bindTo(registry);
     }
 
+    /**
+     * initialize the registerClass and put it into registers
+     * @param registerClassName
+     * @param registries
+     */
+    private void addRegister(String registerClassName, List<MeterRegistry> registries) {
+        Class clazz = null;
+        try {
+            clazz = Class.forName(registerClassName);
+            IMetricRegistry wrapper = (IMetricRegistry) clazz.newInstance();
+            registries.add(wrapper.registry());
+            registryWrappers.add(wrapper);
+            wrapper.start();
+        } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+            logger.error("load micrometer registry {} failed", registerClassName, e);
+        }
+    }
+
     @Override
     public void stop() {
         jvmGcMetrics.close();
-        if (server != null) {
-            server.stop(0);
+        for (IMetricRegistry wrapper: registryWrappers) {
+            wrapper.stop();
         }
+        //jmxMeterRegistry.stop();
+        Metrics.globalRegistry.close();
+        Metrics.globalRegistry.getRegistries().forEach(Metrics::removeRegistry);
+
     }
 
     @Override

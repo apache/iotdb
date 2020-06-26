@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.writelog.node;
 
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.GROUP_TAG;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.WAL_SYNC_COUNT;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -32,6 +35,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
+import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.writelog.io.ILogReader;
@@ -80,7 +84,10 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     if (SystemFileFactory.INSTANCE.getFile(logDirectory).mkdirs()) {
       logger.info("create the WAL folder {}.", logDirectory);
     }
-    syncCounter = Metrics.counter("iotdb.wal.sync.count", "_group", identifier.contains("-") ? identifier.substring(0, identifier.indexOf("-")) : identifier);
+    if (StorageEngine.enableMetricService) {
+      syncCounter = Metrics.counter(WAL_SYNC_COUNT, GROUP_TAG,
+          identifier.contains("-") ? identifier.substring(0, identifier.indexOf("-")) : identifier);
+    }
   }
 
   @Override
@@ -219,12 +226,12 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void sync() {
-    syncCounter.increment();
     lock.writeLock().lock();
     try {
       if (bufferedLogNum == 0) {
         return;
       }
+      syncCounter.increment();
       try {
         getCurrentFileWriter().write(logBuffer);
       } catch (IOException e) {

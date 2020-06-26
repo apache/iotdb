@@ -125,6 +125,8 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.OPEN_SESSION_REQUEST_COUNTER;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.QUERY_EXECUTION_PLAN;
 
 
 /**
@@ -138,7 +140,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final String METRIC_STATUS_TAG = "status";
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
-  public static final String OPEN_SESSION_REQUEST_COUNTER = "open.session.request";
+
   protected Planner processor;
   protected IPlanExecutor executor;
   private boolean enableMetric = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
@@ -176,7 +178,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "INTERNAL_EXCEPTION").increment();
+      if (enableMetric) {
+        Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "INTERNAL_EXCEPTION")
+            .increment();
+      }
       throw new TException(e);
     }
     String loginMessage = null;
@@ -184,7 +189,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       status = authorizer.login(req.getUsername(), req.getPassword());
     } catch (AuthException e) {
       logger.info("meet error while logging in.", e);
-      Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "INTERNAL_EXCEPTION").increment();
+      if (enableMetric) {
+        Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "INTERNAL_EXCEPTION")
+            .increment();
+      }
       status = false;
       loginMessage = e.getMessage();
     }
@@ -200,19 +208,27 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus,
             TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
         resp.setSessionId(sessionId);
-        Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "VERSION_INCOMPATIBLE").increment();
+        if (enableMetric) {
+          Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "VERSION_INCOMPATIBLE")
+              .increment();
+        }
         return resp;
       }
 
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
-      Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "SUCCESS").increment();
+      if (enableMetric) {
+        Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "SUCCESS").increment();
+      }
       sessionId = sessionIdGenerator.incrementAndGet();
       sessionIdUsernameMap.put(sessionId, req.getUsername());
       sessionIdZoneIdMap.put(sessionId, config.getZoneID());
       currSessionId.set(sessionId);
     } else {
       tsStatus = RpcUtils.getStatus(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR);
-      Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "LOGIN_FAILED").increment();
+      if (enableMetric) {
+        Metrics.counter(OPEN_SESSION_REQUEST_COUNTER, METRIC_STATUS_TAG, "LOGIN_FAILED")
+            .increment();
+      }
       tsStatus.setMessage(loginMessage);
     }
     auditLogger.info("User {} opens Session-{}", req.getUsername(), sessionId);
@@ -585,7 +601,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
 
       if (enableMetric) {
         // TODO Replace with micrometer, see IOTDB-758
-        Metrics.counter("iotdb.query.execution", "plan", plan.getClass().getSimpleName()).increment();
+        Metrics.counter(QUERY_EXECUTION_PLAN, "plan", plan.getClass().getSimpleName()).increment();
 //        long endTime = System.currentTimeMillis();
 //        SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
 //        synchronized (sqlArgumentList) {

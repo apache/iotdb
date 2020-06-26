@@ -18,6 +18,12 @@
  */
 package org.apache.iotdb.db.engine;
 
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.GROUP_TAG;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.INSERT_BATCH_LATENCY;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.INSERT_BATCH_SIZE;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.INSERT_OPERATION_COUNT;
+import static org.apache.iotdb.db.service.metrics.MicroMetricName.INSERT_OPERATION_LATENCY;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -77,7 +83,7 @@ import org.slf4j.LoggerFactory;
 
 public class StorageEngine implements IService {
 
-  public static final String GROUP_TAG = "_group";
+
   private final Logger logger;
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final long TTL_CHECK_INTERVAL = 60 * 1000L;
@@ -126,6 +132,8 @@ public class StorageEngine implements IService {
   @ServerConfigConsistent
   private static boolean enablePartition =
       IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+
+  public static boolean enableMetricService = IoTDBDescriptor.getInstance().getConfig().isEnableMetricService();
 
   private StorageEngine() {
     logger = LoggerFactory.getLogger(StorageEngine.class);
@@ -304,15 +312,20 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     String storageGroupName = storageGroupProcessor.getStorageGroupName();
-    Metrics.counter("iotdb.storage.insert.count", GROUP_TAG, storageGroupName).increment();
+    if (enableMetricService) {
+      Metrics.counter(INSERT_OPERATION_COUNT, GROUP_TAG, storageGroupName).increment();
+    }
     long start = System.nanoTime();
     try {
       storageGroupProcessor.insert(insertPlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     } finally {
-      long stop = System.nanoTime();
-      Metrics.timer("iotdb.storage.insert.latency", GROUP_TAG, storageGroupName).record(stop - start, TimeUnit.NANOSECONDS);
+      if (enableMetricService) {
+        long stop = System.nanoTime();
+        Metrics.timer(INSERT_OPERATION_LATENCY, GROUP_TAG, storageGroupName)
+            .record(stop - start, TimeUnit.NANOSECONDS);
+      }
     }
   }
 
@@ -334,14 +347,21 @@ public class StorageEngine implements IService {
 
     // TODO monitor: update statistics
     String storageGroupName = storageGroupProcessor.getStorageGroupName();
-    Metrics.summary("iotdb.storage.insert.batch.size", GROUP_TAG, storageGroupName).record(insertTabletPlan.getRowCount());
-    LongTaskTimer.Sample sample = Metrics.more().longTaskTimer("iotdb.storage.insert.batch.latency", GROUP_TAG, storageGroupName).start();
+    LongTaskTimer.Sample sample = null;
+    if (enableMetricService) {
+      Metrics.summary(INSERT_BATCH_SIZE, GROUP_TAG, storageGroupName)
+          .record(insertTabletPlan.getRowCount());
+      sample = Metrics.more()
+          .longTaskTimer(INSERT_BATCH_LATENCY, GROUP_TAG, storageGroupName).start();
+    }
     try {
       storageGroupProcessor.insertTablet(insertTabletPlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     } finally {
-      sample.stop();
+      if (enableMetricService) {
+        sample.stop();
+      }
     }
   }
 

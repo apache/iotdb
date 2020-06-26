@@ -60,11 +60,11 @@ public class IoTDBConfig {
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
-  private boolean enableMetricService = false;
+  private boolean enableMetricService = true;
 
-  private boolean enableIotDBMetricsStorage = true;
+  private boolean enableIotDBMetricsStorage = false;
 
-  private boolean enablePrometheusMetricsEndpoint = true;
+  private boolean enablePrometheusMetricsEndpoint = false;
   /**
    * Port which the metrics service listens to.
    */
