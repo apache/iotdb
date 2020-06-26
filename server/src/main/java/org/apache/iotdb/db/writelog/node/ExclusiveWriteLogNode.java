@@ -70,7 +70,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private long lastFlushedId = 0;
 
   private int bufferedLogNum = 0;
-  private final Counter syncCounter = null;
+  private Counter syncCounter = null;
 
   /**
    * constructor of ExclusiveWriteLogNode.
