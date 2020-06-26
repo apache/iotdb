@@ -1805,10 +1805,10 @@ public class MManager {
     if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
         && logWriter.getLineNumber() > lastSnapshotLogLineNumber) {
       logger.info("Start creating MTree snapshot, because {} ms elaspse.", System.currentTimeMillis() - logFile.lastModified());
-      createSnapshot();
+      createMTreeSnapshot();
     } else if (logWriter.getLineNumber() - lastSnapshotLogLineNumber >= mtreeSnapshotInterval) {
       logger.info("Start creating MTree snapshot, because of {} new lines are added.", logWriter.getLineNumber() - lastSnapshotLogLineNumber);
-      createSnapshot();
+      createMTreeSnapshot();
     } else {
       if (logger.isDebugEnabled()) {
         logger.debug(
@@ -1819,7 +1819,7 @@ public class MManager {
     }
   }
 
-  private void createSnapshot() {
+  private void createMTreeSnapshot() {
     lock.readLock().lock();
     long time = System.currentTimeMillis();
     try {
