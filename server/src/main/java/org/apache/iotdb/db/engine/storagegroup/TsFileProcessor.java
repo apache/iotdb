@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -610,9 +611,13 @@ public class TsFileProcessor {
       File logFile = FSFactoryProducer.getFSFactory()
           .getFile(tsFileResource.getFile().getParent(),
               tsFileResource.getFile().getName() + VM_LOG_NAME);
-      VmLogAnalyzer logAnalyzer = new VmLogAnalyzer(logFile);
-      Pair<Set<String>, Long> result = logAnalyzer.analyze();
-      Set<String> deviceSet = result.left;
+      Set<String> deviceSet = new HashSet<>();
+      Pair<Set<String>, Long> result = new Pair<>(deviceSet, 0L);
+      if (logFile.exists()) {
+        VmLogAnalyzer logAnalyzer = new VmLogAnalyzer(logFile);
+        result = logAnalyzer.analyze();
+        deviceSet = result.left;
+      }
       if (!deviceSet.isEmpty()) {
         writer.getIOWriterOut().truncate(result.right - 1);
         VmMergeTask vmMergeTask = new VmMergeTask(writer, vmWriters,
