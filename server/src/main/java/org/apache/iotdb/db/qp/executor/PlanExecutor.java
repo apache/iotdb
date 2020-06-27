@@ -261,7 +261,7 @@ public class PlanExecutor implements IPlanExecutor {
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
         return true;
-      case CREATE_SNAPSHOT:
+      case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
         return true;
       default:

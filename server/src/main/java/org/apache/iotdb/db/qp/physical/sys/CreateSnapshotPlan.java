@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 public class CreateSnapshotPlan extends PhysicalPlan {
 
   public CreateSnapshotPlan() {
-    super(false, OperatorType.CREATE_SNAPSHOT);
+    super(false, OperatorType.CREATE_SCHEMA_SNAPSHOT);
   }
 
   @Override

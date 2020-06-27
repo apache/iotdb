@@ -25,6 +25,6 @@ public class CreateSnapshotOperator extends RootOperator {
 
   public CreateSnapshotOperator(int tokenIntType) {
     super(tokenIntType);
-    operatorType = OperatorType.CREATE_SNAPSHOT;
+    operatorType = OperatorType.CREATE_SCHEMA_SNAPSHOT;
   }
 }

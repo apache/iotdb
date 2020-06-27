@@ -259,7 +259,7 @@ public class PhysicalGenerator {
         return new ClearCachePlan();
       case SHOW_MERGE_STATUS:
         return new ShowMergeStatusPlan();
-      case CREATE_SNAPSHOT:
+      case CREATE_SCHEMA_SNAPSHOT:
         return new CreateSnapshotPlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");

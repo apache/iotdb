@@ -1625,6 +1625,6 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterCreateSnapshot(CreateSnapshotContext ctx) {
     super.enterCreateSnapshot(ctx);
-    initializedOperator = new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SNAPSHOT);
+    initializedOperator = new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SCHEMA_SNAPSHOT);
   }
 }

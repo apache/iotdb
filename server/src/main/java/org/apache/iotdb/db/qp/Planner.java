@@ -100,7 +100,7 @@ public class Planner {
       case CLEAR_CACHE:
       case NULL:
       case SHOW_MERGE_STATUS:
-      case CREATE_SNAPSHOT:
+      case CREATE_SCHEMA_SNAPSHOT:
         return operator;
       case QUERY:
       case UPDATE:
