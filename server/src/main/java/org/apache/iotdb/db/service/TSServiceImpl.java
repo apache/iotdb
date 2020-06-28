@@ -62,6 +62,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
@@ -530,6 +531,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     long queryId = -1;
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
+
       if(plan instanceof ShowTimeSeriesPlan){
         if (plan instanceof ShowTimeSeriesPlan) {
           if (((ShowTimeSeriesPlan) plan).getLimit() == 0) {
