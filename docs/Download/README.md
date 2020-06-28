@@ -63,7 +63,7 @@
 
 **<font color=red>Attention</font>**:
 
-- How to upgrade a minor version (e.g., from v0.9.0 to v0.0.3)?
+- How to upgrade a minor version (e.g., from v0.9.0 to v0.9.3)?
   * versions which have the same major version are compatible.
   * Just download and unzip the new version. Then modify the configuration files to keep consistent 
   with what you set in the old version.
