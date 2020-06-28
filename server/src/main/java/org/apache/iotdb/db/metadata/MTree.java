@@ -26,6 +26,12 @@ import static org.apache.iotdb.db.query.executor.LastQueryExecutor.calculateLast
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -34,6 +40,7 @@ import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +52,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -66,6 +74,8 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The hierarchical struct of the Metadata Tree is implemented in this class.
@@ -73,27 +83,40 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 public class MTree implements Serializable {
 
   private static final long serialVersionUID = -4200394435237291964L;
+  private static final Logger logger = LoggerFactory.getLogger(MTree.class);
+
   private MNode root;
 
-  private transient ThreadLocal<Integer> limit = new ThreadLocal<>();
-  private transient ThreadLocal<Integer> offset = new ThreadLocal<>();
-  private transient ThreadLocal<Integer> count = new ThreadLocal<>();
-  private transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
+  /**
+   * The number of mlog lines that has been snapshot in mtree.snapshot
+   */
+  private int snapshotLineNumber;
+
+  private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
+  private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
+  private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
+  private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
 
   MTree() {
     this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
+    this.snapshotLineNumber = 0;
+  }
+
+  private MTree(MNode root, int snapshotLineNumber) {
+    this.root = root;
+    this.snapshotLineNumber = snapshotLineNumber;
   }
 
   /**
    * Create a timeseries with a full path from root to leaf node Before creating a timeseries, the
    * storage group should be set first, throw exception otherwise
    *
-   * @param path       timeseries path
-   * @param dataType   data type
-   * @param encoding   encoding
+   * @param path timeseries path
+   * @param dataType data type
+   * @param encoding encoding
    * @param compressor compressor
-   * @param props      props
-   * @param alias      alias of measurement
+   * @param props props
+   * @param alias alias of measurement
    */
   MeasurementMNode createTimeseries(
       String path,
@@ -686,7 +709,7 @@ public class MTree implements Serializable {
    *
    * @param needLast if false, lastTimeStamp in timeseriesSchemaList will be null
    * @param timeseriesSchemaList List<timeseriesSchema> result: [name, alias, storage group,
-   *                             dataType, encoding, compression, offset, lastTimeStamp]
+   * dataType, encoding, compression, offset, lastTimeStamp]
    */
   private void findPath(MNode node, String[] nodes, int idx, String parent,
       List<String[]> timeseriesSchemaList, boolean hasLimit, boolean needLast)
@@ -774,11 +797,11 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to match all child node path in next level
    *
-   * @param node   the current traversing node
-   * @param nodes  split the prefix path with '.'
-   * @param idx    the current index of array nodes
+   * @param node the current traversing node
+   * @param nodes split the prefix path with '.'
+   * @param idx the current index of array nodes
    * @param parent store the node string having traversed
-   * @param res    store all matched device names
+   * @param res store all matched device names
    * @param length expected length of path
    */
   private void findChildNodePathInNextLevel(
@@ -834,10 +857,10 @@ public class MTree implements Serializable {
   /**
    * Traverse the MTree to match all devices with prefix path.
    *
-   * @param node  the current traversing node
+   * @param node the current traversing node
    * @param nodes split the prefix path with '.'
-   * @param idx   the current index of array nodes
-   * @param res   store all matched device names
+   * @param idx the current index of array nodes
+   * @param res store all matched device names
    */
   private void findDevices(MNode node, String[] nodes, int idx, Set<String> res) {
     String nodeReg = MetaUtils.getNodeRegByIdx(idx, nodes);
@@ -906,6 +929,69 @@ public class MTree implements Serializable {
     }
     for (MNode child : node.getChildren().values()) {
       findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1, filter);
+    }
+  }
+
+  public int getSnapshotLineNumber() {
+    return snapshotLineNumber;
+  }
+
+  public void serializeTo(String snapshotPath, int lineNumber) throws IOException {
+    try (BufferedWriter bw = new BufferedWriter(
+        new FileWriter(SystemFileFactory.INSTANCE.getFile(snapshotPath)))) {
+      bw.write(String.valueOf(lineNumber));
+      bw.newLine();
+      root.serializeTo(bw);
+    }
+  }
+
+  public static MTree deserializeFrom(File mtreeSnapshot) {
+    try (BufferedReader br = new BufferedReader(new FileReader(mtreeSnapshot))) {
+      int snapshotLineNumber = Integer.parseInt(br.readLine());
+      String s;
+      Deque<MNode> nodeStack = new ArrayDeque<>();
+      MNode node = null;
+
+      while ((s = br.readLine()) != null) {
+        String[] nodeInfo = s.split(",");
+        short nodeType = Short.parseShort(nodeInfo[0]);
+        if (nodeType == MetadataConstant.STORAGE_GROUP_MNODE_TYPE) {
+          node = StorageGroupMNode.deserializeFrom(nodeInfo);
+        } else if (nodeType == MetadataConstant.MEASUREMENT_MNODE_TYPE) {
+          node = MeasurementMNode.deserializeFrom(nodeInfo);
+        } else {
+          node = new MNode(null, nodeInfo[1]);
+        }
+
+        int childrenSize = Integer.parseInt(nodeInfo[nodeInfo.length - 1]);
+        if (childrenSize == 0) {
+          nodeStack.push(node);
+        } else {
+          Map<String, MNode> childrenMap = new LinkedHashMap<>();
+          for (int i = 0; i < childrenSize; i++) {
+            MNode child = nodeStack.removeFirst();
+            child.setParent(node);
+            childrenMap.put(child.getName(), child);
+            if (child instanceof MeasurementMNode) {
+              String alias = ((MeasurementMNode) child).getAlias();
+              if (alias != null) {
+                node.addAlias(alias, child);
+              }
+            }
+          }
+          node.setChildren(childrenMap);
+          nodeStack.push(node);
+        }
+      }
+      return new MTree(node, snapshotLineNumber);
+    } catch (IOException e) {
+      logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
+      return new MTree();
+    } finally {
+      limit = new ThreadLocal<>();
+      offset = new ThreadLocal<>();
+      count = new ThreadLocal<>();
+      curOffset = new ThreadLocal<>();
     }
   }
 

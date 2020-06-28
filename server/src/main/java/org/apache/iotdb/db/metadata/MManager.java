@@ -24,6 +24,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,6 +39,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -85,10 +89,17 @@ public class MManager {
   private static final Logger logger = LoggerFactory.getLogger(MManager.class);
   private static final String TIME_SERIES_TREE_HEADER = "===  Timeseries Tree  ===\n\n";
 
+  /**
+   * A thread will check whether the MTree is modified lately each such interval. Unit: second
+   */
+  private static final long MTREE_SNAPSHOT_THREAD_CHECK_TIME = 600L;
+
   // the lock for read/insert
   private ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
   // the log file seriesPath
   private String logFilePath;
+  private String mtreeSnapshotPath;
+  private String mtreeSnapshotTmpPath;
   private MTree mtree;
   private MLogWriter logWriter;
   private TagLogFile tagLogFile;
@@ -107,6 +118,12 @@ public class MManager {
   private boolean initialized;
   private IoTDBConfig config;
 
+  private File logFile;
+  private final int mtreeSnapshotInterval;
+  private final long mtreeSnapshotThresholdTime;
+  private int lastSnapshotLogLineNumber;
+  private ScheduledExecutorService timedCreateMTreeSnapshotThread;
+
   private static class MManagerHolder {
 
     private MManagerHolder() {
@@ -118,6 +135,8 @@ public class MManager {
 
   private MManager() {
     config = IoTDBDescriptor.getInstance().getConfig();
+    mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
+    mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
     String schemaDir = config.getSchemaDir();
     File schemaFolder = SystemFileFactory.INSTANCE.getFile(schemaDir);
     if (!schemaFolder.exists()) {
@@ -128,6 +147,8 @@ public class MManager {
       }
     }
     logFilePath = schemaDir + File.separator + MetadataConstant.METADATA_LOG;
+    mtreeSnapshotPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT;
+    mtreeSnapshotTmpPath = schemaDir + File.separator + MetadataConstant.MTREE_SNAPSHOT_TMP;
 
     // do not write log when recover
     isRecovering = true;
@@ -160,6 +181,13 @@ public class MManager {
         cache.keySet().removeIf(s -> s.startsWith(key));
       }
     };
+
+    lastSnapshotLogLineNumber = 0;
+    timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
+        "timedCreateMTreeSnapshotThread"));
+    timedCreateMTreeSnapshotThread
+        .scheduleAtFixedRate(this::checkMTreeModified, MTREE_SNAPSHOT_THREAD_CHECK_TIME,
+            MTREE_SNAPSHOT_THREAD_CHECK_TIME, TimeUnit.SECONDS);
   }
 
   public static MManager getInstance() {
@@ -172,13 +200,13 @@ public class MManager {
     if (initialized) {
       return;
     }
-    File logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
+    logFile = SystemFileFactory.INSTANCE.getFile(logFilePath);
 
     try {
       tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
 
       isRecovering = true;
-      initFromLog(logFile);
+      int lineNumber = initFromLog(logFile);
 
       if (config.isEnableParameterAdapter()) {
         List<String> storageGroups = mtree.getAllStorageGroupNames();
@@ -191,6 +219,7 @@ public class MManager {
       }
 
       logWriter = new MLogWriter(config.getSchemaDir(), MetadataConstant.METADATA_LOG);
+      logWriter.setLineNumber(lineNumber);
       isRecovering = false;
     } catch (IOException | MetadataException e) {
       mtree = new MTree();
@@ -199,21 +228,61 @@ public class MManager {
     initialized = true;
   }
 
-  private void initFromLog(File logFile) throws IOException {
+  /**
+   *
+   * @param logFile
+   * @return line number of the logFile
+   * @throws IOException
+   */
+  @SuppressWarnings("squid:S3776")
+  private int initFromLog(File logFile) throws IOException {
+    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+    if (tmpFile.exists()) {
+      logger.warn("Creating MTree snapshot not successful before crashing...");
+      Files.delete(tmpFile.toPath());
+    }
+
+    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+    long time = System.currentTimeMillis();
+    if (!mtreeSnapshot.exists()) {
+      mtree = new MTree();
+    } else {
+      mtree = MTree.deserializeFrom(mtreeSnapshot);
+      lastSnapshotLogLineNumber = mtree.getSnapshotLineNumber();
+    }
+    logger.debug("spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
+
+    time = System.currentTimeMillis();
     // init the metadata from the operation log
-    mtree = new MTree();
     if (logFile.exists()) {
+      int idx = 0;
       try (FileReader fr = new FileReader(logFile);
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
+        while (idx < mtree.getSnapshotLineNumber()) {
+          cmd = br.readLine();
+          if (cmd == null) {
+            throw new IOException(String
+                .format("mtree snapshot file has %d lines but the mlog.txt has only %d lines.",
+                    mtree.getSnapshotLineNumber(), idx));
+          }
+          idx++;
+        }
         while ((cmd = br.readLine()) != null) {
           try {
             operation(cmd);
+            idx++;
           } catch (Exception e) {
             logger.error("Can not operate cmd {}", cmd, e);
           }
         }
       }
+      logger.debug("spend {} ms to deserialize mtree from mlog.txt", System.currentTimeMillis() - time);
+      return idx;
+    } else if (mtreeSnapshot.exists()) {
+      throw new IOException("mtree snapshot file exists but mlog.txt does not exist.");
+    } else {
+      return 0;
     }
   }
 
@@ -237,6 +306,10 @@ public class MManager {
         tagLogFile = null;
       }
       initialized = false;
+      if (timedCreateMTreeSnapshotThread != null) {
+        timedCreateMTreeSnapshotThread.shutdownNow();
+        timedCreateMTreeSnapshotThread = null;
+      }
     } catch (IOException e) {
       logger.error("Cannot close metadata log writer, because:", e);
     } finally {
@@ -374,9 +447,9 @@ public class MManager {
   /**
    * Add one timeseries to metadata tree, if the timeseries already exists, throw exception
    *
-   * @param path       the timeseries path
-   * @param dataType   the dateType {@code DataType} of the timeseries
-   * @param encoding   the encoding function {@code Encoding} of the timeseries
+   * @param path the timeseries path
+   * @param dataType the dateType {@code DataType} of the timeseries
+   * @param encoding the encoding function {@code Encoding} of the timeseries
    * @param compressor the compressor function {@code Compressor} of the time series
    * @return whether the measurement occurs for the first time in this storage group (if true, the
    * measurement should be registered to the StorageEngine too)
@@ -472,7 +545,8 @@ public class MManager {
             logger.debug(String.format(
                 "Delete: TimeSeries %s's tag info has been removed from tag inverted index before "
                     + "deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
-                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(), tagIndex.containsKey(entry.getKey())));
+                node.getFullPath(), entry.getKey(), entry.getValue(), node.getOffset(),
+                tagIndex.containsKey(entry.getKey())));
           }
         }
       }
@@ -653,7 +727,7 @@ public class MManager {
    * Get all devices under given prefixPath.
    *
    * @param prefixPath a prefix of a full path. if the wildcard is not at the tail, then each
-   *                   wildcard can only match one level, otherwise it can match to the tail.
+   * wildcard can only match one level, otherwise it can match to the tail.
    * @return A HashSet instance which stores devices names with given prefixPath.
    */
   public Set<String> getDevices(String prefixPath) throws MetadataException {
@@ -669,9 +743,9 @@ public class MManager {
    * Get all nodes from the given level
    *
    * @param prefixPath can be a prefix of a full path. Can not be a full path. can not have
-   *                   wildcard. But, the level of the prefixPath can be smaller than the given
-   *                   level, e.g., prefixPath = root.a while the given level is 5
-   * @param nodeLevel  the level can not be smaller than the level of the prefixPath
+   * wildcard. But, the level of the prefixPath can be smaller than the given level, e.g.,
+   * prefixPath = root.a while the given level is 5
+   * @param nodeLevel the level can not be smaller than the level of the prefixPath
    * @return A List instance which stores all node at given level
    */
   public List<String> getNodesList(String prefixPath, int nodeLevel) throws MetadataException {
@@ -732,7 +806,7 @@ public class MManager {
    * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
    *
    * @param prefixPath can be a prefix or a full path. if the wildcard is not at the tail, then each
-   *                   wildcard can only match one level, otherwise it can match to the tail.
+   * wildcard can only match one level, otherwise it can match to the tail.
    */
   public List<String> getAllTimeseriesName(String prefixPath) throws MetadataException {
     lock.readLock().lock();
@@ -772,7 +846,7 @@ public class MManager {
    * To calculate the count of nodes in the given level for given prefix path.
    *
    * @param prefixPath a prefix path or a full path, can not contain '*'
-   * @param level      the level can not be smaller than the level of the prefixPath
+   * @param level the level can not be smaller than the level of the prefixPath
    */
   public int getNodesCountInGivenLevel(String prefixPath, int level) throws MetadataException {
     lock.readLock().lock();
@@ -923,7 +997,8 @@ public class MManager {
       throws MetadataException {
     lock.readLock().lock();
     try {
-      MNode leaf = mtree.getNodeByPath(device).getChild(measurement);
+      MNode node = mtree.getNodeByPath(device);
+      MNode leaf = node.getChild(measurement);
       if (leaf != null) {
         return ((MeasurementMNode) leaf).getSchema();
       } else {
@@ -1010,8 +1085,7 @@ public class MManager {
   }
 
   /**
-   * get device node, if the storage group is not set, create it when autoCreateSchema is true
-   * <p>
+   * get device node, if the storage group is not set, create it when autoCreateSchema is true <p>
    * (we develop this method as we need to get the node's lock after we get the lock.writeLock())
    *
    * <p>!!!!!!Attention!!!!! must call the return node's readUnlock() if you call this method.
@@ -1074,7 +1148,7 @@ public class MManager {
 
   public MNode getDeviceNode(String path) throws MetadataException {
     lock.readLock().lock();
-    MNode node = null;
+    MNode node;
     try {
       node = mNodeCache.get(path);
       return node;
@@ -1086,9 +1160,15 @@ public class MManager {
   }
 
   /**
+<<<<<<< HEAD
    * To reduce the String number in memory, 
    * use the deviceId from MManager instead of the deviceId read from disk
    * 
+=======
+   * To reduce the String number in memory, use the deviceId from MManager instead of the deviceId
+   * read from disk
+   *
+>>>>>>> master
    * @param path read from disk
    * @return deviceId
    */
@@ -1168,7 +1248,7 @@ public class MManager {
    * Check whether the given path contains a storage group change or set the new offset of a
    * timeseries
    *
-   * @param path   timeseries
+   * @param path timeseries
    * @param offset offset in the tag file
    */
   public void changeOffset(String path, long offset) throws MetadataException {
@@ -1198,10 +1278,10 @@ public class MManager {
    * upsert tags and attributes key-value for the timeseries if the key has existed, just use the
    * new value to update it.
    *
-   * @param alias         newly added alias
-   * @param tagsMap       newly added tags map
+   * @param alias newly added alias
+   * @param tagsMap newly added tags map
    * @param attributesMap newly added attributes map
-   * @param fullPath      timeseries
+   * @param fullPath timeseries
    */
   public void upsertTagsAndAttributes(String alias, Map<String, String> tagsMap,
       Map<String, String> attributesMap, String fullPath) throws MetadataException, IOException {
@@ -1275,7 +1355,8 @@ public class MManager {
                 logger.debug(String.format(
                     "Upsert: TimeSeries %s's tag info has been removed from tag inverted index "
                         + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
-                    leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
+                    leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(),
+                    tagIndex.containsKey(key)));
               }
             }
           }
@@ -1303,7 +1384,7 @@ public class MManager {
    * add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
-   * @param fullPath      timeseries
+   * @param fullPath timeseries
    */
   public void addAttributes(Map<String, String> attributesMap, String fullPath)
       throws MetadataException, IOException {
@@ -1345,7 +1426,7 @@ public class MManager {
   /**
    * add new tags key-value for the timeseries
    *
-   * @param tagsMap  newly added tags map
+   * @param tagsMap newly added tags map
    * @param fullPath timeseries
    */
   public void addTags(Map<String, String> tagsMap, String fullPath)
@@ -1398,7 +1479,7 @@ public class MManager {
   /**
    * drop tags or attributes of the timeseries
    *
-   * @param keySet   tags key or attributes key
+   * @param keySet tags key or attributes key
    * @param fullPath timeseries path
    */
   public void dropTagsOrAttributes(Set<String> keySet, String fullPath)
@@ -1455,7 +1536,8 @@ public class MManager {
             logger.debug(String.format(
                 "Drop: TimeSeries %s's tag info has been removed from tag inverted index "
                     + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
-                leafMNode.getFullPath(), key, value, leafMNode.getOffset(), tagIndex.containsKey(key)));
+                leafMNode.getFullPath(), key, value, leafMNode.getOffset(),
+                tagIndex.containsKey(key)));
           }
         }
 
@@ -1531,7 +1613,8 @@ public class MManager {
             logger.debug(String.format(
                 "Set: TimeSeries %s's tag info has been removed from tag inverted index "
                     + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
-                leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(), tagIndex.containsKey(key)));
+                leafMNode.getFullPath(), key, beforeValue, leafMNode.getOffset(),
+                tagIndex.containsKey(key)));
           }
         }
         tagIndex.computeIfAbsent(key, k -> new HashMap<>())
@@ -1545,8 +1628,8 @@ public class MManager {
   /**
    * rename the tag or attribute's key of the timeseries
    *
-   * @param oldKey   old key of tag or attribute
-   * @param newKey   new key of tag or attribute
+   * @param oldKey old key of tag or attribute
+   * @param newKey new key of tag or attribute
    * @param fullPath timeseries
    */
   public void renameTagOrAttributeKey(String oldKey, String newKey, String fullPath)
@@ -1596,7 +1679,8 @@ public class MManager {
             logger.debug(String.format(
                 "Rename: TimeSeries %s's tag info has been removed from tag inverted index "
                     + "before deleting it, tag key is %s, tag value is %s, tlog offset is %d, contains key %b",
-                leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset(), tagIndex.containsKey(oldKey)));
+                leafMNode.getFullPath(), oldKey, value, leafMNode.getOffset(),
+                tagIndex.containsKey(oldKey)));
           }
         }
         tagIndex.computeIfAbsent(newKey, k -> new HashMap<>())
@@ -1748,6 +1832,57 @@ public class MManager {
    */
   @FunctionalInterface
   public interface StorageGroupFilter {
+
     boolean satisfy(String storageGroup);
+  }
+
+  private void checkMTreeModified() {
+    if (logWriter == null || logFile == null) {
+      //the logWriter is not initialized now, we skip the check once.
+      return;
+    }
+    if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
+        && logWriter.getLineNumber() > lastSnapshotLogLineNumber) {
+      logger.info("Start creating MTree snapshot, because {} ms elaspse.", System.currentTimeMillis() - logFile.lastModified());
+      createSnapshot();
+    } else if (logWriter.getLineNumber() - lastSnapshotLogLineNumber >= mtreeSnapshotInterval) {
+      logger.info("Start creating MTree snapshot, because of {} new lines are added.", logWriter.getLineNumber() - lastSnapshotLogLineNumber);
+      createSnapshot();
+    } else {
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "MTree snapshot need not be created. Current mlog line number: {}, last snapshot line number: {}, time difference from last modification: {}ms",
+            logWriter.getLineNumber(), lastSnapshotLogLineNumber,
+            System.currentTimeMillis() - logFile.lastModified());
+      }
+    }
+  }
+
+  private void createSnapshot() {
+    lock.readLock().lock();
+    long time = System.currentTimeMillis();
+    try {
+      mtree.serializeTo(mtreeSnapshotTmpPath, logWriter.getLineNumber());
+      lastSnapshotLogLineNumber = logWriter.getLineNumber();
+      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
+      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
+      if (snapshotFile.exists()) {
+        Files.delete(snapshotFile.toPath());
+      }
+      if (tmpFile.renameTo(snapshotFile)) {
+        logger.info("Finish creating MTree snapshot to {}, spend {}ms.", mtreeSnapshotPath, System.currentTimeMillis() - time);
+      }
+    } catch (IOException e) {
+      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
+      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
+        try {
+          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
+        } catch (IOException e1) {
+          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
+        }
+      }
+    } finally {
+      lock.readLock().unlock();
+    }
   }
 }
