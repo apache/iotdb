@@ -548,13 +548,9 @@ public class StorageGroupProcessor {
     for (File f : vmFiles) {
       TsFileResource fileResource = new TsFileResource(f);
       fileResource.setClosed(false);
-      String tsfilePrefix = f.getName()
-          .substring(0, f.getName().lastIndexOf(TSFILE_NAME_SEPARATOR));
-      List<TsFileResource> vmTsFileResource = vmTsFileResourceMap
-          .getOrDefault(tsfilePrefix, new ArrayList<>());
-
-      vmTsFileResource.add(fileResource);
-      vmTsFileResourceMap.put(fileResource.getPath(), vmTsFileResource);
+      String tsfilePrefix = f.getPath()
+          .substring(0, f.getPath().lastIndexOf(TSFILE_NAME_SEPARATOR));
+      vmTsFileResourceMap.computeIfAbsent(tsfilePrefix, k -> new ArrayList<>()).add(fileResource);
     }
     vmTsFileResourceMap.values()
         .forEach(tsFileResources -> tsFileResources.sort(this::compareVMFileName));
