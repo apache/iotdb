@@ -177,7 +177,7 @@ The root node exists by default. Creating storage groups, deleting storage group
 	
 ## MTree checkpoint
 
-To speed up restarting of IoTDB, we set checkpoint for MTree. Every 10 minutes, background thread checks the last modified time of MTree. If users haven’t modified MTree for more than 1 hour (which means `mlog.txt` hasn’t been updated for more than 1 hour), and `mlog.txt` has reached the threshold line number of user configuration, MTree snapshot is created. In this way, we could avoid reading mlog.txt and executing the commands line by line. Users can also use `create snapshot for schema` to create MTree snapshot manually。
+To speed up restarting of IoTDB, we set checkpoint for MTree. Every 10 minutes, background thread checks the last modified time of MTree. If users haven’t modified MTree for more than 1 hour (which means `mlog.txt` hasn’t been updated for more than 1 hour), and `mlog.txt` has reached the threshold line number of user configuration, MTree snapshot is created. In this way, we could avoid reading mlog.txt and executing the commands line by line. Users can also use `create snapshot for schema` to create MTree snapshot manually.
 
 The serialization of MTree is depth-first from children to parent. Information of nodes are converted into String according to different node types, which is convenient for deserialization.
 
