@@ -93,6 +93,7 @@ public class VmMergeTask {
     if (!sequence) {
       for (String deviceId : deviceMeasurementMap.keySet()) {
         writer.startChunkGroup(deviceId);
+        long maxVersion = Long.MIN_VALUE;
         for (String measurementId : deviceMeasurementMap.get(deviceId).keySet()) {
           MeasurementSchema measurementSchema = deviceMeasurementMap.get(deviceId)
               .get(measurementId);
@@ -118,6 +119,7 @@ public class VmMergeTask {
                 .getVisibleMetadataList(deviceId, measurementId,
                     measurementSchema.getType());
             for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+              maxVersion = Math.max(chunkMetadata.getVersion(), maxVersion);
               IChunkReader chunkReader = new ChunkReaderByTimestamp(
                   reader.readMemChunk(chunkMetadata));
               while (chunkReader.hasNextSatisfiedPage()) {
@@ -137,6 +139,7 @@ public class VmMergeTask {
           }
           chunkWriter.writeToFileWriter(writer);
         }
+        writer.writeVersion(maxVersion);
         writer.endChunkGroup();
         if (vmLogger != null) {
           vmLogger.logDevice(deviceId, writer.getPos());
