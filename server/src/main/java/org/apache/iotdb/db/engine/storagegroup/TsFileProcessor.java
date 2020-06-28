@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -696,11 +697,8 @@ public class TsFileProcessor {
               }
             }
           }
-          if ((
-              (vmPointNum + memTableToFlush.getTotalPointsNum()) / pathMeasurementSchemaMap.size()
-                  > config
-                  .getAvgSeriesPointNumberThreshold()) || (shouldClose
-              && flushingMemTables.size() == 1)) {
+          if ((vmPointNum + memTableToFlush.getTotalPointsNum()) / pathMeasurementSchemaMap.size()
+              > config.getAvgSeriesPointNumberThreshold()) {
             isVm = false;
             isFull = false;
             flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
@@ -797,6 +795,24 @@ public class TsFileProcessor {
 
     if (shouldClose && flushingMemTables.isEmpty()) {
       try {
+        // confirm that all vm file is flushed to tsfile when closed
+        if (config.isEnableVm()) {
+          VmMergeTask vmMergeTask = new VmMergeTask(writer, vmWriters,
+              storageGroupName,
+              new VmLogger(tsFileResource.getFile().getParent(), tsFileResource.getFile().getName()),
+              new HashSet<>(), sequence);
+          vmMergeTask.fullMerge();
+          for (TsFileResource vmTsFileResource : vmTsFileResources) {
+            deleteVmFile(vmTsFileResource);
+          }
+          vmWriters.clear();
+          vmTsFileResources.clear();
+          File logFile = FSFactoryProducer.getFSFactory()
+              .getFile(tsFileResource.getFile().getParent(),
+                  tsFileResource.getFile().getName() + VM_LOG_NAME);
+          logFile.delete();
+        }
+
         writer.mark();
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
