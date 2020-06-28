@@ -84,7 +84,7 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
   // 首先遍历后缀路径
   for (int i = 0; i < suffixPaths.size(); i++) {
     Path suffixPath = suffixPaths.get(i);
-    // 用于记录某一后缀路径对应的 measurement，示例见下文
+    // 用于记录此后缀路径对应的所有 measurement，示例见下文
     Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
     // 该后缀路径为常量，记录后继续遍历下一后缀路径
     if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
