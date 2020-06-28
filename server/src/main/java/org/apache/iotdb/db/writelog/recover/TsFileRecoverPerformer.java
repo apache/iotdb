@@ -67,7 +67,7 @@ public class TsFileRecoverPerformer {
   private List<TsFileResource> vmTsFileResources;
 
   /**
-   * @param isLastFile whether this TsFile is the last file of its partition
+   * @param isLastFile        whether this TsFile is the last file of its partition
    * @param vmTsFileResources only last file could have non-empty vmTsFileResources
    */
   public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
@@ -148,6 +148,16 @@ public class TsFileRecoverPerformer {
                 + RESOURCE_SUFFIX + e);
       }
     } else {
+      // if the last file in vmTsFileResources is not complete, we should also recover the tsfile resource
+      if (!vmTsFileResources.isEmpty()) {
+        try {
+          recoverResource(resource, false);
+        } catch (IOException e) {
+          throw new StorageGroupProcessorException(
+              "recover the resource file failed: " + filePath
+                  + RESOURCE_SUFFIX + e);
+        }
+      }
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
       // map must be updated first to avoid duplicated insertion
       recoverResourceFromWriter(lastRestorableTsFileIOWriter, lastTsFileResource);
