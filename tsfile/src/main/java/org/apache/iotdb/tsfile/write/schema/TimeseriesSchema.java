@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.write.schema;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -45,7 +44,7 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
   private String fullPath;
   private TSDataType type;
   private TSEncoding encoding;
-  private TSEncodingBuilder encodingConverter;
+  private transient TSEncodingBuilder encodingConverter;
   private CompressionType compressor;
   private Map<String, String> props = new HashMap<>();
 
@@ -89,61 +88,32 @@ public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializa
   }
 
   /**
-   * function for deserializing data from input stream.
-   */
-  public static TimeseriesSchema deserializeFrom(InputStream inputStream) throws IOException {
-    TimeseriesSchema TimeseriesSchema = new TimeseriesSchema();
-
-    TimeseriesSchema.fullPath = ReadWriteIOUtils.readString(inputStream);
-
-    TimeseriesSchema.type = ReadWriteIOUtils.readDataType(inputStream);
-
-    TimeseriesSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream);
-
-    TimeseriesSchema.compressor = ReadWriteIOUtils.readCompressionType(inputStream);
-
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    if (size > 0) {
-      TimeseriesSchema.props = new HashMap<>();
-      String key;
-      String value;
-      for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(inputStream);
-        value = ReadWriteIOUtils.readString(inputStream);
-        TimeseriesSchema.props.put(key, value);
-      }
-    }
-
-    return TimeseriesSchema;
-  }
-
-  /**
    * function for deserializing data from byte buffer.
    */
   public static TimeseriesSchema deserializeFrom(ByteBuffer buffer) {
-    TimeseriesSchema TimeseriesSchema = new TimeseriesSchema();
+    TimeseriesSchema timeseriesSchema = new TimeseriesSchema();
 
-    TimeseriesSchema.fullPath = ReadWriteIOUtils.readString(buffer);
+    timeseriesSchema.fullPath = ReadWriteIOUtils.readString(buffer);
 
-    TimeseriesSchema.type = ReadWriteIOUtils.readDataType(buffer);
+    timeseriesSchema.type = ReadWriteIOUtils.readDataType(buffer);
 
-    TimeseriesSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
+    timeseriesSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
 
-    TimeseriesSchema.compressor = ReadWriteIOUtils.readCompressionType(buffer);
+    timeseriesSchema.compressor = ReadWriteIOUtils.readCompressionType(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
-      TimeseriesSchema.props = new HashMap<>();
+      timeseriesSchema.props = new HashMap<>();
       String key;
       String value;
       for (int i = 0; i < size; i++) {
         key = ReadWriteIOUtils.readString(buffer);
         value = ReadWriteIOUtils.readString(buffer);
-        TimeseriesSchema.props.put(key, value);
+        timeseriesSchema.props.put(key, value);
       }
     }
 
-    return TimeseriesSchema;
+    return timeseriesSchema;
   }
 
   public String getFullPath() {
