@@ -106,8 +106,8 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
         }
 
         // 分别取得带聚合函数和不带聚合函数（实际时间序列）的数据类型
-        // 带聚合函数的数据类型用于 1.数据类型一致性检查 2.表头计算，输出结果集
-        // 时间序列的实际数据类型则用于 AlignByDeviceDataSet 中的实际查询
+        // 带聚合函数的数据类型 `columnDataTypes` 用于 1.数据类型一致性检查 2.表头计算，输出结果集
+        // 时间序列的实际数据类型 `measurementDataTypes` 则用于 AlignByDeviceDataSet 中的实际查询
         String aggregation =
             originAggregations != null && !originAggregations.isEmpty()
                 ? originAggregations.get(i) : null;
