@@ -77,30 +77,9 @@ After the logical plan is generated, the `transformToPhysicalPlan ()` method in 
 
 **The main work done at this stage is to generate the corresponding** `AlignByDevicePlan`，**Fill in the variable information。**
 
-Next, introduce the calculation process of AlignByDevicePlan:
+It splices the suffix paths obtained in the SELECT statement with the prefix paths in the FROM clause to calculate the measurements of the query including its type and data type. The calculation process is as follows:
 
 ```java
-  // Check whether the query type is one of the following three subqueries
-  // If yes, assign the corresponding variable and change the query type of alignByDevicePlan
-  if (queryPlan instanceof GroupByTimePlan) {
-    alignByDevicePlan.setGroupByTimePlan((GroupByTimePlan) queryPlan);
-  } else if (queryPlan instanceof FillQueryPlan) {
-    ...
-  } else if (queryPlan instanceof AggregationPlan) {
-    ...
-  }
-
-  // Get prefix paths in from clause, suffix path and aggregate function in select clause
-  List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
-  // List of devices after removing wildcards and duplicates from prefix paths
-  List<String> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
-  List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
-  List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
-
-  // Create fields in AlignByDevicePlan, function see the above
-  List<String> measurements = new ArrayList<>();
-  ...
-
   // Traversal suffix path
   for (int i = 0; i < suffixPaths.size(); i++) {
     Path suffixPath = suffixPaths.get(i);
@@ -142,14 +121,9 @@ Next, introduce the calculation process of AlignByDevicePlan:
 
         for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
           Path path = new Path(actualPaths.get(pathIdx));
-
           // Check the data type consistency of the sensors with the same name
           String measurementChecked;
-          if (originAggregations != null && !originAggregations.isEmpty()) {
-            measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
-          } else {
-            measurementChecked = path.getMeasurement();
-          }
+          ...
           TSDataType columnDataType = columnDataTypes.get(pathIdx);
           // Check data type if there is a sensor with the same name
           if (columnDataTypeMap.containsKey(measurementChecked)) {
@@ -176,7 +150,6 @@ Next, introduce the calculation process of AlignByDevicePlan:
         throw new LogicalOptimizeException(...);
       }
     }
-
     // update measurements
     // Note that within a suffix path loop, SET is used to avoid duplicate measurements
     // While a LIST is used outside the loop to ensure that the output contains all measurements entered by the user
@@ -184,16 +157,6 @@ Next, introduce the calculation process of AlignByDevicePlan:
     // for suffix s1, measurementSetOfGivenSuffix = {s1}
     // therefore the final measurements is [s1,s2,s1].
     measurements.addAll(measurementSetOfGivenSuffix);
-  }
-
-  // assign to alignByDevicePlan
-  alignByDevicePlan.setMeasurements(measurements);
-  ...
-
-  // Splice the filter conditions according to the device, to get the corresponding filter conditions of each device
-  FilterOperator filterOperator = queryOperator.getFilterOperator();
-  if (filterOperator != null) {
-    alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devices, filterOperator));
   }
 ```
 
@@ -204,7 +167,7 @@ Input：Deduplicated devices list and un-stitched FilterOperator
 Input：The deviceToFilterMap after splicing records the Filter information corresponding to each device
 ```
 
-The main processing logic of the `concatFilterByDevice ()` method is in `concatFilterPath ()`:
+The `concatfilterbydevice()` method splices the filter conditions according to the devices to get the corresponding filter conditions of each device. The main processing logic of it is in `concatFilterPath ()`:
 
 The `concatFilterPath ()` method traverses the unspliced FilterOperator binary tree to determine whether the node is a leaf node. If so, the path of the leaf node is taken. If the path starts with time or root, it is not processed, otherwise the device name and node are not processed.  The paths are spliced and returned; if not, all children of the node are iteratively processed.
 

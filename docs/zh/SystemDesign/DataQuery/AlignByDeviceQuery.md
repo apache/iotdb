@@ -78,31 +78,10 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
 **该阶段所做的主要工作为生成查询对应的** `AlignByDevicePlan`，**填充其中的变量信息。**
 
-接下来介绍 AlignByDevicePlan 的计算过程：
+其主要将 SELECT 语句中得到的后缀路径与 FROM 子句中的前缀路径进行拼接，从而计算出查询的 Measurement 及其类型、数据类型，计算流程如下：
 
 ```java
-  // 检查查询类型是否为以下这三类子查询中的一种
-  // 如果是则对相应的变量进行赋值，并更改 AlignByDevicePlan 的查询类型
-  if (queryPlan instanceof GroupByTimePlan) {
-    alignByDevicePlan.setGroupByTimePlan((GroupByTimePlan) queryPlan);
-  } else if (queryPlan instanceof FillQueryPlan) {
-    ...
-  } else if (queryPlan instanceof AggregationPlan) {
-    ...
-  }
-
-  // 取得 FROM子句中的前缀路径，SELECT 子句中的后缀路径及聚合函数
-  List<Path> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
-  // 对前缀路径去通配符和设备去重后得到的设备列表
-  List<String> devices = this.removeStarsInDeviceWithUnique(prefixPaths);
-  List<Path> suffixPaths = queryOperator.getSelectOperator().getSuffixPaths();
-  List<String> originAggregations = queryOperator.getSelectOperator().getAggregations();
-
-  // 新建 AlignByDevicePlan 中的字段，作用可见上文
-  List<String> measurements = new ArrayList<>();
-  ...
-
-  // 遍历后缀路径
+  // 首先遍历后缀路径
   for (int i = 0; i < suffixPaths.size(); i++) {
     Path suffixPath = suffixPaths.get(i);
     // 用于记录某一后缀路径对应的 measurement，示例见下文
@@ -140,14 +119,9 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
 
         for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
           Path path = new Path(actualPaths.get(pathIdx));
-
           // 检查同名传感器的数据类型一致性
           String measurementChecked;
-          if (originAggregations != null && !originAggregations.isEmpty()) {
-            measurementChecked = originAggregations.get(i) + "(" + path.getMeasurement() + ")";
-          } else {
-            measurementChecked = path.getMeasurement();
-          }
+          ...
           TSDataType columnDataType = columnDataTypes.get(pathIdx);
           // 如果有同名传感器则进行数据类型比较
           if (columnDataTypeMap.containsKey(measurementChecked)) {
@@ -174,7 +148,6 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
         throw new LogicalOptimizeException(...);
       }
     }
-
     // 更新 measurements
     // 注意在一个后缀路径的循环内部，使用了 set 避免重复的 measurement
     // 而在循环外部使用了 List 来保证输出包含用户输入的所有 measurements
@@ -182,16 +155,6 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
     // 对于后缀 s1, measurementSetOfGivenSuffix = {s1}
     // 因此最终 measurements 为 [s1,s2,s1].
     measurements.addAll(measurementSetOfGivenSuffix);
-  }
-
-  // 赋值到 alignByDevicePlan
-  alignByDevicePlan.setMeasurements(measurements);
-  ...
-
-  // 按设备对过滤条件进行拼接，得到每个设备对应的过滤条件
-  FilterOperator filterOperator = queryOperator.getFilterOperator();
-  if (filterOperator != null) {
-    alignByDevicePlan.setDeviceToFilterMap(concatFilterByDevice(devices, filterOperator));
   }
 ```
 
@@ -202,7 +165,7 @@ Map<String, IExpression> concatFilterByDevice(List<String> devices,
 输入：经过拼接后的 deviceToFilterMap，记录了每个设备对应的 Filter 信息
 ```
 
-`concatFilterByDevice()` 方法的主要处理逻辑在 `concatFilterPath()` 中：
+`concatFilterByDevice()` 方法按设备对过滤条件进行拼接，得到每个设备对应的过滤条件，其主要处理逻辑在 `concatFilterPath()` 中：
 
 `concatFilterPath()` 方法遍历未拼接的 FilterOperator 二叉树，判断节点是否为叶子节点，如果是，则取该叶子结点的路径，如果路径以 time 或 root 开头则不做处理，否则将设备名与节点路径进行拼接后返回；如果不是，则对该节点的所有子节点进行迭代处理。
 
