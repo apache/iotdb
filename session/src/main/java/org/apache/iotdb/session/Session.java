@@ -264,13 +264,13 @@ public class Session {
    * insert a Tablet asynchronously
    * @param tablet data batch
    * @param sorted whether times in Tablet are in ascending order
-   * @param timeout asynchronous call timeout in second
+   * @param timeout asynchronous call timeout in millisecond
    * @param callback user provided failure callback, set to null if user does not specify.
    * @return
    */
   public CompletableFuture<Void> asyncInsertTablet(Tablet tablet, boolean sorted, long timeout,
       Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablet(tablet, sorted);
@@ -348,13 +348,13 @@ public class Session {
    *
    * @param tablets data batch in multiple device
    * @param sorted  whether times in each Tablet are in ascending order
-   * @param timeout asynchronous call timeout in second
+   * @param timeout asynchronous call timeout in millisecond
    * @param callback user provided failure callback, set to null if user does not specify.
    */
   public CompletableFuture<Void> asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted,
       long timeout,
       Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablets(tablets, sorted);
@@ -431,13 +431,13 @@ public class Session {
    * Each row is independent, which could have different deviceId, time, number of measurements
    *
    * @see Session#insertTablet(Tablet)
-   * @param timeout asynchronous call timeout in second
+   * @param timeout asynchronous call timeout in millisecond
    * @param callback user provided failure callback, set to null if user does not specify.
    */
   public CompletableFuture<Void> asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList, long timeout, Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
@@ -510,13 +510,13 @@ public class Session {
    * Each row is independent, which could have different deviceId, time, number of measurements
    *
    * @see Session#insertTablet(Tablet)
-   * @param timeout asynchronous call timeout in second
+   * @param timeout asynchronous call timeout in millisecond
    * @param callback user provided failure callback, set to null if user does not specify.
    */
   public CompletableFuture<Void> asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList, long timeout,
       Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, valuesList);
@@ -600,13 +600,13 @@ public class Session {
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
-   * @param timeout asynchronous call timeout in second
+   * @param timeout asynchronous call timeout in millisecond
    * @param callback user provided failure callback, set to null if user does not specify.
    */
   public CompletableFuture<Void> asyncInsertRecord(String deviceId, long time,
       List<String> measurements, List<TSDataType> types, List<Object> values,
       long timeout, Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, types, values);
@@ -648,12 +648,12 @@ public class Session {
    *
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
-   * @param timeout asynchronous call timeout in second
+   * @param timeout asynchronous call timeout in millisecond
    * @param callback user provided failure callback, set to null if user does not specify.
    */
   public CompletableFuture<Void> asyncInsertRecord(String deviceId, long time,
       List<String> measurements, List<String> values, long timeout, Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, values);

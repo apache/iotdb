@@ -157,7 +157,7 @@ public class SessionExample {
       values.add(1L);
       values.add(2L);
       values.add(3L);
-      session.asyncInsertRecord(deviceId, time, measurements, types, values);
+      session.asyncInsertRecord(deviceId, time, measurements, types, values, 1000, null);
     }
   }
 
@@ -181,7 +181,7 @@ public class SessionExample {
       values.add("1");
       values.add("2");
       values.add("3");
-      session.asyncInsertRecord(deviceId, time, measurements, values);
+      session.asyncInsertRecord(deviceId, time, measurements, values, 1000, null);
     }
   }
 
@@ -254,7 +254,8 @@ public class SessionExample {
       typesList.add(types);
       timestamps.add(time);
       if (time != 0 && time % 100 == 0) {
-        session.asyncInsertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+        session.asyncInsertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList,
+            1000, null);
         deviceIds.clear();
         measurementsList.clear();
         valuesList.clear();
@@ -311,7 +312,7 @@ public class SessionExample {
         sensor[row] = i;
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        session.asyncInsertTablet(tablet, true);
+        session.asyncInsertTablet(tablet, true, 1000, null);
         tablet.reset();
       }
     }
@@ -385,7 +386,7 @@ public class SessionExample {
         sensor3[row3] = i;
       }
       if (tablet1.rowSize == tablet1.getMaxRowNumber()) {
-        session.asyncInsertTablets(tabletMap, true);
+        session.asyncInsertTablets(tabletMap, true, 1000, null);
 
         tablet1.reset();
         tablet2.reset();

@@ -288,11 +288,11 @@ public class SessionPool {
    * times in Tablet may be not in ascending order
    *
    * @param tablet data batch
-   * @param timeout asynchronous call timeout in second
+   * @param timeout asynchronous call timeout in millisecond
    */
   public CompletableFuture<Void> asyncInsertTablet(Tablet tablet, boolean sorted, long timeout,
       Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablet(tablet, sorted);
@@ -358,11 +358,11 @@ public class SessionPool {
   /**
    * use batch interface to insert data in an asynchronous manner
    * @param tablets
-   * @param timeout asynchronous call timeout in second
+   * @param timeout asynchronous call timeout in millisecond
    */
   public CompletableFuture<Void> asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted,
       long timeout, Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablets(tablets, sorted);
@@ -438,7 +438,7 @@ public class SessionPool {
   public CompletableFuture<Void> asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
       List<List<Object>> valuesList, long timeout, Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
@@ -492,7 +492,7 @@ public class SessionPool {
   public CompletableFuture<Void> asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList, long timeout,
       Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, valuesList);
@@ -546,7 +546,7 @@ public class SessionPool {
   public CompletableFuture<Void> asyncInsertRecord(String deviceId, long time,
       List<String> measurements, List<TSDataType> types, List<Object> values, long timeout,
       Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, types, values);
@@ -599,7 +599,7 @@ public class SessionPool {
    */
   public CompletableFuture<Void> asyncInsertRecord(String deviceId, long time,
       List<String> measurements, List<String> values, long timeout, Consumer<Exception> callback) {
-    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, values);

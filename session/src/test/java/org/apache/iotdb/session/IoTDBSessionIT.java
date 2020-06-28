@@ -490,7 +490,7 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    asyncInsertRecord("root.sg1.d1", 0, 100, 3);
+    asyncInsertRecord("root.sg1.d1", 0, 100, 1000);
 
     // sql test
     insertViaSQL();
@@ -506,7 +506,7 @@ public class IoTDBSessionIT {
 
     query2();
 
-    asyncInsertRecords("root.sg1.d2", 0, 500, 100, 3);
+    asyncInsertRecords("root.sg1.d2", 0, 500, 100, 1000);
 
     query4();
 
@@ -531,7 +531,7 @@ public class IoTDBSessionIT {
 
     // set storage group but do not create timeseries
     session.setStorageGroup("root.sg3");
-    asyncInsertTablet("root.sg3.d1", 0, 100, 100, 3);
+    asyncInsertTablet("root.sg3.d1", 0, 100, 100, 1000);
 
     // create timeseries but do not set storage group
     session.createTimeseries("root.sg4.d1.s1", TSDataType.INT64, TSEncoding.RLE,
@@ -540,10 +540,10 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg4.d1.s3", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
-    asyncInsertTablet("root.sg4.d1", 0, 100, 100, 3);
+    asyncInsertTablet("root.sg4.d1", 0, 100, 100, 1000);
 
     // do not set storage group and create timeseries
-    asyncInsertTablet("root.sg5.d1", 0, 100, 100, 3);
+    asyncInsertTablet("root.sg5.d1", 0, 100, 100, 1000);
 
     session.close();
   }

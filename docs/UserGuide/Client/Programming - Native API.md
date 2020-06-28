@@ -120,7 +120,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Insert a Record in a asynchronous manner
 
   ```
-  void asyncInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  void asyncInsertRecord(String deviceId, long time, List<String> measurements, List<String> values, long timeout, Consumer<Exception> callback)
   ```
 
 * Insert a Tablet，which is multiple rows of a device, each row has the same measurements
@@ -132,7 +132,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Insert a Tablet in a asynchronous manner
 
   ```
-  void asyncInsertTablet(Tablet tablet)
+  void asyncInsertTablet(Tablet tablet, boolean sorted, long timeout, Consumer<Exception> callback)
   ```
 
 * Insert multiple Tablets
@@ -144,7 +144,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Insert multiple Tablets in a asynchronous manner
 
   ```
-  void asyncInsertTablets(Map<String, Tablet> tablet)
+  void asyncInsertTablets(Map<String, Tablet> tablet, boolean sorted, long timeout, Consumer<Exception> callback)
   ```
   
 * Insert multiple Records. Without type info the server has to do type inference, which may cost some time
@@ -158,7 +158,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
 
   ```
   void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
-                         List<List<String>> measurementsList, List<List<String>> valuesList)
+                         List<List<String>> measurementsList, List<List<String>> valuesList, long timeout, Consumer<Exception> callback)
   ```
 
 * Insert a Record，which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
@@ -172,7 +172,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
 
   ```
   void asyncInsertRecord(String deviceId, long time, List<String> measurements, 
-        List<TSDataType> types, List<String> values)
+        List<TSDataType> types, List<String> values, long timeout, Consumer<Exception> callback)
   ```
 
 * Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
@@ -188,7 +188,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
   ```
   void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
         List<List<String>> measurementsList, List<List<TSDataType>> typesList, 
-        List<List<String>> valuesList)
+        List<List<String>> valuesList, long timeout, Consumer<Exception> callback)
   ```
 
 ## Native APIs for profiling network cost

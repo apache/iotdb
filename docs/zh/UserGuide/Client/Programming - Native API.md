@@ -116,7 +116,8 @@
 * 异步方式插入一个 Record
   
   ```
-  void asyncInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+  void asyncInsertRecord(String deviceId, long time, List<String> measurements, List<String> values
+                          long timeout, Consumer<Exception> callback)
   ```
 
 * 插入一个 Tablet，Tablet 是一个设备若干行非空数据块，每一行的列都相同
@@ -128,7 +129,7 @@
 * 异步方式插入一个 Tablet
 
   ```
-  void asyncInsertTablet(Tablet tablet)
+  void asyncInsertTablet(Tablet tablet, boolean sorted, long timeout, Consumer<Exception> callback)
   ```
 
 * 插入多个 Tablet
@@ -140,7 +141,7 @@
 * 异步方式插入多个 Tablet
 
   ```
-  void asyncInsertTablets(Map<String, Tablet> tablet)
+  void asyncInsertTablets(Map<String, Tablet> tablet, boolean sorted, long timeout, Consumer<Exception> callback)
   ```
   
 * 插入多个 Record。服务器需要做类型推断，可能会有额外耗时
@@ -153,8 +154,8 @@
 * 异步方式插入多个 Record。服务器需要做类型推断，可能会有额外耗时
 
   ```
-  void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
-                       List<List<String>> measurementsList, List<List<String>> valuesList)
+  void asyncInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, 
+                          List<List<String>> valuesList,long timeout, Consumer<Exception> callback)
   ```
   
 * 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。提供数据类型后，服务器不需要做类型推断，可以提高性能
@@ -168,7 +169,7 @@
 
   ```
   void asyncInsertRecord(String deviceId, long time, List<String> measurements, 
-        List<TSDataType> types, List<String> values)
+        List<TSDataType> types, List<String> values, long timeout, Consumer<Exception> callback)
   ```
 
 * 插入多个 Record。提供数据类型后，服务器不需要做类型推断，可以提高性能
@@ -184,7 +185,7 @@
   ```
   void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
         List<List<String>> measurementsList, List<List<TSDataType>> typesList, 
-        List<List<String>> valuesList)
+        List<List<String>> valuesList, long timeout, Consumer<Exception> callback)
   ```
 
 
