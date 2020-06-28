@@ -1243,8 +1243,4 @@ public class Session {
     }
   }
 
-  @FunctionalInterface
-  public interface SessionInsertionCallBack {
-    void call();
-  }
 }

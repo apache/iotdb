@@ -117,10 +117,55 @@ Here we show the commonly used interfaces and their parameters in the Native API
   void insertRecord(String deviceId, long time, List<String> measurements, List<String> values)
   ```
 
-* Insert a Record in a asynchronous manner
+* Insert a Record asynchronously by providing additional asynchronous timeout and an exception callback. The record contains multiple measurement value of a device at a timestamp. Without type info the server has to do type inference, which may cost some time
 
   ```
-  void asyncInsertRecord(String deviceId, long time, List<String> measurements, List<String> values, long timeout, Consumer<Exception> callback)
+  void asyncInsertRecord(String deviceId, long time, List<String> measurements, List<String> values, 
+                        long timeout, Consumer<Exception> callback)
+  ```
+
+* Insert a Record，which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
+
+  ```
+  void insertRecord(String deviceId, long time, List<String> measurements,
+       List<TSDataType> types, List<Object> values)
+  ```
+  
+* Insert a Record asynchronously by providing additional asynchronous timeout and an exception callback. The record contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
+
+  ```
+  void asyncInsertRecord(String deviceId, long time, List<String> measurements, 
+        List<TSDataType> types, List<String> values, long timeout, Consumer<Exception> callback)
+  ```
+  
+* Insert multiple Records. Without type info the server has to do type inference, which may cost some time
+
+  ```
+  void insertRecords(List<String> deviceIds, List<Long> times, 
+                       List<List<String>> measurementsList, List<List<String>> valuesList)
+  ```
+  
+* Insert multiple Records asynchronously by providing additional asynchronous timeout and an exception callback
+
+  ```
+  void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
+                          List<List<String>> measurementsList, List<List<String>> valuesList, long timeout, Consumer<Exception> callback)
+  ```
+
+* Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
+
+  ```
+  void insertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+  ```
+  
+* Insert multiple Records asynchronously by providing additional asynchronous timeout and an exception callback. With type info the server has no need to do type inference, which leads a better performance
+
+  ```
+  void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList, 
+        List<List<String>> valuesList, long timeout, Consumer<Exception> callback)
   ```
 
 * Insert a Tablet，which is multiple rows of a device, each row has the same measurements
@@ -129,7 +174,7 @@ Here we show the commonly used interfaces and their parameters in the Native API
   void insertTablet(Tablet tablet)
   ```
   
-* Insert a Tablet in a asynchronous manner
+* Insert a Tablet asynchronously by providing additional asynchronous timeout and an exception callback.
 
   ```
   void asyncInsertTablet(Tablet tablet, boolean sorted, long timeout, Consumer<Exception> callback)
@@ -141,54 +186,10 @@ Here we show the commonly used interfaces and their parameters in the Native API
   void insertTablets(Map<String, Tablet> tablet)
   ```
   
-* Insert multiple Tablets in a asynchronous manner
+* Insert multiple Tablets asynchronously by providing additional asynchronous timeout and an exception callback.
 
   ```
   void asyncInsertTablets(Map<String, Tablet> tablet, boolean sorted, long timeout, Consumer<Exception> callback)
-  ```
-  
-* Insert multiple Records. Without type info the server has to do type inference, which may cost some time
-
-  ```
-  void insertRecords(List<String> deviceIds, List<Long> times, 
-                       List<List<String>> measurementsList, List<List<String>> valuesList)
-  ```
-  
-* Insert multiple Records in a asynchronous manner
-
-  ```
-  void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
-                         List<List<String>> measurementsList, List<List<String>> valuesList, long timeout, Consumer<Exception> callback)
-  ```
-
-* Insert a Record，which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
-
-  ```
-  void insertRecord(String deviceId, long time, List<String> measurements,
-       List<TSDataType> types, List<Object> values)
-  ```
-  
-* Insert a Record in a asynchronous manner, which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
-
-  ```
-  void asyncInsertRecord(String deviceId, long time, List<String> measurements, 
-        List<TSDataType> types, List<String> values, long timeout, Consumer<Exception> callback)
-  ```
-
-* Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
-
-  ```
-  void insertRecords(List<String> deviceIds, List<Long> times,
-        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-        List<List<Object>> valuesList)
-  ```
-  
-* Insert multiple Records in a asynchronous manner. With type info the server has no need to do type inference, which leads a better performance
-
-  ```
-  void asyncInsertRecords(List<String> deviceIds, List<Long> times, 
-        List<List<String>> measurementsList, List<List<TSDataType>> typesList, 
-        List<List<String>> valuesList, long timeout, Consumer<Exception> callback)
   ```
 
 ## Native APIs for profiling network cost
