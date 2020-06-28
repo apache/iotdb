@@ -29,7 +29,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.iotdb.rpc.BatchExecutionException;
+import java.util.function.Consumer;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
@@ -38,7 +38,6 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -289,23 +288,26 @@ public class SessionPool {
    * times in Tablet may be not in ascending order
    *
    * @param tablet data batch
+   * @param timeout asynchronous call timeout in second
    */
-  public void asyncInsertTablet(Tablet tablet, boolean sorted) {
-    CompletableFuture<Pair<String, Long>> timeout = failAfter(
-        Duration.ofSeconds(Config.DEFAULT_ASYNC_TIMEOUT_SEC));
-    CompletableFuture<Pair<String, Long>> asyncRun = CompletableFuture.supplyAsync(() -> {
+  public CompletableFuture<Void> asyncInsertTablet(Tablet tablet, boolean sorted, long timeout,
+      Consumer<Exception> callback) {
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablet(tablet, sorted);
-      } catch (IoTDBConnectionException | BatchExecutionException e) {
-        logger.error("Error occurred when inserting tablets: ", e);
-      }
-      if (tablet.rowSize > 0) {
-        return new Pair<>(tablet.deviceId, tablet.timestamps[0]);
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        if (callback == null) {
+          logger.error("Error occurred when inserting tablets, device ID: {}, time: {} .",
+              tablet.deviceId, tablet.timestamps[0], e);
+        } else {
+          callback.accept(e);
+        }
       }
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.acceptEither(timeout, this::asyncHandler);
+    return asyncRun.acceptEither(timeoutFail, this::successHandler);
   }
 
   /**
@@ -356,20 +358,25 @@ public class SessionPool {
   /**
    * use batch interface to insert data in an asynchronous manner
    * @param tablets
+   * @param timeout asynchronous call timeout in second
    */
-  public void asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted) {
-    CompletableFuture<Pair<String, Long>> timeout = failAfter(
-        Duration.ofSeconds(Config.DEFAULT_ASYNC_TIMEOUT_SEC));
-    CompletableFuture<Pair<String, Long>> asyncRun = CompletableFuture.supplyAsync(() -> {
+  public CompletableFuture<Void> asyncInsertTablets(Map<String, Tablet> tablets, boolean sorted,
+      long timeout, Consumer<Exception> callback) {
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertTablets(tablets, sorted);
-      } catch (IoTDBConnectionException | BatchExecutionException e) {
-        logger.error("Error occurred when inserting tablets: ", e);
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        if (callback == null) {
+          logger.error("Error occurred when inserting tablets: ", e);
+        } else {
+          callback.accept(e);
+        }
       }
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.acceptEither(timeout, this::asyncHandler);
+    return asyncRun.acceptEither(timeoutFail, this::successHandler);
   }
 
   /**
@@ -428,24 +435,25 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
+  public CompletableFuture<Void> asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList) {
-    CompletableFuture<Pair<String, Long>> timeout = failAfter(
-        Duration.ofSeconds(Config.DEFAULT_ASYNC_TIMEOUT_SEC));
-    CompletableFuture<Pair<String, Long>> asyncRun = CompletableFuture.supplyAsync(() -> {
+      List<List<Object>> valuesList, long timeout, Consumer<Exception> callback) {
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
-      } catch (IoTDBConnectionException | BatchExecutionException e) {
-        logger.error("Error occurred when inserting tablets: ", e);
-      }
-      if (!deviceIds.isEmpty()) {
-        return new Pair<>(deviceIds.get(0), times.get(0));
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        if (callback == null) {
+          logger.error("Error occurred when inserting records, device ID: {}, time: {} .",
+              deviceIds.get(0), times.get(0), e);
+        } else {
+          callback.accept(e);
+        }
       }
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.acceptEither(timeout, this::asyncHandler);
+    return asyncRun.acceptEither(timeoutFail, this::successHandler);
   }
 
   /**
@@ -481,23 +489,25 @@ public class SessionPool {
    *
    * @see Session#insertTablet(Tablet)
    */
-  public void asyncInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList) {
-    CompletableFuture<Pair<String, Long>> timeout = failAfter(
-        Duration.ofSeconds(Config.DEFAULT_ASYNC_TIMEOUT_SEC));
-    CompletableFuture<Pair<String, Long>> asyncRun = CompletableFuture.supplyAsync(() -> {
+  public CompletableFuture<Void> asyncInsertRecords(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<String>> valuesList, long timeout,
+      Consumer<Exception> callback) {
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecords(deviceIds, times, measurementsList, valuesList);
-      } catch (IoTDBConnectionException | BatchExecutionException e) {
-        logger.error("Error occurred when inserting tablets: ", e);
-      }
-      if (!deviceIds.isEmpty()) {
-        return new Pair<>(deviceIds.get(0), times.get(0));
+      } catch (IoTDBConnectionException | StatementExecutionException e) {
+        if (callback == null) {
+          logger.error("Error occurred when inserting records, device ID: {}, time: {}.",
+              deviceIds.get(0), times.get(0), e);
+        } else {
+          callback.accept(e);
+        }
       }
       return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.acceptEither(timeout, this::asyncHandler);
+    return asyncRun.acceptEither(timeoutFail, this::successHandler);
   }
 
   /**
@@ -533,20 +543,25 @@ public class SessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values) {
-    CompletableFuture<Pair<String, Long>> timeout = failAfter(
-        Duration.ofSeconds(Config.DEFAULT_ASYNC_TIMEOUT_SEC));
-    CompletableFuture<Pair<String, Long>> asyncRun = CompletableFuture.supplyAsync(() -> {
+  public CompletableFuture<Void> asyncInsertRecord(String deviceId, long time,
+      List<String> measurements, List<TSDataType> types, List<Object> values, long timeout,
+      Consumer<Exception> callback) {
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, types, values);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
-        logger.error("Error occurred when inserting tablets: ", e);
+        if (callback == null) {
+          logger.error("Error occurred when inserting record, device ID: {}, time: {}. ", deviceId,
+              time, e);
+        } else {
+          callback.accept(e);
+        }
       }
-      return new Pair<>(deviceId, time);
+      return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.acceptEither(timeout, this::asyncHandler);
+    return asyncRun.acceptEither(timeoutFail, this::successHandler);
   }
 
   /**
@@ -582,20 +597,24 @@ public class SessionPool {
    * @see Session#insertRecords(List, List, List, List, List)
    * @see Session#insertTablet(Tablet)
    */
-  public void asyncInsertRecord(String deviceId, long time, List<String> measurements,
-      List<String> values) {
-    CompletableFuture<Pair<String, Long>> timeout = failAfter(
-        Duration.ofSeconds(Config.DEFAULT_ASYNC_TIMEOUT_SEC));
-    CompletableFuture<Pair<String, Long>> asyncRun = CompletableFuture.supplyAsync(() -> {
+  public CompletableFuture<Void> asyncInsertRecord(String deviceId, long time,
+      List<String> measurements, List<String> values, long timeout, Consumer<Exception> callback) {
+    CompletableFuture<Void> timeoutFail = failAfter(Duration.ofSeconds(timeout));
+    CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
         insertRecord(deviceId, time, measurements, values);
       } catch (IoTDBConnectionException | StatementExecutionException e) {
-        logger.error("Error occurred when inserting tablets: ", e);
+        if (callback == null) {
+          logger.error("Error occurred when inserting record, device ID: {}, time: {}. ", deviceId,
+              time, e);
+        } else {
+          callback.accept(e);
+        }
       }
-      return new Pair<>(deviceId, time);
+      return null;
     }, threadPool.getThreadPool());
 
-    asyncRun.acceptEither(timeout, this::asyncHandler);
+    return asyncRun.acceptEither(timeoutFail, this::successHandler);
   }
 
   private static <T> CompletableFuture<T> failAfter(Duration duration) {
@@ -609,11 +628,7 @@ public class SessionPool {
     return promise;
   }
 
-  private void asyncHandler(Pair<String, Long> insertPair) {
-    if (insertPair != null) {
-      logger.debug("Device: {}, at time: {}, inserted successfully.", insertPair.left,
-          insertPair.right);
-    }
+  private void successHandler(Void aVoid) {
   }
 
   /**
