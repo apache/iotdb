@@ -20,9 +20,9 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.MERGED_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.MERGED_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,9 +47,9 @@ import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
-import org.apache.iotdb.db.engine.flush.VmMergeTask;
 import org.apache.iotdb.db.engine.flush.VmLogAnalyzer;
 import org.apache.iotdb.db.engine.flush.VmLogger;
+import org.apache.iotdb.db.engine.flush.VmMergeTask;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -990,6 +990,17 @@ public class TsFileProcessor {
       // get vm tsfile data
       for (int i = 0; i < vmWriters.size(); i++) {
         RestorableTsFileIOWriter vmWriter = vmWriters.get(i);
+        for (Entry<String, Map<String, List<ChunkMetadata>>> entry : vmWriter.getMetadatasForQuery().entrySet()) {
+          String device = entry.getKey();
+          for (List<ChunkMetadata> tmpChunkMetadataList : entry.getValue().values()) {
+            for (ChunkMetadata chunkMetadata : tmpChunkMetadataList) {
+              vmTsFileResources.get(i).updateStartTime(device, chunkMetadata.getStartTime());
+              if (!sequence) {
+                vmTsFileResources.get(i).updateStartTime(device, chunkMetadata.getEndTime());
+              }
+            }
+          }
+        }
         chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType);
         vmTsFileResources.get(i).readLock();
         QueryUtils.modifyChunkMetaData(chunkMetadataList,

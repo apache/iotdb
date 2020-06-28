@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.engine.flush;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.UNSEQUENCE_FLODER_NAME;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTimeValuePair;
 
 import java.io.IOException;
