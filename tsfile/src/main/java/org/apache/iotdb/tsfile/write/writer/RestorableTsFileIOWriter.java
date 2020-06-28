@@ -169,6 +169,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         // all the stale data.
         if (dataType == null || dataType.equals(chunkMetaData.getDataType())) {
           chunkMetadataList.add(chunkMetaData);
+          VersionUtils.applyVersion(chunkMetadataList, versionInfo);
         }
       }
     }
