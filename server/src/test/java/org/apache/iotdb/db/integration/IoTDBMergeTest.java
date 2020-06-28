@@ -83,7 +83,7 @@ public class IoTDBMergeTest {
               + "%d,%d)", j, j+10, j+20, j+30));
         }
         statement.execute("FLUSH");
-//        statement.execute("MERGE");
+        statement.execute("MERGE");
 
         int cnt;
         try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
