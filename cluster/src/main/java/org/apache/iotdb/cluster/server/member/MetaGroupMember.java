@@ -1579,7 +1579,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       TSStatus tmpStatus;
       List<String> errorCodePartitionGroups = new ArrayList<>();
       if (plan instanceof InsertTabletPlan) {
-        TSStatus[] subStatus = new TSStatus[((InsertTabletPlan) plan).getRowCount()];
+        TSStatus[] subStatus = null;
         boolean noFailure = true;
         boolean isBatchFailure = false;
         for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
@@ -1600,10 +1600,14 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
           isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
               || isBatchFailure;
-          PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
-              tmpStatus.subStatus == null ? RpcUtils
-                  .getStatus(((InsertTabletPlan) entry.getKey()).getRowCount())
-                  : tmpStatus.subStatus.toArray(new TSStatus[]{}));
+          if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+            if (subStatus == null) {
+              subStatus = new TSStatus[((InsertTabletPlan) plan).getRowCount()];
+              Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
+            }
+            PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
+                tmpStatus.subStatus.toArray(new TSStatus[]{}));
+          }
           if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             // execution failed, record the error message
             errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
