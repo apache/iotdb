@@ -922,6 +922,10 @@ public class MTree implements Serializable {
     }
   }
 
+  public void setSnapshotLineNumber(int snapshotLineNumber) {
+    this.snapshotLineNumber = snapshotLineNumber;
+  }
+
   public int getSnapshotLineNumber() {
     return snapshotLineNumber;
   }
@@ -932,6 +936,7 @@ public class MTree implements Serializable {
       bw.write(String.valueOf(lineNumber));
       bw.newLine();
       root.serializeTo(bw);
+      setSnapshotLineNumber(lineNumber);
     }
   }
 

@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Map;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -34,6 +35,7 @@ import org.slf4j.LoggerFactory;
 public class MLogWriter {
 
   private static final Logger logger = LoggerFactory.getLogger(MLogWriter.class);
+  private File logFile;
   private BufferedWriter writer;
   private int lineNumber;
 
@@ -47,7 +49,7 @@ public class MLogWriter {
       }
     }
 
-    File logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
+    logFile = SystemFileFactory.INSTANCE.getFile(schemaDir + File.separator + logFileName);
     FileWriter fileWriter = new FileWriter(logFile, true);
     writer = new BufferedWriter(fileWriter);
   }
@@ -160,6 +162,14 @@ public class MLogWriter {
     FSFactoryProducer.getFSFactory().moveFile(tmpLogFile, logFile);
   }
 
+  public void clear() throws IOException {
+    writer.close();
+    Files.delete(logFile.toPath());
+    FileWriter fileWriter = new FileWriter(logFile, true);
+    writer = new BufferedWriter(fileWriter);
+    lineNumber = 0;
+  }
+
   private void newLine() throws IOException {
     writer.newLine();
     writer.flush();
@@ -172,7 +182,6 @@ public class MLogWriter {
 
   /**
    * only used for initialize a mlog file writer.
-   * @param number
    */
   void setLineNumber(int number) {
     lineNumber = number;
