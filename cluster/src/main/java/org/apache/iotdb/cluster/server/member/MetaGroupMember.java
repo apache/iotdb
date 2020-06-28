@@ -1578,7 +1578,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
                   .getStatusCode()) {
             throw new MetadataException(
-                String.format("Status Code: %d, failed to set storage group ",
+                String.format("Status Code: %d, failed to set storage group %s",
                     setStorageGroupResult.getCode(), storageGroupName)
             );
           }
@@ -1587,7 +1587,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
             if (!isAutoCreateTimeseriesSuccess) {
               throw new MetadataException(
-                  String.format("Failed to create timeseries from InsertPlan automatically.")
+                  "Failed to create timeseries from InsertPlan automatically."
               );
             }
           }
