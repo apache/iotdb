@@ -991,7 +991,6 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     if (readOnly) {
       return StatusUtils.NODE_READ_ONLY;
     }
-
     PhysicalPlanLog log = new PhysicalPlanLog();
     // assign term and index to the new log and append it
     synchronized (logManager) {

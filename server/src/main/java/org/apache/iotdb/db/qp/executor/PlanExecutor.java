@@ -40,6 +40,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
@@ -132,13 +133,12 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
-import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -921,8 +921,26 @@ public class PlanExecutor implements IPlanExecutor {
       insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
       if (insertPlan.getFailedMeasurements() != null) {
-        throw new StorageEngineException(
-            "failed to insert points " + insertPlan.getFailedMeasurements());
+        // check if all path not exist exceptions
+        List<String> failedPaths = new ArrayList<>(insertPlan.getFailedMeasurements().keySet());
+        List<Exception> exceptions = new ArrayList<>(insertPlan.getFailedMeasurements().values());
+        boolean isPathNotExistException = true;
+        for(Exception e : exceptions){
+          Throwable curException = e;
+          while(curException.getCause() != null){
+            curException = curException.getCause();
+          }
+          if(!(curException instanceof PathNotExistException)){
+            isPathNotExistException = false;
+            break;
+          }
+        }
+        if(isPathNotExistException){
+          throw new PathNotExistException(failedPaths);
+        }else {
+          throw new StorageEngineException(
+              "failed to insert points " + insertPlan.getFailedMeasurements());
+        }
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
@@ -953,7 +971,7 @@ public class PlanExecutor implements IPlanExecutor {
           logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i],
               e.getMessage());
           if (enablePartialInsert) {
-            insertPlan.markMeasurementInsertionFailed(i);
+            insertPlan.markMeasurementInsertionFailed(i, e);
           } else {
             throw e;
           }
@@ -1133,29 +1151,6 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  /**
-   * Get default encoding by dataType
-   */
-  private TSEncoding getDefaultEncoding(TSDataType dataType) {
-    IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-    switch (dataType) {
-      case BOOLEAN:
-        return conf.getDefaultBooleanEncoding();
-      case INT32:
-        return conf.getDefaultInt32Encoding();
-      case INT64:
-        return conf.getDefaultInt64Encoding();
-      case FLOAT:
-        return conf.getDefaultFloatEncoding();
-      case DOUBLE:
-        return conf.getDefaultDoubleEncoding();
-      case TEXT:
-        return conf.getDefaultTextEncoding();
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format("Data type %s is not supported.", dataType.toString()));
-    }
-  }
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {

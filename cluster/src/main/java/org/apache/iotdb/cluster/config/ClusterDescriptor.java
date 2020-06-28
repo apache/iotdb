@@ -223,6 +223,10 @@ public class ClusterDescriptor {
         .getProperty("LOG_DELETION_CHECK_INTERVAL_SECOND",
             String.valueOf(config.getLogDeleteCheckIntervalSecond()))));
 
+    config.setEnableAutoCreateSchema(Boolean.parseBoolean(properties
+        .getProperty("ENABLE_AUTO_CREATE_SCHEMA",
+            String.valueOf(config.isEnableAutoCreateSchema()))));
+
     String consistencyLevel = properties.getProperty("CONSISTENCY_LEVEL");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

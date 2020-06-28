@@ -77,6 +77,11 @@ public class ClusterConfig {
   private int selectorNumOfClientPool = Runtime.getRuntime().availableProcessors() * 2;
 
   /**
+   * Whether creating schema automatically is enabled, this will replace the one in iotdb-engine.properties
+   */
+  private boolean enableAutoCreateSchema = true;
+
+  /**
    * consistency level, now three consistency levels are supported: strong, mid and weak. Strong
    * consistency means the server will first try to synchronize with the leader to get the newest
    * meta data, if failed(timeout), directly report an error to the user; While mid consistency
@@ -220,5 +225,13 @@ public class ClusterConfig {
 
   public void setConsistencyLevel(ConsistencyLevel consistencyLevel) {
     this.consistencyLevel = consistencyLevel;
+  }
+
+  public boolean isEnableAutoCreateSchema() {
+    return enableAutoCreateSchema;
+  }
+
+  public void setEnableAutoCreateSchema(boolean enableAutoCreateSchema) {
+    this.enableAutoCreateSchema = enableAutoCreateSchema;
   }
 }

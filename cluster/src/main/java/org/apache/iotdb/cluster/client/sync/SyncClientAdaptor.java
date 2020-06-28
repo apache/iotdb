@@ -242,6 +242,16 @@ public class SyncClientAdaptor {
     return resultReference.get();
   }
 
+  public static List<String> getUnregisteredMeasurements(DataClient client, Node header, List<String> seriesPaths) throws TException, InterruptedException {
+    AtomicReference<List<String>> remoteResult = new AtomicReference<>();
+    GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
+    synchronized (remoteResult) {
+      client.getUnregisteredTimeseries(header, seriesPaths, handler);
+      remoteResult.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+    return remoteResult.get();
+  }
+
   public static List<String> getAllPaths(DataClient client, Node header, List<String> pathsToQuery)
       throws InterruptedException, TException {
     AtomicReference<List<String>> remoteResult = new AtomicReference<>();
