@@ -99,10 +99,8 @@ It splices the suffix paths obtained in the SELECT statement with the prefix pat
         // Wildcard has been removed from the device list, but suffix paths may still contain it
         // Get the actual time series paths by removing wildcards
         List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());
-        // If the path after splicing does not exist,
-        // it is necessary to further determine whether the measurement exists in other devices
-        // If no, it will be recognized as `NonExist` temporarily
-        // If the measurement exists in next devices, override `NonExist` to `Exist`
+        // If the path after splicing does not exist, it will be recognized as `NonExist` temporarily
+        // If the measurement exists in next devices, then override `NonExist` to `Exist`
         if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
           ...
         }

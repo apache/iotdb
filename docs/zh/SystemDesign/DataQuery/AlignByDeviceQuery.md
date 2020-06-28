@@ -99,9 +99,8 @@ SELECT s1, "1", *, s2, s5 FROM root.sg.d1, root.sg.* WHERE time = 1 AND s1 < 25 
         // 设备列表中已经去除通配符，但是后缀路径仍可能含有通配符
         // 去除通配符后得到实际的时间序列路径
         List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());
-        // 如果拼接后的路径不存在，需要进一步判断该 measurement 是否在其它设备中存在
-        // 如果都没有则暂时识别为 `NonExist`
-        // 如果后续出现设备存在该 measurement，则覆盖 `NonExist` 值为 `Exist`
+        // 如果拼接后的路径不存在，则暂时识别为 `NonExist`
+        // 后续如果出现设备存在该 measurement，则覆盖 `NonExist` 值为 `Exist`
         if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
           ...
         }
