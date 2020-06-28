@@ -108,6 +108,7 @@ public class SyncServerManager implements IService {
   public void stop() {
     if (conf.isSyncEnable()) {
       FileLoaderManager.getInstance().stop();
+      syncServerThread.interrupt();
       syncServerThread.close();
       try {
         stopLatch.await();

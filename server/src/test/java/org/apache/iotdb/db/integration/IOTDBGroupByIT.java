@@ -118,6 +118,7 @@ public class IOTDBGroupByIT {
 
   @Test
   public void countSumAvgTest() {
+    System.out.println("countSumAvgTest");
     String[] retArray1 = new String[]{
         "5,3,35.8,11.933333333333332",
         "25,2,70.7,35.35",
@@ -227,6 +228,7 @@ public class IOTDBGroupByIT {
 
   @Test
   public void maxMinValeTimeTest() {
+    System.out.println("maxMinValeTimeTest");
     String[] retArray1 = new String[]{
         "2,null,null,null,null",
         "4,5.5,4.4,5,4",
@@ -312,6 +314,7 @@ public class IOTDBGroupByIT {
 
   @Test
   public void firstLastTest() {
+    System.out.println("firstLastTest");
     String[] retArray1 = new String[]{
         "2,5.5,4.4",
         "6,null,null",
@@ -385,6 +388,7 @@ public class IOTDBGroupByIT {
 
   @Test
   public void largeIntervalTest() {
+    System.out.println("largeIntervalTest");
     String[] retArray1 = new String[]{
         "0,4.4,12,300,4",
         "340,100.1,10,620,500"
@@ -446,6 +450,7 @@ public class IOTDBGroupByIT {
 
   @Test
   public void countSumAvgInnerIntervalTest() {
+    System.out.println("countSumAvgInnerIntervalTest");
     String[] retArray1 = new String[]{
         "0,2,7.7,3.85",
         "30,1,30.3,30.3",
@@ -499,6 +504,7 @@ public class IOTDBGroupByIT {
 
   @Test
   public void countSumAvgNoDataTest() {
+    System.out.println("countSumAvgNoDataTest");
     String[] retArray1 = new String[]{
         "10000,0,0.0,null",
         "10005,0,0.0,null",
@@ -538,6 +544,7 @@ public class IOTDBGroupByIT {
 
   @Test
   public void usingNowFunction() {
+    System.out.println("usingNowFunction");
     try (Connection connection = DriverManager.
         getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
