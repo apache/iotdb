@@ -76,6 +76,10 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   public int getLimit() {
     return limit;
   }
+  
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
 
   public int getOffset() {
     return offset;

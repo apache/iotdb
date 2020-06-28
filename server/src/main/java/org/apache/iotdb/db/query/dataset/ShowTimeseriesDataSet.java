@@ -47,7 +47,6 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;
 
-
   public ShowTimeseriesDataSet(List<Path> paths,
       List<TSDataType> dataTypes, ShowPlan showPlan) {
     super(paths, dataTypes);
@@ -80,7 +79,6 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   public List<RowRecord> transferShowTimeSeriesResultToRecordList(
       List<ShowTimeSeriesResult> timeseriesList, ShowTimeSeriesPlan showTimeSeriesPlan) {
     List<RowRecord> records = new ArrayList<>();
-
     List<Path> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     paths.add(new Path(COLUMN_TIMESERIES));
@@ -95,7 +93,6 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
     dataTypes.add(TSDataType.TEXT);
     paths.add(new Path(COLUMN_TIMESERIES_COMPRESSION));
     dataTypes.add(TSDataType.TEXT);
-
     Set<String> tagAndAttributeName = new TreeSet<>();
     for (ShowTimeSeriesResult result : timeseriesList) {
       tagAndAttributeName.addAll(result.getTagAndAttribute().keySet());
@@ -105,7 +102,6 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
       dataTypes.add(TSDataType.TEXT);
     }
 
-    ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,showTimeSeriesPlan);
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());
@@ -115,7 +111,6 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
       updateRecord(record, result.getEncoding());
       updateRecord(record, result.getCompressor());
       updateRecord(record, result.getTagAndAttribute(), paths);
-      showTimeseriesDataSet.putRecord(record);
       records.add(record);
     }
     return records;
@@ -137,5 +132,4 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
     field.setBinaryV(new Binary(s));
     record.addField(field);
   }
-
 }

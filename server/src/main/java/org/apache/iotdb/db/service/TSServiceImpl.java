@@ -530,7 +530,13 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     long queryId = -1;
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
-
+      if(plan instanceof ShowTimeSeriesPlan){
+        if (plan instanceof ShowTimeSeriesPlan) {
+          if (((ShowTimeSeriesPlan) plan).getLimit() == 0) {
+            ((ShowTimeSeriesPlan) plan).setLimit(fetchSize);
+          }
+        }
+      }
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
           throw new QueryProcessException("Aggregation doesn't support disable align clause.");
