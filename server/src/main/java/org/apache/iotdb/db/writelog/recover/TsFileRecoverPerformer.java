@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
+import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.deleteVmFile;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
 import java.io.File;
@@ -255,11 +257,19 @@ public class TsFileRecoverPerformer {
     logReplayer.replayLogs();
     try {
       if (!recoverMemTable.isEmpty()) {
+        List<TsFileResource> deleteTsFileResources = new ArrayList<>();
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
-            restorableTsFileIOWriter, new ArrayList<>(), new ArrayList<>(), false, false, sequence,
+            restorableTsFileIOWriter, deleteTsFileResources, new ArrayList<>(), false, false, sequence,
             tsFileResource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
+        for (TsFileResource vmTsFileResource : deleteTsFileResources) {
+          deleteVmFile(vmTsFileResource);
+        }
+        File logFile = FSFactoryProducer.getFSFactory()
+            .getFile(tsFileResource.getFile().getParent(),
+                tsFileResource.getFile().getName() + VM_LOG_NAME);
+        logFile.delete();
       }
 
       if (!isLastFile || tsFileResource.isCloseFlagSet()) {

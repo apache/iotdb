@@ -590,7 +590,7 @@ public class TsFileProcessor {
             + VM_SUFFIX);
   }
 
-  private void deleteVmFile(TsFileResource seqFile) {
+  public static void deleteVmFile(TsFileResource seqFile) {
     seqFile.writeLock();
     try {
       ChunkMetadataCache.getInstance().remove(seqFile);

@@ -23,15 +23,12 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
@@ -62,7 +59,6 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -186,16 +182,6 @@ public class UnseqTsFileRecoverTest {
     ActiveTimeSeriesCounter.getInstance()
         .init(resource.getFile().getParentFile().getParentFile().getName());
     performer.recover();
-
-    TsFileProcessor tsFileProcessor = new TsFileProcessor(resource.getFile().getParent(), resource,
-        new ArrayList<>(), new SimpleFileVersionController(resource.getFile().getParent(),
-        resource.getTimePartition()),
-        null, null, false,
-        new RestorableTsFileIOWriter(resource.getFile()), new ArrayList<>());
-    tsFileProcessor.recover();
-    resource.setProcessor(tsFileProcessor);
-    resource.removeResourceFile();
-    tsFileProcessor.setTimeRangeId(resource.getTimePartition());
 
     assertEquals(1, (long) resource.getStartTime("root.sg.device99"));
     assertEquals(300, (long) resource.getEndTime("root.sg.device99"));

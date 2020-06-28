@@ -71,6 +71,7 @@ public class VmMergeTask {
     Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
 
     for (RestorableTsFileIOWriter vmWriter : vmWriters) {
+      vmWriter.makeMetadataVisible();
       Map<String, Map<String, List<ChunkMetadata>>> deviceMeasurementChunkMetadataMap = vmWriter
           .getMetadatasForQuery();
       // device, measurement -> chunk metadata list
