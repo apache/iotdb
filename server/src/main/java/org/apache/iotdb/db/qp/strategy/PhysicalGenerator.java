@@ -78,6 +78,7 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -263,6 +264,8 @@ public class PhysicalGenerator {
       case DELETE_PARTITION:
         DeletePartitionOperator op = (DeletePartitionOperator) operator;
         return new DeletePartitionPlan(op.getStorageGroupName(), op.getPartitionId());
+      case CREATE_SCHEMA_SNAPSHOT:
+        return new CreateSnapshotPlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -447,6 +450,11 @@ public class PhysicalGenerator {
               }
             }
 
+            // Get data types with and without aggregate functions (actual time series) respectively
+            // Data type with aggregation function `columnDataTypes` is used for:
+            //  1. Data type consistency check 2. Header calculation, output result set
+            // The actual data type of the time series `measurementDataTypes` is used for
+            //  the actual query in the AlignByDeviceDataSet
             String aggregation =
                 originAggregations != null && !originAggregations.isEmpty()
                     ? originAggregations.get(i) : null;
@@ -480,7 +488,9 @@ public class PhysicalGenerator {
                 measurementDataTypeMap.put(measurementChecked, measurementDataTypes.get(pathIdx));
               }
 
-              // update measurementSetOfGivenSuffix and Normal measurement
+              // This step indicates that the measurement exists under the device and is correct,
+              // First, update measurementSetOfGivenSuffix which is distinct
+              // Then if this measurement is recognized as NonExist before，update it to Exist
               if (measurementSetOfGivenSuffix.add(measurementChecked)
                   || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);

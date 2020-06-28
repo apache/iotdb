@@ -101,6 +101,7 @@ public class Planner {
       case NULL:
       case SHOW_MERGE_STATUS:
       case DELETE_PARTITION:
+      case CREATE_SCHEMA_SNAPSHOT:
         return operator;
       case QUERY:
       case UPDATE:
