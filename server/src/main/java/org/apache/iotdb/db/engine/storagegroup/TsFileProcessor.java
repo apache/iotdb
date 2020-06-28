@@ -701,7 +701,8 @@ public class TsFileProcessor {
               > config.getAvgSeriesPointNumberThreshold()) {
             isVm = false;
             isFull = false;
-            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
+            flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources, vmWriters,
+                false, false,
                 sequence,
                 storageGroupName);
           } else {
@@ -709,7 +710,8 @@ public class TsFileProcessor {
             if (config.getMaxVmNum() <= vmTsFileResources.size()) {
               isVm = true;
               isFull = true;
-              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true, true,
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources,
+                  vmWriters, true, true,
                   sequence,
                   storageGroupName);
             } else {
@@ -718,13 +720,15 @@ public class TsFileProcessor {
               File newVmFile = createNewVMFile();
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
-              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true, false,
+              flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources,
+                  vmWriters, true, false,
                   sequence,
                   storageGroupName);
             }
           }
         } else {
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false, false,
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources, vmWriters,
+              false, false,
               sequence,
               storageGroupName);
         }
@@ -799,7 +803,8 @@ public class TsFileProcessor {
         if (config.isEnableVm()) {
           VmMergeTask vmMergeTask = new VmMergeTask(writer, vmWriters,
               storageGroupName,
-              new VmLogger(tsFileResource.getFile().getParent(), tsFileResource.getFile().getName()),
+              new VmLogger(tsFileResource.getFile().getParent(),
+                  tsFileResource.getFile().getName()),
               new HashSet<>(), sequence);
           vmMergeTask.fullMerge();
           for (TsFileResource vmTsFileResource : vmTsFileResources) {
@@ -989,7 +994,8 @@ public class TsFileProcessor {
       // get vm tsfile data
       for (int i = 0; i < vmWriters.size(); i++) {
         RestorableTsFileIOWriter vmWriter = vmWriters.get(i);
-        for (Entry<String, Map<String, List<ChunkMetadata>>> entry : vmWriter.getMetadatasForQuery().entrySet()) {
+        for (Entry<String, Map<String, List<ChunkMetadata>>> entry : vmWriter.getMetadatasForQuery()
+            .entrySet()) {
           String device = entry.getKey();
           for (List<ChunkMetadata> tmpChunkMetadataList : entry.getValue().values()) {
             for (ChunkMetadata chunkMetadata : tmpChunkMetadataList) {

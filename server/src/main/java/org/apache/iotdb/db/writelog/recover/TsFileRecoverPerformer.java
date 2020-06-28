@@ -167,7 +167,8 @@ public class TsFileRecoverPerformer {
     return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
   }
 
-  private void recoverResource(TsFileResource tsFileResource, boolean needSerialize) throws IOException {
+  private void recoverResource(TsFileResource tsFileResource, boolean needSerialize)
+      throws IOException {
     if (tsFileResource.fileExists()) {
       // .resource file exists, deserialize it
       recoverResourceFromFile(tsFileResource);
@@ -246,7 +247,7 @@ public class TsFileRecoverPerformer {
       if (!recoverMemTable.isEmpty()) {
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
-            restorableTsFileIOWriter, new ArrayList<>(), false, false, sequence,
+            restorableTsFileIOWriter, new ArrayList<>(), new ArrayList<>(), false, false, sequence,
             tsFileResource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
       }

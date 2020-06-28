@@ -41,6 +41,7 @@ import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -71,6 +72,7 @@ public class MemTableFlushTask {
   private final Future<?> ioTaskFuture;
   private final RestorableTsFileIOWriter writer;
   private List<RestorableTsFileIOWriter> vmWriters;
+  private List<TsFileResource> vmTsFiles;
   private RestorableTsFileIOWriter tmpWriter;
   private RestorableTsFileIOWriter currWriter;
   private VmLogger vmLogger;
@@ -89,11 +91,13 @@ public class MemTableFlushTask {
   private volatile boolean noMoreIOTask = false;
 
   public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer,
+      List<TsFileResource> vmTsFiles,
       List<RestorableTsFileIOWriter> vmWriters, boolean isVm,
       boolean isFull, boolean sequence, String storageGroup) {
     this.memTable = memTable;
     this.writer = writer;
     this.vmWriters = vmWriters;
+    this.vmTsFiles = vmTsFiles;
     this.isVm = isVm;
     this.isFull = isFull;
     this.sequence = sequence;
@@ -119,6 +123,7 @@ public class MemTableFlushTask {
         File file = createNewTmpFile();
         currWriter = new RestorableTsFileIOWriter(file);
         vmWriters.add(currWriter);
+        vmTsFiles.add(new TsFileResource(file));
       } else {
         currWriter = writer;
       }
@@ -183,6 +188,7 @@ public class MemTableFlushTask {
         if (isFull) {
           tmpWriter.writeVersion(memTable.getVersion());
         } else {
+          System.out.println(memTable.getVersion());
           vmWriters.get(vmWriters.size() - 1).writeVersion(memTable.getVersion());
         }
       } else {
