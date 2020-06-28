@@ -1586,7 +1586,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           }
           return executeNonQuery(plan);
         } catch (MetadataException e) {
-          logger.error("Failed to set storage group or create timeseries, because {}", e);
+          logger.error(String.format("Failed to set storage group or create timeseries, because %s", e));
         }
       }
       logger.error("{}: Cannot found storage groups for {}", name, plan);
