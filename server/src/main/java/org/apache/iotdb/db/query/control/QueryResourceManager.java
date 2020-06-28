@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.control;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -60,9 +62,10 @@ public class QueryResourceManager {
   private Map<Long, Long> chunkNumMap = new ConcurrentHashMap<>();
   // chunk size represents the number of time-value points in the chunk
   private Map<Long, Long> chunkSizeMap = new ConcurrentHashMap<>();
-  // record the distinct tsfile numbers for each query id
-  private Map<Long, Set<TsFileResource>> seqFileNumMap = new ConcurrentHashMap<>();
-  private Map<Long, Set<TsFileResource>> unseqFileNumMap = new ConcurrentHashMap<>();
+  // record the distinct tsfiles for each query id
+  // Just store weak references here in case GC failed for those objects
+  private Map<Long, Set<WeakReference<TsFileResource>>> seqFileNumMap = new ConcurrentHashMap<>();
+  private Map<Long, Set<WeakReference<TsFileResource>>> unseqFileNumMap = new ConcurrentHashMap<>();
   private IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   /**
    * Record temporary files used for external sorting.
@@ -120,9 +123,11 @@ public class QueryResourceManager {
     // calculate the distinct number of seq and unseq tsfiles
     if (config.isEnablePerformanceTracing()) {
       seqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll(queryDataSource.getSeqResources());
+          .addAll((queryDataSource.getSeqResources().stream().map(r -> new WeakReference<>(r))
+                  .collect(Collectors.toSet())));
       unseqFileNumMap.computeIfAbsent(context.getQueryId(), k -> new HashSet<>())
-          .addAll(queryDataSource.getUnseqResources());
+          .addAll((queryDataSource.getUnseqResources().stream().map(r -> new WeakReference<>(r))
+              .collect(Collectors.toSet())));
     }
     return queryDataSource;
   }
