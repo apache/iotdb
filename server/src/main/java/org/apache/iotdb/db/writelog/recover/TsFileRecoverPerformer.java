@@ -67,7 +67,7 @@ public class TsFileRecoverPerformer {
   private List<TsFileResource> vmTsFileResources;
 
   /**
-   * @param isLastFile whether this TsFile is the last file of its partition
+   * @param isLastFile        whether this TsFile is the last file of its partition
    * @param vmTsFileResources only last file could have non-empty vmTsFileResources
    */
   public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
@@ -148,6 +148,7 @@ public class TsFileRecoverPerformer {
                 + RESOURCE_SUFFIX + e);
       }
     } else {
+      // if the last file in vmTsFileResources is not complete, we should also recover the tsfile resource
       if (!vmTsFileResources.isEmpty()) {
         try {
           recoverResource(resource, false);
@@ -176,7 +177,8 @@ public class TsFileRecoverPerformer {
     return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
   }
 
-  private void recoverResource(TsFileResource tsFileResource, boolean needSerialize) throws IOException {
+  private void recoverResource(TsFileResource tsFileResource, boolean needSerialize)
+      throws IOException {
     if (tsFileResource.fileExists()) {
       // .resource file exists, deserialize it
       recoverResourceFromFile(tsFileResource);
