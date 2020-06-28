@@ -917,7 +917,6 @@ public class MTree implements Serializable {
   public void serializeTo(String snapshotPath) throws IOException {
     try (BufferedWriter bw = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(snapshotPath)))) {
-      bw.newLine();
       root.serializeTo(bw);
     }
   }
