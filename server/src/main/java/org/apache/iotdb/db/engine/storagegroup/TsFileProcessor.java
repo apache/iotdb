@@ -981,7 +981,6 @@ public class TsFileProcessor {
       // get unseal tsfile data and its read lock
       List<ChunkMetadata> chunkMetadataList = writer
           .getVisibleMetadataList(deviceId, measurementId, dataType);
-      tsFileResource.readLock();
       QueryUtils.modifyChunkMetaData(chunkMetadataList,
           modifications);
       chunkMetadataList.removeIf(context::chunkNotSatisfy);
@@ -1002,7 +1001,6 @@ public class TsFileProcessor {
           }
         }
         chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId, measurementId, dataType);
-        vmTsFileResources.get(i).readLock();
         QueryUtils.modifyChunkMetaData(chunkMetadataList,
             modifications);
         chunkMetadataList.removeIf(context::chunkNotSatisfy);
@@ -1045,5 +1043,9 @@ public class TsFileProcessor {
 
   public List<TsFileResource> getVmTsFileResources() {
     return vmTsFileResources;
+  }
+
+  public ReadWriteLock getFlushQueryLock() {
+    return flushQueryLock;
   }
 }

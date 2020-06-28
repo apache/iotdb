@@ -73,7 +73,7 @@ public class TsFileLock {
         }
       }
 
-      writeCnt ++;
+      writeCnt++;
     }
   }
 
