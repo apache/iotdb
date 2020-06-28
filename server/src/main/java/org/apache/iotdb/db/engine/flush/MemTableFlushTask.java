@@ -188,7 +188,6 @@ public class MemTableFlushTask {
         if (isFull) {
           tmpWriter.writeVersion(memTable.getVersion());
         } else {
-          System.out.println(memTable.getVersion());
           vmWriters.get(vmWriters.size() - 1).writeVersion(memTable.getVersion());
         }
       } else {
