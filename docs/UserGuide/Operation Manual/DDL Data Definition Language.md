@@ -331,7 +331,7 @@ IoTDB> CLEAR CACHE
 
 ## CREATE SNAPSHOT FOR SCHEMA
 
-To speed up restarting of IoTDB, we set checkpoint for MTree. Every 10 minutes, background thread checks the last modified time of MTree. If users haven’t modified MTree for more than 1 hour (which means `mlog.txt` hasn’t been updated for more than 1 hour), and `mlog.txt` has reached the threshold line number of user configuration, MTree snapshot is created. Users can also create MTree snapshot manually:
+To speed up restarting of IoTDB, users could create snapshot of schema and avoid recovering schema from mlog file.
 ```
 IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```

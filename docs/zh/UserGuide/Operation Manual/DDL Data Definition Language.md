@@ -324,7 +324,7 @@ IoTDB> CLEAR CACHE
 
 ## 为 SCHEMA 创建快照
 
-为了加快 IoTDB 重启速度，我们为 MTree 设置了检查点，即每隔10分钟，后台线程检查 MTree 的最后修改时间，如果用户超过1小时没修改 MTree （`mlog.txt` 文件超过1小时没有修改），并且 `mlog.txt` 中积累了用户配置的日志条数，就创建一次 MTree snapshot。用户也可以手动触发创建 MTree 快照：
+为了加快 IoTDB 重启速度，用户可以手动触发创建 schema 的快照，从而避免服务器从 mlog 文件中恢复。
 ```
 IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```
