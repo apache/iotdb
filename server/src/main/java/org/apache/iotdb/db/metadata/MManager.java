@@ -120,7 +120,6 @@ public class MManager {
   private File logFile;
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
-  private int lastSnapshotLogLineNumber;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
 
   private static class MManagerHolder {
@@ -181,7 +180,6 @@ public class MManager {
       }
     };
 
-    lastSnapshotLogLineNumber = 0;
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
     timedCreateMTreeSnapshotThread
@@ -244,10 +242,8 @@ public class MManager {
       mtree = new MTree();
     } else {
       mtree = MTree.deserializeFrom(mtreeSnapshot);
-      lastSnapshotLogLineNumber = mtree.getSnapshotLineNumber();
-      logger
-          .debug("spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
-
+      logger.debug("spend {} ms to deserialize mtree from snapshot",
+          System.currentTimeMillis() - time);
     }
 
     time = System.currentTimeMillis();
@@ -1794,20 +1790,19 @@ public class MManager {
       return;
     }
     if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
-        && logWriter.getLineNumber() > lastSnapshotLogLineNumber) {
+        && logWriter.getLineNumber() > 0) {
       logger.info("Start creating MTree snapshot, because {} ms elapse.",
           System.currentTimeMillis() - logFile.lastModified());
       createMTreeSnapshot();
-    } else if (logWriter.getLineNumber() - lastSnapshotLogLineNumber >= mtreeSnapshotInterval) {
+    } else if (logWriter.getLineNumber() >= mtreeSnapshotInterval) {
       logger.info("Start creating MTree snapshot, because of {} new lines are added.",
-          logWriter.getLineNumber() - lastSnapshotLogLineNumber);
+          logWriter.getLineNumber());
       createMTreeSnapshot();
     } else {
       if (logger.isDebugEnabled()) {
         logger.debug(
-            "MTree snapshot need not be created. Current mlog line number: {}, last snapshot line number: {}, time difference from last modification: {} ms",
-            logWriter.getLineNumber(), lastSnapshotLogLineNumber,
-            System.currentTimeMillis() - logFile.lastModified());
+            "MTree snapshot need not be created. New mlog line number: {}, time difference from last modification: {} ms",
+            logWriter.getLineNumber(), System.currentTimeMillis() - logFile.lastModified());
       }
     }
   }
@@ -1816,9 +1811,7 @@ public class MManager {
     lock.readLock().lock();
     long time = System.currentTimeMillis();
     try {
-      mtree.serializeTo(mtreeSnapshotTmpPath,
-          logWriter.getLineNumber() + mtree.getSnapshotLineNumber());
-      lastSnapshotLogLineNumber = logWriter.getLineNumber();
+      mtree.serializeTo(mtreeSnapshotTmpPath);
       File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
       File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
       if (snapshotFile.exists()) {
