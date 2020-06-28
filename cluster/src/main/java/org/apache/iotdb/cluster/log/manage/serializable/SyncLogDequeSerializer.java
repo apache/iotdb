@@ -134,9 +134,27 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     this.maxRemovedLogSize = maxRemovedLogSize;
   }
 
+  /**
+   * for log tools
+   */
+  public LogManagerMeta getMeta() {
+    return meta;
+  }
+
+  /**
+   * Recover all the logs in disk. This function will be called once this instance is created.
+   */
   @Override
   public List<Log> getAllEntries() {
-    return recoverLog();
+    List<Log> logs = recoverLog();
+    int size = logs.size();
+    if (size != 0 && meta.getLastLogIndex() <= logs.get(size - 1).getCurrLogIndex()) {
+      meta.setLastLogTerm(logs.get(size - 1).getCurrLogTerm());
+      meta.setLastLogIndex(logs.get(size - 1).getCurrLogIndex());
+      meta.setCommitLogTerm(logs.get(size - 1).getCurrLogTerm());
+      meta.setCommitLogIndex(logs.get(size - 1).getCurrLogIndex());
+    }
+    return logs;
   }
 
   @Override
@@ -325,8 +343,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       lock.writeLock().unlock();
     }
 
-    serializeMeta(meta);
-
   }
 
   public void append(List<Log> logs, LogManagerMeta meta) {
@@ -360,7 +376,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       logger.error("Error in appending {} logs serialization: ", logs.size(), e);
     }
 
-    serializeMeta(meta);
   }
 
   @SuppressWarnings("unused") // to support serialization of uncommitted logs
