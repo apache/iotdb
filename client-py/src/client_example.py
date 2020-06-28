@@ -27,6 +27,9 @@ import struct
 #if you use maven to compile the thrift api, just use the follwoing code:
 sys.path.append("../../service-rpc/target/generated-sources-python")
 
+#if you have already install apache-iotdb using `pip3 install apache-iotdb`, use the following:
+#import iotdb
+
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
@@ -163,8 +166,8 @@ if __name__ == '__main__':
     # Make socket
     transport = TSocket.TSocket(ip, port)
 
-    # Buffering is critical. Raw sockets are very slow
-    transport = TTransport.TFramedTransport(transport)
+    #in v0.10 we use TBufferedTransport. from v0.11 on, we use TFramedTransport
+    transport = TTransport.TBufferedTransport(transport)
 
     # Wrap in a protocol
     # use TCompactProtocol if the server enable thrift compression,
@@ -238,62 +241,70 @@ if __name__ == '__main__':
     measurements = ["s1", "s2", "s3", "s4", "s5", "s6"]
 
     # insert a single row
-    values = [1, 11, 1.1, 11.1, True, "\'text0\'"]
-    dataTypes = [TSDataType['INT32'], TSDataType['INT32'], TSDataType['FLOAT'],
+    values = [1, 11, 1.1, 11.1, True, "text0"]
+    dataTypes = [TSDataType['INT64'], TSDataType['INT32'], TSDataType['DOUBLE'],
                  TSDataType['FLOAT'], TSDataType['BOOLEAN'], TSDataType['TEXT']]
-    
-    value_pack_str = '>5ififibi7s'
+
+    value_pack_str = '>hqhihdhfh?hi'+ str(len(values[5])) +'s'
     encoding = 'utf-8'
     valueByte = bytearray()
-    
+
     valueByte.extend(struct.pack(value_pack_str,dataTypes[0], values[0],
                                              dataTypes[1], values[1],
                                              dataTypes[2], values[2],
                                              dataTypes[3], values[3],
                                              dataTypes[4], values[4],
-                                             dataTypes[5], bytes(values[5], encoding)))
+                                             dataTypes[5], len(values[5]),
+                                             bytes(values[5], encoding)))
     timestamp = 1
-    
+    print("isnertRecord()...")
     status = client.insertRecord(TSInsertRecordReq(sessionId, deviceId, measurements, valueByte, timestamp))
     print(status.message)
+
 
     # insert multiple rows, this interface is more efficient
     values = bytearray()
     times = bytearray()
 
     rowCnt = 3
-    dataTypes = [TSDataType['INT64'], TSDataType['INT32'], TSDataType['DOUBLE'],
-                 TSDataType['FLOAT'], TSDataType['BOOLEAN'], TSDataType['TEXT']]
+
     # the first 3 belong to 's1', the second 3 belong to 's2'... the last 3
     # belong to 's6'
     # to transfer a string, you must first send its length and then its bytes
     # (like the last 3 'i7s'). Text values should start and end with ' or ".
     # IoTDB use big endian in rpc
-    value_pack_str = '>3q3i3d3f3bi7si7si7s'
+    value_pack_str = '>3q3i3d3f3bi5si5si5s'
     time_pack_str = '>3q'
     encoding = 'utf-8'
-    values.extend(struct.pack(value_pack_str, 2, 3, 4, 22, 33, 44, 2.2, 3.3,
-                              4.4, 22.2, 33.3, 44.4, True, True, False,
-                              len(bytes('\'text1\'', encoding)),
-                              bytes('\'text1\'', encoding),
-                              len(bytes('\'text2\'', encoding)),
-                              bytes('\'text2\'', encoding),
-                              len(bytes('\'text3\'', encoding)),
-                              bytes('\'text3\'', encoding)))
+    values.extend(struct.pack(value_pack_str,
+                              2, 3, 4, #s1
+                              22, 33, 44, #s2
+                              2.2, 3.3, 4.4, #s3
+                              22.2, 33.3, 44.4, #s4
+                              True, True, False, #s5
+                              len(bytes('text1', encoding)),
+                              bytes('text1', encoding),
+                              len(bytes('text2', encoding)),
+                              bytes('text2', encoding),
+                              len(bytes('text3', encoding)),
+                              bytes('text3', encoding)))
     # warning: the data in batch must be sorted by time
     times.extend(struct.pack(time_pack_str, 2, 3, 4))
+    print("insertTablet()...")
     resp = client.insertTablet(TSInsertTabletReq(sessionId,deviceId,
                                                   measurements, values,
                                                   times, dataTypes, rowCnt))
-    status = resp.code
+    status = resp.statusList
     print(status)
 
+    print("SQL delete..")
     # execute deletion (or other statements)
     resp = client.executeStatement(TSExecuteStatementReq(sessionId, "DELETE FROM "
                                                             "root.group1 where time < 2", stmtId))
     status = resp.status
-    print(status.message)
+    print(status)
 
+    print("SQL select..")
     # query the data
     stmt = "SELECT * FROM root.group1"
     fetchSize = 2
@@ -305,7 +316,7 @@ if __name__ == '__main__':
     print(dataTypeList)
 
     status = resp.status
-    print(status.message)
+    print(status)
 
     queryId = resp.queryId
     while True:
