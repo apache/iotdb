@@ -1396,7 +1396,7 @@ public class StorageGroupProcessor {
             TsFileResource tmp = vmTsFileResourceList.get(i - 1);
             tsfileResourcesForQuery.add(
                 new TsFileResource(tmp.getFile(), tmp.getDeviceToIndexMap(), tmp.getStartTimes(),
-                    tmp.getEndTimes(), pair.left, pair.right.get(i), tmp));
+                    tmp.getEndTimes(), Collections.emptyList(), pair.right.get(i), tmp));
           }
         }
       } catch (IOException e) {
