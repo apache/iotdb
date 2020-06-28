@@ -1777,7 +1777,7 @@ public class MManager {
 
   private void checkMTreeModified() {
     if (logWriter == null || logFile == null) {
-      //the logWriter is not initialized now, we skip the check once.
+      // the logWriter is not initialized now, we skip the check once.
       return;
     }
     if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
