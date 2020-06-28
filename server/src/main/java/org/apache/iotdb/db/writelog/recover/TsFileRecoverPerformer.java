@@ -148,6 +148,15 @@ public class TsFileRecoverPerformer {
                 + RESOURCE_SUFFIX + e);
       }
     } else {
+      if (!vmTsFileResources.isEmpty()) {
+        try {
+          recoverResource(resource, false);
+        } catch (IOException e) {
+          throw new StorageGroupProcessorException(
+              "recover the resource file failed: " + filePath
+                  + RESOURCE_SUFFIX + e);
+        }
+      }
       // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
       // map must be updated first to avoid duplicated insertion
       recoverResourceFromWriter(lastRestorableTsFileIOWriter, lastTsFileResource);
