@@ -31,7 +31,7 @@ print(long_description)
 
 setuptools.setup(
     name="apache-iotdb", # Replace with your own username
-    version="0.9.0",
+    version="0.10.0",
     author=" Apache Software Foundation",
     author_email="dev@iotdb.apache.org",
     description="Apache IoTDB (incubating) client API",
@@ -40,7 +40,7 @@ setuptools.setup(
     url="https://github.com/apache/incubator-iotdb",
     packages=setuptools.find_packages(),
     install_requires=[
-              'thrift',
+              'thrift>=0.13.0',
           ],
     classifiers=[
         "Programming Language :: Python :: 3",
