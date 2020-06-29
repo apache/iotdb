@@ -489,6 +489,12 @@ var config = {
 							['Architecture/Shared Nothing Cluster','Shared Nothing Cluster']
 						]
 					},
+					{
+						title: 'Comparison with TSDBs',
+						children: [
+							['Comparison/TSDB-Comparison','Comparison']
+						]
+					}
 				],
 				'/SystemDesign/': [
 					{
