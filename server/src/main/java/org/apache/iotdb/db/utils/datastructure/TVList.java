@@ -47,7 +47,7 @@ public abstract class TVList {
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
-  private List<Pair<Long, Long>> deletionList = new ArrayList<>();
+  private List<Pair<Long, Long>> deletionList;
   private long version;
 
   protected long pivotTime;
@@ -238,7 +238,6 @@ public abstract class TVList {
 
   public void clear() {
     size = 0;
-    deletionList.clear();
     sorted = true;
     minTime = Long.MIN_VALUE;
     clearTime();
@@ -246,6 +245,9 @@ public abstract class TVList {
 
     clearValue();
     clearSortedValue();
+    if (deletionList != null) {
+      deletionList.clear();
+    }
   }
 
   protected void clearTime() {
@@ -529,9 +531,11 @@ public abstract class TVList {
     }
 
     private boolean isPointDeleted(long timestamp) {
-      for (Pair<Long, Long> del : deletionList) {
-        if (del.left <= timestamp && timestamp <= del.right) {
-          return true;
+      if (deletionList != null) {
+        for (Pair<Long, Long> del : deletionList) {
+          if (del.left <= timestamp && timestamp <= del.right) {
+            return true;
+          }
         }
       }
       return false;

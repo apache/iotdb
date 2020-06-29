@@ -55,6 +55,9 @@ public class Chunk implements Accountable {
   }
 
   public List<Pair<Long, Long>> getDeleteRangeList() {
+    if (deleteRangeList == null) {
+      return new ArrayList<>();
+    }
     return deleteRangeList;
   }
 

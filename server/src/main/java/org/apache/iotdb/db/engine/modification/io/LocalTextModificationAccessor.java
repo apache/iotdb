@@ -128,7 +128,7 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   }
 
   private static Deletion decodeDeletion(String[] fields) throws IOException {
-    if (fields.length != 4 && fields.length != 5) {
+    if (fields.length != 5 && fields.length != 4) {
       throw new IOException("Incorrect deletion fields number: " + fields.length);
     }
 

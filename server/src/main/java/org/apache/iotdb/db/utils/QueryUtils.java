@@ -83,10 +83,8 @@ public class QueryUtils {
   }
 
   private static LinkedList<Modification> sortModifications(List<Modification> modifications) {
-    return modifications.stream()
-        .sorted(
-            Comparator.comparingLong(
-                mods -> ((Deletion)mods).getStartTime()))
+    return modifications.stream().filter(x -> x instanceof Deletion)
+        .sorted(Comparator.comparingLong(mods -> ((Deletion) mods).getStartTime()))
         .collect(Collectors.toCollection(LinkedList::new));
   }
 

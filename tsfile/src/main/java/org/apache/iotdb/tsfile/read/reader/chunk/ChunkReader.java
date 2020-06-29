@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.read.reader.chunk;
 
-import java.util.ArrayList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -136,19 +135,21 @@ public class ChunkReader implements IChunkReader {
     long lower = pageHeader.getStartTime();
     long upper = pageHeader.getEndTime();
     // deleteRangeList is sorted in terms of startTime
-    for (Pair<Long, Long> range : deleteRangeList) {
-      if (upper < range.left) {
-        break;
-      }
-      if (range.left <= lower && lower <= range.right) {
-        pageHeader.setModified(true);
-        if (upper <= range.right) {
-          return true;
+    if (deleteRangeList != null) {
+      for (Pair<Long, Long> range : deleteRangeList) {
+        if (upper < range.left) {
+          break;
         }
-        lower = range.right;
-      } else if (lower < range.left) {
-        pageHeader.setModified(true);
-        break;
+        if (range.left <= lower && lower <= range.right) {
+          pageHeader.setModified(true);
+          if (upper <= range.right) {
+            return true;
+          }
+          lower = range.right;
+        } else if (lower < range.left) {
+          pageHeader.setModified(true);
+          break;
+        }
       }
     }
     return filter == null || filter.satisfy(pageHeader.getStatistics());

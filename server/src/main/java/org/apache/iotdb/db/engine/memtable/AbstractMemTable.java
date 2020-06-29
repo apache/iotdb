@@ -204,7 +204,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
-    List<Pair<Long, Long>> deletionList = findUndeletedTime(deviceId, measurement, timeLowerBound);
+    List<Pair<Long, Long>> deletionList = constructDeletionList(deviceId, measurement, timeLowerBound);
     IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
     TVList chunkCopy = memChunk.getTVList().clone();
 
@@ -213,15 +213,17 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
 
-  private List<Pair<Long, Long>> findUndeletedTime(String deviceId, String measurement,
+  private List<Pair<Long, Long>> constructDeletionList(String deviceId, String measurement,
       long timeLowerBound) {
     List<Pair<Long, Long>> deletionList = new ArrayList<>();
     for (Modification modification : modifications) {
-      Deletion deletion = (Deletion) modification;
-      if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
-          && deletion.getEndTime() > timeLowerBound) {
-        long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-        deletionList.add(new Pair<>(lowerBound, deletion.getEndTime()));
+      if (modification instanceof Deletion) {
+        Deletion deletion = (Deletion) modification;
+        if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
+            && deletion.getEndTime() > timeLowerBound) {
+          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+          deletionList.add(new Pair<>(lowerBound, deletion.getEndTime()));
+        }
       }
     }
     return deletionList;

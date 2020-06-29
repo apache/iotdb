@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.reader.page;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -66,7 +65,7 @@ public class PageReader implements IPageReader {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteRangeList = new ArrayList<>();
+  private List<Pair<Long, Long>> deleteRangeList;
 
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
       Decoder timeDecoder, Filter filter) {
@@ -172,9 +171,11 @@ public class PageReader implements IPageReader {
   }
 
   private boolean isDeleted(long timestamp) {
-    for (Pair<Long, Long> delete : deleteRangeList) {
-      if (delete.left <= timestamp && timestamp <= delete.right) {
-        return true;
+    if (deleteRangeList != null) {
+      for (Pair<Long, Long> delete : deleteRangeList) {
+        if (delete.left <= timestamp && timestamp <= delete.right) {
+          return true;
+        }
       }
     }
     return false;
