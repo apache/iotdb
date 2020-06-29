@@ -502,11 +502,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
 	  
-	  if(plan instanceof ShowTimeSeriesPlan){
-        if (plan instanceof ShowTimeSeriesPlan) {
-          if (((ShowTimeSeriesPlan) plan).getLimit() == 0) {
-            ((ShowTimeSeriesPlan) plan).setLimit(fetchSize);
-          }
+      if (plan instanceof ShowTimeSeriesPlan) {
+        if (((ShowTimeSeriesPlan) plan).getLimit() == 0) {
+          ((ShowTimeSeriesPlan) plan).setLimit(fetchSize);
         }
       }
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
