@@ -18,11 +18,7 @@
  */
 package org.apache.iotdb.session;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -36,6 +32,9 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.Assert.*;
 
@@ -122,14 +121,16 @@ public class SessionUT {
 
         String deviceId = "root.sg1.d1";
 
-        session.createTimeseries(deviceId + "s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
-        session.createTimeseries(deviceId + "s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
-        session.createTimeseries(deviceId + "s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
+        session.createTimeseries(deviceId + ".s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
+        session.createTimeseries(deviceId + ".s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
+        session.createTimeseries(deviceId + ".s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
+        session.createTimeseries(deviceId + ".s4", TSDataType.DOUBLE, TSEncoding.RLE, CompressionType.UNCOMPRESSED);
 
         List<MeasurementSchema> schemaList = new ArrayList<>();
         schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
         schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE, TSEncoding.RLE));
         schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
+        schemaList.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.PLAIN));
 
         Tablet tablet = new Tablet("root.sg1.d1", schemaList, 10);
 
@@ -145,11 +146,15 @@ public class SessionUT {
             sensor2[row] = 0.1 + time;
             Binary[] sensor3 = (Binary[]) values[2];
             sensor3[row] = Binary.valueOf("ha" + time);
+            long[] sensor4 = (long[]) values[3];
+            sensor4[row] = time;
         }
 
-        if (tablet.rowSize != 0) {
+        try {
             session.insertTablet(tablet);
-            tablet.reset();
+            fail();
+        } catch (StatementExecutionException e) {
+            // ignore
         }
 
         SessionDataSet dataSet = session.executeQueryStatement("select * from root.sg1.d1");
@@ -157,7 +162,8 @@ public class SessionUT {
         while (dataSet.hasNext()) {
             RowRecord record = dataSet.next();
             System.out.println(record.toString());
-            assertEquals(i, record.getFields().get(1).getLongV());
+            assertEquals(i, record.getFields().get(0).getLongV());
+            assertTrue(record.getFields().get(1).isNull());
             assertTrue(record.getFields().get(2).isNull());
             assertTrue(record.getFields().get(3).isNull());
             i++;
