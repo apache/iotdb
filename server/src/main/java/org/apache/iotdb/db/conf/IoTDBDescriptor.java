@@ -202,6 +202,9 @@ public class IoTDBDescriptor {
       conf.setSyncDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
+      conf.setTracingDir(FilePathUtils
+          .regularizePath(conf.getBaseDir() + IoTDBConstant.TRACING_FOLDER_NAME));
+
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
@@ -332,6 +335,10 @@ public class IoTDBDescriptor {
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
               Boolean.toString(conf.isEnablePerformanceStat())).trim()));
+
+      conf.setEnablePerformanceTracing(Boolean
+          .parseBoolean(properties.getProperty("enable_performance_tracing",
+              Boolean.toString(conf.isEnablePerformanceTracing())).trim()));
 
       conf.setPerformanceStatDisplayInterval(Long
           .parseLong(properties.getProperty("performance_stat_display_interval",
@@ -506,12 +513,15 @@ public class IoTDBDescriptor {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
             Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
-    conf.setBooleanStringInferType(TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
-        conf.getBooleanStringInferType().toString())));
-    conf.setIntegerStringInferType(TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
-        conf.getIntegerStringInferType().toString())));
-    conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
-        conf.getFloatingStringInferType().toString())));
+    conf.setBooleanStringInferType(
+        TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
+            conf.getBooleanStringInferType().toString())));
+    conf.setIntegerStringInferType(
+        TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
+            conf.getIntegerStringInferType().toString())));
+    conf.setFloatingStringInferType(
+        TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
+            conf.getFloatingStringInferType().toString())));
     conf.setNanStringInferType(TSDataType.valueOf(properties.getProperty("nan_string_infer_type",
         conf.getNanStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
