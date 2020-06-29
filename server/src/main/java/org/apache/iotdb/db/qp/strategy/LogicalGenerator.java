@@ -69,6 +69,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AliasContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
@@ -154,6 +155,8 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TracingOffContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TracingOnContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
@@ -223,6 +226,18 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
 
     initializedOperator = flushOperator;
+  }
+
+  @Override
+  public void enterTracingOn(TracingOnContext ctx) {
+    super.enterTracingOn(ctx);
+    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING, true);
+  }
+
+  @Override
+  public void enterTracingOff(TracingOffContext ctx) {
+    super.enterTracingOff(ctx);
+    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING, false);
   }
 
   @Override

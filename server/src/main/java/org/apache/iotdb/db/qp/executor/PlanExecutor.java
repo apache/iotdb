@@ -192,6 +192,9 @@ public class PlanExecutor implements IPlanExecutor {
       case FULL_MERGE:
         operateMerge((MergePlan) plan);
         return true;
+      case TRACING:
+        operateTracing((TracingPlan) plan);
+        return true;
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
         return true;
@@ -221,6 +224,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateCreateSnapshot() {
     mManager.createMTreeSnapshot();
+  }
+
+  private void operateTracing(TracingPlan plan) {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
