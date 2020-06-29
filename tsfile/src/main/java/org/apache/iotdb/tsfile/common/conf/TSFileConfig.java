@@ -57,8 +57,7 @@ public class TSFileConfig implements Serializable {
   public static final String CONFIG_FILE_NAME = "iotdb-engine.properties";
   public static final String MAGIC_STRING = "TsFile";
   public static final String VERSION_NUMBER = "000002";
-  public static final String OLD_MAGIC_STRING = "TsFile";
-  public static final String OLD_VERSION = "000001";
+  public static final String VERSION_NUMBER_V1 = "000001";
 
   /**
    * Bloom filter constrain
@@ -82,6 +81,10 @@ public class TSFileConfig implements Serializable {
    * The maximum number of data points in a page, default value is 1024 * 1024.
    */
   private int maxNumberOfPointsInPage = 1024 * 1024;
+  /**
+   * The maximum degree of a metadataIndex node, default value is 1024
+   */
+  private int maxDegreeOfIndexNode = 1024;
   /**
    * Data type for input timestamp, TsFile supports INT32 or INT64.
    */
@@ -227,6 +230,14 @@ public class TSFileConfig implements Serializable {
 
   public void setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
     this.maxNumberOfPointsInPage = maxNumberOfPointsInPage;
+  }
+
+  public int getMaxDegreeOfIndexNode() {
+    return maxDegreeOfIndexNode;
+  }
+
+  public void setMaxDegreeOfIndexNode(int maxDegreeOfIndexNode) {
+    this.maxDegreeOfIndexNode = maxDegreeOfIndexNode;
   }
 
   public String getTimeSeriesDataType() {

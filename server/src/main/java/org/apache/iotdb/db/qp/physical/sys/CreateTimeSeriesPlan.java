@@ -46,7 +46,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
 
   public CreateTimeSeriesPlan() {
     super(false, Operator.OperatorType.CREATE_TIMESERIES);
-    canbeSplit = false;
+    canBeSplit = false;
   }
 
   public CreateTimeSeriesPlan(Path path, TSDataType dataType, TSEncoding encoding,
@@ -61,7 +61,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.tags = tags;
     this.attributes = attributes;
     this.alias = alias;
-    canbeSplit = false;
+    canBeSplit = false;
   }
   
   public Path getPath() {
@@ -140,7 +140,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serializeTo(DataOutputStream stream) throws IOException {
+  public void serialize(DataOutputStream stream) throws IOException {
     stream.writeByte((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
     byte[] bytes = path.getFullPath().getBytes();
     stream.writeInt(bytes.length);
@@ -183,7 +183,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void deserializeFrom(ByteBuffer buffer) {
+  public void deserialize(ByteBuffer buffer) {
     int length = buffer.getInt();
     byte[] bytes = new byte[length];
     buffer.get(bytes);

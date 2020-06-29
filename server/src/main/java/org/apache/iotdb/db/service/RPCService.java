@@ -34,6 +34,7 @@ import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.TServer;
 import org.apache.thrift.server.TThreadPoolServer;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TServerSocket;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -93,8 +94,8 @@ public class RPCService implements RPCServiceMBean, IService {
 
   @Override
   public void start() throws StartupException {
-      JMXService.registerMBean(getInstance(), mbeanName);
-      startService();
+    JMXService.registerMBean(getInstance(), mbeanName);
+    startService();
   }
 
   @Override
@@ -216,7 +217,9 @@ public class RPCService implements RPCServiceMBean, IService {
             ThreadName.RPC_CLIENT.getName());
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
+        poolArgs.transportFactory(new TFastFramedTransport.Factory());
         poolServer = new TThreadPoolServer(poolArgs);
+        poolServer.setServerEventHandler(new RPCServiceThriftHandler(impl));
         poolServer.serve();
       } catch (TTransportException e) {
         throw new RPCServiceException(String.format("%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME,

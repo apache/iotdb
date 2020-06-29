@@ -29,7 +29,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -49,9 +49,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
   private List<Path> selectedSeries;
@@ -86,7 +83,11 @@ public class LastQueryExecutor {
       if (lastTimeValuePair.getValue() != null) {
         RowRecord resultRecord = new RowRecord(lastTimeValuePair.getTimestamp());
         Field pathField = new Field(TSDataType.TEXT);
-        pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+        if (selectedSeries.get(i).getAlias() != null) {
+          pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPathWithAlias()));
+        } else {
+          pathField.setBinaryV(new Binary(selectedSeries.get(i).getFullPath()));
+        }
         resultRecord.addField(pathField);
 
         Field valueField = new Field(TSDataType.TEXT);
@@ -111,9 +112,9 @@ public class LastQueryExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
-    LeafMNode node;
+    MeasurementMNode node;
     try {
-      node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
+      node = (MeasurementMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -158,18 +159,22 @@ public class LastQueryExecutor {
 
     long version = 0;
     for (TsFileResource resource : unseqFileResources) {
-      if (resource.getEndTimeMap().get(seriesPath.getDevice()) < resultPair.getTimestamp()) {
+      if (resource.getEndTime(seriesPath.getDevice()) < resultPair.getTimestamp()) {
         continue;
       }
       TimeseriesMetadata timeseriesMetadata =
           FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
-      for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
-        if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-            && chunkMetaData.getVersion() > version) {
-          Statistics chunkStatistics = chunkMetaData.getStatistics();
-          resultPair = constructLastPair(
-                  chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
-          version = chunkMetaData.getVersion();
+      if (timeseriesMetadata != null) {
+        for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
+          if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
+              || (chunkMetaData.getEndTime() == resultPair.getTimestamp()
+              && chunkMetaData.getVersion() > version)) {
+            Statistics chunkStatistics = chunkMetaData.getStatistics();
+            resultPair =
+                constructLastPair(
+                    chunkStatistics.getEndTime(), chunkStatistics.getLastValue(), tsDataType);
+            version = chunkMetaData.getVersion();
+          }
         }
       }
     }

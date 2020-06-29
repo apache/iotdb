@@ -19,19 +19,17 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * TSFileMetaData collects all metadata info and saves in its data structure.
@@ -48,8 +46,8 @@ public class TsFileMetadata {
   // bloom filter
   private BloomFilter bloomFilter;
 
-  // DeviceId -> offset and length of Map<String, TimeseriesMetadata>
-  private Map<String, Pair<Long, Integer>> deviceMetadataIndex;
+  // List of <name, offset, childMetadataIndexType>
+  private MetadataIndexNode metadataIndex;
 
   // offset -> version
   private List<Pair<Long, Long>> versionInfo;
@@ -66,19 +64,8 @@ public class TsFileMetadata {
   public static TsFileMetadata deserializeFrom(ByteBuffer buffer) {
     TsFileMetadata fileMetaData = new TsFileMetadata();
 
-    // deviceMetadataIndex
-    int deviceNum = ReadWriteIOUtils.readInt(buffer);
-    Map<String, Pair<Long, Integer>> deviceMetaDataMap = new HashMap<>();
-    if (deviceNum > 0) {
-      for (int i = 0; i < deviceNum; i++) {
-        String deviceId = ReadWriteIOUtils.readString(buffer);
-        long offset = ReadWriteIOUtils.readLong(buffer);
-        int length = ReadWriteIOUtils.readInt(buffer);
-        deviceMetaDataMap.put(deviceId, new Pair<>(offset, length));
-      }
-    }
-    fileMetaData.setDeviceMetadataIndex(deviceMetaDataMap);
-
+    // metadataIndex
+    fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
     fileMetaData.totalChunkNum = ReadWriteIOUtils.readInt(buffer);
     fileMetaData.invalidChunkNum = ReadWriteIOUtils.readInt(buffer);
 
@@ -120,14 +107,9 @@ public class TsFileMetadata {
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
 
-    // deviceMetadataIndex
-    if (deviceMetadataIndex != null) {
-      byteLen += ReadWriteIOUtils.write(deviceMetadataIndex.size(), outputStream);
-      for (Map.Entry<String, Pair<Long, Integer>> entry : deviceMetadataIndex.entrySet()) {
-        byteLen += ReadWriteIOUtils.write(entry.getKey(), outputStream);
-        byteLen += ReadWriteIOUtils.write(entry.getValue().left, outputStream);
-        byteLen += ReadWriteIOUtils.write(entry.getValue().right, outputStream);
-      }
+    // metadataIndex
+    if (metadataIndex != null) {
+      byteLen += metadataIndex.serializeTo(outputStream);
     } else {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     }
@@ -152,7 +134,7 @@ public class TsFileMetadata {
   /**
    * use the given outputStream to serialize bloom filter.
    *
-   * @param outputStream      -output stream to determine byte length
+   * @param outputStream -output stream to determine byte length
    * @return -byte length
    */
   public int serializeBloomFilter(OutputStream outputStream, Set<Path> paths)
@@ -208,12 +190,12 @@ public class TsFileMetadata {
     this.metaOffset = metaOffset;
   }
 
-  public Map<String, Pair<Long, Integer>> getDeviceMetadataIndex() {
-    return deviceMetadataIndex;
+  public MetadataIndexNode getMetadataIndex() {
+    return metadataIndex;
   }
 
-  public void setDeviceMetadataIndex(Map<String, Pair<Long, Integer>> deviceMetadataIndex) {
-    this.deviceMetadataIndex = deviceMetadataIndex;
+  public void setMetadataIndex(MetadataIndexNode metadataIndex) {
+    this.metadataIndex = metadataIndex;
   }
 
   public void setVersionInfo(List<Pair<Long, Long>> versionInfo) {

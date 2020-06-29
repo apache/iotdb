@@ -41,6 +41,9 @@ import org.apache.spark.sql.execution.datasources.{FileFormat, OutputWriterFacto
 import org.apache.spark.sql.sources.{DataSourceRegister, Filter}
 import org.apache.spark.sql.types._
 import org.slf4j.LoggerFactory
+import scala.collection.JavaConversions._
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
 
@@ -115,8 +118,16 @@ private[tsfile] class DefaultSource extends FileFormat with DataSourceRegister {
       }
 
       if (options.getOrElse(DefaultSource.isNarrowForm, "").equals("narrow_form")) {
-        val deviceNames = tsFileMetaData.getDeviceMetadataIndex.keySet()
-        val measurementNames = reader.getAllMeasurements.keySet()
+        val deviceNames = reader.getAllDevices()
+        
+        val measurementNames = new java.util.HashSet[String]()
+
+        requiredSchema.foreach((field: StructField) => {
+          if (field.name != QueryConstant.RESERVED_TIME
+            && field.name != NarrowConverter.DEVICE_NAME) {
+            measurementNames += field.name
+          }
+        })
 
         // construct queryExpression based on queriedSchema and filters
         val queryExpressions = NarrowConverter.toQueryExpression(dataSchema, deviceNames,

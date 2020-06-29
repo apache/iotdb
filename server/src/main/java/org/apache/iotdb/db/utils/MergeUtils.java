@@ -29,14 +29,12 @@ import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +46,7 @@ public class MergeUtils {
   private MergeUtils() {
     // util class
   }
-  
+
   public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
@@ -145,14 +143,8 @@ public class MergeUtils {
     return new long[] {totalChunkNum, maxChunkNum};
   }
 
-  public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) throws IOException {
-    long minPos = Long.MAX_VALUE;
-    TsFileMetadata fileMetaData = sequenceReader.readFileMetadata();
-    for (Pair<Long, Integer> deviceMetaData : fileMetaData.getDeviceMetadataIndex().values()) {
-      long timeseriesMetaDataEndOffset = deviceMetaData.left + deviceMetaData.right;
-      minPos = timeseriesMetaDataEndOffset < minPos ? timeseriesMetaDataEndOffset : minPos;
-    }
-    return seqFile.getFileSize() - minPos;
+  public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) {
+    return seqFile.getFileSize() - sequenceReader.getFileMetadataPos();
   }
 
   /**

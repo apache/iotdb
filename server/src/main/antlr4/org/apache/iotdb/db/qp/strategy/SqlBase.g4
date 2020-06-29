@@ -36,7 +36,10 @@ statement
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
     | DROP INDEX function=ID ON fullPath #dropIndex //not support yet
-    | MERGE #merge //not support yet
+    | MERGE #merge
+    | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
+    | FULL MERGE #fullMerge
+    | CLEAR CACHE #clearcache
     | CREATE USER userName=ID password=STRING_LITERAL #createUser
     | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
     | DROP USER userName=ID #dropUser
@@ -66,16 +69,18 @@ statement
     | SHOW FLUSH TASK INFO #showFlushTaskInfo
     | SHOW DYNAMIC PARAMETER #showDynamicParameter
     | SHOW VERSION #showVersion
-    | SHOW TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
+    | SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause? #showTimeseries
     | SHOW STORAGE GROUP #showStorageGroup
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
-    | COUNT TIMESERIES prefixPath (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
+    | SHOW MERGE #showMergeStatus
+    | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
-    | LOAD CONFIGURATION #loadConfigurationStatement
-    | LOAD FILE autoCreateSchema? #loadFiles
-    | REMOVE FILE #removeFile
-    | MOVE FILE FILE #moveFile
+    | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
+    | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
+    | REMOVE STRING_LITERAL #removeFile
+    | MOVE STRING_LITERAL STRING_LITERAL #moveFile
+    | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -127,7 +132,11 @@ alterClause
     | DROP ID (COMMA ID)*
     | ADD TAGS property (COMMA property)*
     | ADD ATTRIBUTES property (COMMA property)*
-    | UPSERT tagClause attributeClause
+    | UPSERT aliasClause tagClause attributeClause
+    ;
+
+aliasClause
+    : (ALIAS OPERATOR_EQ ID)?
     ;
 
 attributeClauses
@@ -185,10 +194,11 @@ fromClause
 
 specialClause
     : specialLimit
-    | groupByClause specialLimit?
+    | groupByTimeClause specialLimit?
     | groupByFillClause
     | fillClause slimitClause? alignByDeviceClauseOrDisableAlign?
     | alignByDeviceClauseOrDisableAlign
+    | groupByLevelClause specialLimit?
     ;
 
 specialLimit
@@ -233,12 +243,18 @@ fillClause
     : FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
     ;
 
-groupByClause
+groupByTimeClause
     : GROUP BY LR_BRACKET
       timeInterval
       COMMA DURATION
       (COMMA DURATION)?
       RR_BRACKET
+    | GROUP BY LR_BRACKET
+            timeInterval
+            COMMA DURATION
+            (COMMA DURATION)?
+            RR_BRACKET
+            COMMA LEVEL OPERATOR_EQ INT
     ;
 
 groupByFillClause
@@ -248,6 +264,10 @@ groupByFillClause
       RR_BRACKET
       FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
      ;
+
+groupByLevelClause
+    : GROUP BY LEVEL OPERATOR_EQ INT
+    ;
 
 typeClause
     : dataType LS_BRACKET linearClause RS_BRACKET
@@ -319,14 +339,10 @@ timeValue
     ;
 
 propertyValue
-    : ID
-    | MINUS? INT
-    | MINUS? realLiteral
+    : INT
+    | ID
     | STRING_LITERAL
-    ;
-
-propertyLabelPair
-    : propertyName=ID DOT labelName=ID
+    | constant
     ;
 
 fullPath
@@ -343,18 +359,30 @@ suffixPath
 
 nodeName
     : ID
-    | INT
     | STAR
-    | ID STAR
     | STRING_LITERAL
+    | ID STAR
     | DURATION
+    | encoding
+    | dataType
+    | dateExpression
+    | MINUS? EXPONENT
+    | MINUS? INT
+    | booleanClause
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     ;
 
 nodeNameWithoutStar
-    : INT
-    | ID
+    : ID
     | STRING_LITERAL
     | DURATION
+    | encoding
+    | dataType
+    | dateExpression
+    | MINUS? EXPONENT
+    | MINUS? INT
+    | booleanClause
+    | (ID | OPERATOR_IN)? LS_BRACKET ID? RS_BRACKET ID?
     ;
 
 dataType
@@ -368,10 +396,16 @@ dateFormat
 
 constant
     : dateExpression
-    | ID
+    | NaN
     | MINUS? realLiteral
     | MINUS? INT
     | STRING_LITERAL
+    | booleanClause
+    ;
+
+booleanClause
+    : TRUE
+    | FALSE
     ;
 
 dateExpression
@@ -393,8 +427,8 @@ property
     ;
 
 autoCreateSchema
-    : ID
-    | ID INT
+    : booleanClause
+    | booleanClause INT
     ;
 
 //============================
@@ -613,6 +647,10 @@ UPSERT
     : U P S E R T
     ;
 
+ALIAS
+    : A L I A S
+    ;
+
 VALUES
     : V A L U E S
     ;
@@ -817,6 +855,47 @@ RENAME
     : R E N A M E
     ;
 
+GLOBAL
+  : G L O B A L
+  | G
+  ;
+
+FULL
+    : F U L L
+    ;
+
+CLEAR
+    : C L E A R
+    ;
+
+CACHE
+    : C A C H E
+    ;
+
+TRUE
+    : T R U E
+    ;
+
+FALSE
+    : F A L S E
+    ;
+
+LATEST
+    : L A T E S T
+    ;
+
+SNAPSHOT
+    : S N A P S H O T
+    ;
+
+FOR
+    : F O R
+    ;
+
+SCHEMA
+    : S C H E M A
+    ;
+
 //============================
 // End of the keywords list
 //============================
@@ -878,6 +957,8 @@ R_BRACKET : '}';
 
 UNDERLINE : '_';
 
+NaN : 'NaN';
+
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL
    | SINGLE_QUOTE_STRING_LITERAL
@@ -898,12 +979,9 @@ DATETIME
       INT ':' INT ':' INT (DOT INT)?
       (('+' | '-') INT ':' INT)?)?
     ;
-/** Allow unicode rule/token names */
-ID : NAME_CHAR NAME_CHAR*;
 
-FILE
-    :  (('a'..'z'| 'A'..'Z')(':')?)* (('\\' | '/')+ PATH_FRAGMENT) +
-    ;
+/** Allow unicode rule/token names */
+ID : FIRST_NAME_CHAR NAME_CHAR*;
 
 fragment
 NAME_CHAR
@@ -911,6 +989,31 @@ NAME_CHAR
     |   'a'..'z'
     |   '0'..'9'
     |   '_'
+    |   '-'
+    |   ':'
+    |   '/'
+    |   '@'
+    |   '#'
+    |   '$'
+    |   '%'
+    |   '&'
+    |   '+'
+    |   CN_CHAR
+    ;
+
+fragment
+FIRST_NAME_CHAR
+    :   'A'..'Z'
+    |   'a'..'z'
+    |   '0'..'9'
+    |   '_'
+    |   '/'
+    |   '@'
+    |   '#'
+    |   '$'
+    |   '%'
+    |   '&'
+    |   '+'
     |   CN_CHAR
     ;
 
@@ -1029,10 +1132,6 @@ fragment Y
 
 fragment Z
     : 'z' | 'Z'
-    ;
-
-fragment PATH_FRAGMENT
-    : ('a'..'z'|'A'..'Z'|'0'..'9'|'_'|'-'|'.')*
     ;
 
 WS

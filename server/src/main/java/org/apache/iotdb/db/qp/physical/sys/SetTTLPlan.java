@@ -20,6 +20,9 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -29,6 +32,10 @@ public class SetTTLPlan extends PhysicalPlan {
 
   private String storageGroup;
   private long dataTTL;
+
+  public SetTTLPlan() {
+    super(false, OperatorType.TTL);
+  }
 
   public SetTTLPlan(String storageGroup, long dataTTL) {
     // set TTL
@@ -45,6 +52,28 @@ public class SetTTLPlan extends PhysicalPlan {
   @Override
   public List<Path> getPaths() {
     return null;
+  }
+
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    int type = PhysicalPlanType.TTL.ordinal();
+    stream.writeByte((byte) type);
+    stream.writeLong(dataTTL);
+    putString(stream, storageGroup);
+  }
+
+  @Override
+  public void serialize(ByteBuffer buffer) {
+    int type = PhysicalPlanType.TTL.ordinal();
+    buffer.put((byte) type);
+    buffer.putLong(dataTTL);
+    putString(buffer, storageGroup);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    this.dataTTL = buffer.getLong();
+    this.storageGroup = readString(buffer);
   }
 
   public String getStorageGroup() {

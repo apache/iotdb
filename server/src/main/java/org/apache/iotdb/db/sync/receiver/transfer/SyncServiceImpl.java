@@ -315,4 +315,10 @@ public class SyncServiceImpl implements SyncService.Iface {
     return new SyncStatus(SyncConstant.ERROR_CODE, errorMsg);
   }
 
+  /**
+   * release resources or cleanup when a client (a sender) is disconnected (normally or abnormally).
+   */
+  public void handleClientExit() {
+    //do nothing now
+  }
 }

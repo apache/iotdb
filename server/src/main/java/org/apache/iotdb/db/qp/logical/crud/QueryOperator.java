@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
@@ -41,6 +41,9 @@ public class QueryOperator extends SFWOperator {
 
   private Map<TSDataType, IFill> fillTypes;
   private boolean isFill = false;
+
+  private boolean isGroupByLevel = false;
+  private int level = -1;
 
   private int rowLimit = 0;
   private int rowOffset = 0;
@@ -71,12 +74,12 @@ public class QueryOperator extends SFWOperator {
     this.fillTypes = fillTypes;
   }
 
-  public boolean isGroupBy() {
-    return isGroupByTime;
+  public boolean isGroupByLevel() {
+    return isGroupByLevel;
   }
 
-  public void setGroupBy(boolean isGroupBy) {
-    this.isGroupByTime = isGroupBy;
+  public void setGroupByLevel(boolean isGroupBy) {
+    this.isGroupByLevel = isGroupBy;
   }
 
   public boolean isLeftCRightO() {
@@ -173,5 +176,21 @@ public class QueryOperator extends SFWOperator {
 
   public void setAlignByTime(boolean isAlignByTime) {
     this.isAlignByTime = isAlignByTime;
+  }
+
+  public int getLevel() {
+    return level;
+  }
+
+  public void setLevel(int level) {
+    this.level = level;
+  }
+
+  public boolean isGroupByTime() {
+    return isGroupByTime;
+  }
+
+  public void setGroupByTime(boolean groupByTime) {
+    isGroupByTime = groupByTime;
   }
 }

@@ -29,16 +29,14 @@ import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkMetadataCache;
-import org.apache.iotdb.db.engine.cache.TsFileMetaDataCache;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -134,7 +132,6 @@ public class EnvironmentUtils {
 
     // clean cache
     if (config.isMetaDataCacheEnable()) {
-      TsFileMetaDataCache.getInstance().clear();
       ChunkMetadataCache.getInstance().clear();
     }
     // close metadata
@@ -190,6 +187,7 @@ public class EnvironmentUtils {
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(0);
     //we do not start 8181 port in test.
     IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
+    IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     if (daemon == null) {
       daemon = new IoTDB();
     }
@@ -215,6 +213,12 @@ public class EnvironmentUtils {
     }
   }
 
+  public static void shutdownDaemon() throws Exception {
+    if(daemon != null) {
+      daemon.shutdown();
+    }
+  }
+
   public static void activeDaemon() {
     if(daemon != null) {
       daemon.active();
@@ -230,8 +234,8 @@ public class EnvironmentUtils {
     }
   }
 
-  public static void restartDaemon() {
-    stopDaemon();
+  public static void restartDaemon() throws Exception {
+    shutdownDaemon();
     reactiveDaemon();
   }
 
@@ -257,7 +261,7 @@ public class EnvironmentUtils {
     }
     //create user and roles folder
     try {
-      LocalFileAuthorizer.getInstance().reset();
+      BasicAuthorizer.getInstance().reset();
     } catch (AuthException e) {
       logger.error("create user and role folders failed", e);
       fail(e.getMessage());

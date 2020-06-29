@@ -23,11 +23,14 @@ import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +80,7 @@ public class PublishHandler extends AbstractInterceptHandler {
             return;
         }
 
-        // since device ids from messages maybe different, so we use the InsertPlan not BatchInsertPlan.
+        // since device ids from messages maybe different, so we use the InsertPlan not InsertTabletPlan.
         for (Message event : events) {
             if (event == null) {
                 continue;
@@ -87,20 +90,25 @@ public class PublishHandler extends AbstractInterceptHandler {
             plan.setDeviceId(event.getDevice());
             plan.setTime(event.getTimestamp());
             plan.setMeasurements(event.getMeasurements().toArray(new String[event.getMeasurements().size()]));
-            plan.setValues(event.getValues().toArray(new String[event.getValues().size()]));
+            plan.setValues(event.getValues().toArray(new Object[event.getValues().size()]));
+            plan.setTypes(new TSDataType[event.getValues().size()]);
+            plan.setNeedInferType(true);
 
-            boolean status;
+            boolean status = false;
             try {
                 status = executeNonQuery(plan);
-            } catch (QueryProcessException e) {
-                throw new RuntimeException(e);
+            } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e ) {
+                LOG.warn(
+                    "meet error when inserting device {}, measurements {}, at time {}, because ",
+                    event.getDevice(), event.getMeasurements(), event.getTimestamp(), e);
             }
 
             LOG.debug("event process result: {}", status);
         }
     }
 
-    private boolean executeNonQuery(PhysicalPlan plan) throws QueryProcessException {
+    private boolean executeNonQuery(PhysicalPlan plan)
+        throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
         if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
             throw new QueryProcessException(
                     "Current system mode is read-only, does not support non-query operation");

@@ -18,7 +18,17 @@
  */
 package org.apache.iotdb.tsfile.read.controller;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
+import java.util.TreeMap;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -28,8 +38,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader.LocateStatus;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
-import java.io.IOException;
-import java.util.*;
 
 public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
@@ -101,18 +109,17 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       String selectedDevice = deviceMeasurements.getKey();
       // s1, s2, s3
       Set<String> selectedMeasurements = deviceMeasurements.getValue();
-      if (fileMetaData.getDeviceMetadataIndex() == null
-          || !fileMetaData.getDeviceMetadataIndex().containsKey(selectedDevice)) {
+      List<String> devices = this.tsFileReader.getAllDevices();
+      String[] deviceNames = devices.toArray(new String[devices.size()]);
+      if (Arrays.binarySearch(deviceNames, selectedDevice) < 0) {
         continue;
       }
 
-      Map<String, TimeseriesMetadata> timeseriesMetaDataInDevice = tsFileReader
-          .readDeviceMetadata(selectedDevice);
+      List<TimeseriesMetadata> timeseriesMetaDataList = tsFileReader
+          .readTimeseriesMetadata(selectedDevice, selectedMeasurements);
       List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
-      for (Map.Entry<String, TimeseriesMetadata> entry : timeseriesMetaDataInDevice.entrySet()) {
-        if (selectedMeasurements.contains(entry.getKey())) {
-          chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(entry.getValue()));
-        }
+      for (TimeseriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
+        chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(timeseriesMetadata));
       }
       // d1
       for (ChunkMetadata chunkMetaData : chunkMetadataList) {
@@ -177,7 +184,8 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
 
     TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
     for (Path path : paths) {
-      deviceMeasurementsMap.computeIfAbsent(path.getDevice(), key -> new HashSet<>()).add(path.getMeasurement());
+      deviceMeasurementsMap.computeIfAbsent(path.getDevice(), key -> new HashSet<>())
+          .add(path.getMeasurement());
     }
     for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
       String selectedDevice = deviceMeasurements.getKey();
@@ -233,17 +241,14 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
     return resTimeRanges;
   }
 
-
   /**
    * Check the location of a given chunkGroupMetaData with respect to a space partition constraint.
    *
-   * @param chunkMetaData          the given chunkMetaData
+   * @param chunkMetaData the given chunkMetaData
    * @param spacePartitionStartPos the start position of the space partition
-   * @param spacePartitionEndPos   the end position of the space partition
+   * @param spacePartitionEndPos the end position of the space partition
    * @return LocateStatus
    */
-
-
   public static LocateStatus checkLocateStatus(ChunkMetadata chunkMetaData,
       long spacePartitionStartPos, long spacePartitionEndPos) {
     long startOffsetOfChunk = chunkMetaData.getOffsetOfChunkHeader();

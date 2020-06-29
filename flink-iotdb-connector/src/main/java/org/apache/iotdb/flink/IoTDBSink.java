@@ -32,161 +32,167 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * The `IoTDBSink` allows flink jobs to write events into IoTDB timeseries.
- * By default send only one event after another, but you can change to batch by invoking `withBatchSize(int)`.
+ * The `IoTDBSink` allows flink jobs to write events into IoTDB timeseries. By default send only one
+ * event after another, but you can change to batch by invoking `withBatchSize(int)`.
+ *
  * @param <IN> the input data type
  */
 public class IoTDBSink<IN> extends RichSinkFunction<IN> {
 
-    private static final long serialVersionUID = 1L;
-    private static final Logger LOG = LoggerFactory.getLogger(IoTDBSink.class);
+  private static final long serialVersionUID = 1L;
+  private static final Logger LOG = LoggerFactory.getLogger(IoTDBSink.class);
 
-    private IoTDBOptions options;
-    private IoTSerializationSchema<IN> serializationSchema;
-    private Map<String, IoTDBOptions.TimeseriesOption> timeseriesOptionMap;
-    private transient SessionPool pool;
-    private transient ScheduledExecutorService scheduledExecutor;
+  private IoTDBOptions options;
+  private IoTSerializationSchema<IN> serializationSchema;
+  private Map<String, IoTDBOptions.TimeseriesOption> timeseriesOptionMap;
+  private transient SessionPool pool;
+  private transient ScheduledExecutorService scheduledExecutor;
 
-    private int batchSize = 0;
-    private int flushIntervalMs = 3000;
-    private List<Event> batchList;
-    private int sessionPoolSize = 2;
+  private int batchSize = 0;
+  private int flushIntervalMs = 3000;
+  private List<Event> batchList;
+  private int sessionPoolSize = 2;
 
-    public IoTDBSink(IoTDBOptions options, IoTSerializationSchema<IN> schema) {
-        this.options = options;
-        this.serializationSchema = schema;
-        this.batchList = new LinkedList<>();
-        this.timeseriesOptionMap = new HashMap<>();
-        for (IoTDBOptions.TimeseriesOption timeseriesOption : options.getTimeseriesOptionList()) {
-            timeseriesOptionMap.put(timeseriesOption.getPath(), timeseriesOption);
+  public IoTDBSink(IoTDBOptions options, IoTSerializationSchema<IN> schema) {
+    this.options = options;
+    this.serializationSchema = schema;
+    this.batchList = new LinkedList<>();
+    this.timeseriesOptionMap = new HashMap<>();
+    for (IoTDBOptions.TimeseriesOption timeseriesOption : options.getTimeseriesOptionList()) {
+      timeseriesOptionMap.put(timeseriesOption.getPath(), timeseriesOption);
+    }
+  }
+
+  @Override
+  public void open(Configuration parameters) throws Exception {
+    initSession();
+    initScheduler();
+  }
+
+  void initSession() throws Exception {
+    pool = new SessionPool(options.getHost(), options.getPort(), options.getUser(),
+        options.getPassword(), sessionPoolSize);
+
+    pool.setStorageGroup(options.getStorageGroup());
+    for (IoTDBOptions.TimeseriesOption option : options.getTimeseriesOptionList()) {
+      if (!pool.checkTimeseriesExists(option.getPath())) {
+        pool.createTimeseries(option.getPath(), option.getDataType(), option.getEncoding(),
+            option.getCompressor());
+      }
+    }
+  }
+
+  void initScheduler() {
+    if (batchSize > 0) {
+      scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+      scheduledExecutor.scheduleAtFixedRate(() -> {
+        try {
+          flush();
+        } catch (Exception e) {
+          LOG.error("flush error", e);
         }
+      }, flushIntervalMs, flushIntervalMs, TimeUnit.MILLISECONDS);
+    }
+  }
+
+  //  for testing
+  void setSessionPool(SessionPool pool) {
+    this.pool = pool;
+  }
+
+  @Override
+  public void invoke(IN input, Context context) throws Exception {
+    Event event = serializationSchema.serialize(input);
+    if (event == null) {
+      return;
     }
 
-    @Override
-    public void open(Configuration parameters) throws Exception {
-        initSession();
-        initScheduler();
-    }
-
-    void initSession() throws Exception {
-        pool = new SessionPool(options.getHost(), options.getPort(), options.getUser(), options.getPassword(), sessionPoolSize);
-
-        pool.setStorageGroup(options.getStorageGroup());
-        for (IoTDBOptions.TimeseriesOption option : options.getTimeseriesOptionList()) {
-            if (!pool.checkTimeseriesExists(option.getPath())) {
-                pool.createTimeseries(option.getPath(), option.getDataType(), option.getEncoding(), option.getCompressor());
-            }
+    if (batchSize > 0) {
+      synchronized (batchList) {
+        batchList.add(event);
+        if (batchList.size() >= batchSize) {
+          flush();
         }
+        return;
+      }
     }
 
-    void initScheduler() {
-        if (batchSize > 0) {
-            scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
-            scheduledExecutor.scheduleAtFixedRate(() -> {
-                try {
-                    flush();
-                } catch (Exception e) {
-                    LOG.error("flush error", e);
-                }
-            }, flushIntervalMs, flushIntervalMs, TimeUnit.MILLISECONDS);
+    convertText(event.getDevice(), event.getMeasurements(), event.getValues());
+    pool.insertRecord(event.getDevice(), event.getTimestamp(), event.getMeasurements(),
+        event.getTypes(), event.getValues());
+    LOG.debug("send event successfully");
+  }
+
+  public IoTDBSink<IN> withBatchSize(int batchSize) {
+    Preconditions.checkArgument(batchSize >= 0);
+    this.batchSize = batchSize;
+    return this;
+  }
+
+  public IoTDBSink<IN> withFlushIntervalMs(int flushIntervalMs) {
+    Preconditions.checkArgument(flushIntervalMs > 0);
+    this.flushIntervalMs = flushIntervalMs;
+    return this;
+  }
+
+  public IoTDBSink<IN> withSessionPoolSize(int sessionPoolSize) {
+    Preconditions.checkArgument(sessionPoolSize > 0);
+    this.sessionPoolSize = sessionPoolSize;
+    return this;
+  }
+
+  @Override
+  public void close() throws Exception {
+    if (pool != null) {
+      try {
+        flush();
+      } catch (Exception e) {
+        LOG.error("flush error", e);
+      }
+      pool.close();
+    }
+    if (scheduledExecutor != null) {
+      scheduledExecutor.shutdown();
+    }
+  }
+
+  private void convertText(String device, List<String> measurements, List<Object> values) {
+    if (device != null && measurements != null && values != null && measurements.size() == values
+        .size()) {
+      for (int i = 0; i < measurements.size(); i++) {
+        String measurement = device + "." + measurements.get(i);
+        IoTDBOptions.TimeseriesOption timeseriesOption = timeseriesOptionMap.get(measurement);
+        if (timeseriesOption != null && TSDataType.TEXT.equals(timeseriesOption.getDataType())) {
+          // The TEXT data type should be covered by " or '
+          values.set(i, "'" + values.get(i) + "'");
         }
+      }
     }
+  }
 
-    //  for testing
-    void setSessionPool(SessionPool pool) {
-        this.pool = pool;
-    }
+  private void flush() throws Exception {
+    if (batchSize > 0) {
+      synchronized (batchList) {
+        if (batchList.size() > 0) {
+          List<String> deviceIds = new ArrayList<>();
+          List<Long> timestamps = new ArrayList<>();
+          List<List<String>> measurementsList = new ArrayList<>();
+          List<List<TSDataType>> typesList = new ArrayList<>();
+          List<List<Object>> valuesList = new ArrayList<>();
 
-    @Override
-    public void invoke(IN input, Context context) throws Exception {
-        Event event = serializationSchema.serialize(input);
-        if (event == null) {
-            return;
+          for (Event event : batchList) {
+            convertText(event.getDevice(), event.getMeasurements(), event.getValues());
+            deviceIds.add(event.getDevice());
+            timestamps.add(event.getTimestamp());
+            measurementsList.add(event.getMeasurements());
+            typesList.add(event.getTypes());
+            valuesList.add(event.getValues());
+          }
+          pool.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+          LOG.debug("send event successfully");
+          batchList.clear();
         }
-
-        if (batchSize > 0) {
-            synchronized (batchList) {
-                batchList.add(event);
-                if (batchList.size() >= batchSize) {
-                    flush();
-                }
-                return;
-            }
-        }
-
-        convertText(event.getDevice(), event.getMeasurements(), event.getValues());
-        pool.insertRecord(event.getDevice(), event.getTimestamp(), event.getMeasurements(),
-                event.getValues());
-        LOG.debug("send event successfully");
+      }
     }
-
-    public IoTDBSink<IN> withBatchSize(int batchSize) {
-        Preconditions.checkArgument(batchSize >= 0);
-        this.batchSize = batchSize;
-        return this;
-    }
-
-    public IoTDBSink<IN> withFlushIntervalMs(int flushIntervalMs) {
-        Preconditions.checkArgument(flushIntervalMs > 0);
-        this.flushIntervalMs = flushIntervalMs;
-        return this;
-    }
-
-    public IoTDBSink<IN> withSessionPoolSize(int sessionPoolSize) {
-        Preconditions.checkArgument(sessionPoolSize > 0);
-        this.sessionPoolSize = sessionPoolSize;
-        return this;
-    }
-
-    @Override
-    public void close() throws Exception {
-        if (pool != null) {
-            try {
-                flush();
-            } catch (Exception e) {
-                LOG.error("flush error", e);
-            }
-            pool.close();
-        }
-        if (scheduledExecutor != null) {
-            scheduledExecutor.shutdown();
-        }
-    }
-
-    private void convertText(String device, List<String> measurements, List<String> values) {
-        if (device != null && measurements != null && values != null && measurements.size() == values.size()) {
-            for (int i = 0; i < measurements.size(); i++) {
-                String measurement = device + "." + measurements.get(i);
-                IoTDBOptions.TimeseriesOption timeseriesOption = timeseriesOptionMap.get(measurement);
-                if (timeseriesOption!= null && TSDataType.TEXT.equals(timeseriesOption.getDataType())) {
-                    // The TEXT data type should be covered by " or '
-                    values.set(i, "'" + values.get(i) + "'");
-                }
-            }
-        }
-    }
-
-    private void flush() throws Exception {
-        if (batchSize > 0) {
-            synchronized (batchList) {
-                if (batchList.size() > 0) {
-                    List<String> deviceIds = new ArrayList<>();
-                    List<Long> timestamps = new ArrayList<>();
-                    List<List<String>> measurementsList = new ArrayList<>();
-                    List<List<String>> valuesList = new ArrayList<>();
-
-                    for (Event event : batchList) {
-                        convertText(event.getDevice(), event.getMeasurements(), event.getValues());
-                        deviceIds.add(event.getDevice());
-                        timestamps.add(event.getTimestamp());
-                        measurementsList.add(event.getMeasurements());
-                        valuesList.add(event.getValues());
-                    }
-                    pool.insertRecords(deviceIds, timestamps, measurementsList, valuesList);
-                    LOG.debug("send event successfully");
-                    batchList.clear();
-                }
-            }
-        }
-    }
+  }
 }
