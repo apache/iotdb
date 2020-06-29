@@ -111,7 +111,6 @@ public class MManager {
   private File logFile;
   private final int mtreeSnapshotInterval;
   private final long mtreeSnapshotThresholdTime;
-  private int lastSnapshotLogLineNumber;
   private ScheduledExecutorService timedCreateMTreeSnapshotThread;
 
   private static class MManagerHolder {
@@ -172,7 +171,6 @@ public class MManager {
       }
     };
 
-    lastSnapshotLogLineNumber = 0;
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
     timedCreateMTreeSnapshotThread
@@ -219,10 +217,7 @@ public class MManager {
   }
 
   /**
-   *
-   * @param logFile
    * @return line number of the logFile
-   * @throws IOException
    */
   @SuppressWarnings("squid:S3776")
   private int initFromLog(File logFile) throws IOException {
@@ -238,9 +233,9 @@ public class MManager {
       mtree = new MTree();
     } else {
       mtree = MTree.deserializeFrom(mtreeSnapshot);
-      lastSnapshotLogLineNumber = mtree.getSnapshotLineNumber();
+      logger.debug("spend {} ms to deserialize mtree from snapshot",
+          System.currentTimeMillis() - time);
     }
-    logger.debug("spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
 
     time = System.currentTimeMillis();
     // init the metadata from the operation log
@@ -249,15 +244,6 @@ public class MManager {
       try (FileReader fr = new FileReader(logFile);
           BufferedReader br = new BufferedReader(fr)) {
         String cmd;
-        while (idx < mtree.getSnapshotLineNumber()) {
-          cmd = br.readLine();
-          if (cmd == null) {
-            throw new IOException(String
-                .format("mtree snapshot file has %d lines but the mlog.txt has only %d lines.",
-                    mtree.getSnapshotLineNumber(), idx));
-          }
-          idx++;
-        }
         while ((cmd = br.readLine()) != null) {
           try {
             operation(cmd);
@@ -267,7 +253,8 @@ public class MManager {
           }
         }
       }
-      logger.debug("spend {} ms to deserialize mtree from mlog.txt", System.currentTimeMillis() - time);
+      logger.debug("spend {} ms to deserialize mtree from mlog.txt",
+          System.currentTimeMillis() - time);
       return idx;
     } else if (mtreeSnapshot.exists()) {
       throw new IOException("mtree snapshot file exists but mlog.txt does not exist.");
@@ -1790,22 +1777,23 @@ public class MManager {
 
   private void checkMTreeModified() {
     if (logWriter == null || logFile == null) {
-      //the logWriter is not initialized now, we skip the check once.
+      // the logWriter is not initialized now, we skip the check once.
       return;
     }
     if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
-        && logWriter.getLineNumber() > lastSnapshotLogLineNumber) {
-      logger.info("Start creating MTree snapshot, because {} ms elaspse.", System.currentTimeMillis() - logFile.lastModified());
+        && logWriter.getLineNumber() > 0) {
+      logger.info("Start creating MTree snapshot, because {} ms elapse.",
+          System.currentTimeMillis() - logFile.lastModified());
       createMTreeSnapshot();
-    } else if (logWriter.getLineNumber() - lastSnapshotLogLineNumber >= mtreeSnapshotInterval) {
-      logger.info("Start creating MTree snapshot, because of {} new lines are added.", logWriter.getLineNumber() - lastSnapshotLogLineNumber);
+    } else if (logWriter.getLineNumber() >= mtreeSnapshotInterval) {
+      logger.info("Start creating MTree snapshot, because of {} new lines are added.",
+          logWriter.getLineNumber());
       createMTreeSnapshot();
     } else {
       if (logger.isDebugEnabled()) {
         logger.debug(
-            "MTree snapshot need not be created. Current mlog line number: {}, last snapshot line number: {}, time difference from last modification: {}ms",
-            logWriter.getLineNumber(), lastSnapshotLogLineNumber,
-            System.currentTimeMillis() - logFile.lastModified());
+            "MTree snapshot need not be created. New mlog line number: {}, time difference from last modification: {} ms",
+            logWriter.getLineNumber(), System.currentTimeMillis() - logFile.lastModified());
       }
     }
   }
@@ -1814,16 +1802,17 @@ public class MManager {
     lock.readLock().lock();
     long time = System.currentTimeMillis();
     try {
-      mtree.serializeTo(mtreeSnapshotTmpPath, logWriter.getLineNumber());
-      lastSnapshotLogLineNumber = logWriter.getLineNumber();
+      mtree.serializeTo(mtreeSnapshotTmpPath);
       File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
       File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
       if (snapshotFile.exists()) {
         Files.delete(snapshotFile.toPath());
       }
       if (tmpFile.renameTo(snapshotFile)) {
-        logger.info("Finish creating MTree snapshot to {}, spend {}ms.", mtreeSnapshotPath, System.currentTimeMillis() - time);
+        logger.info("Finish creating MTree snapshot to {}, spend {} ms.", mtreeSnapshotPath,
+            System.currentTimeMillis() - time);
       }
+      logWriter.clear();
     } catch (IOException e) {
       logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
       if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {

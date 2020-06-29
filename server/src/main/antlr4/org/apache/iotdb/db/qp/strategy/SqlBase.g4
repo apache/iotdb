@@ -74,6 +74,8 @@ statement
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
+    | TRACING ON #tracingOn
+    | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
@@ -672,8 +674,16 @@ USING
     : U S I N G
     ;
 
+TRACING
+    : T R A C I N G
+    ;
+
 ON
     : O N
+    ;
+
+OFF
+    : O F F
     ;
 
 DROP
