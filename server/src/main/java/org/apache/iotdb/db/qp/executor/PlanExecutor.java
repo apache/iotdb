@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -197,6 +198,14 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
+        return true;
+      case DELETE_PARTITION:
+        DeletePartitionPlan p = (DeletePartitionPlan) plan;
+        TimePartitionFilter filter =
+            (storageGroupName, partitionId) ->
+                storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupName())
+                    && p.getPartitionId().contains(partitionId);
+        StorageEngine.getInstance().removePartitions(((DeletePartitionPlan) plan).getStorageGroupName(), filter);
         return true;
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();

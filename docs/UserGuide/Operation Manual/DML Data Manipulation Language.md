@@ -800,3 +800,18 @@ It should be noted that when the deleted path does not exist, IoTDB will give th
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
+
+## Delete Time Partition (experimental)
+You may delete all data in a time partition of a storage group using the following grammar:
+
+```
+DELETE PARTITION root.ln 0,1,2
+```
+
+The `0,1,2` above is the id of the partition that is to be deleted, you can find it from the IoTDB
+data folders or convert a timestamp manually to an id using `timestamp / partitionInterval
+` (flooring), and the `partitionInterval` should be in your config (if time-partitioning is
+supported in your version).
+
+Please notice that this function is experimental and mainly for development, please use it with
+extreme care.

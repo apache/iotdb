@@ -82,6 +82,7 @@ statement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
+    | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
@@ -932,6 +933,10 @@ PLA
 
 LATEST
     : L A T E S T
+    ;
+
+PARTITION
+    : P A R T I T I O N
     ;
 
 SNAPSHOT
