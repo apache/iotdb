@@ -41,7 +41,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -105,11 +105,11 @@ public class LogReplayerTest {
       WriteLogNode node =
           MultiFileLogNodeManager.getInstance().getNode(logNodePrefix + tsFile.getName());
       node.write(
-          new InsertPlan("root.sg.device0", 100, "sensor0", TSDataType.INT64, String.valueOf(0)));
+          new InsertRowPlan("root.sg.device0", 100, "sensor0", TSDataType.INT64, String.valueOf(0)));
       node.write(
-          new InsertPlan("root.sg.device0", 2, "sensor1", TSDataType.INT64, String.valueOf(0)));
+          new InsertRowPlan("root.sg.device0", 2, "sensor1", TSDataType.INT64, String.valueOf(0)));
       for (int i = 1; i < 5; i++) {
-        node.write(new InsertPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
+        node.write(new InsertRowPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
             String.valueOf(i)));
       }
       DeletePlan deletePlan = new DeletePlan(200, new Path("root.sg.device0", "sensor0"));

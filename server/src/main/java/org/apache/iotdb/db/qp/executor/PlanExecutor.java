@@ -139,7 +139,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
         return true;
       case INSERT:
-        insert((InsertPlan) plan);
+        insert((InsertRowPlan) plan);
         return true;
       case BATCHINSERT:
         insertTablet((InsertTabletPlan) plan);
@@ -869,27 +869,21 @@ public class PlanExecutor implements IPlanExecutor {
     return mManager.getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
   }
 
-  protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
-    throws MetadataException {
-    return mManager.getSeriesSchemas(insertTabletPlan.getDeviceId(),
-      insertTabletPlan.getMeasurements(), insertTabletPlan);
-  }
-
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-      mManager.lockInsert(insertPlan.getDeviceId());
-      MeasurementSchema[] schemas = getSeriesSchemas(insertPlan);
-      insertPlan.setSchemasAndTransferType(schemas);
-      StorageEngine.getInstance().insert(insertPlan);
-      if (insertPlan.getFailedMeasurements() != null) {
+      mManager.lockInsert(insertRowPlan.getDeviceId());
+      MeasurementSchema[] schemas = getSeriesSchemas(insertRowPlan);
+      insertRowPlan.setSchemasAndTransferType(schemas);
+      StorageEngine.getInstance().insert(insertRowPlan);
+      if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
-            "failed to insert measurements " + insertPlan.getFailedMeasurements());
+            "failed to insert measurements " + insertRowPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockInsert(insertPlan.getDeviceId());
+      mManager.unlockInsert(insertRowPlan.getDeviceId());
     }
   }
 
