@@ -27,8 +27,8 @@ public class MetadataConstant {
   public static final String ROOT = "root";
   public static final String METADATA_LOG = "mlog.txt";
   public static final String TAG_LOG = "tlog.txt";
-  public static final String MTREE_SNAPSHOT = "mtree.v1.snapshot";
-  public static final String MTREE_SNAPSHOT_TMP = "mtree.v1.snapshot.tmp";
+  public static final String MTREE_SNAPSHOT = "mtree-v1.snapshot";
+  public static final String MTREE_SNAPSHOT_TMP = "mtree-v1.snapshot.tmp";
 
 
   public static final short MNODE_TYPE = 0;
