@@ -39,7 +39,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeManagerStatConstants;
 import org.apache.iotdb.db.monitor.MonitorConstants.FileNodeProcessorStatConstants;
 import org.apache.iotdb.db.monitor.collector.FileSize;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -380,7 +380,7 @@ public class StatMonitor implements IService {
       int pointNum;
       for (Map.Entry<String, TSRecord> entry : tsRecordHashMap.entrySet()) {
         try {
-          fManager.insert(new InsertPlan(entry.getValue()));
+          fManager.insert(new InsertRowPlan(entry.getValue()));
           numInsert.incrementAndGet();
           pointNum = entry.getValue().dataPointList.size();
           numPointsInsert.addAndGet(pointNum);

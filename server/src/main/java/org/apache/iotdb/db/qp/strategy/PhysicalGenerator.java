@@ -69,7 +69,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -173,7 +173,7 @@ public class PhysicalGenerator {
               "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
 
-        return new InsertPlan(paths.get(0).getFullPath(), insert.getTime(),
+        return new InsertRowPlan(paths.get(0).getFullPath(), insert.getTime(),
             insert.getMeasurementList(), insert.getValueList());
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {

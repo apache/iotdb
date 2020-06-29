@@ -50,17 +50,17 @@ import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.service.IService;
@@ -290,17 +290,17 @@ public class StorageEngine implements IService {
 
 
   /**
-   * insert an InsertPlan to a storage group.
+   * insert an InsertRowPlan to a storage group.
    *
-   * @param insertPlan physical plan of insertion
+   * @param insertRowPlan physical plan of insertion
    */
-  public void insert(InsertPlan insertPlan) throws StorageEngineException {
+  public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
 
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertPlan.getDeviceId());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
-      storageGroupProcessor.insert(insertPlan);
+      storageGroupProcessor.insert(insertRowPlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }

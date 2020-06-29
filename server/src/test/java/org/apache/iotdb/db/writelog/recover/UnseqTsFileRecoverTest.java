@@ -34,7 +34,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.reader.chunk.ChunkDataIterator;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -152,16 +152,16 @@ public class UnseqTsFileRecoverTest {
           types[k] = TSDataType.INT64;
           values[k] = String.valueOf(k + 10);
         }
-        InsertPlan insertPlan = new InsertPlan("root.sg.device" + j, i, measurements, types,
+        InsertRowPlan insertRowPlan = new InsertRowPlan("root.sg.device" + j, i, measurements, types,
             values);
-        node.write(insertPlan);
+        node.write(insertRowPlan);
       }
       node.notifyStartFlush();
     }
-    InsertPlan insertPlan = new InsertPlan("root.sg.device99", 1, "sensor4", TSDataType.INT64, "4");
-    node.write(insertPlan);
-    insertPlan = new InsertPlan("root.sg.device99", 300, "sensor2", TSDataType.INT64, "2");
-    node.write(insertPlan);
+    InsertRowPlan insertRowPlan = new InsertRowPlan("root.sg.device99", 1, "sensor4", TSDataType.INT64, "4");
+    node.write(insertRowPlan);
+    insertRowPlan = new InsertRowPlan("root.sg.device99", 300, "sensor2", TSDataType.INT64, "2");
+    node.write(insertRowPlan);
     node.close();
 
     resource = new TsFileResource(tsF);

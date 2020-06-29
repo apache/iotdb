@@ -77,7 +77,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryFileManager;
@@ -600,23 +600,23 @@ public class StorageGroupProcessor {
   }
 
 
-  public void insert(InsertPlan insertPlan) throws WriteProcessException {
+  public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
     // reject insertions that are out of ttl
-    if (!isAlive(insertPlan.getTime())) {
-      throw new OutOfTTLException(insertPlan.getTime(), (System.currentTimeMillis() - dataTTL));
+    if (!isAlive(insertRowPlan.getTime())) {
+      throw new OutOfTTLException(insertRowPlan.getTime(), (System.currentTimeMillis() - dataTTL));
     }
     writeLock();
     try {
       // init map
-      long timePartitionId = StorageEngine.getTimePartition(insertPlan.getTime());
+      long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
 
       latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
       partitionLatestFlushedTimeForEachDevice.computeIfAbsent(timePartitionId, id -> new HashMap<>());
 
       // insert to sequence or unSequence file
-      insertToTsFileProcessor(insertPlan,
-          insertPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
-              .getOrDefault(insertPlan.getDeviceId(), Long.MIN_VALUE));
+      insertToTsFileProcessor(insertRowPlan,
+          insertRowPlan.getTime() > partitionLatestFlushedTimeForEachDevice.get(timePartitionId)
+              .getOrDefault(insertRowPlan.getDeviceId(), Long.MIN_VALUE));
 
     } finally {
       writeUnlock();
@@ -797,9 +797,9 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void insertToTsFileProcessor(InsertPlan insertPlan, boolean sequence)
+  private void insertToTsFileProcessor(InsertRowPlan insertRowPlan, boolean sequence)
       throws WriteProcessException {
-    long timePartitionId = StorageEngine.getTimePartition(insertPlan.getTime());
+    long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
 
     TsFileProcessor tsFileProcessor = getOrCreateTsFileProcessor(timePartitionId, sequence);
 
@@ -808,19 +808,19 @@ public class StorageGroupProcessor {
     }
 
     // insert TsFileProcessor
-    tsFileProcessor.insert(insertPlan);
+    tsFileProcessor.insert(insertRowPlan);
 
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice.get(timePartitionId)
-        .getOrDefault(insertPlan.getDeviceId(), Long.MIN_VALUE) < insertPlan.getTime()) {
+        .getOrDefault(insertRowPlan.getDeviceId(), Long.MIN_VALUE) < insertRowPlan.getTime()) {
       latestTimeForEachDevice.get(timePartitionId)
-          .put(insertPlan.getDeviceId(), insertPlan.getTime());
+          .put(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
     }
 
     long globalLatestFlushTime = globalLatestFlushedTimeForEachDevice.getOrDefault(
-        insertPlan.getDeviceId(), Long.MIN_VALUE);
+        insertRowPlan.getDeviceId(), Long.MIN_VALUE);
 
-    tryToUpdateInsertLastCache(insertPlan, globalLatestFlushTime);
+    tryToUpdateInsertLastCache(insertRowPlan, globalLatestFlushTime);
 
     // check memtable size and may asyncTryToFlush the work memtable
     if (tsFileProcessor.shouldFlush()) {
@@ -828,7 +828,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void tryToUpdateInsertLastCache(InsertPlan plan, Long latestFlushedTime)
+  private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime)
       throws WriteProcessException {
     MNode node = null;
     try {

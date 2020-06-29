@@ -47,7 +47,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -129,55 +129,55 @@ public class TTLTest {
 
   @Test
   public void testTTLWrite() throws WriteProcessException, QueryProcessException {
-    InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setDeviceId(sg1);
-    insertPlan.setTime(System.currentTimeMillis());
-    insertPlan.setMeasurements(new String[]{"s1"});
-    insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
-    insertPlan.setValues(new Object[]{1L});
-    insertPlan.setSchemasAndTransferType(
+    InsertRowPlan plan = new InsertRowPlan();
+    plan.setDeviceId(sg1);
+    plan.setTime(System.currentTimeMillis());
+    plan.setMeasurements(new String[]{"s1"});
+    plan.setDataTypes(new TSDataType[]{TSDataType.INT64});
+    plan.setValues(new Object[]{1L});
+    plan.setSchemasAndTransferType(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
-    storageGroupProcessor.insert(insertPlan);
+    storageGroupProcessor.insert(plan);
 
     storageGroupProcessor.setDataTTL(1000);
     // with ttl
-    insertPlan.setTime(System.currentTimeMillis() - 1001);
+    plan.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
     try {
-      storageGroupProcessor.insert(insertPlan);
+      storageGroupProcessor.insert(plan);
     } catch (OutOfTTLException e) {
       caught = true;
     }
     assertTrue(caught);
-    insertPlan.setTime(System.currentTimeMillis() - 900);
-    storageGroupProcessor.insert(insertPlan);
+    plan.setTime(System.currentTimeMillis() - 900);
+    storageGroupProcessor.insert(plan);
   }
 
   private void prepareData() throws WriteProcessException, QueryProcessException {
-    InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setDeviceId(sg1);
-    insertPlan.setTime(System.currentTimeMillis());
-    insertPlan.setMeasurements(new String[]{"s1"});
-    insertPlan.setTypes(new TSDataType[]{TSDataType.INT64});
-    insertPlan.setValues(new Object[]{1L});
-    insertPlan.setSchemasAndTransferType(
+    InsertRowPlan plan = new InsertRowPlan();
+    plan.setDeviceId(sg1);
+    plan.setTime(System.currentTimeMillis());
+    plan.setMeasurements(new String[]{"s1"});
+    plan.setDataTypes(new TSDataType[]{TSDataType.INT64});
+    plan.setValues(new Object[]{1L});
+    plan.setSchemasAndTransferType(
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     long initTime = System.currentTimeMillis();
     // sequence data
     for (int i = 1000; i < 2000; i++) {
-      insertPlan.setTime(initTime - 2000 + i);
-      storageGroupProcessor.insert(insertPlan);
+      plan.setTime(initTime - 2000 + i);
+      storageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
     for (int i = 0; i < 1000; i++) {
-      insertPlan.setTime(initTime - 2000 + i);
-      storageGroupProcessor.insert(insertPlan);
+      plan.setTime(initTime - 2000 + i);
+      storageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
