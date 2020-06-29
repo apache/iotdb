@@ -83,18 +83,6 @@ import java.util.stream.Collectors;
 import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.sql.SQLException;
-import java.time.ZoneId;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
-import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
-
 
 /**
  * Thrift RPC implementation at server side.
