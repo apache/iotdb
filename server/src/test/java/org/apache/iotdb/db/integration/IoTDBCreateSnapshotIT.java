@@ -68,7 +68,7 @@ public class IoTDBCreateSnapshotIT {
 
       // create snapshot
       statement.execute("CREATE SNAPSHOT FOR SCHEMA");
-      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree-v1.snapshot");
+      File snapshotFile = new File(config.getSchemaDir() + File.separator + "mtree-1.snapshot");
 
       // test snapshot file exists
       Assert.assertTrue(snapshotFile.exists());
