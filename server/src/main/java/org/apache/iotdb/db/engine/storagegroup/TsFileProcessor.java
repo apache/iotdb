@@ -582,7 +582,7 @@ public class TsFileProcessor {
     return new TsFileSequenceReader(tsFileResource.getPath(), true);
   }
 
-  private File createNewVMFile() {
+  public static File createNewVMFile(TsFileResource tsFileResource) {
     File parent = tsFileResource.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
         tsFileResource.getFile().getName() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System
@@ -717,7 +717,7 @@ public class TsFileProcessor {
             } else {
               isVm = true;
               isFull = false;
-              File newVmFile = createNewVMFile();
+              File newVmFile = createNewVMFile(tsFileResource);
               vmTsFileResources.add(new TsFileResource(newVmFile));
               vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources,
@@ -739,7 +739,7 @@ public class TsFileProcessor {
         RestorableTsFileIOWriter tmpWriter = flushTask.syncFlushMemTable();
         if (isVm && isFull && tmpWriter != null) {
           File tmpFile = tmpWriter.getFile();
-          File newVmFile = createNewVMFile();
+          File newVmFile = createNewVMFile(tsFileResource);
           File mergedFile = FSFactoryProducer.getFSFactory().getFile(newVmFile.getPath()
               + MERGED_SUFFIX);
           tmpFile.renameTo(mergedFile);
