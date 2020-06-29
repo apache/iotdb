@@ -84,7 +84,7 @@ abstract public class InsertPlan extends PhysicalPlan {
   /**
    * @param index failed measurement index
    */
-  public void markMeasurementInsertionFailed(int index) {
+  public void markFailedMeasurementInsertion(int index) {
     if (failedMeasurements == null) {
       failedMeasurements = new ArrayList<>();
     }

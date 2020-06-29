@@ -163,7 +163,7 @@ public class InsertRowPlan extends InsertPlan {
       for (int i = 0; i < schemas.length; i++) {
         if (schemas[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markMeasurementInsertionFailed(i);
+            markFailedMeasurementInsertion(i);
           } else {
             throw new QueryProcessException(new PathNotExistException(
                 deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]));
@@ -177,7 +177,7 @@ public class InsertRowPlan extends InsertPlan {
           logger.warn("{}.{} data type is not consistent, input {}, registered {}", deviceId,
               measurements[i], values[i], dataTypes[i]);
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
-            markMeasurementInsertionFailed(i);
+            markFailedMeasurementInsertion(i);
             schemas[i] = null;
           } else {
             throw e;
@@ -188,8 +188,8 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public void markMeasurementInsertionFailed(int index) {
-    super.markMeasurementInsertionFailed(index);
+  public void markFailedMeasurementInsertion(int index) {
+    super.markFailedMeasurementInsertion(index);
     values[index] = null;
   }
 

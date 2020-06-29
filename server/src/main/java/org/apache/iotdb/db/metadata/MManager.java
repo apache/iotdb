@@ -1892,7 +1892,7 @@ public class MManager {
           } else {
             // mark failed measurement
             if( plan instanceof InsertPlan){
-              ((InsertPlan) plan).markMeasurementInsertionFailed(i);
+              ((InsertPlan) plan).markFailedMeasurementInsertion(i);
             }
             continue;
           }
@@ -1913,7 +1913,7 @@ public class MManager {
         if (config.isEnablePartialInsert()) {
           // mark failed measurement
           if (plan instanceof InsertPlan) {
-            ((InsertPlan) plan).markMeasurementInsertionFailed(i);
+            ((InsertPlan) plan).markFailedMeasurementInsertion(i);
           }
         } else {
           throw e;
