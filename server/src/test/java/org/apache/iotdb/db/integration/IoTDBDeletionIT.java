@@ -174,7 +174,6 @@ public class IoTDBDeletionIT {
 
       statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE time <= 300");
       statement.execute("DELETE FROM root.vehicle.d0.s1 WHERE time > 150");
-
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
         int cnt = 0;
         while (set.next()) {
