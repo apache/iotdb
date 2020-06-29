@@ -75,7 +75,6 @@ public class IoTDBCreateSnapshotIT {
 
       // test snapshot content correct
       String[] exp = new String[]{
-          "10",
           "2,s0,,1,2,1,,-1,0",
           "2,s1,,2,2,1,,-1,0",
           "2,s2,,3,2,1,,-1,0",

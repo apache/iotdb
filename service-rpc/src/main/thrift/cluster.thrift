@@ -391,7 +391,7 @@ service TSDataService extends RaftService {
   * During slot transfer, when a member has pulled snapshot from a group, the member will use this
   * method to inform the group that one replica of such slots has been pulled.
   **/
-  bool onSnapshotApplied(1: Node header 2: list<long> slots)
+  bool onSnapshotApplied(1: Node header 2: list<int> slots)
 }
 
 service TSMetaService extends RaftService {

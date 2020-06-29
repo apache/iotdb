@@ -54,6 +54,10 @@ public class PullSnapshotHintService {
   }
 
   public void stop() {
+    if (service == null) {
+      return;
+    }
+
     service.shutdown();
     try {
       service.awaitTermination(3, TimeUnit.MINUTES);

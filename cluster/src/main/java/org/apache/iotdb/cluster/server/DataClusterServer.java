@@ -603,7 +603,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void onSnapshotApplied(Node header, List<Long> slots,
+  public void onSnapshotApplied(Node header, List<Integer> slots,
       AsyncMethodCallback<Boolean> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler, "Snapshot applied");
     dataMember.onSnapshotApplied(header, slots, resultHandler);

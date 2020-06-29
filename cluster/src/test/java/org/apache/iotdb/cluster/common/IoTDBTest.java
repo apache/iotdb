@@ -105,7 +105,7 @@ public class IoTDBTest {
       schemas[i] = TestUtils.getTestMeasurementSchema(i);
     }
     insertPlan.setMeasurements(measurements);
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
 
     Object[] values = new Object[10];

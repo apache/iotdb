@@ -94,10 +94,12 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -121,6 +123,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -1468,9 +1471,29 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * be removed.
    */
   public void removeLocalData(List<Integer> slots) {
-    for (Integer slot : slots) {
-      //TODO-Cluster: remove the data in the slot
+    if (slots.isEmpty()) {
+      return;
     }
+
+    Set<Integer> slotSet = new HashSet<>(slots);
+    List<String> allStorageGroupNames = MManager.getInstance().getAllStorageGroupNames();
+    TimePartitionFilter filter = (storageGroupName, timePartitionId) -> {
+      int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, timePartitionId,
+          ClusterConstant.SLOT_NUM);
+      return slotSet.contains(slot);
+    };
+    for (String sg : allStorageGroupNames) {
+      try {
+        StorageEngine.getInstance().removePartitions(sg, filter);
+      } catch (StorageEngineException e) {
+        logger.warn("{}: failed to remove partitions of {} and {} other slots in {}", name,
+            slots.get(0), slots.size() - 1, sg, e);
+      }
+    }
+    for (Integer slot : slots) {
+      slotManager.setToNull(slot);
+    }
+
     if (logger.isInfoEnabled()) {
       logger.info("{}: data of {} and other {} slots are removed", name, slots.get(0),
           slots.size() - 1);

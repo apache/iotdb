@@ -55,7 +55,9 @@ public class SlotManager {
   private Map<Integer, SlotDescriptor> idSlotMap;
 
   public SlotManager(long totalSlotNumber, String memberDir) {
-    this.slotFilePath = memberDir + File.separator + SLOT_FILE_NAME;
+    if (memberDir != null) {
+      this.slotFilePath = memberDir + File.separator + SLOT_FILE_NAME;
+    }
     if (!load()) {
       init(totalSlotNumber);
     }
@@ -216,6 +218,9 @@ public class SlotManager {
   }
 
   private boolean load() {
+    if (slotFilePath == null) {
+      return false;
+    }
     File slotFile = new File(slotFilePath);
     if (!slotFile.exists()) {
       return false;
@@ -233,6 +238,9 @@ public class SlotManager {
   }
 
   private synchronized void save() {
+    if (slotFilePath == null) {
+      return;
+    }
     try (FileOutputStream outputStream = new FileOutputStream(slotFilePath);
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream);
         DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream)) {

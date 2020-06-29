@@ -17,28 +17,35 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.common;
+package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.List;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.partition.SlotManager;
-import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import java.util.Set;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-public class TestDataGroupMember extends DataGroupMember {
+public class DeletePartitionPlan extends PhysicalPlan {
 
-  public TestDataGroupMember() {
-    super();
-    setQueryManager(new ClusterQueryManager());
-    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
+  private String storageGroupName;
+  private Set<Long> partitionId;
+
+  public DeletePartitionPlan(String storageGroupName, Set<Long> partitionId) {
+    super(false, OperatorType.DELETE_PARTITION);
+    this.storageGroupName = storageGroupName;
+    this.partitionId = partitionId;
   }
 
-  public TestDataGroupMember(Node thisNode, List<Node> allNodes) {
-    super();
-    this.thisNode = thisNode;
-    this.allNodes = allNodes;
-    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
-    setQueryManager(new ClusterQueryManager());
+  @Override
+  public List<Path> getPaths() {
+    return null;
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
+  }
+
+  public Set<Long> getPartitionId() {
+    return partitionId;
   }
 }

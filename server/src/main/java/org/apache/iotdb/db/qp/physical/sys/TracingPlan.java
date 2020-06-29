@@ -16,29 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.qp.physical.sys;
 
-package org.apache.iotdb.cluster.common;
-
+import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.partition.SlotManager;
-import org.apache.iotdb.cluster.query.manage.ClusterQueryManager;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.member.DataGroupMember;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
 
-public class TestDataGroupMember extends DataGroupMember {
+public class TracingPlan extends PhysicalPlan {
 
-  public TestDataGroupMember() {
-    super();
-    setQueryManager(new ClusterQueryManager());
-    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
+  private boolean isTracingOn;
+
+  public TracingPlan(boolean isTracingOn) {
+    super(false, OperatorType.TRACING);
+    this.isTracingOn = isTracingOn;
   }
 
-  public TestDataGroupMember(Node thisNode, List<Node> allNodes) {
-    super();
-    this.thisNode = thisNode;
-    this.allNodes = allNodes;
-    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
-    setQueryManager(new ClusterQueryManager());
+  @Override
+  public List<Path> getPaths() {
+    return new ArrayList<>();
+  }
+
+  public boolean isTracingOn() {
+    return isTracingOn;
   }
 }

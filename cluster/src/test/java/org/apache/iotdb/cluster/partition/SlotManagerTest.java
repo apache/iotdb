@@ -36,7 +36,7 @@ public class SlotManagerTest {
   @Before
   public void setUp() {
     int testSlotNum = 100;
-    slotManager = new SlotManager(testSlotNum);
+    slotManager = new SlotManager(testSlotNum, null);
   }
 
   @Test

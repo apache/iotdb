@@ -59,9 +59,9 @@ public class InsertPlan extends PhysicalPlan {
   private TSDataType[] types;
   private MeasurementSchema[] schemas;
 
-  // if inferType is false, use the type of values directly
-  // if inferType is true, values is String[], and infer types from them
-  private boolean inferType = false;
+  // if isNeedInferType is true, the values must be String[], so we could infer types from them
+  // if values is object[], we could use the raw type of them, and we should set this to false
+  private boolean isNeedInferType = false;
 
   // record the failed measurements
   private Map<String, Exception> failedMeasurements;
@@ -146,7 +146,7 @@ public class InsertPlan extends PhysicalPlan {
     this.types = new TSDataType[measurements.length];
     this.values = new Object[measurements.length];
     System.arraycopy(insertValues, 0, values, 0, measurements.length);
-    inferType = true;
+    isNeedInferType = true;
     canBeSplit = false;
   }
 
@@ -159,12 +159,12 @@ public class InsertPlan extends PhysicalPlan {
     this.time = time;
   }
 
-  public boolean isInferType() {
-    return inferType;
+  public boolean isNeedInferType() {
+    return isNeedInferType;
   }
 
-  public void setInferType(boolean inferType) {
-    this.inferType = inferType;
+  public void setNeedInferType(boolean inferType) {
+    this.isNeedInferType = inferType;
   }
 
   public MeasurementSchema[] getSchemas() {
@@ -177,7 +177,7 @@ public class InsertPlan extends PhysicalPlan {
    */
   public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
     this.schemas = schemas;
-    if (inferType) {
+    if (isNeedInferType) {
       for (int i = 0; i < schemas.length; i++) {
         if (schemas[i] == null) {
           QueryProcessException exception = new QueryProcessException(new PathNotExistException(
@@ -295,7 +295,7 @@ public class InsertPlan extends PhysicalPlan {
     }
 
     // infer type flag
-    if (inferType || types == null || types[0] == null) {
+    if (isNeedInferType || types == null || types[0] == null) {
       stream.write(1);
     } else {
       stream.write(0);
@@ -449,7 +449,7 @@ public class InsertPlan extends PhysicalPlan {
     }
 
     // infer type flag
-    if (inferType || types == null || types[0] == null) {
+    if (isNeedInferType || types == null || types[0] == null) {
       buffer.put((byte) 1);
     } else {
       buffer.put((byte) 0);
@@ -478,7 +478,7 @@ public class InsertPlan extends PhysicalPlan {
 
     // the types are not inferred before the plan is serialized
     if (buffer.get() == 1) {
-      this.inferType = true;
+      this.isNeedInferType = true;
     }
   }
 

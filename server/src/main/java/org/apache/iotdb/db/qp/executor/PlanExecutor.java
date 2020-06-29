@@ -40,8 +40,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TTL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 import java.io.File;
@@ -63,7 +61,6 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.PathPrivilege;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
@@ -75,12 +72,11 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
@@ -93,6 +89,7 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
@@ -122,6 +119,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
@@ -131,10 +129,7 @@ import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -258,8 +253,19 @@ public class PlanExecutor implements IPlanExecutor {
       case FULL_MERGE:
         operateMerge((MergePlan) plan);
         return true;
+      case TRACING:
+        operateTracing((TracingPlan) plan);
+        return true;
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
+        return true;
+      case DELETE_PARTITION:
+        DeletePartitionPlan p = (DeletePartitionPlan) plan;
+        TimePartitionFilter filter =
+            (storageGroupName, partitionId) ->
+                storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupName())
+                    && p.getPartitionId().contains(partitionId);
+        StorageEngine.getInstance().removePartitions(((DeletePartitionPlan) plan).getStorageGroupName(), filter);
         return true;
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
@@ -287,6 +293,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateCreateSnapshot() {
     mManager.createMTreeSnapshot();
+  }
+
+  private void operateTracing(TracingPlan plan) {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -914,247 +924,39 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
+  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
+    throws MetadataException {
+    return mManager.getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
+  }
+
+  protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
+    throws MetadataException {
+    return mManager.getSeriesSchemas(insertTabletPlan.getDeviceId(),
+      insertTabletPlan.getMeasurements(), insertTabletPlan);
+  }
+
   @Override
   public void insert(InsertPlan insertPlan) throws QueryProcessException {
     try {
+      mManager.lockInsert(insertPlan.getDeviceId());
       MeasurementSchema[] schemas = getSeriesSchemas(insertPlan);
       insertPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertPlan);
       if (insertPlan.getFailedMeasurements() != null) {
-        // check if all path not exist exceptions
-        List<String> failedPaths = new ArrayList<>(insertPlan.getFailedMeasurements().keySet());
-        List<Exception> exceptions = new ArrayList<>(insertPlan.getFailedMeasurements().values());
-        boolean isPathNotExistException = true;
-        for(Exception e : exceptions){
-          Throwable curException = e;
-          while(curException.getCause() != null){
-            curException = curException.getCause();
-          }
-          if(!(curException instanceof PathNotExistException)){
-            isPathNotExistException = false;
-            break;
-          }
-        }
-        if(isPathNotExistException){
-          throw new PathNotExistException(failedPaths);
-        }else {
-          throw new StorageEngineException(
-              "failed to insert points " + insertPlan.getFailedMeasurements());
-        }
+        throw new StorageEngineException(
+            "failed to insert measurements " + insertPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
-    }
-  }
-
-  protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
-    String[] measurementList = insertPlan.getMeasurements();
-    String deviceId = insertPlan.getDeviceId();
-    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
-
-    MNode node = null;
-    try {
-      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
-      // To reduce the String number in memory, set the deviceId from MManager to insertPlan
-      insertPlan.setDeviceId(node.getFullPath());
-    } catch (PathNotExistException e) {
-      // ignore
-    }
-    try {
-      for (int i = 0; i < measurementList.length; i++) {
-        try {
-          schemas[i] = getSeriesSchema(node, insertPlan, i);
-          if (schemas[i] != null) {
-            measurementList[i] = schemas[i].getMeasurementId();
-          }
-        } catch (MetadataException e) {
-          logger.warn("meet error when check {}.{}, message: {}", deviceId, measurementList[i],
-              e.getMessage());
-          if (enablePartialInsert) {
-            insertPlan.markMeasurementInsertionFailed(i, e);
-          } else {
-            throw e;
-          }
-        }
-      }
     } finally {
-      if (node != null) {
-        node.readUnlock();
-      }
-    }
-    return schemas;
-  }
-
-  protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
-      throws MetadataException, QueryProcessException {
-    String[] measurementList = insertTabletPlan.getMeasurements();
-    String deviceId = insertTabletPlan.getDeviceId();
-    MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
-
-    MNode node = null;
-    try {
-      node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
-      // To reduce the String number in memory, set the deviceId from MManager to insertPlan
-      insertTabletPlan.setDeviceId(node.getFullPath());
-    } catch (PathNotExistException e) {
-      // ignore
-    }
-    try {
-      TSDataType[] dataTypes = insertTabletPlan.getDataTypes();
-      IoTDBConfig conf = IoTDBDescriptor.getInstance().getConfig();
-      String measurement;
-      for (int i = 0; i < measurementList.length; i++) {
-        measurement = measurementList[i];
-        if (node == null) {
-          schemas[i] = mManager.getSeriesSchema(deviceId, measurement);
-        } else {
-          if (!node.hasChild(measurement)) {
-            if (!conf.isAutoCreateSchemaEnabled()) {
-              throw new QueryProcessException(String.format(
-                  "Current deviceId[%s] does not contain measurement:%s", deviceId, measurement));
-            }
-            Path path = new Path(deviceId, measurement);
-            TSDataType dataType = dataTypes[i];
-            internalCreateTimeseries(path.getFullPath(), dataType);
-          }
-          MeasurementMNode measurementNode = (MeasurementMNode) mManager
-              .getChild(node, measurement);
-
-          // check data type
-          if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
-            if (!enablePartialInsert) {
-              throw new QueryProcessException(String.format(
-                  "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
-                  measurement, insertTabletPlan.getDataTypes()[i],
-                  measurementNode.getSchema().getType()));
-            } else {
-              insertTabletPlan.markMeasurementInsertionFailed(i);
-              continue;
-            }
-          }
-          schemas[i] = measurementNode.getSchema();
-          // reset measurement to common name instead of alias
-          measurementList[i] = measurementNode.getName();
-        }
-      }
-    } finally {
-      if (node != null) {
-        node.readUnlock();
-      }
-    }
-    return schemas;
-  }
-
-  /**
-   * @param loc index of measurement in insertPlan
-   */
-  private MeasurementSchema getSeriesSchema(MNode deviceNode, InsertPlan insertPlan, int loc)
-      throws MetadataException {
-    String measurement = insertPlan.getMeasurements()[loc];
-    String deviceId = insertPlan.getDeviceId();
-    Object value = insertPlan.getValues()[loc];
-    boolean isInferType = insertPlan.isInferType();
-
-    MeasurementSchema measurementSchema;
-    if (deviceNode != null && !deviceNode.hasChild(measurement)) {
-      // devices exists in MTree
-      if (!IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled()) {
-        // but measurement not in MTree and cannot auto-create, try the cache
-        measurementSchema = MManager.getInstance().getSeriesSchema(deviceId, measurement);
-        if (measurementSchema == null) {
-          throw new PathNotExistException(deviceId + PATH_SEPARATOR + measurement);
-        }
-      } else {
-        // auto-create
-        TSDataType dataType = TypeInferenceUtils.getPredictedDataType(value, isInferType);
-        Path path = new Path(deviceId, measurement);
-        internalCreateTimeseries(path.toString(), dataType);
-
-        MeasurementMNode measurementNode = (MeasurementMNode) mManager
-            .getChild(deviceNode, measurement);
-        measurementSchema = measurementNode.getSchema();
-        if (!isInferType) {
-          checkType(insertPlan, loc, measurementNode.getSchema().getType());
-        }
-      }
-    } else if (deviceNode != null) {
-      // device and measurement exists in MTree
-      MeasurementMNode measurementNode = (MeasurementMNode) MManager.getInstance()
-          .getChild(deviceNode, measurement);
-      measurementSchema = measurementNode.getSchema();
-    } else {
-      // device in not in MTree, try the cache
-      measurementSchema = mManager.getSeriesSchema(deviceId, measurement);
-    }
-    return measurementSchema;
-  }
-
-  private void checkType(InsertPlan plan, int loc, TSDataType type) {
-    plan.getTypes()[loc] = type;
-    try {
-      switch (type) {
-        case INT32:
-          if (!(plan.getValues()[loc] instanceof Integer)) {
-            plan.getValues()[loc] =
-                Integer.parseInt(((Binary) plan.getValues()[loc]).getStringValue());
-          }
-          break;
-        case INT64:
-          if (!(plan.getValues()[loc] instanceof Long)) {
-            plan.getValues()[loc] =
-                Long.parseLong(((Binary) plan.getValues()[loc]).getStringValue());
-          }
-          break;
-        case DOUBLE:
-          if (!(plan.getValues()[loc] instanceof Double)) {
-            plan.getValues()[loc] =
-                Double.parseDouble(((Binary) plan.getValues()[loc]).getStringValue());
-          }
-          break;
-        case FLOAT:
-          if (!(plan.getValues()[loc] instanceof Float)) {
-            plan.getValues()[loc] =
-                Float.parseFloat(((Binary) plan.getValues()[loc]).getStringValue());
-          }
-          break;
-        case BOOLEAN:
-          if (!(plan.getValues()[loc] instanceof Boolean)) {
-            plan.getValues()[loc] =
-                Boolean.parseBoolean(((Binary) plan.getValues()[loc]).getStringValue());
-          }
-          break;
-        case TEXT:
-          // need to do nothing
-          break;
-      }
-    } catch (ClassCastException e) {
-      logger.error("inconsistent type between client and server");
+      mManager.unlockInsert(insertPlan.getDeviceId());
     }
   }
-
-  /**
-   * create timeseries with ignore PathAlreadyExistException
-   */
-  private void internalCreateTimeseries(String path, TSDataType dataType) throws MetadataException {
-    try {
-      mManager.createTimeseries(
-          path,
-          dataType,
-          getDefaultEncoding(dataType),
-          TSFileDescriptor.getInstance().getConfig().getCompressor(),
-          Collections.emptyMap());
-    } catch (PathAlreadyExistException e) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("Ignore PathAlreadyExistException when Concurrent inserting"
-            + " a non-exist time series {}", path);
-      }
-    }
-  }
-
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     try {
+      mManager.lockInsert(insertTabletPlan.getDeviceId());
       MeasurementSchema[] schemas = getSeriesSchemas(insertTabletPlan);
       insertTabletPlan.setSchemas(schemas);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
@@ -1164,6 +966,8 @@ public class PlanExecutor implements IPlanExecutor {
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
+    } finally {
+      mManager.unlockInsert(insertTabletPlan.getDeviceId());
     }
   }
 

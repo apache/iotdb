@@ -164,11 +164,11 @@ public class DataLogApplierTest extends IoTDBTest {
     // this series is already created
     insertPlan.setDeviceId(TestUtils.getTestSg(1));
     insertPlan.setTime(1);
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[]{"1.0"});
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan
         .setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
 
