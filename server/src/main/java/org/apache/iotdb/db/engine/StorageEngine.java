@@ -44,6 +44,7 @@ import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.BatchInsertionException;
@@ -619,13 +620,14 @@ public class StorageEngine implements IService {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
 
-  @TestOnly
-  public static void setEnablePartition(boolean enablePartition) {
-    StorageEngine.enablePartition = enablePartition;
+
+  public void removePartitions(String storageGroupName, TimePartitionFilter filter)
+      throws StorageEngineException {
+    getProcessor(storageGroupName).removePartitions(filter);
   }
 
   @TestOnly
-  public static boolean isEnablePartition() {
-    return enablePartition;
+  public static void setEnablePartition(boolean enablePartition) {
+    StorageEngine.enablePartition = enablePartition;
   }
 }

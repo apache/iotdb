@@ -45,6 +45,7 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
@@ -60,10 +61,12 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
+import org.apache.iotdb.db.qp.physical.crud.DeletePartitionPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
@@ -96,6 +99,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -182,6 +186,9 @@ public class PhysicalGenerator {
       case FLUSH:
         FlushOperator flushOperator = (FlushOperator) operator;
         return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
+      case TRACING:
+        TracingOperator tracingOperator = (TracingOperator) operator;
+        return new TracingPlan(tracingOperator.isTracingon());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);
@@ -259,6 +266,9 @@ public class PhysicalGenerator {
         return new ClearCachePlan();
       case SHOW_MERGE_STATUS:
         return new ShowMergeStatusPlan();
+      case DELETE_PARTITION:
+        DeletePartitionOperator op = (DeletePartitionOperator) operator;
+        return new DeletePartitionPlan(op.getStorageGroupName(), op.getPartitionId());
       case CREATE_SCHEMA_SNAPSHOT:
         return new CreateSnapshotPlan();
       default:

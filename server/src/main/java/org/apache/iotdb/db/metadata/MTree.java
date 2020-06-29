@@ -86,12 +86,6 @@ public class MTree implements Serializable {
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
 
   private MNode root;
-
-  /**
-   * The number of mlog lines that has been snapshot in mtree.snapshot
-   */
-  private int snapshotLineNumber;
-
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
@@ -99,12 +93,10 @@ public class MTree implements Serializable {
 
   MTree() {
     this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
-    this.snapshotLineNumber = 0;
   }
 
-  private MTree(MNode root, int snapshotLineNumber) {
+  private MTree(MNode root) {
     this.root = root;
-    this.snapshotLineNumber = snapshotLineNumber;
   }
 
   /**
@@ -932,22 +924,15 @@ public class MTree implements Serializable {
     }
   }
 
-  public int getSnapshotLineNumber() {
-    return snapshotLineNumber;
-  }
-
-  public void serializeTo(String snapshotPath, int lineNumber) throws IOException {
+  public void serializeTo(String snapshotPath) throws IOException {
     try (BufferedWriter bw = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(snapshotPath)))) {
-      bw.write(String.valueOf(lineNumber));
-      bw.newLine();
       root.serializeTo(bw);
     }
   }
 
   public static MTree deserializeFrom(File mtreeSnapshot) {
     try (BufferedReader br = new BufferedReader(new FileReader(mtreeSnapshot))) {
-      int snapshotLineNumber = Integer.parseInt(br.readLine());
       String s;
       Deque<MNode> nodeStack = new ArrayDeque<>();
       MNode node = null;
@@ -983,7 +968,7 @@ public class MTree implements Serializable {
           nodeStack.push(node);
         }
       }
-      return new MTree(node, snapshotLineNumber);
+      return new MTree(node);
     } catch (IOException e) {
       logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       return new MTree();

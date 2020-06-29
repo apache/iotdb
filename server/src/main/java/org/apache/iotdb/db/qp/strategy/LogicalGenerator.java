@@ -51,6 +51,7 @@ import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
+import org.apache.iotdb.db.qp.logical.sys.DeletePartitionOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
@@ -69,6 +70,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AliasContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlignByDeviceClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.AlterUserContext;
@@ -83,6 +85,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateSnapshotContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeletePartitionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteStorageGroupContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DeleteTimeseriesContext;
@@ -154,6 +157,8 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TracingOffContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TracingOnContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TypeClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UnsetTTLStatementContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.UpdateStatementContext;
@@ -223,6 +228,18 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
 
     initializedOperator = flushOperator;
+  }
+
+  @Override
+  public void enterTracingOn(TracingOnContext ctx) {
+    super.enterTracingOn(ctx);
+    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING, true);
+  }
+
+  @Override
+  public void enterTracingOff(TracingOffContext ctx) {
+    super.enterTracingOff(ctx);
+    initializedOperator = new TracingOperator(SQLConstant.TOK_TRACING, false);
   }
 
   @Override
@@ -1114,12 +1131,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     CompressionType compressor;
     List<PropertyContext> properties = ctx.property();
     Map<String, String> props = new HashMap<>(properties.size());
-    if (ctx.propertyValue() != null) {
-      compressor = CompressionType.valueOf(ctx.propertyValue().getText().toUpperCase());
+    if (ctx.compressor() != null) {
+      compressor = CompressionType.valueOf(ctx.compressor().getText().toUpperCase());
     } else {
       compressor = TSFileDescriptor.getInstance().getConfig().getCompressor();
     }
-    checkMetadataArgs(dataType, encoding, compressor.toString().toUpperCase());
     if (ctx.property(0) != null) {
       for (PropertyContext property : properties) {
         props.put(property.ID().getText().toLowerCase(),
@@ -1548,78 +1564,24 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     return time;
   }
 
-  private void checkMetadataArgs(String dataType, String encoding, String compressor) {
-    TSDataType tsDataType;
-    TSEncoding tsEncoding;
-    if (dataType == null) {
-      throw new SQLParserException("data type cannot be null");
-    }
-
-    try {
-      tsDataType = TSDataType.valueOf(dataType);
-    } catch (Exception e) {
-      throw new SQLParserException(String.format("data type %s not support", dataType));
-    }
-
-    if (encoding == null) {
-      throw new SQLParserException("encoding type cannot be null");
-    }
-
-    try {
-      tsEncoding = TSEncoding.valueOf(encoding);
-    } catch (Exception e) {
-      throw new SQLParserException(String.format("encoding %s is not support", encoding));
-    }
-
-    try {
-      CompressionType.valueOf(compressor);
-    } catch (Exception e) {
-      throw new SQLParserException(String.format("compressor %s is not support", compressor));
-    }
-
-    checkDataTypeEncoding(tsDataType, tsEncoding);
-  }
-
-  private void checkDataTypeEncoding(TSDataType tsDataType, TSEncoding tsEncoding) {
-    boolean throwExp = false;
-    switch (tsDataType) {
-      case BOOLEAN:
-        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN))) {
-          throwExp = true;
-        }
-        break;
-      case INT32:
-      case INT64:
-        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
-            || tsEncoding.equals(TSEncoding.TS_2DIFF))) {
-          throwExp = true;
-        }
-        break;
-      case FLOAT:
-      case DOUBLE:
-        if (!(tsEncoding.equals(TSEncoding.RLE) || tsEncoding.equals(TSEncoding.PLAIN)
-            || tsEncoding.equals(TSEncoding.TS_2DIFF) || tsEncoding.equals(TSEncoding.GORILLA))) {
-          throwExp = true;
-        }
-        break;
-      case TEXT:
-        if (!tsEncoding.equals(TSEncoding.PLAIN)) {
-          throwExp = true;
-        }
-        break;
-      default:
-        throwExp = true;
-    }
-    if (throwExp) {
-      throw new SQLParserException(
-          String.format("encoding %s does not support %s", tsEncoding, tsDataType));
-    }
-  }
-
   @Override
   public void enterShowMergeStatus(ShowMergeStatusContext ctx) {
     super.enterShowMergeStatus(ctx);
     initializedOperator = new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
+  }
+
+  @Override
+  public void enterDeletePartition(DeletePartitionContext ctx) {
+    super.enterDeletePartition(ctx);
+    DeletePartitionOperator deletePartitionOperator = new DeletePartitionOperator(
+        SQLConstant.TOK_DELETE_PARTITION);
+    deletePartitionOperator.setStorageGroupName(ctx.prefixPath().getText());
+    Set<Long> idSet = new HashSet<>();
+    for (TerminalNode terminalNode : ctx.INT()) {
+      idSet.add(Long.parseLong(terminalNode.getText()));
+    }
+    deletePartitionOperator.setPartitionIds(idSet);
+    initializedOperator = deletePartitionOperator;
   }
 
   @Override

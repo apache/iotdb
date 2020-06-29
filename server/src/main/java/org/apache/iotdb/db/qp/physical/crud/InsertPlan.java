@@ -18,13 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -47,6 +40,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
 public class InsertPlan extends PhysicalPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertPlan.class);
@@ -58,9 +59,9 @@ public class InsertPlan extends PhysicalPlan {
   private TSDataType[] types;
   private MeasurementSchema[] schemas;
 
-  // if inferType is false, use the type of values directly
-  // if inferType is true, values is String[], and infer types from them
-  private boolean inferType = false;
+  // if isNeedInferType is true, the values must be String[], so we could infer types from them
+  // if values is object[], we could use the raw type of them, and we should set this to false
+  private boolean isNeedInferType = false;
 
   // record the failed measurements
   private List<String> failedMeasurements;
@@ -145,7 +146,7 @@ public class InsertPlan extends PhysicalPlan {
     this.types = new TSDataType[measurements.length];
     this.values = new Object[measurements.length];
     System.arraycopy(insertValues, 0, values, 0, measurements.length);
-    inferType = true;
+    isNeedInferType = true;
     canBeSplit = false;
   }
 
@@ -158,12 +159,12 @@ public class InsertPlan extends PhysicalPlan {
     this.time = time;
   }
 
-  public boolean isInferType() {
-    return inferType;
+  public boolean isNeedInferType() {
+    return isNeedInferType;
   }
 
-  public void setInferType(boolean inferType) {
-    this.inferType = inferType;
+  public void setNeedInferType(boolean inferType) {
+    this.isNeedInferType = inferType;
   }
 
   public MeasurementSchema[] getSchemas() {
@@ -176,7 +177,7 @@ public class InsertPlan extends PhysicalPlan {
    */
   public void setSchemasAndTransferType(MeasurementSchema[] schemas) throws QueryProcessException {
     this.schemas = schemas;
-    if (inferType) {
+    if (isNeedInferType) {
       for (int i = 0; i < schemas.length; i++) {
         if (schemas[i] == null) {
           if (IoTDBDescriptor.getInstance().getConfig().isEnablePartialInsert()) {
