@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeMap;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -98,7 +99,7 @@ public class VmMergeTask {
         for (String measurementId : deviceMeasurementMap.get(deviceId).keySet()) {
           MeasurementSchema measurementSchema = deviceMeasurementMap.get(deviceId)
               .get(measurementId);
-          List<TimeValuePair> timeValuePairs = new ArrayList<>();
+          Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
             TsFileSequenceReader reader = tsFileSequenceReaderMap
                 .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
@@ -127,15 +128,15 @@ public class VmMergeTask {
                 IPointReader iPointReader = new BatchDataIterator(
                     chunkReader.nextPageData());
                 while (iPointReader.hasNextTimeValuePair()) {
-                  timeValuePairs.add(iPointReader.nextTimeValuePair());
+                  TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
+                  timeValuePairMap.put(timeValuePair.getTimestamp(), timeValuePair);
                 }
               }
             }
           }
-          timeValuePairs.sort((o1, o2) -> (int) (o1.getTimestamp() - o2.getTimestamp()));
           IChunkWriter chunkWriter = new ChunkWriterImpl(
               deviceMeasurementMap.get(deviceId).get(measurementId));
-          for (TimeValuePair timeValuePair : timeValuePairs) {
+          for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
             writeTimeValuePair(timeValuePair, chunkWriter);
           }
           chunkWriter.writeToFileWriter(writer);
