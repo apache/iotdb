@@ -265,6 +265,9 @@ public class PlanExecutor implements IPlanExecutor {
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
         return true;
+      case CREATE_SCHEMA_SNAPSHOT:
+        operateCreateSnapshot();
+        return true;
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
@@ -284,6 +287,10 @@ public class PlanExecutor implements IPlanExecutor {
     ChunkCache.getInstance().clear();
     ChunkMetadataCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
+  }
+
+  private void operateCreateSnapshot() {
+    mManager.createMTreeSnapshot();
   }
 
   private void operateTracing(TracingPlan plan) {
@@ -1132,9 +1139,9 @@ public class PlanExecutor implements IPlanExecutor {
         if (measurementNode.getSchema().getType() != insertTabletPlan.getDataTypes()[i]) {
           if (!enablePartialInsert) {
             throw new QueryProcessException(String.format(
-              "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
-              measurement, insertTabletPlan.getDataTypes()[i],
-              measurementNode.getSchema().getType()));
+                "Datatype mismatch, Insert measurement %s type %s, metadata tree type %s",
+                measurement, insertTabletPlan.getDataTypes()[i],
+                measurementNode.getSchema().getType()));
           } else {
             insertTabletPlan.markMeasurementInsertionFailed(i);
             continue;
@@ -1148,7 +1155,7 @@ public class PlanExecutor implements IPlanExecutor {
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
       if (insertTabletPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
-          "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
+            "failed to insert measurements " + insertTabletPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

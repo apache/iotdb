@@ -18,9 +18,17 @@
  */
 package org.apache.iotdb.db.conf;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.file.Files;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -34,20 +42,17 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.util.List;
-import java.util.Properties;
-
 public class IoTDBConfigCheck {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBDescriptor.class);
 
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
   // this file is located in data/system/schema/system.properties
   // If user delete folder "data", system.properties can reset.
   private static final String PROPERTIES_FILE_NAME = "system.properties";
-  private static final String SCHEMA_DIR = IoTDBDescriptor.getInstance().getConfig().getSchemaDir();
-  private static final String WAL_DIR = IoTDBDescriptor.getInstance().getConfig().getWalFolder();
+  private static final String SCHEMA_DIR = config.getSchemaDir();
+  private static final String WAL_DIR = config.getWalFolder();
 
   private File propertiesFile;
   private File tmpPropertiesFile;
@@ -59,32 +64,32 @@ public class IoTDBConfigCheck {
   private static final String SYSTEM_PROPERTIES_STRING = "System properties:";
 
   private static final String TIMESTAMP_PRECISION_STRING = "timestamp_precision";
-  private static String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+  private static String timestampPrecision = config.getTimestampPrecision();
 
   private static final String PARTITION_INTERVAL_STRING = "partition_interval";
-  private static long partitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+  private static long partitionInterval = config.getPartitionInterval();
 
   private static final String TSFILE_FILE_SYSTEM_STRING = "tsfile_storage_fs";
-  private static String tsfileFileSystem = IoTDBDescriptor.getInstance().getConfig().getTsFileStorageFs().toString();
+  private static String tsfileFileSystem = config.getTsFileStorageFs().toString();
 
   private static final String ENABLE_PARTITION_STRING = "enable_partition";
-  private static boolean enablePartition = IoTDBDescriptor.getInstance().getConfig().isEnablePartition();
+  private static boolean enablePartition = config.isEnablePartition();
 
   private static final String TAG_ATTRIBUTE_SIZE_STRING = "tag_attribute_total_size";
-  private static final String tagAttributeTotalSize = String.valueOf(IoTDBDescriptor.getInstance().getConfig().getTagAttributeTotalSize());
+  private static String tagAttributeTotalSize = String.valueOf(config.getTagAttributeTotalSize());
 
   private static final String MAX_DEGREE_OF_INDEX_STRING = "max_degree_of_index_node";
-  private static final String maxDegreeOfIndexNode = String.valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
+  private static String maxDegreeOfIndexNode = String
+      .valueOf(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode());
 
   private static final String IOTDB_VERSION_STRING = "iotdb_version";
-
-  private static final String ERROR_LOG = "Wrong %s, please set as: %s !";
 
   public static IoTDBConfigCheck getInstance() {
     return IoTDBConfigCheckHolder.INSTANCE;
   }
 
   private static class IoTDBConfigCheckHolder {
+
     private static final IoTDBConfigCheck INSTANCE = new IoTDBConfigCheck();
   }
 
@@ -105,8 +110,8 @@ public class IoTDBConfigCheck {
     // check time stamp precision
     if (!(timestampPrecision.equals("ms") || timestampPrecision.equals("us")
         || timestampPrecision.equals("ns"))) {
-      logger.error("Wrong " + TIMESTAMP_PRECISION_STRING + ", please set as: ms, us or ns ! Current is: "
-          + timestampPrecision);
+      logger.error("Wrong {}, please set as: ms, us or ns ! Current is: {}",
+          TIMESTAMP_PRECISION_STRING, timestampPrecision);
       System.exit(-1);
     }
 
@@ -220,7 +225,7 @@ public class IoTDBConfigCheck {
 
 
   /**
-   *  repair 0.10 properties
+   * repair 0.10 properties
    */
   private void upgradePropertiesFileFromBrokenFile()
       throws IOException {
@@ -261,34 +266,29 @@ public class IoTDBConfigCheck {
     }
 
     if (!properties.getProperty(TIMESTAMP_PRECISION_STRING).equals(timestampPrecision)) {
-      logger.error(String.format(ERROR_LOG, TIMESTAMP_PRECISION_STRING, properties
-          .getProperty(TIMESTAMP_PRECISION_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(TIMESTAMP_PRECISION_STRING);
     }
 
     if (Long.parseLong(properties.getProperty(PARTITION_INTERVAL_STRING)) != partitionInterval) {
-      logger.error(String.format(ERROR_LOG, PARTITION_INTERVAL_STRING, properties
-          .getProperty(PARTITION_INTERVAL_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(PARTITION_INTERVAL_STRING);
     }
 
     if (!(properties.getProperty(TSFILE_FILE_SYSTEM_STRING).equals(tsfileFileSystem))) {
-      logger.error(String.format(ERROR_LOG, TSFILE_FILE_SYSTEM_STRING, properties
-          .getProperty(TSFILE_FILE_SYSTEM_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(TSFILE_FILE_SYSTEM_STRING);
     }
 
     if (!(properties.getProperty(TAG_ATTRIBUTE_SIZE_STRING).equals(tagAttributeTotalSize))) {
-      logger.error(String.format(ERROR_LOG, TAG_ATTRIBUTE_SIZE_STRING, properties
-          .getProperty(TAG_ATTRIBUTE_SIZE_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(TAG_ATTRIBUTE_SIZE_STRING);
     }
 
     if (!(properties.getProperty(MAX_DEGREE_OF_INDEX_STRING).equals(maxDegreeOfIndexNode))) {
-      logger.error(String.format(ERROR_LOG, MAX_DEGREE_OF_INDEX_STRING, properties
-          .getProperty(MAX_DEGREE_OF_INDEX_STRING)));
-      System.exit(-1);
+      printErrorLogAndExit(MAX_DEGREE_OF_INDEX_STRING);
     }
+  }
+
+  private void printErrorLogAndExit(String property) {
+    logger.error("Wrong {}, please set as: {} !", property, properties.getProperty(property));
+    System.exit(-1);
   }
 
   /**

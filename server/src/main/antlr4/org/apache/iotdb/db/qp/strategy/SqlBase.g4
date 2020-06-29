@@ -82,6 +82,7 @@ statement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
+    | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -891,6 +892,18 @@ FALSE
 
 LATEST
     : L A T E S T
+    ;
+
+SNAPSHOT
+    : S N A P S H O T
+    ;
+
+FOR
+    : F O R
+    ;
+
+SCHEMA
+    : S C H E M A
     ;
 
 //============================

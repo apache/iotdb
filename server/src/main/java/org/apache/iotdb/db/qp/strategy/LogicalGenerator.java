@@ -48,6 +48,7 @@ import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.ClearCacheOperator;
 import org.apache.iotdb.db.qp.logical.sys.CountOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DataAuthOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -79,6 +80,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ConstantContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountNodesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CountTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateRoleContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateSnapshotContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateTimeseriesContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.CreateUserContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.DateExpressionContext;
@@ -1496,10 +1498,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
 
   /**
    * parse time expression, which is addition and subtraction expression of duration time, now() or
-   * DataTimeFormat time.
-   * <p>
-   * eg. now() + 1d - 2h
-   * </p>
+   * DataTimeFormat time. <p> eg. now() + 1d - 2h </p>
    */
   private Long parseDateExpression(DateExpressionContext ctx) {
     long time;
@@ -1636,5 +1635,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterShowMergeStatus(ShowMergeStatusContext ctx) {
     super.enterShowMergeStatus(ctx);
     initializedOperator = new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
+  }
+
+  @Override
+  public void enterCreateSnapshot(CreateSnapshotContext ctx) {
+    super.enterCreateSnapshot(ctx);
+    initializedOperator = new CreateSnapshotOperator(SQLConstant.TOK_CREATE_SCHEMA_SNAPSHOT);
   }
 }

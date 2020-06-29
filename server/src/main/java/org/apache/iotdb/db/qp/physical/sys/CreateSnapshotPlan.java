@@ -16,22 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata;
 
-public class MetadataConstant {
+package org.apache.iotdb.db.qp.physical.sys;
 
-  private MetadataConstant() {
-    // allowed to do nothing
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.tsfile.read.common.Path;
+
+public class CreateSnapshotPlan extends PhysicalPlan {
+
+  public CreateSnapshotPlan() {
+    super(false, OperatorType.CREATE_SCHEMA_SNAPSHOT);
   }
 
-  public static final String ROOT = "root";
-  public static final String METADATA_LOG = "mlog.txt";
-  public static final String TAG_LOG = "tlog.txt";
-  public static final String MTREE_SNAPSHOT = "mtree.snapshot";
-  public static final String MTREE_SNAPSHOT_TMP = "mtree.snapshot.tmp";
-
-
-  public static final short MNODE_TYPE = 0;
-  public static final short STORAGE_GROUP_MNODE_TYPE = 1;
-  public static final short MEASUREMENT_MNODE_TYPE = 2;
+  @Override
+  public List<Path> getPaths() {
+    return new ArrayList<>();
+  }
 }

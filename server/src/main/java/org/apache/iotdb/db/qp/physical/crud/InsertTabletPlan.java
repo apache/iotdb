@@ -24,11 +24,9 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -305,7 +303,7 @@ public class InsertTabletPlan extends PhysicalPlan {
       case BOOLEAN:
         boolean[] boolValues = (boolean[]) column;
         for (int j = start; j < end; j++) {
-          buffer.putInt(BytesUtils.boolToByte(boolValues[j]));
+          buffer.put(BytesUtils.boolToByte(boolValues[j]));
         }
         break;
       case TEXT:

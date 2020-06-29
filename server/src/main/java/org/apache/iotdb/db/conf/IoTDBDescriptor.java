@@ -318,6 +318,12 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
               String.valueOf(conf.isEnablePartialInsert()))));
 
+      conf.setMtreeSnapshotInterval(Integer.parseInt(properties.getProperty(
+          "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
+      conf.setMtreeSnapshotThresholdTime(Integer.parseInt(properties.getProperty(
+          "mtree_snapshot_threshold_time",
+          Integer.toString(conf.getMtreeSnapshotThresholdTime()))));
+
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
               Boolean.toString(conf.isEnablePerformanceStat())).trim()));

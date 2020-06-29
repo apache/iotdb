@@ -90,7 +90,7 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-
+    logger.info("recover the schema...");
     initMManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
@@ -132,7 +132,10 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void initMManager() {
+    long time = System.currentTimeMillis();
     MManager.getInstance().init();
+    long end = System.currentTimeMillis() - time;
+    logger.info("spend {}ms to recover schema.", end);
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
     logger.info(
         "After initializing, max memTable num is {}, tsFile threshold is {}, memtableSize is {}",
