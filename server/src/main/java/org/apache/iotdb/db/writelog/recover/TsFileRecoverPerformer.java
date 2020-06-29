@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import static org.apache.iotdb.db.engine.flush.MemTableFlushTask.getFlushLogFile;
+import static org.apache.iotdb.db.engine.flush.VmLogger.VMLoggerFileExist;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFile;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.deleteVmFile;
@@ -140,7 +142,7 @@ public class TsFileRecoverPerformer {
     if (isComplete) {
       // tsfile is complete, vmfile is never complete because it's canWrite() always return true.
       try {
-        recoverResource(resource, true);
+        recoverResource(resource);
         return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
       } catch (IOException e) {
         throw new StorageGroupProcessorException(
@@ -149,29 +151,17 @@ public class TsFileRecoverPerformer {
       }
     } else {
       if (!vmTsFileResources.isEmpty()) {
-        // if the last file in vmTsFileResources crash
-        if (lastRestorableTsFileIOWriter.hasCrashed()) {
+        for (int i = 0; i < vmTsFileResources.size(); i++) {
+          recoverResourceFromWriter(vmRestorableTsFileIOWriterList.get(i), vmTsFileResources.get(i));
+        }
+        recoverResourceFromWriter(restorableTsFileIOWriter, resource);
+        boolean vmFileNotCrashed = !getFlushLogFile(restorableTsFileIOWriter).exists();
+        // if the last file in vmTsFileResources is not crashed
+        if (vmFileNotCrashed) {
           try {
-            recoverResource(resource, false);
-            for (int i = 0; i < vmTsFileResources.size() - 1; i++) {
-              recoverResource(vmTsFileResources.get(i), false);
-            }
-            // due to failure, the last ChunkGroup may contain the same data as the WALs, so the time
-            // map must be updated first to avoid duplicated insertion
-            recoverResourceFromWriter(lastRestorableTsFileIOWriter, lastTsFileResource);
-          } catch (IOException e) {
-            throw new StorageGroupProcessorException(
-                "recover the resource file failed: " + filePath
-                    + RESOURCE_SUFFIX + e);
-          }
-        } else { // last vmfile is not crash
-          try {
-            for (TsFileResource vmTsFileResource : vmTsFileResources) {
-              recoverResource(vmTsFileResource, false);
-            }
+            boolean tsFileNotCrashed = !VMLoggerFileExist(restorableTsFileIOWriter);
             // tsfile is not crash
-            if (!restorableTsFileIOWriter.hasCrashed()) {
-              recoverResource(resource, false);
+            if (tsFileNotCrashed) {
 
               // if wal exists, we should open a new vmfile to replay it
               File newVmFile = createNewVMFile(resource);
@@ -183,6 +173,12 @@ public class TsFileRecoverPerformer {
               } else {
                 newVmFile.delete();
               }
+            } else {
+              IMemTable recoverMemTable = new PrimitiveMemTable();
+              recoverMemTable.setVersion(versionController.nextVersion());
+              LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, resource.getModFile(),
+                  versionController, resource, recoverMemTable, sequence);
+              logReplayer.replayLogs();
             }
             // clean logs
             try {
@@ -191,6 +187,7 @@ public class TsFileRecoverPerformer {
             } catch (IOException e) {
               throw new StorageGroupProcessorException(e);
             }
+            updateTsFileResource();
             return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
           } catch (IOException e) {
             throw new StorageGroupProcessorException(
@@ -216,12 +213,22 @@ public class TsFileRecoverPerformer {
     } catch (IOException e) {
       throw new StorageGroupProcessorException(e);
     }
-
+    updateTsFileResource();
     return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
   }
 
-  private void recoverResource(TsFileResource tsFileResource, boolean needSerialize)
-      throws IOException {
+  private void updateTsFileResource() {
+    for (TsFileResource tsFileResource : vmTsFileResources) {
+      for (Entry<String, Integer> entry : tsFileResource.getDeviceToIndexMap().entrySet()) {
+        String device = entry.getKey();
+        int index = entry.getValue();
+        resource.updateStartTime(device, tsFileResource.getStartTime(index));
+        resource.updateEndTime(device, tsFileResource.getEndTime(index));
+      }
+    }
+  }
+
+  private void recoverResource(TsFileResource tsFileResource) throws IOException {
     if (tsFileResource.fileExists()) {
       // .resource file exists, deserialize it
       recoverResourceFromFile(tsFileResource);
@@ -236,9 +243,7 @@ public class TsFileRecoverPerformer {
           Long.parseLong(
               tsFileResource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
       tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
-      if (needSerialize) {
-        tsFileResource.serialize();
-      }
+      tsFileResource.serialize();
     }
   }
 

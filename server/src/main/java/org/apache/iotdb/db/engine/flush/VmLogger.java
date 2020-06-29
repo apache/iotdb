@@ -20,9 +20,12 @@
 package org.apache.iotdb.db.engine.flush;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 public class VmLogger {
 
@@ -46,6 +49,12 @@ public class VmLogger {
     logStream.write(String.format(FORMAT_DEVICE_OFFSET, device, offset));
     logStream.newLine();
     logStream.flush();
+  }
+
+  public static boolean VMLoggerFileExist(RestorableTsFileIOWriter writer) {
+    File parent = writer.getFile().getParentFile();
+    return FSFactoryProducer.getFSFactory()
+        .getFile(parent, writer.getFile().getName() + VM_LOG_NAME).exists();
   }
 
 }

@@ -590,7 +590,7 @@ public class StorageGroupProcessor {
             .recover();
         writer = pair.left;
         vmWriters = pair.right;
-
+        vmWriters.forEach(vmWriter -> vmWriter.makeMetadataVisible());
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
@@ -637,6 +637,7 @@ public class StorageGroupProcessor {
         writer = pair.left;
         vmWriters = pair.right;
 
+        vmWriters.forEach(vmWriter -> vmWriter.makeMetadataVisible());
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;

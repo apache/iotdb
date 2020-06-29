@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.flush;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.FLUSH_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
@@ -78,6 +79,8 @@ public class MemTableFlushTask {
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
+  private File flushLogFile;
+
   public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer,
       List<TsFileResource> vmTsFiles,
       List<RestorableTsFileIOWriter> vmWriters, boolean isVm,
@@ -103,6 +106,9 @@ public class MemTableFlushTask {
       throws ExecutionException, InterruptedException, IOException {
     long start = System.currentTimeMillis();
     long sortTime = 0;
+
+    flushLogFile = getFlushLogFile(writer);
+    flushLogFile.createNewFile();
 
     if (isVm) {
       currWriter = vmWriters.get(vmWriters.size() - 1);
@@ -168,6 +174,11 @@ public class MemTableFlushTask {
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
     }
+
+    if (flushLogFile != null) {
+      flushLogFile.delete();
+    }
+
     if (vmLogger != null) {
       vmLogger.close();
     }
@@ -279,6 +290,12 @@ public class MemTableFlushTask {
     }
   };
 
+  public static File getFlushLogFile(RestorableTsFileIOWriter writer) {
+    File parent = writer.getFile().getParentFile();
+    return FSFactoryProducer.getFSFactory()
+        .getFile(parent, writer.getFile().getName() + FLUSH_SUFFIX);
+  }
+
   private File createNewTmpFile() {
     File parent = writer.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
@@ -316,6 +333,9 @@ public class MemTableFlushTask {
           if (ioMessage instanceof StartFlushGroupIOTask) {
             currWriter.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
           } else if (ioMessage instanceof MergeVmIoTask) {
+            if (flushLogFile != null) {
+              flushLogFile.delete();
+            }
             RestorableTsFileIOWriter mergeWriter = ((MergeVmIoTask) ioMessage).mergeWriter;
             VmMergeTask vmMergeTask = new VmMergeTask(mergeWriter, vmWriters,
                 storageGroup, vmLogger, new HashSet<>(), sequence);
