@@ -1558,10 +1558,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     // the storage group is not found locally
     if (planGroupMap == null || planGroupMap.isEmpty()) {
-      if (plan instanceof InsertPlan && ClusterDescriptor.getInstance().getConfig()
-          .isEnableAutoCreateSchema()) {
+      if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan)
+          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
         // try to set storage group
-        String deviceId = ((InsertPlan) plan).getDeviceId();
+        String deviceId;
+        if(plan instanceof InsertPlan){
+          deviceId = ((InsertPlan) plan).getDeviceId();
+        }else{
+          deviceId = ((CreateTimeSeriesPlan)plan).getPath().toString();
+        }
         try {
           String storageGroupName = MetaUtils
               .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
@@ -1573,20 +1578,23 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
                   .getStatusCode()) {
             throw new MetadataException(
-                String.format("Status Code: %d, failed to set storage group ",
+                String.format("Status Code: %d, failed to set storage group %s",
                     setStorageGroupResult.getCode(), storageGroupName)
             );
           }
-          // try to create timeseries
-          boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
-          if (!isAutoCreateTimeseriesSuccess) {
-            throw new MetadataException(
-                String.format("Failed to create timeseries from InsertPlan automatically.")
-            );
+          if(plan instanceof InsertPlan){
+            // try to create timeseries
+            boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
+            if (!isAutoCreateTimeseriesSuccess) {
+              throw new MetadataException(
+                  "Failed to create timeseries from InsertPlan automatically."
+              );
+            }
           }
           return executeNonQuery(plan);
         } catch (MetadataException e) {
-          logger.error(String.format("Failed to set storage group or create timeseries, because %s", e));
+          logger.error(
+              String.format("Failed to set storage group or create timeseries, because %s", e));
         }
       }
       logger.error("{}: Cannot found storage groups for {}", name, plan);
