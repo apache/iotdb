@@ -119,9 +119,9 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4)
 
 ## Show Timeseries
 
-* SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
+* SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
-  There are three optional clauses could be added behind SHOW TIMESERIES, return information of time series 
+  There are four optional clauses could be added in SHOW TIMESERIES, return information of time series 
   
 Timeseries information includes: timeseries path, alias of measurement, storage group it belongs to, data type, encoding type, compression type, tags and attributes.
  
@@ -162,6 +162,10 @@ The results are shown below respectly:
 * SHOW TIMESERIES LIMIT INT OFFSET INT
 
   returns all the timeseries information start from the offset and limit the number of series returned
+  
+* SHOW LATEST TIMESERIES
+
+  all the returned timeseries information should be sorted in descending order of the last timestamp of timeseries
   
 It is worth noting that when the queried path does not exist, the system will return no timeseries.  
 
@@ -323,4 +327,11 @@ IoTDB> FULL MERGE
 Clear the cache of chunk, chunk metadata and timeseries metadata to release the memory footprint.
 ```
 IoTDB> CLEAR CACHE
+```
+
+## CREATE SNAPSHOT FOR SCHEMA
+
+To speed up restarting of IoTDB, users could create snapshot of schema and avoid recovering schema from mlog file.
+```
+IoTDB> CREATE SNAPSHOT FOR SCHEMA
 ```

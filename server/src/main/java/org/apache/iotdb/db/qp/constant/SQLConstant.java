@@ -150,6 +150,11 @@ public class SQLConstant {
   public static final int TOK_LOAD_CONFIGURATION_GLOBAL = 85;
   public static final int TOK_LOAD_CONFIGURATION_LOCAL = 86;
 
+  public static final int TOK_SHOW_MERGE_STATUS = 87;
+
+  public static final int TOK_CREATE_SCHEMA_SNAPSHOT = 88;
+  public static final int TOK_TRACING = 91;
+
   public static final Map<Integer, String> tokenSymbol = new HashMap<>();
   public static final Map<Integer, String> tokenNames = new HashMap<>();
   public static final Map<Integer, Integer> reverseWords = new HashMap<>();
@@ -217,6 +222,10 @@ public class SQLConstant {
     tokenNames.put(TOK_LOAD_FILES, "TOK_LOAD_FILES");
     tokenNames.put(TOK_REMOVE_FILE, "TOK_REMOVE_FILE");
     tokenNames.put(TOK_MOVE_FILE, "TOK_MOVE_FILE");
+
+    tokenNames.put(TOK_SHOW_MERGE_STATUS, "TOK_SHOW_MERGE_STATUS");
+
+    tokenNames.put(TOK_TRACING, "TOK_TRACING");
   }
 
   static {

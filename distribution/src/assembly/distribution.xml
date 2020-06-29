@@ -43,7 +43,37 @@
             <unpack>false</unpack>
         </dependencySet>
     </dependencySets>
+    <fileSets>
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>tools</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/tools</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <outputDirectory>sbin</outputDirectory>
+            <directory>${maven.multiModuleProjectDirectory}/cli/src/assembly/resources/sbin</directory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/licenses</directory>
+            <outputDirectory>licenses</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/docs</directory>
+            <outputDirectory>docs</outputDirectory>
+        </fileSet>
+    </fileSets>
     <files>
+        <file>
+            <source>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/conf/iotdb-env.sh</source>
+            <destName>conf/iotdb-env.sh</destName>
+            <fileMode>0755</fileMode>
+        </file>
         <file>
             <source>${maven.multiModuleProjectDirectory}/README.md</source>
         </file>
@@ -66,14 +96,4 @@
             <destName>tools/grafana/application.properties</destName>
         </file>
     </files>
-    <fileSets>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/licenses</directory>
-            <outputDirectory>licenses</outputDirectory>
-        </fileSet>
-        <fileSet>
-            <directory>${maven.multiModuleProjectDirectory}/docs</directory>
-            <outputDirectory>docs</outputDirectory>
-        </fileSet>
-    </fileSets>
 </assembly>

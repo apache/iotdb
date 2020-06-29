@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -75,6 +76,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private QueryDataSet currentDataSet;
   private Iterator<String> deviceIterator;
   private List<String> executeColumns;
+  private int pathsNum = 0;
 
   public AlignByDeviceDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
       IQueryRouter queryRouter) throws MetadataException {
@@ -108,6 +110,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
     this.curDataSetInitialized = false;
     this.deviceIterator = devices.iterator();
+  }
+
+  public int getPathsNum() {
+    return pathsNum;
   }
 
   protected boolean hasNextWithoutConstraint() throws IOException {
@@ -146,6 +152,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       // get filter to execute for the current device
       if (deviceToFilterMap != null) {
         this.expression = deviceToFilterMap.get(currentDevice);
+      }
+
+      if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+        pathsNum += executeColumns.size();
       }
 
       try {

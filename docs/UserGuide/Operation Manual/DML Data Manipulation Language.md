@@ -24,9 +24,9 @@
 ## INSERT
 ### Insert Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) in [Client/Shell tools](../Client/Command%20Line%20Interface.html), or using [Java JDBC](../Client/Programming%20-%20JDBC.html) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) in [Client/Shell tools](../Client/Command%20Line%20Interface.html), or using [Java JDBC](../Client/Programming%20-%20JDBC.html) to perform single or batch execution of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html).
 
-This section mainly introduces the use of [INSERT SQL statement](/#/Documents/progress/chap5/sec4) for real-time data import in the scenario. See Section 5.4 for a detailed syntax of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html).
+This section mainly introduces the use of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) for real-time data import in the scenario.
 
 #### Use of INSERT Statements
 The [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](../Concept/Data%20Model%20and%20Terminology.html) and a sensor acquisition value (see [Data Type](../Concept/Data%20Type.html)).

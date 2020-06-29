@@ -42,6 +42,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
@@ -136,6 +137,9 @@ public class EnvironmentUtils {
     // close metadata
     MManager.getInstance().clear();
 
+    // close tracing
+    TracingManager.getInstance().close();
+
     // delete all directory
     cleanAllDir();
 
@@ -160,6 +164,8 @@ public class EnvironmentUtils {
     cleanDir(config.getWalFolder());
     // delete query
     cleanDir(config.getQueryDir());
+    // delete tracing
+    cleanDir(config.getTracingDir());
     cleanDir(config.getBaseDir());
     // delete data files
     for (String dataDir : config.getDataDirs()) {
@@ -212,6 +218,12 @@ public class EnvironmentUtils {
     }
   }
 
+  public static void shutdownDaemon() throws Exception {
+    if(daemon != null) {
+      daemon.shutdown();
+    }
+  }
+
   public static void activeDaemon() {
     if (daemon != null) {
       daemon.active();
@@ -227,8 +239,8 @@ public class EnvironmentUtils {
     }
   }
 
-  public static void restartDaemon() {
-    stopDaemon();
+  public static void restartDaemon() throws Exception {
+    shutdownDaemon();
     reactiveDaemon();
   }
 
