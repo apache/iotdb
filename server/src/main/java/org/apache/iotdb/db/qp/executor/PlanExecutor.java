@@ -61,6 +61,7 @@ import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
@@ -446,53 +447,13 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowTimeseriesWithIndex(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = showTimeseriesWithIndex(showTimeSeriesPlan);
-    return getQueryDataSet(timeseriesList,showTimeSeriesPlan);
+    return QueryUtils.getQueryDataSet(timeseriesList, showTimeSeriesPlan);
   }
 
   private QueryDataSet processShowTimeseries(ShowTimeSeriesPlan showTimeSeriesPlan)
       throws MetadataException {
     List<ShowTimeSeriesResult> timeseriesList = showTimeseries(showTimeSeriesPlan);
-    return getQueryDataSet(timeseriesList,showTimeSeriesPlan);
-  }
-
-  private QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList,ShowTimeSeriesPlan showTimeSeriesPlan) {
-    List<Path> paths = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    paths.add(new Path(COLUMN_TIMESERIES));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_ALIAS));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_STORAGE_GROUP));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_DATATYPE));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_ENCODING));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_COMPRESSION));
-    dataTypes.add(TSDataType.TEXT);
-
-    Set<String> tagAndAttributeName = new TreeSet<>();
-    for (ShowTimeSeriesResult result : timeseriesList) {
-      tagAndAttributeName.addAll(result.getTagAndAttribute().keySet());
-    }
-    for (String key : tagAndAttributeName) {
-      paths.add(new Path(key));
-      dataTypes.add(TSDataType.TEXT);
-    }
-
-    ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,showTimeSeriesPlan);
-    for (ShowTimeSeriesResult result : timeseriesList) {
-      RowRecord record = new RowRecord(0);
-      updateRecord(record, result.getName());
-      updateRecord(record, result.getAlias());
-      updateRecord(record, result.getSgName());
-      updateRecord(record, result.getDataType());
-      updateRecord(record, result.getEncoding());
-      updateRecord(record, result.getCompressor());
-      updateRecord(record, result.getTagAndAttribute(), paths);
-      showTimeseriesDataSet.putRecord(record);
-    }
-    return showTimeseriesDataSet;
+    return QueryUtils.getQueryDataSet(timeseriesList, showTimeSeriesPlan);
   }
 
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
@@ -503,23 +464,6 @@ public class PlanExecutor implements IPlanExecutor {
   protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
     return MManager.getInstance().getAllTimeseriesSchema(plan);
-  }
-
-  private void updateRecord(
-      RowRecord record, Map<String, String> tagAndAttribute, List<Path> paths) {
-    for (int i = 6; i < paths.size(); i++) {
-      updateRecord(record, tagAndAttribute.get(paths.get(i).getFullPath()));
-    }
-  }
-
-  private void updateRecord(RowRecord record, String s) {
-    if (s == null) {
-      record.addField(null);
-      return;
-    }
-    Field field = new Field(TSDataType.TEXT);
-    field.setBinaryV(new Binary(s));
-    record.addField(field);
   }
 
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
@@ -850,14 +794,15 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
-    throws MetadataException {
-    return mManager.getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
+      throws MetadataException {
+    return mManager
+        .getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
   }
 
   protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
-    throws MetadataException {
+      throws MetadataException {
     return mManager.getSeriesSchemas(insertTabletPlan.getDeviceId(),
-      insertTabletPlan.getMeasurements(), insertTabletPlan);
+        insertTabletPlan.getMeasurements(), insertTabletPlan);
   }
 
   @Override

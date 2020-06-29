@@ -34,7 +34,9 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
@@ -43,6 +45,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 public class QueryUtils {
@@ -115,11 +118,8 @@ public class QueryUtils {
     unseqResources.removeIf(fileFilter::fileNotSatisfy);
   }
 
-  public static List<RowRecord> transferShowTimeSeriesResultToRecordList(
+  public static void initial(List<Path> paths, List<TSDataType> dataTypes,
       List<ShowTimeSeriesResult> timeseriesList) {
-    List<RowRecord> records = new ArrayList<>();
-    List<Path> paths = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
     paths.add(new Path(COLUMN_TIMESERIES));
     dataTypes.add(TSDataType.TEXT);
     paths.add(new Path(COLUMN_TIMESERIES_ALIAS));
@@ -141,7 +141,35 @@ public class QueryUtils {
       paths.add(new Path(key));
       dataTypes.add(TSDataType.TEXT);
     }
+  }
 
+  public static QueryDataSet getQueryDataSet(List<ShowTimeSeriesResult> timeseriesList,
+      ShowTimeSeriesPlan showTimeSeriesPlan) {
+    List<Path> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    initial(paths, dataTypes, timeseriesList);
+    ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,
+        showTimeSeriesPlan);
+    for (ShowTimeSeriesResult result : timeseriesList) {
+      RowRecord record = new RowRecord(0);
+      updateRecord(record, result.getName());
+      updateRecord(record, result.getAlias());
+      updateRecord(record, result.getSgName());
+      updateRecord(record, result.getDataType());
+      updateRecord(record, result.getEncoding());
+      updateRecord(record, result.getCompressor());
+      updateRecord(record, result.getTagAndAttribute(), paths);
+      showTimeseriesDataSet.putRecord(record);
+    }
+    return showTimeseriesDataSet;
+  }
+
+  public static List<RowRecord> transferShowTimeSeriesResultToRecordList(
+      List<ShowTimeSeriesResult> timeseriesList) {
+    List<RowRecord> records = new ArrayList<>();
+    List<Path> paths = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    initial(paths, dataTypes, timeseriesList);
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());
