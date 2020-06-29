@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
 public class Session {
 
   private static final Logger logger = LoggerFactory.getLogger(Session.class);
-  private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2;
+  private final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private String host;
   private int port;
   private String username;
