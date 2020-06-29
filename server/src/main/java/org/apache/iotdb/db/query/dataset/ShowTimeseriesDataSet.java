@@ -19,18 +19,9 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ALIAS;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_COMPRESSION;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_ENCODING;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -50,17 +41,18 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   public ShowTimeseriesDataSet(List<Path> paths,
       List<TSDataType> dataTypes, ShowPlan showPlan) {
     super(paths, dataTypes);
-    this.plan = (ShowTimeSeriesPlan)showPlan;
+    this.plan = (ShowTimeSeriesPlan) showPlan;
   }
 
   @Override
   protected boolean hasNextWithoutConstraint() {
-    if(index==result.size()){
-      plan.setOffset(plan.getOffset()+plan.getLimit());
-      try{
-        List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance().showTimeseries(plan);
-        result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults,plan);
-      }catch (Exception e){
+    if (index == result.size()) {
+      plan.setOffset(plan.getOffset() + plan.getLimit());
+      try {
+        List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
+            .showTimeseries(plan);
+        result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults);
+      } catch (Exception e) {
         e.printStackTrace();
       }
     }
@@ -77,30 +69,8 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   }
 
   public List<RowRecord> transferShowTimeSeriesResultToRecordList(
-      List<ShowTimeSeriesResult> timeseriesList, ShowTimeSeriesPlan showTimeSeriesPlan) {
+      List<ShowTimeSeriesResult> timeseriesList) {
     List<RowRecord> records = new ArrayList<>();
-    List<Path> paths = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    paths.add(new Path(COLUMN_TIMESERIES));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_ALIAS));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_STORAGE_GROUP));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_DATATYPE));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_ENCODING));
-    dataTypes.add(TSDataType.TEXT);
-    paths.add(new Path(COLUMN_TIMESERIES_COMPRESSION));
-    dataTypes.add(TSDataType.TEXT);
-    Set<String> tagAndAttributeName = new TreeSet<>();
-    for (ShowTimeSeriesResult result : timeseriesList) {
-      tagAndAttributeName.addAll(result.getTagAndAttribute().keySet());
-    }
-    for (String key : tagAndAttributeName) {
-      paths.add(new Path(key));
-      dataTypes.add(TSDataType.TEXT);
-    }
 
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
