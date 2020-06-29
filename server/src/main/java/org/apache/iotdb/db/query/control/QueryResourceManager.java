@@ -156,7 +156,7 @@ public class QueryResourceManager {
     } catch (IOException e) {
       logger.error(
           "Error while writing performance info to {}, {}",
-          config.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG, e);
+          config.getTracingDir() + File.separator + IoTDBConstant.TRACING_LOG, e.getMessage());
     }
 
     // close file stream of external sort files, and delete
