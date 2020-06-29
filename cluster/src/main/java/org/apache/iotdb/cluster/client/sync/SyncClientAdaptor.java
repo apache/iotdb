@@ -380,4 +380,15 @@ public class SyncClientAdaptor {
     }
     return result.get();
   }
+
+  public static boolean onSnapshotApplied(DataClient client, Node header, List<Integer> slots)
+      throws TException, InterruptedException {
+    AtomicReference<Boolean> result = new AtomicReference<>(false);
+    GenericHandler<Boolean> handler = new GenericHandler<>(client.getNode(), result);
+    synchronized (result) {
+      client.onSnapshotApplied(header, slots, handler);
+      result.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+    return result.get();
+  }
 }

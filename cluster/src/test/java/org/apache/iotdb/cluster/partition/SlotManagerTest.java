@@ -25,6 +25,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -54,7 +55,7 @@ public class SlotManagerTest {
   }
 
   @Test
-  public void waitSlotForWrite() {
+  public void waitSlotForWrite() throws StorageEngineException {
     slotManager.waitSlot(0);
     slotManager.setToPullingWritable(0);
     slotManager.waitSlotForWrite(0);

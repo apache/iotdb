@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -387,7 +388,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  public void getUnregisteredTimeseries(Node header, List<String> timeseriesList, AsyncMethodCallback<List<String>> resultHandler) throws TException {
+  public void getUnregisteredTimeseries(Node header, List<String> timeseriesList, AsyncMethodCallback<List<String>> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler,
             "Check if measurements are registered");
     dataMember.getUnregisteredTimeseries(header,timeseriesList, resultHandler);
@@ -433,16 +434,16 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
    * create and add a new DataGroupMember for it.
    *
    * @param node
-   * @param newGroup
+   * @param result
    */
-  public void addNode(Node node, PartitionGroup newGroup) {
+  public void addNode(Node node, NodeAdditionResult result) {
     Iterator<Entry<Node, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
     synchronized (headerGroupMap) {
       while (entryIterator.hasNext()) {
         Entry<Node, DataGroupMember> entry = entryIterator.next();
         DataGroupMember dataGroupMember = entry.getValue();
         // the member may be extruded from the group, remove and stop it if so
-        boolean shouldLeave = dataGroupMember.addNode(node);
+        boolean shouldLeave = dataGroupMember.addNode(node, result);
         if (shouldLeave) {
           logger.info("This node does not belong to {} any more", dataGroupMember.getAllNodes());
           entryIterator.remove();
@@ -450,9 +451,9 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
         }
       }
 
-      if (newGroup.contains(thisNode)) {
-        logger.info("Adding this node into a new group {}", newGroup);
-        DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup, thisNode);
+      if (result.getNewGroup().contains(thisNode)) {
+        logger.info("Adding this node into a new group {}", result.getNewGroup());
+        DataGroupMember dataGroupMember = dataMemberFactory.create(result.getNewGroup(), thisNode);
         addDataGroupMember(dataGroupMember);
         dataGroupMember.start();
         dataGroupMember
@@ -596,8 +597,15 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
 
   @Override
   public void getPathCount(Node header, List<String> pathsToQuery, int level,
-      AsyncMethodCallback<Integer> resultHandler) throws TException {
+      AsyncMethodCallback<Integer> resultHandler) {
     DataGroupMember dataMember = getDataMember(header, resultHandler, "count path");
     dataMember.getPathCount(header, pathsToQuery, level, resultHandler);
+  }
+
+  @Override
+  public void onSnapshotApplied(Node header, List<Long> slots,
+      AsyncMethodCallback<Boolean> resultHandler) {
+    DataGroupMember dataMember = getDataMember(header, resultHandler, "Snapshot applied");
+    dataMember.onSnapshotApplied(header, slots, resultHandler);
   }
 }

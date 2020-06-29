@@ -25,6 +25,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -93,10 +95,16 @@ public class PullSnapshotTask implements Callable<Void> {
         descriptor.getSlots(), snapshotFactory);
     if (result != null) {
       // unlock slots that have no snapshots
+      List<Integer> noSnapshotSlots = new ArrayList<>();
       for (Integer slot : descriptor.getSlots()) {
         if (!result.containsKey(slot)) {
           newMember.getSlotManager().setToNull(slot);
+          noSnapshotSlots.add(slot);
         }
+      }
+      if (!noSnapshotSlots.isEmpty() && logger.isInfoEnabled()) {
+        logger.info("{}: {} and other {} slots do not have snapshot", newMember.getName(),
+            noSnapshotSlots.get(0), noSnapshotSlots.size() - 1);
       }
 
       if (logger.isInfoEnabled()) {
@@ -104,6 +112,8 @@ public class PullSnapshotTask implements Callable<Void> {
       }
       try {
         newMember.applySnapshot(result);
+        // inform the previous holders that one member has successfully pulled snapshot
+        newMember.registerPullSnapshotHint(descriptor);
         return true;
       } catch (SnapshotApplicationException e) {
         logger.error("Apply snapshot failed, retry...", e);

@@ -80,6 +80,7 @@ import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
@@ -538,10 +539,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         allNodes.add(newNode);
 
         // update the partition table
-        PartitionGroup newGroup = partitionTable.addNode(newNode);
+        NodeAdditionResult result = partitionTable.addNode(newNode);
         savePartitionTable();
 
-        getDataClusterServer().addNode(newNode, newGroup);
+        getDataClusterServer().addNode(newNode, result);
       }
     }
   }

@@ -29,11 +29,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -41,6 +43,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -214,7 +217,7 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   @Override
-  public PartitionGroup addNode(Node node) {
+  public NodeAdditionResult addNode(Node node) {
     synchronized (nodeRing) {
       if (nodeRing.contains(node)) {
         return null;
@@ -248,22 +251,33 @@ public class SlotPartitionTable implements PartitionTable {
           }
         }
       }
-
-      PartitionGroup newGroup = getHeaderGroup(node);
-      if (newGroup.contains(thisNode)) {
-        localGroups.add(newGroup);
-      }
-
-      calculateGlobalGroups();
-
-      // the slots movement is only done logically, the new node itself will pull data from the
-      // old node
-      moveSlotsToNew(node);
-      return newGroup;
     }
+
+    NodeAdditionResult result = new NodeAdditionResult();
+    PartitionGroup newGroup = getHeaderGroup(node);
+    if (newGroup.contains(thisNode)) {
+      localGroups.add(newGroup);
+    }
+    result.setNewGroup(newGroup);
+
+    calculateGlobalGroups();
+
+    // the slots movement is only done logically, the new node itself will pull data from the
+    // old node
+    result.setLostSlots(moveSlotsToNew(node));
+
+    return result;
   }
 
-  private void moveSlotsToNew(Node newNode) {
+
+  /**
+   * Move last slots from each group whose slot number is bigger than the new average to the new
+   * node.
+   * @param newNode
+   * @return a map recording what slots each group lost.
+   */
+  private Map<Node, Set<Integer>> moveSlotsToNew(Node newNode) {
+    Map<Node, Set<Integer>> result = new HashMap<>();
     // as a node is added, the average slots for each node decrease
     // move the slots to the new node if any previous node have more slots than the new average
     List<Integer> newSlots = new ArrayList<>();
@@ -280,11 +294,13 @@ public class SlotPartitionTable implements PartitionTable {
           previousHolders.put(slot, entry.getKey());
           slotNodes[slot] = newNode;
         }
+        result.computeIfAbsent(entry.getKey(), n -> new HashSet<>()).addAll(slotsToMove);
         slotsToMove.clear();
       }
     }
     nodeSlotMap.put(newNode, newSlots);
     previousNodeMap.put(newNode, previousHolders);
+    return result;
   }
 
   @Override
