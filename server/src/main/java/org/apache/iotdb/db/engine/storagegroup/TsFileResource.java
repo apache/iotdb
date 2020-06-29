@@ -562,6 +562,9 @@ public class TsFileResource {
     modFile = null;
   }
 
+  /**
+   * Remove the data file, its resource file, and its modification file physically.
+   */
   public void remove() {
     file.delete();
     fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX).delete();

@@ -21,6 +21,10 @@ package org.apache.iotdb.db.conf;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
+import java.io.File;
+import java.time.ZoneId;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -32,11 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.time.ZoneId;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class IoTDBConfig {
 
@@ -173,22 +172,29 @@ public class IoTDBConfig {
   /**
    * System directory, including version file for each storage group and metadata
    */
-  private String systemDir = "data" + File.separator + "system";
+  private String systemDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /**
    * Schema directory, including storage set of values.
    */
-  private String schemaDir = "data" + File.separator + "system" + File.separator + "schema";
+  private String schemaDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
+      + File.separator + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
   /**
    * Sync directory, including the lock file, uuid file, device owner map
    */
-  private String syncDir = "data" + File.separator + "system" + File.separator + "sync";
+  private String syncDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
+      + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+
+  /**
+   * Performance tracing directory, stores performance tracing files
+   */
+  private String tracingDir = baseDir + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
 
   /**
    * Query directory, stores temporary files of query
    */
-  private String queryDir = "data" + File.separator + "query";
+  private String queryDir = baseDir + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
@@ -203,7 +209,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walFolder = "data" + File.separator + "wal";
+  private String walFolder = baseDir + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
@@ -330,6 +336,11 @@ public class IoTDBConfig {
    * Is stat performance of sub-module enable.
    */
   private boolean enablePerformanceStat = false;
+
+  /**
+   * Is performance tracing enable.
+   */
+  private boolean enablePerformanceTracing = false;
 
   /**
    * The display of stat performance interval in ms.
@@ -567,9 +578,9 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms Notice: if this
-   * property is changed, previous created storage group which are not set TTL will also be
-   * affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms
+   * Notice: if this property is changed, previous created storage group which are not set TTL
+   * will also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -695,6 +706,7 @@ public class IoTDBConfig {
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
     walFolder = addHomeDir(walFolder);
+    tracingDir = addHomeDir(tracingDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -865,6 +877,14 @@ public class IoTDBConfig {
 
   void setSyncDir(String syncDir) {
     this.syncDir = syncDir;
+  }
+
+  public String getTracingDir() {
+    return tracingDir;
+  }
+
+  void setTracingDir(String tracingDir) {
+    this.tracingDir = tracingDir;
   }
 
   public String getQueryDir() {
@@ -1145,6 +1165,14 @@ public class IoTDBConfig {
 
   public void setEnablePerformanceStat(boolean enablePerformanceStat) {
     this.enablePerformanceStat = enablePerformanceStat;
+  }
+
+  public boolean isEnablePerformanceTracing() {
+    return enablePerformanceTracing;
+  }
+
+  public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {
+    this.enablePerformanceTracing = enablePerformanceTracing;
   }
 
   public long getPerformanceStatDisplayInterval() {

@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -89,7 +90,7 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
-
+    logger.info("recover the schema...");
     initMManager();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
@@ -131,7 +132,10 @@ public class IoTDB implements IoTDBMBean {
   }
 
   private void initMManager() {
+    long time = System.currentTimeMillis();
     MManager.getInstance().init();
+    long end = System.currentTimeMillis() - time;
+    logger.info("spend {}ms to recover schema.", end);
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
     logger.info(
         "After initializing, max memTable num is {}, tsFile threshold is {}, memtableSize is {}",
@@ -149,6 +153,7 @@ public class IoTDB implements IoTDBMBean {
   public void shutdown() throws Exception {
     logger.info("Deactivating IoTDB...");
     MManager.getInstance().clear();
+    TracingManager.getInstance().close();
     registerManager.shutdownAll();
     JMXService.deregisterMBean(mbeanName);
     logger.info("IoTDB is deactivated.");
