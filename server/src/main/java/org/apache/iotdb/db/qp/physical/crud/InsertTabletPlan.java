@@ -444,8 +444,8 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
-  public void markMeasurementInsertionFailed(int index) {
-    super.markMeasurementInsertionFailed(index);
+  public void markFailedMeasurementInsertion(int index) {
+    super.markFailedMeasurementInsertion(index);
     columns[index] = null;
   }
 

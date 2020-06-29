@@ -102,7 +102,7 @@ public class WriteLogNodeTest {
     tabletPlan.setStart(0);
     tabletPlan.setEnd(4);
 
-    tabletPlan.markMeasurementInsertionFailed(1);
+    tabletPlan.markFailedMeasurementInsertion(1);
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
