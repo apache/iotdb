@@ -21,6 +21,10 @@ package org.apache.iotdb.db.conf;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_ROOT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
+import java.io.File;
+import java.time.ZoneId;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.merge.selector.MergeFileStrategy;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -32,11 +36,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.time.ZoneId;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class IoTDBConfig {
 
@@ -56,7 +55,7 @@ public class IoTDBConfig {
 
   // for path like: root.sg1.d1."1.2.3" or root.sg1.d1.'1.2.3', only occurs in the end of the path and only occurs once
   private static final String NODE_WITH_QUOTATION_MARK_MATCHER =
-      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER +"(" + NODE_MATCHER+ ")*[\"|\']";
+      "[" + PATH_SEPARATOR + "][\"|\']" + ID_MATCHER + "(" + NODE_MATCHER + ")*[\"|\']";
   public static final Pattern PATH_PATTERN = Pattern
       .compile(PATH_ROOT + "(" + NODE_MATCHER + ")+(" + NODE_WITH_QUOTATION_MARK_MATCHER + ")?");
 
@@ -173,22 +172,29 @@ public class IoTDBConfig {
   /**
    * System directory, including version file for each storage group and metadata
    */
-  private String systemDir = "data" + File.separator + "system";
+  private String systemDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME;
 
   /**
    * Schema directory, including storage set of values.
    */
-  private String schemaDir = "data" + File.separator + "system" + File.separator + "schema";
+  private String schemaDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
+      + File.separator + IoTDBConstant.SCHEMA_FOLDER_NAME;
 
   /**
    * Sync directory, including the lock file, uuid file, device owner map
    */
-  private String syncDir = "data" + File.separator + "system" + File.separator + "sync";
+  private String syncDir = baseDir + File.separator + IoTDBConstant.SYSTEM_FOLDER_NAME
+      + File.separator + IoTDBConstant.SYNC_FOLDER_NAME;
+
+  /**
+   * Performance tracing directory, stores performance tracing files
+   */
+  private String tracingDir = baseDir + File.separator + IoTDBConstant.TRACING_FOLDER_NAME;
 
   /**
    * Query directory, stores temporary files of query
    */
-  private String queryDir = "data" + File.separator + "query";
+  private String queryDir = baseDir + File.separator + IoTDBConstant.QUERY_FOLDER_NAME;
 
   /**
    * Data directory of data. It can be settled as dataDirs = {"data1", "data2", "data3"};
@@ -203,7 +209,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walFolder = "data" + File.separator + "wal";
+  private String walFolder = baseDir + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
@@ -332,6 +338,11 @@ public class IoTDBConfig {
   private boolean enablePerformanceStat = false;
 
   /**
+   * Is performance tracing enable.
+   */
+  private boolean enablePerformanceTracing = false;
+
+  /**
    * The display of stat performance interval in ms.
    */
   private long performanceStatDisplayInterval = 60000;
@@ -386,7 +397,8 @@ public class IoTDBConfig {
   private TSDataType floatingStringInferType = TSDataType.FLOAT;
 
   /**
-   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT or TEXT
+   * register time series as which type when receiving the Literal NaN. Values can be DOUBLE, FLOAT
+   * or TEXT
    */
   private TSDataType nanStringInferType = TSDataType.DOUBLE;
 
@@ -557,8 +569,8 @@ public class IoTDBConfig {
 
   /**
    * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL will
-   * also be affected.
+   * Notice: if this property is changed, previous created storage group which are not set TTL will also be
+   * affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -568,10 +580,20 @@ public class IoTDBConfig {
   private int primitiveArraySize = 64;
 
   /**
-   * whether enable data partition
-   * if disabled, all data belongs to partition 0
+   * whether enable data partition. If disabled, all data belongs to partition 0
    */
   private boolean enablePartition = false;
+
+  /**
+   * Interval line number of mlog.txt when creating a checkpoint and saving snapshot of mtree
+   */
+  private int mtreeSnapshotInterval = 100000;
+
+  /**
+   * Threshold interval time of MTree modification. If the last modification time is less than this
+   * threshold, MTree snapshot will not be created. Unit: second. Default: 1 hour(3600 seconds)
+   */
+  private int mtreeSnapshotThresholdTime = 3600;
 
   /**
    * Time range for partitioning data inside each storage group, the unit is second
@@ -628,6 +650,22 @@ public class IoTDBConfig {
     this.enablePartition = enablePartition;
   }
 
+  public int getMtreeSnapshotInterval() {
+    return mtreeSnapshotInterval;
+  }
+
+  public void setMtreeSnapshotInterval(int mtreeSnapshotInterval) {
+    this.mtreeSnapshotInterval = mtreeSnapshotInterval;
+  }
+
+  public int getMtreeSnapshotThresholdTime() {
+    return mtreeSnapshotThresholdTime;
+  }
+
+  public void setMtreeSnapshotThresholdTime(int mtreeSnapshotThresholdTime) {
+    this.mtreeSnapshotThresholdTime = mtreeSnapshotThresholdTime;
+  }
+
   public long getPartitionInterval() {
     return partitionInterval;
   }
@@ -658,6 +696,7 @@ public class IoTDBConfig {
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
     walFolder = addHomeDir(walFolder);
+    tracingDir = addHomeDir(tracingDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -828,6 +867,14 @@ public class IoTDBConfig {
 
   void setSyncDir(String syncDir) {
     this.syncDir = syncDir;
+  }
+
+  public String getTracingDir() {
+    return tracingDir;
+  }
+
+  void setTracingDir(String tracingDir) {
+    this.tracingDir = tracingDir;
   }
 
   public String getQueryDir() {
@@ -1110,6 +1157,14 @@ public class IoTDBConfig {
     this.enablePerformanceStat = enablePerformanceStat;
   }
 
+  public boolean isEnablePerformanceTracing() {
+    return enablePerformanceTracing;
+  }
+
+  public void setEnablePerformanceTracing(boolean enablePerformanceTracing) {
+    this.enablePerformanceTracing = enablePerformanceTracing;
+  }
+
   public long getPerformanceStatDisplayInterval() {
     return performanceStatDisplayInterval;
   }
@@ -1211,7 +1266,8 @@ public class IoTDBConfig {
     return allocateMemoryForTimeSeriesMetaDataCache;
   }
 
-  public void setAllocateMemoryForTimeSeriesMetaDataCache(long allocateMemoryForTimeSeriesMetaDataCache) {
+  public void setAllocateMemoryForTimeSeriesMetaDataCache(
+      long allocateMemoryForTimeSeriesMetaDataCache) {
     this.allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForTimeSeriesMetaDataCache;
   }
 
@@ -1336,7 +1392,9 @@ public class IoTDBConfig {
     if (nanStringInferType != TSDataType.DOUBLE &&
         nanStringInferType != TSDataType.FLOAT &&
         nanStringInferType != TSDataType.TEXT) {
-      throw new IllegalArgumentException("Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is " + nanStringInferType);
+      throw new IllegalArgumentException(
+          "Config Property nan_string_infer_type can only be FLOAT, DOUBLE or TEXT but is "
+              + nanStringInferType);
     }
     this.nanStringInferType = nanStringInferType;
   }

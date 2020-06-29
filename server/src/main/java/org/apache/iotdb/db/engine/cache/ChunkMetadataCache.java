@@ -125,7 +125,7 @@ public class ChunkMetadataCache {
     }
 
     AccountableString key = new AccountableString(filePath + IoTDBConstant.PATH_SEPARATOR
-        + seriesPath.getDevice() + seriesPath.getMeasurement());
+        + seriesPath.getDevice() + IoTDBConstant.PATH_SEPARATOR + seriesPath.getMeasurement());
 
     cacheRequestNum.incrementAndGet();
 

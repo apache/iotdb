@@ -74,8 +74,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -781,6 +781,9 @@ public class StorageGroupProcessor {
       node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
       String[] measurementList = plan.getMeasurements();
       for (int i = 0; i < measurementList.length; i++) {
+        if (plan.getColumns()[i] == null) {
+          continue;
+        }
         // Update cached last value with high priority
         ((MeasurementMNode) manager.getChild(node, measurementList[i]))
             .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
@@ -1187,6 +1190,25 @@ public class StorageGroupProcessor {
       for (TsFileProcessor tsFileProcessor : new ArrayList<>(
           workUnsequenceTsFileProcessors.values())) {
         asyncCloseOneTsFileProcessor(false, tsFileProcessor);
+      }
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  public void forceCloseAllWorkingTsFileProcessors() throws TsFileProcessorException {
+    writeLock();
+    try {
+      logger.info("force close all processors in storage group: {}", storageGroupName);
+      // to avoid concurrent modification problem, we need a new array list
+      for (TsFileProcessor tsFileProcessor : new ArrayList<>(
+          workSequenceTsFileProcessors.values())) {
+        tsFileProcessor.putMemTableBackAndClose();
+      }
+      // to avoid concurrent modification problem, we need a new array list
+      for (TsFileProcessor tsFileProcessor : new ArrayList<>(
+          workUnsequenceTsFileProcessors.values())) {
+        tsFileProcessor.putMemTableBackAndClose();
       }
     } finally {
       writeUnlock();

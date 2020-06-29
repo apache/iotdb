@@ -55,27 +55,31 @@ For the latest information about IoTDB, please visit [IoTDB official website](ht
 
 ## Outline
 
-- Quick Start
- - Prerequisites
- - Installation
-    - Build from source
-       - Configurations
- - Start
-    - Start IoTDB
-    - Use IoTDB
-       - Use Cli
-       - Basic commands for IoTDB
-    - Stop IoTDB
- - Only build server
- - Only build cli
- - Usage of import-csv.sh
-    - Create metadata
-    - An Example of import csv file
-    - Run import shell
-    - Error data file
- - Usage of export-csv.sh
-    - Run export shell
-    - Input query
+- [IoTDB](#iotdb)
+- [Overview](#overview)
+- [Main Features](#main-features)
+  - [Outline](#outline)
+- [Quick Start](#quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+    - [Build from source](#build-from-source)
+    - [Configurations](#configurations)
+  - [Start](#start)
+    - [Start IoTDB](#start-iotdb)
+    - [Use IoTDB](#use-iotdb)
+      - [Use Cli](#use-cli)
+      - [Basic commands for IoTDB](#basic-commands-for-iotdb)
+    - [Stop IoTDB](#stop-iotdb)
+  - [Only build server](#only-build-server)
+  - [Only build cli](#only-build-cli)
+  - [Usage of import-csv.sh](#usage-of-import-csvsh)
+    - [Create metadata](#create-metadata)
+    - [An example of import csv file](#an-example-of-import-csv-file)
+    - [Run import shell](#run-import-shell)
+    - [Error data file](#error-data-file)
+  - [Usage of export-csv.sh](#usage-of-export-csvsh)
+    - [Run export shell](#run-export-shell)
+    - [Input query](#input-query)
 
 <!-- /TOC -->
 

@@ -60,6 +60,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowChildPathsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
+import org.apache.iotdb.db.qp.logical.sys.TracingOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
@@ -76,6 +77,7 @@ import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CountPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -95,6 +97,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.TracingPlan;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -181,6 +184,9 @@ public class PhysicalGenerator {
       case FLUSH:
         FlushOperator flushOperator = (FlushOperator) operator;
         return new FlushPlan(flushOperator.isSeq(), flushOperator.getStorageGroupList());
+      case TRACING:
+        TracingOperator tracingOperator = (TracingOperator) operator;
+        return new TracingPlan(tracingOperator.isTracingon());
       case QUERY:
         QueryOperator query = (QueryOperator) operator;
         return transformQuery(query);
@@ -258,6 +264,8 @@ public class PhysicalGenerator {
         return new ClearCachePlan();
       case SHOW_MERGE_STATUS:
         return new ShowMergeStatusPlan();
+      case CREATE_SCHEMA_SNAPSHOT:
+        return new CreateSnapshotPlan();
       default:
         throw new LogicalOperatorException(operator.getType().toString(), "");
     }
@@ -442,6 +450,11 @@ public class PhysicalGenerator {
               }
             }
 
+            // Get data types with and without aggregate functions (actual time series) respectively
+            // Data type with aggregation function `columnDataTypes` is used for:
+            //  1. Data type consistency check 2. Header calculation, output result set
+            // The actual data type of the time series `measurementDataTypes` is used for
+            //  the actual query in the AlignByDeviceDataSet
             String aggregation =
                 originAggregations != null && !originAggregations.isEmpty()
                     ? originAggregations.get(i) : null;
@@ -475,7 +488,9 @@ public class PhysicalGenerator {
                 measurementDataTypeMap.put(measurementChecked, measurementDataTypes.get(pathIdx));
               }
 
-              // update measurementSetOfGivenSuffix and Normal measurement
+              // This step indicates that the measurement exists under the device and is correct,
+              // First, update measurementSetOfGivenSuffix which is distinct
+              // Then if this measurement is recognized as NonExist before，update it to Exist
               if (measurementSetOfGivenSuffix.add(measurementChecked)
                   || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
                 measurementTypeMap.put(measurementChecked, MeasurementType.Exist);

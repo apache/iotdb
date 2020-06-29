@@ -74,12 +74,15 @@ statement
     | SHOW CHILD PATHS prefixPath? #showChildPaths
     | SHOW DEVICES prefixPath? #showDevices
     | SHOW MERGE #showMergeStatus
+    | TRACING ON #tracingOn
+    | TRACING OFF #tracingOff
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
     | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
     | REMOVE STRING_LITERAL #removeFile
     | MOVE STRING_LITERAL STRING_LITERAL #moveFile
+    | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | SELECT INDEX func=ID //not support yet
     LR_BRACKET
     p1=fullPath COMMA p2=fullPath COMMA n1=timeValue COMMA n2=timeValue COMMA
@@ -682,8 +685,16 @@ USING
     : U S I N G
     ;
 
+TRACING
+    : T R A C I N G
+    ;
+
 ON
     : O N
+    ;
+
+OFF
+    : O F F
     ;
 
 DROP
@@ -922,6 +933,19 @@ PLA
 LATEST
     : L A T E S T
     ;
+
+SNAPSHOT
+    : S N A P S H O T
+    ;
+
+FOR
+    : F O R
+    ;
+
+SCHEMA
+    : S C H E M A
+    ;
+
 //============================
 // End of the keywords list
 //============================
