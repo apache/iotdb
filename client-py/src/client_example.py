@@ -178,7 +178,7 @@ if __name__ == '__main__':
     transport.open()
 
     # Authentication
-    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
+    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
     resp = client.openSession(TSOpenSessionReq(client_protocol=clientProtocol,
                                                username=username,
                                                password=password))
