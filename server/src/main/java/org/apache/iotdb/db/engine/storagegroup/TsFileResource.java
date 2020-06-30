@@ -313,7 +313,7 @@ public class TsFileResource {
         }
       } else {
         // use the version in file name as the historical version for files of old versions
-        long version = Long.parseLong(file.getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+        long version = Long.parseLong(file.getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
         historicalVersions = Collections.singleton(version);
       }
 
