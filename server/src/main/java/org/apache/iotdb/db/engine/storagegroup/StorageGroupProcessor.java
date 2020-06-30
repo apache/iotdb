@@ -2450,26 +2450,28 @@ public class StorageGroupProcessor {
     }
   }
 
-  //may remove the processorEntrys
-  private void removePartitions(TimePartitionFilter filter, Set<Entry<Long, TsFileProcessor>> processorEntrys) {
-    for (Iterator<Entry<Long, TsFileProcessor>> iterator = processorEntrys.iterator(); iterator.hasNext(); ) {
+  //may remove the processor entries
+  private void removePartitions(TimePartitionFilter filter, Set<Entry<Long, TsFileProcessor>> processorEntries) {
+    for (Iterator<Entry<Long, TsFileProcessor>> iterator = processorEntries.iterator(); iterator.hasNext(); ) {
       Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
       long partitionId = longTsFileProcessorEntry.getKey();
       TsFileProcessor processor = longTsFileProcessorEntry.getValue();
       if (filter.satisfy(storageGroupName, partitionId)) {
         processor.syncClose();
         iterator.remove();
+        logger.debug("{} is removed during deleting partitions", processor.getTsFileResource().getPath());
       }
     }
   }
 
   //may remove the iterator's data
   private void removePartitions(TimePartitionFilter filter, Iterator<TsFileResource> iterator) {
-    while ( iterator.hasNext()) {
+    while (iterator.hasNext()) {
       TsFileResource tsFileResource = iterator.next();
       if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
         iterator.remove();
+        logger.debug("{} is removed during deleting partitions", tsFileResource.getPath());
       }
     }
   }

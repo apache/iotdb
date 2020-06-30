@@ -245,6 +245,10 @@ public class SlotManager {
     if (slotFilePath == null) {
       return;
     }
+    File slotFile = new File(slotFilePath);
+    if (!slotFile.getParentFile().exists() && !slotFile.getParentFile().mkdirs()) {
+      logger.warn("Cannot mkdirs for {}", slotFile);
+    }
     try (FileOutputStream outputStream = new FileOutputStream(slotFilePath);
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(outputStream);
         DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream)) {
