@@ -36,14 +36,14 @@ public class Chunk implements Accountable {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteRangeList;
+  private List<Pair<Long, Long>> deleteIntervalList;
 
   private long ramSize;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer, List<Pair<Long, Long>> deleteRangeList) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, List<Pair<Long, Long>> deleteIntervalList) {
     this.chunkHeader = header;
     this.chunkData = buffer;
-    this.deleteRangeList = deleteRangeList;
+    this.deleteIntervalList = deleteIntervalList;
   }
 
   public ChunkHeader getHeader() {
@@ -54,15 +54,12 @@ public class Chunk implements Accountable {
     return chunkData;
   }
 
-  public List<Pair<Long, Long>> getDeleteRangeList() {
-    if (deleteRangeList == null) {
-      return new ArrayList<>();
-    }
-    return deleteRangeList;
+  public List<Pair<Long, Long>> getDeleteIntervalList() {
+    return deleteIntervalList;
   }
 
-  public void setDeleteRangeList(List<Pair<Long, Long>> list) {
-    this.deleteRangeList = list;
+  public void setDeleteIntervalList(List<Pair<Long, Long>> list) {
+    this.deleteIntervalList = list;
   }
 
   @Override

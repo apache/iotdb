@@ -58,7 +58,7 @@ public class ChunkReader implements IChunkReader {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteRangeList;
+  private List<Pair<Long, Long>> deleteIntervalList;
 
   /**
    * constructor of ChunkReader.
@@ -69,7 +69,7 @@ public class ChunkReader implements IChunkReader {
   public ChunkReader(Chunk chunk, Filter filter) throws IOException {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
-    this.deleteRangeList = chunk.getDeleteRangeList();
+    this.deleteIntervalList = chunk.getDeleteIntervalList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
 
@@ -80,7 +80,7 @@ public class ChunkReader implements IChunkReader {
   public ChunkReader(Chunk chunk, Filter filter, boolean isFromOldFile) throws IOException {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
-    this.deleteRangeList = chunk.getDeleteRangeList();
+    this.deleteIntervalList = chunk.getDeleteIntervalList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     this.isFromOldTsFile = isFromOldFile;
@@ -134,9 +134,9 @@ public class ChunkReader implements IChunkReader {
   public boolean pageSatisfied(PageHeader pageHeader) {
     long lower = pageHeader.getStartTime();
     long upper = pageHeader.getEndTime();
-    // deleteRangeList is sorted in terms of startTime
-    if (deleteRangeList != null) {
-      for (Pair<Long, Long> range : deleteRangeList) {
+    // deleteIntervalList is sorted in terms of startTime
+    if (deleteIntervalList != null) {
+      for (Pair<Long, Long> range : deleteIntervalList) {
         if (upper < range.left) {
           break;
         }
@@ -172,7 +172,7 @@ public class ChunkReader implements IChunkReader {
     ByteBuffer pageData = ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody));
     PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
-    reader.setDeleteRangeList(deleteRangeList);
+    reader.setDeleteIntervalList(deleteIntervalList);
     return reader;
   }
 

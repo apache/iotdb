@@ -63,19 +63,21 @@ public class QueryUtils {
     chunkMetaData.removeIf(metaData -> {
       long lower = metaData.getStartTime();
       long upper = metaData.getEndTime();
-      for (Pair<Long, Long> range : metaData.getDeleteRangeList()) {
-        if (upper < range.left) {
-          break;
-        }
-        if (range.left <= lower && lower <= range.right) {
-          metaData.setModified(true);
-          if (upper <= range.right) {
-            return true;
+      if (metaData.getDeleteIntervalList() != null) {
+        for (Pair<Long, Long> range : metaData.getDeleteIntervalList()) {
+          if (upper < range.left) {
+            break;
           }
-          lower = range.right;
-        } else if (lower < range.left) {
-          metaData.setModified(true);
-          break;
+          if (range.left <= lower && lower <= range.right) {
+            metaData.setModified(true);
+            if (upper <= range.right) {
+              return true;
+            }
+            lower = range.right;
+          } else if (lower < range.left) {
+            metaData.setModified(true);
+            break;
+          }
         }
       }
       return false;

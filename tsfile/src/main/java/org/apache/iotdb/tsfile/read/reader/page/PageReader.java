@@ -65,7 +65,7 @@ public class PageReader implements IPageReader {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteRangeList;
+  private List<Pair<Long, Long>> deleteIntervalList;
 
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
       Decoder timeDecoder, Filter filter) {
@@ -161,8 +161,8 @@ public class PageReader implements IPageReader {
     this.filter = filter;
   }
 
-  public void setDeleteRangeList(List<Pair<Long, Long>> list) {
-    this.deleteRangeList = list;
+  public void setDeleteIntervalList(List<Pair<Long, Long>> list) {
+    this.deleteIntervalList = list;
   }
 
   @Override
@@ -171,8 +171,8 @@ public class PageReader implements IPageReader {
   }
 
   private boolean isDeleted(long timestamp) {
-    if (deleteRangeList != null) {
-      for (Pair<Long, Long> delete : deleteRangeList) {
+    if (deleteIntervalList != null) {
+      for (Pair<Long, Long> delete : deleteIntervalList) {
         if (delete.left <= timestamp && timestamp <= delete.right) {
           return true;
         }

@@ -55,7 +55,7 @@ public class ChunkMetadata implements Accountable {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteRangeList;
+  private List<Pair<Long, Long>> deleteIntervalList;
 
   private boolean modified;
 
@@ -174,22 +174,22 @@ public class ChunkMetadata implements Accountable {
     this.version = version;
   }
 
-  public List<Pair<Long, Long>> getDeleteRangeList() {
-    if (deleteRangeList == null) {
+  public List<Pair<Long, Long>> getDeleteIntervalList() {
+    if (deleteIntervalList == null) {
       return new ArrayList<>();
     }
-    return deleteRangeList;
+    return deleteIntervalList;
   }
 
-  public void setDeleteRangeList(List<Pair<Long, Long>> list) {
-    this.deleteRangeList = list;
+  public void setDeleteIntervalList(List<Pair<Long, Long>> list) {
+    this.deleteIntervalList = list;
   }
 
   public void addDeletion(long startTime, long endTime) {
-    if (deleteRangeList == null) {
-      deleteRangeList = new ArrayList<>();
+    if (deleteIntervalList == null) {
+      deleteIntervalList = new ArrayList<>();
     }
-    this.deleteRangeList.add(new Pair<>(startTime, endTime));
+    this.deleteIntervalList.add(new Pair<>(startTime, endTime));
   }
 
   public IChunkLoader getChunkLoader() {

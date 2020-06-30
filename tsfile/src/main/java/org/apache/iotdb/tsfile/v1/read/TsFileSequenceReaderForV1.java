@@ -319,7 +319,7 @@ public class TsFileSequenceReaderForV1 extends TsFileSequenceReader {
     ChunkHeader header = readChunkHeaderFromOldFile(metaData.getOffsetOfChunkHeader(), chunkHeadSize, false);
     ByteBuffer buffer = readChunkFromOldFile(metaData.getOffsetOfChunkHeader() + chunkHeadSize,
         header.getDataSize());
-    return new Chunk(header, buffer, metaData.getDeleteRangeList());
+    return new Chunk(header, buffer, metaData.getDeleteIntervalList());
   }
 
   /**

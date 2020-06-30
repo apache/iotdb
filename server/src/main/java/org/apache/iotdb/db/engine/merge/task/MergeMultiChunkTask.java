@@ -325,7 +325,8 @@ public class MergeMultiChunkTask {
       IChunkWriter chunkWriter, TsFileResource currFile) throws IOException {
 
     int unclosedChunkPoint = lastUnclosedChunkPoint;
-    boolean chunkModified = !currMeta.getDeleteRangeList().isEmpty();
+    boolean chunkModified = (currMeta.getDeleteIntervalList() != null &&
+        !currMeta.getDeleteIntervalList().isEmpty());
 
     // no need to write the chunk to .merge file
     if (!fullMerge && lastUnclosedChunkPoint == 0 && !chunkTooSmall && !chunkOverflowed
