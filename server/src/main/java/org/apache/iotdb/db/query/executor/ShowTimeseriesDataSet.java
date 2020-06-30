@@ -47,8 +47,6 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   protected boolean hasNextWithoutConstraint() {
     if (index == result.size()) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
-      System.out.println("limit:" + plan.getLimit());
-      System.out.println("offset:" + plan.getOffset());
       try {
         List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
             .showTimeseries(plan);
