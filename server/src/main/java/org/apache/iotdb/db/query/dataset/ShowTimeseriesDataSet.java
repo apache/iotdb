@@ -54,6 +54,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
       } catch (Exception e) {
         e.printStackTrace();
       }
+      index = 0;
     }
     return index < result.size();
   }
