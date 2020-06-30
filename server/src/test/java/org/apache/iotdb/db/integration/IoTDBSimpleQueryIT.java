@@ -130,7 +130,7 @@ public class IoTDBSimpleQueryIT {
         count++;
       }
 
-      Assert.assertEquals(5, count);
+      Assert.assertEquals(10, count);
 
     } catch (SQLException e) {
       e.printStackTrace();
