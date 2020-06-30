@@ -35,6 +35,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;
+  public static boolean hasLimit;
 
   public ShowTimeseriesDataSet(List<Path> paths,
       List<TSDataType> dataTypes, ShowTimeSeriesPlan showTimeSeriesPlan) {
@@ -52,10 +53,12 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
         List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
             .showTimeseries(plan);
         result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults);
+        if (!hasLimit) {
+          index = 0;
+        }
       } catch (Exception e) {
         e.printStackTrace();
       }
-      index = 0;
     }
     return index < result.size();
   }
