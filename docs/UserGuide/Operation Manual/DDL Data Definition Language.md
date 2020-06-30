@@ -328,3 +328,10 @@ Clear the cache of chunk, chunk metadata and timeseries metadata to release the 
 ```
 IoTDB> CLEAR CACHE
 ```
+
+## CREATE SNAPSHOT FOR SCHEMA
+
+To speed up restarting of IoTDB, users could create snapshot of schema and avoid recovering schema from mlog file.
+```
+IoTDB> CREATE SNAPSHOT FOR SCHEMA
+```

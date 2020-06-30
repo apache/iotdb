@@ -31,14 +31,14 @@ public class TestDataGroupMember extends DataGroupMember {
   public TestDataGroupMember() {
     super();
     setQueryManager(new ClusterQueryManager());
-    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
+    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
   }
 
   public TestDataGroupMember(Node thisNode, List<Node> allNodes) {
     super();
     this.thisNode = thisNode;
     this.allNodes = allNodes;
-    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
+    this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null);
     setQueryManager(new ClusterQueryManager());
   }
 }

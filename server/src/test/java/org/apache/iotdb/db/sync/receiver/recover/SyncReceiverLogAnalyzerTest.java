@@ -100,8 +100,8 @@ public class SyncReceiverLogAnalyzerTest {
         String rand = String.valueOf(r.nextInt(10000) + i * j);
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + System
-                .currentTimeMillis() + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+                .currentTimeMillis() + IoTDBConstant.FILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
         Thread.sleep(1);
         File syncFile = new File(fileName);
         receiverLogger

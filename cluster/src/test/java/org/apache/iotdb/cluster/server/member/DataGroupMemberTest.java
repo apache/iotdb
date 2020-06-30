@@ -59,6 +59,7 @@ import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.manage.PartitionedSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -239,21 +240,23 @@ public class DataGroupMemberTest extends MemberTest {
         new PartitionGroup(partitionGroup));
     DataGroupMember lastMember = getDataGroupMember(TestUtils.getNode(90),
         new PartitionGroup(partitionGroup));
+    NodeAdditionResult result = new NodeAdditionResult();
+    result.setLostSlots(new HashMap<>());
 
     try {
       Node newNodeBeforeGroup = TestUtils.getNode(-5);
-      assertFalse(firstMember.addNode(newNodeBeforeGroup));
-      assertFalse(midMember.addNode(newNodeBeforeGroup));
-      assertFalse(lastMember.addNode(newNodeBeforeGroup));
+      assertFalse(firstMember.addNode(newNodeBeforeGroup, result));
+      assertFalse(midMember.addNode(newNodeBeforeGroup, result));
+      assertFalse(lastMember.addNode(newNodeBeforeGroup, result));
 
       Node newNodeInGroup = TestUtils.getNode(66);
-      assertFalse(firstMember.addNode(newNodeInGroup));
-      assertFalse(midMember.addNode(newNodeInGroup));
-      assertTrue(lastMember.addNode(newNodeInGroup));
+      assertFalse(firstMember.addNode(newNodeInGroup, result));
+      assertFalse(midMember.addNode(newNodeInGroup, result));
+      assertTrue(lastMember.addNode(newNodeInGroup, result));
 
       Node newNodeAfterGroup = TestUtils.getNode(101);
-      assertFalse(firstMember.addNode(newNodeAfterGroup));
-      assertFalse(midMember.addNode(newNodeAfterGroup));
+      assertFalse(firstMember.addNode(newNodeAfterGroup, result));
+      assertFalse(midMember.addNode(newNodeAfterGroup, result));
     } finally {
       firstMember.closeLogManager();
       midMember.closeLogManager();
@@ -425,7 +428,7 @@ public class DataGroupMemberTest extends MemberTest {
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[]{"s0"});
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
@@ -560,7 +563,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeries()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
@@ -616,7 +619,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
@@ -672,7 +675,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
@@ -725,7 +728,7 @@ public class DataGroupMemberTest extends MemberTest {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {

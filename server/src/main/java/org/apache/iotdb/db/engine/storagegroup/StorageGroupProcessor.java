@@ -74,8 +74,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -602,9 +602,9 @@ public class StorageGroupProcessor {
   // ({systemTime}-{versionNum}-{mergeNum}.tsfile)
   private int compareFileName(File o1, File o2) {
     String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "")
-        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
     String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "")
-        .split(IoTDBConstant.TSFILE_NAME_SEPARATOR);
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR);
     long ver1 = Long.parseLong(items1[0]);
     long ver2 = Long.parseLong(items2[0]);
     int cmp = Long.compare(ver1, ver2);
@@ -989,8 +989,8 @@ public class StorageGroupProcessor {
   }
 
   private String getNewTsFileName(long time, long version, int mergeCnt) {
-    return time + IoTDBConstant.TSFILE_NAME_SEPARATOR + version
-        + IoTDBConstant.TSFILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
+    return time + IoTDBConstant.FILE_NAME_SEPARATOR + version
+        + IoTDBConstant.FILE_NAME_SEPARATOR + mergeCnt + TSFILE_SUFFIX;
   }
 
 
@@ -2095,22 +2095,22 @@ public class StorageGroupProcessor {
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
       long timePartitionId, List<TsFileResource> sequenceList) {
     long currentTsFileTime = Long
-        .parseLong(tsfileName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
+        .parseLong(tsfileName.split(IoTDBConstant.FILE_NAME_SEPARATOR)[0]);
     long preTime;
     if (insertIndex == -1) {
       preTime = 0L;
     } else {
       String preName = sequenceList.get(insertIndex).getFile().getName();
-      preTime = Long.parseLong(preName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
+      preTime = Long.parseLong(preName.split(IoTDBConstant.FILE_NAME_SEPARATOR)[0]);
     }
     if (insertIndex == sequenceFileTreeSet.size() - 1) {
       return preTime < currentTsFileTime ? tsfileName : getNewTsFileName(timePartitionId);
     } else {
       String subsequenceName = sequenceList.get(insertIndex + 1).getFile().getName();
       long subsequenceTime = Long
-          .parseLong(subsequenceName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[0]);
+          .parseLong(subsequenceName.split(IoTDBConstant.FILE_NAME_SEPARATOR)[0]);
       long subsequenceVersion = Long
-          .parseLong(subsequenceName.split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+          .parseLong(subsequenceName.split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
       if (preTime < currentTsFileTime && currentTsFileTime < subsequenceTime) {
         return tsfileName;
       } else {
@@ -2423,5 +2423,61 @@ public class StorageGroupProcessor {
   public interface UpgradeTsFileResourceCallBack {
 
     void call(TsFileResource caller);
+  }
+
+  /**
+   * remove all partitions that satisfy a filter.
+   * @param filter
+   */
+  public void removePartitions(TimePartitionFilter filter) {
+    // this requires blocking all other activities
+    insertLock.writeLock().lock();
+    mergeLock.writeLock().lock();
+    try {
+      // abort ongoing merges
+      MergeManager.getINSTANCE().abortMerge(storageGroupName);
+      // close all working files that should be removed
+      removePartitions(filter, workSequenceTsFileProcessors.entrySet());
+      removePartitions(filter, workUnsequenceTsFileProcessors.entrySet());
+
+      // remove data files
+      removePartitions(filter, sequenceFileTreeSet.iterator());
+      removePartitions(filter, unSequenceFileList.iterator());
+
+    } finally {
+      insertLock.writeLock().unlock();
+      mergeLock.writeLock().unlock();
+    }
+  }
+
+  //may remove the processor entries
+  private void removePartitions(TimePartitionFilter filter, Set<Entry<Long, TsFileProcessor>> processorEntries) {
+    for (Iterator<Entry<Long, TsFileProcessor>> iterator = processorEntries.iterator(); iterator.hasNext(); ) {
+      Entry<Long, TsFileProcessor> longTsFileProcessorEntry = iterator.next();
+      long partitionId = longTsFileProcessorEntry.getKey();
+      TsFileProcessor processor = longTsFileProcessorEntry.getValue();
+      if (filter.satisfy(storageGroupName, partitionId)) {
+        processor.syncClose();
+        iterator.remove();
+        logger.debug("{} is removed during deleting partitions", processor.getTsFileResource().getPath());
+      }
+    }
+  }
+
+  //may remove the iterator's data
+  private void removePartitions(TimePartitionFilter filter, Iterator<TsFileResource> iterator) {
+    while (iterator.hasNext()) {
+      TsFileResource tsFileResource = iterator.next();
+      if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
+        tsFileResource.remove();
+        iterator.remove();
+        logger.debug("{} is removed during deleting partitions", tsFileResource.getPath());
+      }
+    }
+  }
+
+  @FunctionalInterface
+  public interface TimePartitionFilter {
+    boolean satisfy(String storageGroupName, long timePartitionId);
   }
 }

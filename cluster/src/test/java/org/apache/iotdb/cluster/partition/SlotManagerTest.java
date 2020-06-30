@@ -21,10 +21,21 @@ package org.apache.iotdb.cluster.partition;
 import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.NULL;
 import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.PULLING;
 import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.PULLING_WRITABLE;
+import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.SENDING;
+import static org.apache.iotdb.cluster.partition.SlotManager.SlotStatus.SENT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.IOException;
+import org.apache.iotdb.cluster.common.EnvironmentUtils;
+import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -35,7 +46,7 @@ public class SlotManagerTest {
   @Before
   public void setUp() {
     int testSlotNum = 100;
-    slotManager = new SlotManager(testSlotNum);
+    slotManager = new SlotManager(testSlotNum, null);
   }
 
   @Test
@@ -54,7 +65,7 @@ public class SlotManagerTest {
   }
 
   @Test
-  public void waitSlotForWrite() {
+  public void waitSlotForWrite() throws StorageEngineException {
     slotManager.waitSlot(0);
     slotManager.setToPullingWritable(0);
     slotManager.waitSlotForWrite(0);
@@ -91,5 +102,34 @@ public class SlotManagerTest {
     assertEquals(source, slotManager.getSource(0));
     slotManager.setToNull(0);
     assertNull(slotManager.getSource(0));
+  }
+
+  @Test
+  public void testSerialize() throws IOException {
+    File dummyMemberDir = new File("test");
+    dummyMemberDir.mkdirs();
+    try {
+      slotManager = new SlotManager(5, dummyMemberDir.getPath());
+      slotManager.setToNull(0);
+      slotManager.setToPulling(1, TestUtils.getNode(1));
+      slotManager.setToPulling(2, TestUtils.getNode(2));
+      slotManager.setToPullingWritable(2);
+      slotManager.setToSending(3);
+      slotManager.sentOneReplication(3);
+      slotManager.setToSending(4);
+      for (int i = 0; i < ClusterDescriptor.getInstance().getConfig().getReplicationNum(); i++) {
+        slotManager.sentOneReplication(4);
+      }
+
+      SlotManager recovered = new SlotManager(5, dummyMemberDir.getPath());
+      assertEquals(NULL, recovered.getStatus(0));
+      assertEquals(PULLING, recovered.getStatus(1));
+      assertEquals(PULLING_WRITABLE, recovered.getStatus(2));
+      assertEquals(SENDING, recovered.getStatus(3));
+      assertEquals(SENT, recovered.getStatus(4));
+    } finally {
+      EnvironmentUtils.cleanDir(dummyMemberDir.getPath());
+    }
+
   }
 }

@@ -246,7 +246,7 @@ public class TestUtils {
         schemas[i] = TestUtils.getTestMeasurementSchema(i);
       }
       insertPlan.setMeasurements(measurements);
-      insertPlan.setInferType(true);
+      insertPlan.setNeedInferType(true);
       insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
       // the first sequential file
       for (int i = 10; i < 20; i++) {
@@ -294,7 +294,7 @@ public class TestUtils {
     String[] measurements = new String[]{getTestMeasurement(10)};
     MeasurementSchema[] schemas = new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(10)};
     insertPlan.setMeasurements(measurements);
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i : new int[]{0, 10}) {
       insertPlan.setTime(i);

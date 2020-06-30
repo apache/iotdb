@@ -51,7 +51,7 @@ public class SerializeLogTest {
     InsertPlan plan = new InsertPlan();
     plan.setDeviceId("root.d1");
     plan.setMeasurements(new String[]{"s1", "s2", "s3"});
-    plan.setInferType(true);
+    plan.setNeedInferType(true);
     plan.setTypes(new TSDataType[plan.getMeasurements().length]);
     plan.setValues(new Object[]{"0.1", "1", "\"dd\""});
     MeasurementSchema[] schemas = {TestUtils.getTestMeasurementSchema(1),

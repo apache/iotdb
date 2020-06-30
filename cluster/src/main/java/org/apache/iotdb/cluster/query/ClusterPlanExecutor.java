@@ -614,7 +614,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
-      throws MetadataException, QueryProcessException {
+      throws MetadataException {
     String[] measurementList = insertTabletPlan.getMeasurements();
     String deviceId = insertTabletPlan.getDeviceId();
 

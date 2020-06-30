@@ -84,6 +84,7 @@ public class ClientMain {
   private static final String PARAM_DELETE_SERIES = "ds";
   private static final String PARAM_QUERY_PORTS = "qp";
   private static final String PARAM_INSERT_PORT = "ip";
+  private static final String PARAM_BATCH = "b";
   private static Options options = new Options();
 
   static {
@@ -94,6 +95,7 @@ public class ClientMain {
     options.addOption(new Option(PARAM_QUERY_PORTS, true, "Ports to query (ip is currently "
         + "localhost)"));
     options.addOption(new Option(PARAM_INSERT_PORT, true, "Port to perform insertion"));
+    options.addOption(new Option(PARAM_BATCH, "Test batch statement"));
   }
 
   private static Map<String, TSStatus> failedQueries;
@@ -228,12 +230,14 @@ public class ClientMain {
       client.closeSession(new TSCloseSessionReq(sessionId));
     }
 
-    System.out.println("Test batch create sgs");
-    testBatch();
+    if (noOption || commandLine.hasOption(PARAM_BATCH)) {
+      System.out.println("Test batch create sgs");
+      testBatch(ip, port);
+    }
   }
 
   protected static long connectClient(Client client) throws TException {
-    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2);
+    TSOpenSessionReq openReq = new TSOpenSessionReq(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
     openReq.setUsername("root");
     openReq.setPassword("root");
     TSOpenSessionResp openResp = client.openSession(openReq);
@@ -417,10 +421,10 @@ public class ClientMain {
     }
   }
 
-  private static void testBatch() throws ClassNotFoundException, SQLException {
+  private static void testBatch(String ip, int port) throws ClassNotFoundException, SQLException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection = DriverManager
-        .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:55560/", "root",
+        .getConnection(Config.IOTDB_URL_PREFIX + String.format("%s:%d/", ip, port), "root",
             "root");
         Statement statement = connection.createStatement()) {
 

@@ -32,6 +32,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -47,6 +48,7 @@ import org.apache.iotdb.cluster.client.async.ClientPool;
 import org.apache.iotdb.cluster.client.async.DataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
@@ -62,6 +64,7 @@ import org.apache.iotdb.cluster.log.snapshot.FileSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PartitionedSnapshot;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTask;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
+import org.apache.iotdb.cluster.partition.NodeAdditionResult;
 import org.apache.iotdb.cluster.partition.NodeRemovalResult;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.SlotManager;
@@ -86,14 +89,17 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.Peer;
+import org.apache.iotdb.cluster.server.PullSnapshotHintService;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
+import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -162,6 +168,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    */
   private ExecutorService pullSnapshotService;
 
+  /**
+   * When the member applies a pulled snapshot, it register hints in this service which will
+   * periodically inform the data source that one member has pulled snapshot.
+   */
+  private PullSnapshotHintService pullSnapshotHintService;
+
 
   /**
    * "queryManger" records the remote nodes which have queried this node, and the readers or
@@ -189,7 +201,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
-    slotManager = new SlotManager(ClusterConstant.SLOT_NUM);
+    slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir());
     logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
         this), metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode);
     initPeerMap();
@@ -211,6 +223,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     super.start();
     heartBeatService.submit(new DataHeartbeatThread(this));
     pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    pullSnapshotHintService = new PullSnapshotHintService(this);
     resumePullSnapshotTasks();
   }
 
@@ -231,6 +244,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         logger.error("Unexpected interruption when waiting for pullSnapshotService to end", e);
       }
       pullSnapshotService = null;
+      pullSnapshotHintService.stop();
     }
 
     try {
@@ -282,7 +296,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @return true if this node should leave the group because of the addition of the node, false
    * otherwise
    */
-  public synchronized boolean addNode(Node node) {
+  public synchronized boolean addNode(Node node, NodeAdditionResult result) {
     // when a new node is added, start an election instantly to avoid the stale leader still
     // taking the leadership, which guarantees the valid leader will not have the stale
     // partition table
@@ -294,6 +308,14 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       setLastHeartbeatReceivedTime(System.currentTimeMillis());
       setCharacter(NodeCharacter.ELECTOR);
     }
+
+    // mark slots that do not belong to this group any more
+    Set<Integer> lostSlots = result.getLostSlots()
+        .getOrDefault(getHeader(), Collections.emptySet());
+    for (Integer lostSlot : lostSlots) {
+      slotManager.setToSending(lostSlot);
+    }
+
     synchronized (allNodes) {
       int insertIndex = -1;
       // find the position to insert the new node, the nodes are ordered by their identifiers
@@ -508,6 +530,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // as the partition versions are set, writes can proceed without generating incorrect
       // versions
       slotManager.setToPullingWritable(slot);
+      logger.debug("{}: slot {} is now pulling writable", name, slot);
     }
   }
 
@@ -522,6 +545,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     }
     // all files are loaded, the slot can be queried without accessing the previous holder
     slotManager.setToNull(slot);
+    logger.info("{}: slot {} is ready", name, slot);
   }
 
   private void applyFileSnapshot(FileSnapshot snapshot, int slot)
@@ -903,8 +927,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         slotManager.setToPulling(nodeSlot, descriptor.getPreviousHolders().getHeader());
       }
     }
+
     if (descriptor.getSlots().isEmpty()) {
       return;
+    }
+    if (logger.isInfoEnabled()) {
+      logger.info("{}: {} and other {} slots are set to pulling", name,
+          descriptor.getSlots().get(0), descriptor.getSlots().size() - 1);
     }
 
     pullSnapshotService
@@ -914,7 +943,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   /**
    * Restart all unfinished pull-snapshot-tasks of the member.
    */
-  public void resumePullSnapshotTasks() {
+  private void resumePullSnapshotTasks() {
     File snapshotTaskDir = new File(getPullSnapshotTaskDir());
     if (!snapshotTaskDir.exists()) {
       return;
@@ -1440,8 +1469,32 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * be removed.
    */
   public void removeLocalData(List<Integer> slots) {
+    if (slots.isEmpty()) {
+      return;
+    }
+
+    Set<Integer> slotSet = new HashSet<>(slots);
+    List<String> allStorageGroupNames = MManager.getInstance().getAllStorageGroupNames();
+    TimePartitionFilter filter = (storageGroupName, timePartitionId) -> {
+      int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, timePartitionId,
+          ClusterConstant.SLOT_NUM);
+      return slotSet.contains(slot);
+    };
+    for (String sg : allStorageGroupNames) {
+      try {
+        StorageEngine.getInstance().removePartitions(sg, filter);
+      } catch (StorageEngineException e) {
+        logger.warn("{}: failed to remove partitions of {} and {} other slots in {}", name,
+            slots.get(0), slots.size() - 1, sg, e);
+      }
+    }
     for (Integer slot : slots) {
-      //TODO-Cluster: remove the data in the slot
+      slotManager.setToNull(slot);
+    }
+
+    if (logger.isInfoEnabled()) {
+      logger.info("{}: data of {} and other {} slots are removed", name, slots.get(0),
+          slots.size() - 1);
     }
   }
 
@@ -1626,11 +1679,10 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @param header
    * @param timeseriesList
    * @param resultHandler
-   * @throws TException
    */
   @Override
   public void getUnregisteredTimeseries(Node header, List<String> timeseriesList,
-      AsyncMethodCallback<List<String>> resultHandler) throws TException {
+      AsyncMethodCallback<List<String>> resultHandler) {
     try {
       syncLeaderWithConsistencyCheck();
     } catch (CheckConsistencyException e) {
@@ -1923,5 +1975,23 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
     }
     resultHandler.onComplete(count);
+  }
+
+  @Override
+  public void onSnapshotApplied(Node header, List<Integer> slots,
+      AsyncMethodCallback<Boolean> resultHandler) {
+    List<Integer> removableSlots = new ArrayList<>();
+    for (Integer slot : slots) {
+      int sentReplicaNum = slotManager.sentOneReplication(slot);
+      if (sentReplicaNum >= ClusterDescriptor.getInstance().getConfig().getReplicationNum()) {
+        removableSlots.add(slot);
+      }
+    }
+    resultHandler.onComplete(true);
+    removeLocalData(removableSlots);
+  }
+
+  public void registerPullSnapshotHint(PullSnapshotTaskDescriptor descriptor) {
+    pullSnapshotHintService.registerHint(descriptor);
   }
 }

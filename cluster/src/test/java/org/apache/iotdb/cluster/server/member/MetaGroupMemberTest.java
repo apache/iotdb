@@ -409,7 +409,7 @@ public class MetaGroupMemberTest extends MemberTest {
     dummyResponse.set(Response.RESPONSE_AGREE);
     InsertPlan insertPlan = new InsertPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
@@ -700,7 +700,7 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testGetReaderByTimestamp()");
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
@@ -744,7 +744,7 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
     InsertPlan insertPlan = new InsertPlan();
-    insertPlan.setInferType(true);
+    insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
     insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
 

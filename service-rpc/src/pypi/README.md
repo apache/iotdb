@@ -38,8 +38,6 @@ architecture, high performance and rich feature set together with its deep integ
 Apache IoTDB (incubating) can meet the requirements of massive data storage, high-speed data ingestion and complex data
 analysis in the IoT industrial fields.
 
-Apache IoTDB (incubating) was initially developed by Prof. Wang's Team of School of Software at Tsinghua University.
-Now it is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Incubator.
 
 # Apache IoTDB Python Client API
 
