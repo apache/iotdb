@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -155,7 +156,8 @@ public class ClientServer extends TSServiceImpl {
     poolArgs.processor(new Processor<>(this));
     poolArgs.protocolFactory(protocolFactory);
     // nonblocking server requests FramedTransport
-    poolArgs.transportFactory(new TFastFramedTransport.Factory());
+    poolArgs.transportFactory(new TFastFramedTransport.Factory(
+        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 
     poolServer = new TThreadPoolServer(poolArgs);
     // mainly for handling client exit events

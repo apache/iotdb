@@ -77,7 +77,8 @@ public class ClusterConfig {
   private int selectorNumOfClientPool = Runtime.getRuntime().availableProcessors() * 2;
 
   /**
-   * Whether creating schema automatically is enabled, this will replace the one in iotdb-engine.properties
+   * Whether creating schema automatically is enabled, this will replace the one in
+   * iotdb-engine.properties
    */
   private boolean enableAutoCreateSchema = true;
 

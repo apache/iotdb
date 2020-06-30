@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -37,7 +38,7 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.THsHaServer.Args;
 import org.apache.thrift.server.TServer;
-import org.apache.thrift.transport.TFramedTransport;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -112,8 +113,8 @@ public abstract class RaftServer implements RaftService.AsyncIface {
 
   /**
    * Establish a thrift server with the configurations in ClusterConfig to listen to and respond to
-   * thrift RPCs.
-   * Calling the method twice does not induce side effects.
+   * thrift RPCs. Calling the method twice does not induce side effects.
+   *
    * @throws TTransportException
    */
   @SuppressWarnings("java:S1130") // thrown in override method
@@ -126,8 +127,8 @@ public abstract class RaftServer implements RaftService.AsyncIface {
   }
 
   /**
-   * Stop the thrift server, close the socket and interrupt all in progress RPCs.
-   * Calling the method twice does not induce side effects.
+   * Stop the thrift server, close the socket and interrupt all in progress RPCs. Calling the method
+   * twice does not induce side effects.
    */
   public void stop() {
     if (poolServer == null) {
@@ -142,14 +143,12 @@ public abstract class RaftServer implements RaftService.AsyncIface {
   }
 
   /**
-   *
-   * @return An AsyncProcessor that contains the extended interfaces of a non-abstract subclass
-   * of RaftService (DataService or MetaService).
+   * @return An AsyncProcessor that contains the extended interfaces of a non-abstract subclass of
+   * RaftService (DataService or MetaService).
    */
   abstract AsyncProcessor getProcessor();
 
   /**
-   *
    * @return A socket that will be used to establish a thrift server to listen to RPC requests.
    * DataServer and MetaServer use different port, so this is to be determined.
    * @throws TTransportException
@@ -158,8 +157,9 @@ public abstract class RaftServer implements RaftService.AsyncIface {
 
   /**
    * Each thrift RPC request will be processed in a separate thread and this will return the name
-   * prefix of such threads. This is used to fast distinguish DataServer and MetaServer in the
-   * logs for the sake of debug.
+   * prefix of such threads. This is used to fast distinguish DataServer and MetaServer in the logs
+   * for the sake of debug.
+   *
    * @return name prefix of RPC processing threads.
    */
   abstract String getClientThreadPrefix();
@@ -167,6 +167,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
   /**
    * The thrift server will be run in a separate thread, and this will be its name. It help you
    * locate the desired logs quickly when debugging.
+   *
    * @return The name of the thread running the thrift server.
    */
   abstract String getServerClientName();
@@ -183,6 +184,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
         poolArgs.maxWorkerThreads, poolArgs.getStopTimeoutVal(), poolArgs.getStopTimeoutUnit(),
         new SynchronousQueue<>(), new ThreadFactory() {
       private AtomicLong threadIndex = new AtomicLong(0);
+
       @Override
       public Thread newThread(Runnable r) {
         return new Thread(r, getClientThreadPrefix() + threadIndex.incrementAndGet());
@@ -191,7 +193,8 @@ public abstract class RaftServer implements RaftService.AsyncIface {
     poolArgs.processor(getProcessor());
     poolArgs.protocolFactory(protocolFactory);
     // async service requires FramedTransport
-    poolArgs.transportFactory(new TFramedTransport.Factory());
+    poolArgs.transportFactory(new TFastFramedTransport.Factory(
+        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 
     // run the thrift server in a separate thread so that the main thread is not blocked
     poolServer = new THsHaServer(poolArgs);
