@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager.TaskStatus;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -139,7 +140,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
         return true;
       case INSERT:
-        insert((InsertPlan) plan);
+        insert((InsertRowPlan) plan);
         return true;
       case BATCHINSERT:
         insertTablet((InsertTabletPlan) plan);
@@ -193,8 +194,19 @@ public class PlanExecutor implements IPlanExecutor {
       case FULL_MERGE:
         operateMerge((MergePlan) plan);
         return true;
+      case TRACING:
+        operateTracing((TracingPlan) plan);
+        return true;
       case CLEAR_CACHE:
         operateClearCache((ClearCachePlan) plan);
+        return true;
+      case DELETE_PARTITION:
+        DeletePartitionPlan p = (DeletePartitionPlan) plan;
+        TimePartitionFilter filter =
+            (storageGroupName, partitionId) ->
+                storageGroupName.equals(((DeletePartitionPlan) plan).getStorageGroupName())
+                    && p.getPartitionId().contains(partitionId);
+        StorageEngine.getInstance().removePartitions(((DeletePartitionPlan) plan).getStorageGroupName(), filter);
         return true;
       case CREATE_SCHEMA_SNAPSHOT:
         operateCreateSnapshot();
@@ -222,6 +234,10 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateCreateSnapshot() {
     mManager.createMTreeSnapshot();
+  }
+
+  private void operateTracing(TracingPlan plan) {
+    IoTDBDescriptor.getInstance().getConfig().setEnablePerformanceTracing(plan.isTracingOn());
   }
 
   private void operateFlush(FlushPlan plan) throws StorageGroupNotSetException {
@@ -794,31 +810,24 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
       throws MetadataException {
-    return mManager
-        .getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
-  }
-
-  protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
-      throws MetadataException {
-    return mManager.getSeriesSchemas(insertTabletPlan.getDeviceId(),
-        insertTabletPlan.getMeasurements(), insertTabletPlan);
+    return mManager.getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
   }
 
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-      mManager.lockInsert(insertPlan.getDeviceId());
-      MeasurementSchema[] schemas = getSeriesSchemas(insertPlan);
-      insertPlan.setSchemasAndTransferType(schemas);
-      StorageEngine.getInstance().insert(insertPlan);
-      if (insertPlan.getFailedMeasurements() != null) {
+      mManager.lockInsert(insertRowPlan.getDeviceId());
+      MeasurementSchema[] schemas = getSeriesSchemas(insertRowPlan);
+      insertRowPlan.setSchemasAndTransferType(schemas);
+      StorageEngine.getInstance().insert(insertRowPlan);
+      if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
-            "failed to insert measurements " + insertPlan.getFailedMeasurements());
+            "failed to insert measurements " + insertRowPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockInsert(insertPlan.getDeviceId());
+      mManager.unlockInsert(insertRowPlan.getDeviceId());
     }
   }
 
