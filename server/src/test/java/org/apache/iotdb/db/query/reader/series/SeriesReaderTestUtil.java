@@ -82,8 +82,8 @@ public class SeriesReaderTestUtil {
       List<String> deviceIds) throws IOException, WriteProcessException {
     for (int i = 0; i < seqFileNum; i++) {
       File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
+          i + "seq" + IoTDBConstant.FILE_NAME_SEPARATOR + i + IoTDBConstant.FILE_NAME_SEPARATOR
+              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -93,9 +93,9 @@ public class SeriesReaderTestUtil {
     }
     for (int i = 0; i < unseqFileNum; i++) {
       File file = new File(TestConstant.BASE_OUTPUT_PATH.concat(
-          i + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
+          i + "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR
+              + i + IoTDBConstant.FILE_NAME_SEPARATOR
+              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource tsFileResource = new TsFileResource(file);
       tsFileResource.setClosed(true);
@@ -106,9 +106,9 @@ public class SeriesReaderTestUtil {
     }
 
     File file = new File(TestConstant.BASE_OUTPUT_PATH
-        .concat(unseqFileNum + "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.TSFILE_NAME_SEPARATOR + unseqFileNum
-            + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + ".tsfile"));
+        .concat(unseqFileNum + "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.FILE_NAME_SEPARATOR + unseqFileNum
+            + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + ".tsfile"));
     TsFileResource tsFileResource = new TsFileResource(file);
     tsFileResource.setClosed(true);
     tsFileResource.setHistoricalVersions(Collections.singleton((long) (seqFileNum + unseqFileNum)));

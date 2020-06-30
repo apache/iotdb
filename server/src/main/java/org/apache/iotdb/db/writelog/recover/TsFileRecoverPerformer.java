@@ -113,7 +113,7 @@ public class TsFileRecoverPerformer {
           // write .resource file
           long fileVersion =
               Long.parseLong(
-                  resource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+                  resource.getFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
           resource.setHistoricalVersions(Collections.singleton(fileVersion));
           resource.serialize();
         }
@@ -183,7 +183,7 @@ public class TsFileRecoverPerformer {
       }
     }
     long fileVersion =
-        Long.parseLong(resource.getFile().getName().split(IoTDBConstant.TSFILE_NAME_SEPARATOR)[1]);
+        Long.parseLong(resource.getFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
     resource.setHistoricalVersions(Collections.singleton(fileVersion));
   }
 
