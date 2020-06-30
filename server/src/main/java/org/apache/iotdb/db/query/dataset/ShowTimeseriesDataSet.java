@@ -24,7 +24,6 @@ import static org.apache.iotdb.db.utils.QueryUtils.transferShowTimeSeriesResultT
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -38,15 +37,17 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private int index = 0;
 
   public ShowTimeseriesDataSet(List<Path> paths,
-      List<TSDataType> dataTypes, ShowPlan showPlan) {
+      List<TSDataType> dataTypes, ShowTimeSeriesPlan showTimeSeriesPlan) {
     super(paths, dataTypes);
-    this.plan = (ShowTimeSeriesPlan) showPlan;
+    this.plan = showTimeSeriesPlan;
   }
 
   @Override
   protected boolean hasNextWithoutConstraint() {
     if (index == result.size()) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
+      System.out.println("limit:" + plan.getLimit());
+      System.out.println("offset:" + plan.getOffset());
       try {
         List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
             .showTimeseries(plan);
@@ -67,5 +68,4 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   public void putRecord(RowRecord newRecord) {
     result.add(newRecord);
   }
-
 }
