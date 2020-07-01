@@ -286,6 +286,8 @@ public class Session {
     }, asyncThreadPool.getThreadPool());
 
     return asyncRun.acceptEither(timeoutFail, this::successHandler);
+    asyncRun.applyToEither();
+    asyncRun.runAfterEither()
   }
 
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
@@ -436,7 +438,7 @@ public class Session {
    */
   public CompletableFuture<Void> asyncInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList, long timeout, Consumer<Exception> callback) {
+      List<List<Object>> valuesList, long timeout, Consumer<Throwable> callback) {
     CompletableFuture<Void> timeoutFail = failAfter(Duration.ofMillis(timeout));
     CompletableFuture<Void> asyncRun = CompletableFuture.supplyAsync(() -> {
       try {
@@ -450,9 +452,20 @@ public class Session {
         }
       }
       return null;
-    }, asyncThreadPool.getThreadPool());
+    }, asyncThreadPool.getThreadPool()).exceptionally();
 
-    return asyncRun.acceptEither(timeoutFail, this::successHandler);
+    //return asyncRun.acceptEither(timeoutFail, this::successHandler);
+    return asyncRun.acceptEither(timeoutFail, this::successHandler).
+        exceptionally(exception ->
+        {
+          if (callback == null) {
+            logger.error("Error occurred when inserting records, device ID: {}, time: {} .",
+                deviceIds.get(0), times.get(0), exception);
+          } else {
+            callback.accept(exception);
+          }
+          return null;
+        });
   }
 
   private TSInsertRecordsReq genTSInsertRecordsReq(List<String> deviceIds, List<Long> times,
