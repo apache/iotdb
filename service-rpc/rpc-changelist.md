@@ -19,8 +19,36 @@
 
 -->
 
+# 0.10.x (version-2) -> 0.11.x (version-3)
 
-# 0.10.0 (version-1) -> version-2
+Last Updated on 2020-6-29 by Xiangdong Huang.
+
+
+## 1. Delete Old
+
+| Latest Changes                     | Related Committers |
+| ---------------------------------- | ------------------ |
+| Remove TSBatchExecuteStatementResp            | Tian Jiang         |
+
+
+## 2. Add New
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| set the input/output as TFramedTransport      |  Tian Jiang        |
+
+
+## 3. Update
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| Add sub-status in TSStatus  | Tian Jiang  |
+| Change the result of executeBatchStatement  as   TSStatus    | Tian Jiang  |
+
+
+
+
+# 0.9.x (version-1) -> 0.10.x (version-2)
 
 Last Updated on 2020-5-25 by Kaifeng Xue.
 
@@ -32,6 +60,7 @@ Last Updated on 2020-5-25 by Kaifeng Xue.
 | Remove TS_SessionHandle,TSHandleIdentifier            | Tian Jiang         |
 | Remove TSStatus,TSExecuteInsertRowInBatchResp            | Jialin Qiao|
 
+
 ## 2. Add New
 
 | Latest Changes                                               | Related Committers                 |
@@ -40,6 +69,8 @@ Last Updated on 2020-5-25 by Kaifeng Xue.
 | Add struct TSQueryNonAlignDataSet                            | Haonan Hou|
 | Add struct TSInsertTabletsReq                            | Jialin Qiao|
 | Add method insertTablets                            | Jialin Qiao|
+| Add method testInsertTablets                            | Xiangdong Huang |
+| add new field `inferType` in TSInsertRecordReq  | Jialin Qiao      |
 
 ## 3. Update
 
@@ -54,7 +85,7 @@ Last Updated on 2020-5-25 by Kaifeng Xue.
 
 
 
-# 0.8.0 (version-0) -> version-1
+# 0.8.x -> 0.9.x (version-1)
 
 Last Updated on 2019-10-27 by Lei Rui.
 

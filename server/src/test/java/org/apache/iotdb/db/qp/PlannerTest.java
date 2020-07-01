@@ -18,11 +18,17 @@
  */
 package org.apache.iotdb.db.qp;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Collections;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -32,19 +38,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Collections;
-
-import static org.junit.Assert.assertEquals;
-
 public class PlannerTest {
 
   private CompressionType compressionType =
       TSFileDescriptor.getInstance().getConfig().getCompressor();
-  private MManager mManager = MManager.getInstance();
+  private MManager mManager = IoTDB.metaManager;
   private Planner processor = new Planner();
 
   static {
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
   }
 
   @Before
@@ -127,7 +129,7 @@ public class PlannerTest {
 
     String groupbyStatement = "select sum(*) from root.vehicle where root.vehicle.device1.sensor1 > 50 group by ([100,1100), 20ms)";
     PhysicalPlan plan9 = processor.parseSQLToPhysicalPlan(groupbyStatement);
-    assertEquals(OperatorType.GROUPBY, plan9.getOperatorType());
+    assertEquals(OperatorType.GROUPBYTIME, plan9.getOperatorType());
 
     String fillStatement = "select sensor1 from root.vehicle.device1 where time = 50 Fill(int32[linear, 5m, 5m], boolean[previous, 5m])";
     PhysicalPlan plan10 = processor.parseSQLToPhysicalPlan(fillStatement);
@@ -150,5 +152,16 @@ public class PlannerTest {
   public void parseErrorSQLToPhysicalPlan() throws QueryProcessException {
     String createTSStatement = "create timeseriess root.vehicle.d1.s1 with datatype=INT32,encoding=RLE";
     processor.parseSQLToPhysicalPlan(createTSStatement);
+  }
+
+  @Test
+  public void insertStatementWithNullValue() throws QueryProcessException {
+    String createTSStatement = "insert into root.vehicle.d0(time,s0) values(10,NaN)";
+    PhysicalPlan physicalPlan = processor.parseSQLToPhysicalPlan(createTSStatement);
+
+    assertTrue(physicalPlan instanceof InsertRowPlan);
+    assertEquals("NaN", ((InsertRowPlan) physicalPlan).getValues()[0]);
+    // Later we will use Double.parseDouble so we have to ensure that it is parsed right
+    assertEquals(Double.NaN, Double.parseDouble("NaN"), 1e-15);
   }
 }

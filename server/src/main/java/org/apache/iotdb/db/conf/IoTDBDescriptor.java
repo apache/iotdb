@@ -70,7 +70,6 @@ public class IoTDBDescriptor {
     boolean ok = parseCommandLine(options, params);
     if (!ok) {
       logger.error("replaces properties failed, use default conf params");
-      return;
     } else {
       if (commandLine.hasOption(RPC_PORT)) {
         conf.setRpcPort(Integer.parseInt(commandLine.getOptionValue(RPC_PORT)));
@@ -90,7 +89,7 @@ public class IoTDBDescriptor {
     return true;
   }
 
-  private String getPropsUrl() {
+  public String getPropsUrl() {
     String url = System.getProperty(IoTDBConstant.IOTDB_CONF, null);
     if (url == null) {
       url = System.getProperty(IoTDBConstant.IOTDB_HOME, null);
@@ -203,6 +202,9 @@ public class IoTDBDescriptor {
       conf.setSyncDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
+      conf.setTracingDir(FilePathUtils
+          .regularizePath(conf.getBaseDir() + IoTDBConstant.TRACING_FOLDER_NAME));
+
       conf.setQueryDir(
           FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
@@ -271,6 +273,10 @@ public class IoTDBDescriptor {
           .parseInt(properties.getProperty("metadata_node_cache_size",
               Integer.toString(conf.getmManagerCacheSize())).trim()));
 
+      conf.setmRemoteSchemaCacheSize(Integer
+          .parseInt(properties.getProperty("remote_schema_cache_size",
+              Integer.toString(conf.getmRemoteSchemaCacheSize())).trim()));
+
       conf.setLanguageVersion(properties.getProperty("language_version",
           conf.getLanguageVersion()).trim());
 
@@ -308,9 +314,23 @@ public class IoTDBDescriptor {
       conf.setChunkMergePointThreshold(Integer.parseInt(properties.getProperty(
           "chunk_merge_point_threshold", Integer.toString(conf.getChunkMergePointThreshold()))));
 
+      conf.setEnablePartialInsert(
+          Boolean.parseBoolean(properties.getProperty("enable_partial_insert",
+              String.valueOf(conf.isEnablePartialInsert()))));
+
+      conf.setMtreeSnapshotInterval(Integer.parseInt(properties.getProperty(
+          "mtree_snapshot_interval", Integer.toString(conf.getMtreeSnapshotInterval()))));
+      conf.setMtreeSnapshotThresholdTime(Integer.parseInt(properties.getProperty(
+          "mtree_snapshot_threshold_time",
+          Integer.toString(conf.getMtreeSnapshotThresholdTime()))));
+
       conf.setEnablePerformanceStat(Boolean
           .parseBoolean(properties.getProperty("enable_performance_stat",
               Boolean.toString(conf.isEnablePerformanceStat())).trim()));
+
+      conf.setEnablePerformanceTracing(Boolean
+          .parseBoolean(properties.getProperty("enable_performance_tracing",
+              Boolean.toString(conf.isEnablePerformanceTracing())).trim()));
 
       conf.setPerformanceStatDisplayInterval(Long
           .parseLong(properties.getProperty("performance_stat_display_interval",
@@ -411,12 +431,15 @@ public class IoTDBDescriptor {
         conf.setEnableMQTTService(
             Boolean.parseBoolean(properties.getProperty(IoTDBConstant.ENABLE_MQTT)));
       }
+      if (properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE) != null) {
+        conf.setMqttMaxMessageSize(
+            Integer.parseInt(properties.getProperty(IoTDBConstant.MQTT_MAX_MESSAGE_SIZE)));
+      }
 
       conf.setAuthorizerProvider(properties.getProperty("authorizer_provider_class",
           "org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer"));
       //if using org.apache.iotdb.db.auth.authorizer.OpenIdAuthorizer, openID_url is needed.
       conf.setOpenIdProviderUrl(properties.getProperty("openID_url", ""));
-
 
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance().getConfig()
@@ -482,12 +505,17 @@ public class IoTDBDescriptor {
     conf.setAutoCreateSchemaEnabled(
         Boolean.parseBoolean(properties.getProperty("enable_auto_create_schema",
             Boolean.toString(conf.isAutoCreateSchemaEnabled()).trim())));
-    conf.setBooleanStringInferType(TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
-        conf.getBooleanStringInferType().toString())));
-    conf.setIntegerStringInferType(TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
-        conf.getIntegerStringInferType().toString())));
-    conf.setFloatingStringInferType(TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
-        conf.getFloatingStringInferType().toString())));
+    conf.setBooleanStringInferType(
+        TSDataType.valueOf(properties.getProperty("boolean_string_infer_type",
+            conf.getBooleanStringInferType().toString())));
+    conf.setIntegerStringInferType(
+        TSDataType.valueOf(properties.getProperty("integer_string_infer_type",
+            conf.getIntegerStringInferType().toString())));
+    conf.setFloatingStringInferType(
+        TSDataType.valueOf(properties.getProperty("floating_string_infer_type",
+            conf.getFloatingStringInferType().toString())));
+    conf.setNanStringInferType(TSDataType.valueOf(properties.getProperty("nan_string_infer_type",
+        conf.getNanStringInferType().toString())));
     conf.setDefaultStorageGroupLevel(
         Integer.parseInt(properties.getProperty("default_storage_group_level",
             Integer.toString(conf.getDefaultStorageGroupLevel()))));
@@ -557,17 +585,9 @@ public class IoTDBDescriptor {
             .toString(TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
   }
 
-  public void loadHotModifiedProps() throws QueryProcessException {
-    String url = getPropsUrl();
-    if (url == null) {
-      return;
-    }
-
-    try (InputStream inputStream = new FileInputStream(new File(url))) {
-      logger.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
-      properties.load(inputStream);
-
+  public void loadHotModifiedProps(Properties properties)
+      throws QueryProcessException {
+    try {
       // update data dirs
       String dataDirs = properties.getProperty("data_dirs", null);
       if (dataDirs != null) {
@@ -610,6 +630,22 @@ public class IoTDBDescriptor {
       // update tsfile-format config
       loadTsFileProps(properties);
 
+    } catch (Exception e) {
+      throw new QueryProcessException(
+          String.format("Fail to reload configuration because %s", e));
+    }
+  }
+
+  public void loadHotModifiedProps() throws QueryProcessException {
+    String url = getPropsUrl();
+    if (url == null) {
+      return;
+    }
+    try (InputStream inputStream = new FileInputStream(new File(url))) {
+      logger.info("Start to reload config file {}", url);
+      Properties properties = new Properties();
+      properties.load(inputStream);
+      loadHotModifiedProps(properties);
     } catch (Exception e) {
       logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(

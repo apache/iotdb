@@ -16,12 +16,18 @@
 # under the License.
 #
 
-import sys, struct
+import sys
+import struct
 
 # If you generate IoTDB python library manually, add it to your python path
-sys.path.append("../target")
 
-from thrift.protocol import TBinaryProtocol
+#for example, if you run compile.sh, you can use the following code:
+# sys.path.append("../target")
+
+#if you use maven to compile the thrift api, just use the follwoing code:
+sys.path.append("../../service-rpc/target/generated-sources-python")
+
+from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
 
 from iotdb.rpc.TSIService import Client, TSCreateTimeseriesReq, TSInsertRecordReq, \
@@ -142,9 +148,15 @@ def convertQueryDataSet(queryDataSet, dataTypeList):
 
     return records
 
+def valueListToBytes(values, dataTypes):
+    valueByte = bytearray();
+    for value, dataType in enumerate(values, dataTypes):
+        pass
+    return valueByte
+
 
 if __name__ == '__main__':
-    ip = "localhost"
+    ip = "127.0.0.1"
     port = "6667"
     username = 'root'
     password = 'root'
@@ -152,9 +164,11 @@ if __name__ == '__main__':
     transport = TSocket.TSocket(ip, port)
 
     # Buffering is critical. Raw sockets are very slow
-    transport = TTransport.TBufferedTransport(transport)
+    transport = TTransport.TFramedTransport(transport)
 
     # Wrap in a protocol
+    # use TCompactProtocol if the server enable thrift compression,
+    # otherwise use TBinaryProtocol
     protocol = TBinaryProtocol.TBinaryProtocol(transport)
 
     # Create a client to use the protocol encoder
@@ -164,7 +178,7 @@ if __name__ == '__main__':
     transport.open()
 
     # Authentication
-    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
+    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
     resp = client.openSession(TSOpenSessionReq(client_protocol=clientProtocol,
                                                username=username,
                                                password=password))
@@ -180,7 +194,7 @@ if __name__ == '__main__':
 
     # create a storage group
     status = client.setStorageGroup(sessionId, "root.group1")
-    print(status.statusType)
+    print(status.message)
 
     # create timeseries
     status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
@@ -188,55 +202,67 @@ if __name__ == '__main__':
                                                            TSDataType['INT64'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
-    print(status.statusType)
+    print(status.message)
     status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
                                                            "root.group1.s2",
                                                            TSDataType['INT32'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
-    print(status.statusType)
+    print(status.message)
     status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
                                                            "root.group1.s3",
                                                            TSDataType['DOUBLE'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
-    print(status.statusType)
+    print(status.message)
     status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
                                                            "root.group1.s4",
                                                            TSDataType['FLOAT'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
-    print(status.statusType)
+    print(status.message)
     status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
                                                            "root.group1.s5",
                                                            TSDataType['BOOLEAN'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
-    print(status.statusType)
+    print(status.message)
     status = client.createTimeseries(TSCreateTimeseriesReq(sessionId,
                                                            "root.group1.s6",
                                                            TSDataType['TEXT'],
                                                            TSEncoding['PLAIN'],
                                                            Compressor['UNCOMPRESSED']))
-    print(status.statusType)
+    print(status.message)
 
     deviceId = "root.group1"
     measurements = ["s1", "s2", "s3", "s4", "s5", "s6"]
 
     # insert a single row
-    values = ["1", "11", "1.1", "11.1", "TRUE", "\'text0\'"]
+    values = [1, 11, 1.1, 11.1, True, "\'text0\'"]
+    dataTypes = [TSDataType['INT64'], TSDataType['INT32'], TSDataType['DOUBLE'],
+                 TSDataType['FLOAT'], TSDataType['BOOLEAN'], TSDataType['TEXT']]
+    
+    value_pack_str = '>hqhihdhfh?hi' + str(len(values[5])) + 's'
+    encoding = 'utf-8'
+    valueByte = bytearray()
+    
+    valueByte.extend(struct.pack(value_pack_str,dataTypes[0], values[0],
+                                             dataTypes[1], values[1],
+                                             dataTypes[2], values[2],
+                                             dataTypes[3], values[3],
+                                             dataTypes[4], values[4],
+                                             dataTypes[5], len(values[5]), bytes(values[5], encoding)))
     timestamp = 1
-    status = client.insert(TSInsertRecordReq(sessionId, deviceId, measurements,
-                                          values, timestamp))
-    print(status.status)
+    
+    status = client.insertRecord(TSInsertRecordReq(sessionId, deviceId, measurements, valueByte, timestamp))
+    print(status.message)
 
     # insert multiple rows, this interface is more efficient
     values = bytearray()
     times = bytearray()
 
     rowCnt = 3
-    dataTypes = [TSDataType['INT64'], TSDataType['INT32'], TSDataType['DOUBLE'],
-                 TSDataType['FLOAT'], TSDataType['BOOLEAN'], TSDataType['TEXT']]
+
     # the first 3 belong to 's1', the second 3 belong to 's2'... the last 3
     # belong to 's6'
     # to transfer a string, you must first send its length and then its bytes
@@ -258,14 +284,14 @@ if __name__ == '__main__':
     resp = client.insertTablet(TSInsertTabletReq(sessionId,deviceId,
                                                   measurements, values,
                                                   times, dataTypes, rowCnt))
-    status = resp.status
-    print(status.statusType)
+    status = resp.code
+    print(status)
 
     # execute deletion (or other statements)
     resp = client.executeStatement(TSExecuteStatementReq(sessionId, "DELETE FROM "
                                                             "root.group1 where time < 2", stmtId))
     status = resp.status
-    print(status.statusType)
+    print(status.message)
 
     # query the data
     stmt = "SELECT * FROM root.group1"
@@ -278,12 +304,12 @@ if __name__ == '__main__':
     print(dataTypeList)
 
     status = resp.status
-    print(status.statusType)
+    print(status.message)
 
     queryId = resp.queryId
     while True:
         rst = client.fetchResults(TSFetchResultsReq(sessionId, stmt, fetchSize,
-                                                    queryId)).queryDataSet
+                                                    queryId, True)).queryDataSet
         records = convertQueryDataSet(rst, dataTypeList)
         if len(records) == 0:
             break
@@ -297,20 +323,20 @@ if __name__ == '__main__':
 
     # query metadata
     metaReq = TSFetchMetadataReq(sessionId=sessionId, type=MetaQueryTypes.CATALOG_DEVICES)
-    print(client.fetchMetadata(metaReq).devices)
+    print(client.fetchMetadata(metaReq).status)
 
     metaReq = TSFetchMetadataReq(sessionId=sessionId,
                                  type=MetaQueryTypes.CATALOG_TIMESERIES,
                                  columnPath='root')
-    print(client.fetchMetadata(metaReq).timeseriesList)
+    #print(client.fetchMetadata(metaReq).timeseriesList)
 
     metaReq = TSFetchMetadataReq(sessionId=sessionId,
                                  type=MetaQueryTypes.CATALOG_CHILD_PATHS,
                                  columnPath='root')
-    print(client.fetchMetadata(metaReq).childPaths)
+    #print(client.fetchMetadata(metaReq).childPaths)
 
     metaReq = TSFetchMetadataReq(sessionId=sessionId, type=MetaQueryTypes.CATALOG_STORAGE_GROUP)
-    print(client.fetchMetadata(metaReq).storageGroups)
+    #print(client.fetchMetadata(metaReq).storageGroups)
 
     metaReq = TSFetchMetadataReq(sessionId=sessionId,
                                  type=MetaQueryTypes.CATALOG_COLUMN,

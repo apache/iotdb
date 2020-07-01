@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -85,7 +86,7 @@ public class FillQueryExecutor {
       } else {
         fill = typeIFillMap.get(dataType).copy();
       }
-      fill.configureFill(path, dataType, queryTime,
+      fill = configureFill(fill, path, dataType, queryTime,
           fillQueryPlan.getAllMeasurementsInDevice(path.getDevice()), context);
 
       TimeValuePair timeValuePair = fill.getFillResult();
@@ -99,5 +100,11 @@ public class FillQueryExecutor {
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
+  }
+
+  protected IFill configureFill(IFill fill, Path path, TSDataType dataType, long queryTime,
+      Set<String> deviceMeasurements, QueryContext context) {
+    fill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
+    return fill;
   }
 }

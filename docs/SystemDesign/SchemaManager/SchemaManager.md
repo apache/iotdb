@@ -34,7 +34,7 @@ Metadata of IoTDB is managed by MManger, including:
 
 	> tag key -> tag value -> timeseries LeafMNode
 
-In the process of initializing, MManager will replay the mlog to load the metadata into memory. There are six types of operation log:
+In the process of initializing, MManager will replay the mlog to load the metadata into memory. There are seven types of operation log:
 > At the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
 
 * Create Timeseries
@@ -55,11 +55,11 @@ In the process of initializing, MManager will replay the mlog to load the metada
 		* if succeed
 			* delete the LeafMNode
 			* read tlog using offset in the LeafMNode, update tag inverted index
-			* if the storage group becomes empty after deleting, return the name of it
+			* if the storage group becomes empty after deleting, record its name
 		* if failed
 			* return the full path of failed timeseries
-	* iterate the returned empty storage group list, and delete them
 	* if not restart
+	   * delete the recorded empty storage group
 		* persist log into mlog
 		* currently, we won't delete the tag/attribute info of that timeseries in tlog
 	
@@ -86,8 +86,11 @@ In the process of initializing, MManager will replay the mlog to load the metada
 * Change the offset of Timeseries
 	* modify the offset of the timeseries's LeafMNode
 
+* Change the alias of Timeseries
+	* modify the alias of the timeseries's LeafMNode and update the aliasMap in its parent node.
 
-In addition to these six operation that are needed to be logged, there are another six alter operation to tag/attribute info of timeseries.
+
+In addition to these seven operation that are needed to be logged, there are another six alter operation to tag/attribute info of timeseries.
  
 > Same as above, at the beginning of each operation, it will try to obatin the write lock of MManager, and release it after operation.
 
@@ -127,8 +130,10 @@ In addition to these six operation that are needed to be logged, there are anoth
 	* iterate the attributes needed to be added, if it has existed, then throw exception, otherwise, add it
 	* persist the new attribute information into tlog
 
-* upsert tags/attributes
+* upsert alias/tags/attributes
 	* obtain the LeafMNode of that timeseries
+	* change the alias of the timeseries's LeafMNode and update the aliasMap in its parent node if exists
+	* persist the updated alias into mlog
 	* read tag information through the offset in LeafMNode
 	* iterate the tags and attributes needed to be upserted, if it has existed，use the new value to update it, otherwise, add it
 	* persist the updated tags and attributes information into tlog
@@ -170,6 +175,42 @@ The root node exists by default. Creating storage groups, deleting storage group
 
 * Deleting a storage group is similar to deleting a time series. That is, the storage group or time series node is deleted in its parent node. The time series node also needs to delete its alias in the parent node; if in the deletion process, a node is found not to have any child node, needs to be deleted recursively.
 	
+## MTree checkpoint
+
+### Create condition
+
+To speed up restarting of IoTDB, we set checkpoint for MTree to avoid reading `mlog.txt` and executing the commands line by line. There are two ways to create MTree snapshot:
+1. Background checking and creating automatically: Every 10 minutes, background thread checks the last modified time of MTree. If:
+  * If users haven’t modified MTree for more than 1 hour (could be configured), which means `mlog.txt` hasn’t been updated for more than 1 hour
+  * `mlog.txt` has reached 100000 lines (could be configured)
+
+2. Creating manually: Users can use `create snapshot for schema` to create MTree snapshot
+
+### Create process
+
+The method is `MManager.createMTreeSnapshot()`:
+1. Add read lock for MTree to avoid modifying during creating snapshot
+2. Serialize MTree into temporary snapshot file (`mtree.snapshot.tmp`). The serialization of MTree is depth-first from children to parent. Information of nodes are converted into String according to different node types, which is convenient for deserialization.
+  * MNode: 0, name, children size
+  * StorageGroupMNode: 1, name, TTL, children size
+  * MeasurementMNode: 2, name, alias, TSDataType, TSEncoding, CompressionType, props, offset, children size
+
+3. After serialization, rename the temp file to a formal file (`mtree.snapshot`), to avoid crush of server and failure of serialization.
+4. Clear `mlog.txt` by `MLogWriter.clear()` method:
+  * Close BufferedWriter and delete `mlog.txt` file
+  * Create a new BufferedWriter
+  * Set `lineNumber` as 0. `lineNumber` records the line number of `mlog.txt`, which is used for background thread to check whether it is larger than the threshold configured by user.
+
+5. Release the read lock.
+
+### Recover process
+
+The method is `MManager.initFromLog()`:
+
+1. Check whether the temp file `mtree.snapshot.tmp` exists. If so, there may exist crush of server and failure of serialization. Delete the temp file.
+2. Check whether the snapshot file `mtree.snapshot` exists. If not, use a new MTree; otherwise, start deserializing from snapshot and get MTree
+3. Read and operate all lines in `mlog.txt` and finish the recover process of MTree. Update `lineNumber` at the same time and return it for recording the line number of `mlog.txt` afterwards.
+
 ## Log management of metadata
 
 * org.apache.iotdb.db.metadata.MLogWriter
@@ -219,6 +260,13 @@ sql examples and the corresponding mlog record:
    
    > format: 10,path,[change offset]
 
+* alter timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias
+   
+   > mlog: 13,root.turbine.d1.s1,newAlias
+   
+   > format: 13,path,[new alias]
+                                                                                                                
+                                                                                                              
 ## TLog
 * org.apache.iotdb.db.metadata.TagLogFile
 

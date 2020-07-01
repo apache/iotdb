@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.jdbc;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.RowIdLifetime;
+import java.sql.SQLException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
@@ -35,7 +39,10 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
   private static final Logger logger = LoggerFactory
           .getLogger(IoTDBDatabaseMetadata.class);
   private static final String METHOD_NOT_SUPPORTED_STRING = "Method not supported";
-  private static final String DATABASE_VERSION = "0.10.0-SNAPSHOT";
+  //when running the program in IDE, we can not get the version info using getImplementationVersion()
+  private static final String DATABASE_VERSION =
+      IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() != null
+          ? IoTDBDatabaseMetadata.class.getPackage().getImplementationVersion() : "UNKNOWN";
   private long sessionId;
 
   IoTDBDatabaseMetadata(IoTDBConnection connection, TSIService.Iface client, long sessionId) {

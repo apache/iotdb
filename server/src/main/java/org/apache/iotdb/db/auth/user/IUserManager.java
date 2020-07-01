@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.auth.user;
 
 import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.entity.User;
 
@@ -30,8 +31,7 @@ public interface IUserManager {
   /**
    * Get a user object.
    *
-   * @param username
-   *            The name of the user.
+   * @param username The name of the user.
    * @return A user object whose name is username or null if such user does not exist.
    * @throws AuthException if an exception is raised when interacting with the lower storage.
    */
@@ -40,57 +40,46 @@ public interface IUserManager {
   /**
    * Create a user with given username and password. New users will only be granted no privileges.
    *
-   * @param username
-   *            is not null or empty
-   * @param password
-   *            is not null or empty
+   * @param username is not null or empty
+   * @param password is not null or empty
    * @return True if the user is successfully created, false when the user already exists.
-   * @throws AuthException
-   *             if the given username or password is illegal.
+   * @throws AuthException if the given username or password is illegal.
    */
   boolean createUser(String username, String password) throws AuthException;
 
   /**
    * Delete a user.
    *
-   * @param username
-   *            the username of the user.
+   * @param username the username of the user.
    * @return True if the user is successfully deleted, false if the user does not exists.
-   * @throws AuthException
-   *             .
+   * @throws AuthException .
    */
   boolean deleteUser(String username) throws AuthException;
 
   /**
    * Grant a privilege on a seriesPath to a user.
    *
-   * @param username
-   *            The username of the user to which the privilege should be added.
-   * @param path
-   *            The seriesPath on which the privilege takes effect. If the privilege
-   *            is a seriesPath-free privilege, this should be "root".
-   * @param privilegeId
-   *            An integer that represents a privilege.
+   * @param username    The username of the user to which the privilege should be added.
+   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
+   *                    seriesPath-free privilege, this should be "root".
+   * @param privilegeId An integer that represents a privilege.
    * @return True if the permission is successfully added, false if the permission already exists.
-   * @throws AuthException
-   *             If the user does not exist or the privilege or the seriesPath is illegal.
+   * @throws AuthException If the user does not exist or the privilege or the seriesPath is
+   *                       illegal.
    */
   boolean grantPrivilegeToUser(String username, String path, int privilegeId) throws AuthException;
 
   /**
    * Revoke a privilege on seriesPath from a user.
    *
-   * @param username
-   *            The username of the user from which the privilege should be removed.
-   * @param path
-   *            The seriesPath on which the privilege takes effect. If the privilege
-   *            is a seriesPath-free privilege, this should be "root".
-   * @param privilegeId
-   *            An integer that represents a privilege.
-   * @return True if the permission is successfully revoked,
-   *         false if the permission does not exists.
-   * @throws AuthException
-   *             If the user does not exist or the privilege or the seriesPath is illegal.
+   * @param username    The username of the user from which the privilege should be removed.
+   * @param path        The seriesPath on which the privilege takes effect. If the privilege is a
+   *                    seriesPath-free privilege, this should be "root".
+   * @param privilegeId An integer that represents a privilege.
+   * @return True if the permission is successfully revoked, false if the permission does not
+   * exists.
+   * @throws AuthException If the user does not exist or the privilege or the seriesPath is
+   *                       illegal.
    */
   boolean revokePrivilegeFromUser(String username, String path,
       int privilegeId) throws AuthException;
@@ -98,39 +87,30 @@ public interface IUserManager {
   /**
    * Modify the password of a user.
    *
-   * @param username
-   *            The user whose password is to be modified.
-   * @param newPassword
-   *            The new password.
+   * @param username    The user whose password is to be modified.
+   * @param newPassword The new password.
    * @return True if the password is successfully modified, false if the new password is illegal.
-   * @throws AuthException
-   *             If the user does not exists.
+   * @throws AuthException If the user does not exists.
    */
   boolean updateUserPassword(String username, String newPassword) throws AuthException;
 
   /**
    * Add a role to a user.
    *
-   * @param roleName
-   *            The name of the role to be added.
-   * @param username
-   *            The name of the user to which the role is added.
+   * @param roleName The name of the role to be added.
+   * @param username The name of the user to which the role is added.
    * @return True if the role is successfully added, false if the role already exists.
-   * @throws AuthException
-   *             If the user does not exist.
+   * @throws AuthException If the user does not exist.
    */
   boolean grantRoleToUser(String roleName, String username) throws AuthException;
 
   /**
    * Revoke a role from a user.
    *
-   * @param roleName
-   *            The name of the role to be removed.
-   * @param username
-   *            The name of the user from which the role is removed.
+   * @param roleName The name of the role to be removed.
+   * @param username The name of the user from which the role is removed.
    * @return True if the role is successfully removed, false if the role does not exist.
-   * @throws AuthException
-   *             If the user does not exist.
+   * @throws AuthException If the user does not exist.
    */
   boolean revokeRoleFromUser(String roleName, String username) throws AuthException;
 
@@ -141,12 +121,14 @@ public interface IUserManager {
 
   /**
    * List all users in the database.
+   *
    * @return A list that contains all users'name.
    */
   List<String> listAllUsers();
 
   /**
    * Whether data water-mark is enabled for user 'userName'.
+   *
    * @param userName
    * @return
    * @throws AuthException if the user does not exist
@@ -155,9 +137,23 @@ public interface IUserManager {
 
   /**
    * Enable or disable data water-mark for user 'userName'.
+   *
    * @param userName
    * @param useWaterMark
    * @throws AuthException if the user does not exist.
    */
   void setUserUseWaterMark(String userName, boolean useWaterMark) throws AuthException;
+
+
+  /**
+   * clear all old users info, replace the old users with the new one. The caller should
+   * guarantee that no other methods of this interface are invoked concurrently when this method
+   * is called.
+   *
+   * @param users new users info
+   * @throws AuthException
+   */
+  void replaceAllUsers(Map<String, User> users) throws AuthException;
+
+
 }

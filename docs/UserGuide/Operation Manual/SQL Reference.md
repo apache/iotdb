@@ -32,17 +32,16 @@ All of these statements are write in IoTDB's own syntax, for details about the s
 
 ## Keywords
 
-Please not use these keywords as identifiers.
+Do not use the following keywords as identifiers. You can open an [issue](https://issues.apache.org/jira/projects/IOTDB/issues) to provide new requirements or suggestions. 
 
 ```
 CREATE, INSERT, UPDATE, DELETE, SELECT, SHOW, GRANT, INTO, SET, WHERE, FROM, TO, BY, DEVICE,
 CONFIGURATION, DESCRIBE, SLIMIT, LIMIT, UNLINK, OFFSET, SOFFSET, FILL, LINEAR, PREVIOUS, PREVIOUSUNTILLAST,
-METADATA, TIMESERIES, TIMESTAMP, PROPERTY, WITH, ROOT, DATATYPE, COMPRESSOR, STORAGE, GROUP, LABEL,INT32,
-INT64, FLOAT, DOUBLE, BOOLEAN, TEXT, ENCODING, PLAIN, PLAIN_DICTIONARY, RLE, DIFF, TS_2DIFF, GORILLA, REGULAR,
-BITMAP, ADD, UPSERT, VALUES, NOW, LINK, INDEX, USING, ON, DROP, MERGE, LIST, USER, PRIVILEGES, ROLE, ALL, OF,
+METADATA, TIMESERIES, TIMESTAMP, PROPERTY, WITH, ROOT, DATATYPE, COMPRESSOR, STORAGE, GROUP, LABEL, ADD, UPSERT, VALUES, NOW, LINK, INDEX, USING, ON, DROP, MERGE, LIST, USER, PRIVILEGES, ROLE, ALL, OF,
 ALTER, PASSWORD, REVOKE, LOAD, WATERMARK_EMBEDDING, UNSET, TTL, FLUSH, TASK, INFO, DYNAMIC, PARAMETER, VERSION,
 REMOVE, MOVE, CHILD, PATHS, DEVICES, COUNT, NODES, LEVEL, MIN_TIME, MAX_TIME, MIN_VALUE, MAX_VALUE, AVG, FIRST_VALUE,
-SUM, LAST_VALUE, LAST, DISABLE, ALIGN, COMPRESSION, TIME, ATTRIBUTES, TAGS,RENAME, FULL, CLEAR, CACHE
+SUM, LAST_VALUE, LAST, DISABLE, ALIGN, COMPRESSION, TIME, ATTRIBUTES, TAGS,RENAME, FULL, CLEAR, CACHE,
+SNAPSHOT, FOR, SCHEMA
 ```
 
 ## Show Version
@@ -55,7 +54,7 @@ show version
 +---------------+
 |        version|
 +---------------+
-|0.10.0-SNAPSHOT|
+|0.11.0-SNAPSHOT|
 +---------------+
 Total line number = 1
 It costs 0.417s
@@ -208,6 +207,14 @@ Eg: IoTDB > SHOW STORAGE GROUP
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
 
+* Show Merge Status Statement
+
+```
+SHOW MERGE
+Eg: IoTDB > SHOW MERGE
+Note: This statement can be used in IoTDB Client and JDBC.
+```
+
 * Count Timeseries Statement
 
 ```
@@ -276,6 +283,12 @@ Eg: IoTDB > SHOW CHILD PATHS root.ln.wf*
 Note: The path can be prefix path or star path, the nodes can be in a "prefix + star" format. 
 Note: This statement can be used in IoTDB Client and JDBC.
 ```
+
+* Create snapshot for schema
+```
+CREATE SNAPSHOT FOR SCHEMA
+```
+
 ## Data Management Statement
 
 * Insert Record Statement
@@ -338,6 +351,7 @@ Eg. IoTDB > SELECT MIN_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf
 Eg. IoTDB > SELECT MAX_TIME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 24
 Eg. IoTDB > SELECT MIN_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature > 23
 Eg. IoTDB > SELECT MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25
+Eg. IoTDB > SELECT COUNT(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 25 GROUP BY LEVEL=1
 Note: the statement needs to satisfy this constraint: <Path>(SelectClause) + <PrefixPath>(FromClause) = <Timeseries>
 Note: If the <SensorExpr>(WhereClause) is started with <Path> and not with ROOT, the statement needs to satisfy this constraint: <PrefixPath>(FromClause) + <Path>(SensorExpr) = <Timeseries>
 Note: In Version 0.7.0, if <WhereClause> includes `OR`, time filter can not be used.
@@ -347,7 +361,7 @@ Note: There must be a space on both sides of the plus and minus operator appeari
 * Group By Statement
 
 ```
-SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByClause>
+SELECT <SelectClause> FROM <FromClause> WHERE  <WhereClause> GROUP BY <GroupByTimeClause>
 SelectClause : <Function> [COMMA < Function >]*
 Function : <AggregationFunction> LPAREN <Path> RPAREN
 FromClause : <PrefixPath>
@@ -358,7 +372,7 @@ TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
 RelativeTimeDurationUnit = Integer ('Y'|'MO'|'W'|'D'|'H'|'M'|'S'|'MS'|'US'|'NS')
 RelativeTime : (now() | <TimeValue>) [(+|-) RelativeTimeDurationUnit]+
 SensorExpr : (<Timeseries> | <Path>) PrecedenceEqualOperator <PointValue>
-GroupByClause : LPAREN <TimeInterval> COMMA <TimeUnit> (COMMA <TimeUnit>)? RPAREN
+GroupByTimeClause : LPAREN <TimeInterval> COMMA <TimeUnit> (COMMA <TimeUnit>)? RPAREN
 TimeInterval: LSBRACKET <TimeValue> COMMA <TimeValue> RRBRACKET | LRBRACKET <TimeValue> COMMA <TimeValue> RSBRACKET
 TimeUnit : Integer <DurationUnit>
 DurationUnit : "ms" | "s" | "m" | "h" | "d" | "w"
@@ -928,13 +942,21 @@ atomicity of data deletion is not guaranteed for efficiency concerns. So we reco
 not change the TTL once it is set or at least do not reset it frequently, unless you are determined 
 to suffer the unpredictability. 
 
+* Delete Partition (experimental)
+```
+DELETE PARTITION StorageGroupName INT(COMMA INT)*
+Eg DELETE PARTITION root.sg1 0,1,2
+This example will delete the first 3 time partitions of storage group root.sg1.
+```
+The partitionId can be found in data folders or converted using `timestamp / partitionInterval`.
+
 # Reference
 
 ## Keywords
 
 ```
 Keywords for IoTDB (case insensitive):
-ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SELECT, SET, SHOW, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
+ADD, BY, COMPRESSOR, CREATE, DATATYPE, DELETE, DESCRIBE, DROP, ENCODING, EXIT, FOR, FROM, GRANT, GROUP, LABLE, LINK, INDEX, INSERT, INTO, LOAD, MAX_POINT_NUMBER, MERGE, METADATA, ON, ORDER, PASSWORD, PRIVILEGES, PROPERTY, QUIT, REVOKE, ROLE, ROOT, SCHEMA, SELECT, SET, SHOW, SNAPSHOT, STORAGE, TIME, TIMESERIES, TIMESTAMP, TO, UNLINK, UPDATE, USER, USING, VALUE, VALUES, WHERE, WITH
 
 Keywords with special meanings (case insensitive):
 * Data Types: BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT 

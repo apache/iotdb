@@ -57,7 +57,7 @@ public class UpgradeUtils {
    * judge whether a tsfile needs to be upgraded
    */
   public static boolean isNeedUpgrade(TsFileResource tsFileResource) {
-    tsFileResource.getWriteQueryLock().readLock().lock();
+    tsFileResource.readLock();
     //case the TsFile's length is equal to 0, the TsFile does not need to be upgraded
     if (tsFileResource.getFile().length() == 0) {
       return false;
@@ -71,7 +71,7 @@ public class UpgradeUtils {
       logger.error("meet error when judge whether file needs to be upgraded, the file's path:{}",
           tsFileResource.getFile().getAbsolutePath(), e);
     } finally {
-      tsFileResource.getWriteQueryLock().readLock().unlock();
+      tsFileResource.readUnlock();
     }
     return false;
   }

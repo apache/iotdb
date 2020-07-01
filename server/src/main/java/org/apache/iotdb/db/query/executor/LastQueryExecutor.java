@@ -20,20 +20,17 @@
 package org.apache.iotdb.db.query.executor;
 
 
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import java.util.Set;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -46,9 +43,14 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
   private List<Path> selectedSeries;
@@ -112,9 +114,9 @@ public class LastQueryExecutor {
       throws IOException, QueryProcessException, StorageEngineException {
 
     // Retrieve last value from MNode
-    LeafMNode node;
+    MeasurementMNode node;
     try {
-      node = (LeafMNode) MManager.getInstance().getNodeByPath(seriesPath.toString());
+      node = (MeasurementMNode) IoTDB.metaManager.getNodeByPath(seriesPath.toString());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
@@ -166,8 +168,9 @@ public class LastQueryExecutor {
           FileLoaderUtils.loadTimeSeriesMetadata(resource, seriesPath, context, null, sensors);
       if (timeseriesMetadata != null) {
         for (ChunkMetadata chunkMetaData : timeseriesMetadata.loadChunkMetadataList()) {
-          if (chunkMetaData.getEndTime() == resultPair.getTimestamp()
-              && chunkMetaData.getVersion() > version) {
+          if (chunkMetaData.getEndTime() > resultPair.getTimestamp()
+              || (chunkMetaData.getEndTime() == resultPair.getTimestamp()
+              && chunkMetaData.getVersion() > version)) {
             Statistics chunkStatistics = chunkMetaData.getStatistics();
             resultPair =
                 constructLastPair(

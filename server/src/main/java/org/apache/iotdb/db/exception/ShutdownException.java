@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,28 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.crud;
+package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.query.executor.fill.IFill;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.Map;
+public class ShutdownException extends IoTDBException {
 
-public class GroupByFillPlan extends GroupByPlan {
 
-  private Map<TSDataType, IFill> fillTypes;
-
-  public GroupByFillPlan() {
-    super();
-    setOperatorType(Operator.OperatorType.GROUP_BY_FILL);
+  public ShutdownException(String message, int errorCode) {
+    super(message, errorCode);
   }
 
-  public Map<TSDataType, IFill> getFillType() {
-    return fillTypes;
+  public ShutdownException(Throwable cause) {
+    super(cause.getMessage(), TSStatusCode.SHUT_DOWN_ERROR.getStatusCode());
   }
 
-  public void setFillType(Map<TSDataType, IFill> fillTypes) {
-    this.fillTypes = fillTypes;
+  public ShutdownException(String message, Throwable cause, int errorCode) {
+    super(message, cause, errorCode);
+  }
+
+  public ShutdownException(Throwable cause, int errorCode) {
+    super(cause, errorCode);
   }
 }

@@ -219,7 +219,7 @@ if (batchData.getMaxTimestamp() >= curEndTime) {
   private List<IReaderByTimestamp> allDataReaderList
   ```
 
-* private GroupByPlan groupByPlan
+* private GroupByPlan groupByTimePlan
 
 * private TimeGenerator timestampGenerator
 
@@ -266,3 +266,23 @@ for (int cnt = 1; cnt < timeStampFetchSize && timestampGenerator.hasNext(); cnt+
   }
 }
 ```
+
+## 使用Level来汇总降采样的总点数
+
+降采样后，我们也可以使用level关键字来进一步汇总点数。
+
+这个逻辑在 `GroupByTimeDataSet`类里。
+
+1. 首先，把所有涉及到的时序按level来进行汇集，最后的路径。
+    > 例如把root.sg1.d1.s0,root.sg1.d2.s1按level=1汇集成root.sg1。
+
+2. 然后调用上述的降采样逻辑求出所有时序的总点数信息，这个会返回RowRecord数据结构。
+
+3. 最后，把降采样返回的RowRecord按上述的final paths，进行累加，组合成新的RowRecord。
+
+    > 例如，把《root.sg1.d1.s0,3》，《root.sg1.d2.s1，4》聚合成《root.sg1，7》
+
+
+> 注意:
+> 1. 这里只支持count操作
+> 2. root的层级level=0

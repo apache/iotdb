@@ -24,9 +24,9 @@
 ## INSERT
 ### Insert Real-time Data
 
-IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) in [Client/Shell tools](../Client/Command%20Line%20Interface.html), or using [Java JDBC](../Client/Programming%20-%20JDBC.html) to perform single or batch execution of [INSERT SQL statement](/#/Documents/progress/chap5/sec4).
+IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) in [Client/Shell tools](../Client/Command%20Line%20Interface.html), or using [Java JDBC](../Client/Programming%20-%20JDBC.html) to perform single or batch execution of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html).
 
-This section mainly introduces the use of [INSERT SQL statement](/#/Documents/progress/chap5/sec4) for real-time data import in the scenario. See Section 5.4 for a detailed syntax of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html).
+This section mainly introduces the use of [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) for real-time data import in the scenario.
 
 #### Use of INSERT Statements
 The [INSERT SQL statement](../Operation%20Manual/SQL%20Reference.html) statement can be used to insert data into one or more specified timeseries that have been created. For each point of data inserted, it consists of a [timestamp](../Concept/Data%20Model%20and%20Terminology.html) and a sensor acquisition value (see [Data Type](../Concept/Data%20Type.html)).
@@ -146,6 +146,46 @@ The selected timeseries are "the power supply status of ln group wf01 plant wt01
 The execution result of this SQL statement is as follows:
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577450-dcfe0800-1ef4-11e9-9399-4ba2b2b7fb73.jpg"></center>
 
+### Aggregate Query
+This section mainly introduces the related examples of aggregate query.
+
+#### Count Points
+
+```
+select count(status) from root.ln.wf01.wt01;
+```
+
+| count(root.ln.wf01.wt01.status) |
+| -------------- |
+| 4              |
+
+
+##### Count Points By Level
+
+Level could be defined to show count the number of points of each node at the given level in current Metadata Tree.
+
+This could be used to query the number of points under each device.
+
+The SQL statement is:
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 7              |
+
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=2;
+```
+
+| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
+| ------ | ------------------- | ------------------- |
+| 0      | 4                   | 3                   |
+
 ### Down-Frequency Aggregate Query
 
 This section mainly introduces the related examples of down-frequency aggregation query, 
@@ -262,6 +302,48 @@ We will get the result like following:
 | 35     | 3                               |
 | 40     | 5                               |
 
+
+#### Down-Frequency Aggregate Query with Level Clause
+
+Level could be defined to show count the number of points of each node at the given level in current Metadata Tree.
+
+This could be used to query the number of points under each device.
+
+The SQL statement is:
+
+Get down-frequency aggregate query by level.
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 1              |
+| 12     | 3              |
+| 15     | 0              |
+| 18     | 0              |
+
+Down-frequency aggregate query with sliding step and by level.
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),2ms,3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 0              |
+| 12     | 2              |
+| 15     | 0              |
+| 18     | 0              |
 
 #### Down-Frequency Aggregate Query with Fill Clause
 
@@ -718,3 +800,18 @@ It should be noted that when the deleted path does not exist, IoTDB will give th
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
+
+## Delete Time Partition (experimental)
+You may delete all data in a time partition of a storage group using the following grammar:
+
+```
+DELETE PARTITION root.ln 0,1,2
+```
+
+The `0,1,2` above is the id of the partition that is to be deleted, you can find it from the IoTDB
+data folders or convert a timestamp manually to an id using `timestamp / partitionInterval
+` (flooring), and the `partitionInterval` should be in your config (if time-partitioning is
+supported in your version).
+
+Please notice that this function is experimental and mainly for development, please use it with
+extreme care.

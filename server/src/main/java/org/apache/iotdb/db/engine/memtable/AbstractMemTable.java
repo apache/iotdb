@@ -30,8 +30,8 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -97,17 +97,21 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
 
   @Override
-  public void insert(InsertPlan insertPlan) {
-    for (int i = 0; i < insertPlan.getValues().length; i++) {
+  public void insert(InsertRowPlan insertRowPlan) {
+    for (int i = 0; i < insertRowPlan.getValues().length; i++) {
 
-      Object value = insertPlan.getValues()[i];
-      memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
+      if (insertRowPlan.getValues()[i] == null) {
+        continue;
+      }
 
-      write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-          insertPlan.getSchemas()[i], insertPlan.getTime(), value);
+      Object value = insertRowPlan.getValues()[i];
+      memSize += MemUtils.getRecordSize(insertRowPlan.getSchemas()[i].getType(), value);
+
+      write(insertRowPlan.getDeviceId(), insertRowPlan.getMeasurements()[i],
+          insertRowPlan.getSchemas()[i], insertRowPlan.getTime(), value);
     }
 
-    totalPointsNum += insertPlan.getValues().length;
+    totalPointsNum += insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
   }
 
   @Override
@@ -116,7 +120,8 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getRecordSize(insertTabletPlan, start, end);
-      totalPointsNum += insertTabletPlan.getMeasurements().length * (end - start);
+      totalPointsNum += (insertTabletPlan.getMeasurements().length - insertTabletPlan.getFailedMeasurementNumber())
+        * (end - start);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e.getMessage());
     }
@@ -133,6 +138,9 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getColumns()[i] == null) {
+        continue;
+      }
       IWritableMemChunk memSeries = createIfNotExistAndGet(insertTabletPlan.getDeviceId(),
           insertTabletPlan.getMeasurements()[i], insertTabletPlan.getSchemas()[i]);
       memSeries.write(insertTabletPlan.getTimes(), insertTabletPlan.getColumns()[i],
@@ -167,6 +175,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public boolean reachTotalPointNumThreshold() {
+    if (totalPointsNum == 0) {
+      return false;
+    }
     return totalPointsNum >= totalPointsNumThreshold;
   }
 

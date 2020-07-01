@@ -18,6 +18,9 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class ShowTimeSeriesPlan extends ShowPlan {
@@ -30,6 +33,8 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   private String value;
   private int limit = 0;
   private int offset = 0;
+  // if is true, the result will be sorted according to the inserting frequency of the timeseries
+  private boolean orderByHeat;
 
   public ShowTimeSeriesPlan(Path path) {
     super(ShowContentType.TIMESERIES);
@@ -37,7 +42,7 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   }
 
   public ShowTimeSeriesPlan(Path path, boolean isContains, String key, String value, int limit,
-      int offset) {
+      int offset, boolean orderByHeat) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
     this.isContains = isContains;
@@ -45,6 +50,11 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.value = value;
     this.limit = limit;
     this.offset = offset;
+    this.orderByHeat = orderByHeat;
+  }
+
+  public ShowTimeSeriesPlan() {
+    super(ShowContentType.TIMESERIES);
   }
 
   public Path getPath() {
@@ -69,5 +79,39 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   public int getOffset() {
     return offset;
+  }
+
+  public boolean isOrderByHeat() {
+    return orderByHeat;
+  }
+
+  public void setOrderByHeat(boolean orderByHeat) {
+    this.orderByHeat = orderByHeat;
+  }
+
+  @Override
+  public void serialize(DataOutputStream outputStream) throws IOException {
+    outputStream.write(PhysicalPlanType.SHOW_TIMESERIES.ordinal());
+
+    putString(outputStream, path.getFullPath());
+    outputStream.writeBoolean(isContains);
+    putString(outputStream, key);
+    putString(outputStream, value);
+
+    outputStream.writeInt(limit);
+    outputStream.writeInt(offset);
+    outputStream.writeBoolean(orderByHeat);
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) {
+    path = new Path(readString(buffer));
+    isContains = buffer.get() == 1;
+    key = readString(buffer);
+    value = readString(buffer);
+
+    limit = buffer.getInt();
+    limit = buffer.getInt();
+    orderByHeat = buffer.get() == 1;
   }
 }

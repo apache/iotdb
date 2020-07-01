@@ -18,17 +18,26 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-
-import java.io.Serializable;
-import java.util.Map;
+import org.apache.iotdb.db.metadata.MetadataConstant;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
  * Metadata Tree
  */
-public abstract class MNode implements Serializable {
+public class MNode implements Serializable {
 
   private static final long serialVersionUID = -770028375899514063L;
 
@@ -44,6 +53,10 @@ public abstract class MNode implements Serializable {
    */
   protected String fullPath;
 
+  transient Map<String, MNode> children;
+  transient Map<String, MNode> aliasChildren;
+
+  protected transient ReadWriteLock lock = new ReentrantReadWriteLock();
 
   /**
    * Constructor of MNode.
@@ -56,37 +69,89 @@ public abstract class MNode implements Serializable {
   /**
    * check whether the MNode has a child with the name
    */
-  public abstract boolean hasChild(String name);
+  public boolean hasChild(String name) {
+    return (children != null && children.containsKey(name)) ||
+        (aliasChildren != null && aliasChildren.containsKey(name));
+  }
 
   /**
    * node key, name or alias
    */
-  public abstract void addChild(String name, MNode child);
+  public void addChild(String name, MNode child) {
+    if (children == null) {
+      children = new LinkedHashMap<>();
+    }
+    children.put(name, child);
+  }
 
   /**
    * delete a child
    */
-  public abstract void deleteChild(String name) throws DeleteFailedException;
+  public void deleteChild(String name) throws DeleteFailedException {
+    if (children != null && children.containsKey(name)) {
+      // acquire the write lock of its child node.
+      Lock writeLock = (children.get(name)).lock.writeLock();
+      if (writeLock.tryLock()) {
+        children.remove(name);
+        writeLock.unlock();
+      } else {
+        throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + name);
+      }
+    }
+  }
 
   /**
    * delete the alias of a child
    */
-  public abstract void deleteAliasChild(String alias) throws DeleteFailedException;
+  public void deleteAliasChild(String alias) throws DeleteFailedException {
+    if (aliasChildren == null) {
+      return;
+    }
+    if (lock.writeLock().tryLock()) {
+      aliasChildren.remove(alias);
+      lock.writeLock().unlock();
+    } else {
+      throw new DeleteFailedException(getFullPath() + PATH_SEPARATOR + alias);
+    }
+  }
 
   /**
    * get the child with the name
    */
-  public abstract MNode getChild(String name);
+  public MNode getChild(String name) {
+    MNode child = null;
+    if (children != null) {
+      child = children.get(name);
+    }
+    if (child != null) {
+      return child;
+    }
+    return aliasChildren == null ? null : aliasChildren.get(name);
+  }
 
   /**
    * get the count of all leaves whose ancestor is current node
    */
-  public abstract int getLeafCount();
+  public int getLeafCount() {
+    if (children == null) {
+      return 0;
+    }
+    int leafCount = 0;
+    for (MNode child : children.values()) {
+      leafCount += child.getLeafCount();
+    }
+    return leafCount;
+  }
 
   /**
    * add an alias
    */
-  public abstract void addAlias(String alias, MNode child);
+  public void addAlias(String alias, MNode child) {
+    if (aliasChildren == null) {
+      aliasChildren = new LinkedHashMap<>();
+    }
+    aliasChildren.put(alias, child);
+  }
 
   /**
    * get full path
@@ -118,7 +183,16 @@ public abstract class MNode implements Serializable {
     return parent;
   }
 
-  public abstract Map<String, MNode> getChildren();
+  public void setParent(MNode parent) {
+    this.parent = parent;
+  }
+
+  public Map<String, MNode> getChildren() {
+    if (children == null) {
+      return new LinkedHashMap<>();
+    }
+    return children;
+  }
 
   public String getName() {
     return name;
@@ -126,5 +200,44 @@ public abstract class MNode implements Serializable {
 
   public void setName(String name) {
     this.name = name;
+  }
+
+  public void setChildren(Map<String, MNode> children) {
+    this.children = children;
+  }
+
+  public void serializeTo(BufferedWriter bw) throws IOException {
+    serializeChildren(bw);
+
+    StringBuilder s = new StringBuilder(String.valueOf(MetadataConstant.MNODE_TYPE));
+    s.append(",").append(name).append(",");
+    s.append(children == null ? "0" : children.size());
+    bw.write(s.toString());
+    bw.newLine();
+  }
+
+  void serializeChildren(BufferedWriter bw) throws IOException {
+    if (children == null) {
+      return;
+    }
+    for (Entry<String, MNode> entry : children.entrySet()) {
+      entry.getValue().serializeTo(bw);
+    }
+  }
+
+  public void readLock() {
+    MNode node = this;
+    while (node != null) {
+      node.lock.readLock().lock();
+      node = node.parent;
+    }
+  }
+
+  public void readUnlock() {
+    MNode node = this;
+    while (node != null) {
+      node.lock.readLock().unlock();
+      node = node.parent;
+    }
   }
 }

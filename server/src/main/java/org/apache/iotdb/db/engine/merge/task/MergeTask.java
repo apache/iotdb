@@ -19,30 +19,25 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.Callable;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.Callable;
 
 /**
  * MergeTask merges given seqFiles and unseqFiles into new ones, which basically consists of three
@@ -66,6 +61,11 @@ public class MergeTask implements Callable<Void> {
   int concurrentMergeSeriesNum;
   String taskName;
   boolean fullMerge;
+
+  States states = States.START;
+
+  MergeMultiChunkTask chunkTask;
+  MergeFileTask fileTask;
 
   MergeTask(List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles, String storageGroupSysDir, MergeCallback callback,
@@ -92,17 +92,22 @@ public class MergeTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
-    try  {
+    try {
       doMerge();
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
-      cleanUp(false);
-      // call the callback to make sure the StorageGroup exit merging status, but passing 2
-      // empty file lists to avoid files being deleted.
-      callback.call(Collections.emptyList(), Collections.emptyList(), new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
-      throw e;
+      abort();
     }
     return null;
+  }
+
+  private void abort() throws IOException {
+    states = States.ABORTED;
+    cleanUp(false);
+    // call the callback to make sure the StorageGroup exit merging status, but passing 2
+    // empty file lists to avoid files being deleted.
+    callback.call(Collections.emptyList(), Collections.emptyList(),
+        new File(storageGroupSysDir, MergeLogger.MERGE_LOG_NAME));
   }
 
   private void doMerge() throws IOException, MetadataException {
@@ -117,14 +122,14 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logFiles(resource);
 
-    Set<String> devices = MManager.getInstance().getDevices(storageGroupName);
+    Set<String> devices = IoTDB.metaManager.getDevices(storageGroupName);
     Map<Path, MeasurementSchema> measurementSchemaMap = new HashMap<>();
     List<Path> unmergedSeries = new ArrayList<>();
     for (String device : devices) {
-      InternalMNode deviceNode = (InternalMNode) MManager.getInstance().getNodeByPath(device);
+      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       for (Entry<String, MNode> entry : deviceNode.getChildren().entrySet()) {
         Path path = new Path(device, entry.getKey());
-        measurementSchemaMap.put(path, ((LeafMNode) entry.getValue()).getSchema());
+        measurementSchemaMap.put(path, ((MeasurementMNode) entry.getValue()).getSchema());
         unmergedSeries.add(path);
       }
     }
@@ -132,14 +137,29 @@ public class MergeTask implements Callable<Void> {
 
     mergeLogger.logMergeStart();
 
-    MergeMultiChunkTask mergeChunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
-        fullMerge, unmergedSeries, concurrentMergeSeriesNum);
-    mergeChunkTask.mergeSeries();
+    chunkTask = new MergeMultiChunkTask(mergeContext, taskName, mergeLogger, resource,
+        fullMerge, unmergedSeries, concurrentMergeSeriesNum, storageGroupName);
+    states = States.MERGE_CHUNKS;
+    chunkTask.mergeSeries();
+    if (Thread.interrupted()) {
+      logger.info("Merge task {} aborted", taskName);
+      abort();
+      return;
+    }
 
-    MergeFileTask mergeFileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
+    fileTask = new MergeFileTask(taskName, mergeContext, mergeLogger, resource,
         resource.getSeqFiles());
-    mergeFileTask.mergeFiles();
+    states = States.MERGE_FILES;
+    chunkTask = null;
+    fileTask.mergeFiles();
+    if (Thread.interrupted()) {
+      logger.info("Merge task {} aborted", taskName);
+      abort();
+      return;
+    }
 
+    states = States.CLEAN_UP;
+    fileTask = null;
     cleanUp(true);
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
@@ -182,5 +202,37 @@ public class MergeTask implements Callable<Void> {
     } else {
       logFile.delete();
     }
+  }
+
+  public String getStorageGroupName() {
+    return storageGroupName;
+  }
+
+  enum States {
+    START,
+    MERGE_CHUNKS,
+    MERGE_FILES,
+    CLEAN_UP,
+    ABORTED
+  }
+
+  public String getProgress() {
+    switch (states) {
+      case ABORTED:
+        return "Aborted";
+      case CLEAN_UP:
+        return "Cleaning up";
+      case MERGE_FILES:
+        return "Merging files: " + fileTask.getProgress();
+      case MERGE_CHUNKS:
+        return "Merging series: " + chunkTask.getProgress();
+      case START:
+      default:
+        return "Just started";
+    }
+  }
+
+  public String getTaskName() {
+    return taskName;
   }
 }

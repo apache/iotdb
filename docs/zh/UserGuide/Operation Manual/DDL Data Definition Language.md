@@ -109,17 +109,17 @@ ALTER timeseries root.turbine.d1.s1 ADD TAGS tag3=v3, tag4=v4
 ```
 ALTER timeseries root.turbine.d1.s1 ADD ATTRIBUTES attr3=v3, attr4=v4
 ```
-* 更新插入标签和属性
-> 如果该标签或属性原来不存在，则插入，否则，用新值更新原来的旧值
+* 更新插入别名，标签和属性
+> 如果该别名，标签或属性原来不存在，则插入，否则，用新值更新原来的旧值
 ```
-ALTER timeseries root.turbine.d1.s1 UPSERT TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
+ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=v3) ATTRIBUTES(attr3=v3, attr4=v4)
 ```
 
 ## 查看时间序列
 
-* SHOW TIMESERIES prefixPath? showWhereClause? limitClause?
+* SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
 
-  SHOW TIMESERIES 后可以跟三种可选的子句，查询结果为这些时间序列的所有信息
+  SHOW TIMESERIES 中可以有四种可选的子句，查询结果为这些时间序列的所有信息
 
 时间序列信息具体包括：时间序列路径名，存储组，Measurement别名，数据类型，编码方式，压缩方式，属性和标签。
 
@@ -161,7 +161,12 @@ show timeseries root.ln where description contains 'test1'
 
   只返回从指定下标开始的结果，最大返回条数被 LIMIT 限制，用于分页查询
 
+* SHOW LATEST TIMESERIES
+
+  表示查询出的时间序列需要按照最近插入时间戳降序排列
+  
 需要注意的是，当查询路径不存在时，系统会返回0条时间序列。
+
 
 ## 查看子路径
 
@@ -317,4 +322,10 @@ IoTDB> FULL MERGE
 IoTDB> CLEAR CACHE
 ```
 
+## 为 SCHEMA 创建快照
+
+为了加快 IoTDB 重启速度，用户可以手动触发创建 schema 的快照，从而避免服务器从 mlog 文件中恢复。
+```
+IoTDB> CREATE SNAPSHOT FOR SCHEMA
+```
 

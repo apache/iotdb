@@ -24,7 +24,7 @@
     <parent>
         <groupId>org.apache.iotdb</groupId>
         <artifactId>iotdb-parent</artifactId>
-        <version>0.10.0-SNAPSHOT</version>
+        <version>0.11.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>iotdb-server</artifactId>
@@ -118,6 +118,16 @@
             <groupId>io.moquette</groupId>
             <artifactId>moquette-broker</artifactId>
             <version>0.13</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- for mocked test-->
         <dependency>
@@ -231,6 +241,12 @@
                                 <descriptor>src/assembly/server.xml</descriptor>
                             </descriptors>
                             <appendAssemblyId>false</appendAssemblyId>
+                            <archive>
+                                <manifest>
+                                    <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                                    <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                                </manifest>
+                            </archive>
                         </configuration>
                     </execution>
                 </executions>

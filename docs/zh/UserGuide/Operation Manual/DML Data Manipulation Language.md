@@ -170,6 +170,48 @@ select s1,s2 from root.sg1.* GROUP BY DEVICE
 
 'disable align' 意味着每条时序就有3列存在。更多语法请参照 SQL REFERENCE.
 
+### 聚合查询
+本章节主要介绍聚合查询的相关示例，
+主要使用的是IoTDB SELECT语句的聚合查询函数。
+
+#### 统计总点数
+
+
+```
+select count(status) from root.ln.wf01.wt01;
+```
+
+| count(root.ln.wf01.wt01.status) |
+| -------------- |
+| 4              |
+
+
+##### 按层级统计
+通过定义LEVEL来统计指定层级下的数据点个数。
+
+这可以用来查询不同层级下的数据点总个数
+
+语法是：
+
+这个可以用来查询某个路径下的总数据点数
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 7              |
+
+
+```
+select count(status) from root.ln.wf01.wt01 group by level=2;
+```
+
+| Time   | count(root.ln.wf01) | count(root.ln.wf02) |
+| ------ | ------------------- | ------------------- |
+| 0      | 4                   | 3                   |
 
 ### 降频聚合查询
 
@@ -294,6 +336,47 @@ SQL执行后的结果集如下所示：
 | 30     | 4                               |
 | 35     | 3                               |
 | 40     | 5                               |
+
+#### 降采样后按Level聚合查询
+
+除此之外，还可以通过定义LEVEL来统计指定层级下的数据点个数。
+
+例如：
+
+统计降采样后的数据点个数
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 1              |
+| 12     | 3              |
+| 15     | 0              |
+| 18     | 0              |
+
+加上滑动Step的降采样后的结果也可以汇总
+
+```
+select count(status) from root.ln.wf01.wt01 group by ([0,20),2ms,3ms), level=1;
+```
+
+
+| Time   | count(root.ln) |
+| ------ | -------------- |
+| 0      | 1              |
+| 3      | 0              |
+| 6      | 0              |
+| 9      | 0              |
+| 12     | 2              |
+| 15     | 0              |
+| 18     | 0              |
+
 
 #### 降频聚合查询补空值
 
@@ -653,7 +736,7 @@ SQL语句将不会执行，并且相应的错误提示如下：
 
 <center><img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51577867-577b5780-1ef6-11e9-978c-e02c1294bcc5.jpg"></center>
 
-#### Row and Column Control over Query Results
+#### 控制查询结果的行和列
 
 除了对查询结果进行行或列控制之外，IoTDB还允许用户控制查询结果的行和列。 这是同时包含LIMIT子句和SLIMIT子句的完整示例。
 
@@ -780,3 +863,15 @@ delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
+
+## 删除时间分区 (实验性功能)
+您可以通过如下语句来删除某一个存储组下的指定时间分区:
+
+```
+DELETE PARTITION root.ln 0,1,2
+```
+
+上例中的0,1,2为待删除时间分区的id，您可以通过查看IoTDB的数据文件夹找到它，或者可以通过计算`timestamp / partitionInterval`(向下取整),
+手动地将一个时间戳转换为对应的id，其中的`partitionInterval`可以在IoTDB的配置文件中找到（如果您使用的版本支持时间分区）。
+
+请注意该功能目前只是实验性的，如果您不是开发者，使用时请务必谨慎。

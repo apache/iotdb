@@ -37,10 +37,11 @@ First explain the meaning of some important fields in AlignByDevicePlan:
 - `List<String> measurements`：The list of measurements that appear in the query.
 - `List<String> devices`: The list of devices got from prefix paths.
 - `Map<String, IExpression> deviceToFilterMap`: This field is used to store the filter conditions corresponding to the device.
-- `Map<String, TSDataType> measurementDataTypeMap`：AlignByDevicePlan requires that the data type of the sensor of the same name be the same for different devices. This field is a Map structure of `measurementName-> dataType`.  For example `root.sg.d1.s1` and` root.sg.d2.s1` should be of the same data type.
+- `Map<String, TSDataType> measurementDataTypeMap`：This field is used to record the actual data type of the time series for the actual query, and its key value does not contain the aggregate functions.
+- `Map<String, TSDataType> columnDataTypeMap`：This field is used to record the data type of each column in the result set. It's aim is to construct the header and output the result set, whose key value can contain aggregation functions.
 - `enum MeasurementType`：Three measurement types are recorded.  Measurements that do not exist in any device are of type `NonExist`; measurements with single or double quotes are of type` Constant`; measurements that exist are of type `Exist`.
-- `Map<String, MeasurementType> measurementTypeMap`: This field is a Map structure of `measureName-> measurementType`, which is used to record all measurement types in the query.
-- groupByPlan, fillQueryPlan, aggregationPlan：To avoid redundancy, these three execution plans are set as subclasses of RawDataQueryPlan and set as variables in AlignByDevicePlan.  If the query plan belongs to one of these three plans, the field is assigned and saved.
+- `Map<String, MeasurementType> measurementTypeMap`: This field is used to record all measurement types in the query.
+- groupByTimePlan, fillQueryPlan, aggregationPlan：To avoid redundancy, these three execution plans are set as subclasses of RawDataQueryPlan and set as variables in AlignByDevicePlan.  If the query plan belongs to one of these three plans, the field is assigned and saved.
 
 Before explaining the specific implementation process, a relatively complete example is given first, and the following explanation will be used in conjunction with this example.
 
@@ -62,7 +63,9 @@ The following will be explained according to the specific process:
 
 - org.apache.iotdb.db.qp.Planner
 
-Unlike the original data query, the alignment by device query does not concatenate the suffix paths in the SELECT statement and the WHERE statement at this stage, but when the physical plan is subsequently generated, the mapping value and filter conditions corresponding to each device are calculated.  Therefore, the work done at this stage by device alignment only includes optimization of filter conditions in WHERE statements.
+Unlike the original data query, the alignment by device query does not concatenate the suffix paths in the SELECT statement and the WHERE statement at this stage, but when the physical plan is subsequently generated, the mapping value and filter conditions corresponding to each device are calculated.
+
+Therefore, the work done at this stage by device alignment only includes optimization of filter conditions in WHERE statements.
 
 The optimization of the filtering conditions mainly includes three parts: removing the negation, transforming the disjunction paradigm, and merging the same path filtering conditions.  The corresponding optimizers are: RemoveNotOptimizer, DnfFilterOptimizer, MergeSingleFilterOptimizer.  This part of the logic can refer to:[Planner](/SystemDesign/QueryEngine/Planner.html).
 
@@ -74,20 +77,87 @@ After the logical plan is generated, the `transformToPhysicalPlan ()` method in 
 
 **The main work done at this stage is to generate the corresponding** `AlignByDevicePlan`，**Fill in the variable information。**
 
-First explain the meaning of some important fields in the `transformQuery ()` method (see above for the duplicate fields in AlignByDevicePlan):
+It splices the suffix paths obtained in the SELECT statement with the prefix paths in the FROM clause to calculate the measurements of the query including its type and data type. The calculation process is as follows:
 
-- prefixPaths, suffixPaths：The former is the prefix path in the FROM clause, in the example `[root.sg.d1, root.sg. *]`; The latter is the suffix path in the SELECT clause, in the example `[s1," 1 "  , *, s2, s5] `.
-- devices：The device list obtained by removing wildcards and de-duplicating the prefix path, in the example, [[root.sg.d1, root.sg.d2] `.
-- measurementSetOfGivenSuffix：The intermediate variable records the measurement corresponding to a suffix. In the example, for the suffix \ *, `measurementSetOfGivenSuffix = {s1, s2}`, for the suffix s1, `measurementSetOfGivenSuffix = {s1}`;
+```java
+  // Traversal suffix path
+  for (int i = 0; i < suffixPaths.size(); i++) {
+    Path suffixPath = suffixPaths.get(i);
+    // Used to record the measurements corresponding to a suffix path.
+    // See the following for an example
+    Set<String> measurementSetOfGivenSuffix = new LinkedHashSet<>();
+    // If a constant. Recording, continue to the next suffix path
+    if (suffixPath.startWith("'") || suffixPath.startWith("\"")) {
+      ...
+      continue;
+    }
 
-Next, introduce the calculation process of AlignByDevicePlan:
+    // If not constant, it will be spliced with each device to get a complete path
+    for (String device : devices) {
+      Path fullPath = Path.addPrefixPath(suffixPath, device);
+      try {
+        // Wildcard has been removed from the device list, but suffix paths may still contain it
+        // Get the actual time series paths by removing wildcards
+        List<String> actualPaths = getMatchedTimeseries(fullPath.getFullPath());
+        // If the path after splicing does not exist, it will be recognized as `NonExist` temporarily
+        // If the measurement exists in next devices, then override `NonExist` to `Exist`
+        if (actualPaths.isEmpty() && originAggregations.isEmpty()) {
+          ...
+        }
 
-1. Check whether the query type is one of three types of queries: groupByPlan, fillQueryPlan, aggregationPlan. If it is, assign the corresponding variable and change the query type of `AlignByDevicePlan`.
-2. Iterate through the SELECT suffix path, and set an intermediate variable for each suffix path as `measurementSetOfGivenSuffix` to record all measurements corresponding to the suffix path.  If the suffix path starts with single or double quotes, increase the value directly in `measurements` and note that its type is` Constant`.
-3. Otherwise, the device list is stitched with the suffix path to obtain a complete path. If the spliced path does not exist, you need to further determine whether the measurement exists in other devices. If none, temporarily identify it as NonExist. If the subsequent device appears,  measurement, the NonExist value is overridden.
-4. If the path exists after splicing, it is proved that the measurement is of type `Exist`, and the consistency of the data type needs to be checked. If it is not satisfied, an error message is returned. If it is met, the measurement is recorded.
-5. After the suffix loop of a layer ends, the `measurementSetOfGivenSuffix` appearing in the loop of that layer is added to the` measurements`.  At the end of the entire loop, the variable information obtained in the loop is assigned to AlignByDevicePlan.  The list of measurements obtained here is not duplicated and will be de-duplicated when the ColumnHeader is generated.
-6. Finally, call the `concatFilterByDevice ()` method to calculate `deviceToFilterMap`, and get the corresponding Filter information after splicing each device separately.
+        // Get data types with and without aggregate functions (actual time series) respectively
+        // Data type with aggregation function `columnDataTypes` is used for:
+        //  1. Data type consistency check 2. Header calculation, output result set
+        // The actual data type of the time series `measurementDataTypes` is used for
+        //  the actual query in the AlignByDeviceDataSet
+        String aggregation =
+            originAggregations != null && !originAggregations.isEmpty()
+                ? originAggregations.get(i) : null;
+        Pair<List<TSDataType>, List<TSDataType>> pair = getSeriesTypes(actualPaths,
+            aggregation);
+        List<TSDataType> columnDataTypes = pair.left;
+        List<TSDataType> measurementDataTypes = pair.right;
+
+        for (int pathIdx = 0; pathIdx < actualPaths.size(); pathIdx++) {
+          Path path = new Path(actualPaths.get(pathIdx));
+          // Check the data type consistency of the sensors with the same name
+          String measurementChecked;
+          ...
+          TSDataType columnDataType = columnDataTypes.get(pathIdx);
+          // Check data type if there is a sensor with the same name
+          if (columnDataTypeMap.containsKey(measurementChecked)) {
+            // The data types is inconsistent, an exception will be thrown. End
+            if (!columnDataType.equals(columnDataTypeMap.get(measurementChecked))) {
+              throw new QueryProcessException(...);
+            }
+          } else {
+            // There is no such measurement, it will be recorded
+            ...
+          }
+
+          // This step indicates that the measurement exists under the device and is correct,
+          // First, update measurementSetOfGivenSuffix which is distinct
+          // Then if this measurement is recognized as NonExist before，update it to Exist
+          if (measurementSetOfGivenSuffix.add(measurementChecked)
+              || measurementTypeMap.get(measurementChecked) != MeasurementType.Exist) {
+            measurementTypeMap.put(measurementChecked, MeasurementType.Exist);
+          }
+        }
+          // update paths
+          paths.add(path);
+      } catch (MetadataException e) {
+        throw new LogicalOptimizeException(...);
+      }
+    }
+    // update measurements
+    // Note that within a suffix path loop, SET is used to avoid duplicate measurements
+    // While a LIST is used outside the loop to ensure that the output contains all measurements entered by the user
+    // In the example，for suffix *, measurementSetOfGivenSuffix = {s1,s2}
+    // for suffix s1, measurementSetOfGivenSuffix = {s1}
+    // therefore the final measurements is [s1,s2,s1].
+    measurements.addAll(measurementSetOfGivenSuffix);
+  }
+```
 
 ```java
 Map<String, IExpression> concatFilterByDevice(List<String> devices,
@@ -96,9 +166,11 @@ Input：Deduplicated devices list and un-stitched FilterOperator
 Input：The deviceToFilterMap after splicing records the Filter information corresponding to each device
 ```
 
-The main processing logic of the `concatFilterByDevice ()` method is in `concatFilterPath ()`:
+The `concatfilterbydevice()` method splices the filter conditions according to the devices to get the corresponding filter conditions of each device. The main processing logic of it is in `concatFilterPath ()`:
 
-The `concatFilterPath ()` method traverses the unspliced FilterOperator binary tree to determine whether the node is a leaf node. If so, the path of the leaf node is taken. If the path starts with time or root, it is not processed, otherwise the device name and node are not processed.  The paths are spliced and returned; if not, all children of the node are iteratively processed.  In the example, the result of splicing the filter conditions of device 1 is `time = 1 AND root.sg.d1.s1 <25`, and device 2 is` time = 1 AND root.sg.d2.s1 <25`.
+The `concatFilterPath ()` method traverses the unspliced FilterOperator binary tree to determine whether the node is a leaf node. If so, the path of the leaf node is taken. If the path starts with time or root, it is not processed, otherwise the device name and node are not processed.  The paths are spliced and returned; if not, all children of the node are iteratively processed.
+
+In the example, the result of splicing the filter conditions of device 1 is `time = 1 AND root.sg.d1.s1 <25`, and device 2 is` time = 1 AND root.sg.d2.s1 <25`.
 
 The following example summarizes the variable information calculated through this stage:
 
@@ -132,7 +204,7 @@ Input：Calculated column name respColumns and data type columnTypes
 The specific implementation logic is as follows:
 
 1. First add the `Device` column, whose data type is` TEXT`;
-2. Traverse the list of measurements without deduplication to determine the type of measurement currently traversed. If it is an Exist type, get its type from the measurementTypeMap; set the other two types to TEXT, and then add measurement and its type to the header data structure.
+2. Traverse the list of measurements without deduplication to determine the type of measurement currently traversed. If it is an `Exist` type, get its type from the `columnDataTypeMap`; set the other two types to `TEXT`, and then add measurement and its type to the header data structure.
 3. Deduplicate measurements based on the intermediate variable deduplicatedMeasurements.
 
 The resulting header is:
@@ -141,7 +213,7 @@ The resulting header is:
 | ---- | ------ | --- | --- | --- | --- | --- | --- |
 |      |        |     |     |     |     |     |     |
 
-The deduplicated `measurements` are` [s1, "1", s2, s5] `.
+The deduplicated `measurements` are `[s1, "1", s2, s5]`.
 
 ### Result set generation
 
@@ -183,7 +255,7 @@ The specific implementation logic is as follows:
 1. First determine whether the current result set is initialized and there is a next result. If it is, it returns true directly, that is, you can call the `next()` method to get the next `RowRecord`; otherwise, the result set is not initialized and proceeds to step 2.
 2. Iterate `deviceIterator` to get the devices needed for this execution, and then find the device node from MManger by the device path to get all sensor nodes under it.
 3. Compare all measurements in the query and the sensor nodes under the current device to get the `executeColumns` which need to be queried. Then concatenate the current device name and measurements to calculate the query path, data type, and filter conditions of the current device. The corresponding fields are `executePaths`,` tsDataTypes`, and `expression`. If it is an aggregate query, you need to calculate `executeAggregations`.
-4. Determine whether the current subquery type is GroupByQuery, AggregationQuery, FillQuery or RawDataQuery. Perform the corresponding query and return the result set. The implementation logic [Raw data query](/#/SystemDesign/progress/chap5/sec3)，[Aggregate query](/#/SystemDesign/progress/chap5/sec4)，[Downsampling query](/#/SystemDesign/progress/chap5/sec5)  can be referenced.
+4. Determine whether the current subquery type is GroupByQuery, AggregationQuery, FillQuery or RawDataQuery. Perform the corresponding query and return the result set. The implementation logic [Raw data query](../DataQuery/RawDataQuery.html)，[Aggregate query](../DataQuery/AggregationQuery.html)，[Downsampling query](../DataQuery/GroupByQuery.html) can be referenced.
 
 After initializing the result set through the `hasNextWithoutConstraint ()` method and ensuring that there is a next result, you can call `QueryDataSet.next ()` method to get the next `RowRecord`.
 
