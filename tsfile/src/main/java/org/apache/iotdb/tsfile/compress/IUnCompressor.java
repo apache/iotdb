@@ -211,6 +211,10 @@ public interface IUnCompressor {
       throw new UnsupportedOperationException("unsupported get uncompress length");
     }
 
+    /**
+     * we not recommend use this method because we may allocate MAX_COMPRESS_RATIO * compress_size
+     * to ensure uncompress, you can use other method if you know the uncompressed size
+     */
     @Override
     public byte[] uncompress(byte[] bytes) {
       if (bytes == null) {
@@ -221,14 +225,13 @@ public interface IUnCompressor {
         return decompressor.decompress(bytes, MAX_COMPRESS_RATIO * bytes.length);
       } catch (RuntimeException e) {
         logger.error(
-            "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
+            "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte", e);
       }
       return new byte[0];
     }
 
     @Override
-    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
-        throws IOException {
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) {
       return decompressor.decompress(byteArray, offset, length, output, offset);
     }
 
@@ -243,7 +246,7 @@ public interface IUnCompressor {
         return compressed.limit();
       } catch (RuntimeException e) {
         logger.error(
-            "tsfile-compression SnappyUnCompressor: errors occurs when uncompress input byte", e);
+            "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte", e);
       }
       return 0;
     }
