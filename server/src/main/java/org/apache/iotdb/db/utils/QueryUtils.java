@@ -118,7 +118,7 @@ public class QueryUtils {
     unseqResources.removeIf(fileFilter::fileNotSatisfy);
   }
 
-  public static void initial(List<Path> paths, List<TSDataType> dataTypes,
+  public static void constructPathAndDataTypes(List<Path> paths, List<TSDataType> dataTypes,
       List<ShowTimeSeriesResult> timeseriesList) {
     paths.add(new Path(COLUMN_TIMESERIES));
     dataTypes.add(TSDataType.TEXT);
@@ -147,7 +147,7 @@ public class QueryUtils {
       ShowTimeSeriesPlan showTimeSeriesPlan) {
     List<Path> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    initial(paths, dataTypes, timeseriesList);
+    constructPathAndDataTypes(paths, dataTypes, timeseriesList);
     ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,
         showTimeSeriesPlan);
     for (ShowTimeSeriesResult result : timeseriesList) {
@@ -169,7 +169,7 @@ public class QueryUtils {
     List<RowRecord> records = new ArrayList<>();
     List<Path> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
-    initial(paths, dataTypes, timeseriesList);
+    constructPathAndDataTypes(paths, dataTypes, timeseriesList);
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());
