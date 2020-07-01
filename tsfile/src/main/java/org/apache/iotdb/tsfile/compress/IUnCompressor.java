@@ -212,8 +212,9 @@ public interface IUnCompressor {
     }
 
     /**
-     * we not recommend use this method because we may allocate MAX_COMPRESS_RATIO * compress_size
-     * to ensure uncompress, you can use other method if you know the uncompressed size
+     * We don't recommend using this method because we have to allocate MAX_COMPRESS_RATIO *
+     * compressedSize to ensure uncompress safety, you can use other method if you know the
+     * uncompressed size
      */
     @Override
     public byte[] uncompress(byte[] bytes) {
