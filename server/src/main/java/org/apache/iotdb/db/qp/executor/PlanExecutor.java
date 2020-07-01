@@ -867,13 +867,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
     throws MetadataException {
-    return mManager.getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
+    return mManager.getSeriesSchemasAndLock(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
   }
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-      mManager.lockInsert(insertRowPlan.getDeviceId());
       MeasurementSchema[] schemas = getSeriesSchemas(insertRowPlan);
       insertRowPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertRowPlan);
@@ -891,7 +890,6 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     try {
-      mManager.lockInsert(insertTabletPlan.getDeviceId());
       MeasurementSchema[] schemas = getSeriesSchemas(insertTabletPlan);
       insertTabletPlan.setSchemas(schemas);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
