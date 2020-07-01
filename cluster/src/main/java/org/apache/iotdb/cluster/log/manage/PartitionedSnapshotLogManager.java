@@ -60,7 +60,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   public PartitionedSnapshotLogManager(LogApplier logApplier, PartitionTable partitionTable,
       Node header, Node thisNode, SnapshotFactory<T> factory) {
-    super(new SyncLogDequeSerializer(header.nodeIdentifier), logApplier);
+    super(new SyncLogDequeSerializer(header.nodeIdentifier), logApplier, header.toString());
     this.partitionTable = partitionTable;
     this.header = header;
     this.factory = factory;

@@ -180,8 +180,8 @@ public class CommittedEntryManager {
       throw new EntryUnavailableException(compactIndex, getLastIndex());
     }
     int index = (int) (compactIndex - dummyIndex);
-    entries.set(0, new EmptyContentLog(entries.get(index).getCurrLogTerm(),
-        entries.get(index).getCurrLogIndex()));
+    entries.set(0, new EmptyContentLog(entries.get(index).getCurrLogIndex(),
+        entries.get(index).getCurrLogTerm()));
     entries.subList(1, index + 1).clear();
   }
 

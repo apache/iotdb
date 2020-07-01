@@ -54,7 +54,8 @@ public class RaftLogManager {
 
   private long commitIndex;
   private LogApplier logApplier;
-
+  // to distinguish managers of different members
+  private String name;
 
   private ScheduledExecutorService executorService;
 
@@ -71,14 +72,15 @@ public class RaftLogManager {
       .getLogDeleteCheckIntervalSecond();
 
 
-  public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier) {
+  public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
+    this.name = name;
     this.setCommittedEntryManager(new CommittedEntryManager());
     this.setStableEntryManager(stableEntryManager);
     try {
       this.getCommittedEntryManager().append(stableEntryManager.getAllEntries());
     } catch (TruncateCommittedEntryException e) {
-      logger.error("Unexpected error:", e);
+      logger.error("{}: Unexpected error:", name, e);
     }
     long last = getCommittedEntryManager().getLastIndex();
     this.setUnCommittedEntryManager(new UnCommittedEntryManager(last + 1));
@@ -164,13 +166,14 @@ public class RaftLogManager {
   public long getTerm(long index) throws EntryUnavailableException, EntryCompactedException {
     long dummyIndex = getFirstIndex() - 1;
     if (index < dummyIndex) {
-      logger.info("invalid getTerm: parameter: index({}) < compactIndex({})", index,
+      logger.info("{}: invalid getTerm: parameter: index({}) < compactIndex({})", name, index,
           dummyIndex);
       throw new EntryCompactedException(index, dummyIndex);
     }
     long lastIndex = getLastLogIndex();
     if (index > lastIndex) {
-      logger.info("invalid getTerm: parameter: index({}) > lastIndex({})", index, lastIndex);
+      logger.info("{}: invalid getTerm: parameter: index({}) > lastIndex({})", name, index,
+          lastIndex);
       throw new EntryUnavailableException(index, lastIndex);
     }
     if (index >= getUnCommittedEntryManager().getFirstUnCommittedIndex()) {
@@ -189,7 +192,7 @@ public class RaftLogManager {
     try {
       term = getTerm(getLastLogIndex());
     } catch (Exception e) {
-      logger.error("unexpected error when getting the last term : {}", e.getMessage());
+      logger.error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
     }
     return term;
   }
@@ -204,7 +207,7 @@ public class RaftLogManager {
     try {
       term = getTerm(getCommitLogIndex());
     } catch (Exception e) {
-      logger.error("unexpected error when getting the last term : {}", e.getMessage());
+      logger.error("{}: unexpected error when getting the last term : {}", name, e.getMessage());
     }
     return term;
   }
@@ -227,12 +230,12 @@ public class RaftLogManager {
       if (ci <= commitIndex) {
         if (ci != -1) {
           logger
-              .error("entry {} conflict with committed entry [commitIndex({})]", ci,
+              .error("{}: entry {} conflict with committed entry [commitIndex({})]", name, ci,
                   commitIndex);
         } else {
           if (logger.isDebugEnabled() && !entries.isEmpty()) {
-            logger.debug("Appending entries [{} and other {} logs] all exist locally",
-                entries.get(0), entries.size() - 1);
+            logger.debug("{}: Appending entries [{} and other {} logs] all exist locally",
+                name, entries.get(0), entries.size() - 1);
           }
         }
 
@@ -265,8 +268,8 @@ public class RaftLogManager {
       long newLastIndex = lastIndex + 1;
       if (entry.getCurrLogIndex() <= commitIndex) {
         logger
-            .error("entry {} conflict with committed entry [commitIndex({})]",
-                entry.getCurrLogIndex(),
+            .error("{}: entry {} conflict with committed entry [commitIndex({})]",
+                name, entry.getCurrLogIndex(),
                 commitIndex);
       } else {
         append(entry);
@@ -294,7 +297,7 @@ public class RaftLogManager {
     }
     long after = entries.get(0).getCurrLogIndex();
     if (after <= commitIndex) {
-      logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
+      logger.error("{}: after({}) is out of range [commitIndex({})]", name, after, commitIndex);
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entries);
@@ -311,7 +314,7 @@ public class RaftLogManager {
   public long append(Log entry) {
     long after = entry.getCurrLogIndex();
     if (after <= commitIndex) {
-      logger.error("after({}) is out of range [commitIndex({})]", after, commitIndex);
+      logger.error("{}: after({}) is out of range [commitIndex({})]", name, after, commitIndex);
       return -1;
     }
     getUnCommittedEntryManager().truncateAndAppend(entry);
@@ -343,8 +346,8 @@ public class RaftLogManager {
    * @param snapshot leader's snapshot
    */
   public void applyingSnapshot(Snapshot snapshot) {
-    logger.info("log module starts to restore snapshot [index: {}, term: {}]",
-        snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
+    logger.info("{}: log module starts to restore snapshot [index: {}, term: {}]",
+        name, snapshot.getLastLogIndex(), snapshot.getLastLogTerm());
     try {
       getCommittedEntryManager().compactEntries(snapshot.getLastLogIndex());
       getStableEntryManager().removeCompactedEntries(snapshot.getLastLogIndex());
@@ -423,7 +426,7 @@ public class RaftLogManager {
           commitIndex = lastLog.getCurrLogIndex();
           applyEntries(entries, ignoreExecutionExceptions);
         } catch (TruncateCommittedEntryException e) {
-          logger.error("Unexpected error:", e);
+          logger.error("{}: Unexpected error:", name, e);
         }
       }
     }
@@ -460,7 +463,7 @@ public class RaftLogManager {
         logApplier.apply(entry);
       } catch (Exception e) {
         if (ignoreExecutionException) {
-          logger.error("Cannot apply a log {}, ignored", entry, e);
+          logger.error("{}: Cannot apply a log {}, ignored", name, entry, e);
         } else {
           throw new LogExecutionException(e);
         }
@@ -480,12 +483,13 @@ public class RaftLogManager {
   protected void checkBound(long low, long high)
       throws EntryCompactedException, GetEntriesWrongParametersException {
     if (low > high) {
-      logger.error("invalid getEntries: parameter: {} > {}", low, high);
+      logger.error("{}: invalid getEntries: parameter: {} > {}", name, low, high);
       throw new GetEntriesWrongParametersException(low, high);
     }
     long first = getFirstIndex();
     if (low < first) {
-      logger.error("CheckBound out of index: parameter: {} , lower bound: {} ", low, high);
+      logger.error("{}: CheckBound out of index: parameter: {} , lower bound: {} ", name, low,
+          high);
       throw new EntryCompactedException(low, first);
     }
   }
@@ -567,16 +571,24 @@ public class RaftLogManager {
    * check whether delete the committed log
    */
   public void checkDeleteLog() {
-    if (committedEntryManager.getTotalSize() <= maxNumberOfLogs) {
-      return;
-    }
-    long removeSize = committedEntryManager.getTotalSize() - maxNumberOfLogs;
-    long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
-    try {
-      getCommittedEntryManager().compactEntries(compactIndex);
-      getStableEntryManager().removeCompactedEntries(compactIndex);
-    } catch (EntryUnavailableException e) {
-      logger.error("regular compact log entries failed, error={}", e.getMessage());
+    synchronized (this) {
+      if (committedEntryManager.getTotalSize() <= maxNumberOfLogs) {
+        return;
+      }
+      long removeSize = committedEntryManager.getTotalSize() - maxNumberOfLogs;
+      long compactIndex = committedEntryManager.getDummyIndex() + removeSize;
+      try {
+        logger.info("{}: Before compaction index {}-{}, compactIndex {}, removeSize {}, "
+                + "committedLogSize {}",
+            name,
+            getFirstIndex(), getLastLogIndex(), compactIndex, removeSize, committedEntryManager.getTotalSize());
+        getCommittedEntryManager().compactEntries(compactIndex);
+        getStableEntryManager().removeCompactedEntries(compactIndex);
+        logger.info("{}: After compaction index {}-{}, committedLogSize {}", name,
+            getFirstIndex(), getLastLogIndex(), committedEntryManager.getTotalSize());
+      } catch (EntryUnavailableException e) {
+        logger.error("{}: regular compact log entries failed, error={}", name, e.getMessage());
+      }
     }
   }
 }

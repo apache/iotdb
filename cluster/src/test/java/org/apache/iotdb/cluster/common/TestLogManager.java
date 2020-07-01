@@ -25,6 +25,6 @@ import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
 public class TestLogManager extends RaftLogManager {
 
   public TestLogManager(int nodeIdentifier) {
-    super(new SyncLogDequeSerializer(nodeIdentifier), new TestLogApplier());
+    super(new SyncLogDequeSerializer(nodeIdentifier), new TestLogApplier(), "Test");
   }
 }

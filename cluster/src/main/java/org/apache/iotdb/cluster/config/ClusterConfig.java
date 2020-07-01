@@ -63,7 +63,7 @@ public class ClusterConfig {
   /**
    * deletion check period of the submitted log
    */
-  private int logDeleteCheckIntervalSecond = 3600;
+  private int logDeleteCheckIntervalSecond = 60;
 
   /**
    * max number of clients in a ClientPool of a member for one node.

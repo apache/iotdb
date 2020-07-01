@@ -46,7 +46,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
   private MetaGroupMember metaGroupMember;
 
   public MetaSingleSnapshotLogManager(LogApplier logApplier, MetaGroupMember metaGroupMember) {
-    super(new SyncLogDequeSerializer(0), logApplier);
+    super(new SyncLogDequeSerializer(0), logApplier, metaGroupMember.getName());
     this.metaGroupMember = metaGroupMember;
   }
 
