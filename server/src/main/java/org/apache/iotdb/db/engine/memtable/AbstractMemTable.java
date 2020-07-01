@@ -30,8 +30,8 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -98,21 +98,21 @@ public abstract class AbstractMemTable implements IMemTable {
   protected abstract IWritableMemChunk genMemSeries(MeasurementSchema schema);
 
   @Override
-  public void insert(InsertPlan insertPlan) {
-    for (int i = 0; i < insertPlan.getValues().length; i++) {
+  public void insert(InsertRowPlan insertRowPlan) {
+    for (int i = 0; i < insertRowPlan.getValues().length; i++) {
 
-      if (insertPlan.getValues()[i] == null) {
+      if (insertRowPlan.getValues()[i] == null) {
         continue;
       }
 
-      Object value = insertPlan.getValues()[i];
-      memSize += MemUtils.getRecordSize(insertPlan.getSchemas()[i].getType(), value);
+      Object value = insertRowPlan.getValues()[i];
+      memSize += MemUtils.getRecordSize(insertRowPlan.getSchemas()[i].getType(), value);
 
-      write(insertPlan.getDeviceId(), insertPlan.getMeasurements()[i],
-          insertPlan.getSchemas()[i], insertPlan.getTime(), value);
+      write(insertRowPlan.getDeviceId(), insertRowPlan.getMeasurements()[i],
+          insertRowPlan.getSchemas()[i], insertRowPlan.getTime(), value);
     }
 
-    totalPointsNum += insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
+    totalPointsNum += insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
   }
 
   @Override

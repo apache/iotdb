@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.junit.After;
@@ -62,7 +63,7 @@ public class FileLoaderTest {
   }
 
   private void initMetadata() throws MetadataException {
-    MManager mmanager = MManager.getInstance();
+    MManager mmanager = IoTDB.metaManager;
     mmanager.init();
     mmanager.setStorageGroup("root.sg0");
     mmanager.setStorageGroup("root.sg1");
@@ -90,8 +91,8 @@ public class FileLoaderTest {
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator
-                + (time + i * 100 + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+                + (time + i * 100 + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
         File syncFile = new File(fileName);
         File dataFile = new File(
             syncFile.getParentFile().getParentFile().getParentFile().getParentFile()
@@ -184,8 +185,8 @@ public class FileLoaderTest {
         String rand = String.valueOf(r.nextInt(10000));
         String fileName =
             getSnapshotFolder() + File.separator + SG_NAME + i + File.separator + (time + i * 100
-                + j) + IoTDBConstant.TSFILE_NAME_SEPARATOR + rand
-                + IoTDBConstant.TSFILE_NAME_SEPARATOR + "0.tsfile";
+                + j) + IoTDBConstant.FILE_NAME_SEPARATOR + rand
+                + IoTDBConstant.FILE_NAME_SEPARATOR + "0.tsfile";
 
         File syncFile = new File(fileName);
         File dataFile = new File(

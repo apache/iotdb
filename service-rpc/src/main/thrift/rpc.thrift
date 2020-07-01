@@ -43,6 +43,7 @@ struct TSExecuteStatementResp {
 enum TSProtocolVersion {
   IOTDB_SERVICE_PROTOCOL_V1,
   IOTDB_SERVICE_PROTOCOL_V2,//V2 is the first version that we can check version compatibility
+  IOTDB_SERVICE_PROTOCOL_V3,//V3 is incompatible with V2
 }
 
 struct TSOpenSessionResp {
@@ -61,7 +62,7 @@ struct TSOpenSessionResp {
 // OpenSession()
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
-  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
+  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: optional string username
   3: optional string password
   4: optional map<string, string> configuration

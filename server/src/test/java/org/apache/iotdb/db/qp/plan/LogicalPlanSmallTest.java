@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
-import java.util.ArrayList;
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
@@ -33,10 +31,13 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.strategy.ParseDriver;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.ArrayList;
 
 public class LogicalPlanSmallTest {
 
@@ -179,10 +180,10 @@ public class LogicalPlanSmallTest {
     String sqlStr = "select s1 from root.vehicle.d1 where s1 < 20 and time <= now() slimit 2 soffset 1";
     RootOperator operator = (RootOperator) parseDriver
         .parse(sqlStr, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
     ConcatPathOptimizer concatPathOptimizer = new ConcatPathOptimizer();
     concatPathOptimizer.transform(operator);
-    MManager.getInstance().clear();
+    IoTDB.metaManager.clear();
     // expected to throw LogicalOptimizeException: SOFFSET <SOFFSETValue>: SOFFSETValue exceeds the range.
   }
 

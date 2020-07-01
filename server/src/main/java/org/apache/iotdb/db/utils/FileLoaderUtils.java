@@ -129,7 +129,6 @@ public class FileLoaderUtils {
     return timeSeriesMetadata.loadChunkMetadataList();
   }
 
-
   /**
    * load all page readers in one chunk that satisfying the timeFilter
    *

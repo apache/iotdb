@@ -18,17 +18,14 @@
  */
 package org.apache.iotdb.db.writelog;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.node.ExclusiveWriteLogNode;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
@@ -40,6 +37,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
 
 @Ignore
 public class PerformanceTest {
@@ -86,7 +87,7 @@ public class PerformanceTest {
 
         long time = System.currentTimeMillis();
         for (int i = 0; i < 1000000; i++) {
-          InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
+          InsertRowPlan bwInsertPlan = new InsertRowPlan("logTestDevice", 100,
               new String[]{"s1", "s2", "s3", "s4"},
               new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
               new String[]{"1.0", "15", "str", "false"});
@@ -129,25 +130,25 @@ public class PerformanceTest {
     tempProcessorStore.createNewFile();
 
     try {
-      MManager.getInstance().setStorageGroup("root.logTestDevice");
+      IoTDB.metaManager.setStorageGroup("root.logTestDevice");
     } catch (MetadataException ignored) {
     }
-    MManager.getInstance()
+    IoTDB.metaManager
         .createTimeseries("root.logTestDevice.s1", TSDataType.DOUBLE, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    MManager.getInstance()
+    IoTDB.metaManager
         .createTimeseries("root.logTestDevice.s2", TSDataType.INT32, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    MManager.getInstance()
+    IoTDB.metaManager
         .createTimeseries("root.logTestDevice.s3", TSDataType.TEXT, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
-    MManager.getInstance()
+    IoTDB.metaManager
         .createTimeseries("root.logTestDevice.s4", TSDataType.BOOLEAN, TSEncoding.PLAIN,
             TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
     for (int i = 0; i < 1000000; i++) {
-      InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice", 100,
+      InsertRowPlan bwInsertPlan = new InsertRowPlan("root.logTestDevice", 100,
           new String[]{"s1", "s2", "s3", "s4"},
           new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
           new String[]{"1.0", "15", "str", "false"});
