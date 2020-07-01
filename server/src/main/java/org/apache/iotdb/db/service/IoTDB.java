@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.io.IOException;
 import org.apache.iotdb.db.concurrent.IoTDBDefaultThreadExceptionHandler;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -40,12 +39,15 @@ import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+
 public class IoTDB implements IoTDBMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName = String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE,
       IoTDBConstant.JMX_TYPE, "IoTDB");
   private RegisterManager registerManager = new RegisterManager();
+  public static MManager metaManager = MManager.getInstance();
 
   public static IoTDB getInstance() {
     return IoTDBHolder.INSTANCE;
@@ -133,7 +135,7 @@ public class IoTDB implements IoTDBMBean {
 
   private void initMManager() {
     long time = System.currentTimeMillis();
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
     long end = System.currentTimeMillis() - time;
     logger.info("spend {}ms to recover schema.", end);
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
@@ -152,7 +154,7 @@ public class IoTDB implements IoTDBMBean {
 
   public void shutdown() throws Exception {
     logger.info("Deactivating IoTDB...");
-    MManager.getInstance().clear();
+    IoTDB.metaManager.clear();
     TracingManager.getInstance().close();
     registerManager.shutdownAll();
     JMXService.deregisterMBean(mbeanName);
