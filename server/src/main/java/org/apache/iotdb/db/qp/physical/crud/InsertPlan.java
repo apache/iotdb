@@ -51,6 +51,7 @@ import java.util.Objects;
 public class InsertPlan extends PhysicalPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertPlan.class);
+  private static final short TYPE_RAW_STRING = -1;
 
   private long time;
   private String deviceId;
@@ -299,7 +300,7 @@ public class InsertPlan extends PhysicalPlan {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (types == null || types[i] == null) {
-        ReadWriteIOUtils.write((short) -1, outputStream);
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, outputStream);
         ReadWriteIOUtils.write((String) values[i], outputStream);
         continue;
       }
@@ -335,7 +336,7 @@ public class InsertPlan extends PhysicalPlan {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       if (types == null || types[i] == null) {
-        ReadWriteIOUtils.write((short) -1, buffer);
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
         ReadWriteIOUtils.write((String) values[i], buffer);
         continue;
       }
@@ -387,7 +388,7 @@ public class InsertPlan extends PhysicalPlan {
       // types are not determined, the situation mainly occurs when the plan uses string values
       // and is forwarded to other nodes
       short typeNum = ReadWriteIOUtils.readShort(buffer);
-      if (typeNum == -1) {
+      if (typeNum == TYPE_RAW_STRING) {
         values[i] = ReadWriteIOUtils.readString(buffer);
         continue;
       }
