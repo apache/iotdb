@@ -28,7 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.junit.Before;
@@ -45,15 +45,15 @@ public class LogWriterReaderTest {
     if (new File(filePath).exists()) {
       new File(filePath).delete();
     }
-    InsertPlan insertPlan1 = new InsertPlan("d1", 10L, new String[]{"s1", "s2"},
+    InsertRowPlan insertRowPlan1 = new InsertRowPlan("d1", 10L, new String[]{"s1", "s2"},
         new TSDataType[]{TSDataType.INT64, TSDataType.INT64},
         new String[]{"1", "2"});
-    InsertPlan insertPlan2 = new InsertPlan("d1", 10L, new String[]{"s1", "s2"},
+    InsertRowPlan insertRowPlan2 = new InsertRowPlan("d1", 10L, new String[]{"s1", "s2"},
         new TSDataType[]{TSDataType.INT64, TSDataType.INT64},
         new String[]{"1", "2"});
     DeletePlan deletePlan = new DeletePlan(10L, new Path("root.d1.s1"));
-    plans.add(insertPlan1);
-    plans.add(insertPlan2);
+    plans.add(insertRowPlan1);
+    plans.add(insertRowPlan2);
     plans.add(deletePlan);
     for (PhysicalPlan plan : plans) {
       plan.serialize(logsBuffer);

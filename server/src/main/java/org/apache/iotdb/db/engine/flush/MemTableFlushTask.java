@@ -299,7 +299,7 @@ public class MemTableFlushTask {
   private File createNewTmpFile() {
     File parent = writer.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        writer.getFile().getName() + IoTDBConstant.TSFILE_NAME_SEPARATOR + System
+        writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
             .currentTimeMillis()
             + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
             + PATH_UPGRADE);

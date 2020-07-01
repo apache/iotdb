@@ -18,15 +18,10 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -39,6 +34,13 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 public class MManagerAdvancedTest {
 
   private static MManager mmanager = null;
@@ -46,7 +48,7 @@ public class MManagerAdvancedTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mmanager = MManager.getInstance();
+    mmanager = IoTDB.metaManager;
 
     mmanager.setStorageGroup("root.vehicle.d0");
     mmanager.setStorageGroup("root.vehicle.d1");
