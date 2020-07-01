@@ -1841,12 +1841,12 @@ public class MManager {
    * @return
    * @throws MetadataException
    */
-  public MeasurementSchema[] getSeriesSchemas(String deviceId, String[] measurementList, PhysicalPlan plan) throws MetadataException {
+  public MeasurementSchema[] getSeriesSchemasAndLock(String deviceId, String[] measurementList, PhysicalPlan plan) throws MetadataException {
     MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
     MNode deviceNode;
     // 1. get device node
-    deviceNode = getDeviceNode(deviceId);
+    deviceNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
 
     // 2. get schema of each measurement
     for (int i = 0; i < measurementList.length; i++) {
@@ -1902,11 +1902,6 @@ public class MManager {
           }
         }
 
-        // maybe need to convert value type to the true type
-        if ((plan instanceof InsertRowPlan) && ((InsertRowPlan) plan).isNeedInferType()) {
-          changeStringValueToRealType((InsertRowPlan) plan, i, measurementNode.getSchema().getType());
-        }
-
         schemas[i] = measurementNode.getSchema();
         if (schemas[i] != null) {
           measurementList[i] = schemas[i].getMeasurementId();
@@ -1925,44 +1920,6 @@ public class MManager {
       }
     }
     return schemas;
-  }
-
-  private void changeStringValueToRealType(InsertRowPlan plan, int loc, TSDataType type) throws MetadataException {
-    plan.getDataTypes()[loc] = type;
-    try {
-      switch (type) {
-        case INT32:
-          plan.getValues()[loc] =
-            Integer.parseInt(String.valueOf(plan.getValues()[loc]));
-          break;
-        case INT64:
-          plan.getValues()[loc] =
-              Long.parseLong(String.valueOf(plan.getValues()[loc]));
-          break;
-        case DOUBLE:
-          plan.getValues()[loc] =
-              Double.parseDouble(String.valueOf(plan.getValues()[loc]));
-          break;
-        case FLOAT:
-          plan.getValues()[loc] =
-              Float.parseFloat(String.valueOf(plan.getValues()[loc]));
-          break;
-        case BOOLEAN:
-          plan.getValues()[loc] =
-              Boolean.parseBoolean(String.valueOf(plan.getValues()[loc]));
-          break;
-        case TEXT:
-          plan.getValues()[loc] =
-              Binary.valueOf(String.valueOf(plan.getValues()[loc]));
-          break;
-      }
-    } catch (ClassCastException e) {
-      logger.error("inconsistent type between client and server for " + e.getMessage() + " " + type);
-      throw new MetadataException(e.getMessage());
-    } catch (NumberFormatException e) {
-      logger.error("inconsistent type between type {} and value {}", type, plan.getValues()[loc]);
-      throw new MetadataException(e.getMessage());
-    }
   }
 
   /**
@@ -2013,21 +1970,12 @@ public class MManager {
 
   /**
    * when insert, we lock device node for not create deleted time series
-   * before insert, we should call this function to lock the device node
-   * @param deviceId
-   */
-  public void lockInsert(String deviceId) throws MetadataException {
-    getDeviceNodeWithAutoCreateAndReadLock(deviceId);
-  }
-
-  /**
-   * when insert, we lock device node for not create deleted time series
    * after insert, we should call this function to unlock the device node
    * @param deviceId
    */
   public void unlockInsert(String deviceId) {
     try {
-      MNode mNode =getDeviceNode(deviceId);
+      MNode mNode = getDeviceNode(deviceId);
       mNode.readUnlock();
     } catch (MetadataException e) {
       // ignore the exception
