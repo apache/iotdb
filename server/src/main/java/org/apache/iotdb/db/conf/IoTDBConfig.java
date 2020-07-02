@@ -249,6 +249,16 @@ public class IoTDBConfig {
   private int avgSeriesPointNumberThreshold = 10000;
 
   /**
+   * When merge point number reaches this, merge the vmfile to the tsfile.
+   */
+  private int mergeChunkPointNumberThreshold = 10000;
+
+  /**
+   * When vmfiles merge times exceeds this, merge the vmfile to the tsfile.
+   */
+  private int maxMergeChunkNumInTsFile = 5;
+
+  /**
    * whether to cache meta data(ChunkMetaData and TsFileMetaData) or not.
    */
   private boolean metaDataCacheEnable = true;
@@ -1231,6 +1241,21 @@ public class IoTDBConfig {
     this.avgSeriesPointNumberThreshold = avgSeriesPointNumberThreshold;
   }
 
+  public int getMergeChunkPointNumberThreshold() {
+    return mergeChunkPointNumberThreshold;
+  }
+
+  public void setMergeChunkPointNumberThreshold(int mergeChunkPointNumberThreshold) {
+    this.mergeChunkPointNumberThreshold = mergeChunkPointNumberThreshold;
+  }
+
+  public int getMaxMergeChunkNumInTsFile() {
+    return maxMergeChunkNumInTsFile;
+  }
+
+  public void setMaxMergeChunkNumInTsFile(int maxMergeChunkNumInTsFile) {
+    this.maxMergeChunkNumInTsFile = maxMergeChunkNumInTsFile;
+  }
   public MergeFileStrategy getMergeFileStrategy() {
     return mergeFileStrategy;
   }
