@@ -1359,7 +1359,7 @@ public class StorageGroupProcessor {
       tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
 
       Path fullPath = new Path(deviceId, measurementId);
-      Deletion deletion = new Deletion(fullPath, 0, startTime, endTime);
+      Deletion deletion = new Deletion(fullPath, 1, startTime, endTime);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
@@ -1383,7 +1383,7 @@ public class StorageGroupProcessor {
   private void logDeletion(long startTime, long endTime, String deviceId, String measurementId)
       throws IOException {
     long timePartitionStartId = StorageEngine.getTimePartition(startTime);
-    long timePartitionEndId = StorageEngine.getTimePartition(startTime);
+    long timePartitionEndId = StorageEngine.getTimePartition(endTime);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       DeletePlan deletionPlan = new DeletePlan(startTime, endTime, new Path(deviceId, measurementId));
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
