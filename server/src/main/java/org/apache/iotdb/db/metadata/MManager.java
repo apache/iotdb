@@ -32,7 +32,6 @@ import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -1833,13 +1832,10 @@ public class MManager {
   /**
    * get schema for device.
    * Attention!!!  Only support insertPlan
-   * @param deviceId
-   * @param measurementList
-   * @param plan
-   * @return
    * @throws MetadataException
    */
-  public MeasurementSchema[] getSeriesSchemasAndLock(String deviceId, String[] measurementList, PhysicalPlan plan) throws MetadataException {
+  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(String deviceId,
+      String[] measurementList, InsertPlan plan) throws MetadataException {
     MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
     MNode deviceNode;
@@ -1893,9 +1889,7 @@ public class MManager {
               measurementList[i], insertDataType, measurementNode.getSchema().getType()));
           } else {
             // mark failed measurement
-            if( plan instanceof InsertPlan){
-              ((InsertPlan) plan).markFailedMeasurementInsertion(i);
-            }
+            plan.markFailedMeasurementInsertion(i);
             continue;
           }
         }
@@ -1909,9 +1903,7 @@ public class MManager {
           e.getMessage());
         if (config.isEnablePartialInsert()) {
           // mark failed measurement
-          if (plan instanceof InsertPlan) {
-            ((InsertPlan) plan).markFailedMeasurementInsertion(i);
-          }
+          plan.markFailedMeasurementInsertion(i);
         } else {
           throw e;
         }
@@ -1947,18 +1939,15 @@ public class MManager {
   /**
    * get dataType of plan, in loc measurements
    * only support InsertRowPlan and InsertTabletPlan
-   * @param plan
-   * @param loc
-   * @return
    * @throws MetadataException
    */
-  private TSDataType getTypeInLoc(PhysicalPlan plan, int loc) throws MetadataException {
+  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
     TSDataType dataType;
     if (plan instanceof InsertRowPlan) {
       InsertRowPlan tPlan = (InsertRowPlan) plan;
       dataType = TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
     } else if (plan instanceof InsertTabletPlan) {
-      dataType = ((InsertTabletPlan) plan).getDataTypes()[loc];
+      dataType = (plan).getDataTypes()[loc];
     }  else {
       throw new MetadataException(String.format(
         "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
@@ -1971,7 +1960,7 @@ public class MManager {
    * after insert, we should call this function to unlock the device node
    * @param deviceId
    */
-  public void unlockInsert(String deviceId) {
+  public void unlockDeviceReadLock(String deviceId) {
     try {
       MNode mNode = getDeviceNode(deviceId);
       mNode.readUnlock();
