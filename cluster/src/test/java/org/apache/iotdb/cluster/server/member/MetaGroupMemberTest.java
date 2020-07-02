@@ -97,6 +97,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -407,11 +408,11 @@ public class MetaGroupMemberTest extends MemberTest {
     System.out.println("Start testClosePartition()");
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
@@ -699,10 +700,10 @@ public class MetaGroupMemberTest extends MemberTest {
       throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
     System.out.println("Start testGetReaderByTimestamp()");
     mockDataClusterServer = true;
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
       MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
@@ -743,10 +744,10 @@ public class MetaGroupMemberTest extends MemberTest {
       throws QueryProcessException, StorageEngineException, IOException, StorageGroupNotSetException {
     System.out.println("Start testGetReader()");
     mockDataClusterServer = true;
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
 
     for (int i = 0; i < 10; i++) {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));

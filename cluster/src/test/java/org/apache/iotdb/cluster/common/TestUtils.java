@@ -37,6 +37,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -233,7 +234,7 @@ public class TestUtils {
 
   public static void prepareData()
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     // data for raw data query and aggregation
     // 10 devices (storage groups)
     for (int j = 0; j < 10; j++) {
@@ -247,7 +248,7 @@ public class TestUtils {
       }
       insertPlan.setMeasurements(measurements);
       insertPlan.setNeedInferType(true);
-      insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+      insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
       // the first sequential file
       for (int i = 10; i < 20; i++) {
         insertPlan.setTime(i);
@@ -295,7 +296,7 @@ public class TestUtils {
     MeasurementSchema[] schemas = new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(10)};
     insertPlan.setMeasurements(measurements);
     insertPlan.setNeedInferType(true);
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i : new int[]{0, 10}) {
       insertPlan.setTime(i);
       Object[] values = new Object[]{String.valueOf(i)};

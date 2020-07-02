@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -94,7 +95,7 @@ public class IoTDBTest {
   }
 
   protected void prepareData(int sgNum, int timeOffset, int size) throws QueryProcessException {
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(sgNum));
     String[] measurements = new String[10];
     for (int i = 0; i < measurements.length; i++) {
@@ -106,7 +107,7 @@ public class IoTDBTest {
     }
     insertPlan.setMeasurements(measurements);
     insertPlan.setNeedInferType(true);
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
 
     Object[] values = new Object[10];
     for (int i = timeOffset; i < timeOffset + size; i++) {

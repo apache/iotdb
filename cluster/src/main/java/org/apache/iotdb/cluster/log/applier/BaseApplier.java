@@ -57,8 +57,8 @@ abstract class BaseApplier implements LogApplier {
 
   void applyPhysicalPlan(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (plan instanceof InsertPlan || plan instanceof InsertTabletPlan) {
-      processPlanWithTolerance(plan);
+    if (plan instanceof InsertPlan) {
+      processPlanWithTolerance((InsertPlan) plan);
     } else if (!plan.isQuery()) {
       try {
         getQueryExecutor().processNonQuery(plan);
@@ -80,7 +80,7 @@ abstract class BaseApplier implements LogApplier {
   }
 
 
-  private void processPlanWithTolerance(PhysicalPlan plan)
+  private void processPlanWithTolerance(InsertPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     try {
       getQueryExecutor().processNonQuery(plan);
@@ -96,12 +96,7 @@ abstract class BaseApplier implements LogApplier {
               metaGroupMember.getName(), e.getCause().getMessage());
         }
         try {
-          String path;
-          if (plan instanceof InsertPlan) {
-            path = ((InsertPlan) plan).getDeviceId();
-          } else {
-            path = ((InsertTabletPlan) plan).getDeviceId();
-          }
+          String path = plan.getDeviceId();
           List<MeasurementSchema> schemas = metaGroupMember
               .pullTimeSeriesSchemas(Collections.singletonList(path));
           for (MeasurementSchema schema : schemas) {

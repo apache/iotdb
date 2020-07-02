@@ -89,6 +89,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -424,12 +425,12 @@ public class DataGroupMemberTest extends MemberTest {
     // create a local resource1
     StorageGroupProcessor processor = StorageEngine.getInstance()
         .getProcessor(TestUtils.getTestSg(0));
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[]{"s0"});
     insertPlan.setNeedInferType(true);
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
     processor.insert(insertPlan);
@@ -561,11 +562,11 @@ public class DataGroupMemberTest extends MemberTest {
   public void testQuerySingleSeries()
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testQuerySingleSeries()");
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
@@ -617,11 +618,11 @@ public class DataGroupMemberTest extends MemberTest {
   public void testQuerySingleSeriesWithValueFilter()
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
@@ -673,11 +674,11 @@ public class DataGroupMemberTest extends MemberTest {
   public void testQuerySingleSeriesByTimestamp()
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
@@ -726,11 +727,11 @@ public class DataGroupMemberTest extends MemberTest {
   public void testQuerySingleSeriesByTimestampWithValueFilter()
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
-    InsertPlan insertPlan = new InsertPlan();
+    InsertRowPlan insertPlan = new InsertRowPlan();
     insertPlan.setDeviceId(TestUtils.getTestSg(0));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[]{TestUtils.getTestMeasurement(0)});
-    insertPlan.setTypes(new TSDataType[insertPlan.getMeasurements().length]);
+    insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});

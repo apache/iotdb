@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.server.member;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
+import com.sun.rowset.internal.InsertRow;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -147,6 +148,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -1580,9 +1582,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
                     setStorageGroupResult.getCode(), storageGroupName)
             );
           }
-          if(plan instanceof InsertPlan){
+          if(plan instanceof InsertRowPlan){
             // try to create timeseries
-            boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
+            boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
             if (!isAutoCreateTimeseriesSuccess) {
               throw new MetadataException(
                   "Failed to create timeseries from InsertPlan automatically."
@@ -1610,9 +1612,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
-    InsertPlan backup = null;
+    InsertRowPlan backup = null;
     if (plan instanceof InsertPlan) {
-      backup = (InsertPlan) ((InsertPlan) plan).clone();
+      backup = (InsertRowPlan) ((InsertRowPlan) plan).clone();
     }
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
@@ -1755,7 +1757,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             status.getMessage()));
       }
     }
-    if (errorCodePartitionGroups.size() == 0) {
+    if (errorCodePartitionGroups.isEmpty()) {
       status = StatusUtils.OK;
     } else {
       status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
@@ -1772,7 +1774,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @param insertPlan, some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
-  boolean autoCreateTimeseries(InsertPlan insertPlan) {
+  boolean autoCreateTimeseries(InsertRowPlan insertPlan) {
     List<String> seriesList = new ArrayList<>();
     String deviceId = insertPlan.getDeviceId();
     String storageGroupName;
@@ -1844,7 +1846,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             seriesList.get(0), seriesList.get(seriesList.size() - 1), node, e);
       }
     }
-    return new ArrayList<String>(unregistered);
+    return new ArrayList<>(unregistered);
   }
 
   /**

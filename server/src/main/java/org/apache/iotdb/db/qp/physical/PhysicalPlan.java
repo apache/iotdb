@@ -25,10 +25,10 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -167,15 +167,15 @@ public abstract class PhysicalPlan {
       // TODO-Cluster: support more plans
       switch (type) {
         case INSERT:
-          plan = new InsertPlan();
-          plan.deserialize(buffer);
-          break;
-        case DELETE:
-          plan = new DeletePlan();
+          plan = new InsertRowPlan();
           plan.deserialize(buffer);
           break;
         case BATCHINSERT:
           plan = new InsertTabletPlan();
+          plan.deserialize(buffer);
+          break;
+        case DELETE:
+          plan = new DeletePlan();
           plan.deserialize(buffer);
           break;
         case SET_STORAGE_GROUP:

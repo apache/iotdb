@@ -27,7 +27,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -85,9 +85,9 @@ public interface IPlanExecutor {
   /**
    * execute insert command and return whether the operator is successful.
    *
-   * @param insertPlan physical insert plan
+   * @param insertRowPlan physical insert plan
    */
-  void insert(InsertPlan insertPlan) throws QueryProcessException;
+  void insert(InsertRowPlan insertRowPlan) throws QueryProcessException;
 
   /**
    * execute batch insert plan

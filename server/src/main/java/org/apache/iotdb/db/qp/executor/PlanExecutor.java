@@ -95,6 +95,7 @@ import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -127,6 +128,7 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
 import org.apache.iotdb.db.query.executor.QueryRouter;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
@@ -162,7 +164,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   public PlanExecutor() throws QueryProcessException {
     queryRouter = new QueryRouter();
-    mManager = MManager.getInstance();
+    mManager = IoTDB.metaManager;
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
@@ -199,7 +201,7 @@ public class PlanExecutor implements IPlanExecutor {
         }
         return true;
       case INSERT:
-        insert((InsertPlan) plan);
+        insert((InsertRowPlan) plan);
         return true;
       case BATCHINSERT:
         insertTablet((InsertTabletPlan) plan);
@@ -427,19 +429,19 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected int getPathsNum(String path) throws MetadataException {
-    return MManager.getInstance().getAllTimeseriesCount(path);
+    return IoTDB.metaManager.getAllTimeseriesCount(path);
   }
 
   protected int getNodesNumInGivenLevel(String path, int level) throws MetadataException {
-    return MManager.getInstance().getNodesCountInGivenLevel(path, level);
+    return IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
   }
 
   protected List<String> getPathsName(String path) throws MetadataException {
-    return MManager.getInstance().getAllTimeseriesName(path);
+    return IoTDB.metaManager.getAllTimeseriesName(path);
   }
 
   protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
-    return MManager.getInstance().getNodesList(schemaPattern, level);
+    return IoTDB.metaManager.getNodesList(schemaPattern, level);
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
@@ -474,7 +476,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected Set<String> getDevices(String path) throws MetadataException {
-    return MManager.getInstance().getDevices(path);
+    return IoTDB.metaManager.getDevices(path);
   }
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
@@ -495,11 +497,11 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected Set<String> getPathNextChildren(String path) throws MetadataException {
-    return MManager.getInstance().getChildNodePathInNextLevel(path);
+    return IoTDB.metaManager.getChildNodePathInNextLevel(path);
   }
 
   protected List<String> getAllStorageGroupNames() {
-    return MManager.getInstance().getAllStorageGroupNames();
+    return IoTDB.metaManager.getAllStorageGroupNames();
   }
 
   private QueryDataSet processShowStorageGroup() {
@@ -572,12 +574,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
       throws MetadataException {
-    return MManager.getInstance().showTimeseries(plan);
+    return IoTDB.metaManager.showTimeseries(plan);
   }
 
   protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
-    return MManager.getInstance().getAllTimeseriesSchema(plan);
+    return IoTDB.metaManager.getAllTimeseriesSchema(plan);
   }
 
   private void updateRecord(
@@ -598,7 +600,7 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   protected List<StorageGroupMNode> getAllStorageGroupNodes() {
-    return MManager.getInstance().getAllStorageGroupNodes();
+    return IoTDB.metaManager.getAllStorageGroupNodes();
   }
 
   private QueryDataSet processShowTTLQuery(ShowTTLPlan showTTLPlan) {
@@ -677,7 +679,7 @@ public class PlanExecutor implements IPlanExecutor {
         listDataSet,
         timestamp++,
         "storage group number",
-        Integer.toString(MManager.getInstance().getAllStorageGroupNames().size()));
+        Integer.toString(IoTDB.metaManager.getAllStorageGroupNames().size()));
     addRowRecordForShowQuery(
         listDataSet,
         timestamp++,
@@ -687,7 +689,7 @@ public class PlanExecutor implements IPlanExecutor {
         listDataSet,
         timestamp,
         "maximal timeseries number among storage groups",
-        Long.toString(MManager.getInstance().getMaximalSeriesNumberAmongStorageGroups()));
+        Long.toString(IoTDB.metaManager.getMaximalSeriesNumberAmongStorageGroups()));
     return listDataSet;
   }
 
@@ -894,7 +896,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
-      MManager.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
+      IoTDB.metaManager.setTTL(plan.getStorageGroup(), plan.getDataTTL());
       StorageEngine.getInstance().setTTL(plan.getStorageGroup(), plan.getDataTTL());
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
@@ -926,37 +928,30 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
     throws MetadataException {
-    return mManager.getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
-  }
-
-  protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
-    throws MetadataException {
-    return mManager.getSeriesSchemas(insertTabletPlan.getDeviceId(),
-      insertTabletPlan.getMeasurements(), insertTabletPlan);
+    return mManager.getSeriesSchemasAndLock(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
   }
 
   @Override
-  public void insert(InsertPlan insertPlan) throws QueryProcessException {
+  public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-      mManager.lockInsert(insertPlan.getDeviceId());
-      MeasurementSchema[] schemas = getSeriesSchemas(insertPlan);
-      insertPlan.setSchemasAndTransferType(schemas);
-      StorageEngine.getInstance().insert(insertPlan);
-      if (insertPlan.getFailedMeasurements() != null) {
+      MeasurementSchema[] schemas = getSeriesSchemas(insertRowPlan);
+      insertRowPlan.setSchemasAndTransferType(schemas);
+      StorageEngine.getInstance().insert(insertRowPlan);
+      if (insertRowPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
-            "failed to insert measurements " + insertPlan.getFailedMeasurements());
+            "failed to insert measurements " + insertRowPlan.getFailedMeasurements());
       }
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockInsert(insertPlan.getDeviceId());
+      // TODO: put lock and unlock in the same block
+      mManager.unlockInsert(insertRowPlan.getDeviceId());
     }
   }
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     try {
-      mManager.lockInsert(insertTabletPlan.getDeviceId());
       MeasurementSchema[] schemas = getSeriesSchemas(insertTabletPlan);
       insertTabletPlan.setSchemas(schemas);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);

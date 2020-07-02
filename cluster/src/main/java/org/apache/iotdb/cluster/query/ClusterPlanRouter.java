@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.UpdatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
@@ -64,8 +65,8 @@ public class ClusterPlanRouter {
 
   public PartitionGroup routePlan(PhysicalPlan plan)
       throws UnsupportedPlanException, MetadataException {
-    if (plan instanceof InsertPlan) {
-      return routePlan((InsertPlan) plan);
+    if (plan instanceof InsertRowPlan) {
+      return routePlan((InsertRowPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return routePlan((CreateTimeSeriesPlan) plan);
     } else if (plan instanceof ShowChildPathsPlan) {
@@ -83,7 +84,7 @@ public class ClusterPlanRouter {
     throw new UnsupportedPlanException(plan);
   }
 
-  public PartitionGroup routePlan(InsertPlan plan)
+  public PartitionGroup routePlan(InsertRowPlan plan)
       throws MetadataException {
     return partitionTable.partitionByPathTime(plan.getDeviceId(), plan.getTime());
   }
@@ -114,8 +115,8 @@ public class ClusterPlanRouter {
       return splitAndRoutePlan((CountPlan) plan);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       return splitAndRoutePlan((CreateTimeSeriesPlan) plan);
-    } else if (plan instanceof InsertPlan) {
-      return splitAndRoutePlan((InsertPlan) plan);
+    } else if (plan instanceof InsertRowPlan) {
+      return splitAndRoutePlan((InsertRowPlan) plan);
     } else if (plan instanceof AlterTimeSeriesPlan) {
       return splitAndRoutePlan((AlterTimeSeriesPlan) plan);
     }
@@ -131,7 +132,7 @@ public class ClusterPlanRouter {
     throw new UnsupportedPlanException(plan);
   }
 
-  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertPlan plan)
+  public Map<PhysicalPlan, PartitionGroup> splitAndRoutePlan(InsertRowPlan plan)
       throws MetadataException {
     PartitionGroup partitionGroup = partitionTable.partitionByPathTime(plan.getDeviceId(),
         plan.getTime());

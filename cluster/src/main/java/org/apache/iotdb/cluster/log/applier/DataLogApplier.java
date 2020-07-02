@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,7 +62,7 @@ public class DataLogApplier extends BaseApplier {
     if (log instanceof PhysicalPlanLog) {
       PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
       PhysicalPlan plan = physicalPlanLog.getPlan();
-      if (plan instanceof InsertPlan || plan instanceof InsertTabletPlan) {
+      if (plan instanceof InsertPlan) {
         applyInsert(plan);
       } else {
         applyPhysicalPlan(plan);
@@ -88,8 +89,8 @@ public class DataLogApplier extends BaseApplier {
     String sg;
     long time;
     try {
-      if (plan instanceof InsertPlan) {
-        InsertPlan insertPlan = (InsertPlan) plan;
+      if (plan instanceof InsertRowPlan) {
+        InsertRowPlan insertPlan = (InsertRowPlan) plan;
         sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
         time = insertPlan.getTime();
       } else {
@@ -105,8 +106,8 @@ public class DataLogApplier extends BaseApplier {
       } catch (CheckConsistencyException ce) {
         throw new QueryProcessException(ce.getMessage());
       }
-      if (plan instanceof InsertPlan) {
-        InsertPlan insertPlan = (InsertPlan) plan;
+      if (plan instanceof InsertRowPlan) {
+        InsertRowPlan insertPlan = (InsertRowPlan) plan;
         sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
         time = insertPlan.getTime();
       } else {

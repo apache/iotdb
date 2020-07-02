@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -48,11 +48,11 @@ public class SerializeLogTest {
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
-    InsertPlan plan = new InsertPlan();
+    InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId("root.d1");
     plan.setMeasurements(new String[]{"s1", "s2", "s3"});
     plan.setNeedInferType(true);
-    plan.setTypes(new TSDataType[plan.getMeasurements().length]);
+    plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
     plan.setValues(new Object[]{"0.1", "1", "\"dd\""});
     MeasurementSchema[] schemas = {TestUtils.getTestMeasurementSchema(1),
         TestUtils.getTestMeasurementSchema(2), TestUtils.getTestMeasurementSchema(3)};

@@ -62,7 +62,6 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
@@ -610,24 +609,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // we have pulled schemas as much as we can, those not pulled will depend on whether
     // auto-creation is enabled
     return super.getSeriesSchemas(insertPlan);
-  }
-
-  @Override
-  protected MeasurementSchema[] getSeriesSchemas(InsertTabletPlan insertTabletPlan)
-      throws MetadataException {
-    String[] measurementList = insertTabletPlan.getMeasurements();
-    String deviceId = insertTabletPlan.getDeviceId();
-
-    if (getSeriesSchemas(deviceId, measurementList)) {
-      return super.getSeriesSchemas(insertTabletPlan);
-    }
-
-    // some schemas does not exist locally, fetch them from the remote side
-    pullSeriesSchemas(deviceId, measurementList);
-
-    // we have pulled schemas as much as we can, those not pulled will depend on whether
-    // auto-creation is enabled
-    return super.getSeriesSchemas(insertTabletPlan);
   }
 
   public boolean getSeriesSchemas(String deviceId, String[] measurementList)
