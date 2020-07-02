@@ -67,7 +67,8 @@ public class SyncServerManager  extends ThriftService implements SyncServerManag
         getID().getName(), ThreadName.SYNC_CLIENT.getName(),
         config.getRpcAddress(), config.getSyncServerPort(),
         Integer.MAX_VALUE, config.getThriftServerAwaitTimeForStopService(),
-        new SyncServerThriftHandler(serviceImpl)
+        new SyncServerThriftHandler(serviceImpl),
+        false
         );
     thriftServiceThread.setName(ThreadName.SYNC_SERVER.getName());
   }

@@ -56,9 +56,9 @@ public class ThriftServiceThread extends Thread{
   public ThriftServiceThread(TProcessor processor, String serviceName,
       String threadsName,
       String bindAddress, int port, int maxWorkerThreads, int timeoutMs,
-      TServerEventHandler serverEventHandler)
+      TServerEventHandler serverEventHandler, boolean compress)
       throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+    if(compress) {
       protocolFactory = new TCompactProtocol.Factory();
     }
     else {
