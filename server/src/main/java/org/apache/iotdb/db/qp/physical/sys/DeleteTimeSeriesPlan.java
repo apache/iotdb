@@ -40,6 +40,10 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
     super(false, Operator.OperatorType.DELETE_TIMESERIES);
   }
 
+  public void setPaths(List<Path> paths){
+    this.deletePathList = paths;
+  }
+
   @Override
   public List<Path> getPaths() {
     return deletePathList;

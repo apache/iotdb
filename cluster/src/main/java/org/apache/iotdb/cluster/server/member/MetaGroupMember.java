@@ -48,6 +48,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -151,6 +152,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -1510,6 +1512,35 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
+    if(plan instanceof DeleteTimeSeriesPlan){
+      List<Path> originalPaths = ((DeleteTimeSeriesPlan)plan).getPaths();
+      ConcurrentSkipListSet<Path> fullPaths = new ConcurrentSkipListSet<>();
+
+      ExecutorService getAllPathsService = Executors.newFixedThreadPool(partitionTable.getGlobalGroups().size());
+
+      for(Path path : originalPaths){
+        String pathStr = path.getFullPath();
+        getAllPathsService.submit(()->{
+          try {
+            List<String> fullPathStrs = getMatchedPaths(pathStr);
+            for(String fullPathStr : fullPathStrs){
+              fullPaths.add(new Path(fullPathStr));
+            }
+          } catch (MetadataException e) {
+            logger.error("Failed to get full paths of the prefix path: {}", pathStr);
+          }
+        });
+      }
+      getAllPathsService.shutdown();
+      try {
+        getAllPathsService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
+      }
+
+      ((DeleteTimeSeriesPlan)plan).setPaths(new ArrayList<>(fullPaths));
+    }
     try {
       syncLeaderWithConsistencyCheck();
       List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
