@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.junit.After;
@@ -562,13 +563,11 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    String errorMsg = null;
-    try {
-      asyncInsertRecord("root.sg1.d1", 0, 100, 0);
-    } catch (Exception e) {
-      errorMsg = e.getMessage();
-    }
-    Assert.assertEquals("java.util.concurrent.TimeoutException: Timeout after 0 seconds", errorMsg);
+    int result = asyncInsertRecordTimeout("root.sg1.d1", 0, 100);
+    Assert.assertEquals(0, result);
+
+    result = asyncInsertRecordTimeout("root.sg1.d1", 1, 0);
+    Assert.assertEquals(-1, result);
   }
 
   @Test
@@ -871,7 +870,7 @@ public class IoTDBSessionIT {
       typesList.add(types);
       timestamps.add(time);
       if (time != 0 && time % recordSplitTime == 0) {
-        CompletableFuture<Void> future = session
+        CompletableFuture<Integer> future = session
             .asyncInsertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList, timeout,
                 null);
         future.get();
@@ -882,7 +881,7 @@ public class IoTDBSessionIT {
       }
     }
 
-    CompletableFuture<Void> future = session
+    CompletableFuture<Integer> future = session
         .asyncInsertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList, timeout,
             null);
     future.get();
@@ -940,10 +939,30 @@ public class IoTDBSessionIT {
       values.add(1L);
       values.add(2L);
       values.add(3L);
-      CompletableFuture<Void> future = session
+      CompletableFuture<Integer> future = session
           .asyncInsertRecord(deviceId, time, measurements, types, values, timeout,null);
       future.get();
     }
+  }
+
+  private int asyncInsertRecordTimeout(String deviceId, long time, long timeout)
+      throws ExecutionException, InterruptedException {
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    measurements.add("s1");
+    measurements.add("s2");
+    measurements.add("s3");
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+    types.add(TSDataType.INT64);
+
+    List<Object> values = new ArrayList<>();
+    values.add(1L);
+    values.add(2L);
+    values.add(3L);
+    CompletableFuture<Integer> future = session
+        .asyncInsertRecord(deviceId, time, measurements, types, values, timeout,null);
+    return future.get();
   }
 
   private void insertTablet(String deviceId, long startTime, long endTime, int maxTabletRow)
@@ -999,14 +1018,14 @@ public class IoTDBSessionIT {
         sensor[row] = i;
       }
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        CompletableFuture<Void> future = session.asyncInsertTablet(tablet, true, timeout, null);
+        CompletableFuture<Integer> future = session.asyncInsertTablet(tablet, true, timeout, null);
         future.get();
         tablet.reset();
       }
     }
 
     if (tablet.rowSize != 0) {
-      CompletableFuture<Void> future = session.asyncInsertTablet(tablet, true, 3, null);
+      CompletableFuture<Integer> future = session.asyncInsertTablet(tablet, true, 3, null);
       future.get();
       tablet.reset();
     }

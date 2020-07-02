@@ -18,6 +18,14 @@
  */
 package org.apache.iotdb.session;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.BiConsumer;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -86,5 +94,47 @@ public class SessionUtils {
     }
     valueBuffer.flip();
     return valueBuffer;
+  }
+
+  // From jdk9 CompletableFuture.java
+  static final class TimeOutCanceller implements BiConsumer<Object, Throwable> {
+    final Future<?> f;
+    TimeOutCanceller(Future<?> f) { this.f = f; }
+    public void accept(Object ignore, Throwable ex) {
+      if (ex == null && f != null && !f.isDone())
+        f.cancel(false);
+    }
+  }
+
+  static final class Delayer {
+    static ScheduledFuture<?> delay(Runnable command, long delay,
+        TimeUnit unit) {
+      return delayer.schedule(command, delay, unit);
+    }
+
+    static final class DaemonThreadFactory implements ThreadFactory {
+      public Thread newThread(Runnable r) {
+        Thread t = new Thread(r);
+        t.setDaemon(true);
+        t.setName("CompletableFutureDelayScheduler");
+        return t;
+      }
+    }
+
+    static final ScheduledThreadPoolExecutor delayer;
+    static {
+      (delayer = new ScheduledThreadPoolExecutor(
+          1, new DaemonThreadFactory())).
+          setRemoveOnCancelPolicy(true);
+    }
+  }
+
+  static final class Timeout implements Runnable {
+    final CompletableFuture<?> f;
+    Timeout(CompletableFuture<?> f) { this.f = f; }
+    public void run() {
+      if (f != null && !f.isDone())
+        f.completeExceptionally(new TimeoutException());
+    }
   }
 }
