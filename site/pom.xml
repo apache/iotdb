@@ -103,7 +103,7 @@
                                     </includes>
                                 </resource>
                                 <resource>
-                                    <directory>${basedir}/../service-rpc</directory>
+                                    <directory>${basedir}/../thrift</directory>
                                     <includes>
                                         <include>rpc-changelist.md</include>
                                     </includes>
@@ -129,7 +129,7 @@
                                     </includes>
                                 </resource>
                                 <resource>
-                                    <directory>${basedir}/../service-rpc</directory>
+                                    <directory>${basedir}/../thrift</directory>
                                     <includes>
                                         <include>rpc-changelist.md</include>
                                     </includes>

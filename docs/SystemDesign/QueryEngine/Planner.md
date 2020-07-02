@@ -29,11 +29,11 @@ Transform the syntax tree parsed by SQL into logical plans, logical optimization
 
 SQL parsing using Antlr4
 
-* server/src/main/antlr4/org/apache/iotdb/db/qp/strategy/SqlBase.g4
+* antlr/src/main/antlr4/org/apache/iotdb/db/qp/strategy/SqlBase.g4
 
-mvn clean compile 
+`mvn clean compile -pl antlr` 
 
-Generated code location ：server/target/generated-sources/antlr4
+Generated code location ：antlr/target/generated-sources/antlr4
 
 ## Logical plan generator
 
