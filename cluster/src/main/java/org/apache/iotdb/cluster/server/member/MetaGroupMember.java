@@ -1515,9 +1515,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if(plan instanceof DeleteTimeSeriesPlan){
       List<Path> originalPaths = ((DeleteTimeSeriesPlan)plan).getPaths();
       ConcurrentSkipListSet<Path> fullPaths = new ConcurrentSkipListSet<>();
-
       ExecutorService getAllPathsService = Executors.newFixedThreadPool(partitionTable.getGlobalGroups().size());
-
       for(Path path : originalPaths){
         String pathStr = path.getFullPath();
         getAllPathsService.submit(()->{
@@ -1538,7 +1536,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
       }
-
       ((DeleteTimeSeriesPlan)plan).setPaths(new ArrayList<>(fullPaths));
     }
     try {
