@@ -1785,16 +1785,18 @@ public class MManager {
       return;
     }
     if (System.currentTimeMillis() - logFile.lastModified() < mtreeSnapshotThresholdTime) {
-      logger.info("MTree snapshot need not be created. Time from last modification: {} ms.",
-          System.currentTimeMillis() - logFile.lastModified());
-    } else if (logWriter.getLineNumber() < mtreeSnapshotInterval) {
-      logger.info("MTree snapshot need not be created. New mlog line number: {}.",
-          logWriter.getLineNumber());
-    } else {
       if (logger.isDebugEnabled()) {
-        logger.debug("New mlog line number: {}, time from last modification: {} ms",
-            logWriter.getLineNumber(), System.currentTimeMillis() - logFile.lastModified());
+        logger.debug("MTree snapshot need not be created. Time from last modification: {} ms.",
+            System.currentTimeMillis() - logFile.lastModified());
       }
+    } else if (logWriter.getLineNumber() < mtreeSnapshotInterval) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("MTree snapshot need not be created. New mlog line number: {}.",
+            logWriter.getLineNumber());
+      }
+    } else {
+      logger.info("New mlog line number: {}, time from last modification: {} ms",
+          logWriter.getLineNumber(), System.currentTimeMillis() - logFile.lastModified());
       createMTreeSnapshot();
     }
   }
