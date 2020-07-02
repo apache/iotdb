@@ -1785,27 +1785,25 @@ public class MManager {
       // the logWriter is not initialized now, we skip the check once.
       return;
     }
-    if (System.currentTimeMillis() - logFile.lastModified() >= mtreeSnapshotThresholdTime
-        && logWriter.getLineNumber() > 0) {
-      logger.info("Start creating MTree snapshot, because {} ms elapse.",
+    if (System.currentTimeMillis() - logFile.lastModified() < mtreeSnapshotThresholdTime) {
+      logger.info("MTree snapshot need not be created. Time from last modification: {} ms.",
           System.currentTimeMillis() - logFile.lastModified());
-      createMTreeSnapshot();
-    } else if (logWriter.getLineNumber() >= mtreeSnapshotInterval) {
-      logger.info("Start creating MTree snapshot, because of {} new lines are added.",
+    } else if (logWriter.getLineNumber() < mtreeSnapshotInterval) {
+      logger.info("MTree snapshot need not be created. New mlog line number: {}.",
           logWriter.getLineNumber());
-      createMTreeSnapshot();
     } else {
       if (logger.isDebugEnabled()) {
-        logger.debug(
-            "MTree snapshot need not be created. New mlog line number: {}, time difference from last modification: {} ms",
+        logger.debug("New mlog line number: {}, time from last modification: {} ms",
             logWriter.getLineNumber(), System.currentTimeMillis() - logFile.lastModified());
       }
+      createMTreeSnapshot();
     }
   }
 
   public void createMTreeSnapshot() {
     lock.readLock().lock();
     long time = System.currentTimeMillis();
+    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
     try {
       mtree.serializeTo(mtreeSnapshotTmpPath);
       File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
