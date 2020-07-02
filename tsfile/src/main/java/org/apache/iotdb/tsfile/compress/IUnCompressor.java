@@ -115,9 +115,9 @@ public interface IUnCompressor {
     }
 
     @Override
-    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
-        throws IOException {
-      throw new IOException("NoUnCompressor does not support this method.");
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) {
+      System.arraycopy(byteArray, offset, output, outOffset, length);
+      return length;
     }
 
     @Override
