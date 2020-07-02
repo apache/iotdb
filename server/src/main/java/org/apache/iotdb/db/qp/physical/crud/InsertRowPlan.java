@@ -62,8 +62,7 @@ public class InsertRowPlan extends InsertPlan {
 
   @TestOnly
   public InsertRowPlan(String deviceId, long insertTime, String[] measurements,
-      TSDataType[] dataTypes,
-      String[] insertValues) {
+      TSDataType[] dataTypes, String[] insertValues) {
     super(OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = deviceId;
@@ -113,8 +112,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   public InsertRowPlan(String deviceId, long insertTime, String[] measurementList,
-      TSDataType[] dataTypes,
-      Object[] insertValues) {
+      TSDataType[] dataTypes, Object[] insertValues) {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = deviceId;
@@ -129,8 +127,8 @@ public class InsertRowPlan extends InsertPlan {
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = measurementList;
-    // build types and values
     this.dataTypes = new TSDataType[measurements.length];
+    // We need to create an Object[] for the data type casting, because we can not set Float, Long to String[i]
     this.values = new Object[measurements.length];
     System.arraycopy(insertValues, 0, values, 0, measurements.length);
     isNeedInferType = true;
@@ -322,7 +320,10 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  public void setValues(ByteBuffer buffer) throws QueryProcessException {
+  /**
+   * Make sure the values is already inited before calling this
+   */
+  public void fillValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < measurements.length; i++) {
       dataTypes[i] = ReadWriteIOUtils.readDataType(buffer);
       switch (dataTypes[i]) {
@@ -389,7 +390,7 @@ public class InsertRowPlan extends InsertPlan {
     this.dataTypes = new TSDataType[measurementSize];
     this.values = new Object[measurementSize];
     try {
-      setValues(buffer);
+      fillValues(buffer);
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }

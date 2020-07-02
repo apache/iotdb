@@ -29,6 +29,8 @@ import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -385,17 +387,17 @@ public class Session {
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
 
-    TSInsertRecordsReq request =genTSInsertRecordsReq(deviceIds, times, measurementsList, valuesList);
+    TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,
+        measurementsList, valuesList);
     try {
-      RpcUtils.verifySuccess(client.insertRecords(request));
+      RpcUtils.verifySuccess(client.insertStringRecords(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
   }
 
-  private TSInsertRecordsReq genTSInsertRecordsReq(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<String>> valuesList)
-      throws IoTDBConnectionException {
+  private TSInsertStringRecordsReq genTSInsertStringRecordsReq(List<String> deviceIds, List<Long> times,
+      List<List<String>> measurementsList, List<List<String>> valuesList) {
     // check params size
     int len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
@@ -403,21 +405,13 @@ public class Session {
           "deviceIds, times, measurementsList and valuesList's size should be equal");
     }
 
-    TSInsertRecordsReq request = new TSInsertRecordsReq();
+    TSInsertStringRecordsReq request = new TSInsertStringRecordsReq();
     request.setSessionId(sessionId);
     request.setDeviceIds(deviceIds);
     request.setTimestamps(times);
     request.setMeasurementsList(measurementsList);
-    request.setInferType(true);
-    List<ByteBuffer> buffersList = new ArrayList<>();
-    for (int i = 0; i < measurementsList.size(); i++) {
-      ByteBuffer buffer = ByteBuffer.allocate(calculateStrLength(valuesList.get(i)));
-      putStrValues(valuesList.get(i), buffer);
-      buffer.flip();
-      buffersList.add(buffer);
-    }
-    request.setValuesList(buffersList);
-    return  request;
+    request.setValuesList(valuesList);
+    return request;
   }
 
   /**
@@ -463,40 +457,24 @@ public class Session {
   public void insertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
 
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, values);
+    TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements, values);
     try {
-      RpcUtils.verifySuccess(client.insertRecord(request));
+      RpcUtils.verifySuccess(client.insertStringRecord(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
   }
 
-  private TSInsertRecordReq genTSInsertRecordReq(String deviceId, long time, List<String> measurements,
-      List<String> values) throws IoTDBConnectionException {
-    TSInsertRecordReq request = new TSInsertRecordReq();
+  private TSInsertStringRecordReq genTSInsertStringRecordReq(String deviceId, long time,
+      List<String> measurements, List<String> values) {
+    TSInsertStringRecordReq request = new TSInsertStringRecordReq();
     request.setSessionId(sessionId);
     request.setDeviceId(deviceId);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
-    request.setInferType(true);
-    ByteBuffer buffer = ByteBuffer.allocate(calculateStrLength(values));
-    putStrValues(values, buffer);
-    buffer.flip();
-    request.setValues(buffer);
+    request.setValues(values);
     return request;
   }
-
-
-  private void putStrValues(List<String> values, ByteBuffer buffer)
-      throws IoTDBConnectionException {
-    for (int i = 0; i < values.size(); i++) {
-      ReadWriteIOUtils.write(TSDataType.TEXT, buffer);
-      byte[] bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
-      ReadWriteIOUtils.write(bytes.length, buffer);
-      buffer.put(bytes);
-    }
-  }
-
 
   /**
    * put value in buffer
@@ -651,10 +629,11 @@ public class Session {
   public void testInsertRecords(List<String> deviceIds, List<Long> times,
       List<List<String>> measurementsList, List<List<String>> valuesList)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordsReq request = genTSInsertRecordsReq(deviceIds, times, measurementsList, valuesList);
+    TSInsertStringRecordsReq request = genTSInsertStringRecordsReq(deviceIds, times,
+        measurementsList, valuesList);
 
     try {
-      RpcUtils.verifySuccess(client.testInsertRecords(request));
+      RpcUtils.verifySuccess(client.testInsertStringRecords(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
@@ -680,10 +659,10 @@ public class Session {
    */
   public void testInsertRecord(String deviceId, long time, List<String> measurements,
       List<String> values) throws IoTDBConnectionException, StatementExecutionException {
-    TSInsertRecordReq request = genTSInsertRecordReq(deviceId, time, measurements, values);
+    TSInsertStringRecordReq request = genTSInsertStringRecordReq(deviceId, time, measurements, values);
 
     try {
-      RpcUtils.verifySuccess(client.testInsertRecord(request));
+      RpcUtils.verifySuccess(client.testInsertStringRecord(request));
     } catch (TException e) {
       throw new IoTDBConnectionException(e);
     }
