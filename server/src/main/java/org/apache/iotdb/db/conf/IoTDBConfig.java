@@ -129,9 +129,10 @@ public class IoTDBConfig {
 
   /**
    * Is dynamic parameter adapter enable.
+   * <p>
+   * the default value of this parameter should be kept true in iotdb-engine.properties, we set it
+   * as false here for convenient testing.
    */
-  //the default value of this parameter should be kept true in iotdb-engine.properties,
-  //we set it as false here for convenient testing.
   private boolean enableParameterAdapter = false;
 
   /**
@@ -568,9 +569,10 @@ public class IoTDBConfig {
   private int defaultFillInterval = -1;
 
   /**
-   * default TTL for storage groups that are not set TTL by statements, in ms
-   * Notice: if this property is changed, previous created storage group which are not set TTL will also be
-   * affected.
+   * default TTL for storage groups that are not set TTL by statements, in ms.
+   * <p>
+   * Notice: if this property is changed, previous created storage group which are not set TTL will
+   * also be affected.
    */
   private long defaultTTL = Long.MAX_VALUE;
 
@@ -621,6 +623,11 @@ public class IoTDBConfig {
 
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
+
+  /**
+   * thrift max frame size, the default is 15MB, we change it to 64MB
+   */
+  private int thriftMaxFrameSize = 67108864;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1705,5 +1712,13 @@ public class IoTDBConfig {
 
   public long getStartUpNanosecond() {
     return startUpNanosecond;
+  }
+
+  public int getThriftMaxFrameSize() {
+    return thriftMaxFrameSize;
+  }
+
+  public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
   }
 }

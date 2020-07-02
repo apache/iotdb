@@ -318,7 +318,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Future future : futureList) {
       try {
         future.get();
-      } catch (RuntimeException | InterruptedException | ExecutionException e) {
+      } catch (InterruptedException e) {
+        logger.error("Interrupted when getting node lists, {}.", e);
+        Thread.currentThread().interrupt();
+      } catch (RuntimeException | ExecutionException e) {
         throw new MetadataException(e.getMessage());
       }
     }
@@ -405,7 +408,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Future future : futureList) {
       try {
         future.get();
-      } catch (RuntimeException | InterruptedException | ExecutionException e) {
+      } catch (InterruptedException e) {
+        logger.error("Unexpected interruption when waiting for getNextChildren()", e);
+        Thread.currentThread().interrupt();
+      } catch (RuntimeException | ExecutionException e) {
         throw new MetadataException(e.getMessage());
       }
     }
@@ -506,7 +512,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
     for (Future future : futureList) {
       try {
         future.get();
-      } catch (RuntimeException | InterruptedException | ExecutionException e) {
+      } catch (InterruptedException e) {
+        logger.error("Unexpected interruption when waiting for showTimeseries()", e);
+        Thread.currentThread().interrupt();
+      } catch (RuntimeException | ExecutionException e) {
         throw new MetadataException(e.getMessage());
       }
     }
