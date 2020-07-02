@@ -6,7 +6,7 @@
     <jmxConfigurator/>
     <!-- prevent logback from outputting its own status at the start of every log -->
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEERROR">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_ERROR">
         <file>${IOTDB_HOME}/logs/log_error.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${IOTDB_HOME}/logs/log-error-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -25,7 +25,7 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEWARN">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_WARN">
         <file>${IOTDB_HOME}/logs/log_warn.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${IOTDB_HOME}/logs/log-warn-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -44,7 +44,7 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEINFO">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_INFO">
         <file>${IOTDB_HOME}/logs/log_info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${IOTDB_HOME}/logs/log-info-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -63,7 +63,7 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEDEBUG">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_DEBUG">
         <file>${IOTDB_HOME}/logs/log_debug.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${IOTDB_HOME}/logs/log-debug-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -82,7 +82,26 @@
             <onMismatch>DENY</onMismatch>
         </filter>
     </appender>
-    <appender class="ch.qos.logback.core.ConsoleAppender" name="stdout">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_TRACE">
+        <file>${IOTDB_HOME}/logs/log_trace.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${IOTDB_HOME}/logs/log-trace-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>200MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+        <append>true</append>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
+            <charset>utf-8</charset>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>TRACE</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <appender class="ch.qos.logback.core.ConsoleAppender" name="FILE_STDOUT">
         <Target>System.out</Target>
         <encoder>
             <pattern>%d [%t] %-5p %C:%L - %m %n</pattern>
@@ -95,7 +114,7 @@
     <logger level="info" name="org.apache.iotdb.db.service"/>
     <logger level="info" name="org.apache.iotdb.db.conf"/>
     <!-- a log appender that collect all log records whose level is greather than debug-->
-    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILEALL">
+    <appender class="ch.qos.logback.core.rolling.RollingFileAppender" name="FILE_ALL">
         <file>${IOTDB_HOME}/logs/log_all.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
             <fileNamePattern>${IOTDB_HOME}/logs/log-all-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
@@ -146,12 +165,68 @@
             <level>DEBUG</level>
         </filter>
     </appender>
+    <appender name="ASYNC_FILE_ERROR" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_ERROR"/>
+    </appender>
+    <appender name="ASYNC_FILE_WARN" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_WARN"/>
+    </appender>
+    <appender name="ASYNC_FILE_INFO" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_INFO"/>
+    </appender>
+    <appender name="ASYNC_FILE_DEBUG" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_DEBUG"/>
+    </appender>
+    <appender name="ASYNC_FILE_TRACE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_TRACE"/>
+    </appender>
+    <appender name="ASYNC_FILE_ALL" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_ALL"/>
+    </appender>
+    <appender name="ASYNC_FILE_COST_MEASURE" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_COST_MEASURE"/>
+    </appender>
+    <appender name="ASYNC_FILE_DYNAMIC_PARAMETER" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_DYNAMIC_PARAMETER"/>
+    </appender>
+    <appender name="ASYNC_FILE_STDOUT" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>true</includeCallerData>
+        <appender-ref ref="FILE_STDOUT"/>
+    </appender>
     <root level="debug">
-        <appender-ref ref="FILEDEBUG"/>
-        <appender-ref ref="FILEWARN"/>
-        <appender-ref ref="FILEERROR"/>
-        <appender-ref ref="FILEALL"/>
-        <appender-ref ref="stdout"/>
+        <appender-ref ref="ASYNC_FILE_TRACE"/>
+        <appender-ref ref="ASYNC_FILE_DEBUG"/>
+        <appender-ref ref="ASYNC_FILE_INFO"/>
+        <appender-ref ref="ASYNC_FILE_WARN"/>
+        <appender-ref ref="ASYNC_FILE_ERROR"/>
+        <appender-ref ref="ASYNC_FILE_ALL"/>
+        <appender-ref ref="ASYNC_FILE_STDOUT"/>
     </root>
     <logger level="info" name="org.apache.iotdb.db.cost.statistic">
         <appender-ref ref="FILE_COST_MEASURE"/>

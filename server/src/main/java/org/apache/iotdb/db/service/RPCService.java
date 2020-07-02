@@ -73,13 +73,13 @@ public class RPCService implements RPCServiceMBean, IService {
     } else {
       logger.debug("Start status is {} when getting status", rpcServiceThread.isServing());
     }
-    if(stopLatch == null) {
+    if (stopLatch == null) {
       logger.debug("Stop latch is null when getting status");
     } else {
       logger.debug("Stop latch is {} when getting status", stopLatch.getCount());
-    }	
+    }
 
-    if(rpcServiceThread != null && rpcServiceThread.isServing()) {
+    if (rpcServiceThread != null && rpcServiceThread.isServing()) {
       return STATUS_UP;
     } else {
       return STATUS_DOWN;
@@ -133,14 +133,15 @@ public class RPCService implements RPCServiceMBean, IService {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }
 
-    logger.info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
-        this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-        IoTDBDescriptor.getInstance().getConfig().getRpcPort());
+    logger
+        .info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
+            this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+            IoTDBDescriptor.getInstance().getConfig().getRpcPort());
   }
-  
+
   private void reset() {
     rpcServiceThread = null;
-    stopLatch = new CountDownLatch(1);	  
+    stopLatch = new CountDownLatch(1);
   }
 
   @Override
@@ -162,9 +163,11 @@ public class RPCService implements RPCServiceMBean, IService {
     try {
       stopLatch.await();
       reset();
-      logger.info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
+      logger
+          .info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
     } catch (InterruptedException e) {
-      logger.error("{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName(), e);
+      logger.error("{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME,
+          this.getID().getName(), e);
       Thread.currentThread().interrupt();
     }
   }
@@ -185,10 +188,9 @@ public class RPCService implements RPCServiceMBean, IService {
 
     public RPCServiceThread(CountDownLatch threadStopLatch)
         throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-      if(IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+      if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
         protocolFactory = new TCompactProtocol.Factory();
-      }
-      else {
+      } else {
         protocolFactory = new TBinaryProtocol.Factory();
       }
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -217,15 +219,18 @@ public class RPCService implements RPCServiceMBean, IService {
             ThreadName.RPC_CLIENT.getName());
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
-        poolArgs.transportFactory(new TFastFramedTransport.Factory());
+        poolArgs.transportFactory(new TFastFramedTransport.Factory(config.getThriftMaxFrameSize()));
         poolServer = new TThreadPoolServer(poolArgs);
         poolServer.setServerEventHandler(new RPCServiceThriftHandler(impl));
         poolServer.serve();
       } catch (TTransportException e) {
-        throw new RPCServiceException(String.format("%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME,
-            getID().getName()), e);
+        throw new RPCServiceException(
+            String.format("%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME,
+                getID().getName()), e);
       } catch (Exception e) {
-        throw new RPCServiceException(String.format("%s: %s exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName()), e);
+        throw new RPCServiceException(
+            String.format("%s: %s exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName()),
+            e);
       } finally {
         close();
         if (threadStopLatch == null) {
