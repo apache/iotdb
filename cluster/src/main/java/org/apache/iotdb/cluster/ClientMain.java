@@ -53,6 +53,7 @@ import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client.Factory;
 import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
@@ -344,45 +345,43 @@ public class ClientMain {
 
     registerTimeseries(sessionId, client);
 
-    TSInsertRecordReq insertReq = new TSInsertRecordReq();
+    TSInsertStringRecordReq insertReq = new TSInsertStringRecordReq();
     insertReq.setMeasurements(Arrays.asList(MEASUREMENTS));
     insertReq.setSessionId(sessionId);
-    String[] values = new String[MEASUREMENTS.length];
+   
     for (int i = 0; i < 10; i++) {
+      List<String> values = new ArrayList<>(MEASUREMENTS.length);
       insertReq.setTimestamp(i * 24 * 3600 * 1000L);
-      for (int i1 = 0; i1 < values.length; i1++) {
+      for (int i1 = 0; i1 < MEASUREMENTS.length; i1++) {
         switch (DATA_TYPES[i1]) {
           case DOUBLE:
-            values[i1] = Double.toString(i * 0.1);
+            values.add(Double.toString(i * 0.1));
             break;
           case BOOLEAN:
-            values[i1] = Boolean.toString(i % 2 == 0);
+            values.add(Boolean.toString(i % 2 == 0));
             break;
           case INT64:
-            values[i1] = Long.toString(i);
+            values.add(Long.toString(i));
             break;
           case INT32:
-            values[i1] = Integer.toString(i);
+            values.add(Integer.toString(i));
             break;
           case FLOAT:
-            values[i1] = Float.toString(i * 0.1f);
+            values.add(Float.toString(i * 0.1f));
             break;
           case TEXT:
-            values[i1] = "S" + i;
+            values.add("S" + i);
             break;
         }
       }
 
-      ByteBuffer buffer = ByteBuffer.allocate(calculateStrLength(Arrays.asList(values)));
-      putStrValues(Arrays.asList(values), buffer);
-      buffer.flip();
-      insertReq.setValues(buffer);
+      insertReq.setValues(values);
 
       for (String device : DEVICES) {
         insertReq.setDeviceId(device);
         if (logger.isInfoEnabled()) {
           logger.info(insertReq.toString());
-          logger.info(client.insertRecord(insertReq).toString());
+          logger.info(client.insertStringRecord(insertReq).toString());
         }
       }
     }
