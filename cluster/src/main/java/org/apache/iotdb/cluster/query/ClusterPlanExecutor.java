@@ -24,6 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -703,6 +705,25 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
     } catch (StorageEngineException e) {
+      throw new QueryProcessException(e);
+    }
+  }
+
+  @Override
+  public void delete(DeletePlan deletePlan) throws QueryProcessException {
+    try {
+      Set<String> existingPaths = new HashSet<>();
+      for (Path p : deletePlan.getPaths()) {
+        existingPaths.addAll(getPathsName(p.getFullPath()));
+      }
+      if (existingPaths.isEmpty()) {
+        logger.info("TimeSeries does not exist and its data cannot be deleted");
+        return;
+      }
+      for (String path : existingPaths) {
+        delete(new Path(path), deletePlan.getDeleteTime());
+      }
+    } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
   }
