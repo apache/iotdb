@@ -1345,9 +1345,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     switch (operatorType) {
       case SQLConstant.TOK_DELETE:
         deleteDataOp.setFilterOperator(whereOp.getChildren().get(0));
-        Pair<Long, Long> timeRange = parseDeleteTimeRange(deleteDataOp);
-        deleteDataOp.setStartTime(timeRange.left);
-        deleteDataOp.setEndTime(timeRange.right);
+        Pair<Long, Long> timeInterval = parseDeleteTimeInterval(deleteDataOp);
+        deleteDataOp.setStartTime(timeInterval.left);
+        deleteDataOp.setEndTime(timeInterval.right);
         break;
       case SQLConstant.TOK_QUERY:
         queryOp.setFilterOperator(whereOp.getChildren().get(0));
@@ -1552,7 +1552,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
    *
    * @param operator delete logical plan
    */
-  private Pair<Long, Long> parseDeleteTimeRange(DeleteDataOperator operator) {
+  private Pair<Long, Long> parseDeleteTimeInterval(DeleteDataOperator operator) {
     FilterOperator filterOperator = operator.getFilterOperator();
     if (!filterOperator.isLeaf() && filterOperator.getTokenIntType() != SQLConstant.KW_AND) {
       throw new SQLParserException(
@@ -1561,7 +1561,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     }
 
     if (filterOperator.isLeaf()) {
-      return calcOperatorRange(filterOperator);
+      return calcOperatorInterval(filterOperator);
     }
 
     List<FilterOperator> children = filterOperator.getChildren();
@@ -1573,14 +1573,19 @@ public class LogicalGenerator extends SqlBaseBaseListener {
               + "time > XXX, time <= XXX, or And with two atomic expressions");
     }
 
-    Pair<Long, Long> leftOpRange = calcOperatorRange(lOperator);
-    Pair<Long, Long> rightOpRange = calcOperatorRange(rOperator);
-
-    return new Pair<>(Math.max(leftOpRange.left, rightOpRange.left),
-        Math.min(leftOpRange.right, rightOpRange.right));
+    Pair<Long, Long> leftOpInterval = calcOperatorInterval(lOperator);
+    Pair<Long, Long> rightOpInterval = calcOperatorInterval(rOperator);
+    Pair<Long, Long> parsedInterval = new Pair<>(
+        Math.max(leftOpInterval.left, rightOpInterval.left),
+        Math.min(leftOpInterval.right, rightOpInterval.right));
+    if (parsedInterval.left > parsedInterval.right) {
+      throw new SQLParserException(
+          "Invalid delete range: [" + parsedInterval.left + ", " + parsedInterval.right + "]");
+    }
+    return parsedInterval;
   }
 
-  private Pair<Long, Long> calcOperatorRange(FilterOperator filterOperator) {
+  private Pair<Long, Long> calcOperatorInterval(FilterOperator filterOperator) {
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
     switch (filterOperator.getTokenIntType()) {
       case SQLConstant.LESSTHAN:

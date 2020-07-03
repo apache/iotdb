@@ -751,17 +751,7 @@ public class Session {
    */
   public void deleteData(List<String> paths, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
-    TSDeleteDataReq request = new TSDeleteDataReq();
-    request.setSessionId(sessionId);
-    request.setPaths(paths);
-    request.setStartTime(Long.MIN_VALUE);
-    request.setEndTime(endTime);
-
-    try {
-      RpcUtils.verifySuccess(client.deleteData(request));
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e);
-    }
+    deleteData(paths, Long.MIN_VALUE, endTime);
   }
 
   /**

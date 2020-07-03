@@ -212,10 +212,11 @@ public abstract class AbstractMemTable implements IMemTable {
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());
   }
 
-
+  //TODO: reimplement this method.
   private List<Pair<Long, Long>> constructDeletionList(String deviceId, String measurement,
       long timeLowerBound) {
     List<Pair<Long, Long>> deletionList = new ArrayList<>();
+    deletionList.add(new Pair<>(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : modifications) {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;

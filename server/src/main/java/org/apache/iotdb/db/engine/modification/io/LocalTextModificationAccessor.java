@@ -141,23 +141,17 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
     } catch (NumberFormatException e) {
       throw new IOException("Invalid version number: " + fields[2]);
     }
-    if (fields.length == 4) {
-      try {
+
+    try {
+      if (fields.length == 4) {
         endTimestamp = Long.parseLong(fields[3]);
-      } catch (NumberFormatException e) {
-        throw new IOException("Invalid timestamp: " + fields[3]);
-      }
-    } else {
-      try {
+
+      } else {
         startTimestamp = Long.parseLong(fields[3]);
-      } catch (NumberFormatException e) {
-        throw new IOException("Invalid timestamp: " + fields[3]);
-      }
-      try {
         endTimestamp = Long.parseLong(fields[4]);
-      } catch (NumberFormatException e) {
-        throw new IOException("Invalid timestamp: " + fields[4]);
       }
+    } catch (NumberFormatException e) {
+      throw new IOException("Invalid timestamp: " + e.getMessage());
     }
 
     return new Deletion(new Path(path), versionNum, startTimestamp, endTimestamp);

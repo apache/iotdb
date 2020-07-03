@@ -33,11 +33,23 @@ public class Deletion extends Modification {
   private long startTime;
   private long endTime;
 
+  /**
+   * constructor of Deletion, the start time is set to Long.MIN_VALUE
+   * @param endTime end time of delete interval
+   * @param path time series path
+   */
   public Deletion(Path path, long versionNum, long endTime) {
     super(Type.DELETION, path, versionNum);
+    this.startTime = Long.MIN_VALUE;
     this.endTime = endTime;
   }
 
+  /**
+   * constructor of Deletion
+   * @param startTime start time of delete interval
+   * @param endTime end time of delete interval
+   * @param path time series path
+   */
   public Deletion(Path path, long versionNum, long startTime, long endTime) {
     super(Type.DELETION, path, versionNum);
     this.startTime = startTime;
