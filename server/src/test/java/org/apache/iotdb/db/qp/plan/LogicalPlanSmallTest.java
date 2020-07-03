@@ -281,10 +281,21 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(3, ((DeleteDataOperator) op).getEndTime());
 
     String sql7 = "delete from root.d1.s1 where time = 1 and time < -1";
-    op = parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
-    Assert.assertEquals(1, ((DeleteDataOperator) op).getStartTime());
-    Assert.assertEquals(-2, ((DeleteDataOperator) op).getEndTime());
+    String errorMsg = null;
+    try {
+      op = parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (RuntimeException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(errorMsg, "Invalid delete range: [1, -2]");
+
+    String sql8 = "delete from root.d1.s1 where time > 5 and time <= 0";
+    try {
+      op = parseDriver.parse(sql8, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (RuntimeException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(errorMsg, "Invalid delete range: [6, 0]");
   }
 
   @Test
