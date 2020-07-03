@@ -45,19 +45,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -72,13 +66,13 @@ import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
-import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -114,8 +108,6 @@ public class MManager {
   private boolean isRecovering;
   // device -> DeviceMNode
   private RandomDeleteCache<String, MNode> mNodeCache;
-  // currently, if a key is not existed in the mRemoteSchemaCache, null will be returned
-  private LRUCache<String, MeasurementSchema> mRemoteSchemaCache;
 
   // tag key -> tag value -> LeafMNode
   private Map<String, Map<String, Set<MeasurementMNode>>> tagIndex = new HashMap<>();
@@ -124,7 +116,7 @@ public class MManager {
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
-  private IoTDBConfig config;
+  protected IoTDBConfig config;
 
   private File logFile;
   private final int mtreeSnapshotInterval;
@@ -140,7 +132,7 @@ public class MManager {
     private static final MManager INSTANCE = new MManager();
   }
 
-  private MManager() {
+  protected MManager() {
     config = IoTDBDescriptor.getInstance().getConfig();
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
@@ -177,17 +169,6 @@ public class MManager {
     };
 
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
-    mRemoteSchemaCache = new LRUCache<String, MeasurementSchema>(remoteCacheSize) {
-      @Override
-      protected MeasurementSchema loadObjectByKey(String key) {
-        return null;
-      }
-
-      @Override
-      public synchronized void removeItem(String key) {
-        cache.keySet().removeIf(s -> s.startsWith(key));
-      }
-    };
 
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
@@ -469,9 +450,6 @@ public class MManager {
   public String deleteTimeseries(String prefixPath) throws MetadataException {
     lock.writeLock().lock();
 
-    // clear cached schema
-    mRemoteSchemaCache.removeItem(prefixPath);
-
     if (isStorageGroup(prefixPath)) {
 
       if (config.isEnableParameterAdapter()) {
@@ -624,8 +602,6 @@ public class MManager {
     lock.writeLock().lock();
     try {
       for (String storageGroup : storageGroups) {
-        // clear cached schema
-        mRemoteSchemaCache.removeItem(storageGroup);
 
         // clear cached MNode
         mNodeCache.clear();
@@ -686,15 +662,6 @@ public class MManager {
     try {
       if (path.equals(SQLConstant.RESERVED_TIME)) {
         return TSDataType.INT64;
-      }
-
-      try {
-        MeasurementSchema schema = mRemoteSchemaCache.get(path);
-        if (schema != null) {
-          return schema.getType();
-        }
-      } catch (IOException e) {
-        // unreachable
       }
 
       return mtree.getSchema(path).getType();
@@ -1000,28 +967,11 @@ public class MManager {
       MNode leaf = node.getChild(measurement);
       if (leaf != null) {
         return ((MeasurementMNode) leaf).getSchema();
-      } else {
-        return mRemoteSchemaCache
-            .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
       }
-    } catch (PathNotExistException e) {
-      try {
-        MeasurementSchema measurementSchema = mRemoteSchemaCache
-            .get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
-        if (measurementSchema != null) {
-          return measurementSchema;
-        } else {
-          throw e;
-        }
-      } catch (IOException ex) {
-        throw e;
-      }
-    } catch (IllegalPathException e) {
+      return null;
+    } catch (PathNotExistException | IllegalPathException e) {
       //do nothing and throw it directly.
       throw e;
-    } catch (IOException e) {
-      // cache miss
-      throw new PathNotExistException(device + IoTDBConstant.PATH_SEPARATOR + measurement);
     } finally {
       lock.readLock().unlock();
     }
@@ -1052,10 +1002,7 @@ public class MManager {
   public boolean isPathExist(String path) {
     lock.readLock().lock();
     try {
-      return mRemoteSchemaCache.get(path) != null || mtree.isPathExist(path);
-    } catch (IOException e) {
-      // schema cache does not really throw
-      return false;
+      return mtree.isPathExist(path);
     } finally {
       lock.readLock().unlock();
     }
@@ -1808,18 +1755,31 @@ public class MManager {
    * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
    * cache the path to mRemoteSchemaCache
    */
-  public void cacheSchema(String path, MeasurementSchema schema) {
-    // check schema is in local
+  public void cacheMeta(String seriesPath, MeasurementMeta meta) {
+    // do nothing
+  }
+
+  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair,
+                              boolean highPriorityUpdate, Long latestFlushedTime) {
+    MeasurementMNode node = null;
     try {
-      ShowTimeSeriesPlan tempPlan = new ShowTimeSeriesPlan(new Path(path), false, null, null, 0, 0,
-          false);
-      List<String[]> schemas = mtree.getAllMeasurementSchema(tempPlan);
-      if (schemas.isEmpty()) {
-        mRemoteSchemaCache.put(path, schema);
-      }
+      node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
     } catch (MetadataException e) {
-      mRemoteSchemaCache.put(path, schema);
+      logger.warn("the {} is not exist", seriesPath);
+      return;
     }
+    node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  public TimeValuePair getLastCache(String seriesPath) {
+    try {
+      MeasurementMNode node = null;
+      node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+      return node.getCachedLast();
+    } catch (MetadataException e) {
+      // do nothing
+    }
+    return null;
   }
 
   /**

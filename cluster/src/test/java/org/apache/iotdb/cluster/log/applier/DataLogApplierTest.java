@@ -19,25 +19,13 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import junit.framework.TestCase;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.common.IoTDBTest;
-import org.apache.iotdb.cluster.common.TestDataGroupMember;
-import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
-import org.apache.iotdb.cluster.common.TestMetaGroupMember;
-import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.common.*;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
@@ -68,6 +56,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.*;
+
 public class DataLogApplierTest extends IoTDBTest {
 
   private boolean partialWriteEnabled;
@@ -80,7 +75,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
     @Override
     public List<MeasurementSchema> pullTimeSeriesSchemas(List<String> prefixPaths)
-        throws StorageGroupNotSetException {
+      throws StorageGroupNotSetException {
       List<MeasurementSchema> ret = new ArrayList<>();
       for (String prefixPath : prefixPaths) {
         if (prefixPath.startsWith(TestUtils.getTestSg(4))) {
@@ -128,6 +123,7 @@ public class DataLogApplierTest extends IoTDBTest {
   @Before
   public void setUp() throws org.apache.iotdb.db.exception.StartupException, QueryProcessException {
     super.setUp();
+    MetaPuller.getInstance().init(testMetaGroupMember);
     PartitionGroup allNodes = new PartitionGroup();
     for (int i = 0; i < 100; i += 10) {
       allNodes.add(TestUtils.getNode(i));
@@ -158,7 +154,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyInsert()
-      throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException, TException, InterruptedException {
+    throws QueryProcessException, IOException, QueryFilterOptimizationException, StorageEngineException, MetadataException, TException, InterruptedException {
     InsertRowPlan insertPlan = new InsertRowPlan();
     PhysicalPlanLog log = new PhysicalPlanLog();
     log.setPlan(insertPlan);
@@ -172,7 +168,7 @@ public class DataLogApplierTest extends IoTDBTest {
     insertPlan.setValues(new Object[]{"1.0"});
     insertPlan.setNeedInferType(true);
     insertPlan
-        .setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      .setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
 
     applier.apply(log);
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(1, 0)), null);
@@ -201,8 +197,8 @@ public class DataLogApplierTest extends IoTDBTest {
       fail("exception should be thrown");
     } catch (QueryProcessException e) {
       assertEquals(
-          "org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test5.s0] does not exist",
-          e.getMessage());
+        "org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test5.s0] does not exist",
+        e.getMessage());
     }
 
     // this storage group is not even set
@@ -212,14 +208,14 @@ public class DataLogApplierTest extends IoTDBTest {
       fail("exception should be thrown");
     } catch (QueryProcessException e) {
       assertEquals(
-          "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test6.s0]",
-          e.getMessage());
+        "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test6.s0]",
+        e.getMessage());
     }
   }
 
   @Test
   public void testApplyDeletion()
-      throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, TException, InterruptedException {
+    throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, TException, InterruptedException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new Path(TestUtils.getTestSeries(0, 0))));
     deletePlan.setDeleteEndTime(50);
@@ -237,9 +233,9 @@ public class DataLogApplierTest extends IoTDBTest {
 
   @Test
   public void testApplyCloseFile()
-      throws StorageEngineException, QueryProcessException, StorageGroupNotSetException {
+    throws StorageEngineException, QueryProcessException, StorageGroupNotSetException {
     StorageGroupProcessor storageGroupProcessor =
-        StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
+      StorageEngine.getInstance().getProcessor(TestUtils.getTestSg(0));
     TestCase.assertFalse(storageGroupProcessor.getWorkSequenceTsFileProcessors().isEmpty());
 
     CloseFileLog closeFileLog = new CloseFileLog(TestUtils.getTestSg(0), 0, true);

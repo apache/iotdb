@@ -239,6 +239,16 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
+  public boolean isReady() {
+    return isReady;
+  }
+
+  public void setReady(boolean ready) {
+    isReady = ready;
+  }
+
+  private boolean isReady = false;
+
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
@@ -791,8 +801,9 @@ public class StorageGroupProcessor {
           continue;
         }
         // Update cached last value with high priority
-        ((MeasurementMNode) manager.getChild(node, measurementList[i]))
-            .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+        Path tmpPath = new Path(plan.getDeviceId(), measurementList[i]);
+        manager.updateLastCache(tmpPath.getFullPath(),
+          plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
       // skip last cache update if the local MTree does not contain the schema
@@ -845,12 +856,10 @@ public class StorageGroupProcessor {
         if (plan.getValues()[i] == null) {
           continue;
         }
+        Path tmpPath = new Path(plan.getDeviceId(), measurementList[i]);
         // Update cached last value with high priority
-        MNode measurementNode = manager.getChild(node, measurementList[i]);
-        if (measurementNode != null) {
-          ((MeasurementMNode) measurementNode)
-              .updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
-        }
+        manager.updateLastCache(tmpPath.getFullPath(),
+          plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     } catch (MetadataException e) {
       // skip last cache update if the local MTree does not contain the schema

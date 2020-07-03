@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.log.applier;
 
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
@@ -31,15 +29,18 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.Collections;
+import java.util.List;
 
 /**
  * BaseApplier use PlanExecutor to execute PhysicalPlans.
@@ -122,7 +123,7 @@ abstract class BaseApplier implements LogApplier {
   }
 
   protected void registerMeasurement(String path, MeasurementSchema schema) {
-    MManager.getInstance().cacheSchema(path, schema);
+    IoTDB.metaManager.cacheMeta(path, new MeasurementMeta(schema));
   }
 
   protected PlanExecutor getQueryExecutor() throws QueryProcessException {

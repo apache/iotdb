@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +84,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   void collectTimeseriesSchemas() {
     slotTimeseries.clear();
-    List<StorageGroupMNode> allSgNodes = MManager.getInstance().getAllStorageGroupNodes();
+    List<StorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
     for (MNode sgNode : allSgNodes) {
       String storageGroupName = sgNode.getFullPath();
       int slot = PartitionUtils.calculateStorageGroupSlotByTime(storageGroupName, 0,
@@ -91,7 +92,7 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
       Collection<TimeseriesSchema> schemas = slotTimeseries.computeIfAbsent(slot,
           s -> new HashSet<>());
-      MManager.getInstance().collectTimeseriesSchema(sgNode, schemas);
+      IoTDB.metaManager.collectTimeseriesSchema(sgNode, schemas);
       logger.debug("{} timeseries are snapshot in slot {}", schemas.size(), slot);
     }
   }

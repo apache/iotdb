@@ -19,39 +19,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
-import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
-import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
-import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.common.TestAsyncDataClient;
-import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
-import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
-import org.apache.iotdb.cluster.common.TestSnapshot;
-import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.common.*;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
@@ -61,20 +30,8 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
-import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
-import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
+import org.apache.iotdb.cluster.rpc.thrift.*;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
-import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
-import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -104,6 +61,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -118,6 +76,22 @@ import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.apache.iotdb.cluster.server.NodeCharacter.*;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.*;
 
 public class MetaGroupMemberTest extends MemberTest {
 
@@ -247,8 +221,8 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      protected DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
-          Object request) {
+      public DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
+                                                Object request) {
         return getDataGroupMember(header);
       }
 
@@ -595,7 +569,7 @@ public class MetaGroupMemberTest extends MemberTest {
         reference));
 
     // 6. check whether the snapshot applied or not
-    Map<String, Long> localStorageGroupTTL = MManager.getInstance().getStorageGroupsTTL();
+    Map<String, Long> localStorageGroupTTL = IoTDB.metaManager.getStorageGroupsTTL();
     assertNotNull(localStorageGroupTTL);
     assertEquals(storageGroupTTL, localStorageGroupTTL);
 
@@ -633,7 +607,7 @@ public class MetaGroupMemberTest extends MemberTest {
           new SetStorageGroupPlan(new Path(TestUtils.getTestSg(i)));
       TSStatus status = testMetaMember.executeNonQuery(setStorageGroupPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-      assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSg(i)));
+      assertTrue(IoTDB.metaManager.isPathExist(TestUtils.getTestSg(i)));
 
       // process a partitioned plan
       TimeseriesSchema schema = TestUtils.getTestTimeSeriesSchema(i, 0);
@@ -643,7 +617,7 @@ public class MetaGroupMemberTest extends MemberTest {
           Collections.emptyMap(), Collections.emptyMap(), null);
       status = testMetaMember.executeNonQuery(createTimeSeriesPlan);
       assertEquals(TSStatusCode.SUCCESS_STATUS.getStatusCode(), status.code);
-      assertTrue(MManager.getInstance().isPathExist(TestUtils.getTestSeries(i, 0)));
+      assertTrue(IoTDB.metaManager.isPathExist(TestUtils.getTestSeries(i, 0)));
     }
     testThreadPool.shutdownNow();
   }
@@ -675,7 +649,7 @@ public class MetaGroupMemberTest extends MemberTest {
             .getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(9, 0)),
                 null).left);
     // a non-existent series
-    MManager.getInstance().setStorageGroup(TestUtils.getTestSg(10));
+    IoTDB.metaManager.setStorageGroup(TestUtils.getTestSg(10));
     try {
       testMetaMember.getSeriesTypesByString(Collections.singletonList(TestUtils.getTestSeries(10
           , 100)), null);
@@ -706,7 +680,7 @@ public class MetaGroupMemberTest extends MemberTest {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
       MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
-        MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType()
+        IoTDB.metaManager.createTimeseries(schema.getMeasurementId(), schema.getType()
             , schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       } catch (MetadataException e) {
         // ignore
@@ -751,7 +725,7 @@ public class MetaGroupMemberTest extends MemberTest {
       insertPlan.setDeviceId(TestUtils.getTestSg(i));
       MeasurementSchema schema = TestUtils.getTestMeasurementSchema(0);
       try {
-        MManager.getInstance().createTimeseries(schema.getMeasurementId(), schema.getType()
+        IoTDB.metaManager.createTimeseries(schema.getMeasurementId(), schema.getType()
             , schema.getEncodingType(), schema.getCompressor(), schema.getProps());
       } catch (MetadataException e) {
         // ignore

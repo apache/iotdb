@@ -44,6 +44,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.junit.Assert;
@@ -100,7 +101,7 @@ public class EnvironmentUtils {
       TimeSeriesMetadataCache.getInstance().clear();
     }
     // close metadata
-    MManager.getInstance().clear();
+    IoTDB.metaManager.clear();
 
     MergeManager.getINSTANCE().stop();
     MetricsService.getInstance().stop();
@@ -178,7 +179,7 @@ public class EnvironmentUtils {
    */
   public static void envSetUp() throws StartupException {
     IoTDBDescriptor.getInstance().getConfig().setEnableParameterAdapter(false);
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
     IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
 
     createAllDir();

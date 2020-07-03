@@ -124,6 +124,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataPointReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -1076,7 +1077,7 @@ public class DataGroupMember extends RaftMember {
     List<String> prefixPaths = request.getPrefixPaths();
     List<MeasurementSchema> timeseriesSchemas = new ArrayList<>();
     for (String prefixPath : prefixPaths) {
-      MManager.getInstance().collectSeries(prefixPath, timeseriesSchemas);
+      IoTDB.metaManager.collectSeries(prefixPath, timeseriesSchemas);
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{}: Collected {} schemas for {} and other {} paths", name,
@@ -1370,10 +1371,11 @@ public class DataGroupMember extends RaftMember {
    *
    * @param paths         paths potentially contain wildcards
    */
+
   public List<String> getAllPaths(List<String> paths) throws MetadataException {
     List<String> ret = new ArrayList<>();
     for (String path : paths) {
-      ret.addAll(MManager.getInstance().getAllTimeseriesName(path));
+      ret.addAll(IoTDB.metaManager.getAllTimeseriesName(path));
     }
     return ret;
   }
@@ -1386,7 +1388,7 @@ public class DataGroupMember extends RaftMember {
   public Set<String> getAllDevices(List<String> paths) throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      results.addAll(MManager.getInstance().getDevices(path));
+      results.addAll(IoTDB.metaManager.getDevices(path));
     }
     return results;
   }
@@ -1401,7 +1403,7 @@ public class DataGroupMember extends RaftMember {
     }
 
     Set<Integer> slotSet = new HashSet<>(slots);
-    List<String> allStorageGroupNames = MManager.getInstance().getAllStorageGroupNames();
+    List<String> allStorageGroupNames = IoTDB.metaManager.getAllStorageGroupNames();
     TimePartitionFilter filter = (storageGroupName, timePartitionId) -> {
       int slot = PartitionUtils.calculateStorageGroupSlotByPartition(storageGroupName, timePartitionId,
           ClusterConstant.SLOT_NUM);
@@ -1485,15 +1487,13 @@ public class DataGroupMember extends RaftMember {
   public List<String> getNodeList(String path, int nodeLevel)
       throws CheckConsistencyException, MetadataException {
     syncLeaderWithConsistencyCheck();
-
-    return MManager.getInstance().getNodesList(path, nodeLevel);
+    return IoTDB.metaManager.getNodesList(path, nodeLevel);
   }
 
   public Set<String> getChildNodePathInNextLevel(String path)
       throws CheckConsistencyException, MetadataException {
     syncLeaderWithConsistencyCheck();
-
-    return MManager.getInstance().getChildNodePathInNextLevel(path);
+    return IoTDB.metaManager.getChildNodePathInNextLevel(path);
   }
 
   public ByteBuffer getAllMeasurementSchema(ByteBuffer planBuffer)
@@ -1503,9 +1503,9 @@ public class DataGroupMember extends RaftMember {
     ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
     List<ShowTimeSeriesResult> allTimeseriesSchema;
     if (plan.getKey() != null && plan.getValue() != null) {
-      allTimeseriesSchema = MManager.getInstance().getAllTimeseriesSchema(plan);
+      allTimeseriesSchema = IoTDB.metaManager.getAllTimeseriesSchema(plan);
     } else {
-      allTimeseriesSchema = MManager.getInstance().showTimeseries(plan);
+      allTimeseriesSchema = IoTDB.metaManager.showTimeseries(plan);
     }
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -1573,7 +1573,7 @@ public class DataGroupMember extends RaftMember {
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
-        List<String> path = MManager.getInstance().getAllTimeseriesName(seriesPath);
+        List<String> path = IoTDB.metaManager.getAllTimeseriesName(seriesPath);
         if (path.size() != 1) {
           throw new MetadataException(
               String.format("Timeseries number of the name [%s] is not 1.", seriesPath));
@@ -1808,9 +1808,9 @@ public class DataGroupMember extends RaftMember {
     int count = 0;
     for (String s : pathsToQuery) {
       if (level == -1) {
-        count += MManager.getInstance().getAllTimeseriesCount(s);
+        count += IoTDB.metaManager.getAllTimeseriesCount(s);
       } else {
-        count += MManager.getInstance().getNodesCountInGivenLevel(s, level);
+        count += IoTDB.metaManager.getNodesCountInGivenLevel(s, level);
       }
     }
     return count;
