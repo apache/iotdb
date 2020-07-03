@@ -25,7 +25,7 @@ import struct
 # sys.path.append("../target")
 
 #if you use maven to compile the thrift api, just use the follwoing code:
-sys.path.append("../../service-rpc/target/generated-sources-python")
+sys.path.append("../../thrift/target/generated-sources-python")
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport

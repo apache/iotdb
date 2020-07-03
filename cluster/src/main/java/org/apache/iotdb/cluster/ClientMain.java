@@ -373,7 +373,6 @@ public class ClientMain {
         }
       }
 
-      insertReq.setInferType(true);
       ByteBuffer buffer = ByteBuffer.allocate(calculateStrLength(Arrays.asList(values)));
       putStrValues(Arrays.asList(values), buffer);
       buffer.flip();
