@@ -125,7 +125,7 @@ public class TsFileProcessor {
   private boolean sequence;
   private long totalMemTableSize;
 
-  private int mergeTimes = 0;
+  private int flushVmTimes = 0;
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE = "{}: {} get flushQueryLock write lock released";
 
@@ -661,6 +661,7 @@ public class TsFileProcessor {
     }
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
+      flushVmTimes++;
       try {
         boolean isVm = false;
         boolean isFull = false;
@@ -700,10 +701,10 @@ public class TsFileProcessor {
           }
           if ((vmPointNum + memTableToFlush.getTotalPointsNum()) / pathMeasurementSchemaMap.size()
               > config.getMergeChunkPointNumberThreshold() 
-              || mergeTimes >= config.getMaxMergeChunkNumInTsFile()) {
+              || flushVmTimes >= config.getMaxMergeChunkNumInTsFile()) {
             isVm = false;
             isFull = false;
-            mergeTimes = 0;
+            flushVmTimes = 0;
             flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources, vmWriters,
                 false, false,
                 sequence,
@@ -717,7 +718,6 @@ public class TsFileProcessor {
                   vmWriters, true, true,
                   sequence,
                   storageGroupName);
-              mergeTimes++;
             } else {
               isVm = true;
               isFull = false;
