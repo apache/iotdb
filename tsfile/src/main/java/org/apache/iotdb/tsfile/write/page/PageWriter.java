@@ -258,7 +258,7 @@ public class PageWriter {
     header.serializeTo(pageBuffer);
 
     // write page content to temp PBAOS
-    logger.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
+    logger.trace("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       try (WritableByteChannel channel = Channels.newChannel(pageBuffer)) {
         channel.write(pageData);
@@ -266,7 +266,7 @@ public class PageWriter {
     } else {
       pageBuffer.write(compressedBytes, compressedPosition, compressedSize);
     }
-    logger.debug("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
+    logger.trace("start to flush a page data into buffer, buffer position {} ", pageBuffer.size());
   }
 
   /**

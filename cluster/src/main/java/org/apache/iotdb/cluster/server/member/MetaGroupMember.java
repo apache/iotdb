@@ -292,7 +292,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return true if the member is a leader and the partition is closed, false otherwise
    */
   public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
-    Node header = partitionTable.routeToHeaderByTime(storageGroupName, partitionId);
+    Node header = partitionTable.routeToHeaderByTime(storageGroupName,
+        partitionId * StorageEngine.getTimePartitionInterval());
     return getLocalDataMember(header).closePartition(storageGroupName, partitionId, isSeq);
   }
 

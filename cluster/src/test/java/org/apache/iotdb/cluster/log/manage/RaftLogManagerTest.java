@@ -103,7 +103,7 @@ public class RaftLogManagerTest {
         add(new RaftLogManagerTester(offset, offset, null));
         add(new RaftLogManagerTester(half, half, null));
         add(new RaftLogManagerTester(last - 1, last - 1, null));
-        add(new RaftLogManagerTester(last, 0, EntryUnavailableException.class));
+        add(new RaftLogManagerTester(last, -1, null));
       }};
       for (RaftLogManagerTester test : tests) {
         try {

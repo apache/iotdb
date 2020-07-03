@@ -348,7 +348,7 @@ public class ClientMain {
     TSInsertStringRecordReq insertReq = new TSInsertStringRecordReq();
     insertReq.setMeasurements(Arrays.asList(MEASUREMENTS));
     insertReq.setSessionId(sessionId);
-   
+
     for (int i = 0; i < 10; i++) {
       List<String> values = new ArrayList<>(MEASUREMENTS.length);
       insertReq.setTimestamp(i * 24 * 3600 * 1000L);
