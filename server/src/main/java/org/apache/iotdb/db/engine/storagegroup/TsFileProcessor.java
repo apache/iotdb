@@ -702,6 +702,7 @@ public class TsFileProcessor {
           if ((vmPointNum + memTableToFlush.getTotalPointsNum()) / pathMeasurementSchemaMap.size()
               > config.getMergeChunkPointNumberThreshold() 
               || flushVmTimes >= config.getMaxMergeChunkNumInTsFile()) {
+            logger.info("[Flush] merge {} vms to TsFile", vmTsFileResources.size() + 1);
             isVm = false;
             isFull = false;
             flushVmTimes = 0;
@@ -712,6 +713,7 @@ public class TsFileProcessor {
           } else {
             // merge vm files
             if (config.getMaxVmNum() <= vmTsFileResources.size()) {
+              logger.info("[Flush] merge {} vms to vm", vmTsFileResources.size() + 1);
               isVm = true;
               isFull = true;
               flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources,
@@ -719,6 +721,7 @@ public class TsFileProcessor {
                   sequence,
                   storageGroupName);
             } else {
+              logger.info("[Flush] flush a vm");
               isVm = true;
               isFull = false;
               File newVmFile = createNewVMFile(tsFileResource);
