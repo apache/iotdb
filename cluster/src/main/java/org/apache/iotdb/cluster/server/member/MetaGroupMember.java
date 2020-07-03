@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.server.member;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
-import com.sun.rowset.internal.InsertRow;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
