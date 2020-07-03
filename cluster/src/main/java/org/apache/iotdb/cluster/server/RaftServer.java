@@ -194,6 +194,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
     poolArgs.protocolFactory(protocolFactory);
     // async service requires FramedTransport
     poolArgs.transportFactory(new TFastFramedTransport.Factory(
+        IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 
     // run the thrift server in a separate thread so that the main thread is not blocked
