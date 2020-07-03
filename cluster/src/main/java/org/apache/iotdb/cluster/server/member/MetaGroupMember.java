@@ -22,7 +22,6 @@ package org.apache.iotdb.cluster.server.member;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
-import com.sun.rowset.internal.InsertRow;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -1613,7 +1612,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     InsertRowPlan backup = null;
-    if (plan instanceof InsertPlan) {
+    if (plan instanceof InsertRowPlan) {
       backup = (InsertRowPlan) ((InsertRowPlan) plan).clone();
     }
     // the error codes from the groups that cannot execute the plan

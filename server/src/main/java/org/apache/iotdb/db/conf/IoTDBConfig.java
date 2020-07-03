@@ -629,6 +629,11 @@ public class IoTDBConfig {
    */
   private int thriftMaxFrameSize = 67108864;
 
+  /**
+   * thrift init buffer size, the default is 1KB.
+   */
+  private int thriftInitBufferSize = 1024;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -1720,5 +1725,13 @@ public class IoTDBConfig {
 
   public void setThriftMaxFrameSize(int thriftMaxFrameSize) {
     this.thriftMaxFrameSize = thriftMaxFrameSize;
+  }
+
+  public int getThriftInitBufferSize() {
+    return thriftInitBufferSize;
+  }
+
+  public void setThriftInitBufferSize(int thriftInitBufferSize) {
+    this.thriftInitBufferSize = thriftInitBufferSize;
   }
 }

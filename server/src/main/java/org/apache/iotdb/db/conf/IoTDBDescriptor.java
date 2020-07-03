@@ -415,6 +415,10 @@ public class IoTDBDescriptor {
       conf.setThriftMaxFrameSize(Integer.parseInt(properties
           .getProperty("thrift_max_frame_size", String.valueOf(conf.getThriftMaxFrameSize()))));
 
+      conf.setThriftInitBufferSize(Integer.parseInt(properties
+          .getProperty("thrift_init_buffer_size", String.valueOf(conf.getThriftInitBufferSize()))));
+
+
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
         conf.setMqttHost(properties.getProperty(IoTDBConstant.MQTT_HOST_NAME));

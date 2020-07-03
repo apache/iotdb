@@ -157,6 +157,7 @@ public class ClientServer extends TSServiceImpl {
     poolArgs.protocolFactory(protocolFactory);
     // nonblocking server requests FramedTransport
     poolArgs.transportFactory(new TFastFramedTransport.Factory(
+        IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 
     poolServer = new TThreadPoolServer(poolArgs);

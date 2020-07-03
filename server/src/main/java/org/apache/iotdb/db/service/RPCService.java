@@ -219,7 +219,8 @@ public class RPCService implements RPCServiceMBean, IService {
             ThreadName.RPC_CLIENT.getName());
         poolArgs.processor(processor);
         poolArgs.protocolFactory(protocolFactory);
-        poolArgs.transportFactory(new TFastFramedTransport.Factory(config.getThriftMaxFrameSize()));
+        poolArgs.transportFactory(new TFastFramedTransport.Factory(config.getThriftInitBufferSize(),
+            config.getThriftMaxFrameSize()));
         poolServer = new TThreadPoolServer(poolArgs);
         poolServer.setServerEventHandler(new RPCServiceThriftHandler(impl));
         poolServer.serve();
