@@ -135,10 +135,9 @@ public class TsFileProcessorEnableVmTest {
     for (TsFileResource r : processor.getVmTsFileResources()) {
       System.out.println(r.getPath());
     }
-    assertEquals(0, right.get(0).size());
-    assertEquals(1, right.get(1).size());
-    assertEquals(measurementId, right.get(1).get(0).getMeasurementUid());
-    assertEquals(dataType, right.get(1).get(0).getDataType());
+    assertEquals(0, left.size());
+    assertEquals(1, right.size());
+    assertEquals(1, right.get(0).size());
     processor.syncClose();
   }
 
