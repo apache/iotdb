@@ -1087,8 +1087,46 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setValues(new Object[plan.getMeasurements().length]);
-        plan.setValues(req.valuesList.get(i));
-        plan.setNeedInferType(req.isInferType());
+        plan.fillValues(req.valuesList.get(i));
+        plan.setNeedInferType(false);
+        TSStatus status = checkAuthority(plan, req.getSessionId());
+        if (status != null) {
+          statusList.add(status);
+        } else {
+          statusList.add(executePlan(plan));
+        }
+      } catch (Exception e) {
+        logger.error("meet error when insert in batch", e);
+        statusList.add(RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR));
+      }
+    }
+
+    return RpcUtils.getStatus(statusList);
+  }
+
+  @Override
+  public TSStatus insertStringRecords(TSInsertStringRecordsReq req) throws TException {
+    if (auditLogger.isDebugEnabled()) {
+      auditLogger
+          .debug("Session {} insertRecords, first device {}, first time {}", currSessionId.get(),
+              req.deviceIds.get(0), req.getTimestamps().get(0));
+    }
+    if (!checkLogin(req.getSessionId())) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+
+    List<TSStatus> statusList = new ArrayList<>();
+    InsertRowPlan plan = new InsertRowPlan();
+    for (int i = 0; i < req.deviceIds.size(); i++) {
+      try {
+        plan.setDeviceId(req.getDeviceIds().get(i));
+        plan.setTime(req.getTimestamps().get(i));
+        plan.setMeasurements(req.getMeasurementsList().get(i).toArray(new String[0]));
+        plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
+        plan.setValues(
+            req.getValuesList().get(i).toArray(new Object[req.getValuesList().get(i).size()]));
+        plan.setNeedInferType(true);
         TSStatus status = checkAuthority(plan, req.getSessionId());
         if (status != null) {
           statusList.add(status);
@@ -1123,8 +1161,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   @Override
+  public TSStatus testInsertStringRecord(TSInsertStringRecordReq req) throws TException {
+    logger.debug("Test insert string record request receive.");
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
   public TSStatus testInsertRecords(TSInsertRecordsReq req) {
     logger.debug("Test insert row in batch request receive.");
+    return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+  }
+
+  @Override
+  public TSStatus testInsertStringRecords(TSInsertStringRecordsReq req) throws TException {
+    logger.debug("Test insert string records request receive.");
     return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
@@ -1145,8 +1195,38 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
       plan.setValues(new Object[plan.getMeasurements().length]);
-      plan.setValues(req.values);
-      plan.setNeedInferType(req.isInferType());
+      plan.fillValues(req.values);
+      plan.setNeedInferType(false);
+
+      TSStatus status = checkAuthority(plan, req.getSessionId());
+      if (status != null) {
+        return status;
+      }
+      return executePlan(plan);
+    } catch (Exception e) {
+      logger.error("meet error when insert", e);
+    }
+    return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+  }
+
+  @Override
+  public TSStatus insertStringRecord(TSInsertStringRecordReq req) throws TException {
+    try {
+      auditLogger
+          .debug("Session {} insertRecord, device {}, time {}", currSessionId.get(),
+              req.getDeviceId(), req.getTimestamp());
+      if (!checkLogin(req.getSessionId())) {
+        logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+        return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+      }
+
+      InsertRowPlan plan = new InsertRowPlan();
+      plan.setDeviceId(req.getDeviceId());
+      plan.setTime(req.getTimestamp());
+      plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
+      plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
+      plan.setValues(req.getValues().toArray(new Object[req.getValues().size()]));
+      plan.setNeedInferType(true);
 
       TSStatus status = checkAuthority(plan, req.getSessionId());
       if (status != null) {
