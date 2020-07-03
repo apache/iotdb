@@ -1093,7 +1093,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (status != null) {
           statusList.add(status);
         } else {
-          statusList.add(executePlan(plan));
+          statusList.add(executeNonQueryPlan(plan));
         }
       } catch (Exception e) {
         logger.error("meet error when insert in batch", e);
@@ -1202,7 +1202,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (status != null) {
         return status;
       }
-      return executePlan(plan);
+      return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when insert", e);
     }
