@@ -1400,7 +1400,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         applySnapshotUsers(authorizer, snapshot);
         applySnapshotRoles(authorizer, snapshot);
       } catch (AuthException e) {
-        logger.error("{}: Cannot get authorizer instance, error is: {}", name, e);
+        logger.error("{}: Cannot get authorizer instance, error is: ", name, e);
       }
 
       // 5. accept partition table
@@ -1544,7 +1544,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       getAllPathsService.submit(() -> {
         try {
           List<String> fullPathStrs = getMatchedPaths(pathStr);
-          if (fullPathStrs.size() == 0) {
+          if (fullPathStrs.isEmpty()) {
             nonExistPaths.add(pathStr);
             logger.error("Path {} is not found.", pathStr);
           }
@@ -1552,7 +1552,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             fullPaths.add(new Path(fullPathStr));
           }
         } catch (MetadataException e) {
-          logger.error("Failed to get full paths of the prefix path: {} because {}.", pathStr, e);
+          logger.error("Failed to get full paths of the prefix path: {} because", pathStr, e);
         }
       });
     }
@@ -1563,7 +1563,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
     }
-    if (nonExistPaths.size() != 0) {
+    if (!nonExistPaths.isEmpty()) {
       throw new PathNotExistException(new ArrayList<>(nonExistPaths));
     }
     plan.setPaths(new ArrayList<>(fullPaths));
