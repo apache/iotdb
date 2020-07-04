@@ -1027,7 +1027,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     return StatusUtils.TIME_OUT;
   }
 
-  private Throwable getRootCause(Throwable e) {
+  Throwable getRootCause(Throwable e) {
     Throwable curr = e;
     while (curr.getCause() != null) {
       curr = curr.getCause();

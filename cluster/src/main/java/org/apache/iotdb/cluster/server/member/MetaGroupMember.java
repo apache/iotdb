@@ -1512,31 +1512,13 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
     if (plan instanceof DeleteTimeSeriesPlan) {
-      List<Path> originalPaths = ((DeleteTimeSeriesPlan) plan).getPaths();
-      ConcurrentSkipListSet<Path> fullPaths = new ConcurrentSkipListSet<>();
-      ExecutorService getAllPathsService = Executors
-          .newFixedThreadPool(partitionTable.getGlobalGroups().size());
-      for (Path path : originalPaths) {
-        String pathStr = path.getFullPath();
-        getAllPathsService.submit(() -> {
-          try {
-            List<String> fullPathStrs = getMatchedPaths(pathStr);
-            for (String fullPathStr : fullPathStrs) {
-              fullPaths.add(new Path(fullPathStr));
-            }
-          } catch (MetadataException e) {
-            logger.error("Failed to get full paths of the prefix path: {}", pathStr);
-          }
-        });
-      }
-      getAllPathsService.shutdown();
       try {
-        getAllPathsService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
+        plan = getDeleteTimeseriesPlanWithFullPaths((DeleteTimeSeriesPlan) plan);
+      } catch (PathNotExistException e) {
+        TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+        tsStatus.setMessage(e.getMessage());
+        return tsStatus;
       }
-      ((DeleteTimeSeriesPlan) plan).setPaths(new ArrayList<>(fullPaths));
     }
     try {
       syncLeaderWithConsistencyCheck();
@@ -1548,6 +1530,44 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       waitLeader();
       return forwardPlan(plan, leader, null);
     }
+  }
+
+  DeleteTimeSeriesPlan getDeleteTimeseriesPlanWithFullPaths(DeleteTimeSeriesPlan plan)
+      throws PathNotExistException {
+    List<Path> originalPaths = plan.getPaths();
+    ConcurrentSkipListSet<Path> fullPaths = new ConcurrentSkipListSet<>();
+    ConcurrentSkipListSet<String> failedFullPaths = new ConcurrentSkipListSet<>();
+    ExecutorService getAllPathsService = Executors
+        .newFixedThreadPool(partitionTable.getGlobalGroups().size());
+    for (Path path : originalPaths) {
+      String pathStr = path.getFullPath();
+      getAllPathsService.submit(() -> {
+        try {
+          List<String> fullPathStrs = getMatchedPaths(pathStr);
+          if (fullPathStrs.size() == 0) {
+            failedFullPaths.add(pathStr);
+            logger.error("Path {} is not found.", pathStr);
+          }
+          for (String fullPathStr : fullPathStrs) {
+            fullPaths.add(new Path(fullPathStr));
+          }
+        } catch (MetadataException e) {
+          logger.error("Failed to get full paths of the prefix path: {} because {}.", pathStr, e);
+        }
+      });
+    }
+    getAllPathsService.shutdown();
+    try {
+      getAllPathsService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
+    }
+    if (failedFullPaths.size() != 0) {
+      throw new PathNotExistException(new ArrayList<>(failedFullPaths));
+    }
+    plan.setPaths(new ArrayList<>(fullPaths));
+    return plan;
   }
 
   /**
@@ -1590,10 +1610,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
         // try to set storage group
         String deviceId;
-        if(plan instanceof InsertPlan){
+        if (plan instanceof InsertPlan) {
           deviceId = ((InsertPlan) plan).getDeviceId();
-        }else{
-          deviceId = ((CreateTimeSeriesPlan)plan).getPath().toString();
+        } else {
+          deviceId = ((CreateTimeSeriesPlan) plan).getPath().toString();
         }
         try {
           String storageGroupName = MetaUtils
@@ -1610,7 +1630,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
                     setStorageGroupResult.getCode(), storageGroupName)
             );
           }
-          if(plan instanceof InsertRowPlan){
+          if (plan instanceof InsertRowPlan) {
             // try to create timeseries
             boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
             if (!isAutoCreateTimeseriesSuccess) {
@@ -1631,6 +1651,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
     return forwardPlan(planGroupMap, plan);
   }
+
+
 
   /**
    * Forward plans to the DataGroupMember of one node in the corresponding group. Only when all
