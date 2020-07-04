@@ -18,20 +18,26 @@
  */
 package org.apache.iotdb.db.sync.receiver;
 
+import java.io.IOException;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
+import org.apache.iotdb.db.sync.receiver.load.FileLoaderManager;
+import org.apache.iotdb.db.sync.receiver.recover.SyncReceiverLogAnalyzer;
 import org.apache.iotdb.db.sync.receiver.transfer.SyncServiceImpl;
 import org.apache.iotdb.service.sync.thrift.SyncService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * sync receiver server.
  */
 public class SyncServerManager  extends ThriftService implements SyncServerManagerMBean {
-
+  private static Logger logger = LoggerFactory.getLogger(SyncServerManager.class);
   private SyncServiceImpl serviceImpl;
 
   private static class ServerManagerHolder {
@@ -81,5 +87,35 @@ public class SyncServerManager  extends ThriftService implements SyncServerManag
   @Override
   public int getBindPort() {
     return IoTDBDescriptor.getInstance().getConfig().getSyncServerPort();
+  }
+
+  @Override
+  public void startService() throws StartupException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    if (!config.isSyncEnable()) {
+      return;
+    }
+    FileLoaderManager.getInstance().start();
+    try {
+      SyncReceiverLogAnalyzer.getInstance().recoverAll();
+    } catch (IOException e) {
+      logger.error("Can not recover receiver sync state", e);
+    }
+    if (config.getIpWhiteList() == null) {
+      logger.error(
+          "Sync server failed to start because IP white list is null, please set IP white list.");
+      return;
+    }
+    config.setIpWhiteList(config.getIpWhiteList().replaceAll(" ", ""));
+    super.startService();
+  }
+
+  @Override
+  public void stopService() {
+    if (IoTDBDescriptor.getInstance().getConfig().isSyncEnable()) {
+      FileLoaderManager.getInstance().stop();
+      super.stopService();
+    }
+
   }
 }
