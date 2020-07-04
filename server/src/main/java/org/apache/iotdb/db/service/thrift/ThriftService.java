@@ -20,20 +20,13 @@
 package org.apache.iotdb.db.service.thrift;
 
 import java.util.concurrent.CountDownLatch;
-import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
-import org.apache.iotdb.db.service.RPCService;
-import org.apache.iotdb.db.service.RPCServiceThriftHandler;
 import org.apache.iotdb.db.service.ServiceType;
-import org.apache.iotdb.db.service.TSServiceImpl;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.thrift.TProcessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +41,6 @@ public abstract class ThriftService implements IService {
           getID().getJmxName());
   protected ThriftServiceThread thriftServiceThread;
   protected TProcessor processor;
-  //private TSServiceImpl impl;
 
   private CountDownLatch stopLatch;
 
@@ -76,7 +68,6 @@ public abstract class ThriftService implements IService {
     return config.getRpcPort();
   }
 
-  public abstract ServiceType getID();
   public abstract ThriftService getImplementation();
 
   @Override

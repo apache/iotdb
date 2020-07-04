@@ -22,9 +22,7 @@ package org.apache.iotdb.db.service.thrift;
 import java.net.InetSocketAddress;
 import java.util.concurrent.CountDownLatch;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
-import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -49,23 +47,19 @@ public class ThriftServiceThread extends Thread{
   private String serviceName;
 
   private TProtocolFactory protocolFactory;
-  private TProcessor processor;
   private TThreadPoolServer.Args poolArgs;
 
-
+  @SuppressWarnings("squid:S107")
   public ThriftServiceThread(TProcessor processor, String serviceName,
       String threadsName,
       String bindAddress, int port, int maxWorkerThreads, int timeoutMs,
-      TServerEventHandler serverEventHandler, boolean compress)
-      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+      TServerEventHandler serverEventHandler, boolean compress) {
     if(compress) {
       protocolFactory = new TCompactProtocol.Factory();
     }
     else {
       protocolFactory = new TBinaryProtocol.Factory();
     }
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    this.processor = processor;
     this.serviceName = serviceName;
 
     try {

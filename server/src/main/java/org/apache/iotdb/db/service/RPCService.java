@@ -41,11 +41,6 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   }
 
   @Override
-  public String getRPCServiceStatus() {
-    return super.getRPCServiceStatus();
-  }
-
-  @Override
   public int getRPCPort() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return config.getRpcPort();
@@ -89,21 +84,6 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   @Override
   public ServiceType getID() {
     return ServiceType.RPC_SERVICE;
-  }
-
-  @Override
-  public synchronized void startService() throws StartupException {
-    super.startService();
-  }
-
-  @Override
-  public synchronized void restartService() throws StartupException {
-    super.restartService();
-  }
-
-  @Override
-  public synchronized void stopService() {
-    super.stopService();
   }
 
   private static class RPCServiceHolder {

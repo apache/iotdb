@@ -106,7 +106,7 @@ public class SyncServerManager  extends ThriftService implements SyncServerManag
           "Sync server failed to start because IP white list is null, please set IP white list.");
       return;
     }
-    config.setIpWhiteList(config.getIpWhiteList().replaceAll(" ", ""));
+    config.setIpWhiteList(config.getIpWhiteList().replace(" ", ""));
     super.startService();
   }
 
