@@ -1536,7 +1536,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       throws PathNotExistException {
     List<Path> originalPaths = plan.getPaths();
     ConcurrentSkipListSet<Path> fullPaths = new ConcurrentSkipListSet<>();
-    ConcurrentSkipListSet<String> failedFullPaths = new ConcurrentSkipListSet<>();
+    ConcurrentSkipListSet<String> nonExistPaths = new ConcurrentSkipListSet<>();
     ExecutorService getAllPathsService = Executors
         .newFixedThreadPool(partitionTable.getGlobalGroups().size());
     for (Path path : originalPaths) {
@@ -1545,7 +1545,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         try {
           List<String> fullPathStrs = getMatchedPaths(pathStr);
           if (fullPathStrs.size() == 0) {
-            failedFullPaths.add(pathStr);
+            nonExistPaths.add(pathStr);
             logger.error("Path {} is not found.", pathStr);
           }
           for (String fullPathStr : fullPathStrs) {
@@ -1563,8 +1563,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
     }
-    if (failedFullPaths.size() != 0) {
-      throw new PathNotExistException(new ArrayList<>(failedFullPaths));
+    if (nonExistPaths.size() != 0) {
+      throw new PathNotExistException(new ArrayList<>(nonExistPaths));
     }
     plan.setPaths(new ArrayList<>(fullPaths));
     return plan;
