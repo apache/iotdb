@@ -1512,16 +1512,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
-    if(plan instanceof DeleteTimeSeriesPlan){
-      List<Path> originalPaths = ((DeleteTimeSeriesPlan)plan).getPaths();
+    if (plan instanceof DeleteTimeSeriesPlan) {
+      List<Path> originalPaths = ((DeleteTimeSeriesPlan) plan).getPaths();
       ConcurrentSkipListSet<Path> fullPaths = new ConcurrentSkipListSet<>();
-      ExecutorService getAllPathsService = Executors.newFixedThreadPool(partitionTable.getGlobalGroups().size());
-      for(Path path : originalPaths){
+      ExecutorService getAllPathsService = Executors
+          .newFixedThreadPool(partitionTable.getGlobalGroups().size());
+      for (Path path : originalPaths) {
         String pathStr = path.getFullPath();
-        getAllPathsService.submit(()->{
+        getAllPathsService.submit(() -> {
           try {
             List<String> fullPathStrs = getMatchedPaths(pathStr);
-            for(String fullPathStr : fullPathStrs){
+            for (String fullPathStr : fullPathStrs) {
               fullPaths.add(new Path(fullPathStr));
             }
           } catch (MetadataException e) {
@@ -1536,7 +1537,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         Thread.currentThread().interrupt();
         logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
       }
-      ((DeleteTimeSeriesPlan)plan).setPaths(new ArrayList<>(fullPaths));
+      ((DeleteTimeSeriesPlan) plan).setPaths(new ArrayList<>(fullPaths));
     }
     try {
       syncLeaderWithConsistencyCheck();
