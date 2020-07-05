@@ -1014,10 +1014,6 @@ UNDERLINE : '_';
 
 NaN : 'NaN';
 
-DOUBLE_QUOTE_STRING_LITERAL
-    : '"' ('\\' . | ~'"' )*? '"'
-    ;
-
 STRING_LITERAL
    : DOUBLE_QUOTE_STRING_LITERAL
    | SINGLE_QUOTE_STRING_LITERAL
@@ -1079,6 +1075,10 @@ FIRST_NAME_CHAR
 fragment CN_CHAR
   : '\u2E80'..'\u9FFF'
   ;
+
+DOUBLE_QUOTE_STRING_LITERAL
+    : '"' ('\\' . | ~'"' )*? '"'
+    ;
 
 fragment SINGLE_QUOTE_STRING_LITERAL
     : '\'' ('\\' . | ~'\'' )*? '\''
