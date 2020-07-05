@@ -40,8 +40,8 @@ statement
     | FLUSH prefixPath? (COMMA prefixPath)* (booleanClause)?#flush
     | FULL MERGE #fullMerge
     | CLEAR CACHE #clearcache
-    | CREATE USER userName=ID password=STRING_LITERAL #createUser
-    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=STRING_LITERAL #alterUser
+    | CREATE USER userName=ID password=(DOUBLE_QUOTE | SINGLE_QUOTE) #createUser
+    | ALTER USER userName=(ROOT|ID) SET PASSWORD password=(DOUBLE_QUOTE | SINGLE_QUOTE) #alterUser
     | DROP USER userName=ID #dropUser
     | CREATE ROLE roleName=ID #createRole
     | DROP ROLE roleName=ID #dropRole
@@ -51,7 +51,7 @@ statement
     | REVOKE ROLE roleName=ID PRIVILEGES privileges ON prefixPath #revokeRole
     | GRANT roleName=ID TO userName=ID #grantRoleToUser
     | REVOKE roleName = ID FROM userName = ID #revokeRoleFromUser
-    | LOAD TIMESERIES (fileName=STRING_LITERAL) prefixPath #loadStatement
+    | LOAD TIMESERIES (fileName=(DOUBLE_QUOTE | SINGLE_QUOTE)) prefixPath #loadStatement
     | GRANT WATERMARK_EMBEDDING TO rootOrId (COMMA rootOrId)* #grantWatermarkEmbedding
     | REVOKE WATERMARK_EMBEDDING FROM rootOrId (COMMA rootOrId)* #revokeWatermarkEmbedding
     | LIST USER #listUser
@@ -79,9 +79,9 @@ statement
     | COUNT TIMESERIES prefixPath? (GROUP BY LEVEL OPERATOR_EQ INT)? #countTimeseries
     | COUNT NODES prefixPath LEVEL OPERATOR_EQ INT #countNodes
     | LOAD CONFIGURATION (MINUS GLOBAL)? #loadConfigurationStatement
-    | LOAD STRING_LITERAL autoCreateSchema? #loadFiles
-    | REMOVE STRING_LITERAL #removeFile
-    | MOVE STRING_LITERAL STRING_LITERAL #moveFile
+    | LOAD (DOUBLE_QUOTE | SINGLE_QUOTE) autoCreateSchema? #loadFiles
+    | REMOVE (DOUBLE_QUOTE | SINGLE_QUOTE) #removeFile
+    | MOVE (DOUBLE_QUOTE | SINGLE_QUOTE) (DOUBLE_QUOTE | SINGLE_QUOTE) #moveFile
     | DELETE PARTITION prefixPath INT(COMMA INT)* #deletePartition
     | CREATE SNAPSHOT FOR SCHEMA #createSnapshot
     | SELECT INDEX func=ID //not support yet
@@ -101,7 +101,7 @@ statement
 selectElements
     : functionCall (COMMA functionCall)* #functionElement
     | suffixPath (COMMA suffixPath)* #selectElement
-    | STRING_LITERAL (COMMA STRING_LITERAL)* #selectConstElement
+    | DOUBLE_QUOTE(COMMA DOUBLE_QUOTE)* #selectConstElement
     | lastClause #lastElement
     ;
 
@@ -332,7 +332,7 @@ setCol
     ;
 
 privileges
-    : STRING_LITERAL (COMMA STRING_LITERAL)*
+    : (DOUBLE_QUOTE | SINGLE_QUOTE) (COMMA (DOUBLE_QUOTE | SINGLE_QUOTE))*
     ;
 
 rootOrId
@@ -354,7 +354,7 @@ timeValue
 propertyValue
     : INT
     | ID
-    | STRING_LITERAL
+    | (DOUBLE_QUOTE | SINGLE_QUOTE)
     | constant
     ;
 
@@ -373,7 +373,7 @@ suffixPath
 nodeName
     : ID
     | STAR
-    | DOUBLE_QUOTE_STRING_LITERAL
+    | DOUBLE_QUOTE
     | ID STAR
     | DURATION
     | encoding
@@ -388,7 +388,7 @@ nodeName
 
 nodeNameWithoutStar
     : ID
-    | DOUBLE_QUOTE_STRING_LITERAL
+    | DOUBLE_QUOTE
     | DURATION
     | encoding
     | dataType
@@ -414,7 +414,7 @@ constant
     | NaN
     | MINUS? realLiteral
     | MINUS? INT
-    | STRING_LITERAL
+    | (DOUBLE_QUOTE | SINGLE_QUOTE)
     | booleanClause
     ;
 
@@ -1014,11 +1014,6 @@ UNDERLINE : '_';
 
 NaN : 'NaN';
 
-STRING_LITERAL
-   : DOUBLE_QUOTE_STRING_LITERAL
-   | SINGLE_QUOTE_STRING_LITERAL
-   ;
-
 INT : [0-9]+;
 
 EXPONENT : INT ('e'|'E') ('+'|'-')? INT ;
@@ -1076,11 +1071,11 @@ fragment CN_CHAR
   : '\u2E80'..'\u9FFF'
   ;
 
-DOUBLE_QUOTE_STRING_LITERAL
+DOUBLE_QUOTE
     : '"' ('\\' . | ~'"' )*? '"'
     ;
 
-fragment SINGLE_QUOTE_STRING_LITERAL
+SINGLE_QUOTE
     : '\'' ('\\' . | ~'\'' )*? '\''
     ;
 
