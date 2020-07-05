@@ -163,7 +163,6 @@ public interface IUnCompressor {
     @Override
     public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
         throws IOException {
-      Snappy.uncompressedLength(byteArray, offset, length);
       return Snappy.uncompress(byteArray, offset, length, output, outOffset);
     }
 
@@ -232,8 +231,16 @@ public interface IUnCompressor {
     }
 
     @Override
-    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset) {
-      return decompressor.decompress(byteArray, offset, length, output, offset);
+    public int uncompress(byte[] byteArray, int offset, int length, byte[] output, int outOffset)
+        throws IOException {
+      try {
+        return decompressor.decompress(byteArray, offset, length, output, offset);
+      }
+      catch (RuntimeException e){
+        logger.error(
+            "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte", e);
+        throw new IOException(e);
+      }
     }
 
     @Override
