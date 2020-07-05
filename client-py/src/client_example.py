@@ -25,7 +25,7 @@ import struct
 # sys.path.append("../target")
 
 #if you use maven to compile the thrift api, just use the follwoing code:
-sys.path.append("../../service-rpc/target/generated-sources-python")
+sys.path.append("../../thrift/target/generated-sources-python")
 
 from thrift.protocol import TBinaryProtocol, TCompactProtocol
 from thrift.transport import TSocket, TTransport
@@ -178,7 +178,7 @@ if __name__ == '__main__':
     transport.open()
 
     # Authentication
-    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
+    clientProtocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
     resp = client.openSession(TSOpenSessionReq(client_protocol=clientProtocol,
                                                username=username,
                                                password=password))
@@ -239,10 +239,10 @@ if __name__ == '__main__':
 
     # insert a single row
     values = [1, 11, 1.1, 11.1, True, "\'text0\'"]
-    dataTypes = [TSDataType['INT32'], TSDataType['INT32'], TSDataType['FLOAT'],
+    dataTypes = [TSDataType['INT64'], TSDataType['INT32'], TSDataType['DOUBLE'],
                  TSDataType['FLOAT'], TSDataType['BOOLEAN'], TSDataType['TEXT']]
     
-    value_pack_str = '>5ififibi7s'
+    value_pack_str = '>hqhihdhfh?hi' + str(len(values[5])) + 's'
     encoding = 'utf-8'
     valueByte = bytearray()
     
@@ -251,7 +251,7 @@ if __name__ == '__main__':
                                              dataTypes[2], values[2],
                                              dataTypes[3], values[3],
                                              dataTypes[4], values[4],
-                                             dataTypes[5], bytes(values[5], encoding)))
+                                             dataTypes[5], len(values[5]), bytes(values[5], encoding)))
     timestamp = 1
     
     status = client.insertRecord(TSInsertRecordReq(sessionId, deviceId, measurements, valueByte, timestamp))
@@ -262,8 +262,7 @@ if __name__ == '__main__':
     times = bytearray()
 
     rowCnt = 3
-    dataTypes = [TSDataType['INT64'], TSDataType['INT32'], TSDataType['DOUBLE'],
-                 TSDataType['FLOAT'], TSDataType['BOOLEAN'], TSDataType['TEXT']]
+
     # the first 3 belong to 's1', the second 3 belong to 's2'... the last 3
     # belong to 's6'
     # to transfer a string, you must first send its length and then its bytes

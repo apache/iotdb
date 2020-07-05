@@ -23,7 +23,7 @@
     <parent>
         <artifactId>iotdb-parent</artifactId>
         <groupId>org.apache.iotdb</groupId>
-        <version>0.10.0-SNAPSHOT</version>
+        <version>0.11.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -103,7 +103,7 @@
                                     </includes>
                                 </resource>
                                 <resource>
-                                    <directory>${basedir}/../service-rpc</directory>
+                                    <directory>${basedir}/../thrift</directory>
                                     <includes>
                                         <include>rpc-changelist.md</include>
                                     </includes>
@@ -129,7 +129,7 @@
                                     </includes>
                                 </resource>
                                 <resource>
-                                    <directory>${basedir}/../service-rpc</directory>
+                                    <directory>${basedir}/../thrift</directory>
                                     <includes>
                                         <include>rpc-changelist.md</include>
                                     </includes>
@@ -195,6 +195,18 @@
                 <version>1.3.0</version>
                 <executions>
                     <execution>
+                        <id>get-0.10-docs</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://github.com/apache/incubator-iotdb/archive/rel/0.10.zip</url>
+                            <outputDirectory>${project.build.directory}/download</outputDirectory>
+                            <outputFileName>0.10.x.zip</outputFileName>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>get-0.9-docs</id>
                         <phase>generate-sources</phase>
                         <goals>
@@ -227,6 +239,32 @@
                 <version>1.2</version>
                 <inherited>false</inherited>
                 <executions>
+                    <execution>
+                        <id>copy-0.10-documentation</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <fileset>
+                                <directory>${project.build.directory}/download/0.10.x.zip/incubator-iotdb-rel-0.10/docs/UserGuide</directory>
+                                <outputDirectory>${project.build.directory}/vue-source/src/UserGuide/V0.10.x</outputDirectory>
+                            </fileset>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-0.10-zh-documentation</id>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <fileset>
+                                <directory>${project.build.directory}/download/0.10.x.zip/incubator-iotdb-rel-0.10/docs/zh/UserGuide</directory>
+                                <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.10.x</outputDirectory>
+                            </fileset>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>copy-0.9-documentation</id>
                         <goals>

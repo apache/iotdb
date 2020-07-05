@@ -30,7 +30,7 @@ The following describes four common data manipulation operations, which are inse
 * Corresponding interface
   * JDBC's execute and executeBatch interfaces
   * Session's insertRecord and insertRecords
-* Main entrance: ```public void insert(InsertPlan insertPlan)```   StorageEngine.java
+* Main entrance: ```public void insert(InsertRowPlan insertRowPlan)```   StorageEngine.java
   * Find the corresponding StorageGroupProcessor
   * Find the corresponding TsFileProcessor according to the time of writing the data and the last time stamp of the current device order
   * Pre-write log
@@ -46,7 +46,7 @@ The following describes four common data manipulation operations, which are inse
 * Corresponding interface
 	* Session‘s insertTablet
 
-* Main entrance: ```public Integer[] insertTablet(InsertTabletPlan insertTabletPlan)```  StorageEngine.java
+* Main entrance: ```public void insertTablet(InsertTabletPlan insertTabletPlan)```  StorageEngine.java
     * Find the corresponding StorageGroupProcessor
 	* According to the time of this batch of data and the last timestamp of the current device order, this batch of data is divided into small batches, which correspond to a TsFileProcessor
 	* Pre-write log

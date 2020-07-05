@@ -25,19 +25,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.MNode;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
-import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
-import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -75,6 +72,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private QueryDataSet currentDataSet;
   private Iterator<String> deviceIterator;
   private List<String> executeColumns;
+  private int pathsNum = 0;
 
   public AlignByDeviceDataSet(AlignByDevicePlan alignByDevicePlan, QueryContext context,
       IQueryRouter queryRouter) throws MetadataException {
@@ -108,6 +106,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
     this.curDataSetInitialized = false;
     this.deviceIterator = devices.iterator();
+  }
+
+  public int getPathsNum() {
+    return pathsNum;
   }
 
   protected boolean hasNextWithoutConstraint() throws IOException {
@@ -146,6 +148,10 @@ public class AlignByDeviceDataSet extends QueryDataSet {
       // get filter to execute for the current device
       if (deviceToFilterMap != null) {
         this.expression = deviceToFilterMap.get(currentDevice);
+      }
+
+      if (IoTDBDescriptor.getInstance().getConfig().isEnablePerformanceTracing()) {
+        pathsNum += executeColumns.size();
       }
 
       try {
@@ -191,7 +197,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
   protected Set<String> getDeviceMeasurements(String device) throws IOException {
     try {
-      MNode deviceNode = MManager.getInstance().getNodeByPath(device);
+      MNode deviceNode = IoTDB.metaManager.getNodeByPath(device);
       return deviceNode.getChildren().keySet();
     } catch (MetadataException e) {
       throw new IOException("Cannot get node from " + device, e);

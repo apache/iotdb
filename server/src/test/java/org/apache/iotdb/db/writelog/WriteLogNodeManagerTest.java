@@ -28,7 +28,7 @@ import java.io.IOException;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.manager.WriteLogNodeManager;
@@ -85,7 +85,7 @@ public class WriteLogNodeManagerTest {
     WriteLogNode logNode = manager
         .getNode("root.managerTest");
 
-    InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan("logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
