@@ -35,24 +35,12 @@ public class MetaUtils {
 
   public static String[] getNodeNames(String path) {
     String[] nodeNames;
-    int indexOfLeftSingleQuote = path.indexOf('\'');
-    int indexOfRightSingleQuote = path.lastIndexOf('\'');
     int indexOfLeftDoubleQuote = path.indexOf('\"');
     int indexOfRightDoubleQuote = path.lastIndexOf('\"');
     String measurement;
     String device;
     String[] deviceNodeNames;
-    if (indexOfRightSingleQuote != -1 && indexOfRightSingleQuote == path.length()-1) {
-      measurement = path.substring(indexOfLeftSingleQuote);
-      if(indexOfLeftSingleQuote == 0) {
-        device = path;
-      } else {
-        device = path.substring(0, indexOfLeftSingleQuote-1);
-      }
-      deviceNodeNames = device.split(PATH_SEPARATOR);
-      nodeNames = Arrays.copyOf(deviceNodeNames, deviceNodeNames.length + 1);
-      nodeNames[nodeNames.length - 1] = measurement;
-    } else if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == path.length() -1) {
+    if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == path.length() -1) {
       measurement = path.substring(indexOfLeftDoubleQuote);
       if(indexOfLeftDoubleQuote == 0) {
         device = path;

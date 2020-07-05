@@ -359,7 +359,7 @@ suffixPath
 nodeName
     : ID
     | STAR
-    | STRING_LITERAL
+    | DOUBLE_QUOTE_STRING_LITERAL
     | ID STAR
     | DURATION
     | encoding
@@ -373,7 +373,7 @@ nodeName
 
 nodeNameWithoutStar
     : ID
-    | STRING_LITERAL
+    | DOUBLE_QUOTE_STRING_LITERAL
     | DURATION
     | encoding
     | dataType
@@ -1008,7 +1008,7 @@ fragment CN_CHAR
   : '\u2E80'..'\u9FFF'
   ;
 
-fragment DOUBLE_QUOTE_STRING_LITERAL
+DOUBLE_QUOTE_STRING_LITERAL
     : '"' ('\\' . | ~'"' )*? '"'
     ;
 

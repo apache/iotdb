@@ -81,19 +81,9 @@ public class Path implements Serializable, Comparable<Path> {
    * @param pathSc complete path string
    */
   private void init(String pathSc) {
-    int indexOfLeftSingleQuote = pathSc.indexOf('\'');
-    int indexOfRightSingleQuote = pathSc.lastIndexOf('\'');
     int indexOfLeftDoubleQuote = pathSc.indexOf('\"');
     int indexOfRightDoubleQuote = pathSc.lastIndexOf('\"');
-    if (indexOfRightSingleQuote != -1 && indexOfRightSingleQuote == pathSc.length() - 1) {
-      measurement = pathSc.substring(indexOfLeftSingleQuote);
-      if(indexOfLeftSingleQuote == 0) {
-        device = "";
-      } else {
-        device = pathSc.substring(0, indexOfLeftSingleQuote-1);
-      }
-      fullPath = pathSc;
-    } else if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == pathSc.length() - 1) {
+    if(indexOfRightDoubleQuote != -1 && indexOfRightDoubleQuote == pathSc.length() - 1) {
       measurement = pathSc.substring(indexOfLeftDoubleQuote);
       if(indexOfLeftDoubleQuote == 0) {
         device = "";
