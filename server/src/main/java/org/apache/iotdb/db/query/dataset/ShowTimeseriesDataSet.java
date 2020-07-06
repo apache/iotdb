@@ -32,10 +32,10 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 public class ShowTimeseriesDataSet extends QueryDataSet {
 
-  private ShowTimeSeriesPlan plan;
+  private final ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;
-  public static boolean hasLimit;
+  public boolean hasLimit;
 
   public ShowTimeseriesDataSet(List<Path> paths,
       List<TSDataType> dataTypes, ShowTimeSeriesPlan showTimeSeriesPlan) {

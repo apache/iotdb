@@ -150,6 +150,9 @@ public class QueryUtils {
     constructPathAndDataTypes(paths, dataTypes, timeseriesList);
     ShowTimeseriesDataSet showTimeseriesDataSet = new ShowTimeseriesDataSet(paths, dataTypes,
         showTimeSeriesPlan);
+
+    showTimeseriesDataSet.hasLimit = showTimeSeriesPlan.hasLimit();
+
     for (ShowTimeSeriesResult result : timeseriesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());

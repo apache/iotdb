@@ -36,6 +36,8 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
 
+  private boolean hasLimit;
+
   public ShowTimeSeriesPlan(Path path) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
@@ -95,6 +97,14 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   public void setOrderByHeat(boolean orderByHeat) {
     this.orderByHeat = orderByHeat;
+  }
+
+  public boolean hasLimit() {
+    return hasLimit;
+  }
+
+  public void setHasLimit(boolean hasLimit) {
+    this.hasLimit = hasLimit;
   }
 
   @Override
