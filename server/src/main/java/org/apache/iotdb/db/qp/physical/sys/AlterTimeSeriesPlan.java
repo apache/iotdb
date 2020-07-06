@@ -107,7 +107,7 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   public List<String> getPathsStrings() {
     List<Path> paths = Collections.singletonList(path);
     List<String> result = new ArrayList<>();
-    for(Path path : paths){
+    for (Path path : paths) {
       result.add(path.getFullPath());
     }
     return result;

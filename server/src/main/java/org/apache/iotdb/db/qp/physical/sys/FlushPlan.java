@@ -47,7 +47,7 @@ public class FlushPlan extends PhysicalPlan {
   @Override
   public List<String> getPathsStrings() {
     List<String> ret = new ArrayList<>();
-    for(Path path : storeGroups){
+    for (Path path : storeGroups) {
       ret.add(path.toString());
     }
     return ret;

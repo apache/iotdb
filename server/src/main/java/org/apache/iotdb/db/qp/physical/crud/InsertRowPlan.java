@@ -203,6 +203,16 @@ public class InsertRowPlan extends InsertPlan {
     return ret;
   }
 
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+
+    for (String m : measurements) {
+      ret.add(new Path(deviceId, m).getFullPath());
+    }
+    return ret;
+  }
+
   public Object[] getValues() {
     return this.values;
   }

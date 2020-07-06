@@ -52,7 +52,7 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   @Override
   public List<String> getPathsStrings() {
     List<String> ret = new ArrayList<>();
-    for(Path path : deletePathList){
+    for (Path path : deletePathList) {
       ret.add(path.toString());
     }
     return ret;
