@@ -113,14 +113,7 @@ public class MemTableFlushTask {
     if (isVm) {
       currWriter = vmWriters.get(vmWriters.size() - 1);
     } else {
-      if (IoTDBDescriptor.getInstance().getConfig().isEnableVm()) {
-        File file = createNewTmpFile();
-        currWriter = new RestorableTsFileIOWriter(file);
-        vmWriters.add(currWriter);
-        vmTsFiles.add(new TsFileResource(file));
-      } else {
-        currWriter = writer;
-      }
+      currWriter = writer;
     }
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.add(new StartFlushGroupIOTask(deviceId));
@@ -137,20 +130,6 @@ public class MemTableFlushTask {
         }
       }
       encodingTaskQueue.add(new EndChunkGroupIoTask());
-    }
-    RestorableTsFileIOWriter mergeWriter = null;
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableVm() && !isVm) {
-      // merge all vm files into the formal TsFile
-      mergeWriter = writer;
-      vmLogger = new VmLogger(writer.getFile().getParent(), writer.getFile().getName());
-    } else if (isFull) {
-      // merge all vm files into a new vm file
-      File tmpFile = createNewTmpFile();
-      tmpWriter = new RestorableTsFileIOWriter(tmpFile);
-      mergeWriter = tmpWriter;
-    }
-    if (mergeWriter != null) {
-      encodingTaskQueue.add(new MergeVmIoTask(mergeWriter));
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableParameterAdapter()) {
       ActiveTimeSeriesCounter.getInstance().updateActiveRatio(storageGroup);
@@ -270,8 +249,7 @@ public class MemTableFlushTask {
             break;
           }
         } else {
-          if (task instanceof StartFlushGroupIOTask || task instanceof EndChunkGroupIoTask
-              || task instanceof MergeVmIoTask) {
+          if (task instanceof StartFlushGroupIOTask || task instanceof EndChunkGroupIoTask) {
             ioTaskQueue.add(task);
           } else {
             long starTime = System.currentTimeMillis();
@@ -332,14 +310,6 @@ public class MemTableFlushTask {
         try {
           if (ioMessage instanceof StartFlushGroupIOTask) {
             currWriter.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
-          } else if (ioMessage instanceof MergeVmIoTask) {
-            if (flushLogFile != null) {
-              flushLogFile.delete();
-            }
-            RestorableTsFileIOWriter mergeWriter = ((MergeVmIoTask) ioMessage).mergeWriter;
-            VmMergeTask vmMergeTask = new VmMergeTask(mergeWriter, vmWriters,
-                storageGroup, vmLogger, new HashSet<>(), sequence);
-            vmMergeTask.fullMerge();
           } else if (ioMessage instanceof IChunkWriter) {
             ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
             chunkWriter.writeToFileWriter(this.currWriter);
@@ -373,14 +343,4 @@ public class MemTableFlushTask {
       this.deviceId = deviceId;
     }
   }
-
-  static class MergeVmIoTask {
-
-    private final RestorableTsFileIOWriter mergeWriter;
-
-    public MergeVmIoTask(RestorableTsFileIOWriter mergeWriter) {
-      this.mergeWriter = mergeWriter;
-    }
-  }
-
 }
