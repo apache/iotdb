@@ -42,9 +42,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.async.ClientPool;
-import org.apache.iotdb.cluster.client.async.DataClient;
-import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncClientPool;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -137,7 +137,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   private Map<Node, Long> lastCatchUpResponseTime = new ConcurrentHashMap<>();
   // the pool that provides reusable clients to connect to other RaftMembers. It will be initialized
   // according to the implementation of the subclasses
-  private ClientPool clientPool;
+  private AsyncClientPool asyncClientPool;
   // when the commit progress is updated by a heart beat, this object is notified so that we may
   // know if this node is synchronized with the leader
   private Object syncLock = new Object();
@@ -146,9 +146,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   public RaftMember() {
   }
 
-  RaftMember(String name, ClientPool pool) {
+  RaftMember(String name, AsyncClientPool pool) {
     this.name = name;
-    this.clientPool = pool;
+    this.asyncClientPool = pool;
   }
 
   /**
@@ -678,7 +678,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     AsyncClient client = null;
     try {
       do {
-        client = clientPool.getClient(node);
+        client = asyncClientPool.getClient(node);
       } while (!isClientReady(client));
     } catch (IOException e) {
       logger.warn("{} cannot connect to node {}", name, node, e);
@@ -687,10 +687,10 @@ public abstract class RaftMember implements RaftService.AsyncIface {
   }
 
   private boolean isClientReady(AsyncClient client) {
-    if (client instanceof DataClient) {
-      return ((DataClient) client).isReady();
+    if (client instanceof AsyncDataClient) {
+      return ((AsyncDataClient) client).isReady();
     } else {
-      return ((MetaClient) client).isReady();
+      return ((AsyncMetaClient) client).isReady();
     }
   }
 

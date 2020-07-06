@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -68,7 +68,7 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   @Override
   public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException {
-    DataClient client = metaGroupMember.getDataClient(source);
+    AsyncDataClient client = metaGroupMember.getDataClient(source);
 
     List<ByteBuffer> aggrBuffers;
     try {

@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.cluster.common.TestMetaClient;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -64,7 +64,7 @@ public class QueryCoordinatorTest {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
-          return new TestMetaClient(new Factory(),  null, node, null) {
+          return new TestAsyncMetaClient(new Factory(),  null, node, null) {
             @Override
             public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
               new Thread(() -> {

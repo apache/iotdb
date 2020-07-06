@@ -29,10 +29,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import junit.framework.TestCase;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.IoTDBTest;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
-import org.apache.iotdb.cluster.common.TestMetaClient;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -53,7 +53,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -96,7 +95,7 @@ public class DataLogApplierTest extends IoTDBTest {
     @Override
     public AsyncClient connectNode(Node node) {
       try {
-        return new TestMetaClient(null, null, node, null) {
+        return new TestAsyncMetaClient(null, null, node, null) {
           @Override
           public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
             new Thread(() -> testMetaGroupMember.queryNodeStatus(resultHandler)).start();
@@ -108,8 +107,8 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public DataClient getDataClient(Node node) throws IOException {
-      return new DataClient(null, null, node, null) {
+    public AsyncDataClient getDataClient(Node node) throws IOException {
+      return new AsyncDataClient(null, null, node, null) {
         @Override
         public void getAllPaths(Node header, List<String> path,
             AsyncMethodCallback<List<String>> resultHandler) {

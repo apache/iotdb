@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -48,8 +48,8 @@ public class RemoteSeriesReaderByTimestampTest {
 
   private MetaGroupMember metaGroupMember = new MetaGroupMember() {
     @Override
-    public DataClient getDataClient(Node node) throws IOException {
-      return new DataClient(null, null, node, null) {
+    public AsyncDataClient getDataClient(Node node) throws IOException {
+      return new AsyncDataClient(null, null, node, null) {
         @Override
         public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
             AsyncMethodCallback<ByteBuffer> resultHandler) throws TException {

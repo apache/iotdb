@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -178,7 +178,7 @@ public class ClusterMain {
       String[] splits = url.split(":");
       Node node = new Node();
       node.setIp(splits[0]).setMetaPort(Integer.parseInt(splits[1]));
-      MetaClient client = new MetaClient(factory, new TAsyncClientManager(), node, null);
+      AsyncMetaClient client = new AsyncMetaClient(factory, new TAsyncClientManager(), node, null);
 
       try {
         logger.info("Start removing node {} with the help of node {}", nodeToRemove, node);

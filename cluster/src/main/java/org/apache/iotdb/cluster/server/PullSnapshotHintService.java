@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -81,9 +81,9 @@ public class PullSnapshotHintService {
       PullSnapshotHint hint = iterator.next();
       for (Iterator<Node> iter = hint.receivers.iterator(); iter.hasNext(); ) {
         Node receiver = iter.next();
-        DataClient dataClient = (DataClient) member.connectNode(receiver);
+        AsyncDataClient asyncDataClient = (AsyncDataClient) member.connectNode(receiver);
         try {
-          if (SyncClientAdaptor.onSnapshotApplied(dataClient, hint.header, hint.slots)) {
+          if (SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.header, hint.slots)) {
             // remove the receiver if it has received the hint
             iter.remove();
           }

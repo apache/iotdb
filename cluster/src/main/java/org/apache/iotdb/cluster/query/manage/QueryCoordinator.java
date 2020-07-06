@@ -24,7 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
@@ -85,10 +85,10 @@ public class QueryCoordinator {
     long currTime = System.currentTimeMillis();
     if (currTime - nodeStatus.getLastUpdateTime() > NODE_STATUS_UPDATE_INTERVAL_MS
         || nodeStatus.getStatus() == null) {
-      MetaClient metaClient = (MetaClient) metaGroupMember.connectNode(node);
+      AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.connectNode(node);
       try {
         long startTime = System.nanoTime();
-        TNodeStatus status = SyncClientAdaptor.queryNodeStatus(metaClient);
+        TNodeStatus status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
         if (status != null) {
           long responseTime = System.nanoTime() - startTime;
           nodeStatus.setStatus(status);

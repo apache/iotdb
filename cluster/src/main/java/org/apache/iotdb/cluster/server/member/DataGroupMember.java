@@ -44,8 +44,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
-import org.apache.iotdb.cluster.client.async.ClientPool;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
+import org.apache.iotdb.cluster.client.async.AsyncClientPool;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -196,7 +197,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new ClientPool(new DataClient.Factory(factory)));
+        new AsyncClientPool(new FactoryAsync(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
@@ -723,7 +724,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws IOException
    */
   private boolean pullRemoteFile(String remotePath, Node node, File dest) throws IOException {
-    DataClient client = (DataClient) connectNode(node);
+    AsyncDataClient client = (AsyncDataClient) connectNode(node);
     if (client == null) {
       return false;
     }
@@ -762,7 +763,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return false;
   }
 
-  private void downloadFile(DataClient client, String remotePath, OutputStream dest)
+  private void downloadFile(AsyncDataClient client, String remotePath, OutputStream dest)
       throws IOException, TException, InterruptedException {
     int offset = 0;
     // TODO-Cluster: use elaborate downloading techniques
@@ -855,7 +856,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     // otherwise forward the request to the leader
     if (leader != null) {
       logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
-      DataClient client = (DataClient) connectNode(leader);
+      AsyncDataClient client = (AsyncDataClient) connectNode(leader);
       try {
         client.pullSnapshot(request, new GenericForwardHandler<>(resultHandler));
       } catch (TException e) {
@@ -1069,7 +1070,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // if this node cannot synchronize with the leader with in a given time, forward the
       // request to the leader
       waitLeader();
-      DataClient client = (DataClient) connectNode(leader);
+      AsyncDataClient client = (AsyncDataClient) connectNode(leader);
       if (client == null) {
         resultHandler.onError(new LeaderUnknownException(getAllNodes()));
         return;

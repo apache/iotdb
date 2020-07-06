@@ -36,14 +36,14 @@ import org.slf4j.LoggerFactory;
  * Notice: Because a client will be returned to a pool immediately after a successful request,
  * you should not cache it anywhere else or there may be conflicts.
  */
-public class MetaClient extends AsyncClient {
+public class AsyncMetaClient extends AsyncClient {
 
-  private static final Logger logger = LoggerFactory.getLogger(MetaClient.class);
+  private static final Logger logger = LoggerFactory.getLogger(AsyncMetaClient.class);
   private Node node;
-  private ClientPool pool;
+  private AsyncClientPool pool;
 
-  public MetaClient(TProtocolFactory protocolFactory,
-      TAsyncClientManager clientManager, Node node, ClientPool pool) throws IOException {
+  public AsyncMetaClient(TProtocolFactory protocolFactory,
+      TAsyncClientManager clientManager, Node node, AsyncClientPool pool) throws IOException {
     // the difference of the two clients lies in the port
     super(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(), node.getMetaPort(),
         RaftServer.getConnectionTimeoutInMS()));
@@ -60,7 +60,7 @@ public class MetaClient extends AsyncClient {
     }
   }
 
-  public static class Factory implements ClientFactory {
+  public static class FactoryAsync implements AsyncClientFactory {
 
     private static TAsyncClientManager[] managers;
     static {
@@ -77,16 +77,16 @@ public class MetaClient extends AsyncClient {
     private org.apache.thrift.protocol.TProtocolFactory protocolFactory;
     private AtomicInteger clientCnt = new AtomicInteger();
 
-    public Factory(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
+    public FactoryAsync(org.apache.thrift.protocol.TProtocolFactory protocolFactory) {
       this.protocolFactory = protocolFactory;
     }
 
     @Override
-    public RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool)
+    public RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
         throws IOException {
       TAsyncClientManager manager = managers[clientCnt.incrementAndGet() % managers.length];
       manager = manager == null ? new TAsyncClientManager() : manager;
-      return new MetaClient(protocolFactory, manager, node, pool);
+      return new AsyncMetaClient(protocolFactory, manager, node, pool);
     }
   }
 

@@ -26,12 +26,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.async.ClientFactory;
-import org.apache.iotdb.cluster.client.async.ClientPool;
-import org.apache.iotdb.cluster.client.async.DataClient;
-import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncClientFactory;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
+import org.apache.iotdb.cluster.client.async.AsyncClientPool;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestClient;
-import org.apache.iotdb.cluster.common.TestClientFactory;
+import org.apache.iotdb.cluster.common.TestAsyncClientFactory;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
@@ -39,36 +40,36 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.junit.Test;
 import org.mockito.Mock;
 
-public class ClientPoolTest {
+public class AsyncClientPoolTest {
 
   @Mock
-  private ClientFactory testClientFactory;
+  private AsyncClientFactory testAsyncClientFactory;
 
   @Test
   public void testTestClient() throws IOException {
-    testClientFactory = new TestClientFactory();
+    testAsyncClientFactory = new TestAsyncClientFactory();
     getClient();
     putClient();
   }
 
   @Test
   public void testDataClient() throws IOException {
-    testClientFactory = new DataClient.Factory(new TBinaryProtocol.Factory());
+    testAsyncClientFactory = new FactoryAsync(new TBinaryProtocol.Factory());
     getClient();
     putClient();
   }
 
   @Test
   public void testMetaClient() throws IOException {
-    testClientFactory = new MetaClient.Factory(new TBinaryProtocol.Factory());
+    testAsyncClientFactory = new AsyncMetaClient.FactoryAsync(new TBinaryProtocol.Factory());
     getClient();
     putClient();
   }
 
   private void getClient() throws IOException {
-    ClientPool clientPool = new ClientPool(testClientFactory);
+    AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
     for (int i = 0; i < 10; i++) {
-      AsyncClient client = clientPool.getClient(TestUtils.getNode(i));
+      AsyncClient client = asyncClientPool.getClient(TestUtils.getNode(i));
       if (client instanceof TestClient) {
         TestClient testClient = (TestClient) client;
         assertEquals(i, testClient.getSerialNum());
@@ -77,28 +78,28 @@ public class ClientPoolTest {
   }
 
   private void putClient() throws IOException {
-    ClientPool clientPool = new ClientPool(testClientFactory);
+    AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
     List<AsyncClient> testClients = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
-      AsyncClient client = clientPool.getClient(TestUtils.getNode(i));
+      AsyncClient client = asyncClientPool.getClient(TestUtils.getNode(i));
       testClients.add(client);
     }
-    if (testClientFactory instanceof TestClientFactory) {
+    if (testAsyncClientFactory instanceof TestAsyncClientFactory) {
       for (int i = 0; i < 10; i++) {
-        clientPool.putClient(TestUtils.getNode(i), testClients.get(i));
+        asyncClientPool.putClient(TestUtils.getNode(i), testClients.get(i));
       }
-    } else if (testClientFactory instanceof MetaClient.Factory){
+    } else if (testAsyncClientFactory instanceof AsyncMetaClient.FactoryAsync){
       for (AsyncClient testClient : testClients) {
-        ((MetaClient) testClient).onComplete();
+        ((AsyncMetaClient) testClient).onComplete();
       }
-    } else if (testClientFactory instanceof DataClient.Factory){
+    } else if (testAsyncClientFactory instanceof FactoryAsync){
       for (AsyncClient testClient : testClients) {
-        ((DataClient) testClient).onComplete();
+        ((AsyncDataClient) testClient).onComplete();
       }
     }
 
     for (int i = 0; i < 10; i++) {
-      AsyncClient poolClient = clientPool.getClient(TestUtils.getNode(i));
+      AsyncClient poolClient = asyncClientPool.getClient(TestUtils.getNode(i));
       assertEquals(testClients.get(i), poolClient);
     }
   }
@@ -107,16 +108,16 @@ public class ClientPoolTest {
   public void testMaxClient() throws IOException {
     int maxClientNum = ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
     ClusterDescriptor.getInstance().getConfig().setMaxClientPerNodePerMember(5);
-    testClientFactory = new TestClientFactory();
-    ClientPool clientPool = new ClientPool(testClientFactory);
+    testAsyncClientFactory = new TestAsyncClientFactory();
+    AsyncClientPool asyncClientPool = new AsyncClientPool(testAsyncClientFactory);
 
     for (int i = 0; i < 5; i++) {
-      clientPool.getClient(TestUtils.getNode(0));
+      asyncClientPool.getClient(TestUtils.getNode(0));
     }
     AtomicReference<AsyncClient> reference = new AtomicReference<>();
     Thread t = new Thread(() -> {
       try {
-        reference.set(clientPool.getClient(TestUtils.getNode(0)));
+        reference.set(asyncClientPool.getClient(TestUtils.getNode(0)));
       } catch (IOException e) {
         e.printStackTrace();
       }

@@ -20,30 +20,31 @@
 package org.apache.iotdb.cluster.common;
 
 import java.io.IOException;
-import org.apache.iotdb.cluster.client.async.ClientPool;
-import org.apache.iotdb.cluster.client.async.MetaClient;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.client.async.AsyncClientFactory;
+import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.thrift.async.TAsyncClientManager;
+import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TNonblockingSocket;
 
-public class TestMetaClient extends MetaClient {
+public class TestAsyncClientFactory implements AsyncClientFactory {
 
-  private Node node;
+  private TProtocolFactory protocolFactory;
+  private TAsyncClientManager clientManager;
 
-  public TestMetaClient(TProtocolFactory protocolFactory,
-      TAsyncClientManager clientManager,
-      Node node, ClientPool pool)
-      throws IOException {
-    super(protocolFactory, clientManager, node, pool);
-    this.node = node;
+  private AtomicInteger clientSerialNum = new AtomicInteger();
+
+  public TestAsyncClientFactory() throws IOException {
+    protocolFactory = new Factory();
+    clientManager = new TAsyncClientManager();
   }
 
-  public Node getNode() {
-    return node;
+  @Override
+  public AsyncClient getAsyncClient(Node node, AsyncClientPool pool) throws IOException {
+    return new TestClient(protocolFactory, clientManager, new TNonblockingSocket(node.getIp(),
+        node.getMetaPort()), clientSerialNum.getAndIncrement());
   }
-
-  public void setNode(Node node) {
-    this.node = node;
-  }
-
 }

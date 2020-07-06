@@ -28,12 +28,12 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.EnvironmentUtils;
-import org.apache.iotdb.cluster.common.TestDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
 import org.apache.iotdb.cluster.common.TestLogManager;
-import org.apache.iotdb.cluster.common.TestMetaClient;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -163,7 +163,7 @@ public class MemberTest {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
-          return new TestDataClient(node, dataGroupMemberMap);
+          return new TestAsyncDataClient(node, dataGroupMemberMap);
         } catch (IOException e) {
           return null;
         }
@@ -219,7 +219,7 @@ public class MemberTest {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
-          return new TestMetaClient(null, null, node, null) {
+          return new TestAsyncMetaClient(null, null, node, null) {
             @Override
             public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
               new Thread(() -> resultHandler.onComplete(new TNodeStatus())).start();
@@ -231,8 +231,8 @@ public class MemberTest {
       }
 
       @Override
-      public DataClient getDataClient(Node node) throws IOException {
-        return new TestDataClient(node, dataGroupMemberMap);
+      public AsyncDataClient getDataClient(Node node) throws IOException {
+        return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
     };
     ret.setThisNode(node);
@@ -261,7 +261,7 @@ public class MemberTest {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
-          return new TestDataClient(node, dataGroupMemberMap);
+          return new TestAsyncDataClient(node, dataGroupMemberMap);
         } catch (IOException e) {
           return null;
         }

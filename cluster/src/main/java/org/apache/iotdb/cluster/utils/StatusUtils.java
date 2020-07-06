@@ -41,6 +41,7 @@ public class StatusUtils {
       getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
   public static final TSStatus NO_STORAGE_GROUP = getStatus(TSStatusCode.STORAGE_GROUP_ERROR);
   public static final TSStatus NODE_READ_ONLY = getStatus(TSStatusCode.NODE_READ_ONLY);
+  public static final TSStatus CONSISTENCY_FAILURE = getStatus(TSStatusCode.CONSISTENCY_FAILURE);
 
 
   private static TSStatus getStatus(TSStatusCode statusCode) {
