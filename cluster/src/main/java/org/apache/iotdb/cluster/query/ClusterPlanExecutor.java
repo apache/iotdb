@@ -61,6 +61,7 @@ import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -693,6 +694,17 @@ public class ClusterPlanExecutor extends PlanExecutor {
         throw new QueryProcessException(String
             .format("Unrecognized load configuration plan type: %s",
                 plan.getLoadConfigurationPlanType()));
+    }
+  }
+
+  @Override
+  public void delete(DeletePlan deletePlan) throws QueryProcessException {
+    if (deletePlan.getPaths().isEmpty()) {
+      logger.info("TimeSeries list to be deleted is empty.");
+      return;
+    }
+    for (Path path : deletePlan.getPaths()) {
+      delete(path, deletePlan.getDeleteTime());
     }
   }
 
