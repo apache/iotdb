@@ -1578,7 +1578,9 @@ public class StorageGroupProcessor {
           }
         }
       }
-      UpgradeSevice.getINSTANCE().stop();
+      if (StorageEngine.getInstance().countUpgradeFiles() == 0) {
+        UpgradeSevice.getINSTANCE().stop();
+      }
     }
   }
 
