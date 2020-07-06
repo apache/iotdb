@@ -82,4 +82,8 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
       deletePathList.add(new Path(readString(buffer)));
     }
   }
+
+  public void setPaths(List<Path> fullPaths) {
+    this.deletePathList = fullPaths;
+  }
 }
