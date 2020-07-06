@@ -1534,39 +1534,17 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   DeleteTimeSeriesPlan getDeleteTimeseriesPlanWithFullPaths(DeleteTimeSeriesPlan plan)
       throws PathNotExistException {
-    List<Path> originalPaths = plan.getPaths();
-    ConcurrentSkipListSet<Path> fullPaths = new ConcurrentSkipListSet<>();
-    ConcurrentSkipListSet<String> nonExistPaths = new ConcurrentSkipListSet<>();
-    ExecutorService getAllPathsService = Executors
-        .newFixedThreadPool(partitionTable.getGlobalGroups().size());
-    for (Path path : originalPaths) {
-      String pathStr = path.getFullPath();
-      getAllPathsService.submit(() -> {
-        try {
-          List<String> fullPathStrs = getMatchedPaths(pathStr);
-          if (fullPathStrs.isEmpty()) {
-            nonExistPaths.add(pathStr);
-            logger.error("Path {} is not found.", pathStr);
-          }
-          for (String fullPathStr : fullPathStrs) {
-            fullPaths.add(new Path(fullPathStr));
-          }
-        } catch (MetadataException e) {
-          logger.error("Failed to get full paths of the prefix path: {} because", pathStr, e);
-        }
-      });
+    Pair<List<String>, List<String>> getMatchedPathsRet = getMatchedPaths(plan.getPathsStrings());
+    List<String> fullPathsStrings =  getMatchedPathsRet.left;
+    List<String> nonExistPathsStrings = getMatchedPathsRet.right;
+    if (!nonExistPathsStrings.isEmpty()) {
+      throw new PathNotExistException(new ArrayList<>(nonExistPathsStrings));
     }
-    getAllPathsService.shutdown();
-    try {
-      getAllPathsService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
+    List<Path> fullPaths = new ArrayList<>();
+    for(String pathStr : fullPathsStrings){
+      fullPaths.add(new Path(pathStr));
     }
-    if (!nonExistPaths.isEmpty()) {
-      throw new PathNotExistException(new ArrayList<>(nonExistPaths));
-    }
-    plan.setPaths(new ArrayList<>(fullPaths));
+    plan.setPaths(fullPaths);
     return plan;
   }
 
@@ -1651,7 +1629,6 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
     return forwardPlan(planGroupMap, plan);
   }
-
 
 
   /**
@@ -2627,6 +2604,42 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     List<String> ret = getMatchedPaths(sgPathMap);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
+  }
+
+  /**
+   * Get all paths after removing wildcards in the path
+   *
+   * @param originalPaths, a list of paths, potentially with wildcard
+   * @return a pair of path lists, the first are the existing full paths, the second are invalid
+   * original paths
+   */
+  public Pair<List<String>, List<String>> getMatchedPaths(List<String> originalPaths) {
+    ConcurrentSkipListSet<String> fullPaths = new ConcurrentSkipListSet<>();
+    ConcurrentSkipListSet<String> nonExistPaths = new ConcurrentSkipListSet<>();
+    ExecutorService getAllPathsService = Executors
+        .newFixedThreadPool(partitionTable.getGlobalGroups().size());
+    for (String pathStr : originalPaths) {
+      getAllPathsService.submit(() -> {
+        try {
+          List<String> fullPathStrs = getMatchedPaths(pathStr);
+          if (fullPathStrs.isEmpty()) {
+            nonExistPaths.add(pathStr);
+            logger.error("Path {} is not found.", pathStr);
+          }
+          fullPaths.addAll(fullPathStrs);
+        } catch (MetadataException e) {
+          logger.error("Failed to get full paths of the prefix path: {} because", pathStr, e);
+        }
+      });
+    }
+    getAllPathsService.shutdown();
+    try {
+      getAllPathsService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
+    }
+    return new Pair<>(new ArrayList<>(fullPaths), new ArrayList<>(nonExistPaths));
   }
 
   /**

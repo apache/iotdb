@@ -711,20 +711,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
-    try {
-      Set<String> existingPaths = new HashSet<>();
-      for (Path p : deletePlan.getPaths()) {
-        existingPaths.addAll(getPathsName(p.getFullPath()));
-      }
-      if (existingPaths.isEmpty()) {
-        logger.info("TimeSeries does not exist and its data cannot be deleted");
-        return;
-      }
-      for (String path : existingPaths) {
-        delete(new Path(path), deletePlan.getDeleteTime());
-      }
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+    if (deletePlan.getPaths().isEmpty()) {
+      logger.info("TimeSeries list to be deleted is empty.");
+      return;
+    }
+    for (Path path : deletePlan.getPaths()) {
+      delete(path, deletePlan.getDeleteTime());
     }
   }
 
