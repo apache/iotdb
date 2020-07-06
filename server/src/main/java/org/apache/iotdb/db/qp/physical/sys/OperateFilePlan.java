@@ -54,6 +54,11 @@ public class OperateFilePlan extends PhysicalPlan {
     return null;
   }
 
+  @Override
+  public List<String> getPathsStrings() {
+    return null;
+  }
+
   public File getFile() {
     return file;
   }

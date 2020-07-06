@@ -55,6 +55,11 @@ public class SetTTLPlan extends PhysicalPlan {
   }
 
   @Override
+  public List<String> getPathsStrings() {
+    return null;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.TTL.ordinal();
     stream.writeByte((byte) type);

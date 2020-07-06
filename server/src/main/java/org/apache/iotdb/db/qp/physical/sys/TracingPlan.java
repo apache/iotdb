@@ -38,6 +38,11 @@ public class TracingPlan extends PhysicalPlan {
     return new ArrayList<>();
   }
 
+  @Override
+  public List<String> getPathsStrings() {
+    return new ArrayList<>();
+  }
+
   public boolean isTracingOn() {
     return isTracingOn;
   }

@@ -50,6 +50,15 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for(Path path : deletePathList){
+      ret.add(path.toString());
+    }
+    return ret;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.DELETE_TIMESERIES.ordinal();
     stream.writeByte((byte) type);

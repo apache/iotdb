@@ -22,6 +22,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -100,6 +101,16 @@ public class AlterTimeSeriesPlan extends PhysicalPlan {
   @Override
   public List<Path> getPaths() {
     return Collections.singletonList(path);
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    List<Path> paths = Collections.singletonList(path);
+    List<String> result = new ArrayList<>();
+    for(Path path : paths){
+      result.add(path.getFullPath());
+    }
+    return result;
   }
 
   @Override
