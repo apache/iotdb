@@ -38,4 +38,9 @@ public class MergePlan extends PhysicalPlan {
   public List<Path> getPaths() {
     return new ArrayList<>();
   }
+
+  @Override
+  public List<String> getPathsStrings() {
+    return new ArrayList<>();
+  }
 }

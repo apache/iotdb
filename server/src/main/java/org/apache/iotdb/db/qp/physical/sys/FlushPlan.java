@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -41,5 +42,14 @@ public class FlushPlan extends PhysicalPlan {
   @Override
   public List<Path> getPaths() {
     return storeGroups;
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for (Path path : storeGroups) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
   }
 }

@@ -106,6 +106,15 @@ public class UpdatePlan extends PhysicalPlan {
   }
 
   @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    if (path != null) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
+  }
+
+  @Override
   public String printQueryPlan() {
     StringContainer sc = new StringContainer();
     String preSpace = "  ";

@@ -47,6 +47,15 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for (Path path : deletePathList) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlan.PhysicalPlanType.DELETE_STORAGE_GROUP.ordinal();
     stream.writeByte((byte) type);
