@@ -239,16 +239,6 @@ public class StorageGroupProcessor {
    */
   private Map<Long, Long> partitionMaxFileVersions = new HashMap<>();
 
-  public boolean isReady() {
-    return isReady;
-  }
-
-  public void setReady(boolean ready) {
-    isReady = ready;
-  }
-
-  private boolean isReady = false;
-
   public StorageGroupProcessor(String systemDir, String storageGroupName,
       TsFileFlushPolicy fileFlushPolicy) throws StorageGroupProcessorException {
     this.storageGroupName = storageGroupName;
@@ -795,8 +785,8 @@ public class StorageGroupProcessor {
         continue;
       }
       // Update cached last value with high priority
-      ((MeasurementMNode) node.getChild(measurementList[i]))
-          .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+      IoTDB.metaManager.updateLastCache(node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurementList[i],
+        plan.composeLastTimeValuePair(i), true, latestFlushedTime, (MeasurementMNode) node);
     }
   }
 
@@ -839,8 +829,8 @@ public class StorageGroupProcessor {
         continue;
       }
       // Update cached last value with high priority
-      ((MeasurementMNode) node.getChild(measurementList[i])).
-          updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
+      IoTDB.metaManager.updateLastCache(node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurementList[i],
+          plan.composeTimeValuePair(i), true, latestFlushedTime, (MeasurementMNode) node);
     }
   }
 

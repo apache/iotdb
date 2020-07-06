@@ -18,31 +18,6 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static java.util.stream.Collectors.toList;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
@@ -50,12 +25,7 @@ import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -76,12 +46,27 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -118,7 +103,7 @@ public class MManager {
   private Map<String, Integer> seriesNumberInStorageGroups = new HashMap<>();
   private long maxSeriesNumberAmongStorageGroup;
   private boolean initialized;
-  private IoTDBConfig config;
+  protected IoTDBConfig config;
 
   private File logFile;
   private final int mtreeSnapshotInterval;
@@ -134,7 +119,7 @@ public class MManager {
     private static final MManager INSTANCE = new MManager();
   }
 
-  private MManager() {
+  protected MManager() {
     config = IoTDBDescriptor.getInstance().getConfig();
     mtreeSnapshotInterval = config.getMtreeSnapshotInterval();
     mtreeSnapshotThresholdTime = config.getMtreeSnapshotThresholdTime() * 1000L;
@@ -1764,14 +1749,6 @@ public class MManager {
   }
 
   /**
-   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
-   * cache the path to mRemoteSchemaCache
-   */
-  public void cacheSchema(String path, MeasurementSchema schema) {
-    // do nothing
-  }
-
-  /**
    * StorageGroupFilter filters unsatisfied storage groups in metadata queries to speed up and
    * deduplicate.
    */
@@ -1780,6 +1757,40 @@ public class MManager {
 
     boolean satisfy(String storageGroup);
   }
+
+  /**
+   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
+   * cache the path to mRemoteSchemaCache
+   */
+  public void cacheMeta(String path, MeasurementMeta meta) {
+    // do nothing
+  }
+
+  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair,
+                              boolean highPriorityUpdate, Long latestFlushedTime,
+                              MeasurementMNode node) {
+    if (node != null) {
+      node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+    } else {
+      try {
+        MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+        node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+      } catch (MetadataException e) {
+        logger.warn("the {} is not exist", seriesPath);
+      }
+    }
+  }
+
+  public TimeValuePair getLastCache(String seriesPath) {
+   try {
+     MeasurementMNode node = null;
+     node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+     return node.getCachedLast();
+  } catch (MetadataException e) {
+     // do nothing
+  }
+  return null;
+}
 
   private void checkMTreeModified() {
     if (logWriter == null || logFile == null) {
