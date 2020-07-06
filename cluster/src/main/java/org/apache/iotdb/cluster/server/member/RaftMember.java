@@ -49,7 +49,6 @@ import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.log.HardState;
@@ -65,7 +64,6 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
@@ -95,7 +93,7 @@ import org.slf4j.LoggerFactory;
  * on.
  */
 @SuppressWarnings("java:S3077") // reference volatile is enough
-public abstract class RaftMember implements RaftService.AsyncIface {
+public abstract class RaftMember {
 
   private static long waitLeaderTimeMs = 60 * 1000L;
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
@@ -223,10 +221,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * leadership, heartbeat timer and term of the local node.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
+  public HeartBeatResponse sendHeartbeat(HeartBeatRequest request) {
     logger.trace("{} received a heartbeat", name);
     synchronized (term) {
       long thisTerm = term.get();
@@ -286,7 +282,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           logger.trace("{} received heartbeat from a valid leader {}", name, request.getLeader());
         }
       }
-      resultHandler.onComplete(response);
+      return response;
     }
   }
 
@@ -295,10 +291,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * decide whether to accept by examining the log status of the elector.
    *
    * @param electionRequest
-   * @param resultHandler
    */
-  @Override
-  public void startElection(ElectionRequest electionRequest, AsyncMethodCallback resultHandler) {
+  public long startElection(ElectionRequest electionRequest) {
     synchronized (term) {
       long currentTerm = term.get();
       if (electionRequest.getTerm() < currentTerm) {
@@ -306,8 +300,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             name,
             currentTerm,
             electionRequest.getElector(), electionRequest.getTerm());
-        resultHandler.onComplete(currentTerm);
-        return;
+        return currentTerm;
       }
       if (currentTerm == electionRequest.getTerm() && voteFor != null && !Objects
           .equals(voteFor, electionRequest.getElector())) {
@@ -315,8 +308,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
             "{} sending rejection to the elector {} because member already has voted {} in this term {}.",
             name,
             electionRequest.getElector(), voteFor, currentTerm);
-        resultHandler.onComplete(Response.RESPONSE_REJECT);
-        return;
+        return Response.RESPONSE_REJECT;
       }
       if (electionRequest.getTerm() > currentTerm) {
         logger.info(
@@ -330,7 +322,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       long response = processElectionRequest(electionRequest);
       logger.info("{} sending response {} to the elector {}", name, response,
           electionRequest.getElector());
-      resultHandler.onComplete(response);
+      return response;
     }
   }
 
@@ -339,11 +331,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * term of the log. A new leader can still send logs of old leaders.
    *
    * @param request
-   * @param resultHandler if the term is illegal, the "resultHandler" will be invoked so the caller
-   *                      does not need to invoke it again
-   * @return true if the term is legal, false otherwise
+   * @return -1 if the check is passed, >0 otherwise
    */
-  private boolean checkRequestTerm(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+  private long checkRequestTerm(AppendEntryRequest request) {
     long leaderTerm = request.getTerm();
     long localTerm;
 
@@ -354,8 +344,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       if (leaderTerm < localTerm) {
         logger.debug("{} rejected the AppendEntryRequest for term: {}/{}", name, leaderTerm,
             localTerm);
-        resultHandler.onComplete(localTerm);
-        return false;
+        return localTerm;
       } else {
         if (leaderTerm > localTerm) {
           stepDown(leaderTerm, true);
@@ -369,7 +358,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
     }
     logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
-    return true;
+    return Response.RESPONSE_AGREE;
   }
 
   /**
@@ -400,53 +389,45 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * finally see if we can find a position to append the log.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+  public long appendEntry(AppendEntryRequest request) throws UnknownLogTypeException {
     logger.debug("{} received an AppendEntryRequest: {}", name, request);
     // the term checked here is that of the leader, not that of the log
-    if (!checkRequestTerm(request, resultHandler)) {
-      return;
+    long checkResult = checkRequestTerm(request);
+    if (checkResult != Response.RESPONSE_AGREE) {
+      return checkResult;
     }
 
-    try {
-      Log log = LogParser.getINSTANCE().parse(request.entry);
-      resultHandler.onComplete(
-          appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log));
-      logger.debug("{} AppendEntryRequest of {} completed", name, log);
-    } catch (UnknownLogTypeException e) {
-      resultHandler.onError(e);
-    }
+    Log log = LogParser.getINSTANCE().parse(request.entry);
+    long result = appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
+        log);
+    logger.debug("{} AppendEntryRequest of {} completed", name, log);
+    return result;
   }
 
-  @Override
-  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
+  public long appendEntries(AppendEntriesRequest request) throws UnknownLogTypeException {
     logger.debug("{} received an AppendEntriesRequest", name);
 
     // the term checked here is that of the leader, not that of the log
-    if (!checkRequestTerm(request, resultHandler)) {
-      return;
+    long checkResult = checkRequestTerm(request);
+    if (checkResult != Response.RESPONSE_AGREE) {
+      return checkResult;
     }
 
-    try {
-      long response;
-      List<Log> logs = new ArrayList<>();
-      for (ByteBuffer buffer : request.getEntries()) {
-        Log log = LogParser.getINSTANCE().parse(buffer);
-        logs.add(log);
-      }
-
-      response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
-          logs);
-      resultHandler.onComplete(response);
-      if (logger.isDebugEnabled()) {
-        logger.debug("{} AppendEntriesRequest of log size {} completed", name,
-            request.getEntries().size());
-      }
-    } catch (UnknownLogTypeException e) {
-      resultHandler.onError(e);
+    long response;
+    List<Log> logs = new ArrayList<>();
+    for (ByteBuffer buffer : request.getEntries()) {
+      Log log = LogParser.getINSTANCE().parse(buffer);
+      logs.add(log);
     }
+
+    response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
+        logs);
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} AppendEntriesRequest of log size {} completed", name,
+          request.getEntries().size());
+    }
+    return response;
   }
 
   /**
@@ -484,12 +465,9 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * term of the log. A new leader can still send logs of old leaders.
    *
    * @param request
-   * @param resultHandler if the term is illegal, the "resultHandler" will be invoked so the caller
-   *                      does not need to invoke it again
-   * @return true if the term is legal, false otherwise
+   * @return -1 if the check is passed, >0 otherwise
    */
-  private boolean checkRequestTerm(AppendEntriesRequest request,
-      AsyncMethodCallback resultHandler) {
+  private long checkRequestTerm(AppendEntriesRequest request) {
     long leaderTerm = request.getTerm();
     long localTerm;
 
@@ -500,8 +478,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       if (leaderTerm < localTerm) {
         logger.debug("{} rejected the AppendEntriesRequest for term: {}/{}", name, leaderTerm,
             localTerm);
-        resultHandler.onComplete(localTerm);
-        return false;
+        return localTerm;
       } else {
         if (leaderTerm > localTerm) {
           stepDown(leaderTerm, true);
@@ -515,7 +492,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
       }
     }
     logger.debug("{} accepted the AppendEntryRequest for term: {}", name, localTerm);
-    return true;
+    return Response.RESPONSE_AGREE;
   }
 
   /**
@@ -1075,33 +1052,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * on the type of the plan).
    *
    * @param request
-   * @param resultHandler
    */
-  public void executeNonQueryPlan(ExecutNonQueryReq request,
-      AsyncMethodCallback<TSStatus> resultHandler) {
-    if (character != NodeCharacter.LEADER) {
-      // forward the plan to the leader
-      AsyncClient client = connectNode(leader);
-      if (client != null) {
-        try {
-          client.executeNonQueryPlan(request, resultHandler);
-        } catch (TException e) {
-          resultHandler.onError(e);
-        }
-      } else {
-        resultHandler.onComplete(StatusUtils.NO_LEADER);
-      }
-      return;
-    }
-    try {
-      // process the plan locally
-      PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
-      TSStatus answer = executeNonQuery(plan);
-      logger.debug("{}: Received a plan {}, executed answer: {}", name, plan, answer);
-      resultHandler.onComplete(answer);
-    } catch (Exception e) {
-      resultHandler.onError(e);
-    }
+  public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws IOException {
+    // process the plan locally
+    PhysicalPlan plan = PhysicalPlan.Factory.create(request.planBytes);
+    TSStatus answer = executeNonQuery(plan);
+    logger.debug("{}: Received a plan {}, executed answer: {}", name, plan, answer);
+    return answer;
   }
 
   /**
@@ -1212,24 +1169,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * by header. Or forward it to the leader. Otherwise report an error.
    *
    * @param header        to determine the DataGroupMember in data groups
-   * @param resultHandler
+   * @return Long.MIN_VALUE if the node is not a leader, or the commitIndex
    */
-  @Override
-  public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
+  public long requestCommitIndex(Node header) {
     if (character == NodeCharacter.LEADER) {
-      resultHandler.onComplete(logManager.getCommitLogIndex());
-      return;
-    }
-    waitLeader();
-    AsyncClient client = connectNode(leader);
-    if (client == null) {
-      resultHandler.onError(new LeaderUnknownException(getAllNodes()));
-      return;
-    }
-    try {
-      client.requestCommitIndex(header, resultHandler);
-    } catch (TException e) {
-      resultHandler.onError(e);
+      return logManager.getCommitLogIndex();
+    } else {
+      return Long.MIN_VALUE;
     }
   }
 
@@ -1240,30 +1186,23 @@ public abstract class RaftMember implements RaftService.AsyncIface {
    * @param filePath
    * @param offset
    * @param length
-   * @param resultHandler
    */
-  @Override
-  public void readFile(String filePath, long offset, int length,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public ByteBuffer readFile(String filePath, long offset, int length) throws IOException {
     File file = new File(filePath);
     if (!file.exists()) {
-      resultHandler.onComplete(ByteBuffer.allocate(0));
-      return;
+      return  ByteBuffer.allocate(0);
     }
 
-    boolean fileExhausted = false;
+    ByteBuffer result;
+    boolean fileExhausted;
     try (BufferedInputStream bufferedInputStream =
         new BufferedInputStream(new FileInputStream(file))) {
       skipExactly(bufferedInputStream, offset);
       byte[] bytes = new byte[length];
-      ByteBuffer result = ByteBuffer.wrap(bytes);
+      result = ByteBuffer.wrap(bytes);
       int len = bufferedInputStream.read(bytes);
       result.limit(Math.max(len, 0));
       fileExhausted = bufferedInputStream.available() <= 0;
-
-      resultHandler.onComplete(result);
-    } catch (IOException e) {
-      resultHandler.onError(e);
     }
 
     if (fileExhausted) {
@@ -1273,6 +1212,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
         logger.warn("Cannot delete an exhausted file {}", filePath, e);
       }
     }
+    return result;
   }
 
   private void skipExactly(InputStream stream, long byteToSkip) throws IOException {
@@ -1327,15 +1267,13 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     OK, TIME_OUT, LEADERSHIP_STALE
   }
 
-  @Override
-  public void matchTerm(long index, long term, Node header,
-      AsyncMethodCallback<Boolean> resultHandler) {
+  public boolean matchTerm(long index, long term) {
     boolean matched = logManager.matchTerm(term, index);
     logger.debug("Log {}-{} matched: {}", index, term, matched);
-    resultHandler.onComplete(matched);
+    return matched;
   }
 
-  void waitLeader() {
+  public void waitLeader() {
     long startTime = System.currentTimeMillis();
     while (leader == null) {
       synchronized (waitLeaderCondition) {

@@ -156,8 +156,8 @@ public class MemberTest {
       }
 
       @Override
-      public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-        new Thread(() -> resultHandler.onComplete(Response.RESPONSE_AGREE)).start();
+      public long appendEntry(AppendEntryRequest request) {
+        return Response.RESPONSE_AGREE;
       }
 
       @Override
@@ -254,8 +254,8 @@ public class MemberTest {
       }
 
       @Override
-      public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-        new Thread(() -> resultHandler.onComplete(Response.RESPONSE_AGREE)).start();
+      public long appendEntry(AppendEntryRequest request) {
+        return Response.RESPONSE_AGREE;
       }
 
       @Override

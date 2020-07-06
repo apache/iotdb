@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -55,10 +56,12 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   private IoTDB ioTDB;
   // to register the ClusterMonitor that helps monitoring the cluster
   private RegisterManager registerManager = new RegisterManager();
+  private MetaAsyncService asyncService;
 
   public MetaClusterServer() throws QueryProcessException {
     super();
     member = new MetaGroupMember(protocolFactory, thisNode);
+    this.asyncService = new MetaAsyncService(member);
   }
 
   /**
@@ -138,59 +141,59 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   @Override
   public void addNode(Node node, StartUpStatus startUpStatus, AsyncMethodCallback resultHandler) {
-    member.addNode(node, startUpStatus, resultHandler);
+    asyncService.addNode(node, startUpStatus, resultHandler);
   }
 
   @Override
   public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
-    member.sendHeartbeat(request, resultHandler);
+    asyncService.sendHeartbeat(request, resultHandler);
   }
 
   @Override
   public void startElection(ElectionRequest electionRequest, AsyncMethodCallback resultHandler) {
-    member.startElection(electionRequest, resultHandler);
+    asyncService.startElection(electionRequest, resultHandler);
   }
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
-    member.appendEntries(request, resultHandler);
+    asyncService.appendEntries(request, resultHandler);
   }
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-    member.appendEntry(request, resultHandler);
+    asyncService.appendEntry(request, resultHandler);
   }
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    member.sendSnapshot(request, resultHandler);
+    asyncService.sendSnapshot(request, resultHandler);
   }
 
   @Override
   public void executeNonQueryPlan(ExecutNonQueryReq request,
       AsyncMethodCallback<TSStatus> resultHandler) {
-    member.executeNonQueryPlan(request, resultHandler);
+    asyncService.executeNonQueryPlan(request, resultHandler);
   }
 
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    member.requestCommitIndex(header, resultHandler);
+    asyncService.requestCommitIndex(header, resultHandler);
   }
 
   @Override
   public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
-    member.checkAlive(resultHandler);
+    asyncService.checkAlive(resultHandler);
   }
 
   @Override
   public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    member.readFile(filePath, offset, length, resultHandler);
+    asyncService.readFile(filePath, offset, length, resultHandler);
   }
 
   @Override
   public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
-    member.queryNodeStatus(resultHandler);
+    asyncService.queryNodeStatus(resultHandler);
   }
 
   public MetaGroupMember getMember() {
@@ -200,22 +203,22 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   @Override
   public void checkStatus(StartUpStatus startUpStatus,
       AsyncMethodCallback<CheckStatusResponse> resultHandler) {
-    member.checkStatus(startUpStatus, resultHandler);
+    asyncService.checkStatus(startUpStatus, resultHandler);
   }
 
   @Override
   public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
-    member.removeNode(node, resultHandler);
+    asyncService.removeNode(node, resultHandler);
   }
 
   @Override
   public void exile(AsyncMethodCallback<Void> resultHandler) {
-    member.exile(resultHandler);
+    asyncService.exile(resultHandler);
   }
 
   @Override
   public void matchTerm(long index, long term, Node header,
       AsyncMethodCallback<Boolean> resultHandler) {
-    member.matchTerm(index, term, header, resultHandler);
+    asyncService.matchTerm(index, term, header, resultHandler);
   }
 }

@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MemberTest;
+import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -65,35 +66,35 @@ public class TestAsyncDataClient extends AsyncDataClient {
   @Override
   public void fetchSingleSeries(Node header, long readerId,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(header).fetchSingleSeries(header, readerId,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).fetchSingleSeries(header, readerId,
         resultHandler)).start();
   }
 
   @Override
   public void getAggrResult(GetAggrResultRequest request,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).getAggrResult(request,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(request.getHeader())).getAggrResult(request,
         resultHandler)).start();
   }
 
   @Override
   public void querySingleSeries(SingleSeriesQueryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).querySingleSeries(request,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(request.getHeader())).querySingleSeries(request,
         resultHandler)).start();
   }
 
   @Override
   public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(header).fetchSingleSeriesByTimestamp(header,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).fetchSingleSeriesByTimestamp(header,
         readerId, time, resultHandler)).start();
   }
 
   @Override
   public void getAllPaths(Node header, List<String> paths,
       AsyncMethodCallback<List<String>> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(header).getAllPaths(header, paths, resultHandler)).start();
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).getAllPaths(header, paths, resultHandler)).start();
   }
 
   @Override
@@ -137,32 +138,32 @@ public class TestAsyncDataClient extends AsyncDataClient {
   @Override
   public void pullTimeSeriesSchema(PullSchemaRequest request,
       AsyncMethodCallback<PullSchemaResp> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).pullTimeSeriesSchema(request, resultHandler)).start();
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(request.getHeader())).pullTimeSeriesSchema(request, resultHandler)).start();
   }
 
   @Override
   public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
       AsyncMethodCallback<Long> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).querySingleSeriesByTimestamp(request,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(request.getHeader())).querySingleSeriesByTimestamp(request,
         resultHandler)).start();
   }
 
   @Override
   public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).getGroupByExecutor(request,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(request.getHeader())).getGroupByExecutor(request,
         resultHandler)).start();
   }
 
   @Override
   public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
       AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(header).getGroupByResult(header, executorId,
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(header)).getGroupByResult(header, executorId,
         startTime, endTime, resultHandler)).start();
   }
 
   @Override
   public void previousFill(PreviousFillRequest request,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    new Thread(() -> dataGroupMemberMap.get(request.getHeader()).previousFill(request, resultHandler)).start();
+    new Thread(() -> new DataAsyncService(dataGroupMemberMap.get(request.getHeader())).previousFill(request, resultHandler)).start();
   }
 }
