@@ -1582,37 +1582,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     if (planGroupMap == null || planGroupMap.isEmpty()) {
       if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-        // try to set storage group
-        String deviceId;
-        if (plan instanceof InsertPlan) {
-          deviceId = ((InsertPlan) plan).getDeviceId();
-        } else {
-          deviceId = ((CreateTimeSeriesPlan) plan).getPath().toString();
-        }
         try {
-          String storageGroupName = MetaUtils
-              .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
-                  .getConfig().getDefaultStorageGroupLevel());
-          SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
-              new Path(storageGroupName));
-          TSStatus setStorageGroupResult = processNonPartitionedMetaPlan(setStorageGroupPlan);
-          if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
-              setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
-                  .getStatusCode()) {
-            throw new MetadataException(
-                String.format("Status Code: %d, failed to set storage group %s",
-                    setStorageGroupResult.getCode(), storageGroupName)
-            );
-          }
-          if (plan instanceof InsertRowPlan) {
-            // try to create timeseries
-            boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
-            if (!isAutoCreateTimeseriesSuccess) {
-              throw new MetadataException(
-                  "Failed to create timeseries from InsertPlan automatically."
-              );
-            }
-          }
+          autoCreateSchema(plan);
           return executeNonQuery(plan);
         } catch (MetadataException e) {
           logger.error(
@@ -1642,6 +1613,40 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       logger.error("Cannot route plan {}", plan, e);
     }
     return planGroupMap;
+  }
+
+  private void autoCreateSchema(PhysicalPlan plan) throws MetadataException {
+    // try to set storage group
+    String deviceId;
+    if (plan instanceof InsertPlan) {
+      deviceId = ((InsertPlan) plan).getDeviceId();
+    } else {
+      deviceId = ((CreateTimeSeriesPlan) plan).getPath().toString();
+    }
+
+    String storageGroupName = MetaUtils
+        .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
+            .getConfig().getDefaultStorageGroupLevel());
+    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
+        new Path(storageGroupName));
+    TSStatus setStorageGroupResult = processNonPartitionedMetaPlan(setStorageGroupPlan);
+    if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
+        setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
+            .getStatusCode()) {
+      throw new MetadataException(
+          String.format("Status Code: %d, failed to set storage group %s",
+              setStorageGroupResult.getCode(), storageGroupName)
+      );
+    }
+    if(plan instanceof InsertRowPlan){
+      // try to create timeseries
+      boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
+      if (!isAutoCreateTimeseriesSuccess) {
+        throw new MetadataException(
+            "Failed to create timeseries from InsertPlan automatically."
+        );
+      }
+    }
   }
 
   /**
