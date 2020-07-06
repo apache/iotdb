@@ -18,46 +18,19 @@
  */
 package org.apache.iotdb.db.service;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.CountDownLatch;
-import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.exception.runtime.RPCServiceException;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.db.service.thrift.ThriftService;
+import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
-import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocolFactory;
-import org.apache.thrift.server.TServer;
-import org.apache.thrift.server.TThreadPoolServer;
-import org.apache.thrift.transport.TFastFramedTransport;
-import org.apache.thrift.transport.TServerSocket;
-import org.apache.thrift.transport.TTransportException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A service to handle jdbc request from client.
  */
-public class RPCService implements RPCServiceMBean, IService {
+public class RPCService extends ThriftService implements RPCServiceMBean {
 
-  private static final Logger logger = LoggerFactory.getLogger(RPCService.class);
-  private static final String STATUS_UP = "UP";
-  private static final String STATUS_DOWN = "DOWN";
-  private final String mbeanName = String
-      .format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE,
-          getID().getJmxName());
-  private RPCServiceThread rpcServiceThread;
-  private TProtocolFactory protocolFactory;
-  private Processor<TSIService.Iface> processor;
-  private TThreadPoolServer.Args poolArgs;
   private TSServiceImpl impl;
-
-  private CountDownLatch stopLatch;
 
   private RPCService() {
   }
@@ -67,41 +40,44 @@ public class RPCService implements RPCServiceMBean, IService {
   }
 
   @Override
-  public String getRPCServiceStatus() {
-    if (rpcServiceThread == null) {
-      logger.debug("Start latch is null when getting status");
-    } else {
-      logger.debug("Start status is {} when getting status", rpcServiceThread.isServing());
-    }
-    if (stopLatch == null) {
-      logger.debug("Stop latch is null when getting status");
-    } else {
-      logger.debug("Stop latch is {} when getting status", stopLatch.getCount());
-    }
-
-    if (rpcServiceThread != null && rpcServiceThread.isServing()) {
-      return STATUS_UP;
-    } else {
-      return STATUS_DOWN;
-    }
-  }
-
-  @Override
   public int getRPCPort() {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     return config.getRpcPort();
   }
 
   @Override
-  public void start() throws StartupException {
-    JMXService.registerMBean(getInstance(), mbeanName);
-    startService();
+  public ThriftService getImplementation() {
+    return getInstance();
   }
 
   @Override
-  public void stop() {
-    stopService();
-    JMXService.deregisterMBean(mbeanName);
+  public void initTProcessor() throws ClassNotFoundException,IllegalAccessException,InstantiationException{
+      impl = (TSServiceImpl) Class.forName(IoTDBDescriptor.getInstance().getConfig()
+          .getRpcImplClassName()).newInstance();
+      processor = new Processor<>(impl);
+  }
+
+  @Override
+  public void initThriftServiceThread()
+      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+    thriftServiceThread = new ThriftServiceThread(processor,
+        getID().getName(), ThreadName.RPC_CLIENT.getName(),
+        config.getRpcAddress(), config.getRpcPort(), config.getRpcMaxConcurrentClientNum(),
+        config.getThriftServerAwaitTimeForStopService(),
+        new RPCServiceThriftHandler(impl),
+        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
+    thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
+  }
+
+  @Override
+  public String getBindIP() {
+    return IoTDBDescriptor.getInstance().getConfig().getRpcAddress();
+  }
+
+  @Override
+  public int getBindPort() {
+    return IoTDBDescriptor.getInstance().getConfig().getRpcPort();
   }
 
   @Override
@@ -109,162 +85,11 @@ public class RPCService implements RPCServiceMBean, IService {
     return ServiceType.RPC_SERVICE;
   }
 
-  @Override
-  @SuppressWarnings("squid:S2276")
-  public synchronized void startService() throws StartupException {
-    if (STATUS_UP.equals(getRPCServiceStatus())) {
-      logger.info("{}: {} has been already running now", IoTDBConstant.GLOBAL_DB_NAME,
-          this.getID().getName());
-      return;
-    }
-    logger.info("{}: start {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    try {
-      reset();
-      rpcServiceThread = new RPCServiceThread(stopLatch);
-      rpcServiceThread.setName(ThreadName.RPC_SERVICE.getName());
-      rpcServiceThread.start();
-      while (!rpcServiceThread.isServing()) {
-        //sleep 100ms for waiting the rpc server start.
-        Thread.sleep(100);
-      }
-    } catch (InterruptedException | ClassNotFoundException |
-        IllegalAccessException | InstantiationException e) {
-      Thread.currentThread().interrupt();
-      throw new StartupException(this.getID().getName(), e.getMessage());
-    }
-
-    logger
-        .info("{}: start {} successfully, listening on ip {} port {}", IoTDBConstant.GLOBAL_DB_NAME,
-            this.getID().getName(), IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-            IoTDBDescriptor.getInstance().getConfig().getRpcPort());
-  }
-
-  private void reset() {
-    rpcServiceThread = null;
-    stopLatch = new CountDownLatch(1);
-  }
-
-  @Override
-  public synchronized void restartService() throws StartupException {
-    stopService();
-    startService();
-  }
-
-  @Override
-  public synchronized void stopService() {
-    if (STATUS_DOWN.equals(getRPCServiceStatus())) {
-      logger.info("{}: {} isn't running now", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-      return;
-    }
-    logger.info("{}: closing {}...", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    if (rpcServiceThread != null) {
-      rpcServiceThread.close();
-    }
-    try {
-      stopLatch.await();
-      reset();
-      logger
-          .info("{}: close {} successfully", IoTDBConstant.GLOBAL_DB_NAME, this.getID().getName());
-    } catch (InterruptedException e) {
-      logger.error("{}: close {} failed because: ", IoTDBConstant.GLOBAL_DB_NAME,
-          this.getID().getName(), e);
-      Thread.currentThread().interrupt();
-    }
-  }
-
   private static class RPCServiceHolder {
 
     private static final RPCService INSTANCE = new RPCService();
 
     private RPCServiceHolder() {
-    }
-  }
-
-  private class RPCServiceThread extends Thread {
-
-    private TServerSocket serverTransport;
-    private TServer poolServer;
-    private CountDownLatch threadStopLatch;
-
-    public RPCServiceThread(CountDownLatch threadStopLatch)
-        throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-      if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
-        protocolFactory = new TCompactProtocol.Factory();
-      } else {
-        protocolFactory = new TBinaryProtocol.Factory();
-      }
-      IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-      impl = (TSServiceImpl) Class.forName(config.getRpcImplClassName()).newInstance();
-      processor = new TSIService.Processor<>(impl);
-      this.threadStopLatch = threadStopLatch;
-    }
-
-    @SuppressWarnings("squid:S2093") // socket will be used later
-    @Override
-    public void run() {
-      logger.info("The RPC service thread begin to run...");
-      try {
-        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        serverTransport = new TServerSocket(new InetSocketAddress(config.getRpcAddress(),
-            config.getRpcPort()));
-        //this is for testing.
-        if (!serverTransport.getServerSocket().isBound()) {
-          logger.error("The RPC service port is not bound.");
-        }
-        poolArgs = new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(IoTDBDescriptor.
-            getInstance().getConfig().getRpcMaxConcurrentClientNum()).minWorkerThreads(1)
-            .stopTimeoutVal(
-                IoTDBDescriptor.getInstance().getConfig().getThriftServerAwaitTimeForStopService());
-        poolArgs.executorService = IoTDBThreadPoolFactory.createThriftRpcClientThreadPool(poolArgs,
-            ThreadName.RPC_CLIENT.getName());
-        poolArgs.processor(processor);
-        poolArgs.protocolFactory(protocolFactory);
-        poolArgs.transportFactory(new TFastFramedTransport.Factory(config.getThriftInitBufferSize(),
-            config.getThriftMaxFrameSize()));
-        poolServer = new TThreadPoolServer(poolArgs);
-        poolServer.setServerEventHandler(new RPCServiceThriftHandler(impl));
-        poolServer.serve();
-      } catch (TTransportException e) {
-        throw new RPCServiceException(
-            String.format("%s: failed to start %s, because ", IoTDBConstant.GLOBAL_DB_NAME,
-                getID().getName()), e);
-      } catch (Exception e) {
-        throw new RPCServiceException(
-            String.format("%s: %s exit, because ", IoTDBConstant.GLOBAL_DB_NAME, getID().getName()),
-            e);
-      } finally {
-        close();
-        if (threadStopLatch == null) {
-          logger.debug("Stop Count Down latch is null");
-        } else {
-          logger.debug("Stop Count Down latch is {}", threadStopLatch.getCount());
-        }
-
-        if (threadStopLatch != null && threadStopLatch.getCount() == 1) {
-          threadStopLatch.countDown();
-        }
-        logger.debug("{}: close TThreadPoolServer and TServerSocket for {}",
-            IoTDBConstant.GLOBAL_DB_NAME, getID().getName());
-      }
-    }
-
-    private synchronized void close() {
-      if (poolServer != null) {
-        poolServer.setShouldStop(true);
-        poolServer.stop();
-        poolServer = null;
-      }
-      if (serverTransport != null) {
-        serverTransport.close();
-        serverTransport = null;
-      }
-    }
-
-    boolean isServing() {
-      if (poolServer != null) {
-        return poolServer.isServing();
-      }
-      return false;
     }
   }
 }
