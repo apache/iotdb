@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -151,6 +152,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
@@ -1402,7 +1404,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         applySnapshotUsers(authorizer, snapshot);
         applySnapshotRoles(authorizer, snapshot);
       } catch (AuthException e) {
-        logger.error("{}: Cannot get authorizer instance, error is: {}", name, e);
+        logger.error("{}: Cannot get authorizer instance, error is: ", name, e);
       }
 
       // 5. accept partition table
@@ -1513,6 +1515,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    */
   private TSStatus processNonPartitionedDataPlan(PhysicalPlan plan) {
+    if (plan instanceof DeleteTimeSeriesPlan) {
+      try {
+        plan = getDeleteTimeseriesPlanWithFullPaths((DeleteTimeSeriesPlan) plan);
+      } catch (PathNotExistException e) {
+        TSStatus tsStatus = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+        tsStatus.setMessage(e.getMessage());
+        return tsStatus;
+      }
+    }
     try {
       syncLeaderWithConsistencyCheck();
       List<PartitionGroup> globalGroups = partitionTable.getGlobalGroups();
@@ -1523,6 +1534,22 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       waitLeader();
       return forwardPlan(plan, leader, null);
     }
+  }
+
+  DeleteTimeSeriesPlan getDeleteTimeseriesPlanWithFullPaths(DeleteTimeSeriesPlan plan)
+      throws PathNotExistException {
+    Pair<List<String>, List<String>> getMatchedPathsRet = getMatchedPaths(plan.getPathsStrings());
+    List<String> fullPathsStrings = getMatchedPathsRet.left;
+    List<String> nonExistPathsStrings = getMatchedPathsRet.right;
+    if (!nonExistPathsStrings.isEmpty()) {
+      throw new PathNotExistException(new ArrayList<>(nonExistPathsStrings));
+    }
+    List<Path> fullPaths = new ArrayList<>();
+    for (String pathStr : fullPathsStrings) {
+      fullPaths.add(new Path(pathStr));
+    }
+    plan.setPaths(fullPaths);
+    return plan;
   }
 
   /**
@@ -1611,7 +1638,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
               setStorageGroupResult.getCode(), storageGroupName)
       );
     }
-    if(plan instanceof InsertRowPlan){
+    if (plan instanceof InsertRowPlan) {
       // try to create timeseries
       boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
       if (!isAutoCreateTimeseriesSuccess) {
@@ -2003,7 +2030,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
             name,
-            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node,
+            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1,
+            node,
             request.getHeader());
       }
       results.addAll(schemas);
@@ -2612,6 +2640,42 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     List<String> ret = getMatchedPaths(sgPathMap);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
+  }
+
+  /**
+   * Get all paths after removing wildcards in the path
+   *
+   * @param originalPaths, a list of paths, potentially with wildcard
+   * @return a pair of path lists, the first are the existing full paths, the second are invalid
+   * original paths
+   */
+  public Pair<List<String>, List<String>> getMatchedPaths(List<String> originalPaths) {
+    ConcurrentSkipListSet<String> fullPaths = new ConcurrentSkipListSet<>();
+    ConcurrentSkipListSet<String> nonExistPaths = new ConcurrentSkipListSet<>();
+    ExecutorService getAllPathsService = Executors
+        .newFixedThreadPool(partitionTable.getGlobalGroups().size());
+    for (String pathStr : originalPaths) {
+      getAllPathsService.submit(() -> {
+        try {
+          List<String> fullPathStrs = getMatchedPaths(pathStr);
+          if (fullPathStrs.isEmpty()) {
+            nonExistPaths.add(pathStr);
+            logger.error("Path {} is not found.", pathStr);
+          }
+          fullPaths.addAll(fullPathStrs);
+        } catch (MetadataException e) {
+          logger.error("Failed to get full paths of the prefix path: {} because", pathStr, e);
+        }
+      });
+    }
+    getAllPathsService.shutdown();
+    try {
+      getAllPathsService.awaitTermination(RaftServer.getQueryTimeoutInSec(), TimeUnit.SECONDS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("Unexpected interruption when waiting for get all paths services to stop", e);
+    }
+    return new Pair<>(new ArrayList<>(fullPaths), new ArrayList<>(nonExistPaths));
   }
 
   /**
