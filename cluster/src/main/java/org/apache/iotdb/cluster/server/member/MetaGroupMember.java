@@ -57,9 +57,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
@@ -133,7 +133,6 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
-import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -196,6 +195,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       IoTDBDescriptor.getInstance().getConfig().getBaseDir() + File.separator + "partitions";
   // in case of data loss, some file changes would be made to a temporary file first
   private static final String TEMP_SUFFIX = ".tmp";
+  private static final String MSG_MULTIPLE_ERROR = "The following errors occurred when executing "
+      + "the query, please retry or contact the DBA: ";
 
   private static final Logger logger = LoggerFactory.getLogger(MetaGroupMember.class);
   // when joining a cluster this node will retry at most "DEFAULT_JOIN_RETRY" times if the
@@ -1541,58 +1542,21 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
 
     // split the plan into sub-plans that each only involve one data group
-    Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
+    Map<PhysicalPlan, PartitionGroup> planGroupMap;
     try {
-      planGroupMap = router.splitAndRoutePlan(plan);
-    } catch (StorageGroupNotSetException e) {
-      try {
-        syncLeaderWithConsistencyCheck();
-      } catch (CheckConsistencyException checkConsistencyException) {
-        logger.error("check consistency failed, error={}", checkConsistencyException.getMessage());
-      }
-      try {
-        planGroupMap = router.splitAndRoutePlan(plan);
-      } catch (MetadataException ex) {
-        // ignore
-      }
-    } catch (MetadataException e) {
-      logger.error("Cannot route plan {}", plan, e);
+      planGroupMap = splitPlan(plan);
+    } catch (CheckConsistencyException checkConsistencyException) {
+      TSStatus status = StatusUtils.CONSISTENCY_FAILURE.deepCopy();
+      status.setMessage(checkConsistencyException.getMessage());
+      return status;
     }
+
     // the storage group is not found locally
     if (planGroupMap == null || planGroupMap.isEmpty()) {
       if ((plan instanceof InsertPlan || plan instanceof CreateTimeSeriesPlan)
           && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-        // try to set storage group
-        String deviceId;
-        if(plan instanceof InsertPlan){
-          deviceId = ((InsertPlan) plan).getDeviceId();
-        }else{
-          deviceId = ((CreateTimeSeriesPlan)plan).getPath().toString();
-        }
         try {
-          String storageGroupName = MetaUtils
-              .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
-                  .getConfig().getDefaultStorageGroupLevel());
-          SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
-              new Path(storageGroupName));
-          TSStatus setStorageGroupResult = processNonPartitionedMetaPlan(setStorageGroupPlan);
-          if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
-              setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
-                  .getStatusCode()) {
-            throw new MetadataException(
-                String.format("Status Code: %d, failed to set storage group %s",
-                    setStorageGroupResult.getCode(), storageGroupName)
-            );
-          }
-          if(plan instanceof InsertRowPlan){
-            // try to create timeseries
-            boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
-            if (!isAutoCreateTimeseriesSuccess) {
-              throw new MetadataException(
-                  "Failed to create timeseries from InsertPlan automatically."
-              );
-            }
-          }
+          autoCreateSchema(plan);
           return executeNonQuery(plan);
         } catch (MetadataException e) {
           logger.error(
@@ -1604,6 +1568,58 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
     return forwardPlan(planGroupMap, plan);
+  }
+
+  private Map<PhysicalPlan, PartitionGroup> splitPlan(PhysicalPlan plan)
+      throws UnsupportedPlanException, CheckConsistencyException {
+    Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
+    try {
+      planGroupMap = router.splitAndRoutePlan(plan);
+    } catch (StorageGroupNotSetException e) {
+      syncLeaderWithConsistencyCheck();
+      try {
+        planGroupMap = router.splitAndRoutePlan(plan);
+      } catch (MetadataException ex) {
+        // ignore
+      }
+    } catch (MetadataException e) {
+      logger.error("Cannot route plan {}", plan, e);
+    }
+    return planGroupMap;
+  }
+
+  private void autoCreateSchema(PhysicalPlan plan) throws MetadataException {
+    // try to set storage group
+    String deviceId;
+    if (plan instanceof InsertPlan) {
+      deviceId = ((InsertPlan) plan).getDeviceId();
+    } else {
+      deviceId = ((CreateTimeSeriesPlan) plan).getPath().toString();
+    }
+
+    String storageGroupName = MetaUtils
+        .getStorageGroupNameByLevel(deviceId, IoTDBDescriptor.getInstance()
+            .getConfig().getDefaultStorageGroupLevel());
+    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan(
+        new Path(storageGroupName));
+    TSStatus setStorageGroupResult = processNonPartitionedMetaPlan(setStorageGroupPlan);
+    if (setStorageGroupResult.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode() &&
+        setStorageGroupResult.getCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR
+            .getStatusCode()) {
+      throw new MetadataException(
+          String.format("Status Code: %d, failed to set storage group %s",
+              setStorageGroupResult.getCode(), storageGroupName)
+      );
+    }
+    if(plan instanceof InsertRowPlan){
+      // try to create timeseries
+      boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
+      if (!isAutoCreateTimeseriesSuccess) {
+        throw new MetadataException(
+            "Failed to create timeseries from InsertPlan automatically."
+        );
+      }
+    }
   }
 
   /**
@@ -1621,99 +1637,15 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     if (planGroupMap.size() == 1) {
-      Map.Entry<PhysicalPlan, PartitionGroup> entry = planGroupMap.entrySet().iterator().next();
-      if (entry.getValue().contains(thisNode)) {
-        // the query should be handled by a group the local node is in, handle it with in the group
-        logger.debug("Execute {} in a local group of {}", entry.getKey(),
-            entry.getValue().getHeader());
-        status = getLocalDataMember(entry.getValue().getHeader())
-            .executeNonQuery(entry.getKey());
-      } else {
-        // forward the query to the group that should handle it
-        logger.debug("Forward {} to a remote group of {}", entry.getKey(),
-            entry.getValue().getHeader());
-        status = forwardPlan(entry.getKey(), entry.getValue());
-      }
+      status = forwardToSingleGroup(planGroupMap.entrySet().iterator().next());
     } else {
-      TSStatus tmpStatus;
-      List<String> errorCodePartitionGroups = new ArrayList<>();
       if (plan instanceof InsertTabletPlan) {
-        TSStatus[] subStatus = null;
-        boolean noFailure = true;
-        boolean isBatchFailure = false;
-        for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
-          if (entry.getValue().contains(thisNode)) {
-            // the query should be handled by a group the local node is in, handle it with in the group
-            logger.debug("Execute {} in a local group of {}", entry.getKey(),
-                entry.getValue().getHeader());
-            tmpStatus = getLocalDataMember(entry.getValue().getHeader())
-                .executeNonQuery(entry.getKey());
-          } else {
-            // forward the query to the group that should handle it
-            logger.debug("Forward {} to a remote group of {}", entry.getKey(),
-                entry.getValue().getHeader());
-            tmpStatus = forwardPlan(entry.getKey(), entry.getValue());
-          }
-          logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
-          noFailure =
-              (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
-          isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
-              || isBatchFailure;
-          if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-            if (subStatus == null) {
-              subStatus = new TSStatus[((InsertTabletPlan) plan).getRowCount()];
-              Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
-            }
-            PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
-                tmpStatus.subStatus.toArray(new TSStatus[]{}));
-          }
-          if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            // execution failed, record the error message
-            errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
-                tmpStatus.getCode(), entry.getValue().getHeader(),
-                tmpStatus.getMessage(), tmpStatus.subStatus));
-          }
-        }
-        if (noFailure) {
-          status = StatusUtils.OK;
-        } else if (isBatchFailure) {
-          status = RpcUtils.getStatus(Arrays.asList(subStatus));
-        } else {
-          status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-          status.setMessage("The following errors occurred when executing the query, "
-              + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
-        }
+        status = forwardInsertTabletPlan(planGroupMap, (InsertTabletPlan) plan);
       } else {
-        for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
-          if (entry.getValue().contains(thisNode)) {
-            // the query should be handled by a group the local node is in, handle it with in the group
-            logger.debug("Execute {} in a local group of {}", entry.getKey(),
-                entry.getValue().getHeader());
-            tmpStatus = getLocalDataMember(entry.getValue().getHeader())
-                .executeNonQuery(entry.getKey());
-          } else {
-            // forward the query to the group that should handle it
-            logger.debug("Forward {} to a remote group of {}", entry.getKey(),
-                entry.getValue().getHeader());
-            tmpStatus = forwardPlan(entry.getKey(), entry.getValue());
-          }
-          if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            // execution failed, record the error message
-            errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
-                tmpStatus.getCode(), entry.getValue().getHeader(),
-                tmpStatus.getMessage()));
-          }
-        }
-        if (errorCodePartitionGroups.size() == 0) {
-          status = StatusUtils.OK;
-        } else {
-          status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-          status.setMessage("The following errors occurred when executing the query, "
-              + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
-        }
+        status = forwardToMultipleGroup(planGroupMap);
       }
     }
-    if (plan instanceof InsertPlan
+    if (plan instanceof InsertRowPlan
         && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
       // try to create timeseries
@@ -1725,6 +1657,85 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
+    return status;
+  }
+
+  private TSStatus forwardInsertTabletPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap,
+      InsertTabletPlan plan) {
+    List<String> errorCodePartitionGroups = new ArrayList<>();
+    TSStatus tmpStatus;
+    TSStatus[] subStatus = null;
+    boolean noFailure = true;
+    boolean isBatchFailure = false;
+    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+      tmpStatus = forwardToSingleGroup(entry);
+      logger.debug("{}: from {},{},{}", name, entry.getKey(), entry.getValue(), tmpStatus);
+      noFailure =
+          (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) && noFailure;
+      isBatchFailure = (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode())
+          || isBatchFailure;
+      if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        if (subStatus == null) {
+          subStatus = new TSStatus[plan.getRowCount()];
+          Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
+        }
+        PartitionUtils.reordering((InsertTabletPlan) entry.getKey(), subStatus,
+            tmpStatus.subStatus.toArray(new TSStatus[]{}));
+      }
+      if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // execution failed, record the error message
+        errorCodePartitionGroups.add(String.format("[%s@%s:%s:%s]",
+            tmpStatus.getCode(), entry.getValue().getHeader(),
+            tmpStatus.getMessage(), tmpStatus.subStatus));
+      }
+    }
+    TSStatus status;
+    if (noFailure) {
+      status = StatusUtils.OK;
+    } else if (isBatchFailure) {
+      //noinspection ConstantConditions, subStatus is never null in this case
+      status = RpcUtils.getStatus(Arrays.asList(subStatus));
+    } else {
+      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+    }
+    return status;
+  }
+
+  private TSStatus forwardToSingleGroup(Map.Entry<PhysicalPlan, PartitionGroup> entry) {
+    if (entry.getValue().contains(thisNode)) {
+      // the query should be handled by a group the local node is in, handle it with in the group
+      logger.debug("Execute {} in a local group of {}", entry.getKey(),
+          entry.getValue().getHeader());
+      return getLocalDataMember(entry.getValue().getHeader())
+          .executeNonQuery(entry.getKey());
+    } else {
+      // forward the query to the group that should handle it
+      logger.debug("Forward {} to a remote group of {}", entry.getKey(),
+          entry.getValue().getHeader());
+      return forwardPlan(entry.getKey(), entry.getValue());
+    }
+  }
+
+  private TSStatus forwardToMultipleGroup(Map<PhysicalPlan, PartitionGroup> planGroupMap) {
+    List<String> errorCodePartitionGroups = new ArrayList<>();
+    TSStatus tmpStatus;
+    for (Map.Entry<PhysicalPlan, PartitionGroup> entry : planGroupMap.entrySet()) {
+      tmpStatus = forwardToSingleGroup(entry);
+      if (tmpStatus.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        // execution failed, record the error message
+        errorCodePartitionGroups.add(String.format("[%s@%s:%s]",
+            tmpStatus.getCode(), entry.getValue().getHeader(),
+            tmpStatus.getMessage()));
+      }
+    }
+    TSStatus status;
+    if (errorCodePartitionGroups.isEmpty()) {
+      status = StatusUtils.OK;
+    } else {
+      status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
+      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
+    }
     return status;
   }
 
@@ -1763,8 +1774,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       status = StatusUtils.OK;
     } else {
       status = StatusUtils.EXECUTE_STATEMENT_ERROR.deepCopy();
-      status.setMessage("The following errors occurred when executing the query, "
-          + "please retry or contact the DBA: " + errorCodePartitionGroups.toString());
+      status.setMessage(MSG_MULTIPLE_ERROR + errorCodePartitionGroups.toString());
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
     return status;
@@ -1961,37 +1971,45 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     pullSchemaRequest.setPrefixPaths(prefixPaths);
 
     for (Node node : partitionGroup) {
-      if (logger.isDebugEnabled()) {
-        logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}", name,
-            prefixPaths.get(0), prefixPaths.size() - 1, node);
-      }
-      AsyncDataClient client;
-      List<MeasurementSchema> schemas = null;
-      try {
-        client = getDataClient(node);
-        schemas = SyncClientAdaptor.pullTimeSeriesSchema(client, pullSchemaRequest);
-      } catch (IOException | TException e) {
-        logger
-            .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", name,
-                prefixPaths.get(0), prefixPaths.size() - 1, node, e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger
-            .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", name,
-                prefixPaths.get(0), prefixPaths.size() - 1, node, e);
-      }
-
-      if (schemas != null) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-              name,
-              schemas.size(), prefixPaths.get(0), prefixPaths.size() - 1, node,
-              partitionGroup.getHeader());
-        }
-        results.addAll(schemas);
+      if (pullTimeSeriesSchemas(node, pullSchemaRequest, results)) {
         break;
       }
     }
+  }
+
+  private boolean pullTimeSeriesSchemas(Node node,
+      PullSchemaRequest request, List<MeasurementSchema> results) {
+    if (logger.isDebugEnabled()) {
+      logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}", name,
+          request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node);
+    }
+    AsyncDataClient client;
+    List<MeasurementSchema> schemas = null;
+    try {
+      client = getDataClient(node);
+      schemas = SyncClientAdaptor.pullTimeSeriesSchema(client, request);
+    } catch (IOException | TException e) {
+      logger
+          .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", name,
+              request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger
+          .error("{}: Cannot pull timeseries schemas of {} and other {} paths from {}", name,
+              request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node, e);
+    }
+
+    if (schemas != null) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
+            name,
+            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node,
+            request.getHeader());
+      }
+      results.addAll(schemas);
+      return true;
+    }
+    return false;
   }
 
   /**
@@ -2008,54 +2026,69 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       List<String> aggregations) throws
       MetadataException {
     try {
-      // try locally first
-      List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths,
-          (List<String>) null);
-      // if the aggregation function is null, the type of column in result set
-      // is equal to the real type of the measurement
-      if (aggregations == null) {
-        return new Pair<>(measurementDataTypes, measurementDataTypes);
-      } else {
-        // if the aggregation function is not null,
-        // we should recalculate the type of column in result set
-        List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPath(paths, aggregations);
-        return new Pair<>(columnDataTypes, measurementDataTypes);
-      }
+      return getSeriesTypesByPathLocally(paths, aggregations);
     } catch (PathNotExistException e) {
-      List<String> pathStr = new ArrayList<>();
-      for (Path path : paths) {
-        pathStr.add(path.getFullPath());
-      }
-      // pull schemas remotely
-      List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
-      if (schemas.isEmpty()) {
-        // if one timeseries cannot be found remotely, too, it does not exist
+      Pair<List<TSDataType>, List<TSDataType>> types = getSeriesTypesByPathRemotely(
+          paths, aggregations);
+      if (types == null) {
         throw e;
       }
-
-      // consider the aggregations to get the real data type
-      List<TSDataType> columnType = new ArrayList<>();
-      List<TSDataType> measurementType = new ArrayList<>();
-      for (int i = 0; i < schemas.size(); i++) {
-        TSDataType dataType = null;
-        if (aggregations != null) {
-          String aggregation = aggregations.get(i);
-          // aggregations like first/last value does not have fixed data types and will return a
-          // null
-          dataType = getAggregationType(aggregation);
-        }
-        if (dataType == null) {
-          MeasurementSchema schema = schemas.get(i);
-          columnType.add(schema.getType());
-          MManager.getInstance().cacheSchema(paths.get(i).getDevice() +
-              IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
-        } else {
-          columnType.add(dataType);
-        }
-        measurementType.add(schemas.get(i).getType());
-      }
-      return new Pair<>(columnType, measurementType);
+      return types;
     }
+  }
+
+  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathLocally(List<Path> paths,
+      List<String> aggregations) throws MetadataException {
+    // try locally first
+    List<TSDataType> measurementDataTypes = SchemaUtils.getSeriesTypesByPath(paths,
+        (List<String>) null);
+    // if the aggregation function is null, the type of column in result set
+    // is equal to the real type of the measurement
+    if (aggregations == null) {
+      return new Pair<>(measurementDataTypes, measurementDataTypes);
+    } else {
+      // if the aggregation function is not null,
+      // we should recalculate the type of column in result set
+      List<TSDataType> columnDataTypes = SchemaUtils.getSeriesTypesByPath(paths, aggregations);
+      return new Pair<>(columnDataTypes, measurementDataTypes);
+    }
+  }
+
+  private Pair<List<TSDataType>, List<TSDataType>> getSeriesTypesByPathRemotely(List<Path> paths,
+      List<String> aggregations) throws MetadataException {
+    List<String> pathStr = new ArrayList<>();
+    for (Path path : paths) {
+      pathStr.add(path.getFullPath());
+    }
+    // pull schemas remotely
+    List<MeasurementSchema> schemas = pullTimeSeriesSchemas(pathStr);
+    if (schemas.isEmpty()) {
+      // if timeseries cannot be found remotely, too, it does not exist
+      return null;
+    }
+
+    // consider the aggregations to get the real data type
+    List<TSDataType> columnType = new ArrayList<>();
+    List<TSDataType> measurementType = new ArrayList<>();
+    for (int i = 0; i < schemas.size(); i++) {
+      TSDataType dataType = null;
+      if (aggregations != null) {
+        String aggregation = aggregations.get(i);
+        // aggregations like first/last value does not have fixed data types and will return a
+        // null
+        dataType = getAggregationType(aggregation);
+      }
+      if (dataType == null) {
+        MeasurementSchema schema = schemas.get(i);
+        columnType.add(schema.getType());
+        MManager.getInstance().cacheSchema(paths.get(i).getDevice() +
+            IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
+      } else {
+        columnType.add(dataType);
+      }
+      measurementType.add(schemas.get(i).getType());
+    }
+    return new Pair<>(columnType, measurementType);
   }
 
   /**
