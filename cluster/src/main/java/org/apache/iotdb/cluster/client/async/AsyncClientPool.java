@@ -30,17 +30,17 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ClientPool {
+public class AsyncClientPool {
 
-  private static final Logger logger = LoggerFactory.getLogger(ClientPool.class);
+  private static final Logger logger = LoggerFactory.getLogger(AsyncClientPool.class);
   private static final long WAIT_CLIENT_TIMEOUT_MS = 5 * 1000L;
   private int maxConnectionForEachNode;
   private Map<Node, Deque<AsyncClient>> clientCaches = new ConcurrentHashMap<>();
   private Map<Node, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
-  private ClientFactory clientFactory;
+  private AsyncClientFactory asyncClientFactory;
 
-  public ClientPool(ClientFactory clientFactory) {
-    this.clientFactory = clientFactory;
+  public AsyncClientPool(AsyncClientFactory asyncClientFactory) {
+    this.asyncClientFactory = asyncClientFactory;
     this.maxConnectionForEachNode =
         ClusterDescriptor.getInstance().getConfig().getMaxClientPerNodePerMember();
   }
@@ -61,7 +61,7 @@ public class ClientPool {
           return waitForClient(clientStack, node, nodeClientNum);
         } else {
           nodeClientNumMap.put(node, nodeClientNum + 1);
-          return clientFactory.getAsyncClient(node, this);
+          return asyncClientFactory.getAsyncClient(node, this);
         }
       } else {
         return clientStack.pop();
@@ -81,7 +81,7 @@ public class ClientPool {
           logger.warn("Cannot get an available client after {}ms, create a new one",
               WAIT_CLIENT_TIMEOUT_MS);
           nodeClientNumMap.put(node, nodeClientNum + 1);
-          return clientFactory.getAsyncClient(node, this);
+          return asyncClientFactory.getAsyncClient(node, this);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

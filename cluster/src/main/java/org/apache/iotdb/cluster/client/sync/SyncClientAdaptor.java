@@ -27,8 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.async.DataClient;
-import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.snapshot.SnapshotFactory;
 import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
@@ -81,12 +81,12 @@ public class SyncClientAdaptor {
     // static class
   }
 
-  public static Long removeNode(MetaClient metaClient, Node nodeToRemove)
+  public static Long removeNode(AsyncMetaClient asyncMetaClient, Node nodeToRemove)
       throws TException, InterruptedException {
     AtomicReference<Long> responseRef = new AtomicReference<>();
-    GenericHandler handler = new GenericHandler(metaClient.getNode(), responseRef);
+    GenericHandler handler = new GenericHandler(asyncMetaClient.getNode(), responseRef);
     synchronized (responseRef) {
-      metaClient.removeNode(nodeToRemove, handler);
+      asyncMetaClient.removeNode(nodeToRemove, handler);
       responseRef.wait(RaftServer.getConnectionTimeoutInMS());
     }
     return responseRef.get();
@@ -104,7 +104,7 @@ public class SyncClientAdaptor {
     return resultRef.get();
   }
 
-  public static Long querySingleSeriesByTimestamp(DataClient client, SingleSeriesQueryRequest request)
+  public static Long querySingleSeriesByTimestamp(AsyncDataClient client, SingleSeriesQueryRequest request)
       throws TException, InterruptedException {
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
@@ -115,7 +115,7 @@ public class SyncClientAdaptor {
     return result.get();
   }
 
-  public static Long querySingleSeries(DataClient client, SingleSeriesQueryRequest request,
+  public static Long querySingleSeries(AsyncDataClient client, SingleSeriesQueryRequest request,
       long timeOffset) throws TException, InterruptedException {
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
@@ -136,7 +136,7 @@ public class SyncClientAdaptor {
     return result.get();
   }
 
-  public static List<String> getNodeList(DataClient client, Node header,
+  public static List<String> getNodeList(AsyncDataClient client, Node header,
       String schemaPattern, int level) throws TException, InterruptedException {
     GetNodesListHandler handler = new GetNodesListHandler();
     AtomicReference<List<String>> response = new AtomicReference<>(null);
@@ -149,7 +149,7 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static List<String> getNextChildren(DataClient client, Node header, String path)
+  public static List<String> getNextChildren(AsyncDataClient client, Node header, String path)
       throws TException, InterruptedException {
     GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
     AtomicReference<List<String>> response = new AtomicReference<>(null);
@@ -162,7 +162,7 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static ByteBuffer getAllMeasurementSchema(DataClient client,
+  public static ByteBuffer getAllMeasurementSchema(AsyncDataClient client,
       Node header, ShowTimeSeriesPlan plan)
       throws IOException, InterruptedException, TException {
     GetTimeseriesSchemaHandler handler = new GetTimeseriesSchemaHandler();
@@ -181,7 +181,7 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static TNodeStatus queryNodeStatus(MetaClient client)
+  public static TNodeStatus queryNodeStatus(AsyncMetaClient client)
       throws TException, InterruptedException {
     AtomicReference<TNodeStatus> resultRef = new AtomicReference<>();
     GenericHandler<TNodeStatus> handler = new GenericHandler<>(client.getNode(), resultRef);
@@ -192,7 +192,7 @@ public class SyncClientAdaptor {
     return resultRef.get();
   }
 
-  public static CheckStatusResponse checkStatus(MetaClient client, StartUpStatus startUpStatus)
+  public static CheckStatusResponse checkStatus(AsyncMetaClient client, StartUpStatus startUpStatus)
       throws TException, InterruptedException {
     AtomicReference<CheckStatusResponse> response
         = new AtomicReference<>(null);
@@ -205,7 +205,7 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static AddNodeResponse addNode(MetaClient client, Node thisNode, StartUpStatus startUpStatus)
+  public static AddNodeResponse addNode(AsyncMetaClient client, Node thisNode, StartUpStatus startUpStatus)
       throws TException, InterruptedException {
     JoinClusterHandler handler = new JoinClusterHandler();
     AtomicReference<AddNodeResponse> response = new AtomicReference(null);
@@ -219,7 +219,7 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static List<MeasurementSchema> pullTimeSeriesSchema(DataClient client,
+  public static List<MeasurementSchema> pullTimeSeriesSchema(AsyncDataClient client,
       PullSchemaRequest pullSchemaRequest) throws TException, InterruptedException {
     AtomicReference<List<MeasurementSchema>> timeseriesSchemas = new AtomicReference<>();
     synchronized (timeseriesSchemas) {
@@ -230,7 +230,7 @@ public class SyncClientAdaptor {
     return timeseriesSchemas.get();
   }
 
-  public static List<ByteBuffer> getAggrResult(DataClient client, GetAggrResultRequest request)
+  public static List<ByteBuffer> getAggrResult(AsyncDataClient client, GetAggrResultRequest request)
       throws TException, InterruptedException {
     AtomicReference<List<ByteBuffer>> resultReference = new AtomicReference<>();
     GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(), resultReference);
@@ -242,7 +242,7 @@ public class SyncClientAdaptor {
     return resultReference.get();
   }
 
-  public static List<String> getUnregisteredMeasurements(DataClient client, Node header, List<String> seriesPaths) throws TException, InterruptedException {
+  public static List<String> getUnregisteredMeasurements(AsyncDataClient client, Node header, List<String> seriesPaths) throws TException, InterruptedException {
     AtomicReference<List<String>> remoteResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
     synchronized (remoteResult) {
@@ -252,7 +252,7 @@ public class SyncClientAdaptor {
     return remoteResult.get();
   }
 
-  public static List<String> getAllPaths(DataClient client, Node header, List<String> pathsToQuery)
+  public static List<String> getAllPaths(AsyncDataClient client, Node header, List<String> pathsToQuery)
       throws InterruptedException, TException {
     AtomicReference<List<String>> remoteResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(client.getNode(), remoteResult);
@@ -263,7 +263,7 @@ public class SyncClientAdaptor {
     return remoteResult.get();
   }
 
-  public static Integer getPathCount(DataClient client, Node header, List<String> pathsToQuery,
+  public static Integer getPathCount(AsyncDataClient client, Node header, List<String> pathsToQuery,
       int level)
       throws InterruptedException, TException {
     AtomicReference<Integer> remoteResult = new AtomicReference<>(null);
@@ -275,7 +275,7 @@ public class SyncClientAdaptor {
     return remoteResult.get();
   }
 
-  public static Set<String> getAllDevices(DataClient client, Node header,
+  public static Set<String> getAllDevices(AsyncDataClient client, Node header,
       List<String> pathsToQuery)
       throws InterruptedException, TException {
     AtomicReference<Set<String>> remoteResult = new AtomicReference<>();
@@ -287,7 +287,7 @@ public class SyncClientAdaptor {
     return remoteResult.get();
   }
 
-  public static Long getGroupByExecutor(DataClient client, GroupByRequest request)
+  public static Long getGroupByExecutor(AsyncDataClient client, GroupByRequest request)
       throws TException, InterruptedException {
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(client.getNode(), result);
@@ -299,7 +299,7 @@ public class SyncClientAdaptor {
     return result.get();
   }
 
-  public static ByteBuffer previousFill(DataClient client, PreviousFillRequest request)
+  public static ByteBuffer previousFill(AsyncDataClient client, PreviousFillRequest request)
       throws TException, InterruptedException {
     AtomicReference<ByteBuffer> resultRef = new AtomicReference<>();
     GenericHandler<ByteBuffer> nodeHandler = new GenericHandler<>(client.getNode(), resultRef);
@@ -331,7 +331,7 @@ public class SyncClientAdaptor {
     return status.get();
   }
 
-  public static ByteBuffer readFile(DataClient client, String remotePath, long offset,
+  public static ByteBuffer readFile(AsyncDataClient client, String remotePath, long offset,
       int fetchSize)
       throws InterruptedException, TException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
@@ -343,7 +343,7 @@ public class SyncClientAdaptor {
     return result.get();
   }
 
-  public static List<ByteBuffer> getGroupByResult(DataClient client, Node header, long executorId
+  public static List<ByteBuffer> getGroupByResult(AsyncDataClient client, Node header, long executorId
       , long curStartTime, long curEndTime) throws InterruptedException, TException {
     AtomicReference<List<ByteBuffer>> fetchResult = new AtomicReference<>();
     GenericHandler<List<ByteBuffer>> handler = new GenericHandler<>(client.getNode(), fetchResult);
@@ -355,7 +355,7 @@ public class SyncClientAdaptor {
     return fetchResult.get();
   }
 
-  public static Map<Integer, Snapshot> pullSnapshot(DataClient client,
+  public static Map<Integer, Snapshot> pullSnapshot(AsyncDataClient client,
       PullSnapshotRequest request, List<Integer> slots, SnapshotFactory factory)
       throws TException, InterruptedException {
     AtomicReference<Map<Integer, Snapshot>> snapshotRef = new AtomicReference<>();
@@ -367,7 +367,7 @@ public class SyncClientAdaptor {
     return snapshotRef.get();
   }
 
-  public static ByteBuffer last(DataClient client, Path seriesPath,
+  public static ByteBuffer last(AsyncDataClient client, Path seriesPath,
       TSDataType dataType, QueryContext context, Set<String> deviceMeasurements, Node header)
       throws TException, InterruptedException {
     AtomicReference<ByteBuffer> result = new AtomicReference<>();
@@ -381,7 +381,7 @@ public class SyncClientAdaptor {
     return result.get();
   }
 
-  public static boolean onSnapshotApplied(DataClient client, Node header, List<Integer> slots)
+  public static boolean onSnapshotApplied(AsyncDataClient client, Node header, List<Integer> slots)
       throws TException, InterruptedException {
     AtomicReference<Boolean> result = new AtomicReference<>(false);
     GenericHandler<Boolean> handler = new GenericHandler<>(client.getNode(), result);

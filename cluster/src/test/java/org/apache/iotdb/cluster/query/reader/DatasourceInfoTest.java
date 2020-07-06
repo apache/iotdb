@@ -24,7 +24,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -45,8 +45,8 @@ public class DatasourceInfoTest {
   public void setUp() {
     metaGroupMember = new TestMetaGroupMember() {
       @Override
-      public DataClient getDataClient(Node node) throws IOException {
-        return new DataClient(null, null, TestUtils.getNode(0), null) {
+      public AsyncDataClient getDataClient(Node node) throws IOException {
+        return new AsyncDataClient(null, null, TestUtils.getNode(0), null) {
           @Override
           public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
             throw new TException("Don't worry, this is the exception I constructed.");
@@ -68,7 +68,7 @@ public class DatasourceInfoTest {
 
     DataSourceInfo sourceInfo = new DataSourceInfo(group, TSDataType.DOUBLE,
       request, context, metaGroupMember, group);
-    DataClient client = sourceInfo.nextDataClient(false, Long.MIN_VALUE);
+    AsyncDataClient client = sourceInfo.nextDataClient(false, Long.MIN_VALUE);
 
     assertNull(client);
   }

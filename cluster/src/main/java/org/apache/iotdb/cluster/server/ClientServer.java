@@ -33,7 +33,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
@@ -289,7 +289,7 @@ public class ClientServer extends TSServiceImpl {
         for (Node queriedNode : queriedNodes) {
           GenericHandler handler = new GenericHandler(queriedNode, new AtomicReference());
           try {
-            DataClient client = metaGroupMember.getDataClient(queriedNode);
+            AsyncDataClient client = metaGroupMember.getDataClient(queriedNode);
             client.endQuery(header, metaGroupMember.getThisNode(), queryId, handler);
           } catch (IOException | TException e) {
             logger.error("Cannot end query {} in {}", queryId, queriedNode);

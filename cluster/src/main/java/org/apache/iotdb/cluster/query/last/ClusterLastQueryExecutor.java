@@ -30,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import javax.activation.UnsupportedDataTypeException;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -150,15 +150,15 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     private TimeValuePair calculateSeriesLastRemotely(PartitionGroup group, Path seriesPath,
         TSDataType dataType, QueryContext context, Set<String> deviceMeasurements) {
       for (Node node : group) {
-        DataClient dataClient;
+        AsyncDataClient asyncDataClient;
         try {
-          dataClient = metaGroupMember.getDataClient(node);
+          asyncDataClient = metaGroupMember.getDataClient(node);
         } catch (IOException e) {
           continue;
         }
         try {
           ByteBuffer buffer = SyncClientAdaptor
-              .last(dataClient, seriesPath, dataType, context, deviceMeasurements,
+              .last(asyncDataClient, seriesPath, dataType, context, deviceMeasurements,
                   group.getHeader());
           TimeValuePair timeValuePair = SerializeUtils.deserializeTVPair(buffer);
           return timeValuePair != null ? timeValuePair : new TimeValuePair(Long.MIN_VALUE, null);

@@ -37,7 +37,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -269,7 +269,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        DataClient client = metaGroupMember.getDataClient(node);
+        AsyncDataClient client = metaGroupMember.getDataClient(node);
         Integer count = SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(),
             pathsToQuery, level);
         logger.debug("{}: get path count of {} from {}, result {}", metaGroupMember.getName(),
@@ -365,7 +365,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<String> paths = null;
     for (Node node : group) {
       try {
-        DataClient client = metaGroupMember.getDataClient(node);
+        AsyncDataClient client = metaGroupMember.getDataClient(node);
         paths = SyncClientAdaptor.getNodeList(client, group.getHeader(), schemaPattern, level);
         if (paths != null) {
           break;
@@ -454,7 +454,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<String> nextChildren = null;
     for (Node node : group) {
       try {
-        DataClient client = metaGroupMember.getDataClient(node);
+        AsyncDataClient client = metaGroupMember.getDataClient(node);
         nextChildren = SyncClientAdaptor.getNextChildren(client, group.getHeader(), path);
         if (nextChildren != null) {
           break;
@@ -576,7 +576,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
-        DataClient client = metaGroupMember.getDataClient(node);
+        AsyncDataClient client = metaGroupMember.getDataClient(node);
         resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
             plan);
         if (resultBinary != null) {

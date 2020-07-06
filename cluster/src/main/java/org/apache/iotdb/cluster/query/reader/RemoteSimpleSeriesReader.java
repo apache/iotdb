@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -100,7 +100,7 @@ public class RemoteSimpleSeriesReader implements IPointReader  {
     while (true) {
       synchronized (fetchResult) {
         fetchResult.set(null);
-        DataClient currClient = sourceInfo.getCurClient();
+        AsyncDataClient currClient = sourceInfo.getCurClient();
         try {
           currClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
           fetchResult.wait(RaftServer.getConnectionTimeoutInMS());

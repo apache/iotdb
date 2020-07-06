@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
@@ -45,12 +45,12 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.async.AsyncMethodCallback;
 
-public class TestDataClient extends DataClient {
+public class TestAsyncDataClient extends AsyncDataClient {
 
   private PlanExecutor planExecutor;
   private Map<Node, DataGroupMember> dataGroupMemberMap;
 
-  public TestDataClient(Node node,
+  public TestAsyncDataClient(Node node,
       Map<Node, DataGroupMember> dataGroupMemberMap)
       throws IOException {
     super(null, null, node, null);

@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.Callable;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
@@ -85,8 +85,8 @@ public class PullSnapshotTask implements Callable<Void> {
           descriptor.getPreviousHolders().getHeader());
     }
 
-    DataClient client =
-        (DataClient) newMember.connectNode(node);
+    AsyncDataClient client =
+        (AsyncDataClient) newMember.connectNode(node);
     if (client == null) {
       return false;
     }

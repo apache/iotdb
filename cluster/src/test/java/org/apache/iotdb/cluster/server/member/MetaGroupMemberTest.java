@@ -46,9 +46,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-import org.apache.iotdb.cluster.client.async.DataClient;
-import org.apache.iotdb.cluster.common.TestDataClient;
-import org.apache.iotdb.cluster.common.TestMetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -76,7 +76,6 @@ import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
@@ -96,7 +95,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -246,8 +244,8 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      public DataClient getDataClient(Node node) throws IOException {
-        return new TestDataClient(node, dataGroupMemberMap);
+      public AsyncDataClient getDataClient(Node node) throws IOException {
+        return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
 
       @Override
@@ -282,7 +280,7 @@ public class MetaGroupMemberTest extends MemberTest {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
-          return new TestMetaClient(null, null, node, null) {
+          return new TestAsyncMetaClient(null, null, node, null) {
             @Override
             public void startElection(ElectionRequest request,
                 AsyncMethodCallback<Long> resultHandler) {

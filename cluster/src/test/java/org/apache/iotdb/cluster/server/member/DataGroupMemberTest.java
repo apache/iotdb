@@ -45,7 +45,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.RemoteTsFileResource;
-import org.apache.iotdb.cluster.common.TestDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -88,7 +88,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -181,7 +180,7 @@ public class DataGroupMemberTest extends MemberTest {
       @Override
       public AsyncClient connectNode(Node node) {
         try {
-          return new TestDataClient(node, dataGroupMemberMap) {
+          return new TestAsyncDataClient(node, dataGroupMemberMap) {
 
             @Override
             public void pullSnapshot(PullSnapshotRequest request,

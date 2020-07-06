@@ -23,7 +23,7 @@ import java.io.IOException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 
-public interface ClientFactory {
+public interface AsyncClientFactory {
 
   /**
    * Get a client which will connect the given node and be cached in the given pool.
@@ -32,6 +32,6 @@ public interface ClientFactory {
    * @return
    * @throws IOException
    */
-  RaftService.AsyncClient getAsyncClient(Node node, ClientPool pool)
+  RaftService.AsyncClient getAsyncClient(Node node, AsyncClientPool pool)
       throws IOException;
 }

@@ -57,9 +57,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
-import org.apache.iotdb.cluster.client.async.ClientPool;
-import org.apache.iotdb.cluster.client.async.DataClient;
-import org.apache.iotdb.cluster.client.async.MetaClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
+import org.apache.iotdb.cluster.client.async.AsyncClientPool;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -130,6 +131,7 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils.Intervals;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.auth.AuthException;
+import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -243,7 +245,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
   // dataClientPool provides reusable thrift clients to connect to the DataGroupMembers of other
   // nodes
-  private ClientPool dataClientPool;
+  private AsyncClientPool dataAsyncClientPool;
 
   // every "REPORT_INTERVAL_SEC" seconds, "reportThread" will print the status of all raft
   // members in this node
@@ -261,11 +263,11 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   }
 
   public MetaGroupMember(TProtocolFactory factory, Node thisNode) throws QueryProcessException {
-    super("Meta", new ClientPool(new MetaClient.Factory(factory)));
+    super("Meta", new AsyncClientPool(new AsyncMetaClient.FactoryAsync(factory)));
     allNodes = new ArrayList<>();
     initPeerMap();
 
-    dataClientPool = new ClientPool(new DataClient.Factory(factory));
+    dataAsyncClientPool = new AsyncClientPool(new FactoryAsync(factory));
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
     LogApplier metaLogApplier = new MetaLogApplier(this);
     logManager = new MetaSingleSnapshotLogManager(metaLogApplier, this);
@@ -418,7 +420,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       }
 
       pool.submit(() -> {
-            MetaClient client = (MetaClient) connectNode(seedNode);
+            AsyncMetaClient client = (AsyncMetaClient) connectNode(seedNode);
             CheckStatusResponse response = null;
             try {
               response = SyncClientAdaptor.checkStatus(client, startUpStatus);
@@ -629,7 +631,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
   private boolean joinCluster(Node node, StartUpStatus startUpStatus)
       throws TException, InterruptedException {
 
-    MetaClient client = (MetaClient) connectNode(node);
+    AsyncMetaClient client = (AsyncMetaClient) connectNode(node);
     AddNodeResponse resp = SyncClientAdaptor.addNode(client, thisNode, startUpStatus);
     if (resp == null) {
       logger.warn("Join cluster request timed out");
@@ -1153,7 +1155,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
             groupRemainings[nodeIndex]--;
           }
         } else {
-          MetaClient client = (MetaClient) connectNode(node);
+          AsyncMetaClient client = (AsyncMetaClient) connectNode(node);
           try {
             client.appendEntry(request, new AppendGroupEntryHandler(groupRemainings, i, node,
                 leaderShipStale, log, newLeaderTerm, this));
@@ -1395,7 +1397,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
 
       // 4. replace all users and roles
       try {
-        IAuthorizer authorizer = LocalFileAuthorizer.getInstance();
+        IAuthorizer authorizer = BasicAuthorizer.getInstance();
         applySnapshotUsers(authorizer, snapshot);
         applySnapshotRoles(authorizer, snapshot);
       } catch (AuthException e) {
@@ -1830,7 +1832,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     List<String> unregistered = new ArrayList<>();
     for (Node node : partitionGroup) {
       try {
-        DataClient client = getDataClient(node);
+        AsyncDataClient client = getDataClient(node);
         List<String> result = SyncClientAdaptor
             .getUnregisteredMeasurements(client, partitionGroup.getHeader(), seriesList);
         if (result != null) {
@@ -1963,7 +1965,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         logger.debug("{}: Pulling timeseries schemas of {} and other {} paths from {}", name,
             prefixPaths.get(0), prefixPaths.size() - 1, node);
       }
-      DataClient client;
+      AsyncDataClient client;
       List<MeasurementSchema> schemas = null;
       try {
         client = getDataClient(node);
@@ -2200,7 +2202,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
         (RemoteQueryContext) context, this, partitionGroup);
 
-    DataClient client = dataSourceInfo.nextDataClient(true, Long.MIN_VALUE);
+    AsyncDataClient client = dataSourceInfo.nextDataClient(true, Long.MIN_VALUE);
     if (client != null) {
       return new RemoteSeriesReaderByTimestamp(dataSourceInfo);
     } else if (dataSourceInfo.isNoData()) {
@@ -2375,7 +2377,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           node, partitionGroup.getHeader());
 
       try {
-        DataClient client = getDataClient(node);
+        AsyncDataClient client = getDataClient(node);
         // each buffer is an AggregationResult
         List<ByteBuffer> resultBuffers = SyncClientAdaptor.getAggrResult(client, request);
         if (resultBuffers != null) {
@@ -2537,7 +2539,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     DataSourceInfo dataSourceInfo = new DataSourceInfo(partitionGroup, dataType, request,
         (RemoteQueryContext) context, this, orderedNodes);
 
-    DataClient client = dataSourceInfo.nextDataClient(false, Long.MIN_VALUE);
+    AsyncDataClient client = dataSourceInfo.nextDataClient(false, Long.MIN_VALUE);
     if (client != null) {
       return new RemoteSimpleSeriesReader(dataSourceInfo);
     } else if (dataSourceInfo.isNoData()) {
@@ -2549,8 +2551,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
   }
 
-  private ClientPool getDataClientPool() {
-    return dataClientPool;
+  private AsyncClientPool getDataAsyncClientPool() {
+    return dataAsyncClientPool;
   }
 
 
@@ -2653,7 +2655,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        DataClient client = getDataClient(node);
+        AsyncDataClient client = getDataClient(node);
         List<String> paths = SyncClientAdaptor.getAllPaths(client, partitionGroup.getHeader(),
             pathsToQuery);
         if (logger.isDebugEnabled()) {
@@ -2725,7 +2727,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        DataClient client = getDataClient(node);
+        AsyncDataClient client = getDataClient(node);
         Set<String> paths = SyncClientAdaptor.getAllDevices(client, partitionGroup.getHeader(),
             pathsToQuery);
         logger.debug("{}: get matched paths of {} from {}, result {}", name, partitionGroup,
@@ -3024,9 +3026,9 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         } else if (thisNode.equals(leader)) {
           // as the old node is removed, it cannot know this by heartbeat or log, so it should be
           // directly kicked out of the cluster
-          MetaClient metaClient = (MetaClient) connectNode(oldNode);
+          AsyncMetaClient asyncMetaClient = (AsyncMetaClient) connectNode(oldNode);
           try {
-            metaClient.exile(new GenericHandler<>(oldNode, null));
+            asyncMetaClient.exile(new GenericHandler<>(oldNode, null));
           } catch (TException e) {
             logger.warn("Cannot inform {} its removal", oldNode, e);
           }
@@ -3118,8 +3120,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return
    * @throws IOException
    */
-  public DataClient getDataClient(Node node) throws IOException {
-    return (DataClient) getDataClientPool().getClient(node);
+  public AsyncDataClient getDataClient(Node node) throws IOException {
+    return (AsyncDataClient) getDataAsyncClientPool().getClient(node);
   }
 
   /**
@@ -3232,7 +3234,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
       logger.debug("{}: querying group by {} from {}", name, path, node);
 
       try {
-        DataClient client = getDataClient(node);
+        AsyncDataClient client = getDataClient(node);
         Long executorId = SyncClientAdaptor.getGroupByExecutor(client, request);
         if (executorId == null) {
           continue;
@@ -3343,16 +3345,16 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         arguments.getDeviceMeasurements());
 
     for (Node node : group) {
-      DataClient dataClient;
+      AsyncDataClient asyncDataClient;
       try {
-        dataClient = getDataClient(node);
+        asyncDataClient = getDataClient(node);
       } catch (IOException e) {
         logger.warn("{}: Cannot connect to {} during previous fill", name, node);
         continue;
       }
 
       try {
-        ByteBuffer byteBuffer = SyncClientAdaptor.previousFill(dataClient, request);
+        ByteBuffer byteBuffer = SyncClientAdaptor.previousFill(asyncDataClient, request);
         if (byteBuffer != null) {
           fillHandler.onComplete(byteBuffer);
           return;

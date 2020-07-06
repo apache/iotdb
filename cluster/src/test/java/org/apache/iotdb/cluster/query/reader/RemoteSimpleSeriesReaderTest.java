@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -63,8 +63,8 @@ public class RemoteSimpleSeriesReaderTest {
     metaGroupMember = new TestMetaGroupMember() {
 
       @Override
-      public DataClient getDataClient(Node node) throws IOException {
-        return new DataClient(null, null, node, null){
+      public AsyncDataClient getDataClient(Node node) throws IOException {
+        return new AsyncDataClient(null, null, node, null){
           @Override
           public void fetchSingleSeries(Node header, long readerId,
                                         AsyncMethodCallback<ByteBuffer> resultHandler)

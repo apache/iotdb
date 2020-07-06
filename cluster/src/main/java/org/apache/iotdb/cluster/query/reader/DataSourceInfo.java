@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.query.reader;
 
 import java.io.IOException;
 import java.util.List;
-import org.apache.iotdb.cluster.client.async.DataClient;
+import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
@@ -68,7 +68,7 @@ public class DataSourceInfo {
     this.curSource = nodes.get(curPos);
   }
 
-  public DataClient nextDataClient(boolean byTimestamp, long timestamp) {
+  public AsyncDataClient nextDataClient(boolean byTimestamp, long timestamp) {
     if (this.nodes.isEmpty()) {
       this.isNoData = false;
       return null;
@@ -80,7 +80,7 @@ public class DataSourceInfo {
       logger.debug("querying {} from {} of {}", request.path, node, partitionGroup.getHeader());
       try {
 
-        DataClient client = this.metaGroupMember.getDataClient(node);
+        AsyncDataClient client = this.metaGroupMember.getDataClient(node);
         Long newReaderId = applyForReaderId(client, byTimestamp, timestamp);
 
         if (newReaderId != null) {
@@ -118,7 +118,7 @@ public class DataSourceInfo {
     return null;
   }
 
-  private Long applyForReaderId(DataClient client, boolean byTimestamp, long timestamp)
+  private Long applyForReaderId(AsyncDataClient client, boolean byTimestamp, long timestamp)
       throws TException, InterruptedException {
     Long newReaderId;
     if (byTimestamp) {
@@ -145,7 +145,7 @@ public class DataSourceInfo {
     return this.curSource;
   }
 
-  public DataClient getCurClient() throws IOException {
+  public AsyncDataClient getCurClient() throws IOException {
     return noClient ? null : metaGroupMember.getDataClient(this.curSource);
   }
 
@@ -181,7 +181,7 @@ public class DataSourceInfo {
   }
 
   boolean switchNode(boolean byTimestamp, long timeOffset) throws IOException {
-    DataClient newClient = nextDataClient(byTimestamp, timeOffset);
+    AsyncDataClient newClient = nextDataClient(byTimestamp, timeOffset);
     logger.info("Client failed, changed to {}", newClient);
     if (newClient == null) {
       if (!isNoData()) {
