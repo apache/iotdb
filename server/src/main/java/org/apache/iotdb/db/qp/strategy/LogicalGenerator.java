@@ -154,6 +154,7 @@ import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowVersionContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.ShowWhereClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SlimitClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SoffsetClauseContext;
+import org.apache.iotdb.db.qp.strategy.SqlBaseParser.StringLiteralContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.SuffixPathContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TagClauseContext;
 import org.apache.iotdb.db.qp.strategy.SqlBaseParser.TimeIntervalContext;
@@ -303,20 +304,20 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.autoCreateSchema() != null) {
       if (ctx.autoCreateSchema().INT() != null) {
         initializedOperator = new LoadFilesOperator(
-            new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
+            new File(removeStringQuote(ctx.stringLiteral().getText())),
             Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
             Integer.parseInt(ctx.autoCreateSchema().INT().getText())
         );
       } else {
         initializedOperator = new LoadFilesOperator(
-            new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
+            new File(removeStringQuote(ctx.stringLiteral().getText())),
             Boolean.parseBoolean(ctx.autoCreateSchema().booleanClause().getText()),
             IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
         );
       }
     } else {
       initializedOperator = new LoadFilesOperator(
-          new File(removeStringQuote(ctx.STRING_LITERAL().getText())),
+          new File(removeStringQuote(ctx.stringLiteral().getText())),
           true,
           IoTDBDescriptor.getInstance().getConfig().getDefaultStorageGroupLevel()
       );
@@ -327,15 +328,15 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterMoveFile(MoveFileContext ctx) {
     super.enterMoveFile(ctx);
     initializedOperator = new MoveFileOperator(
-        new File(removeStringQuote(ctx.STRING_LITERAL(0).getText())),
-        new File(removeStringQuote(ctx.STRING_LITERAL(1).getText())));
+        new File(removeStringQuote(ctx.stringLiteral(0).getText())),
+        new File(removeStringQuote(ctx.stringLiteral(1).getText())));
   }
 
   @Override
   public void enterRemoveFile(RemoveFileContext ctx) {
     super.enterRemoveFile(ctx);
     initializedOperator = new RemoveFileOperator(
-        new File(removeStringQuote(ctx.STRING_LITERAL().getText())));
+        new File(removeStringQuote(ctx.stringLiteral().getText())));
   }
 
   @Override
@@ -435,7 +436,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     if (ctx.property(0) != null) {
       for (PropertyContext property : tagsList) {
         String value;
-        if (property.propertyValue().STRING_LITERAL() != null) {
+        if (property.propertyValue().stringLiteral() != null) {
           value = removeStringQuote(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
@@ -584,7 +585,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       throw new SQLParserException("data load command: child count < 3\n");
     }
 
-    String csvPath = ctx.STRING_LITERAL().getText();
+    String csvPath = ctx.stringLiteral().getText();
     StringContainer sc = new StringContainer(TsFileConstant.PATH_SEPARATOR);
     List<NodeNameContext> nodeNames = ctx.prefixPath().nodeName();
     sc.addTail(ctx.prefixPath().ROOT().getText());
@@ -736,9 +737,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   }
 
   private String[] parsePrivilege(PrivilegesContext ctx) {
-    List<TerminalNode> privilegeList = ctx.STRING_LITERAL();
+    List<StringLiteralContext> privilegeList = ctx.stringLiteral();
     List<String> privileges = new ArrayList<>();
-    for (TerminalNode privilege : privilegeList) {
+    for (StringLiteralContext privilege : privilegeList) {
       privileges.add(removeStringQuote(privilege.getText()));
     }
     return privileges.toArray(new String[0]);
@@ -1181,7 +1182,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     Map<String, String> tags = new HashMap<>(property2.size());
     if (property3 != null) {
       for (PropertyContext property : property2) {
-        if (property.propertyValue().STRING_LITERAL() != null) {
+        if (property.propertyValue().stringLiteral() != null) {
           value = removeStringQuote(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
@@ -1371,7 +1372,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
       operator.setKey(ctx.property().ID().getText());
     }
     String value;
-    if (propertyValueContext.STRING_LITERAL() != null) {
+    if (propertyValueContext.stringLiteral() != null) {
       value = removeStringQuote(propertyValueContext.getText());
     } else {
       value = propertyValueContext.getText();
