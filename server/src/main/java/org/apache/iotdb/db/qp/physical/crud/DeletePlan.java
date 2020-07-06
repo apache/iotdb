@@ -40,8 +40,9 @@ public class DeletePlan extends PhysicalPlan {
   /**
    * constructor of DeletePlan with single path.
    *
-   * @param deleteTime delete time (data points to be deleted in the timeseries whose time is <= deleteTime)
-   * @param path time series path
+   * @param deleteTime delete time (data points to be deleted in the timeseries whose time is <=
+   *                   deleteTime)
+   * @param path       time series path
    */
   public DeletePlan(long deleteTime, Path path) {
     super(false, Operator.OperatorType.DELETE);
@@ -52,8 +53,9 @@ public class DeletePlan extends PhysicalPlan {
   /**
    * constructor of DeletePlan with multiple paths.
    *
-   * @param deleteTime delete time (data points to be deleted in the timeseries whose time is <= deleteTime)
-   * @param paths time series paths in List structure
+   * @param deleteTime delete time (data points to be deleted in the timeseries whose time is <=
+   *                   deleteTime)
+   * @param paths      time series paths in List structure
    */
   public DeletePlan(long deleteTime, List<Path> paths) {
     super(false, Operator.OperatorType.DELETE);
@@ -80,6 +82,15 @@ public class DeletePlan extends PhysicalPlan {
   @Override
   public List<Path> getPaths() {
     return paths;
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for (Path path : paths) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
   }
 
   public void setPaths(List<Path> paths) {

@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
+
   private Path path;
 
   public SetStorageGroupPlan() {
@@ -39,7 +40,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     super(false, Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
   }
-  
+
   public Path getPath() {
     return path;
   }
@@ -47,12 +48,21 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   public void setPath(Path path) {
     this.path = path;
   }
-  
+
   @Override
   public List<Path> getPaths() {
     List<Path> ret = new ArrayList<>();
     if (path != null) {
       ret.add(path);
+    }
+    return ret;
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    if (path != null) {
+      ret.add(path.getFullPath());
     }
     return ret;
   }

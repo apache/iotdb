@@ -39,6 +39,11 @@ public class ShowPlan extends PhysicalPlan {
     return null;
   }
 
+  @Override
+  public List<String> getPathsStrings() {
+    return null;
+  }
+
   public ShowContentType getShowContentType() {
     return showContentType;
   }

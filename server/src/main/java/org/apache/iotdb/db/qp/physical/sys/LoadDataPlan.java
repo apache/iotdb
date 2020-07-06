@@ -48,6 +48,15 @@ public class LoadDataPlan extends PhysicalPlan {
     return ret;
   }
 
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    if (measureType != null) {
+      ret.add(measureType);
+    }
+    return ret;
+  }
+
   public String getInputFilePath() {
     return inputFilePath;
   }

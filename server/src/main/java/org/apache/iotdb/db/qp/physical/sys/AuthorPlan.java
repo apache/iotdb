@@ -255,6 +255,15 @@ public class AuthorPlan extends PhysicalPlan {
   }
 
   @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    if (nodeName != null) {
+      ret.add(nodeName.getFullPath());
+    }
+    return ret;
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

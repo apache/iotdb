@@ -43,9 +43,9 @@ public class UpdatePlan extends PhysicalPlan {
    * Construct function for UpdatePlan.
    *
    * @param startTime -start time
-   * @param endTime -end time
-   * @param value -value
-   * @param path -path
+   * @param endTime   -end time
+   * @param value     -value
+   * @param path      -path
    */
   public UpdatePlan(long startTime, long endTime, String value, Path path) {
     super(false, Operator.OperatorType.UPDATE);
@@ -57,9 +57,9 @@ public class UpdatePlan extends PhysicalPlan {
   /**
    * Construct function for UpdatePlan.
    *
-   * @param list -list to initial intervals
+   * @param list  -list to initial intervals
    * @param value -value
-   * @param path -path
+   * @param path  -path
    */
   public UpdatePlan(List<Pair<Long, Long>> list, String value, Path path) {
     super(false, Operator.OperatorType.UPDATE);
@@ -101,6 +101,15 @@ public class UpdatePlan extends PhysicalPlan {
     List<Path> ret = new ArrayList<>();
     if (path != null) {
       ret.add(path);
+    }
+    return ret;
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    if (path != null) {
+      ret.add(path.getFullPath());
     }
     return ret;
   }

@@ -50,6 +50,11 @@ public class DataAuthPlan extends PhysicalPlan {
   }
 
   @Override
+  public List<String> getPathsStrings() {
+    return null;
+  }
+
+  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = this.getPlanType(super.getOperatorType());
     stream.writeByte((byte) type);
