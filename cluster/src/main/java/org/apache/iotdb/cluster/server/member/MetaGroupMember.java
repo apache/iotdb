@@ -1626,6 +1626,24 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
     return forwardPlan(planGroupMap, plan);
   }
 
+  private Map<PhysicalPlan, PartitionGroup> splitPlan(PhysicalPlan plan)
+      throws UnsupportedPlanException, CheckConsistencyException {
+    Map<PhysicalPlan, PartitionGroup> planGroupMap = null;
+    try {
+      planGroupMap = router.splitAndRoutePlan(plan);
+    } catch (StorageGroupNotSetException e) {
+      syncLeaderWithConsistencyCheck();
+      try {
+        planGroupMap = router.splitAndRoutePlan(plan);
+      } catch (MetadataException ex) {
+        // ignore
+      }
+    } catch (MetadataException e) {
+      logger.error("Cannot route plan {}", plan, e);
+    }
+    return planGroupMap;
+  }
+
   /**
    * Forward plans to the DataGroupMember of one node in the corresponding group. Only when all
    * nodes time out, will a TIME_OUT be returned.
