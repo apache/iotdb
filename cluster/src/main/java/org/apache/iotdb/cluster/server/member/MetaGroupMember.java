@@ -1402,7 +1402,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
         applySnapshotUsers(authorizer, snapshot);
         applySnapshotRoles(authorizer, snapshot);
       } catch (AuthException e) {
-        logger.error("{}: Cannot get authorizer instance, error is: {}", name, e);
+        logger.error("{}: Cannot get authorizer instance, error is: ", name, e);
       }
 
       // 5. accept partition table
