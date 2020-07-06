@@ -126,23 +126,6 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
-  public List<String> getPathsStrings() {
-    if (paths != null) {
-      List<String> ret = new ArrayList<>();
-      for(Path path : paths){
-        ret.add(path.getFullPath());
-      }
-      return ret;
-    }
-    List<Path> ret = new ArrayList<>();
-    for (String m : measurements) {
-      ret.add(new Path(deviceId, m));
-    }
-    paths = ret;
-    return getPathsStrings();
-  }
-
-  @Override
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     stream.writeByte((byte) type);

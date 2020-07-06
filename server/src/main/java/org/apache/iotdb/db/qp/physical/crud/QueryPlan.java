@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.ArrayList;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -51,15 +50,6 @@ public abstract class QueryPlan extends PhysicalPlan {
   @Override
   public List<Path> getPaths() {
     return paths;
-  }
-
-  @Override
-  public List<String> getPathsStrings() {
-    List<String> ret = new ArrayList<>();
-    for(Path path : paths){
-      ret.add(path.getFullPath());
-    }
-    return ret;
   }
 
   public void setPaths(List<Path> paths) {

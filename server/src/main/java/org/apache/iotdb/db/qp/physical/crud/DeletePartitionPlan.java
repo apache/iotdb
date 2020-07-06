@@ -41,11 +41,6 @@ public class DeletePartitionPlan extends PhysicalPlan {
     return null;
   }
 
-  @Override
-  public List<String> getPathsStrings() {
-    return null;
-  }
-
   public String getStorageGroupName() {
     return storageGroupName;
   }
