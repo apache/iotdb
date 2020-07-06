@@ -34,7 +34,8 @@ IF ["%IOTDB_HEAP_OPTS%"] EQU [""] (
 		IF NOT ERRORLEVEL 1 (
 			rem 64-bit Java
 			echo Detect 64-bit Java, maximum memory allocation pool = 2GB, initial memory allocation pool = 2GB
-			set IOTDB_HEAP_OPTS=-Xmx2G -Xms2G -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails
+			set IOTDB_HEAP_OPTS=-Xmx4G -Xms4G -Xloggc:"%IOTDB_HOME%\gc.log" -XX:+PrintGCDateStamps
+			-XX:+PrintGCDetails
 		) ELSE (
 			rem 32-bit Java
 			echo Detect 32-bit Java, maximum memory allocation pool = 512MB, initial memory allocation pool = 512MB
@@ -56,7 +57,7 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 IF "%BIT_VERSION%" == "64-Bit" (
 	rem 64-bit Java
 	echo Detect 64-bit Java, maximum memory allocation pool = 2GB, initial memory allocation pool = 2GB
-	set IOTDB_HEAP_OPTS=-Xmx2G -Xms2G
+	set IOTDB_HEAP_OPTS=-Xmx4G -Xms4G
 ) ELSE (
 	rem 32-bit Java
 	echo Detect 32-bit Java, maximum memory allocation pool = 512MB, initial memory allocation pool = 512MB

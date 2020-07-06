@@ -75,6 +75,7 @@ import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TFastFramedTransport;
 import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -273,7 +274,7 @@ public class SyncClient implements ISyncClient {
 
   @Override
   public void establishConnection(String serverIp, int serverPort) throws SyncConnectionException {
-    transport = new TSocket(serverIp, serverPort, TIMEOUT_MS);
+    transport = new TFastFramedTransport(new TSocket(serverIp, serverPort, TIMEOUT_MS));
     TProtocol protocol = new TBinaryProtocol(transport);
     serviceClient = new SyncService.Client(protocol);
     try {

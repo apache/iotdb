@@ -158,12 +158,11 @@ public class RaftLogManager {
    * Returns the term for given index.
    *
    * @param index request entry index
-   * @return throw EntryCompactedException if index < dummyIndex, throw EntryUnavailableException if
+   * @return throw EntryCompactedException if index < dummyIndex, -1 if
    * index > lastIndex, otherwise return the entry's term for given index
-   * @throws EntryUnavailableException
    * @throws EntryCompactedException
    */
-  public long getTerm(long index) throws EntryUnavailableException, EntryCompactedException {
+  public long getTerm(long index) throws EntryCompactedException {
     long dummyIndex = getFirstIndex() - 1;
     if (index < dummyIndex) {
       logger.info("{}: invalid getTerm: parameter: index({}) < compactIndex({})", name, index,
@@ -172,9 +171,7 @@ public class RaftLogManager {
     }
     long lastIndex = getLastLogIndex();
     if (index > lastIndex) {
-      logger.info("{}: invalid getTerm: parameter: index({}) > lastIndex({})", name, index,
-          lastIndex);
-      throw new EntryUnavailableException(index, lastIndex);
+      return -1;
     }
     if (index >= getUnCommittedEntryManager().getFirstUnCommittedIndex()) {
       return getUnCommittedEntryManager().maybeTerm(index);

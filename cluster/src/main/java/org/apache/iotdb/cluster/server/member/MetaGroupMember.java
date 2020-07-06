@@ -294,7 +294,8 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    * @return true if the member is a leader and the partition is closed, false otherwise
    */
   public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
-    Node header = partitionTable.routeToHeaderByTime(storageGroupName, partitionId);
+    Node header = partitionTable.routeToHeaderByTime(storageGroupName,
+        partitionId * StorageEngine.getTimePartitionInterval());
     return getLocalDataMember(header).closePartition(storageGroupName, partitionId, isSeq);
   }
 
@@ -1640,7 +1641,7 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
    */
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
     InsertRowPlan backup = null;
-    if (plan instanceof InsertPlan) {
+    if (plan instanceof InsertRowPlan) {
       backup = (InsertRowPlan) ((InsertRowPlan) plan).clone();
     }
     // the error codes from the groups that cannot execute the plan

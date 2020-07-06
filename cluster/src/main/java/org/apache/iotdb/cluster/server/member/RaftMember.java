@@ -177,8 +177,8 @@ public abstract class RaftMember implements RaftService.AsyncIface {
     heartBeatService =
         Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
             name + "-HeartbeatThread@" + System.currentTimeMillis()));
-    catchUpService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-    appendLogThreadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    catchUpService = Executors.newCachedThreadPool();
+    appendLogThreadPool = Executors.newCachedThreadPool();
     logger.info("{} started", name);
   }
 
@@ -262,7 +262,7 @@ public abstract class RaftMember implements RaftService.AsyncIface {
           // The term of the last log needs to be the same with leader's term in order to preserve
           // safety, otherwise it may come from an invalid leader and is not committed
           if (logManager.maybeCommit(request.getCommitLogIndex(), request.getCommitLogTerm())) {
-            logger.info("{}: Committing to {}-{}, localCommit: {}-{}, localLast: {}-{}", name,
+            logger.debug("{}: Committing to {}-{}, localCommit: {}-{}, localLast: {}-{}", name,
                 request.getCommitLogIndex(),
                 request.getCommitLogTerm(), logManager.getCommitLogIndex(),
                 logManager.getCommitLogTerm(), logManager.getLastLogIndex(),

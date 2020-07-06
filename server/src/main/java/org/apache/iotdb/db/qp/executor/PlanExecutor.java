@@ -928,7 +928,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
     throws MetadataException {
-    return mManager.getSeriesSchemasAndLock(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
+    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
   }
 
   @Override
@@ -945,8 +945,8 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(e);
     } finally {
       // TODO: put lock and unlock in the same block
-      mManager.unlockInsert(insertRowPlan.getDeviceId());
-    }
+      mManager.unlockDeviceReadLock(insertRowPlan.getDeviceId());
+  }
   }
 
   @Override
@@ -962,7 +962,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockInsert(insertTabletPlan.getDeviceId());
+      mManager.unlockDeviceReadLock(insertTabletPlan.getDeviceId());
     }
   }
 

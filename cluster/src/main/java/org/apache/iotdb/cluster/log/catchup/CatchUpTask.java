@@ -64,26 +64,25 @@ public class CatchUpTask implements Runnable {
     boolean isLogDebug = logger.isDebugEnabled();
     long lo = -1;
     long hi;
-    synchronized (raftMember.getLogManager()) {
-      try {
-        long localFirstIndex = raftMember.getLogManager().getFirstIndex();
-        lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
-        hi = raftMember.getLogManager().getLastLogIndex() + 1;
-        logs = raftMember.getLogManager().getEntries(lo, hi);
-        // this may result from peer's match index being changed concurrently, making the peer
-        // actually catch up now
-        if (logs.isEmpty()) {
-          return true;
-        }
-        if (isLogDebug) {
-          logger.debug(
-              "{}: use {} logs of [{}, {}] to fix log inconsistency with node [{}], "
-              + "local first index: {}",
-              raftMember.getName(), logs.size(), lo, hi, node, localFirstIndex);
-        }
-      } catch (Exception e) {
-        logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
+    logger.debug("Checking the match index of {}", node);
+    try {
+      long localFirstIndex = raftMember.getLogManager().getFirstIndex();
+      lo = Math.max(localFirstIndex, peer.getMatchIndex() + 1);
+      hi = raftMember.getLogManager().getLastLogIndex() + 1;
+      logs = raftMember.getLogManager().getEntries(lo, hi);
+      // this may result from peer's match index being changed concurrently, making the peer
+      // actually catch up now
+      if (logs.isEmpty()) {
+        return true;
       }
+      if (isLogDebug) {
+        logger.debug(
+            "{}: use {} logs of [{}, {}] to fix log inconsistency with node [{}], "
+                + "local first index: {}",
+            raftMember.getName(), logs.size(), lo, hi, node, localFirstIndex);
+      }
+    } catch (Exception e) {
+      logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
     }
     int index = logs.size() - 1;
     // if index < 0 then send Snapshot and all the logs in logManager
