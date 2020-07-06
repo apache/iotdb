@@ -458,7 +458,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.\'1.2.4\'", TSDataType.INT64, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
 
     session.setStorageGroup("root.1");
@@ -530,7 +530,7 @@ public class IoTDBSessionIT {
         CompressionType.SNAPPY);
     session.createTimeseries("root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
-    session.createTimeseries("root.sg1.d1.\'1.2.4\'", TSDataType.INT64, TSEncoding.RLE,
+    session.createTimeseries("root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE,
         CompressionType.SNAPPY);
 
     session.setStorageGroup("root.1");
@@ -873,7 +873,7 @@ public class IoTDBSessionIT {
   private void queryForAlignByDevice()
       throws StatementExecutionException, IoTDBConnectionException {
     SessionDataSet sessionDataSet = session
-        .executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
+        .executeQueryStatement("select \"11\", s1, \"11\" from root.sg1.d1 align by device");
     sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
@@ -883,7 +883,7 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',", sb.toString());
+      Assert.assertEquals("root.sg1.d1,\"11\",0,\"11\",", sb.toString());
     }
     Assert.assertEquals(1000, count);
     sessionDataSet.closeOperationHandle();
@@ -892,7 +892,7 @@ public class IoTDBSessionIT {
   private void queryForAlignByDevice2()
       throws IoTDBConnectionException, StatementExecutionException {
     SessionDataSet sessionDataSet = session.executeQueryStatement(
-        "select '11', s1, '11', s5, s1, s5 from root.sg1.d1 align by device");
+        "select \"11\", s1, \"11\", s5, s1, s5 from root.sg1.d1 align by device");
     sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
@@ -902,7 +902,7 @@ public class IoTDBSessionIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,\'11\',0,\'11\',null,0,null,", sb.toString());
+      Assert.assertEquals("root.sg1.d1,\"11\",0,\"11\",null,0,null,", sb.toString());
     }
     Assert.assertEquals(1000, count);
     sessionDataSet.closeOperationHandle();
@@ -1039,7 +1039,7 @@ public class IoTDBSessionIT {
     checkCreateTimeseries(session, "root.vehicle.d0.1220", true);
     checkCreateTimeseries(session, "root.vehicle._1234.s0", true);
     checkCreateTimeseries(session, "root.vehicle.1245.\"1.2.3\"", true);
-    checkCreateTimeseries(session, "root.vehicle.1245.\'1.2.4\'", true);
+    checkCreateTimeseries(session, "root.vehicle.1245.\'1.2.4\'", false);
     checkCreateTimeseries(session, "root.vehicle./d0.s0", true);
     checkCreateTimeseries(session, "root.vehicle.d\t0.s0", false);
     checkCreateTimeseries(session, "root.vehicle.!d\t0.s0", false);
