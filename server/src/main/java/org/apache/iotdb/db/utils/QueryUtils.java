@@ -59,9 +59,11 @@ public class QueryUtils {
     }
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(metaData -> {
-      for (TimeRange range : metaData.getDeleteIntervalList()) {
-        if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
-          return true;
+      if (metaData.getDeleteIntervalList() != null) {
+        for (TimeRange range : metaData.getDeleteIntervalList()) {
+          if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
+            return true;
+          }
         }
       }
       return false;
@@ -71,7 +73,7 @@ public class QueryUtils {
   private static void doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {
     if (modification instanceof Deletion) {
       Deletion deletion = (Deletion) modification;
-      metaData.addDeletion(deletion.getStartTime(), deletion.getEndTime());
+      metaData.insertIntoSortedDeletions(deletion.getStartTime(), deletion.getEndTime());
     }
   }
 
