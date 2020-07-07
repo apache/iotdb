@@ -286,7 +286,7 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 
 主要查询逻辑封装在`MManager`的`showTimeseries(ShowTimeSeriesPlan plan)`方法中
 
-* 首先判断需不需要根据热度排序，如果需要，则调用`MTree`的`getAllMeasurementSchemaByHeatOrder`方法，否则调用`getAllMeasurementSchema`方法
+首先判断需不需要根据热度排序，如果需要，则调用`MTree`的`getAllMeasurementSchemaByHeatOrder`方法，否则调用`getAllMeasurementSchema`方法
 
 #### getAllMeasurementSchemaByHeatOrder
 
@@ -294,6 +294,32 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 
 #### getAllMeasurementSchema
 
-这里需要
+这里需要在findPath的时候就将limit（如果没有limit，则将请求的fetchSize当成limit）和offset参数传递下去，减少内存占用。
+
+#### findPath
+
+这个方法封装了在MTree中遍历得到满足条件的时间序列的逻辑，是个递归方法，由根节点往下递归寻找，直到当前时间序列数量达到limit或者已经遍历完整个MTree。
 
 ### 带过滤条件的元数据查询
+
+这里的过滤条件只能是tag属性，否则抛异常。
+
+通过在MManager中维护的tag的倒排索引，获得所有满足索引条件的`MeasurementMNode`。
+
+若需要根据热度排序，则根据`lastTimeStamp`进行排序，否则根据序列名的字母序排序，然后再做`offset`和`limit`的截断。
+
+### ShowTimeseries结果集
+
+如果元数据量过多，一次show timeseries的结果可能导致OOM，所以增加fetch size参数，客户端跟服务器端交互时，服务器端一次最多只会取fetch size个时间序列。
+
+多次交互的状态信息就存在`ShowTimeseriesDataSet`中。`ShowTimeseriesDataSet`中保存了此次的`ShowTimeSeriesPlan`，当前的游标`index`以及缓存的结果行列表`List<RowRecord> result`。
+
+* 判断游标`index`是否等于缓存的结果行`List<RowRecord> result`的size
+    * 若相等，则调用MManager中的相应的方法取结果，放入缓存
+        * 若是带过滤条件的元数据查询，则调用`getAllTimeseriesSchema`方法
+        * 若是不带过滤条件的元数据查询，则调用`showTimeseries`方法
+        * 需要相应的修改plan中的offset，将offset向前推fetch size大小
+        * 若`hasLimit`为`false`，则将index重新置为0
+    * 若不相等
+        * `index < result.size()`，返回true
+        * `index > result.size()`，返回false        

@@ -48,8 +48,13 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
     if (index == result.size()) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
-        List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
-            .showTimeseries(plan);
+        List<ShowTimeSeriesResult> showTimeSeriesResults;
+        // show timeseries with index
+        if (plan.getKey() != null && plan.getValue() != null) {
+          showTimeSeriesResults = MManager.getInstance().getAllTimeseriesSchema(plan);
+        } else {
+          showTimeSeriesResults = MManager.getInstance().showTimeseries(plan);
+        }
         result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults);
         if (!hasLimit) {
           index = 0;

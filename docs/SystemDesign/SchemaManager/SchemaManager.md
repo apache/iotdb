@@ -282,3 +282,50 @@ All timeseries tag/attribute information will be saved in the tag file, which de
 
 > tagsSize (tag1=v1, tag2=v2) attributesSize (attr1=v1, attr2=v2)
 
+## Metadata Query
+
+### show timeseries without index
+
+The main logic of query is in the `showTimeseries(ShowTimeSeriesPlan plan)` function of `MManager`
+
+First of all, we should judge whether we need to order by heat, if so, call the `getAllMeasurementSchemaByHeatOrder` function of `MTree`. Otherwise, call the `getAllMeasurementSchema` function.
+
+#### getAllMeasurementSchemaByHeatOrder
+
+The heat here is represented by the `lastTimeStamp` of each time series, so we need to fetch all the satisfied time series, and then order them by `lastTimeStamp`, cut them by `offset` and `limit`.
+
+#### getAllMeasurementSchema
+
+In this case, we need to pass the limit(if not exists, set fetch size as limit) and offset to the function `findPath` to reduce the memory footprint.
+
+#### findPath
+
+It's a recursive function to get all the statisfied MNode in MTree from root until the number of timeseris list has reached limit or all the MTree has been traversed.
+
+### show timeseries with index
+
+The filter condition here can only be tag attribute, or it will throw an exception.
+
+We can fetch all the satisfied `MeasurementMNode` through the inverted tag index in MTree fast without traversing the whole tree.
+
+If the result needs to be ordered by heat, we should sort them by the order of `lastTimeStamp` or by the natural order, and then we will trim the result by limit and offset.
+
+### ShowTimeseries Dataset
+
+If there is too much metadata , one whole `show timeseris` processing will cause OOM, so we need to add a `fetch size` parameter.
+
+While the client interacting with the server, it will get at most `fetch_size` records once.
+
+And the intermediate state will be saved in the `ShowTimeseriesDataSet`. The `queryId -> ShowTimeseriesDataSet` key-value pair will be saved in `TsServieImpl`.
+
+In `ShowTimeseriesDataSet`, we saved the `ShowTimeSeriesPlan`, current cursor `index` and cached result list `List<RowRecord> result`.
+
+* judge whether the cursor `index`is equal to the size of `List<RowRecord> result`
+    * if so, call the corresponding method in MManager to fetch result and put them into cache.
+        * if it is a query without index, call the method `showTimeseries`
+        * if it is a query with index, call the method `getAllTimeseriesSchema`
+        * we need to update the offset in plan each time we call the method in MManger to fetch result, we should add it with `fetch size`.
+        * if`hasLimit` is `false`，the reset `index` to zero.
+    * if not
+        * if `index < result.size()`，return true
+        * if `index > result.size()`，return false 
