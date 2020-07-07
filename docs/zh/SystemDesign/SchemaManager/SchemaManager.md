@@ -282,4 +282,18 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 
 ## 元数据查询
 
-### 
+### 不带过滤条件的元数据查询
+
+主要查询逻辑封装在`MManager`的`showTimeseries(ShowTimeSeriesPlan plan)`方法中
+
+* 首先判断需不需要根据热度排序，如果需要，则调用`MTree`的`getAllMeasurementSchemaByHeatOrder`方法，否则调用`getAllMeasurementSchema`方法
+
+#### getAllMeasurementSchemaByHeatOrder
+
+这里的热度是用每个时间序列的`lastTimeStamp`来表征的，所以需要先取出所有满足条件的序列，然后根据`lastTimeStamp`进行排序，然后再做`offset`和`limit`的截断
+
+#### getAllMeasurementSchema
+
+这里需要
+
+### 带过滤条件的元数据查询
