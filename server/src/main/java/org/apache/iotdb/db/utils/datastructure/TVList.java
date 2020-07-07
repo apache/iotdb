@@ -27,10 +27,10 @@ import java.util.List;
 import org.apache.iotdb.db.rescon.PrimitiveArrayPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 public abstract class TVList {
 
@@ -47,7 +47,7 @@ public abstract class TVList {
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
-  private List<Pair<Long, Long>> deletionList;
+  private List<TimeRange> deletionList;
   private long version;
 
   protected long pivotTime;
@@ -347,7 +347,7 @@ public abstract class TVList {
   /**
    * this field is effective only in the Tvlist in a RealOnlyMemChunk.
    */
-  public void setDeletionList(List<Pair<Long, Long>> list) {
+  public void setDeletionList(List<TimeRange> list) {
     this.deletionList = list;
   }
 
@@ -501,6 +501,7 @@ public abstract class TVList {
     private int cur;
     private Integer floatPrecision;
     private TSEncoding encoding;
+    private int deleteCursor = 0;
 
     public Ite() {
     }
@@ -531,11 +532,13 @@ public abstract class TVList {
     }
 
     private boolean isPointDeleted(long timestamp) {
-      if (deletionList != null) {
-        for (Pair<Long, Long> del : deletionList) {
-          if (del.left <= timestamp && timestamp <= del.right) {
-            return true;
-          }
+      while (deleteCursor < deletionList.size()) {
+        if (deletionList.get(deleteCursor).contains(timestamp)) {
+          return true;
+        } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+          deleteCursor++;
+        } else {
+          return false;
         }
       }
       return false;

@@ -37,7 +37,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -204,7 +204,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
-    List<Pair<Long, Long>> deletionList = constructDeletionList(deviceId, measurement, timeLowerBound);
+    List<TimeRange> deletionList = constructDeletionList(deviceId, measurement, timeLowerBound);
     IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
     TVList chunkCopy = memChunk.getTVList().clone();
 
@@ -212,22 +212,21 @@ public abstract class AbstractMemTable implements IMemTable {
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());
   }
 
-  //TODO: reimplement this method.
-  private List<Pair<Long, Long>> constructDeletionList(String deviceId, String measurement,
+  private List<TimeRange> constructDeletionList(String deviceId, String measurement,
       long timeLowerBound) {
-    List<Pair<Long, Long>> deletionList = new ArrayList<>();
-    deletionList.add(new Pair<>(Long.MIN_VALUE, timeLowerBound));
+    List<TimeRange> deletionList = new ArrayList<>();
+    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : modifications) {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
         if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
             && deletion.getEndTime() > timeLowerBound) {
           long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-          deletionList.add(new Pair<>(lowerBound, deletion.getEndTime()));
+          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
         }
       }
     }
-    return deletionList;
+    return TimeRange.sortAndMerge(deletionList);
   }
 
   @Override

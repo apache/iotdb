@@ -25,10 +25,10 @@ import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import java.io.IOException;
@@ -65,7 +65,7 @@ public class PageReader implements IPageReader {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteIntervalList;
+  private List<TimeRange> deleteIntervalList;
 
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
       Decoder timeDecoder, Filter filter) {
@@ -104,43 +104,47 @@ public class PageReader implements IPageReader {
   public BatchData getAllSatisfiedPageData() throws IOException {
 
     BatchData pageData = new BatchData(dataType);
+    int deleteCursor = 0;
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
+      if (isDeleted(timestamp, deleteCursor)) {
+        continue;
+      }
       switch (dataType) {
         case BOOLEAN:
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
+          if (filter == null || filter.satisfy(timestamp, aBoolean)) {
             pageData.putBoolean(timestamp, aBoolean);
           }
           break;
         case INT32:
           int anInt = valueDecoder.readInt(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
+          if (filter == null || filter.satisfy(timestamp, anInt)) {
             pageData.putInt(timestamp, anInt);
           }
           break;
         case INT64:
           long aLong = valueDecoder.readLong(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
+          if (filter == null || filter.satisfy(timestamp, aLong)) {
             pageData.putLong(timestamp, aLong);
           }
           break;
         case FLOAT:
           float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
+          if (filter == null || filter.satisfy(timestamp, aFloat)) {
             pageData.putFloat(timestamp, aFloat);
           }
           break;
         case DOUBLE:
           double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
+          if (filter == null || filter.satisfy(timestamp, aDouble)) {
             pageData.putDouble(timestamp, aDouble);
           }
           break;
         case TEXT:
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
-          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
+          if (filter == null || filter.satisfy(timestamp, aBinary)) {
             pageData.putBinary(timestamp, aBinary);
           }
           break;
@@ -161,7 +165,7 @@ public class PageReader implements IPageReader {
     this.filter = filter;
   }
 
-  public void setDeleteIntervalList(List<Pair<Long, Long>> list) {
+  public void setDeleteIntervalList(List<TimeRange> list) {
     this.deleteIntervalList = list;
   }
 
@@ -170,12 +174,14 @@ public class PageReader implements IPageReader {
     return pageHeader.isModified();
   }
 
-  private boolean isDeleted(long timestamp) {
-    if (deleteIntervalList != null) {
-      for (Pair<Long, Long> delete : deleteIntervalList) {
-        if (delete.left <= timestamp && timestamp <= delete.right) {
-          return true;
-        }
+  private boolean isDeleted(long timestamp, int deleteCursor) {
+    while (deleteCursor < deleteIntervalList.size()) {
+      if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
+        return true;
+      } else if (deleteIntervalList.get(deleteCursor).getMax() < timestamp) {
+        deleteCursor++;
+      } else {
+        return false;
       }
     }
     return false;

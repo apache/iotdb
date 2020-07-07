@@ -27,8 +27,8 @@ import java.util.Objects;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -55,7 +55,7 @@ public class ChunkMetadata implements Accountable {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteIntervalList;
+  private List<TimeRange> deleteIntervalList;
 
   private boolean modified;
 
@@ -174,22 +174,34 @@ public class ChunkMetadata implements Accountable {
     this.version = version;
   }
 
-  public List<Pair<Long, Long>> getDeleteIntervalList() {
+  public List<TimeRange> getDeleteIntervalList() {
     if (deleteIntervalList == null) {
       return new ArrayList<>();
     }
     return deleteIntervalList;
   }
 
-  public void setDeleteIntervalList(List<Pair<Long, Long>> list) {
+  public void setDeleteIntervalList(List<TimeRange> list) {
     this.deleteIntervalList = list;
   }
 
   public void addDeletion(long startTime, long endTime) {
-    if (deleteIntervalList == null) {
-      deleteIntervalList = new ArrayList<>();
+    List<TimeRange> resultInterval = new ArrayList<>();
+    for (TimeRange interval : deleteIntervalList) {
+      if (interval.getMax() < startTime) {
+        resultInterval.add(interval);
+      } else if (interval.getMin() > endTime) {
+        resultInterval.add(new TimeRange(startTime, endTime));
+        startTime = interval.getMin();
+        endTime = interval.getMax();
+      } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
+        startTime = Math.min(interval.getMin(), startTime);
+        endTime = Math.max(interval.getMax(), endTime);
+      }
     }
-    this.deleteIntervalList.add(new Pair<>(startTime, endTime));
+
+    resultInterval.add(new TimeRange(startTime, endTime));
+    deleteIntervalList = resultInterval;
   }
 
   public IChunkLoader getChunkLoader() {

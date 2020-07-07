@@ -30,7 +30,7 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 
 import java.util.List;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 public class QueryUtils {
 
@@ -49,11 +49,9 @@ public class QueryUtils {
    */
   public static void modifyChunkMetaData(List<ChunkMetadata> chunkMetaData,
                                          List<Modification> modifications) {
-    List<Modification> sortedModifications = sortModifications(modifications);
-
     for (int metaIndex = 0; metaIndex < chunkMetaData.size(); metaIndex++) {
       ChunkMetadata metaData = chunkMetaData.get(metaIndex);
-      for (Modification modification : sortedModifications) {
+      for (Modification modification : modifications) {
         if (modification.getVersionNum() > metaData.getVersion()) {
           doModifyChunkMetaData(modification, metaData);
         }
@@ -61,33 +59,13 @@ public class QueryUtils {
     }
     // remove chunks that are completely deleted
     chunkMetaData.removeIf(metaData -> {
-      long lower = metaData.getStartTime();
-      long upper = metaData.getEndTime();
-      if (metaData.getDeleteIntervalList() != null) {
-        for (Pair<Long, Long> range : metaData.getDeleteIntervalList()) {
-          if (upper < range.left) {
-            break;
-          }
-          if (range.left <= lower && lower <= range.right) {
-            metaData.setModified(true);
-            if (upper <= range.right) {
-              return true;
-            }
-            lower = range.right;
-          } else if (lower < range.left) {
-            metaData.setModified(true);
-            break;
-          }
+      for (TimeRange range : metaData.getDeleteIntervalList()) {
+        if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
+          return true;
         }
       }
       return false;
     });
-  }
-
-  private static LinkedList<Modification> sortModifications(List<Modification> modifications) {
-    return modifications.stream().filter(x -> x instanceof Deletion)
-        .sorted(Comparator.comparingLong(mods -> ((Deletion) mods).getStartTime()))
-        .collect(Collectors.toCollection(LinkedList::new));
   }
 
   private static void doModifyChunkMetaData(Modification modification, ChunkMetadata metaData) {

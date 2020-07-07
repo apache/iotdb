@@ -20,11 +20,9 @@ package org.apache.iotdb.tsfile.read.common;
 
 import java.nio.ByteBuffer;
 
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 /**
  * used in query.
@@ -36,11 +34,11 @@ public class Chunk implements Accountable {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteIntervalList;
+  private List<TimeRange> deleteIntervalList;
 
   private long ramSize;
 
-  public Chunk(ChunkHeader header, ByteBuffer buffer, List<Pair<Long, Long>> deleteIntervalList) {
+  public Chunk(ChunkHeader header, ByteBuffer buffer, List<TimeRange> deleteIntervalList) {
     this.chunkHeader = header;
     this.chunkData = buffer;
     this.deleteIntervalList = deleteIntervalList;
@@ -54,11 +52,11 @@ public class Chunk implements Accountable {
     return chunkData;
   }
 
-  public List<Pair<Long, Long>> getDeleteIntervalList() {
+  public List<TimeRange> getDeleteIntervalList() {
     return deleteIntervalList;
   }
 
-  public void setDeleteIntervalList(List<Pair<Long, Long>> list) {
+  public void setDeleteIntervalList(List<TimeRange> list) {
     this.deleteIntervalList = list;
   }
 

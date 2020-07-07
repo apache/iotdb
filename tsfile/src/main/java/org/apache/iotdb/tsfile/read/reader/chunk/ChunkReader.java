@@ -28,11 +28,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.v1.file.utils.HeaderUtils;
 
 import java.io.IOException;
@@ -58,7 +58,7 @@ public class ChunkReader implements IChunkReader {
   /**
    * A list of deleted intervals.
    */
-  private List<Pair<Long, Long>> deleteIntervalList;
+  private List<TimeRange> deleteIntervalList;
 
   /**
    * constructor of ChunkReader.
@@ -132,24 +132,12 @@ public class ChunkReader implements IChunkReader {
   }
 
   public boolean pageSatisfied(PageHeader pageHeader) {
-    long lower = pageHeader.getStartTime();
-    long upper = pageHeader.getEndTime();
-    // deleteIntervalList is sorted in terms of startTime
-    if (deleteIntervalList != null) {
-      for (Pair<Long, Long> range : deleteIntervalList) {
-        if (upper < range.left) {
-          break;
-        }
-        if (range.left <= lower && lower <= range.right) {
-          pageHeader.setModified(true);
-          if (upper <= range.right) {
-            return true;
-          }
-          lower = range.right;
-        } else if (lower < range.left) {
-          pageHeader.setModified(true);
-          break;
-        }
+    for (TimeRange range : deleteIntervalList) {
+      if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
+        return false;
+      }
+      if (range.intersects(new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()))) {
+        pageHeader.setModified(true);
       }
     }
     return filter == null || filter.satisfy(pageHeader.getStatistics());
