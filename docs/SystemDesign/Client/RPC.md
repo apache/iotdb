@@ -23,7 +23,7 @@
 
 We use thrift rpc between client and server, the definition file is :
 
-service-rpc/src/main/thrift/rpc.thrift
+thrift/src/main/thrift/rpc.thrift
 
 You can add struct and corresponding method in TSIService (service)
 
@@ -33,9 +33,16 @@ You can add struct and corresponding method in TSIService (service)
 mvn clean compile -pl service-rpc -am -DskipTests
 ```
 
+or
+
+```
+mvn clean compile -pl thrift
+
+```
+
 Generated codes:
 
-service-rpc/target/generated-sources/thrift/org/apache/iotdb/service/rpc/thrift
+thrift/target/generated-sources/thrift/org/apache/iotdb/service/rpc/thrift
 
 ## Implement the new interface
 

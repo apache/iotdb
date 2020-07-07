@@ -27,89 +27,17 @@
         <version>0.11.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>iotdb-jdbc</artifactId>
-    <name>IoTDB Jdbc</name>
-    <description>A jdbc driver for a time series database, IoTDB, which uses TsFile as its storage format on disk.</description>
-    <properties>
-        <jdbc.test.skip>false</jdbc.test.skip>
-        <jdbc.it.skip>${jdbc.test.skip}</jdbc.it.skip>
-        <jdbc.ut.skip>${jdbc.test.skip}</jdbc.ut.skip>
-    </properties>
+    <artifactId>iotdb-thrift</artifactId>
+    <name>rpc-thrift</name>
+    <description>RPC (Thrift) framework for client and server.</description>
     <dependencies>
         <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>tsfile</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.iotdb</groupId>
-            <artifactId>service-rpc</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>osgi.cmpn</artifactId>
-            <version>6.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.ops4j.pax.jdbc</groupId>
-            <artifactId>pax-jdbc-common</artifactId>
-            <version>1.4.5</version>
-        </dependency>
-        <dependency>
-            <groupId>org.osgi</groupId>
-            <artifactId>org.osgi.core</artifactId>
-            <version>6.0.0</version>
+            <groupId>org.apache.thrift</groupId>
+            <artifactId>libthrift</artifactId>
         </dependency>
     </dependencies>
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/feature</directory>
-                <filtering>true</filtering>
-                <targetPath>${project.build.directory}/feature</targetPath>
-            </resource>
-        </resources>
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-resources-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>resources</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <!--
-                  The feature plugin doesn't correctly attach the generated feature file so it
-                  wouldn't be signed and hashed during a release build. By manually-attaching it
-                  we make sure it's processed correctly.
-                -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.0.0</version>
-                <executions>
-                    <execution>
-                        <id>attach-features</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>attach-artifact</goal>
-                        </goals>
-                        <configuration>
-                            <artifacts>
-                                <artifact>
-                                    <file>target/feature/feature.xml</file>
-                                    <classifier>features</classifier>
-                                    <type>xml</type>
-                                </artifact>
-                            </artifacts>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <!--
         Generate an OSGI compatible MANIFEST file.
       -->
@@ -129,7 +57,7 @@
                 <configuration>
                     <exportScr>true</exportScr>
                     <instructions>
-                        <_include>osgi.bnd</_include>
+                        <_include>-bnd.bnd</_include>
                         <_removeheaders>Bnd-LastModified,Built-By</_removeheaders>
                         <Embed-Dependency>dependencies</Embed-Dependency>
                     </instructions>
@@ -166,32 +94,53 @@
                     </execution>
                 </executions>
             </plugin>
-            <!--using `mvn test` to run UT, `mvn verify` to run ITs
-      Reference: https://antoniogoncalves.org/2012/12/13/lets-turn-integration-tests-with-maven-to-a-first-class-citizen/-->
+            <!-- for pypi distribution -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>2.4.3</version>
                 <configuration>
-                    <skipTests>${jdbc.ut.skip}</skipTests>
+                    <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>run-integration-tests</id>
-                        <phase>integration-test</phase>
+                        <id>copy-pypi-resources</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
                         <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
+                            <goal>copy-resources</goal>
                         </goals>
+                        <configuration>
+                            <encoding>utf-8</encoding>
+                            <outputDirectory>${project.build.directory}/generated-sources-python</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/src/pypi</directory>
+                                </resource>
+                            </resources>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>copy-license-resources</id>
+                        <!-- here the phase you need -->
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <encoding>utf-8</encoding>
+                            <outputDirectory>${project.build.directory}/generated-sources-python</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${basedir}/../</directory>
+                                    <includes>
+                                        <include>LICENSE</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <skipTests>${jdbc.test.skip}</skipTests>
-                    <skipITs>${jdbc.it.skip}</skipITs>
-                </configuration>
             </plugin>
         </plugins>
     </build>
@@ -226,6 +175,21 @@
                                                 <ignore/>
                                             </action>
                                         </pluginExecution>
+                                        <pluginExecution>
+                                            <pluginExecutionFilter>
+                                                <groupId>org.apache.thrift.tools</groupId>
+                                                <artifactId>maven-thrift-plugin</artifactId>
+                                                <versionRange>[0.1.10,)</versionRange>
+                                                <goals>
+                                                    <goal>compile</goal>
+                                                </goals>
+                                            </pluginExecutionFilter>
+                                            <action>
+                                                <execute>
+                                                    <runOnIncremental>false</runOnIncremental>
+                                                </execute>
+                                            </action>
+                                        </pluginExecution>
                                     </pluginExecutions>
                                 </lifecycleMappingMetadata>
                             </configuration>
@@ -233,32 +197,6 @@
                     </plugins>
                 </pluginManagement>
             </build>
-        </profile>
-        <profile>
-            <id>skipTsfileTests</id>
-            <activation>
-                <property>
-                    <name>skipTests</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <properties>
-                <jdbc.test.skip>true</jdbc.test.skip>
-                <jdbc.ut.skip>true</jdbc.ut.skip>
-                <jdbc.it.skip>true</jdbc.it.skip>
-            </properties>
-        </profile>
-        <profile>
-            <id>skipUT_JDBC_Tests</id>
-            <activation>
-                <property>
-                    <name>skipUTs</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <properties>
-                <jdbc.ut.skip>true</jdbc.ut.skip>
-            </properties>
         </profile>
     </profiles>
 </project>

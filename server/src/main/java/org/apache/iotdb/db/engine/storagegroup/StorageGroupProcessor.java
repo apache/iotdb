@@ -264,6 +264,14 @@ public class StorageGroupProcessor {
 
   }
 
+  private Map<Long, List<TsFileResource>> splitResourcesByPartition(List<TsFileResource> resources) {
+    Map<Long, List<TsFileResource>> ret = new HashMap<>();
+    for (TsFileResource resource : resources) {
+      ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
+    }
+    return ret;
+  }
+
   private void recover() throws StorageGroupProcessorException {
     logger.info("recover Storage Group  {}", storageGroupName);
 
@@ -284,8 +292,16 @@ public class StorageGroupProcessor {
       Map<String, List<TsFileResource>> vmUnseqFiles = getAllVms(
           DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
-      recoverSeqFiles(tmpSeqTsFiles, vmSeqFiles);
-      recoverUnseqFiles(tmpUnseqTsFiles, vmUnseqFiles);
+      // split by partition so that we can find the last file of each partition and decide to
+      // close it or not
+      Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles = splitResourcesByPartition(tmpSeqTsFiles);
+      Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles = splitResourcesByPartition(tmpUnseqTsFiles);
+      for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
+        recoverSeqFiles(value, vmSeqFiles);
+      }
+      for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
+        recoverUnseqFiles(value, vmUnseqFiles);
+      }
 
       for (TsFileResource resource : sequenceFileTreeSet) {
         long partitionNum = resource.getTimePartition();
@@ -940,7 +956,7 @@ public class StorageGroupProcessor {
         }
       }
     } catch (MetadataException e) {
-      throw new WriteProcessException(e);
+      // skip last cache update if the local MTree does not contain the schema
     } finally {
       if (node != null) {
         node.readUnlock();
@@ -1686,7 +1702,9 @@ public class StorageGroupProcessor {
           }
         }
       }
-      UpgradeSevice.getINSTANCE().stop();
+      if (StorageEngine.getInstance().countUpgradeFiles() == 0) {
+        UpgradeSevice.getINSTANCE().stop();
+      }
     }
   }
 

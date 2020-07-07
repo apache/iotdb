@@ -867,13 +867,12 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
     throws MetadataException {
-    return mManager.getSeriesSchemas(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
+    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
   }
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) throws QueryProcessException {
     try {
-      mManager.lockInsert(insertRowPlan.getDeviceId());
       MeasurementSchema[] schemas = getSeriesSchemas(insertRowPlan);
       insertRowPlan.setSchemasAndTransferType(schemas);
       StorageEngine.getInstance().insert(insertRowPlan);
@@ -884,14 +883,13 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockInsert(insertRowPlan.getDeviceId());
+      mManager.unlockDeviceReadLock(insertRowPlan.getDeviceId());
     }
   }
 
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
     try {
-      mManager.lockInsert(insertTabletPlan.getDeviceId());
       MeasurementSchema[] schemas = getSeriesSchemas(insertTabletPlan);
       insertTabletPlan.setSchemas(schemas);
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
@@ -902,7 +900,7 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);
     } finally {
-      mManager.unlockInsert(insertTabletPlan.getDeviceId());
+      mManager.unlockDeviceReadLock(insertTabletPlan.getDeviceId());
     }
   }
 

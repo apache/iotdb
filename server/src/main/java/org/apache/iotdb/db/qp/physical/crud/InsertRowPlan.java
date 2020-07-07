@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 public class InsertRowPlan extends InsertPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowPlan.class);
+  private static final short TYPE_RAW_STRING = -1;
 
   private long time;
   private Object[] values;
@@ -62,8 +63,7 @@ public class InsertRowPlan extends InsertPlan {
 
   @TestOnly
   public InsertRowPlan(String deviceId, long insertTime, String[] measurements,
-      TSDataType[] dataTypes,
-      String[] insertValues) {
+      TSDataType[] dataTypes, String[] insertValues) {
     super(OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = deviceId;
@@ -113,8 +113,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   public InsertRowPlan(String deviceId, long insertTime, String[] measurementList,
-      TSDataType[] dataTypes,
-      Object[] insertValues) {
+      TSDataType[] dataTypes, Object[] insertValues) {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = deviceId;
@@ -129,8 +128,8 @@ public class InsertRowPlan extends InsertPlan {
     this.time = insertTime;
     this.deviceId = deviceId;
     this.measurements = measurementList;
-    // build types and values
     this.dataTypes = new TSDataType[measurements.length];
+    // We need to create an Object[] for the data type casting, because we can not set Float, Long to String[i]
     this.values = new Object[measurements.length];
     System.arraycopy(insertValues, 0, values, 0, measurements.length);
     isNeedInferType = true;
@@ -247,24 +246,26 @@ public class InsertRowPlan extends InsertPlan {
       }
     }
 
-    for (MeasurementSchema schema : schemas) {
-      if (schema != null) {
-        schema.serializeTo(stream);
-      }
-    }
-
     try {
       putValues(stream);
     } catch (QueryProcessException e) {
       throw new IOException(e);
     }
+
+    // the types are not inferred before the plan is serialized
+    stream.write((byte) (isNeedInferType ? 1 : 0));
   }
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] == null) {
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (dataTypes == null || dataTypes[i] == null) {
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, outputStream);
+        ReadWriteIOUtils.write((String) values[i], outputStream);
         continue;
       }
+
       ReadWriteIOUtils.write(dataTypes[i], outputStream);
       switch (dataTypes[i]) {
         case BOOLEAN:
@@ -293,9 +294,14 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] == null) {
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (dataTypes == null || dataTypes[i] == null) {
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
+        ReadWriteIOUtils.write((String) values[i], buffer);
         continue;
       }
+
       ReadWriteIOUtils.write(dataTypes[i], buffer);
       switch (dataTypes[i]) {
         case BOOLEAN:
@@ -322,9 +328,20 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  public void setValues(ByteBuffer buffer) throws QueryProcessException {
+  /**
+   * Make sure the values is already inited before calling this
+   */
+  public void fillValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < measurements.length; i++) {
-      dataTypes[i] = ReadWriteIOUtils.readDataType(buffer);
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      short typeNum = ReadWriteIOUtils.readShort(buffer);
+      if (typeNum == TYPE_RAW_STRING) {
+        values[i] = ReadWriteIOUtils.readString(buffer);
+        continue;
+      }
+
+      dataTypes[i] = TSDataType.values()[typeNum];
       switch (dataTypes[i]) {
         case BOOLEAN:
           values[i] = ReadWriteIOUtils.readBool(buffer);
@@ -372,6 +389,9 @@ public class InsertRowPlan extends InsertPlan {
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
+
+    // the types are not inferred before the plan is serialized
+    buffer.put((byte) (isNeedInferType ? 1 : 0));
   }
 
   @Override
@@ -389,10 +409,12 @@ public class InsertRowPlan extends InsertPlan {
     this.dataTypes = new TSDataType[measurementSize];
     this.values = new Object[measurementSize];
     try {
-      setValues(buffer);
+      fillValues(buffer);
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
+
+    isNeedInferType = buffer.get() == 1;
   }
 
   @Override

@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.tsfile.write.schema;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -37,25 +37,22 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
- * This class describes a measurement's information registered in {@linkplain Schema FileSchema},
- * including measurement id, data type, encoding and compressor type. For each TSEncoding,
- * MeasurementSchema maintains respective TSEncodingBuilder; For TSDataType, only ENUM has
- * TSDataTypeConverter up to now.
+ * TimeseriesSchema is like MeasurementSchema, but instead of measurementId, it stores the full
+ * path.
  */
-public class MeasurementSchema implements Comparable<MeasurementSchema>, Serializable {
-
-  private String measurementId;
+public class TimeseriesSchema implements Comparable<TimeseriesSchema>, Serializable {
+  private String fullPath;
   private TSDataType type;
   private TSEncoding encoding;
-  private TSEncodingBuilder encodingConverter;
+  private transient TSEncodingBuilder encodingConverter;
   private CompressionType compressor;
   private Map<String, String> props = new HashMap<>();
 
-  public MeasurementSchema() {
+  public TimeseriesSchema() {
   }
 
-  public MeasurementSchema(String measurementId, TSDataType tsDataType) {
-    this(measurementId, tsDataType,
+  public TimeseriesSchema(String fullPath, TSDataType tsDataType) {
+    this(fullPath, tsDataType,
         TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
@@ -64,96 +61,67 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   /**
    * set properties as an empty Map.
    */
-  public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding) {
-    this(measurementId, type, encoding,
+  public TimeseriesSchema(String fullPath, TSDataType type, TSEncoding encoding) {
+    this(fullPath, type, encoding,
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
   }
 
-  public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding,
+  public TimeseriesSchema(String fullPath, TSDataType type, TSEncoding encoding,
       CompressionType compressionType) {
-    this(measurementId, type, encoding, compressionType, Collections.emptyMap());
+    this(fullPath, type, encoding, compressionType, Collections.emptyMap());
   }
 
   /**
-   * Constructor of MeasurementSchema.
+   * Constructor of TimeseriesSchema.
    *
    * <p>props - information in encoding method. For RLE, Encoder.MAX_POINT_NUMBER For PLAIN,
    * Encoder.maxStringLength
    */
-  public MeasurementSchema(String measurementId, TSDataType type, TSEncoding encoding,
+  public TimeseriesSchema(String fullPath, TSDataType type, TSEncoding encoding,
       CompressionType compressionType, Map<String, String> props) {
     this.type = type;
-    this.measurementId = measurementId;
+    this.fullPath = fullPath;
     this.encoding = encoding;
     this.props = props == null ? Collections.emptyMap() : props;
     this.compressor = compressionType;
   }
 
   /**
-   * function for deserializing data from input stream.
-   */
-  public static MeasurementSchema deserializeFrom(InputStream inputStream) throws IOException {
-    MeasurementSchema measurementSchema = new MeasurementSchema();
-
-    measurementSchema.measurementId = ReadWriteIOUtils.readString(inputStream);
-
-    measurementSchema.type = ReadWriteIOUtils.readDataType(inputStream);
-
-    measurementSchema.encoding = ReadWriteIOUtils.readEncoding(inputStream);
-
-    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(inputStream);
-
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    if (size > 0) {
-      measurementSchema.props = new HashMap<>();
-      String key;
-      String value;
-      for (int i = 0; i < size; i++) {
-        key = ReadWriteIOUtils.readString(inputStream);
-        value = ReadWriteIOUtils.readString(inputStream);
-        measurementSchema.props.put(key, value);
-      }
-    }
-
-    return measurementSchema;
-  }
-
-  /**
    * function for deserializing data from byte buffer.
    */
-  public static MeasurementSchema deserializeFrom(ByteBuffer buffer) {
-    MeasurementSchema measurementSchema = new MeasurementSchema();
+  public static TimeseriesSchema deserializeFrom(ByteBuffer buffer) {
+    TimeseriesSchema timeseriesSchema = new TimeseriesSchema();
 
-    measurementSchema.measurementId = ReadWriteIOUtils.readString(buffer);
+    timeseriesSchema.fullPath = ReadWriteIOUtils.readString(buffer);
 
-    measurementSchema.type = ReadWriteIOUtils.readDataType(buffer);
+    timeseriesSchema.type = ReadWriteIOUtils.readDataType(buffer);
 
-    measurementSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
+    timeseriesSchema.encoding = ReadWriteIOUtils.readEncoding(buffer);
 
-    measurementSchema.compressor = ReadWriteIOUtils.readCompressionType(buffer);
+    timeseriesSchema.compressor = ReadWriteIOUtils.readCompressionType(buffer);
 
     int size = ReadWriteIOUtils.readInt(buffer);
     if (size > 0) {
-      measurementSchema.props = new HashMap<>();
+      timeseriesSchema.props = new HashMap<>();
       String key;
       String value;
       for (int i = 0; i < size; i++) {
         key = ReadWriteIOUtils.readString(buffer);
         value = ReadWriteIOUtils.readString(buffer);
-        measurementSchema.props.put(key, value);
+        timeseriesSchema.props.put(key, value);
       }
     }
 
-    return measurementSchema;
+    return timeseriesSchema;
   }
 
-  public String getMeasurementId() {
-    return measurementId;
+  public String getFullPath() {
+    return fullPath;
   }
 
-  public void setMeasurementId(String measurementId) {
-    this.measurementId = measurementId;
+  public void setFullPath(String fullPath) {
+    this.fullPath = fullPath;
   }
 
   public Map<String, String> getProps() {
@@ -205,7 +173,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   public int serializeTo(OutputStream outputStream) throws IOException {
     int byteLen = 0;
 
-    byteLen += ReadWriteIOUtils.write(measurementId, outputStream);
+    byteLen += ReadWriteIOUtils.write(fullPath, outputStream);
 
     byteLen += ReadWriteIOUtils.write(type, outputStream);
 
@@ -232,7 +200,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
   public int serializeTo(ByteBuffer buffer) {
     int byteLen = 0;
 
-    byteLen += ReadWriteIOUtils.write(measurementId, buffer);
+    byteLen += ReadWriteIOUtils.write(fullPath, buffer);
 
     byteLen += ReadWriteIOUtils.write(type, buffer);
 
@@ -261,40 +229,37 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    MeasurementSchema that = (MeasurementSchema) o;
+    TimeseriesSchema that = (TimeseriesSchema) o;
     return type == that.type && encoding == that.encoding && Objects
-        .equals(measurementId, that.measurementId)
+        .equals(fullPath, that.fullPath)
         && Objects.equals(compressor, that.compressor);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(type, encoding, measurementId, compressor);
+    return Objects.hash(type, encoding, fullPath, compressor);
   }
 
   /**
-   * compare by measurementID.
+   * compare by full path.
    */
   @Override
-  public int compareTo(MeasurementSchema o) {
+  public int compareTo(TimeseriesSchema o) {
     if (equals(o)) {
       return 0;
     } else {
-      return this.measurementId.compareTo(o.measurementId);
+      return this.fullPath.compareTo(o.fullPath);
     }
   }
 
   @Override
   public String toString() {
     StringContainer sc = new StringContainer("");
-    sc.addTail("[", measurementId, ",", type.toString(), ",", encoding.toString(), ",",
+    sc.addTail("[", fullPath, ",", type.toString(), ",", encoding.toString(), ",",
         props.toString(), ",",
         compressor.toString());
     sc.addTail("]");
     return sc.toString();
   }
 
-  public void setType(TSDataType type) {
-    this.type = type;
-  }
 }
