@@ -132,12 +132,14 @@ public class ChunkReader implements IChunkReader {
   }
 
   public boolean pageSatisfied(PageHeader pageHeader) {
-    for (TimeRange range : deleteIntervalList) {
-      if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
-        return false;
-      }
-      if (range.intersects(new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()))) {
-        pageHeader.setModified(true);
+    if (deleteIntervalList != null) {
+      for (TimeRange range : deleteIntervalList) {
+        if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
+          return false;
+        }
+        if (range.intersects(new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()))) {
+          pageHeader.setModified(true);
+        }
       }
     }
     return filter == null || filter.satisfy(pageHeader.getStatistics());
