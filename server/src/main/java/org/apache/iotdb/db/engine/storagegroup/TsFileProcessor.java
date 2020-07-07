@@ -1005,8 +1005,12 @@ public class TsFileProcessor {
         long vmPointNum = 0;
         // all flush to target file
         int mergeFileNum = vmWriters.size() - 1;
-        List<RestorableTsFileIOWriter> flushVmWriters = vmWriters.subList(0, mergeFileNum);
-        List<TsFileResource> flushVmFiles = vmTsFileResources.subList(0, mergeFileNum);
+        List<RestorableTsFileIOWriter> flushVmWriters = new ArrayList<>();
+        List<TsFileResource> flushVmFiles = new ArrayList<>();
+        for (int i = 0; i < mergeFileNum; i++) {
+          flushVmWriters.add(vmWriters.get(i));
+          flushVmFiles.add(vmTsFileResources.get(i));
+        }
         Map<Path, MeasurementSchema> pathMeasurementSchemaMap = new HashMap<>();
         for (RestorableTsFileIOWriter vmWriter : flushVmWriters) {
           Map<String, Map<String, List<ChunkMetadata>>> schemaMap = vmWriter
