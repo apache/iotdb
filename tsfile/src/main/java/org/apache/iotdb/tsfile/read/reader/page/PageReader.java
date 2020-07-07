@@ -175,13 +175,15 @@ public class PageReader implements IPageReader {
   }
 
   private boolean isDeleted(long timestamp, int deleteCursor) {
-    while (deleteCursor < deleteIntervalList.size()) {
-      if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
-        return true;
-      } else if (deleteIntervalList.get(deleteCursor).getMax() < timestamp) {
-        deleteCursor++;
-      } else {
-        return false;
+    if (deleteIntervalList != null) {
+      while (deleteCursor < deleteIntervalList.size()) {
+        if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
+          return true;
+        } else if (deleteIntervalList.get(deleteCursor).getMax() < timestamp) {
+          deleteCursor++;
+        } else {
+          return false;
+        }
       }
     }
     return false;

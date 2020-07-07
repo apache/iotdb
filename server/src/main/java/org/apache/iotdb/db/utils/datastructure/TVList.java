@@ -532,13 +532,15 @@ public abstract class TVList {
     }
 
     private boolean isPointDeleted(long timestamp) {
-      while (deleteCursor < deletionList.size()) {
-        if (deletionList.get(deleteCursor).contains(timestamp)) {
-          return true;
-        } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
-          deleteCursor++;
-        } else {
-          return false;
+      if (deletionList != null) {
+        while (deleteCursor < deletionList.size()) {
+          if (deletionList.get(deleteCursor).contains(timestamp)) {
+            return true;
+          } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+            deleteCursor++;
+          } else {
+            return false;
+          }
         }
       }
       return false;
