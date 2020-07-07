@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.flush;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTimeValuePair;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -158,7 +157,7 @@ public class VmMergeTask {
                 .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
                     path -> {
                       try {
-                        return new TsFileSequenceReader(path);
+                        return new TsFileSequenceReader(path, false);
                       } catch (IOException e) {
                         logger.error(
                             "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
