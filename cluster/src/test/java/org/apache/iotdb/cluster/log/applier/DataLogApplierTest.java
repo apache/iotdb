@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.common.*;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
+import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
@@ -33,6 +34,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -44,6 +46,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -71,6 +74,12 @@ public class DataLogApplierTest extends IoTDBTest {
     @Override
     public boolean syncLeader() {
       return true;
+    }
+
+    @Override
+    public DataGroupMember getLocalDataMember(Node header,
+                                              AsyncMethodCallback resultHandler, Object request) {
+      return testDataGroupMember;
     }
 
     @Override
@@ -122,6 +131,8 @@ public class DataLogApplierTest extends IoTDBTest {
   @Override
   @Before
   public void setUp() throws org.apache.iotdb.db.exception.StartupException, QueryProcessException {
+    IoTDB.metaManager = CMManager.getInstance();
+    MetaPuller.getInstance().init(testMetaGroupMember);
     super.setUp();
     MetaPuller.getInstance().init(testMetaGroupMember);
     PartitionGroup allNodes = new PartitionGroup();

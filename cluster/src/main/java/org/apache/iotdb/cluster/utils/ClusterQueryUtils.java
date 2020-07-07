@@ -22,10 +22,10 @@ package org.apache.iotdb.cluster.utils;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.Collections;
 
 import java.util.Collections;
 import java.util.List;
@@ -51,11 +51,7 @@ public class ClusterQueryUtils {
       throws QueryProcessException {
     if (!IoTDB.metaManager.isPathExist(path)) {
       try {
-        List<MeasurementSchema> schemas = metaGroupMember
-            .pullTimeSeriesSchemas(Collections.singletonList(path));
-        for (MeasurementSchema schema : schemas) {
-          IoTDB.metaManager.cacheMeta(path, new MeasurementMeta(schema));
-        }
+        metaGroupMember.pullTimeSeriesSchemas(Collections.singletonList(path));
       } catch (MetadataException e) {
         throw new QueryProcessException(e);
       }

@@ -67,7 +67,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         logger.debug("{}: Received an agreement from {} for {}, remaining votes to succeed: {}",
             member.getName(), receiver, log, remaining);
         if (remaining == 0) {
-          logger.debug("{}: Log {} is accepted by the quorum {}", member.getName(), log, log.getCurrLogIndex());
+          logger.debug("{}: Log [{}] {} is accepted by the quorum", member.getName(), log.getCurrLogIndex(), log);
           voteCounter.notifyAll();
         }
         peer.setMatchIndex(Math.max(log.getCurrLogIndex(), peer.getMatchIndex()));

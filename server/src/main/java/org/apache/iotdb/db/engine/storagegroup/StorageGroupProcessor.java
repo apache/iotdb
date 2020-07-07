@@ -1294,6 +1294,7 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           // left: in-memory data, right: meta of disk data
+          logger.warn(schema.toString());
           Pair<List<ReadOnlyMemChunk>, List<ChunkMetadata>> pair =
               tsFileResource.getUnsealedFileProcessor()
                   .query(deviceId, measurementId, schema.getType(), schema.getEncodingType(),

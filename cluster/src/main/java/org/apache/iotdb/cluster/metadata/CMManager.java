@@ -21,12 +21,9 @@ package org.apache.iotdb.cluster.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MeasurementMeta;
-import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -43,8 +40,9 @@ public class CMManager extends MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(CMManager.class);
 
-  // currently, if a key is not existed in the mRemoteMetaCache, an IOException will be thrown
   private ReentrantReadWriteLock cacheLock = new ReentrantReadWriteLock();;
+  // only cache the series who is writing, we need not to cache series who is reading
+  // because the read is slow, so pull from remote is little cost comparing to the disk io
   private LRUCache<String, MeasurementMeta> mRemoteMetaCache;
   private MetaPuller metaPuller;
 
@@ -55,7 +53,7 @@ public class CMManager extends MManager {
     mRemoteMetaCache = new LRUCache<String, MeasurementMeta>(remoteCacheSize) {
       @Override
       protected MeasurementMeta loadObjectByKey(String key) throws IOException {
-        throw new IOException(key + " not found!");
+        return null;
       }
 
       @Override
@@ -105,15 +103,27 @@ public class CMManager extends MManager {
     try {
       cacheLock.readLock().lock();
       MeasurementMeta measurementMeta = mRemoteMetaCache.get(path);
-      return measurementMeta.getMeasurementSchema().getType();
+      if (measurementMeta != null) {
+        return measurementMeta.getMeasurementSchema().getType();
+      }
     } catch (IOException e) {
       //do nothing
     } finally {
       cacheLock.readLock().unlock();
     }
+    // TODO the caller pull schema from remote now
+    // may we should pull here
     return super.getSeriesType(path);
   }
 
+  /**
+   *  the org.apache.iotdb.db.writelog.recover.logReplayer will call this to get schema after restart
+   *  we should retry to get schema util we get the schema
+   * @param deviceId
+   * @param measurements
+   * @return
+   * @throws MetadataException
+   */
   @Override
   public MeasurementSchema[] getSchemas(String deviceId, String[] measurements) throws MetadataException {
     try {
@@ -126,7 +136,11 @@ public class CMManager extends MManager {
       cacheLock.readLock().lock();
       for (int i = 0; i < measurements.length; i++) {
         try {
-          MeasurementMeta measurementMeta = mRemoteMetaCache.get(deviceId + measurements[i]);
+          MeasurementMeta measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]);
+          if (measurementMeta == null) {
+            allSeriesExists = false;
+            break;
+          }
           measurementSchemas[i] = measurementMeta.getMeasurementSchema();
         } catch (IOException ex) {
           // not all cached, pull from remote
@@ -139,23 +153,30 @@ public class CMManager extends MManager {
         return measurementSchemas;
       }
 
+      // will retry util get schema
       pullSeriesSchemas(deviceId, measurements);
 
       // try again
-      boolean allExist = true;
+      int failedMeasurementIndex = -1;
       cacheLock.readLock().lock();
       for (int i = 0; i < measurements.length; i++) {
         try {
-          MeasurementMeta measurementMeta = mRemoteMetaCache.get(deviceId + measurements[i]);
+          MeasurementMeta measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR  + measurements[i]);
+          if (measurementMeta == null) {
+            failedMeasurementIndex = i;
+            break;
+          }
           measurementSchemas[i] = measurementMeta.getMeasurementSchema();
         } catch (IOException ex) {
-          allExist = false;
+          failedMeasurementIndex = i;
           break;
         }
       }
       cacheLock.readLock().unlock();
-      if (!allExist) {
-        throw new MetadataException(deviceId + " has some mesurements not found");
+
+      if (failedMeasurementIndex != -1) {
+        throw new MetadataException(deviceId + IoTDBConstant.PATH_SEPARATOR
+          + measurements[failedMeasurementIndex] + " is not found");
       }
       return measurementSchemas;
     }
@@ -186,7 +207,9 @@ public class CMManager extends MManager {
     cacheLock.writeLock().lock();
     try {
       MeasurementMeta measurementMeta = mRemoteMetaCache.get(seriesPath);
-      measurementMeta.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+      if (measurementMeta != null) {
+        measurementMeta.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+      }
     } catch (IOException e) {
       // not found
     } finally {
@@ -200,7 +223,9 @@ public class CMManager extends MManager {
   public TimeValuePair getLastCache(String seriesPath) {
     try {
       MeasurementMeta measurementMeta = mRemoteMetaCache.get(seriesPath);
-      return measurementMeta.getTimeValuePair();
+      if (measurementMeta != null) {
+        return measurementMeta.getTimeValuePair();
+      }
     } catch (IOException e) {
       // do nothing
     }
@@ -209,13 +234,17 @@ public class CMManager extends MManager {
 
   @Override
   public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(String deviceId, String[] measurementList, InsertPlan plan) throws MetadataException {
-    //TODO cluster also need to lock device node
     boolean allSeriesExists = true;
     MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurementList.length];
+    cacheLock.readLock().lock();
     for (int i = 0; i < measurementList.length; i++) {
       MeasurementMeta measurementMeta = null;
       try {
-        measurementMeta = mRemoteMetaCache.get(deviceId + measurementList[i]);
+        measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementList[i]);
+        if (measurementMeta == null) {
+          allSeriesExists = false;
+          break;
+        }
         measurementSchemas[i] = measurementMeta.getMeasurementSchema();
       } catch (IOException e) {
         // ignore
@@ -223,11 +252,53 @@ public class CMManager extends MManager {
         break;
       }
     }
+    cacheLock.readLock().unlock();
     if (allSeriesExists) {
       return measurementSchemas;
     }
+    // TODO Here we may create the timeseries which does not owned by us
     return super.getSeriesSchemasAndReadLockDevice(deviceId, measurementList, plan);
   }
 
+  @Override
+  public MeasurementSchema getSeriesSchema(String device, String measurement) throws MetadataException {
+    try {
+      MeasurementSchema measurementSchema = super.getSeriesSchema(device, measurement);
+      if (measurementSchema != null) {
+        return measurementSchema;
+      }
+    } catch (MetadataException e) {
+      // not found in local
+    }
 
+    // try cache
+    cacheLock.readLock().lock();
+    try {
+      MeasurementMeta measurementMeta = mRemoteMetaCache.get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+      if (measurementMeta != null) {
+        return measurementMeta.getMeasurementSchema();
+      }
+    } catch (IOException ex) {
+      ex.printStackTrace();
+    } finally {
+      cacheLock.readLock().unlock();
+    }
+
+    // pull from remote
+    pullSeriesSchemas(device, new String[]{measurement});
+
+    // try again
+    cacheLock.readLock().lock();
+    try {
+      MeasurementMeta measurementMeta = mRemoteMetaCache.get(device + IoTDBConstant.PATH_SEPARATOR + measurement);
+      if (measurementMeta != null) {
+        return measurementMeta.getMeasurementSchema();
+      }
+    } catch (IOException ex) {
+      ex.printStackTrace();
+    } finally {
+      cacheLock.readLock().unlock();
+    }
+    return super.getSeriesSchema(device, measurement);
+  }
 }
