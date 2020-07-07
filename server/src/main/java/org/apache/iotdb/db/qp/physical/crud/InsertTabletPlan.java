@@ -49,7 +49,6 @@ public class InsertTabletPlan extends InsertPlan {
 
   private Object[] columns;
   private ByteBuffer valueBuffer;
-  private Set<Integer> index;
   private int rowCount = 0;
   // cached values
   private Long maxTime = null;
@@ -98,14 +97,6 @@ public class InsertTabletPlan extends InsertPlan {
     this.end = end;
   }
 
-  public Set<Integer> getIndex() {
-    return index;
-  }
-
-  public void setIndex(Set<Integer> index) {
-    this.index = index;
-  }
-
   @Override
   public List<Path> getPaths() {
     if (paths != null) {
@@ -142,11 +133,11 @@ public class InsertTabletPlan extends InsertPlan {
       stream.writeShort(dataType.serialize());
     }
 
-    stream.writeInt(index.size());
+    stream.writeInt(end - start);
 
     if (timeBuffer == null) {
-      for (int loc : index) {
-        stream.writeLong(times[loc]);
+      for (int i = start; i < end; i++) {
+        stream.writeLong(times[i]);
       }
     } else {
       stream.write(timeBuffer.array());
@@ -158,62 +149,6 @@ public class InsertTabletPlan extends InsertPlan {
     } else {
       stream.write(valueBuffer.array());
       valueBuffer = null;
-    }
-  }
-
-  private void serializeValues(DataOutputStream stream) throws IOException {
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] == null) {
-        continue;
-      }
-      serializeColumn(dataTypes[i], columns[i], stream, index);
-    }
-  }
-
-  private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream,
-      Set<Integer> index)
-      throws IOException {
-    switch (dataType) {
-      case INT32:
-        int[] intValues = (int[]) column;
-        for (int loc : index) {
-          stream.writeInt(intValues[loc]);
-        }
-        break;
-      case INT64:
-        long[] longValues = (long[]) column;
-        for (int loc : index) {
-          stream.writeLong(longValues[loc]);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for (int loc : index) {
-          stream.writeFloat(floatValues[loc]);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for (int loc : index) {
-          stream.writeDouble(doubleValues[loc]);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for (int loc : index) {
-          stream.write(BytesUtils.boolToByte(boolValues[loc]));
-        }
-        break;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) column;
-        for (int loc : index) {
-          stream.writeInt(binaryValues[loc].getLength());
-          stream.write(binaryValues[loc].getValues());
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(DATATYPE_UNSUPPORTED, dataType));
     }
   }
 
@@ -254,6 +189,12 @@ public class InsertTabletPlan extends InsertPlan {
     } else {
       buffer.put(valueBuffer.array());
       valueBuffer = null;
+    }
+  }
+
+  private void serializeValues(DataOutputStream outputStream) throws IOException {
+    for (int i = 0; i < measurements.length; i++) {
+      serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
     }
   }
 
@@ -304,6 +245,52 @@ public class InsertTabletPlan extends InsertPlan {
         for (int j = start; j < end; j++) {
           buffer.putInt(binaryValues[j].getLength());
           buffer.put(binaryValues[j].getValues());
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(DATATYPE_UNSUPPORTED, dataType));
+    }
+  }
+
+  private void serializeColumn(TSDataType dataType, Object column, DataOutputStream outputStream,
+      int start, int end) throws IOException {
+    switch (dataType) {
+      case INT32:
+        int[] intValues = (int[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeInt(intValues[j]);
+        }
+        break;
+      case INT64:
+        long[] longValues = (long[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeLong(longValues[j]);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeFloat(floatValues[j]);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeDouble(doubleValues[j]);
+        }
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeByte(BytesUtils.boolToByte(boolValues[j]));
+        }
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeInt(binaryValues[j].getLength());
+          outputStream.write(binaryValues[j].getValues());
         }
         break;
       default:

@@ -590,6 +590,11 @@ public class StorageEngine implements IService {
     return timePartitionInterval;
   }
 
+  @TestOnly
+  public static void setTimePartitionInterval(long timePartitionInterval) {
+    StorageEngine.timePartitionInterval = timePartitionInterval;
+  }
+
   public static long getTimePartition(long time) {
     return enablePartition ? time / timePartitionInterval : 0;
   }
@@ -605,14 +610,10 @@ public class StorageEngine implements IService {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
 
+
   public void removePartitions(String storageGroupName, TimePartitionFilter filter)
       throws StorageEngineException {
     getProcessor(storageGroupName).removePartitions(filter);
-  }
-
-  @TestOnly
-  public static void setTimePartitionInterval(long timePartitionInterval) {
-    StorageEngine.timePartitionInterval = timePartitionInterval;
   }
 
   @TestOnly
