@@ -323,7 +323,7 @@ In `ShowTimeseriesDataSet`, we saved the `ShowTimeSeriesPlan`, current cursor `i
 * judge whether the cursor `index`is equal to the size of `List<RowRecord> result`
     * if so, call the method `showTimeseries` in MManager to fetch result and put them into cache.
         * we need to update the offset in plan each time we call the method in MManger to fetch result, we should add it with `fetch size`.
-        * if`hasLimit` is `false`，the reset `index` to zero.
+        * if `hasLimit` is `false`, then reset `index` to zero.
     * if not
         * if `index < result.size()`，return true
         * if `index > result.size()`，return false 
