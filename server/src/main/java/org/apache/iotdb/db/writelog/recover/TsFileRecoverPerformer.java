@@ -28,6 +28,7 @@ import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SU
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -53,7 +54,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last crash
@@ -92,7 +92,7 @@ public class TsFileRecoverPerformer {
    * 1. recover the TsFile by RestorableTsFileIOWriter and truncate the file to remaining corrected
    * data 2. redo the WALs to recover unpersisted data 3. flush and close the file 4. clean WALs
    *
-   * @return a RestorableTsFileIOWriter and a list of RestorableTsFileIOWriter of vmfiles, if the 
+   * @return a RestorableTsFileIOWriter and a list of RestorableTsFileIOWriter of vmfiles, if the
    * file and the vmfiles are not closed before crush, so these writers can be used to continue
    * writing
    */
@@ -174,7 +174,7 @@ public class TsFileRecoverPerformer {
                 vmTsFileResources.add(newVmTsFileResource);
                 vmRestorableTsFileIOWriterList.add(newVMWriter);
               } else {
-                newVmFile.delete();
+                Files.delete(newVmFile.toPath());
               }
             } else {
               IMemTable recoverMemTable = new PrimitiveMemTable();
@@ -185,12 +185,8 @@ public class TsFileRecoverPerformer {
               logReplayer.replayLogs();
             }
             // clean logs
-            try {
-              MultiFileLogNodeManager.getInstance().deleteNode(
-                  logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
-            } catch (IOException e) {
-              throw new StorageGroupProcessorException(e);
-            }
+            MultiFileLogNodeManager.getInstance().deleteNode(
+                logNodePrefix + SystemFileFactory.INSTANCE.getFile(filePath).getName());
             updateTsFileResource();
             return new Pair<>(restorableTsFileIOWriter, vmRestorableTsFileIOWriterList);
           } catch (IOException e) {
@@ -319,7 +315,7 @@ public class TsFileRecoverPerformer {
         File logFile = FSFactoryProducer.getFSFactory()
             .getFile(tsFileResource.getFile().getParent(),
                 tsFileResource.getFile().getName() + VM_LOG_NAME);
-        logFile.delete();
+        Files.delete(logFile.toPath());
         res = true;
       }
 

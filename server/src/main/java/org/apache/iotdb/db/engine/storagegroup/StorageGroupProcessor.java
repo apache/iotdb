@@ -28,6 +28,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -67,7 +68,13 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.version.SimpleFileVersionController;
 import org.apache.iotdb.db.engine.version.VersionController;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.BatchInsertionException;
+import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.MergeException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -524,7 +531,7 @@ public class StorageGroupProcessor {
     return new Pair<>(ret, upgradeRet);
   }
 
-  private Map<String, List<TsFileResource>> getAllVms(List<String> folders) {
+  private Map<String, List<TsFileResource>> getAllVms(List<String> folders) throws IOException {
     List<File> vmFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
@@ -537,13 +544,13 @@ public class StorageGroupProcessor {
           if (partitionFolder.isDirectory()) {
             for (File tmpFile : fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(),
                 PATH_UPGRADE)) {
-              tmpFile.delete();
+              Files.delete(tmpFile.toPath());
             }
             for (File mergedFile : fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(),
                 MERGED_SUFFIX)) {
               for (File shouldRemove : fsFactory
                   .listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX)) {
-                shouldRemove.delete();
+                Files.delete(shouldRemove.toPath());
               }
               File newVMFile = FSFactoryProducer.getFSFactory().getFile(mergedFile.getParent(),
                   mergedFile.getName().split(MERGED_SUFFIX)[0]);
@@ -602,7 +609,7 @@ public class StorageGroupProcessor {
             .recover();
         writer = pair.left;
         vmWriters = pair.right;
-        vmWriters.forEach(vmWriter -> vmWriter.makeMetadataVisible());
+        vmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible);
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
@@ -649,7 +656,7 @@ public class StorageGroupProcessor {
         writer = pair.left;
         vmWriters = pair.right;
 
-        vmWriters.forEach(vmWriter -> vmWriter.makeMetadataVisible());
+        vmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible);
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
