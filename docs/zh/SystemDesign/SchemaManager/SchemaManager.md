@@ -315,9 +315,7 @@ IoTDB 的元数据管理采用目录树的形式，倒数第二层为设备层�
 多次交互的状态信息就存在`ShowTimeseriesDataSet`中。`ShowTimeseriesDataSet`中保存了此次的`ShowTimeSeriesPlan`，当前的游标`index`以及缓存的结果行列表`List<RowRecord> result`。
 
 * 判断游标`index`是否等于缓存的结果行`List<RowRecord> result`的size
-    * 若相等，则调用MManager中的相应的方法取结果，放入缓存
-        * 若是带过滤条件的元数据查询，则调用`getAllTimeseriesSchema`方法
-        * 若是不带过滤条件的元数据查询，则调用`showTimeseries`方法
+    * 若相等，则调用MManager中的`showTimeseries`方法取结果，放入缓存
         * 需要相应的修改plan中的offset，将offset向前推fetch size大小
         * 若`hasLimit`为`false`，则将index重新置为0
     * 若不相等

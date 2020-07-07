@@ -37,8 +37,8 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   private int index = 0;
   public boolean hasLimit;
 
-  public ShowTimeseriesDataSet(List<Path> paths,
-      List<TSDataType> dataTypes, ShowTimeSeriesPlan showTimeSeriesPlan) {
+  public ShowTimeseriesDataSet(List<Path> paths, List<TSDataType> dataTypes,
+      ShowTimeSeriesPlan showTimeSeriesPlan) {
     super(paths, dataTypes);
     this.plan = showTimeSeriesPlan;
   }
@@ -48,13 +48,8 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
     if (index == result.size()) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
-        List<ShowTimeSeriesResult> showTimeSeriesResults;
-        // show timeseries with index
-        if (plan.getKey() != null && plan.getValue() != null) {
-          showTimeSeriesResults = MManager.getInstance().getAllTimeseriesSchema(plan);
-        } else {
-          showTimeSeriesResults = MManager.getInstance().showTimeseries(plan);
-        }
+        List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
+            .showTimeseries(plan);
         result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults);
         if (!hasLimit) {
           index = 0;
