@@ -681,10 +681,6 @@ public class TsFileProcessor {
               storageGroupName);
         }
         flushTask.syncFlushMemTable();
-        writer.mark();
-        if (config.isEnableVm()) {
-          vmWriters.get(vmWriters.size() - 1).mark();
-        }
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
             storageGroupName, tsFileResource.getFile().getName(), e);

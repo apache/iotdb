@@ -157,7 +157,7 @@ public class VmMergeTask {
                 .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
                     path -> {
                       try {
-                        return new TsFileSequenceReader(path, false);
+                        return new TsFileSequenceReader(path);
                       } catch (IOException e) {
                         logger.error(
                             "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
