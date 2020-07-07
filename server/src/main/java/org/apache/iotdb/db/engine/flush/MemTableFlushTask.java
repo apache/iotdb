@@ -19,26 +19,20 @@
 package org.apache.iotdb.db.engine.flush;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.FLUSH_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
 import org.apache.iotdb.db.engine.flush.pool.FlushSubTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -59,10 +53,7 @@ public class MemTableFlushTask {
       .getInstance();
   private final Future<?> encodingTaskFuture;
   private final Future<?> ioTaskFuture;
-  private final RestorableTsFileIOWriter writer;
-  private List<RestorableTsFileIOWriter> vmWriters;
-  private RestorableTsFileIOWriter currWriter;
-  private final boolean isVm;
+  private RestorableTsFileIOWriter writer;
 
   private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
@@ -76,12 +67,9 @@ public class MemTableFlushTask {
 
   private File flushLogFile;
 
-  public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer,
-      List<RestorableTsFileIOWriter> vmWriters, boolean isVm, String storageGroup) {
+  public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
     this.memTable = memTable;
     this.writer = writer;
-    this.vmWriters = vmWriters;
-    this.isVm = isVm;
     this.storageGroup = storageGroup;
     this.encodingTaskFuture = subTaskPoolManager.submit(encodingTask);
     this.ioTaskFuture = subTaskPoolManager.submit(ioTask);
@@ -100,11 +88,6 @@ public class MemTableFlushTask {
     flushLogFile = getFlushLogFile(writer);
     flushLogFile.createNewFile();
 
-    if (isVm) {
-      currWriter = vmWriters.get(vmWriters.size() - 1);
-    } else {
-      currWriter = writer;
-    }
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.add(new StartFlushGroupIOTask(deviceId));
       for (String measurementId : memTable.getMemTableMap().get(deviceId).keySet()) {
@@ -149,7 +132,7 @@ public class MemTableFlushTask {
     }
 
     try {
-      currWriter.writeVersion(memTable.getVersion());
+      writer.writeVersion(memTable.getVersion());
     } catch (IOException e) {
       throw new ExecutionException(e);
     }
@@ -273,12 +256,12 @@ public class MemTableFlushTask {
         long starTime = System.currentTimeMillis();
         try {
           if (ioMessage instanceof StartFlushGroupIOTask) {
-            currWriter.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
+            this.writer.startChunkGroup(((StartFlushGroupIOTask) ioMessage).deviceId);
           } else if (ioMessage instanceof IChunkWriter) {
             ChunkWriterImpl chunkWriter = (ChunkWriterImpl) ioMessage;
-            chunkWriter.writeToFileWriter(this.currWriter);
+            chunkWriter.writeToFileWriter(this.writer);
           } else {
-            this.currWriter.endChunkGroup();
+            this.writer.endChunkGroup();
           }
         } catch (IOException e) {
           logger.error("Storage group {} memtable {}, io task meets error.", storageGroup,

@@ -318,7 +318,7 @@ public class TsFileRecoverPerformer {
         List<TsFileResource> deleteTsFileResources = new ArrayList<>();
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
-            restorableTsFileIOWriter, new ArrayList<>(), false,
+            restorableTsFileIOWriter,
             tsFileResource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
         for (TsFileResource vmTsFileResource : deleteTsFileResources) {

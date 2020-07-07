@@ -673,12 +673,11 @@ public class TsFileProcessor {
           logger.info("[Flush] flush a vm");
           File newVmFile = createNewVMFile(tsFileResource);
           vmTsFileResources.add(new TsFileResource(newVmFile));
-          vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true,
-              storageGroupName);
+          RestorableTsFileIOWriter currVmWriter = new RestorableTsFileIOWriter(newVmFile);
+          vmWriters.add(currVmWriter);
+          flushTask = new MemTableFlushTask(memTableToFlush, currVmWriter, storageGroupName);
         } else {
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false,
-              storageGroupName);
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, storageGroupName);
         }
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
