@@ -300,7 +300,7 @@ In this case, we need to pass the limit(if not exists, set fetch size as limit) 
 
 #### findPath
 
-It's a recursive function to get all the statisfied MNode in MTree from root until the number of timeseris list has reached limit or all the MTree has been traversed.
+It's a recursive function to get all the statisfied MNode in MTree from root until the number of timeseries list has reached limit or all the MTree has been traversed.
 
 ### show timeseries with index
 
