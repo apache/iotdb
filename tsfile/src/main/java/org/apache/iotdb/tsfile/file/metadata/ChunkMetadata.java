@@ -187,16 +187,18 @@ public class ChunkMetadata implements Accountable {
 
   public void addDeletion(long startTime, long endTime) {
     List<TimeRange> resultInterval = new ArrayList<>();
-    for (TimeRange interval : deleteIntervalList) {
-      if (interval.getMax() < startTime) {
-        resultInterval.add(interval);
-      } else if (interval.getMin() > endTime) {
-        resultInterval.add(new TimeRange(startTime, endTime));
-        startTime = interval.getMin();
-        endTime = interval.getMax();
-      } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
-        startTime = Math.min(interval.getMin(), startTime);
-        endTime = Math.max(interval.getMax(), endTime);
+    if (deleteIntervalList != null) {
+      for (TimeRange interval : deleteIntervalList) {
+        if (interval.getMax() < startTime) {
+          resultInterval.add(interval);
+        } else if (interval.getMin() > endTime) {
+          resultInterval.add(new TimeRange(startTime, endTime));
+          startTime = interval.getMin();
+          endTime = interval.getMax();
+        } else if (interval.getMax() >= startTime || interval.getMin() <= endTime) {
+          startTime = Math.min(interval.getMin(), startTime);
+          endTime = Math.max(interval.getMax(), endTime);
+        }
       }
     }
 
