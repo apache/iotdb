@@ -689,11 +689,11 @@ public class TsFileProcessor {
           flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false,
               storageGroupName);
         }
-        writer.mark();
-        for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-          vmWriter.mark();
-        }
         flushTask.syncFlushMemTable();
+        writer.mark();
+        if (config.isEnableVm()) {
+          vmWriters.get(vmWriters.size() - 1).mark();
+        }
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
             storageGroupName, tsFileResource.getFile().getName(), e);
@@ -1029,7 +1029,7 @@ public class TsFileProcessor {
           }
         }
         if (pathMeasurementSchemaMap.size() > 0
-            & vmPointNum / pathMeasurementSchemaMap.size() > config
+            && vmPointNum / pathMeasurementSchemaMap.size() > config
             .getMergeChunkPointNumberThreshold() || flushVmTimes >= config
             .getMaxMergeChunkNumInTsFile()) {
           // merge vm to tsfile

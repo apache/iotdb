@@ -149,11 +149,7 @@ public class MemTableFlushTask {
     }
 
     try {
-      if (isVm) {
-        vmWriters.get(vmWriters.size() - 1).writeVersion(memTable.getVersion());
-      } else {
-        writer.writeVersion(memTable.getVersion());
-      }
+      currWriter.writeVersion(memTable.getVersion());
     } catch (IOException e) {
       throw new ExecutionException(e);
     }
@@ -249,15 +245,6 @@ public class MemTableFlushTask {
     File parent = writer.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory()
         .getFile(parent, writer.getFile().getName() + FLUSH_SUFFIX);
-  }
-
-  private File createNewTmpFile() {
-    File parent = writer.getFile().getParentFile();
-    return FSFactoryProducer.getFSFactory().getFile(parent,
-        writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
-            .currentTimeMillis()
-            + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
-            + PATH_UPGRADE);
   }
 
   @SuppressWarnings("squid:S135")
