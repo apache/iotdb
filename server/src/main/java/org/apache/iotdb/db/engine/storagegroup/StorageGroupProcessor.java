@@ -590,6 +590,29 @@ public class StorageGroupProcessor {
     }
   }
 
+  private Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> recoverOneTsFile(
+      TsFileResource tsFileResource, List<TsFileResource> vmTsFileResources, boolean isLastFile) {
+    long timePartitionId = tsFileResource.getTimePartition();
+    TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
+        storageGroupName + FILE_NAME_SEPARATOR,
+        getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
+        isLastFile, vmTsFileResources);
+
+    RestorableTsFileIOWriter writer;
+    List<RestorableTsFileIOWriter> vmWriters;
+    try {
+      Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverPerformer
+          .recover();
+      writer = pair.left;
+      vmWriters = pair.right;
+      vmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible);
+    } catch (StorageGroupProcessorException e) {
+      logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
+      return null;
+    }
+    return new Pair<>(writer, vmWriters);
+  }
+
   private void recoverSeqFiles(List<TsFileResource> tsFiles,
       Map<String, List<TsFileResource>> vmFiles) {
     for (int i = 0; i < tsFiles.size(); i++) {
@@ -597,23 +620,13 @@ public class StorageGroupProcessor {
       long timePartitionId = tsFileResource.getTimePartition();
       List<TsFileResource> vmTsFileResources = vmFiles
           .getOrDefault(tsFileResource.getPath(), new ArrayList<>());
-      TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
-          storageGroupName + FILE_NAME_SEPARATOR,
-          getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
-          i == tsFiles.size() - 1, vmTsFileResources);
-
-      RestorableTsFileIOWriter writer;
-      List<RestorableTsFileIOWriter> vmWriters;
-      try {
-        Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverPerformer
-            .recover();
-        writer = pair.left;
-        vmWriters = pair.right;
-        vmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible);
-      } catch (StorageGroupProcessorException e) {
-        logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
+      Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverOneTsFile(
+          tsFileResource, vmTsFileResources, i == tsFiles.size() - 1);
+      if (pair == null) {
         continue;
       }
+
+      RestorableTsFileIOWriter writer = pair.left;
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
@@ -622,7 +635,7 @@ public class StorageGroupProcessor {
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
             vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback, false,
-            writer, vmWriters);
+            writer, pair.right);
         tsFileProcessor.recover();
         workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
@@ -639,28 +652,15 @@ public class StorageGroupProcessor {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
-
       List<TsFileResource> vmTsFileResources = vmFiles
           .getOrDefault(tsFileResource.getPath(), new ArrayList<>());
-      TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
-          storageGroupName + FILE_NAME_SEPARATOR,
-          getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
-          i == tsFiles.size() - 1, vmTsFileResources);
-
-      RestorableTsFileIOWriter writer;
-      List<RestorableTsFileIOWriter> vmWriters;
-
-      try {
-        Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverPerformer
-            .recover();
-        writer = pair.left;
-        vmWriters = pair.right;
-
-        vmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible);
-      } catch (StorageGroupProcessorException e) {
-        logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
+      Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverOneTsFile(
+          tsFileResource, vmTsFileResources, i == tsFiles.size() - 1);
+      if (pair == null) {
         continue;
       }
+
+      RestorableTsFileIOWriter writer = pair.left;
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
@@ -669,7 +669,7 @@ public class StorageGroupProcessor {
         TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
             vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
             this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
-            writer, vmWriters);
+            writer, pair.right);
         workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         tsFileResource.setProcessor(tsFileProcessor);
         tsFileProcessor.recover();
@@ -741,7 +741,7 @@ public class StorageGroupProcessor {
   /**
    * Insert a tablet (rows belonging to the same devices) into this storage group.
    *
-   * @throws WriteProcessException   when update last cache failed
+   * @throws WriteProcessException when update last cache failed
    * @throws BatchInsertionException if some of the rows failed to be inserted
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws WriteProcessException,
@@ -2537,7 +2537,6 @@ public class StorageGroupProcessor {
 
   /**
    * remove all partitions that satisfy a filter.
-   * @param filter
    */
   public void removePartitions(TimePartitionFilter filter) {
     // this requires blocking all other activities
@@ -2575,7 +2574,7 @@ public class StorageGroupProcessor {
 
   //may remove the iterator's data
   private void removePartitions(TimePartitionFilter filter, Iterator<TsFileResource> iterator) {
-    while ( iterator.hasNext()) {
+    while (iterator.hasNext()) {
       TsFileResource tsFileResource = iterator.next();
       if (filter.satisfy(storageGroupName, tsFileResource.getTimePartition())) {
         tsFileResource.remove();
@@ -2586,6 +2585,7 @@ public class StorageGroupProcessor {
 
   @FunctionalInterface
   public interface TimePartitionFilter {
+
     boolean satisfy(String storageGroupName, long timePartitionId);
   }
 }
