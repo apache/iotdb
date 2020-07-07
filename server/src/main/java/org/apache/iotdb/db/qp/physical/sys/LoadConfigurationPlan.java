@@ -23,6 +23,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -112,12 +113,12 @@ public class LoadConfigurationPlan extends PhysicalPlan {
 
   @Override
   public List<Path> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
   public List<String> getPathsStrings() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override

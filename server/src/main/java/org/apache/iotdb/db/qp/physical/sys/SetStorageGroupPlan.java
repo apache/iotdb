@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -51,20 +52,12 @@ public class SetStorageGroupPlan extends PhysicalPlan {
 
   @Override
   public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
-    if (path != null) {
-      ret.add(path);
-    }
-    return ret;
+    return path != null ? Collections.singletonList(path) : Collections.emptyList();
   }
 
   @Override
   public List<String> getPathsStrings() {
-    List<String> ret = new ArrayList<>();
-    if (path != null) {
-      ret.add(path.getFullPath());
-    }
-    return ret;
+    return path != null ? Collections.singletonList(path.getFullPath()) : Collections.emptyList();
   }
 
   @Override

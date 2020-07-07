@@ -23,6 +23,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -51,12 +52,12 @@ public class SetTTLPlan extends PhysicalPlan {
 
   @Override
   public List<Path> getPaths() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override
   public List<String> getPathsStrings() {
-    return null;
+    return Collections.emptyList();
   }
 
   @Override

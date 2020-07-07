@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -247,20 +248,14 @@ public class AuthorPlan extends PhysicalPlan {
 
   @Override
   public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
-    if (nodeName != null) {
-      ret.add(nodeName);
-    }
-    return ret;
+    return nodeName != null ? Collections.singletonList(nodeName)
+        : Collections.emptyList();
   }
 
   @Override
   public List<String> getPathsStrings() {
-    List<String> ret = new ArrayList<>();
-    if (nodeName != null) {
-      ret.add(nodeName.getFullPath());
-    }
-    return ret;
+    return nodeName != null ? Collections.singletonList(nodeName.getFullPath())
+        : Collections.emptyList();
   }
 
   @Override

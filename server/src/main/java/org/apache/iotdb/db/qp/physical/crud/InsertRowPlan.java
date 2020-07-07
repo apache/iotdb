@@ -206,7 +206,7 @@ public class InsertRowPlan extends InsertPlan {
   public List<String> getPathsStrings() {
     List<String> ret = new ArrayList<>();
     for (String m : measurements) {
-      ret.add(new Path(deviceId, m).getFullPath());
+      ret.add(deviceId + IoTDBConstant.PATH_SEPARATOR + m);
     }
     return ret;
   }

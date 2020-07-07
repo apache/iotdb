@@ -142,11 +142,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
 
   @Override
   public List<String> getPathsStrings() {
-    List<String> ret = new ArrayList<>();
-    for (Path curPath : Collections.singletonList(path)) {
-      ret.add(curPath.getFullPath());
-    }
-    return ret;
+    return Collections.singletonList(path.getFullPath());
   }
 
   @Override

@@ -2660,8 +2660,10 @@ public class MetaGroupMember extends RaftMember implements TSMetaService.AsyncIf
           if (fullPathStrs.isEmpty()) {
             nonExistPaths.add(pathStr);
             logger.error("Path {} is not found.", pathStr);
+            logger.error("Path {} is not found.", pathStr);
+          } else {
+            fullPaths.addAll(fullPathStrs);
           }
-          fullPaths.addAll(fullPathStrs);
         } catch (MetadataException e) {
           logger.error("Failed to get full paths of the prefix path: {} because", pathStr, e);
         }
