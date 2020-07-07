@@ -61,13 +61,8 @@ public class MemTableFlushTask {
   private final Future<?> ioTaskFuture;
   private final RestorableTsFileIOWriter writer;
   private List<RestorableTsFileIOWriter> vmWriters;
-  private List<TsFileResource> vmTsFiles;
-  private RestorableTsFileIOWriter tmpWriter;
   private RestorableTsFileIOWriter currWriter;
-  private VmLogger vmLogger;
   private final boolean isVm;
-  private final boolean isFull;
-  private boolean sequence;
 
   private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
@@ -82,16 +77,11 @@ public class MemTableFlushTask {
   private File flushLogFile;
 
   public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer,
-      List<TsFileResource> vmTsFiles,
-      List<RestorableTsFileIOWriter> vmWriters, boolean isVm,
-      boolean isFull, boolean sequence, String storageGroup) {
+      List<RestorableTsFileIOWriter> vmWriters, boolean isVm, String storageGroup) {
     this.memTable = memTable;
     this.writer = writer;
     this.vmWriters = vmWriters;
-    this.vmTsFiles = vmTsFiles;
     this.isVm = isVm;
-    this.isFull = isFull;
-    this.sequence = sequence;
     this.storageGroup = storageGroup;
     this.encodingTaskFuture = subTaskPoolManager.submit(encodingTask);
     this.ioTaskFuture = subTaskPoolManager.submit(ioTask);
@@ -102,7 +92,7 @@ public class MemTableFlushTask {
   /**
    * the function for flushing memtable.
    */
-  public RestorableTsFileIOWriter syncFlushMemTable()
+  public void syncFlushMemTable()
       throws ExecutionException, InterruptedException, IOException {
     long start = System.currentTimeMillis();
     long sortTime = 0;
@@ -158,16 +148,9 @@ public class MemTableFlushTask {
       flushLogFile.delete();
     }
 
-    if (vmLogger != null) {
-      vmLogger.close();
-    }
     try {
       if (isVm) {
-        if (isFull) {
-          tmpWriter.writeVersion(memTable.getVersion());
-        } else {
-          vmWriters.get(vmWriters.size() - 1).writeVersion(memTable.getVersion());
-        }
+        vmWriters.get(vmWriters.size() - 1).writeVersion(memTable.getVersion());
       } else {
         writer.writeVersion(memTable.getVersion());
       }
@@ -178,12 +161,6 @@ public class MemTableFlushTask {
     logger.info(
         "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",
         storageGroup, memTable, System.currentTimeMillis() - start);
-
-    if (isFull) {
-      return tmpWriter;
-    }
-
-    return null;
   }
 
   private Runnable encodingTask = new Runnable() {

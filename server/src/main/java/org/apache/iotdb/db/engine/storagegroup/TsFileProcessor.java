@@ -683,14 +683,10 @@ public class TsFileProcessor {
           File newVmFile = createNewVMFile(tsFileResource);
           vmTsFileResources.add(new TsFileResource(newVmFile));
           vmWriters.add(new RestorableTsFileIOWriter(newVmFile));
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources,
-              vmWriters, true, false,
-              sequence,
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, true,
               storageGroupName);
         } else {
-          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmTsFileResources, vmWriters,
-              false, false,
-              sequence,
+          flushTask = new MemTableFlushTask(memTableToFlush, writer, vmWriters, false,
               storageGroupName);
         }
         writer.mark();
