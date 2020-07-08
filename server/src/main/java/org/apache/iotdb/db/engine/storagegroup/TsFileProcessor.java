@@ -1014,9 +1014,12 @@ public class TsFileProcessor {
         for (RestorableTsFileIOWriter vmWriter : vmMergeWriters) {
           Map<String, Map<String, List<ChunkMetadata>>> schemaMap = vmWriter
               .getMetadatasForQuery();
-          for (String device : schemaMap.keySet()) {
-            for (String measurement : schemaMap.get(device).keySet()) {
-              List<ChunkMetadata> chunkMetadataList = schemaMap.get(device).get(measurement);
+          for(Entry<String, Map<String, List<ChunkMetadata>>> schemaMapEntry : schemaMap
+              .entrySet()) {
+            String device = schemaMapEntry.getKey();
+            for (Entry<String, List<ChunkMetadata>> entry : schemaMapEntry.getValue().entrySet()) {
+              String measurement = entry.getKey();
+              List<ChunkMetadata> chunkMetadataList = entry.getValue();
               for (ChunkMetadata chunkMetadata : chunkMetadataList) {
                 vmPointNum += chunkMetadata.getNumOfPoints();
               }
