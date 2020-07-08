@@ -1020,7 +1020,7 @@ public class TsFileProcessor {
               for (ChunkMetadata chunkMetadata : chunkMetadataList) {
                 vmPointNum += chunkMetadata.getNumOfPoints();
               }
-              pathMeasurementSchemaMap.putIfAbsent(new Path(device, measurement),
+              pathMeasurementSchemaMap.computeIfAbsent(new Path(device, measurement), k ->
                   new MeasurementSchema(measurement, chunkMetadataList.get(0).getDataType()));
             }
           }
