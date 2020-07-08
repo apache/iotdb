@@ -725,9 +725,6 @@ public class TsFileProcessor {
         // confirm that all vm file is flushed to tsfile when closed
         vmFuture.get();
         writer.mark();
-        for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-          vmWriter.mark();
-        }
         try {
           double compressionRatio = ((double) totalMemTableSize) / writer.getPos();
           if (logger.isDebugEnabled()) {
@@ -763,9 +760,6 @@ public class TsFileProcessor {
         IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           writer.reset();
-          for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-            vmWriter.reset();
-          }
         } catch (IOException e1) {
           logger.error("{}: {} truncate corrupted data meets error", storageGroupName,
               tsFileResource.getFile().getName(), e1);
