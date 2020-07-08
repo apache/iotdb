@@ -52,6 +52,7 @@ public class WriteLogNodeTest {
   public void setUp() throws Exception {
     enableWal = config.isEnableWal();
     config.setEnableWal(true);
+    config.setEnableVm(false);
     EnvironmentUtils.envSetUp();
   }
 
@@ -59,6 +60,7 @@ public class WriteLogNodeTest {
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     config.setEnableWal(enableWal);
+    config.setEnableVm(true);
   }
 
   @Test
