@@ -28,7 +28,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -48,11 +47,10 @@ public class VmMergeUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(VmMergeUtils.class);
 
-  private static Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new ConcurrentHashMap<>();
-
   public static void fullMerge(RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
       Set<String> devices, boolean sequence) throws IOException {
+    Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
 
     for (RestorableTsFileIOWriter vmWriter : vmWriters) {
@@ -179,6 +177,10 @@ public class VmMergeUtils {
           vmLogger.logDevice(deviceId, writer.getPos());
         }
       }
+    }
+
+    for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
+      reader.close();
     }
   }
 }
