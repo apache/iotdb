@@ -337,6 +337,9 @@ public class TsFileProcessor {
 
   public boolean shouldClose() {
     long fileSize = tsFileResource.getFileSize();
+    for (TsFileResource vmFile : vmTsFileResources) {
+      fileSize += vmFile.getFileSize();
+    }
     long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getTsFileSizeThreshold();
     if (fileSize >= fileSizeThreshold) {
