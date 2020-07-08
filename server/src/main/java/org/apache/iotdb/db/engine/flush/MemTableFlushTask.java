@@ -86,7 +86,7 @@ public class MemTableFlushTask {
 
     File flushLogFile = getFlushLogFile(writer);
     if (!flushLogFile.createNewFile()) {
-      logger.error("Failed to create {} to {}", flushLogFile);
+      logger.error("Failed to create file {}", flushLogFile);
     }
 
     for (String deviceId : memTable.getMemTableMap().keySet()) {
