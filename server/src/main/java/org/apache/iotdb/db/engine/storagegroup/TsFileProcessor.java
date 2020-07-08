@@ -26,6 +26,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -598,7 +599,7 @@ public class TsFileProcessor {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
       seqFile.setDeleted(true);
-      seqFile.getFile().delete();
+      Files.delete(seqFile.getFile().toPath());
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
@@ -632,13 +633,13 @@ public class TsFileProcessor {
         }
         vmWriters.clear();
         vmTsFileResources.clear();
-        logFile.delete();
+        Files.delete(logFile.toPath());
       } else {
         File[] tmpFiles = FSFactoryProducer.getFSFactory()
             .listFilesBySuffix(writer.getFile().getParent(), PATH_UPGRADE);
         if (tmpFiles.length > 0) {
           for (File file : tmpFiles) {
-            file.delete();
+            Files.delete(file.toPath());
           }
         }
       }

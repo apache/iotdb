@@ -22,6 +22,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.FLUSH_SUFFI
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -127,8 +128,8 @@ public class MemTableFlushTask {
       reader.close();
     }
 
-    if (flushLogFile != null) {
-      flushLogFile.delete();
+    if (flushLogFile != null && flushLogFile.exists()) {
+      Files.delete(flushLogFile.toPath());
     }
 
     try {
