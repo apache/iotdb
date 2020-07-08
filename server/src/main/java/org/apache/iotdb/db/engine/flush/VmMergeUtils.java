@@ -87,7 +87,7 @@ public class VmMergeUtils {
                 .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
                     path -> {
                       try {
-                        return new TsFileSequenceReader(path);
+                        return new TsFileSequenceReader(path, false);
                       } catch (IOException e) {
                         logger.error(
                             "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
@@ -140,7 +140,7 @@ public class VmMergeUtils {
                 .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
                     path -> {
                       try {
-                        return new TsFileSequenceReader(path);
+                        return new TsFileSequenceReader(path, false);
                       } catch (IOException e) {
                         logger.error(
                             "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
@@ -150,6 +150,9 @@ public class VmMergeUtils {
                       }
                     });
             if (reader == null) {
+              continue;
+            }
+            if (!vmWriter.getMetadatasForQuery().containsKey(deviceId)) {
               continue;
             }
             List<ChunkMetadata> chunkMetadataList = vmWriter.getMetadatasForQuery()
