@@ -300,7 +300,7 @@ In this case, we need to pass the limit(if not exists, set fetch size as limit) 
 
 #### findPath
 
-It's a recursive function to get all the statisfied MNode in MTree from root until the number of timeseris list has reached limit or all the MTree has been traversed.
+It's a recursive function to get all the statisfied MNode in MTree from root until the number of timeseries list has reached limit or all the MTree has been traversed.
 
 ### show timeseries with index
 
@@ -323,7 +323,7 @@ In `ShowTimeseriesDataSet`, we saved the `ShowTimeSeriesPlan`, current cursor `i
 * judge whether the cursor `index`is equal to the size of `List<RowRecord> result`
     * if so, call the method `showTimeseries` in MManager to fetch result and put them into cache.
         * we need to update the offset in plan each time we call the method in MManger to fetch result, we should add it with `fetch size`.
-        * if`hasLimit` is `false`，the reset `index` to zero.
+        * if `hasLimit` is `false`, then reset `index` to zero.
     * if not
         * if `index < result.size()`，return true
         * if `index > result.size()`，return false 
