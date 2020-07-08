@@ -52,7 +52,7 @@ import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
 import org.apache.iotdb.db.engine.flush.VmLogAnalyzer;
 import org.apache.iotdb.db.engine.flush.VmLogger;
-import org.apache.iotdb.db.engine.flush.VmMergeTask;
+import org.apache.iotdb.db.engine.flush.VmMergeUtils;
 import org.apache.iotdb.db.engine.flush.pool.VmMergeTaskPoolManager;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
@@ -626,11 +626,10 @@ public class TsFileProcessor {
       }
       if (!deviceSet.isEmpty()) {
         writer.getIOWriterOut().truncate(result.right - 1);
-        VmMergeTask vmMergeTask = new VmMergeTask(writer, vmWriters,
+        VmMergeUtils.fullMerge(writer, vmWriters,
             storageGroupName,
             new VmLogger(tsFileResource.getFile().getParent(), tsFileResource.getFile().getName()),
             deviceSet, sequence);
-        vmMergeTask.fullMerge();
         for (TsFileResource vmTsFileResource : vmTsFileResources) {
           deleteVmFile(vmTsFileResource);
         }
@@ -719,7 +718,7 @@ public class TsFileProcessor {
       vmMergeWriters.add(vmWriters.get(i));
     }
     Future<Void> vmFuture = VmMergeTaskPoolManager.getInstance()
-        .submit(new VmMergeLoop(vmMergeTsFiles, vmMergeWriters));
+        .submit(new VmMergeTask(vmMergeTsFiles, vmMergeWriters));
 
     if (shouldClose && flushingMemTables.isEmpty()) {
       try {
@@ -979,12 +978,11 @@ public class TsFileProcessor {
 
   private void flushAllVmToTsFile(List<RestorableTsFileIOWriter> currMergeVmWriters,
       List<TsFileResource> currMergeVmFiles) throws IOException {
-    VmMergeTask vmMergeTask = new VmMergeTask(writer, currMergeVmWriters,
+    VmMergeUtils.fullMerge(writer, currMergeVmWriters,
         storageGroupName,
         new VmLogger(tsFileResource.getFile().getParent(),
             tsFileResource.getFile().getName()),
         new HashSet<>(), sequence);
-    vmMergeTask.fullMerge();
     for (TsFileResource vmTsFileResource : currMergeVmFiles) {
       deleteVmFile(vmTsFileResource);
     }
@@ -996,12 +994,12 @@ public class TsFileProcessor {
     logFile.delete();
   }
 
-  class VmMergeLoop implements Callable<Void> {
+  class VmMergeTask implements Callable<Void> {
 
     private List<TsFileResource> vmMergeTsFiles;
     private List<RestorableTsFileIOWriter> vmMergeWriters;
 
-    public VmMergeLoop(
+    public VmMergeTask(
         List<TsFileResource> vmMergeTsFiles,
         List<RestorableTsFileIOWriter> vmMergeWriters) {
       this.vmMergeTsFiles = vmMergeTsFiles;
@@ -1048,9 +1046,8 @@ public class TsFileProcessor {
           // merge all vm files into a new vm file
           File tmpFile = createNewTmpFile();
           RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);
-          VmMergeTask vmMergeTask = new VmMergeTask(tmpWriter, vmMergeWriters,
+          VmMergeUtils.fullMerge(tmpWriter, vmMergeWriters,
               storageGroupName, null, new HashSet<>(), sequence);
-          vmMergeTask.fullMerge();
           File newVmFile = createNewVMFile(tsFileResource);
           File mergedFile = FSFactoryProducer.getFSFactory().getFile(newVmFile.getPath()
               + MERGED_SUFFIX);
