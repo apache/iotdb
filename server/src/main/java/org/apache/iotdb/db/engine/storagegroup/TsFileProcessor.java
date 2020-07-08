@@ -718,14 +718,8 @@ public class TsFileProcessor {
             memTableToFlush.isSignalMemTable(), flushingMemTables.size());
       }
     }
-    List<TsFileResource> vmMergeTsFiles = new ArrayList<>();
-    List<RestorableTsFileIOWriter> vmMergeWriters = new ArrayList<>();
-    for (int i = 0; i < vmTsFileResources.size(); i++) {
-      vmMergeTsFiles.add(vmTsFileResources.get(i));
-      vmMergeWriters.add(vmWriters.get(i));
-    }
     Future<Void> vmFuture = VmMergeTaskPoolManager.getInstance()
-        .submit(new VmMergeTask(vmMergeTsFiles, vmMergeWriters));
+        .submit(new VmMergeTask(new ArrayList<>(vmTsFileResources), new ArrayList<>(vmWriters)));
 
     if (shouldClose && flushingMemTables.isEmpty()) {
       try {
