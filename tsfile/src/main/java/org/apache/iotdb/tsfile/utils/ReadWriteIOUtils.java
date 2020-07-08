@@ -560,7 +560,7 @@ public class ReadWriteIOUtils {
    */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
-    if (strLength <= 0) {
+    if (strLength < 0) {
       return null;
     }
     byte[] bytes = new byte[strLength];
