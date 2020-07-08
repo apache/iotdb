@@ -132,12 +132,4 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     limit = buffer.getInt();
     orderByHeat = buffer.get() == 1;
   }
-
-  public void setLimit(int limit) {
-    this.limit = limit;
-  }
-
-  public void setOffset(int offset) {
-    this.offset = offset;
-  }
 }
