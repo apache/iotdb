@@ -315,7 +315,9 @@ public class TsFileRecoverPerformer {
         File logFile = FSFactoryProducer.getFSFactory()
             .getFile(tsFileResource.getFile().getParent(),
                 tsFileResource.getFile().getName() + VM_LOG_NAME);
-        Files.delete(logFile.toPath());
+        if (logFile.exists()) {
+          Files.delete(logFile.toPath());
+        }
         res = true;
       }
 
