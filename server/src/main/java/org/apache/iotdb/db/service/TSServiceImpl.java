@@ -1247,7 +1247,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     DeletePlan plan = new DeletePlan();
-    plan.setDeleteTime(req.getTimestamp());
+    plan.setDeleteStartTime(req.getStartTime());
+    plan.setDeleteEndTime(req.getEndTime());
     List<Path> paths = new ArrayList<>();
     for (String path : req.getPaths()) {
       paths.add(new Path(path));

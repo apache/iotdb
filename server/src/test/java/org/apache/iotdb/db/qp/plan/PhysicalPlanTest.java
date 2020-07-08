@@ -864,4 +864,15 @@ public class PhysicalPlanTest {
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, plan1.getOperatorType());
   }
+
+  @Test
+  public void testTimeRangeDelete() throws QueryProcessException {
+    String sqlStr1 = "DELETE FROM root.vehicle.d1 where time >= 1 and time <= 2";
+
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr1);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals(plan.getPaths(), Arrays.asList(new Path("root.vehicle.d1")));
+    Assert.assertEquals(((DeletePlan) plan).getDeleteStartTime(), 1);
+    Assert.assertEquals(((DeletePlan) plan).getDeleteEndTime(), 2);
+  }
 }
