@@ -555,7 +555,9 @@ public class StorageGroupProcessor {
               }
               File newVMFile = FSFactoryProducer.getFSFactory().getFile(mergedFile.getParent(),
                   mergedFile.getName().split(MERGED_SUFFIX)[0]);
-              mergedFile.renameTo(newVMFile);
+              if (!mergedFile.renameTo(newVMFile)) {
+                logger.error("Failed to rename {} to {}", mergedFile, newVMFile);
+              }
             }
             Collections.addAll(vmFiles,
                 fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX));

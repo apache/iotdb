@@ -47,6 +47,10 @@ public class VmMergeUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(VmMergeUtils.class);
 
+  private VmMergeUtils() {
+    throw new IllegalStateException("Utility class");
+  }
+
   public static void fullMerge(RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
       Set<String> devices, boolean sequence) throws IOException {

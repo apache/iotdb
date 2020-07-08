@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import static org.apache.iotdb.db.engine.flush.MemTableFlushTask.getFlushLogFile;
-import static org.apache.iotdb.db.engine.flush.VmLogger.VMLoggerFileExist;
+import static org.apache.iotdb.db.engine.flush.VmLogger.isVMLoggerFileExist;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFile;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.deleteVmFile;
@@ -162,7 +162,7 @@ public class TsFileRecoverPerformer {
         // if the last file in vmTsFileResources is not crashed
         if (vmFileNotCrashed) {
           try {
-            boolean tsFileNotCrashed = !VMLoggerFileExist(restorableTsFileIOWriter);
+            boolean tsFileNotCrashed = !isVMLoggerFileExist(restorableTsFileIOWriter);
             // tsfile is not crash
             if (tsFileNotCrashed) {
 

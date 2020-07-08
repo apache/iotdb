@@ -80,7 +80,6 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -953,33 +952,6 @@ public class TsFileProcessor {
     return flushQueryLock;
   }
 
-  private File createNewTmpFile() {
-    File parent = writer.getFile().getParentFile();
-    return FSFactoryProducer.getFSFactory().getFile(parent,
-        writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
-            .currentTimeMillis()
-            + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
-            + PATH_UPGRADE);
-  }
-
-  private void flushAllVmToTsFile(List<RestorableTsFileIOWriter> currMergeVmWriters,
-      List<TsFileResource> currMergeVmFiles) throws IOException {
-    VmMergeUtils.fullMerge(writer, currMergeVmWriters,
-        storageGroupName,
-        new VmLogger(tsFileResource.getFile().getParent(),
-            tsFileResource.getFile().getName()),
-        new HashSet<>(), sequence);
-    for (TsFileResource vmTsFileResource : currMergeVmFiles) {
-      deleteVmFile(vmTsFileResource);
-    }
-    vmWriters.removeAll(currMergeVmWriters);
-    vmTsFileResources.removeAll(currMergeVmFiles);
-    File logFile = FSFactoryProducer.getFSFactory()
-        .getFile(tsFileResource.getFile().getParent(),
-            tsFileResource.getFile().getName() + VM_LOG_NAME);
-    logFile.delete();
-  }
-
   class VmMergeTask implements Callable<Void> {
 
     private List<TsFileResource> vmMergeTsFiles;
@@ -1037,19 +1009,48 @@ public class TsFileProcessor {
           File newVmFile = createNewVMFile(tsFileResource);
           File mergedFile = FSFactoryProducer.getFSFactory().getFile(newVmFile.getPath()
               + MERGED_SUFFIX);
-          tmpFile.renameTo(mergedFile);
+          if (!tmpFile.renameTo(mergedFile)) {
+            logger.error("Failed to rename {} to {}", newVmFile, mergedFile);
+          }
           for (TsFileResource vmTsFileResource : vmMergeTsFiles) {
             deleteVmFile(vmTsFileResource);
           }
           vmWriters.removeAll(vmMergeWriters);
           vmTsFileResources.removeAll(vmMergeTsFiles);
-          mergedFile.renameTo(newVmFile);
+          if (!mergedFile.renameTo(newVmFile)) {
+            logger.error("Failed to rename {} to {}", mergedFile, newVmFile);
+          }
           vmTsFileResources.add(0, new TsFileResource(newVmFile));
           vmWriters.add(0, new RestorableTsFileIOWriter(newVmFile));
         }
       } catch (Exception e) {
         logger.error("Error occurred in Vm Merge thread", e);
       }
+    }
+
+    private File createNewTmpFile() {
+      File parent = writer.getFile().getParentFile();
+      return FSFactoryProducer.getFSFactory().getFile(parent,
+          writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
+              .currentTimeMillis() + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR + PATH_UPGRADE);
+    }
+
+    private void flushAllVmToTsFile(List<RestorableTsFileIOWriter> currMergeVmWriters,
+        List<TsFileResource> currMergeVmFiles) throws IOException {
+      VmMergeUtils.fullMerge(writer, currMergeVmWriters,
+          storageGroupName,
+          new VmLogger(tsFileResource.getFile().getParent(),
+              tsFileResource.getFile().getName()),
+          new HashSet<>(), sequence);
+      for (TsFileResource vmTsFileResource : currMergeVmFiles) {
+        deleteVmFile(vmTsFileResource);
+      }
+      vmWriters.removeAll(currMergeVmWriters);
+      vmTsFileResources.removeAll(currMergeVmFiles);
+      File logFile = FSFactoryProducer.getFSFactory()
+          .getFile(tsFileResource.getFile().getParent(),
+              tsFileResource.getFile().getName() + VM_LOG_NAME);
+      Files.delete(logFile.toPath());
     }
 
     @Override

@@ -66,8 +66,6 @@ public class MemTableFlushTask {
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
 
-  private File flushLogFile;
-
   public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
     this.memTable = memTable;
     this.writer = writer;
@@ -86,8 +84,10 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    flushLogFile = getFlushLogFile(writer);
-    flushLogFile.createNewFile();
+    File flushLogFile = getFlushLogFile(writer);
+    if (!flushLogFile.createNewFile()) {
+      logger.error("Failed to create {} to {}", flushLogFile);
+    }
 
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.add(new StartFlushGroupIOTask(deviceId));
@@ -128,7 +128,7 @@ public class MemTableFlushTask {
       reader.close();
     }
 
-    if (flushLogFile != null && flushLogFile.exists()) {
+    if (flushLogFile.exists()) {
       Files.delete(flushLogFile.toPath());
     }
 
