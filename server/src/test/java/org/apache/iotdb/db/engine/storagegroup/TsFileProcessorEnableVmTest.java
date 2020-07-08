@@ -136,8 +136,8 @@ public class TsFileProcessorEnableVmTest {
       System.out.println(r.getPath());
     }
     assertEquals(0, left.size());
-    assertEquals(1, right.size());
-    assertEquals(1, right.get(0).size());
+    assertEquals(2, right.size());
+    assertEquals(1, right.get(1).size());
     processor.syncClose();
   }
 

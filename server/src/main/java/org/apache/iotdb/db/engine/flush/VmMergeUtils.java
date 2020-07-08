@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.flush;
 import static org.apache.iotdb.db.utils.MergeUtils.writeTimeValuePair;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,31 +43,14 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class VmMergeTask {
+public class VmMergeUtils {
 
-  private static final Logger logger = LoggerFactory.getLogger(VmMergeTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(VmMergeUtils.class);
 
-  private final RestorableTsFileIOWriter writer;
-  private List<RestorableTsFileIOWriter> vmWriters;
-  private Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
-  private VmLogger vmLogger;
-  private Set<String> devices;
-  private boolean sequence;
-
-  private String storageGroup;
-
-  public VmMergeTask(RestorableTsFileIOWriter writer,
+  public static void fullMerge(RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
-      Set<String> devices, boolean sequence) {
-    this.writer = writer;
-    this.vmWriters = vmWriters;
-    this.storageGroup = storageGroup;
-    this.vmLogger = vmLogger;
-    this.devices = devices;
-    this.sequence = sequence;
-  }
-
-  public void fullMerge() throws IOException {
+      Set<String> devices, boolean sequence) throws IOException {
+    Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     Map<String, Map<String, MeasurementSchema>> deviceMeasurementMap = new HashMap<>();
 
     for (RestorableTsFileIOWriter vmWriter : vmWriters) {
@@ -195,6 +177,10 @@ public class VmMergeTask {
           vmLogger.logDevice(deviceId, writer.getPos());
         }
       }
+    }
+
+    for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
+      reader.close();
     }
   }
 }

@@ -73,7 +73,7 @@ public class TsFileRecoverPerformer {
   private List<TsFileResource> vmTsFileResources;
 
   /**
-   * @param isLastFile        whether this TsFile is the last file of its partition
+   * @param isLastFile whether this TsFile is the last file of its partition
    * @param vmTsFileResources only last file could have non-empty vmTsFileResources
    */
   public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
@@ -154,7 +154,8 @@ public class TsFileRecoverPerformer {
     } else {
       if (!vmTsFileResources.isEmpty()) {
         for (int i = 0; i < vmTsFileResources.size(); i++) {
-          recoverResourceFromWriter(vmRestorableTsFileIOWriterList.get(i), vmTsFileResources.get(i));
+          recoverResourceFromWriter(vmRestorableTsFileIOWriterList.get(i),
+              vmTsFileResources.get(i));
         }
         recoverResourceFromWriter(restorableTsFileIOWriter, resource);
         boolean vmFileNotCrashed = !getFlushLogFile(restorableTsFileIOWriter).exists();
@@ -169,7 +170,7 @@ public class TsFileRecoverPerformer {
               File newVmFile = createNewVMFile(resource);
               TsFileResource newVmTsFileResource = new TsFileResource(newVmFile);
               RestorableTsFileIOWriter newVMWriter = new RestorableTsFileIOWriter(newVmFile);
-              if (redoLogs(newVMWriter,newVmTsFileResource)) {
+              if (redoLogs(newVMWriter, newVmTsFileResource)) {
                 vmTsFileResources.add(newVmTsFileResource);
                 vmRestorableTsFileIOWriterList.add(newVMWriter);
               } else {
@@ -178,7 +179,8 @@ public class TsFileRecoverPerformer {
             } else {
               IMemTable recoverMemTable = new PrimitiveMemTable();
               recoverMemTable.setVersion(versionController.nextVersion());
-              LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath, resource.getModFile(),
+              LogReplayer logReplayer = new LogReplayer(logNodePrefix, filePath,
+                  resource.getModFile(),
                   versionController, resource, recoverMemTable, sequence);
               logReplayer.replayLogs();
             }
@@ -291,7 +293,7 @@ public class TsFileRecoverPerformer {
       }
     }
     long fileVersion = Long.parseLong(
-            tsFileResource.getFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
+        tsFileResource.getFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
     tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
   }
 
@@ -308,8 +310,7 @@ public class TsFileRecoverPerformer {
         List<TsFileResource> deleteTsFileResources = new ArrayList<>();
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
-            restorableTsFileIOWriter, deleteTsFileResources, new ArrayList<>(), false, false,
-            sequence,
+            restorableTsFileIOWriter,
             tsFileResource.getFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
         for (TsFileResource vmTsFileResource : deleteTsFileResources) {
