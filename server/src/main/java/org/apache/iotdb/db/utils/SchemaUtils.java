@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,10 +44,10 @@ public class SchemaUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaUtils.class);
 
-  public static void registerTimeseries(MeasurementSchema schema) {
+  public static void registerTimeseries(TimeseriesSchema schema) {
     try {
       logger.debug("Registering timeseries {}", schema);
-      String path = schema.getMeasurementId();
+      String path = schema.getFullPath();
       TSDataType dataType = schema.getType();
       TSEncoding encoding = schema.getEncodingType();
       CompressionType compressionType = schema.getCompressor();
@@ -55,7 +56,7 @@ public class SchemaUtils {
     } catch (PathAlreadyExistException ignored) {
       // ignore added timeseries
     } catch (MetadataException e) {
-      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getMeasurementId(),
+      logger.error("Cannot create timeseries {} in snapshot, ignored", schema.getFullPath(),
           e);
     }
 

@@ -98,10 +98,10 @@ public class DeletionFileNodeTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
@@ -133,9 +133,9 @@ public class DeletionFileNodeTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
 
     Modification[] realModifications = new Modification[]{
         new Deletion(new Path(processorName, measurements[5]), 201, 50),
@@ -197,10 +197,10 @@ public class DeletionFileNodeTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     SingleSeriesExpression expression = new SingleSeriesExpression(new Path(processorName,
         measurements[5]), null);
@@ -246,9 +246,9 @@ public class DeletionFileNodeTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
 
     Modification[] realModifications = new Modification[]{
         new Deletion(new Path(processorName, measurements[5]), 301, 50),

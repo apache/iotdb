@@ -111,7 +111,7 @@ public class LogReplayerTest {
         node.write(new InsertRowPlan("root.sg.device" + i, i, "sensor" + i, TSDataType.INT64,
             String.valueOf(i)));
       }
-      DeletePlan deletePlan = new DeletePlan(200, new Path("root.sg.device0", "sensor0"));
+      DeletePlan deletePlan = new DeletePlan(0, 200, new Path("root.sg.device0", "sensor0"));
       node.write(deletePlan);
       node.close();
 
@@ -135,7 +135,9 @@ public class LogReplayerTest {
 
       Modification[] mods = modFile.getModifications().toArray(new Modification[0]);
       assertEquals(1, mods.length);
-      assertEquals(new Deletion(new Path("root.sg.device0", "sensor0"), 5, 200), mods[0]);
+      assertEquals(mods[0].getPathString(), "root.sg.device0.sensor0");
+      assertEquals(mods[0].getVersionNum(), 5);
+      assertEquals(((Deletion)mods[0]).getEndTime(), 200);
 
       assertEquals(2, (long) tsFileResource.getStartTime("root.sg.device0"));
       assertEquals(100, (long) tsFileResource.getEndTime("root.sg.device0"));

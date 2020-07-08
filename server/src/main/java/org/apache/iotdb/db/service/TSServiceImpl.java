@@ -542,7 +542,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
+   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, some
    *             AuthorPlan
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
@@ -999,7 +999,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSExecuteStatementResp(status);
     }
 
-    status = executePlan(plan);
+    status = executeNonQueryPlan(plan);
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(status);
     long queryId = generateQueryId(false);
     resp.setQueryId(queryId);
@@ -1131,7 +1131,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (status != null) {
           statusList.add(status);
         } else {
-          statusList.add(executePlan(plan));
+          statusList.add(executeNonQueryPlan(plan));
         }
       } catch (Exception e) {
         logger.error("meet error when insert in batch", e);
@@ -1169,7 +1169,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (status != null) {
           statusList.add(status);
         } else {
-          statusList.add(executePlan(plan));
+          statusList.add(executeNonQueryPlan(plan));
         }
       } catch (Exception e) {
         logger.error("meet error when insert in batch", e);
@@ -1240,7 +1240,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (status != null) {
         return status;
       }
-      return executePlan(plan);
+      return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when insert", e);
     }
@@ -1270,7 +1270,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (status != null) {
         return status;
       }
-      return executePlan(plan);
+      return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when insert", e);
     }
@@ -1285,7 +1285,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     DeletePlan plan = new DeletePlan();
-    plan.setDeleteTime(req.getTimestamp());
+    plan.setDeleteStartTime(req.getStartTime());
+    plan.setDeleteEndTime(req.getEndTime());
     List<Path> paths = new ArrayList<>();
     for (String path : req.getPaths()) {
       paths.add(new Path(path));
@@ -1296,7 +1297,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return new TSStatus(status);
     }
-    return new TSStatus(executePlan(plan));
+    return new TSStatus(executeNonQueryPlan(plan));
   }
 
   @Override
@@ -1321,7 +1322,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return status;
       }
 
-      return executePlan(insertTabletPlan);
+      return executeNonQueryPlan(insertTabletPlan);
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils
@@ -1359,7 +1360,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           continue;
         }
 
-        statusList.add(executePlan(insertTabletPlan));
+        statusList.add(executeNonQueryPlan(insertTabletPlan));
       }
       return RpcUtils.getStatus(statusList);
     } catch (Exception e) {
@@ -1388,7 +1389,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return new TSStatus(status);
     }
-    return new TSStatus(executePlan(plan));
+    return new TSStatus(executeNonQueryPlan(plan));
   }
 
   @Override
@@ -1406,7 +1407,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return new TSStatus(status);
     }
-    return new TSStatus(executePlan(plan));
+    return new TSStatus(executeNonQueryPlan(plan));
   }
 
   @Override
@@ -1430,7 +1431,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return status;
     }
-    return executePlan(plan);
+    return executeNonQueryPlan(plan);
   }
 
   @Override
@@ -1465,7 +1466,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         continue;
       }
 
-      statusList.add(executePlan(plan));
+      statusList.add(executeNonQueryPlan(plan));
     }
 
     boolean isAllSuccessful = true;
@@ -1502,7 +1503,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return status;
     }
-    return executePlan(plan);
+    return executeNonQueryPlan(plan);
   }
 
   @Override
@@ -1530,7 +1531,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return null;
   }
 
-  protected TSStatus executePlan(PhysicalPlan plan) {
+  protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);

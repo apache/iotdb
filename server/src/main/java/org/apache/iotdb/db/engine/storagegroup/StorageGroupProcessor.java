@@ -62,6 +62,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -104,6 +105,13 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+
+  /**
+   * All newly generated chunks after merge have version number 0,
+   * so we set merged Modification file version to 1 to take effect
+   */
+  private static final int MERGE_MOD_START_VERSION_NUM = 1;
+
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
   /**
@@ -249,6 +257,14 @@ public class StorageGroupProcessor {
 
   }
 
+  private Map<Long, List<TsFileResource>> splitResourcesByPartition(List<TsFileResource> resources) {
+    Map<Long, List<TsFileResource>> ret = new HashMap<>();
+    for (TsFileResource resource : resources) {
+      ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
+    }
+    return ret;
+  }
+
   private void recover() throws StorageGroupProcessorException {
     logger.info("recover Storage Group  {}", storageGroupName);
 
@@ -265,8 +281,16 @@ public class StorageGroupProcessor {
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
 
-      recoverSeqFiles(tmpSeqTsFiles);
-      recoverUnseqFiles(tmpUnseqTsFiles);
+      // split by partition so that we can find the last file of each partition and decide to
+      // close it or not
+      Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles = splitResourcesByPartition(tmpSeqTsFiles);
+      Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles = splitResourcesByPartition(tmpUnseqTsFiles);
+      for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
+        recoverSeqFiles(value);
+      }
+      for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
+        recoverUnseqFiles(value);
+      }
 
       for (TsFileResource resource : sequenceFileTreeSet) {
         long partitionNum = resource.getTimePartition();
@@ -830,7 +854,7 @@ public class StorageGroupProcessor {
         }
       }
     } catch (MetadataException e) {
-      throw new WriteProcessException(e);
+      // skip last cache update if the local MTree does not contain the schema
     } finally {
       if (node != null) {
         node.readUnlock();
@@ -1323,9 +1347,11 @@ public class StorageGroupProcessor {
    *
    * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param timestamp the delete range is (0, timestamp].
+   * @param startTime the startTime of delete range.
+   * @param endTime the endTime of delete range.
    */
-  public void delete(String deviceId, String measurementId, long timestamp) throws IOException {
+  public void delete(String deviceId, String measurementId, long startTime, long endTime)
+      throws IOException {
     // TODO: how to avoid partial deletion?
     //FIXME: notice that if we may remove a SGProcessor out of memory, we need to close all opened
     //mod files in mergingModification, sequenceFileList, and unsequenceFileList
@@ -1350,14 +1376,13 @@ public class StorageGroupProcessor {
         return;
       }
 
-      // time partition to divide storage group
-      long timePartitionId = StorageEngine.getTimePartition(timestamp);
       // write log to impacted working TsFileProcessors
-      logDeletion(timestamp, deviceId, measurementId, timePartitionId);
+      logDeletion(startTime, endTime, deviceId, measurementId);
+      // delete Last cache record if necessary
+      tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
 
       Path fullPath = new Path(deviceId, measurementId);
-      Deletion deletion = new Deletion(fullPath,
-          getVersionControllerByTimePartitionId(timePartitionId).nextVersion(), timestamp);
+      Deletion deletion = new Deletion(fullPath, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);
@@ -1378,18 +1403,20 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void logDeletion(long timestamp, String deviceId, String measurementId, long timePartitionId)
+  private void logDeletion(long startTime, long endTime, String deviceId, String measurementId)
       throws IOException {
+    long timePartitionStartId = StorageEngine.getTimePartition(startTime);
+    long timePartitionEndId = StorageEngine.getTimePartition(endTime);
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
-      DeletePlan deletionPlan = new DeletePlan(timestamp, new Path(deviceId, measurementId));
+      DeletePlan deletionPlan = new DeletePlan(startTime, endTime, new Path(deviceId, measurementId));
       for (Map.Entry<Long, TsFileProcessor> entry : workSequenceTsFileProcessors.entrySet()) {
-        if (entry.getKey() <= timePartitionId) {
+        if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
           entry.getValue().getLogNode().write(deletionPlan);
         }
       }
 
       for (Map.Entry<Long, TsFileProcessor> entry : workUnsequenceTsFileProcessors.entrySet()) {
-        if (entry.getKey() <= timePartitionId) {
+        if (timePartitionStartId <= entry.getKey() && entry.getKey() <= timePartitionEndId) {
           entry.getValue().getLogNode().write(deletionPlan);
         }
       }
@@ -1403,7 +1430,8 @@ public class StorageGroupProcessor {
     String deviceId = deletion.getDevice();
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!tsFileResource.containsDevice(deviceId) ||
-          deletion.getTimestamp() < tsFileResource.getStartTime(deviceId)) {
+          deletion.getEndTime() < tsFileResource.getStartTime(deviceId) ||
+          deletion.getStartTime() > tsFileResource.getOrDefaultEndTime(deviceId, Long.MAX_VALUE)) {
         continue;
       }
 
@@ -1423,6 +1451,30 @@ public class StorageGroupProcessor {
 
       // add a record in case of rollback
       updatedModFiles.add(tsFileResource.getModFile());
+    }
+  }
+
+  private void tryToDeleteLastCache(String deviceId, String measurementId, long startTime,
+      long endTime) throws WriteProcessException {
+    MNode node = null;
+    try {
+      MManager manager = MManager.getInstance();
+      node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+
+      MNode measurementNode = manager.getChild(node, measurementId);
+      if (measurementNode != null) {
+        TimeValuePair lastPair = ((MeasurementMNode) measurementNode).getCachedLast();
+        if (lastPair != null && startTime <= lastPair.getTimestamp()
+            && lastPair.getTimestamp() <= endTime) {
+          ((MeasurementMNode) measurementNode).resetCache();
+        }
+      }
+    } catch (MetadataException e) {
+      throw new WriteProcessException(e);
+    } finally {
+      if (node != null) {
+        node.readUnlock();
+      }
     }
   }
 
@@ -1562,7 +1614,9 @@ public class StorageGroupProcessor {
           }
         }
       }
-      UpgradeSevice.getINSTANCE().stop();
+      if (StorageEngine.getInstance().countUpgradeFiles() == 0) {
+        UpgradeSevice.getINSTANCE().stop();
+      }
     }
   }
 

@@ -404,11 +404,11 @@ public class StorageEngine implements IService {
   /**
    * delete data of timeseries "{deviceId}.{measurementId}" with time <= timestamp.
    */
-  public void delete(String deviceId, String measurementId, long timestamp)
+  public void delete(String deviceId, String measurementId, long startTime, long endTime)
       throws StorageEngineException {
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     try {
-      storageGroupProcessor.delete(deviceId, measurementId, timestamp);
+      storageGroupProcessor.delete(deviceId, measurementId, startTime, endTime);
     } catch (IOException e) {
       throw new StorageEngineException(e.getMessage());
     }
@@ -590,6 +590,11 @@ public class StorageEngine implements IService {
     return timePartitionInterval;
   }
 
+  @TestOnly
+  public static void setTimePartitionInterval(long timePartitionInterval) {
+    StorageEngine.timePartitionInterval = timePartitionInterval;
+  }
+
   public static long getTimePartition(long time) {
     return enablePartition ? time / timePartitionInterval : 0;
   }
@@ -605,14 +610,10 @@ public class StorageEngine implements IService {
     getProcessor(storageGroup).setPartitionFileVersionToMax(partitionId, newMaxVersion);
   }
 
+
   public void removePartitions(String storageGroupName, TimePartitionFilter filter)
       throws StorageEngineException {
     getProcessor(storageGroupName).removePartitions(filter);
-  }
-
-  @TestOnly
-  public static void setTimePartitionInterval(long timePartitionInterval) {
-    StorageEngine.timePartitionInterval = timePartitionInterval;
   }
 
   @TestOnly

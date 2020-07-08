@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 public class InsertRowPlan extends InsertPlan {
 
   private static final Logger logger = LoggerFactory.getLogger(InsertRowPlan.class);
+  private static final short TYPE_RAW_STRING = -1;
 
   private long time;
   private Object[] values;
@@ -245,24 +246,26 @@ public class InsertRowPlan extends InsertPlan {
       }
     }
 
-    for (MeasurementSchema schema : schemas) {
-      if (schema != null) {
-        schema.serializeTo(stream);
-      }
-    }
-
     try {
       putValues(stream);
     } catch (QueryProcessException e) {
       throw new IOException(e);
     }
+
+    // the types are not inferred before the plan is serialized
+    stream.write((byte) (isNeedInferType ? 1 : 0));
   }
 
   private void putValues(DataOutputStream outputStream) throws QueryProcessException, IOException {
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] == null) {
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (dataTypes == null || dataTypes[i] == null) {
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, outputStream);
+        ReadWriteIOUtils.write((String) values[i], outputStream);
         continue;
       }
+
       ReadWriteIOUtils.write(dataTypes[i], outputStream);
       switch (dataTypes[i]) {
         case BOOLEAN:
@@ -291,9 +294,14 @@ public class InsertRowPlan extends InsertPlan {
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < values.length; i++) {
-      if (dataTypes[i] == null) {
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      if (dataTypes == null || dataTypes[i] == null) {
+        ReadWriteIOUtils.write(TYPE_RAW_STRING, buffer);
+        ReadWriteIOUtils.write((String) values[i], buffer);
         continue;
       }
+
       ReadWriteIOUtils.write(dataTypes[i], buffer);
       switch (dataTypes[i]) {
         case BOOLEAN:
@@ -325,7 +333,15 @@ public class InsertRowPlan extends InsertPlan {
    */
   public void fillValues(ByteBuffer buffer) throws QueryProcessException {
     for (int i = 0; i < measurements.length; i++) {
-      dataTypes[i] = ReadWriteIOUtils.readDataType(buffer);
+      // types are not determined, the situation mainly occurs when the plan uses string values
+      // and is forwarded to other nodes
+      short typeNum = ReadWriteIOUtils.readShort(buffer);
+      if (typeNum == TYPE_RAW_STRING) {
+        values[i] = ReadWriteIOUtils.readString(buffer);
+        continue;
+      }
+
+      dataTypes[i] = TSDataType.values()[typeNum];
       switch (dataTypes[i]) {
         case BOOLEAN:
           values[i] = ReadWriteIOUtils.readBool(buffer);
@@ -373,6 +389,9 @@ public class InsertRowPlan extends InsertPlan {
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
+
+    // the types are not inferred before the plan is serialized
+    buffer.put((byte) (isNeedInferType ? 1 : 0));
   }
 
   @Override
@@ -394,6 +413,8 @@ public class InsertRowPlan extends InsertPlan {
     } catch (QueryProcessException e) {
       e.printStackTrace();
     }
+
+    isNeedInferType = buffer.get() == 1;
   }
 
   @Override

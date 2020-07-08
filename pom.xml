@@ -80,6 +80,8 @@
     </mailingLists>
     <modules>
         <module>tsfile</module>
+        <module>antlr</module>
+        <module>thrift</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>session</module>
@@ -99,7 +101,7 @@
     <properties>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.assembly.version>2.5.5</maven.assembly.version>
+        <maven.assembly.version>3.1.0</maven.assembly.version>
         <scala.version>2.11.12</scala.version>
         <hadoop2.version>2.7.3</hadoop2.version>
         <hive2.version>2.3.6</hive2.version>
@@ -127,6 +129,7 @@
         <jetty.version>9.4.24.v20191120</jetty.version>
         <metrics.version>3.2.6</metrics.version>
         <javax.xml.bind.version>2.4.0-b180725.0427</javax.xml.bind.version>
+        <felix.version>4.2.1</felix.version>
         <!-- URL of the ASF SonarQube server -->
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
         <sonar.organization>apache</sonar.organization>
@@ -182,24 +185,9 @@
                 <version>${jackson.version}</version>
             </dependency>
             <dependency>
-                <groupId>com.google.code.findbugs</groupId>
-                <artifactId>jsr305</artifactId>
-                <version>3.0.2</version>
-            </dependency>
-            <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.istack</groupId>
-                <artifactId>istack-commons-runtime</artifactId>
-                <version>3.0.8</version>
-            </dependency>
-            <dependency>
-                <groupId>com.sun.xml.fastinfoset</groupId>
-                <artifactId>FastInfoset</artifactId>
-                <version>1.2.16</version>
             </dependency>
             <dependency>
                 <groupId>commons-lang</groupId>
@@ -942,6 +930,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-assembly-plugin</artifactId>
+                        <version>${maven.assembly.version}</version>
                         <executions>
                             <execution>
                                 <id>source-release-assembly</id>
