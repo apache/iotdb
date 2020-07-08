@@ -982,7 +982,9 @@ public class TsFileProcessor {
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(tsFileResource.getFile().getParent(),
             tsFileResource.getFile().getName() + VM_LOG_NAME);
-    logFile.delete();
+    if (logFile.exists()) {
+      Files.delete(logFile.toPath());
+    }
   }
 
   class VmMergeTask implements Runnable {
