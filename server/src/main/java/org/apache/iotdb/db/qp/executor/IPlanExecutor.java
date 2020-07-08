@@ -78,9 +78,10 @@ public interface IPlanExecutor {
    * execute delete command and return whether the operator is successful.
    *
    * @param path       : delete series seriesPath
-   * @param deleteTime end time in delete command
+   * @param startTime start time in delete command
+   * @param endTime end time in delete command
    */
-  void delete(Path path, long deleteTime) throws QueryProcessException;
+  void delete(Path path, long startTime, long endTime) throws QueryProcessException;
 
   /**
    * execute insert command and return whether the operator is successful.

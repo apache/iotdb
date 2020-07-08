@@ -89,7 +89,7 @@ public class WriteLogNodeManagerTest {
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path("root.logTestDevice.s1"));
 
     File walFile = new File(logNode.getLogDirectory() + File.separator + "wal1");
     assertTrue(!walFile.exists());

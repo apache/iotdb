@@ -23,7 +23,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.RootOperator;
+import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
@@ -237,5 +239,96 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(paths, ((QueryOperator) operator).getSelectedPaths());
   }
 
+  @Test
+  public void testRangeDelete() {
+    String sql1 = "delete from root.d1.s1 where time>=1 and time < 3";
+    Operator op = parseDriver.parse(sql1, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(DeleteDataOperator.class, op.getClass());
+    ArrayList<Path> paths = new ArrayList<>();
+    paths.add(new Path("root.d1.s1"));
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(1, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(2, ((DeleteDataOperator) op).getEndTime());
 
+    String sql2 = "delete from root.d1.s1 where time>=1";
+    op = parseDriver.parse(sql2, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(1, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(Long.MAX_VALUE, ((DeleteDataOperator) op).getEndTime());
+
+    String sql3 = "delete from root.d1.s1 where time>1";
+    op = parseDriver.parse(sql3, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(2, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(Long.MAX_VALUE, ((DeleteDataOperator) op).getEndTime());
+
+    String sql4 = "delete from root.d1.s1 where time <= 1";
+    op = parseDriver.parse(sql4, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(Long.MIN_VALUE, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(1, ((DeleteDataOperator) op).getEndTime());
+
+    String sql5 = "delete from root.d1.s1 where time<1";
+    op = parseDriver.parse(sql5, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(Long.MIN_VALUE, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(0, ((DeleteDataOperator) op).getEndTime());
+
+    String sql6 = "delete from root.d1.s1 where time = 3";
+    op = parseDriver.parse(sql6, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(3, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(3, ((DeleteDataOperator) op).getEndTime());
+
+    String sql7 = "delete from root.d1.s1 where time > 5 and time >= 2";
+    op = parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(6, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(Long.MAX_VALUE, ((DeleteDataOperator) op).getEndTime());
+  }
+
+  @Test
+  public void testErrorDeleteRange() {
+    String sql = "delete from root.d1.s1 where time>=1 and time < 3 or time >1";
+    String errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(
+        "For delete statement, where clause can only contain atomic expressions like : "
+            + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'",
+        errorMsg);
+
+    sql = "delete from root.d1.s1 where time>=1 or time < 3";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(
+        "For delete statement, where clause can only contain atomic expressions like : "
+            + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'",
+        errorMsg);
+
+    String sql7 = "delete from root.d1.s1 where time = 1 and time < -1";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (RuntimeException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(errorMsg, "Invalid delete range: [1, -2]");
+
+    sql = "delete from root.d1.s1 where time > 5 and time <= 0";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (SQLParserException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals("Invalid delete range: [6, 0]", errorMsg);
+  }
 }

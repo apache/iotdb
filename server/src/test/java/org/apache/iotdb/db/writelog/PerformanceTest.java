@@ -93,7 +93,7 @@ public class PerformanceTest {
               new String[]{"1.0", "15", "str", "false"});
           UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
               new Path("root.logTestDevice.s1"));
-          DeletePlan deletePlan = new DeletePlan(50,
+          DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50,
               new Path("root.logTestDevice.s1"));
 
           logNode.write(bwInsertPlan);
@@ -154,7 +154,7 @@ public class PerformanceTest {
           new String[]{"1.0", "15", "str", "false"});
       UpdatePlan updatePlan = new UpdatePlan(0, 100, "2.0",
           new Path("root.logTestDevice.s1"));
-      DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+      DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path("root.logTestDevice.s1"));
 
       logNode.write(bwInsertPlan);
       logNode.write(updatePlan);

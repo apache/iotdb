@@ -106,7 +106,7 @@ public class StorageGroupProcessorTest {
       processor.insert(new InsertRowPlan(record));
     }
 
-    processor.delete(deviceId, measurementId, 15L);
+    processor.delete(deviceId, measurementId, 0, 15L);
 
     List<TsFileResource> unLockList = new ArrayList<>();
     Pair<List<ReadOnlyMemChunk>, List<List<ChunkMetadata>>> pair = null;
