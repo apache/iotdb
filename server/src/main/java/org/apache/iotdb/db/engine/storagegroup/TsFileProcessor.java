@@ -336,8 +336,7 @@ public class TsFileProcessor {
   }
 
   public boolean shouldClose() {
-    if (flushVmTimes >= config
-        .getMaxMergeChunkNumInTsFile() - 1) {
+    if (config.isEnableVm() && flushVmTimes >= config.getMaxMergeChunkNumInTsFile() - 1) {
       return true;
     }
     long fileSize = tsFileResource.getFileSize();
