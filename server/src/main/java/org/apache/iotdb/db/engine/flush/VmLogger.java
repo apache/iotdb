@@ -31,7 +31,7 @@ public class VmLogger {
 
   public static final String VM_LOG_NAME = ".vm.log";
 
-  static final String FORMAT_DEVICE_OFFSET = "%s %s";
+  private static final String FORMAT_DEVICE_OFFSET = "%s %s";
 
   private BufferedWriter logStream;
 
@@ -51,7 +51,7 @@ public class VmLogger {
     logStream.flush();
   }
 
-  public static boolean VMLoggerFileExist(RestorableTsFileIOWriter writer) {
+  public static boolean isVMLoggerFileExist(RestorableTsFileIOWriter writer) {
     File parent = writer.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory()
         .getFile(parent, writer.getFile().getName() + VM_LOG_NAME).exists();

@@ -22,8 +22,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.FLUSH_SUFFI
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.file.Files;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -37,7 +36,6 @@ import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
@@ -57,15 +55,12 @@ public class MemTableFlushTask {
 
   private final ConcurrentLinkedQueue<Object> ioTaskQueue = new ConcurrentLinkedQueue<>();
   private final ConcurrentLinkedQueue<Object> encodingTaskQueue = new ConcurrentLinkedQueue<>();
-  private Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
   private String storageGroup;
 
   private IMemTable memTable;
 
   private volatile boolean noMoreEncodingTask = false;
   private volatile boolean noMoreIOTask = false;
-
-  private File flushLogFile;
 
   public MemTableFlushTask(IMemTable memTable, RestorableTsFileIOWriter writer, String storageGroup) {
     this.memTable = memTable;
@@ -85,8 +80,10 @@ public class MemTableFlushTask {
     long start = System.currentTimeMillis();
     long sortTime = 0;
 
-    flushLogFile = getFlushLogFile(writer);
-    flushLogFile.createNewFile();
+    File flushLogFile = getFlushLogFile(writer);
+    if (!flushLogFile.createNewFile()) {
+      logger.error("Failed to create file {}", flushLogFile);
+    }
 
     for (String deviceId : memTable.getMemTableMap().keySet()) {
       encodingTaskQueue.add(new StartFlushGroupIOTask(deviceId));
@@ -123,12 +120,8 @@ public class MemTableFlushTask {
 
     ioTaskFuture.get();
 
-    for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
-      reader.close();
-    }
-
-    if (flushLogFile != null) {
-      flushLogFile.delete();
+    if (flushLogFile.exists()) {
+      Files.delete(flushLogFile.toPath());
     }
 
     try {

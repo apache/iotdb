@@ -128,31 +128,6 @@ public class MergeUtils {
     }
   }
 
-  public static void writeTimeValuePair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        break;
-      case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        break;
-      case BOOLEAN:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        break;
-      case INT64:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        break;
-      case INT32:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        break;
-      case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-    }
-  }
-
   // returns totalChunkNum of a file and the max number of chunks of a series
   public static long[] findTotalAndLargestSeriesChunkNum(TsFileResource tsFileResource,
       TsFileSequenceReader sequenceReader)

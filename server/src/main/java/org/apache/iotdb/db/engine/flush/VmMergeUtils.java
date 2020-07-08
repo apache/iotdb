@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.flush;
 
-import static org.apache.iotdb.db.utils.MergeUtils.writeTimeValuePair;
+import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -46,6 +46,10 @@ import org.slf4j.LoggerFactory;
 public class VmMergeUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(VmMergeUtils.class);
+
+  private VmMergeUtils() {
+    throw new IllegalStateException("Utility class");
+  }
 
   public static void fullMerge(RestorableTsFileIOWriter writer,
       List<RestorableTsFileIOWriter> vmWriters, String storageGroup, VmLogger vmLogger,
@@ -75,33 +79,23 @@ public class VmMergeUtils {
       }
     }
     if (!sequence) {
-      for (String deviceId : deviceMeasurementMap.keySet()) {
+      for (Entry<String, Map<String, MeasurementSchema>> deviceMeasurementEntry : deviceMeasurementMap
+          .entrySet()) {
+        String deviceId = deviceMeasurementEntry.getKey();
         writer.startChunkGroup(deviceId);
         long maxVersion = Long.MIN_VALUE;
-        for (String measurementId : deviceMeasurementMap.get(deviceId).keySet()) {
-          MeasurementSchema measurementSchema = deviceMeasurementMap.get(deviceId)
-              .get(measurementId);
+        for (Entry<String, MeasurementSchema> entry : deviceMeasurementEntry.getValue()
+            .entrySet()) {
+          String measurementId = entry.getKey();
           Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-            TsFileSequenceReader reader = tsFileSequenceReaderMap
-                .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
-                    path -> {
-                      try {
-                        return new TsFileSequenceReader(path, false);
-                      } catch (IOException e) {
-                        logger.error(
-                            "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
-                            storageGroup,
-                            writer.getFile().getName(), e);
-                        return null;
-                      }
-                    });
+            TsFileSequenceReader reader = buildReaderFromVmWriter(vmWriter,
+                writer, tsFileSequenceReaderMap, storageGroup);
             if (reader == null) {
               continue;
             }
-            List<ChunkMetadata> chunkMetadataList = vmWriter
-                .getVisibleMetadataList(deviceId, measurementId,
-                    measurementSchema.getType());
+            List<ChunkMetadata> chunkMetadataList = vmWriter.getVisibleMetadataList(deviceId,
+                measurementId, entry.getValue().getType());
             for (ChunkMetadata chunkMetadata : chunkMetadataList) {
               maxVersion = Math.max(chunkMetadata.getVersion(), maxVersion);
               IChunkReader chunkReader = new ChunkReaderByTimestamp(
@@ -116,10 +110,9 @@ public class VmMergeUtils {
               }
             }
           }
-          IChunkWriter chunkWriter = new ChunkWriterImpl(
-              deviceMeasurementMap.get(deviceId).get(measurementId));
+          IChunkWriter chunkWriter = new ChunkWriterImpl(entry.getValue());
           for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
-            writeTimeValuePair(timeValuePair, chunkWriter);
+            writeTVPair(timeValuePair, chunkWriter);
           }
           chunkWriter.writeToFileWriter(writer);
         }
@@ -130,25 +123,18 @@ public class VmMergeUtils {
         }
       }
     } else {
-      for (String deviceId : deviceMeasurementMap.keySet()) {
+      for (Entry<String, Map<String, MeasurementSchema>> deviceMeasurementEntry : deviceMeasurementMap
+          .entrySet()) {
+        String deviceId = deviceMeasurementEntry.getKey();
         writer.startChunkGroup(deviceId);
-        for (String measurementId : deviceMeasurementMap.get(deviceId).keySet()) {
+        for (Entry<String, MeasurementSchema> entry : deviceMeasurementEntry.getValue()
+            .entrySet()) {
+          String measurementId = entry.getKey();
           ChunkMetadata newChunkMetadata = null;
           Chunk newChunk = null;
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-            TsFileSequenceReader reader = tsFileSequenceReaderMap
-                .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
-                    path -> {
-                      try {
-                        return new TsFileSequenceReader(path, false);
-                      } catch (IOException e) {
-                        logger.error(
-                            "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
-                            storageGroup,
-                            writer.getFile().getName(), e);
-                        return null;
-                      }
-                    });
+            TsFileSequenceReader reader = buildReaderFromVmWriter(vmWriter,
+                writer, tsFileSequenceReaderMap, storageGroup);
             if (reader == null) {
               continue;
             }
@@ -185,5 +171,21 @@ public class VmMergeUtils {
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
     }
+  }
+
+  private static TsFileSequenceReader buildReaderFromVmWriter(RestorableTsFileIOWriter vmWriter,
+      RestorableTsFileIOWriter writer, Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
+      String storageGroup) {
+    return tsFileSequenceReaderMap.computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
+        path -> {
+          try {
+            return new TsFileSequenceReader(path);
+          } catch (IOException e) {
+            logger.error(
+                "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
+                storageGroup, writer.getFile().getName(), e);
+            return null;
+          }
+        });
   }
 }

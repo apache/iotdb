@@ -18,6 +18,15 @@
  */
 package org.apache.iotdb.db.utils;
 
+import static org.junit.Assert.fail;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import javax.management.remote.JMXConnector;
+import javax.management.remote.JMXConnectorFactory;
+import javax.management.remote.JMXServiceURL;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -39,16 +48,6 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
-import java.io.File;
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-
-import static org.junit.Assert.fail;
 
 /**
  * <p>
@@ -175,7 +174,7 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    FileUtils.deleteQuietly(new File(dir));
+    FileUtils.deleteDirectory(new File(dir));
   }
 
   /**
