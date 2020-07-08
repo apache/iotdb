@@ -54,15 +54,6 @@ import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ExecutionException;
-
-import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
 /**
  * TsFileRecoverPerformer recovers a SeqTsFile to correct status, redoes the WALs since last crash
@@ -101,8 +92,9 @@ public class TsFileRecoverPerformer {
    * 1. recover the TsFile by RestorableTsFileIOWriter and truncate the file to remaining corrected
    * data 2. redo the WALs to recover unpersisted data 3. flush and close the file 4. clean WALs
    *
-   * @return a RestorableTsFileIOWriter if the file is not closed before crush, so this writer can
-   * be used to continue writing
+   * @return a RestorableTsFileIOWriter and a list of RestorableTsFileIOWriter of vmfiles, if the 
+   * file and the vmfiles are not closed before crush, so these writers can be used to continue
+   * writing
    */
   public Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> recover()
       throws StorageGroupProcessorException {

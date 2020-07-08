@@ -574,15 +574,6 @@ public class TsFileProcessor {
     }
   }
 
-  /**
-   * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
-   *
-   * @return a TsFileSequenceReader
-   */
-  private TsFileSequenceReader getFileReader(TsFileResource tsFileResource) throws IOException {
-    return new TsFileSequenceReader(tsFileResource.getPath(), true);
-  }
-
   public static File createNewVMFile(TsFileResource tsFileResource) {
     File parent = tsFileResource.getFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
