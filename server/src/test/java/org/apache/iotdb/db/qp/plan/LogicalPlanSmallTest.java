@@ -297,8 +297,8 @@ public class LogicalPlanSmallTest {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals(
-        "For delete command, where clause can only contain atomic expressions like : "
-            + "time > XXX, time <= XXX, or And with two atomic expressions",
+        "For delete statement, where clause can only contain atomic expressions like : "
+            + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'",
         errorMsg);
 
     sql = "delete from root.d1.s1 where time>=1 or time < 3";
@@ -309,8 +309,8 @@ public class LogicalPlanSmallTest {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals(
-        "For delete command, where clause can only contain atomic expressions like : "
-            + "time > XXX, time <= XXX, or And with two atomic expressions",
+        "For delete statement, where clause can only contain atomic expressions like : "
+            + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'",
         errorMsg);
 
     String sql7 = "delete from root.d1.s1 where time = 1 and time < -1";

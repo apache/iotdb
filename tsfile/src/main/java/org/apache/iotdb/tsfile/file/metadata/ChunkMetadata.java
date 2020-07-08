@@ -225,7 +225,8 @@ public class ChunkMetadata implements Accountable {
         version == that.version &&
         Objects.equals(measurementUid, that.measurementUid) &&
         tsDataType == that.tsDataType &&
-        deleteIntervalList.equals(that.deleteIntervalList) &&
+        ((deleteIntervalList == null && that.deleteIntervalList == null) || deleteIntervalList
+            .equals(that.deleteIntervalList)) &&
         Objects.equals(statistics, that.statistics);
   }
 
