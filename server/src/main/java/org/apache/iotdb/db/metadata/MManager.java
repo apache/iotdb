@@ -947,9 +947,9 @@ public class MManager {
       throws MetadataException {
     // show timeseries with index
     if (plan.getKey() != null && plan.getValue() != null) {
-      return showTimeseriesWithoutIndex(plan);
-    } else {
       return showTimeseriesWithIndex(plan);
+    } else {
+      return showTimeseriesWithoutIndex(plan);
     }
   }
 
