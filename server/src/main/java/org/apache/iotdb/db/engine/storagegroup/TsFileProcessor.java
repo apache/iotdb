@@ -36,10 +36,10 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -130,7 +130,6 @@ public class TsFileProcessor {
   private long totalMemTableSize;
 
   private int flushVmTimes = 0;
-  private long runningTimeMillis = System.currentTimeMillis();
   private static final String FLUSH_QUERY_WRITE_LOCKED = "{}: {} get flushQueryLock write lock";
   private static final String FLUSH_QUERY_WRITE_RELEASE = "{}: {} get flushQueryLock write lock released";
 
@@ -143,8 +142,8 @@ public class TsFileProcessor {
     this.tsFileResource = new TsFileResource(tsfile, this);
     this.versionController = versionController;
     this.writer = new RestorableTsFileIOWriter(tsfile);
-    this.vmTsFileResources = new ArrayList<>();
-    this.vmWriters = new ArrayList<>();
+    this.vmTsFileResources = new CopyOnWriteArrayList<>();
+    this.vmWriters = new CopyOnWriteArrayList<>();
     for (File file : vmFiles) {
       this.vmTsFileResources.add(new TsFileResource(file, this));
       this.vmWriters.add(new RestorableTsFileIOWriter(file));
@@ -173,10 +172,10 @@ public class TsFileProcessor {
       RestorableTsFileIOWriter writer, List<RestorableTsFileIOWriter> vmWriters) {
     this.storageGroupName = storageGroupName;
     this.tsFileResource = tsFileResource;
-    this.vmTsFileResources = vmTsFileResources;
+    this.vmTsFileResources = new CopyOnWriteArrayList<>(vmTsFileResources);
     this.versionController = versionController;
     this.writer = writer;
-    this.vmWriters = vmWriters;
+    this.vmWriters = new CopyOnWriteArrayList<>(vmWriters);
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
@@ -1037,7 +1036,8 @@ public class TsFileProcessor {
         }
         if (pathMeasurementSchemaMap.size() > 0
             && vmPointNum / pathMeasurementSchemaMap.size() > config
-            .getMergeChunkPointNumberThreshold()) {
+            .getMergeChunkPointNumberThreshold() || flushVmTimes >= config
+            .getMaxMergeChunkNumInTsFile()) {
           // merge vm to tsfile
           flushVmTimes = 0;
           logger.info("[Flush] merge {} vms to TsFile", vmMergeWriters.size() + 1);
