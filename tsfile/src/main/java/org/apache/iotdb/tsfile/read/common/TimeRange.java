@@ -148,8 +148,10 @@ public class TimeRange implements Comparable<TimeRange> {
    *
    * [1,3) intersects with (2,5].
    *
+   * Note: this method treats [1,3] and [4,5] as two "intersected" interval
+   * even if they are not truly intersected.
    * @param r the given time range
-   * @return true if the current time range intersects with the given time range r
+   * @return true if the current time range "intersects" with the given time range r
    */
   public boolean intersects(TimeRange r) {
     if ((!leftClose || !r.rightClose) && (r.max < min)) {
@@ -160,12 +162,40 @@ public class TimeRange implements Comparable<TimeRange> {
       return false;
     } else if (leftClose && r.rightClose && r.max <= min - 2) {
       // e.g.,[1,3] does not intersect with [5,6].
+      // take care of overflow. e.g., Long.MIN_VALUE
       return false;
     } else if ((!rightClose || !r.leftClose) && (r.min > max)) {
       return false;
     } else if (!rightClose && !r.leftClose && r.min >= max) {
       return false;
     } else if (rightClose && r.leftClose && r.min >= max + 2) {
+      // take care of overflow. e.g., Long.MAX_VALUE
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  /**
+   * Check if two TimeRange intersect
+   * @param r the given time range
+   * @return true if the current time range intersects with the given time range r
+   */
+  public boolean overlaps(TimeRange r) {
+    if ((!leftClose || !r.rightClose) && (r.max <= min)) {
+      // e.g., [1,3] does not intersect with (3,5].
+      return false;
+    } else if (!leftClose && !r.rightClose && r.max <= min + 1) {
+      // e.g.,[1,4) does not intersect with (3,5]
+      return false;
+    } else if (leftClose && r.rightClose && r.max < min) {
+      // e.g.,[1,4] does not intersect with [5,6].
+      return false;
+    } else if ((!rightClose || !r.leftClose) && (r.min >= max)) {
+      return false;
+    } else if (!rightClose && !r.leftClose && r.min + 1 >= max) {
+      return false;
+    } else if (rightClose && r.leftClose && r.min > max) {
       return false;
     } else {
       return true;

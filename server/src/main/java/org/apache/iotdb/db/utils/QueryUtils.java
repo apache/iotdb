@@ -63,6 +63,11 @@ public class QueryUtils {
         for (TimeRange range : metaData.getDeleteIntervalList()) {
           if (range.contains(metaData.getStartTime(), metaData.getEndTime())) {
             return true;
+          } else {
+            if (range.overlaps(new TimeRange(metaData.getStartTime(), metaData.getEndTime()))) {
+              metaData.setModified(true);
+            }
+            return false;
           }
         }
       }
