@@ -175,7 +175,7 @@ public class EnvironmentUtils {
   }
 
   public static void cleanDir(String dir) throws IOException {
-    FileUtils.deleteDirectory(new File(dir));
+    FileUtils.deleteQuietly(new File(dir));
   }
 
   /**
