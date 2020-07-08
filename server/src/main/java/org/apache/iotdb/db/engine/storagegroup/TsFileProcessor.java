@@ -591,7 +591,9 @@ public class TsFileProcessor {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
       seqFile.setDeleted(true);
-      Files.delete(seqFile.getFile().toPath());
+      if (seqFile.fileExists()) {
+        Files.delete(seqFile.getFile().toPath());
+      }
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
@@ -625,7 +627,9 @@ public class TsFileProcessor {
         }
         vmWriters.clear();
         vmTsFileResources.clear();
-        Files.delete(logFile.toPath());
+        if (logFile.exists()) {
+          Files.delete(logFile.toPath());
+        }
       } else {
         File[] tmpFiles = FSFactoryProducer.getFSFactory()
             .listFilesBySuffix(writer.getFile().getParent(), PATH_UPGRADE);
@@ -962,19 +966,6 @@ public class TsFileProcessor {
     return vmTsFileResources;
   }
 
-  public ReadWriteLock getFlushQueryLock() {
-    return flushQueryLock;
-  }
-
-  private File createNewTmpFile() {
-    File parent = writer.getFile().getParentFile();
-    return FSFactoryProducer.getFSFactory().getFile(parent,
-        writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
-            .currentTimeMillis()
-            + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
-            + PATH_UPGRADE);
-  }
-
   private void flushAllVmToTsFile(List<RestorableTsFileIOWriter> currMergeVmWriters,
       List<TsFileResource> currMergeVmFiles) throws IOException {
     VmMergeUtils.fullMerge(writer, currMergeVmWriters,
@@ -1067,6 +1058,19 @@ public class TsFileProcessor {
         // reset the merge working state to false
         mergeWorking = false;
       }
+    }
+
+    public ReadWriteLock getFlushQueryLock() {
+      return flushQueryLock;
+    }
+
+    private File createNewTmpFile() {
+      File parent = writer.getFile().getParentFile();
+      return FSFactoryProducer.getFSFactory().getFile(parent,
+          writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
+              .currentTimeMillis()
+              + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
+              + PATH_UPGRADE);
     }
   }
 }
