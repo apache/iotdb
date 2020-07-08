@@ -271,7 +271,8 @@ public class StorageGroupProcessor {
 
   }
 
-  private Map<Long, List<TsFileResource>> splitResourcesByPartition(List<TsFileResource> resources) {
+  private Map<Long, List<TsFileResource>> splitResourcesByPartition(
+      List<TsFileResource> resources) {
     Map<Long, List<TsFileResource>> ret = new HashMap<>();
     for (TsFileResource resource : resources) {
       ret.computeIfAbsent(resource.getTimePartition(), l -> new ArrayList<>()).add(resource);
@@ -304,10 +305,10 @@ public class StorageGroupProcessor {
       Map<Long, List<TsFileResource>> partitionTmpSeqTsFiles = splitResourcesByPartition(tmpSeqTsFiles);
       Map<Long, List<TsFileResource>> partitionTmpUnseqTsFiles = splitResourcesByPartition(tmpUnseqTsFiles);
       for (List<TsFileResource> value : partitionTmpSeqTsFiles.values()) {
-        recoverSeqFiles(value, vmSeqFiles);
+        recoverTsFiles(value, vmSeqFiles, true);
       }
       for (List<TsFileResource> value : partitionTmpUnseqTsFiles.values()) {
-        recoverUnseqFiles(value, vmUnseqFiles);
+        recoverTsFiles(value, vmUnseqFiles, false);
       }
 
       for (TsFileResource resource : sequenceFileTreeSet) {
@@ -590,94 +591,63 @@ public class StorageGroupProcessor {
     }
   }
 
-  private Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> recoverOneTsFile(
-      TsFileResource tsFileResource, List<TsFileResource> vmTsFileResources, boolean isLastFile) {
-    long timePartitionId = tsFileResource.getTimePartition();
-    TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
-        storageGroupName + FILE_NAME_SEPARATOR,
-        getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
-        isLastFile, vmTsFileResources);
-
-    RestorableTsFileIOWriter writer;
-    List<RestorableTsFileIOWriter> vmWriters;
-    try {
-      Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverPerformer
-          .recover();
-      writer = pair.left;
-      vmWriters = pair.right;
-      vmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible);
-    } catch (StorageGroupProcessorException e) {
-      logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
-      return null;
-    }
-    return new Pair<>(writer, vmWriters);
-  }
-
-  private void recoverSeqFiles(List<TsFileResource> tsFiles,
-      Map<String, List<TsFileResource>> vmFiles) {
+  private void recoverTsFiles(List<TsFileResource> tsFiles,
+      Map<String, List<TsFileResource>> vmFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
       List<TsFileResource> vmTsFileResources = vmFiles
           .getOrDefault(tsFileResource.getPath(), new ArrayList<>());
-      Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverOneTsFile(
-          tsFileResource, vmTsFileResources, i == tsFiles.size() - 1);
-      if (pair == null) {
+      TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
+          storageGroupName + FILE_NAME_SEPARATOR,
+          getVersionControllerByTimePartitionId(timePartitionId), tsFileResource, true,
+          i == tsFiles.size() - 1, vmTsFileResources);
+
+      RestorableTsFileIOWriter writer;
+      List<RestorableTsFileIOWriter> vmWriters;
+      try {
+        Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverPerformer
+            .recover();
+        writer = pair.left;
+        vmWriters = pair.right;
+        vmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible);
+      } catch (StorageGroupProcessorException e) {
+        logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getPath(), e);
         continue;
       }
-
-      RestorableTsFileIOWriter writer = pair.left;
       if (i != tsFiles.size() - 1 || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
         // the last file is not closed, continue writing to in
-        TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
-            this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback, false,
-            writer, pair.right);
-        tsFileProcessor.recover();
-        workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-        tsFileResource.setProcessor(tsFileProcessor);
+        TsFileProcessor tsFileProcessor;
+        if (isSeq) {
+          tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+              vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
+              this::closeUnsealedTsFileProcessorCallBack, this::updateLatestFlushTimeCallback,
+              false,
+              writer, vmWriters);
+          tsFileProcessor.recover();
+          workSequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+          tsFileResource.setProcessor(tsFileProcessor);
+        } else {
+          tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
+              vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
+              this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
+              writer, vmWriters);
+          workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
+          tsFileResource.setProcessor(tsFileProcessor);
+          tsFileProcessor.recover();
+        }
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
       }
-      sequenceFileTreeSet.add(tsFileResource);
-    }
-  }
-
-  private void recoverUnseqFiles(List<TsFileResource> tsFiles,
-      Map<String, List<TsFileResource>> vmFiles) {
-    for (int i = 0; i < tsFiles.size(); i++) {
-      TsFileResource tsFileResource = tsFiles.get(i);
-      long timePartitionId = tsFileResource.getTimePartition();
-      List<TsFileResource> vmTsFileResources = vmFiles
-          .getOrDefault(tsFileResource.getPath(), new ArrayList<>());
-      Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverOneTsFile(
-          tsFileResource, vmTsFileResources, i == tsFiles.size() - 1);
-      if (pair == null) {
-        continue;
+      if (isSeq) {
+        sequenceFileTreeSet.add(tsFileResource);
+      } else {
+        unSequenceFileList.add(tsFileResource);
       }
-
-      RestorableTsFileIOWriter writer = pair.left;
-      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
-        // not the last file or cannot write, just close it
-        tsFileResource.setClosed(true);
-      } else if (writer.canWrite()) {
-        // the last file is not closed, continue writing to in
-        TsFileProcessor tsFileProcessor = new TsFileProcessor(storageGroupName, tsFileResource,
-            vmTsFileResources, getVersionControllerByTimePartitionId(timePartitionId),
-            this::closeUnsealedTsFileProcessorCallBack, this::unsequenceFlushCallback, false,
-            writer, pair.right);
-        workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
-        tsFileResource.setProcessor(tsFileProcessor);
-        tsFileProcessor.recover();
-        tsFileResource.removeResourceFile();
-        tsFileProcessor.setTimeRangeId(timePartitionId);
-        writer.makeMetadataVisible();
-      }
-      unSequenceFileList.add(tsFileResource);
     }
   }
 

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.flush;
 
-import static org.apache.iotdb.db.utils.MergeUtils.writeTimeValuePair;
+import static org.apache.iotdb.db.utils.MergeUtils.writeTVPair;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -85,19 +85,8 @@ public class VmMergeUtils {
           String measurementId = entry.getKey();
           Map<Long, TimeValuePair> timeValuePairMap = new TreeMap<>();
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-            TsFileSequenceReader reader = tsFileSequenceReaderMap
-                .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
-                    path -> {
-                      try {
-                        return new TsFileSequenceReader(path);
-                      } catch (IOException e) {
-                        logger.error(
-                            "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
-                            storageGroup,
-                            writer.getFile().getName(), e);
-                        return null;
-                      }
-                    });
+            TsFileSequenceReader reader = buildReaderFromVmWriter(vmWriter,
+                writer, tsFileSequenceReaderMap, storageGroup);
             if (reader == null) {
               continue;
             }
@@ -119,7 +108,7 @@ public class VmMergeUtils {
           }
           IChunkWriter chunkWriter = new ChunkWriterImpl(entry.getValue());
           for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
-            writeTimeValuePair(timeValuePair, chunkWriter);
+            writeTVPair(timeValuePair, chunkWriter);
           }
           chunkWriter.writeToFileWriter(writer);
         }
@@ -140,19 +129,8 @@ public class VmMergeUtils {
           ChunkMetadata newChunkMetadata = null;
           Chunk newChunk = null;
           for (RestorableTsFileIOWriter vmWriter : vmWriters) {
-            TsFileSequenceReader reader = tsFileSequenceReaderMap
-                .computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
-                    path -> {
-                      try {
-                        return new TsFileSequenceReader(path);
-                      } catch (IOException e) {
-                        logger.error(
-                            "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
-                            storageGroup,
-                            writer.getFile().getName(), e);
-                        return null;
-                      }
-                    });
+            TsFileSequenceReader reader = buildReaderFromVmWriter(vmWriter,
+                writer, tsFileSequenceReaderMap, storageGroup);
             if (reader == null) {
               continue;
             }
@@ -186,5 +164,21 @@ public class VmMergeUtils {
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
     }
+  }
+
+  private static TsFileSequenceReader buildReaderFromVmWriter(RestorableTsFileIOWriter vmWriter,
+      RestorableTsFileIOWriter writer, Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
+      String storageGroup) {
+    return tsFileSequenceReaderMap.computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
+        path -> {
+          try {
+            return new TsFileSequenceReader(path);
+          } catch (IOException e) {
+            logger.error(
+                "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
+                storageGroup, writer.getFile().getName(), e);
+            return null;
+          }
+        });
   }
 }
