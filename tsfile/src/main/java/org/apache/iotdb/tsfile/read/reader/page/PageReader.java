@@ -167,6 +167,10 @@ public class PageReader implements IPageReader {
     this.deleteIntervalList = list;
   }
 
+  public List<TimeRange> getDeleteIntervalList() {
+    return deleteIntervalList;
+  }
+
   @Override
   public boolean isModified() {
     return pageHeader.isModified();
