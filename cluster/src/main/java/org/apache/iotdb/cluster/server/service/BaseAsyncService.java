@@ -87,7 +87,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
     }
 
     member.waitLeader();
-    AsyncClient client = member.connectNode(member.getLeader());
+    AsyncClient client = member.getAsyncClient(member.getLeader());
     if (client == null) {
       resultHandler.onError(new LeaderUnknownException(member.getAllNodes()));
       return;
@@ -120,7 +120,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
       AsyncMethodCallback<TSStatus> resultHandler) {
     if (member.getCharacter() != NodeCharacter.LEADER) {
       // forward the plan to the leader
-      AsyncClient client = member.connectNode(member.getLeader());
+      AsyncClient client = member.getAsyncClient(member.getLeader());
       if (client != null) {
         try {
           client.executeNonQueryPlan(request, resultHandler);

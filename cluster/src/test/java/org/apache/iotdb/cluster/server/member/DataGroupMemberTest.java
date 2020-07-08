@@ -179,7 +179,7 @@ public class DataGroupMemberTest extends MemberTest {
 
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncDataClient(node, dataGroupMemberMap) {
 

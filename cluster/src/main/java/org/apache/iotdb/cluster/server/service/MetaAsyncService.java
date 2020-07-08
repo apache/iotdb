@@ -157,7 +157,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   private boolean forwardAddNode(Node node, StartUpStatus startUpStatus,
       AsyncMethodCallback resultHandler) {
     TSMetaService.AsyncClient client =
-        (TSMetaService.AsyncClient) metaGroupMember.connectNode(metaGroupMember.getLeader());
+        (TSMetaService.AsyncClient) metaGroupMember.getAsyncClient(metaGroupMember.getLeader());
     if (client != null) {
       try {
         client.addNode(node, startUpStatus, resultHandler);
@@ -217,7 +217,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
    */
   private boolean forwardRemoveNode(Node node, AsyncMethodCallback resultHandler) {
     TSMetaService.AsyncClient client =
-        (TSMetaService.AsyncClient) metaGroupMember.connectNode(metaGroupMember.getLeader());
+        (TSMetaService.AsyncClient) metaGroupMember.getAsyncClient(metaGroupMember.getLeader());
     if (client != null) {
       try {
         client.removeNode(node, resultHandler);

@@ -229,6 +229,9 @@ public class InsertTabletPlan extends InsertPlan {
 
   private void serializeValues(DataOutputStream outputStream) throws IOException {
     for (int i = 0; i < measurements.length; i++) {
+      if (measurements[i] == null) {
+        continue;
+      }
       serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
     }
   }

@@ -189,7 +189,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         return null;
       }
 
@@ -276,7 +276,7 @@ public class MetaGroupMemberTest extends MemberTest {
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncMetaClient(null, null, node, null) {
             @Override

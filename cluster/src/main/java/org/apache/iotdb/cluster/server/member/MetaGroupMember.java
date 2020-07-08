@@ -70,7 +70,6 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.QueryTimeOutException;
@@ -112,7 +111,6 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
-import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
 import org.apache.iotdb.cluster.server.ClientServer;
@@ -513,7 +511,7 @@ public class MetaGroupMember extends RaftMember {
   private boolean joinCluster(Node node, StartUpStatus startUpStatus)
       throws TException, InterruptedException {
 
-    AsyncMetaClient client = (AsyncMetaClient) connectNode(node);
+    AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
     AddNodeResponse resp = SyncClientAdaptor.addNode(client, thisNode, startUpStatus);
     if (resp == null) {
       logger.warn("Join cluster request timed out");
@@ -895,7 +893,7 @@ public class MetaGroupMember extends RaftMember {
       }
 
       pool.submit(() -> {
-            AsyncMetaClient client = (AsyncMetaClient) connectNode(seedNode);
+            AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(seedNode);
             CheckStatusResponse response = null;
             try {
               response = SyncClientAdaptor.checkStatus(client, getStartUpStatus());
@@ -1003,7 +1001,7 @@ public class MetaGroupMember extends RaftMember {
             groupRemainings[nodeIndex]--;
           }
         } else {
-          AsyncMetaClient client = (AsyncMetaClient) connectNode(node);
+          AsyncMetaClient client = (AsyncMetaClient) getAsyncClient(node);
           try {
             client.appendEntry(request, new AppendGroupEntryHandler(groupRemainings, i, node,
                 leaderShipStale, log, newLeaderTerm, this));
@@ -2627,7 +2625,7 @@ public class MetaGroupMember extends RaftMember {
     try {
       synchronized (nodeStatus) {
         for (Node node : allNodes) {
-          TSMetaService.AsyncClient client = (AsyncClient) connectNode(node);
+          TSMetaService.AsyncClient client = (AsyncClient) getAsyncClient(node);
           if (!node.equals(thisNode) && client != null) {
             client.checkAlive(nodeStatusHandler);
           }
@@ -2781,7 +2779,7 @@ public class MetaGroupMember extends RaftMember {
         } else if (thisNode.equals(leader)) {
           // as the old node is removed, it cannot know this by heartbeat or log, so it should be
           // directly kicked out of the cluster
-          AsyncMetaClient asyncMetaClient = (AsyncMetaClient) connectNode(oldNode);
+          AsyncMetaClient asyncMetaClient = (AsyncMetaClient) getAsyncClient(oldNode);
           try {
             asyncMetaClient.exile(new GenericHandler<>(oldNode, null));
           } catch (TException e) {

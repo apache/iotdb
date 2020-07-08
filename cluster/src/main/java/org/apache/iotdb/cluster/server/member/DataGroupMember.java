@@ -138,7 +138,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -715,7 +714,7 @@ public class DataGroupMember extends RaftMember {
    * @throws IOException
    */
   private boolean pullRemoteFile(String remotePath, Node node, File dest) throws IOException {
-    AsyncDataClient client = (AsyncDataClient) connectNode(node);
+    AsyncDataClient client = (AsyncDataClient) getAsyncClient(node);
     if (client == null) {
       return false;
     }

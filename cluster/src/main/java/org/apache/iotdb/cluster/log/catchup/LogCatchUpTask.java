@@ -117,7 +117,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
 
       synchronized (appendSucceed) {
         appendSucceed.set(false);
-        AsyncClient client = raftMember.connectNode(node);
+        AsyncClient client = raftMember.getAsyncClient(node);
         if (client == null) {
           return;
         }
@@ -180,7 +180,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       // do append entries
       synchronized (appendSucceed) {
         appendSucceed.set(false);
-        AsyncClient client = raftMember.connectNode(node);
+        AsyncClient client = raftMember.getAsyncClient(node);
 
         client.appendEntries(request, handler);
         raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());

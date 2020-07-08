@@ -81,7 +81,7 @@ public class PullSnapshotHintService {
       PullSnapshotHint hint = iterator.next();
       for (Iterator<Node> iter = hint.receivers.iterator(); iter.hasNext(); ) {
         Node receiver = iter.next();
-        AsyncDataClient asyncDataClient = (AsyncDataClient) member.connectNode(receiver);
+        AsyncDataClient asyncDataClient = (AsyncDataClient) member.getAsyncClient(receiver);
         try {
           if (SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.header, hint.slots)) {
             // remove the receiver if it has received the hint

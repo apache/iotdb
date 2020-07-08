@@ -54,7 +54,7 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
   @SuppressWarnings("java:S2274") // enable timeout
   private void doSnapshotCatchUp()
       throws TException, InterruptedException, LeaderUnknownException {
-    AsyncClient client = raftMember.connectNode(node);
+    AsyncClient client = raftMember.getAsyncClient(node);
     if (client == null) {
       abort = true;
       return;

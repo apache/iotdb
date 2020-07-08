@@ -57,7 +57,7 @@ public class SnapshotCatchUpTaskTest {
 
   private RaftMember sender = new TestMetaGroupMember() {
     @Override
-    public AsyncClient connectNode(Node node) {
+    public AsyncClient getAsyncClient(Node node) {
       return new TestClient() {
         @Override
         public void appendEntry(AppendEntryRequest request,

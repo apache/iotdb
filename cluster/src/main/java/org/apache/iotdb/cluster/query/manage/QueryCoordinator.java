@@ -85,7 +85,7 @@ public class QueryCoordinator {
     long currTime = System.currentTimeMillis();
     if (currTime - nodeStatus.getLastUpdateTime() > NODE_STATUS_UPDATE_INTERVAL_MS
         || nodeStatus.getStatus() == null) {
-      AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.connectNode(node);
+      AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.getAsyncClient(node);
       try {
         long startTime = System.nanoTime();
         TNodeStatus status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);

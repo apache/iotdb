@@ -91,7 +91,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     if (dataGroupMember.getLeader() != null) {
       logger.debug("{} forwarding a pull snapshot request to the leader {}", name,
           dataGroupMember.getLeader());
-      AsyncDataClient client = (AsyncDataClient) dataGroupMember.connectNode(dataGroupMember.getLeader());
+      AsyncDataClient client = (AsyncDataClient) dataGroupMember.getAsyncClient(dataGroupMember.getLeader());
       try {
         client.pullSnapshot(request, new GenericForwardHandler<>(resultHandler));
       } catch (TException e) {
@@ -112,7 +112,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       // request to the leader
       dataGroupMember.waitLeader();
       AsyncDataClient client =
-          (AsyncDataClient) dataGroupMember.connectNode(dataGroupMember.getLeader());
+          (AsyncDataClient) dataGroupMember.getAsyncClient(dataGroupMember.getLeader());
       if (client == null) {
         resultHandler.onError(new LeaderUnknownException(dataGroupMember.getAllNodes()));
         return;

@@ -127,7 +127,7 @@ public class CatchUpTask implements Runnable {
       prevLogTerm = logs.get(index - 1).getCurrLogTerm();
     }
 
-    RaftService.AsyncClient client = raftMember.connectNode(node);
+    RaftService.AsyncClient client = raftMember.getAsyncClient(node);
     boolean matched = SyncClientAdaptor
         .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
     raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());

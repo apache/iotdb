@@ -86,7 +86,7 @@ public class PullSnapshotTask implements Callable<Void> {
     }
 
     AsyncDataClient client =
-        (AsyncDataClient) newMember.connectNode(node);
+        (AsyncDataClient) newMember.getAsyncClient(node);
     if (client == null) {
       return false;
     }

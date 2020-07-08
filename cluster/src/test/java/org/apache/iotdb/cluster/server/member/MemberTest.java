@@ -161,7 +161,7 @@ public class MemberTest {
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncDataClient(node, dataGroupMemberMap);
         } catch (IOException e) {
@@ -217,7 +217,7 @@ public class MemberTest {
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncMetaClient(null, null, node, null) {
             @Override
@@ -259,7 +259,7 @@ public class MemberTest {
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncDataClient(node, dataGroupMemberMap);
         } catch (IOException e) {

@@ -83,7 +83,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -622,7 +621,7 @@ public abstract class RaftMember {
       return;
     }
 
-    AsyncClient client = connectNode(node);
+    AsyncClient client = getAsyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
       handler.setReceiver(node);
@@ -647,7 +646,7 @@ public abstract class RaftMember {
    * @param node
    * @return an asynchronous thrift client or null if the caller tries to connect the local node.
    */
-  public AsyncClient connectNode(Node node) {
+  public AsyncClient getAsyncClient(Node node) {
     if (node == null) {
       return null;
     }
@@ -880,7 +879,7 @@ public abstract class RaftMember {
       }
     }
 
-    AsyncClient client = connectNode(follower);
+    AsyncClient client = getAsyncClient(follower);
     if (client != null) {
       catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this));
     } else {
@@ -916,7 +915,7 @@ public abstract class RaftMember {
     }
     logger.debug("{}: Forward {} to node {}", name, plan, node);
 
-    AsyncClient client = connectNode(node);
+    AsyncClient client = getAsyncClient(node);
     if (client != null) {
       return forwardPlan(plan, client, node, header);
     }
@@ -1113,7 +1112,7 @@ public abstract class RaftMember {
     long waitedTime = 0;
     AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
-      AsyncClient client = connectNode(leader);
+      AsyncClient client = getAsyncClient(leader);
       if (client == null) {
         // cannot connect to the leader
         logger.warn("{}: No leader is found when synchronizing", name);
