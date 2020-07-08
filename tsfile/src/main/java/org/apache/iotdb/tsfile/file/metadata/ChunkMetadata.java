@@ -95,7 +95,8 @@ public class ChunkMetadata implements Accountable {
   @Override
   public String toString() {
     return String.format("measurementId: %s, datatype: %s, version: %d, "
-        + "Statistics: %s", measurementUid, tsDataType, version, statistics);
+            + "Statistics: %s, deleteIntervalList: %s", measurementUid, tsDataType, version, statistics,
+        deleteIntervalList);
   }
 
   public long getNumOfPoints() {
@@ -224,12 +225,13 @@ public class ChunkMetadata implements Accountable {
         version == that.version &&
         Objects.equals(measurementUid, that.measurementUid) &&
         tsDataType == that.tsDataType &&
+        deleteIntervalList.equals(that.deleteIntervalList) &&
         Objects.equals(statistics, that.statistics);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(measurementUid, tsDataType, statistics,
+    return Objects.hash(measurementUid, deleteIntervalList, tsDataType, statistics,
         version, offsetOfChunkHeader);
   }
 

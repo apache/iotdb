@@ -105,6 +105,13 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class StorageGroupProcessor {
 
   private static final String MERGING_MODIFICATION_FILE_NAME = "merge.mods";
+
+  /**
+   * All newly generated chunks after merge have version number 0,
+   * so we set merged Modification file version to 1 to take effect
+   */
+  private static final int MERGE_MOD_START_VERSION_NUM = 1;
+
   private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
 
   /**
@@ -1359,7 +1366,7 @@ public class StorageGroupProcessor {
       tryToDeleteLastCache(deviceId, measurementId, startTime, endTime);
 
       Path fullPath = new Path(deviceId, measurementId);
-      Deletion deletion = new Deletion(fullPath, 1, startTime, endTime);
+      Deletion deletion = new Deletion(fullPath, MERGE_MOD_START_VERSION_NUM, startTime, endTime);
       if (mergingModification != null) {
         mergingModification.write(deletion);
         updatedModFiles.add(mergingModification);

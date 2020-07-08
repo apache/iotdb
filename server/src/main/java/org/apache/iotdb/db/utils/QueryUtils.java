@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.utils;
 
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;

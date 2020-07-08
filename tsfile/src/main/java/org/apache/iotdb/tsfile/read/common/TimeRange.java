@@ -103,7 +103,9 @@ public class TimeRange implements Comparable<TimeRange> {
     return this.min <= min && this.max >= max;
   }
 
-  public boolean contains(long time) {return this.min <= time && time <= this.max;}
+  public boolean contains(long time) {
+    return this.min <= time && time <= this.max;
+  }
 
   /**
    * Set a closed interval [min,max].
@@ -176,26 +178,41 @@ public class TimeRange implements Comparable<TimeRange> {
     }
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    TimeRange that = (TimeRange) o;
+    return (this.min == that.min && this.max == that.max);
+  }
+
   /**
-   * Check if two TimeRange intersect
-   * @param r the given time range
-   * @return true if the current time range intersects with the given time range r
+   * Check if two TimeRanges overlap
+   * @param rhs the given time range
+   * @return true if the current time range overlaps with the given time range rhs
    */
-  public boolean overlaps(TimeRange r) {
-    if ((!leftClose || !r.rightClose) && (r.max <= min)) {
-      // e.g., [1,3] does not intersect with (3,5].
+  public boolean overlaps(TimeRange rhs) {
+    if ((!this.leftClose || !rhs.rightClose) && (rhs.max <= this.min)) {
+      // e.g., rhs:[1,3] does not overlap with this:(3,5].
       return false;
-    } else if (!leftClose && !r.rightClose && r.max <= min + 1) {
-      // e.g.,[1,4) does not intersect with (3,5]
+    } else if (!this.leftClose && !rhs.rightClose && rhs.max <= this.min + 1) {
+      // e.g., rhs:[1,4) does not overlap with this:(3,5]
       return false;
-    } else if (leftClose && r.rightClose && r.max < min) {
-      // e.g.,[1,4] does not intersect with [5,6].
+    } else if (this.leftClose && rhs.rightClose && rhs.max < this.min) {
+      // e.g., rhs:[1,4] does not overlap with this:[5,6]
       return false;
-    } else if ((!rightClose || !r.leftClose) && (r.min >= max)) {
+    } else if ((!this.rightClose || !rhs.leftClose) && (rhs.min >= this.max)) {
+      // e.g., this:[1,5) does not overlap with rhs:[5,6]
       return false;
-    } else if (!rightClose && !r.leftClose && r.min + 1 >= max) {
+    } else if (!this.rightClose && !rhs.leftClose && rhs.min + 1 >= this.max) {
+      // e.g., this:[1,5) does not overlap with rhs:(4,6]
       return false;
-    } else if (rightClose && r.leftClose && r.min > max) {
+    } else if (this.rightClose && rhs.leftClose && rhs.min > this.max) {
+      // e.g., this:[1,5] does not overlap with rhs:[6,8]
       return false;
     } else {
       return true;

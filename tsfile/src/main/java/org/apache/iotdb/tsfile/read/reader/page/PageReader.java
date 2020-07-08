@@ -67,6 +67,8 @@ public class PageReader implements IPageReader {
    */
   private List<TimeRange> deleteIntervalList;
 
+  private int deleteCursor = 0;
+
   public PageReader(ByteBuffer pageData, TSDataType dataType, Decoder valueDecoder,
       Decoder timeDecoder, Filter filter) {
     this(null, pageData, dataType, valueDecoder, timeDecoder, filter);
@@ -104,44 +106,43 @@ public class PageReader implements IPageReader {
   public BatchData getAllSatisfiedPageData() throws IOException {
 
     BatchData pageData = new BatchData(dataType);
-    int deleteCursor = 0;
 
     while (timeDecoder.hasNext(timeBuffer)) {
       long timestamp = timeDecoder.readLong(timeBuffer);
       switch (dataType) {
         case BOOLEAN:
           boolean aBoolean = valueDecoder.readBoolean(valueBuffer);
-          if (!isDeleted(timestamp, deleteCursor) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBoolean))) {
             pageData.putBoolean(timestamp, aBoolean);
           }
           break;
         case INT32:
           int anInt = valueDecoder.readInt(valueBuffer);
-          if (!isDeleted(timestamp, deleteCursor) && (filter == null || filter.satisfy(timestamp, anInt))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, anInt))) {
             pageData.putInt(timestamp, anInt);
           }
           break;
         case INT64:
           long aLong = valueDecoder.readLong(valueBuffer);
-          if (!isDeleted(timestamp, deleteCursor) && (filter == null || filter.satisfy(timestamp, aLong))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aLong))) {
             pageData.putLong(timestamp, aLong);
           }
           break;
         case FLOAT:
           float aFloat = valueDecoder.readFloat(valueBuffer);
-          if (!isDeleted(timestamp, deleteCursor) && (filter == null || filter.satisfy(timestamp, aFloat))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aFloat))) {
             pageData.putFloat(timestamp, aFloat);
           }
           break;
         case DOUBLE:
           double aDouble = valueDecoder.readDouble(valueBuffer);
-          if (!isDeleted(timestamp, deleteCursor) && (filter == null || filter.satisfy(timestamp, aDouble))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aDouble))) {
             pageData.putDouble(timestamp, aDouble);
           }
           break;
         case TEXT:
           Binary aBinary = valueDecoder.readBinary(valueBuffer);
-          if (!isDeleted(timestamp, deleteCursor) && (filter == null || filter.satisfy(timestamp, aBinary))) {
+          if (!isDeleted(timestamp) && (filter == null || filter.satisfy(timestamp, aBinary))) {
             pageData.putBinary(timestamp, aBinary);
           }
           break;
@@ -171,7 +172,7 @@ public class PageReader implements IPageReader {
     return pageHeader.isModified();
   }
 
-  private boolean isDeleted(long timestamp, int deleteCursor) {
+  private boolean isDeleted(long timestamp) {
     while (deleteIntervalList != null && deleteCursor < deleteIntervalList.size()) {
       if (deleteIntervalList.get(deleteCursor).contains(timestamp)) {
         return true;

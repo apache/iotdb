@@ -280,22 +280,11 @@ public class LogicalPlanSmallTest {
     Assert.assertEquals(3, ((DeleteDataOperator) op).getStartTime());
     Assert.assertEquals(3, ((DeleteDataOperator) op).getEndTime());
 
-    String sql7 = "delete from root.d1.s1 where time = 1 and time < -1";
-    String errorMsg = null;
-    try {
-      op = parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    } catch (RuntimeException e) {
-      errorMsg = e.getMessage();
-    }
-    Assert.assertEquals(errorMsg, "Invalid delete range: [1, -2]");
-
-    String sql8 = "delete from root.d1.s1 where time > 5 and time <= 0";
-    try {
-      op = parseDriver.parse(sql8, IoTDBDescriptor.getInstance().getConfig().getZoneID());
-    } catch (RuntimeException e) {
-      errorMsg = e.getMessage();
-    }
-    Assert.assertEquals(errorMsg, "Invalid delete range: [6, 0]");
+    String sql7 = "delete from root.d1.s1 where time > 5 and time >= 2";
+    op = parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    Assert.assertEquals(paths, ((DeleteDataOperator) op).getSelectedPaths());
+    Assert.assertEquals(6, ((DeleteDataOperator) op).getStartTime());
+    Assert.assertEquals(Long.MAX_VALUE, ((DeleteDataOperator) op).getEndTime());
   }
 
   @Test
@@ -324,15 +313,22 @@ public class LogicalPlanSmallTest {
             + "time > XXX, time <= XXX, or And with two atomic expressions",
         errorMsg);
 
-    /*
-    sql = "delete from root.d1.s1 where time<=1 and time > 3";
+    String sql7 = "delete from root.d1.s1 where time = 1 and time < -1";
+    errorMsg = null;
+    try {
+      parseDriver.parse(sql7, IoTDBDescriptor.getInstance().getConfig().getZoneID());
+    } catch (RuntimeException e) {
+      errorMsg = e.getMessage();
+    }
+    Assert.assertEquals(errorMsg, "Invalid delete range: [1, -2]");
+
+    sql = "delete from root.d1.s1 where time > 5 and time <= 0";
     errorMsg = null;
     try {
       parseDriver.parse(sql, IoTDBDescriptor.getInstance().getConfig().getZoneID());
     } catch (SQLParserException e) {
       errorMsg = e.getMessage();
     }
-    Assert.assertEquals("Unreachable deleted time interval", errorMsg);
-     */
+    Assert.assertEquals("Invalid delete range: [6, 0]", errorMsg);
   }
 }
