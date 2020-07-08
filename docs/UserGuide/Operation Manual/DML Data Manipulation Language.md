@@ -788,6 +788,26 @@ In case we hope to merely delete the data before 2017-11-01 16:26:00 in the year
 delete from root.ln.wf02.wt02.status where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
 ```
 
+IoTDB supports to delete a range of timeseries points. Users can write SQL expressions as follows to specify the delete interval:
+
+```
+delete from root.ln.wf02.wt02.status where time < 10
+delete from root.ln.wf02.wt02.status where time <= 10
+delete from root.ln.wf02.wt02.status where time < 20 and time > 10
+delete from root.ln.wf02.wt02.status where time <= 20 and time >= 10
+delete from root.ln.wf02.wt02.status where time > 20
+delete from root.ln.wf02.wt02.status where time >= 20
+delete from root.ln.wf02.wt02.status where time = 20
+```
+
+Please pay attention that multiple intervals connected by "OR" expression are not supported in delete statement:
+
+```
+delete from root.ln.wf02.wt02.status where time > 4 or time < 0
+Msg: 303: Check metadata error: For delete statement, where clause can only contain atomic
+expressions like : time > XXX, time <= XXX, or two atomic expressions connected by 'AND'
+```
+
 
 ### Delete Multiple Timeseries
 When both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Concept/Data%20Model%20and%20Terminology.html) can be used to delete the data. The SQL statement for this operation is:

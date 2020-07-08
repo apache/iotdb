@@ -848,6 +848,24 @@ delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 delete from root.ln.wf02.wt02.status where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
 ```
 
+IoTDB 支持删除一个时间序列任何一个时间范围内的所有时序点，用户可以使用以下SQL语句指定需要删除的时间范围：
+```
+delete from root.ln.wf02.wt02.status where time < 10
+delete from root.ln.wf02.wt02.status where time <= 10
+delete from root.ln.wf02.wt02.status where time < 20 and time > 10
+delete from root.ln.wf02.wt02.status where time <= 20 and time >= 10
+delete from root.ln.wf02.wt02.status where time > 20
+delete from root.ln.wf02.wt02.status where time >= 20
+delete from root.ln.wf02.wt02.status where time = 20
+```
+
+需要注意，当前的删除语句不支持where子句后的时间范围为多个由OR连接成的时间区间。如下删除语句将会解析出错：
+```
+delete from root.ln.wf02.wt02.status where time > 4 or time < 0
+Msg: 303: Check metadata error: For delete statement, where clause can only contain atomic
+expressions like : time > XXX, time <= XXX, or two atomic expressions connected by 'AND'
+```
+
 #### 多传感器时间序列值删除    
 
 当ln集团wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的[前缀路径或带`*`路径](../Concept/Data%20Model%20and%20Terminology.html)进行删除操作，进行此操作的SQL语句为：
