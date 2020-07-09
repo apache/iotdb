@@ -1389,10 +1389,12 @@ public class StorageGroupProcessor {
               tsFileResource.getUnsealedFileProcessor().getVmTsFileResources();
 
           for (int i = 1; i < pair.right.size(); i++) {
-            TsFileResource tmp = vmTsFileResourceList.get(i - 1);
-            tsfileResourcesForQuery.add(
-                new TsFileResource(tmp.getFile(), tmp.getDeviceToIndexMap(), tmp.getStartTimes(),
-                    tmp.getEndTimes(), Collections.emptyList(), pair.right.get(i), tmp));
+            if (vmTsFileResourceList.size() >= i) {
+              TsFileResource tmp = vmTsFileResourceList.get(i - 1);
+              tsfileResourcesForQuery.add(
+                  new TsFileResource(tmp.getFile(), tmp.getDeviceToIndexMap(), tmp.getStartTimes(),
+                      tmp.getEndTimes(), Collections.emptyList(), pair.right.get(i), tmp));
+            }
           }
         }
       } catch (IOException e) {
