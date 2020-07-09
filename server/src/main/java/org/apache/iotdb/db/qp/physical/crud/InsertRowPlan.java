@@ -196,9 +196,17 @@ public class InsertRowPlan extends InsertPlan {
   @Override
   public List<Path> getPaths() {
     List<Path> ret = new ArrayList<>();
-
     for (String m : measurements) {
       ret.add(new Path(deviceId, m));
+    }
+    return ret;
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for (String m : measurements) {
+      ret.add(deviceId + IoTDBConstant.PATH_SEPARATOR + m);
     }
     return ret;
   }

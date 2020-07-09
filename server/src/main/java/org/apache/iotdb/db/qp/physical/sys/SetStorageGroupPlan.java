@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -29,6 +30,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.read.common.Path;
 
 public class SetStorageGroupPlan extends PhysicalPlan {
+
   private Path path;
 
   public SetStorageGroupPlan() {
@@ -39,7 +41,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
     super(false, Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
   }
-  
+
   public Path getPath() {
     return path;
   }
@@ -47,14 +49,15 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   public void setPath(Path path) {
     this.path = path;
   }
-  
+
   @Override
   public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
-    if (path != null) {
-      ret.add(path);
-    }
-    return ret;
+    return path != null ? Collections.singletonList(path) : Collections.emptyList();
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    return path != null ? Collections.singletonList(path.getFullPath()) : Collections.emptyList();
   }
 
   @Override

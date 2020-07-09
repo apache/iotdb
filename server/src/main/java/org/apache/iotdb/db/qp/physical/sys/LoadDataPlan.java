@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -41,11 +42,14 @@ public class LoadDataPlan extends PhysicalPlan {
 
   @Override
   public List<Path> getPaths() {
-    List<Path> ret = new ArrayList<>();
-    if (measureType != null) {
-      ret.add(new Path(measureType));
-    }
-    return ret;
+    return measureType != null ? Collections.singletonList(new Path(measureType))
+        : Collections.emptyList();
+
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    return measureType != null ? Collections.singletonList(measureType) : Collections.emptyList();
   }
 
   public String getInputFilePath() {

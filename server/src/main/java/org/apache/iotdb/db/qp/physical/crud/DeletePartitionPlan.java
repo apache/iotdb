@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -38,7 +39,12 @@ public class DeletePartitionPlan extends PhysicalPlan {
 
   @Override
   public List<Path> getPaths() {
-    return null;
+    return Collections.emptyList();
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    return Collections.emptyList();
   }
 
   public String getStorageGroupName() {
