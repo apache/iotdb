@@ -99,6 +99,7 @@ public class HeartbeatThread implements Runnable {
             localMember.setLeader(null);
             logger.info("{}: Start elections", memberName);
             startElections();
+            logger.info("{}: End elections", memberName);
             break;
         }
       } catch (InterruptedException e) {
@@ -192,13 +193,14 @@ public class HeartbeatThread implements Runnable {
       req.setHeader(request.header);
     }
     if (request.isSetPartitionTableBytes()) {
-      req.setPartitionTableBytes(request.getPartitionTableBytes());
+      req.partitionTableBytes = request.partitionTableBytes;
+      req.setPartitionTableBytesIsSet(true);
     }
     if (client != null) {
       localMember.getAsyncThreadPool().submit(() -> {
         try {
           logger.debug("{}: Sending heartbeat to {}", memberName, node);
-          HeartBeatResponse heartBeatResponse = client.sendHeartbeat(request);
+          HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
           heartbeatHandler.onComplete(heartBeatResponse);
         } catch (Exception e) {
           logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);

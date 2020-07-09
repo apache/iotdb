@@ -38,14 +38,14 @@ public class ClusterConfig {
       + ":9004:40011", "127.0.0.1:9005:40012");
 
   @ClusterConsistent
-  private boolean isRpcThriftCompressionEnabled = false;
+  private boolean isRpcThriftCompressionEnabled = true;
   private int maxConcurrentClientNum = 1024;
 
   @ClusterConsistent
   private int replicationNum = 2;
 
   @ClusterConsistent
-  private boolean useAsyncServer = true;
+  private boolean useAsyncServer = false;
 
   private int connectionTimeoutInMS = 20 * 1000;
   /**
