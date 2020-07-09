@@ -563,7 +563,7 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    int result = asyncInsertRecordTimeout("root.sg1.d1", 0, 100);
+    int result = asyncInsertRecordTimeout("root.sg1.d1", 0, 5000);
     Assert.assertEquals(0, result);
 
     result = asyncInsertRecordTimeout("root.sg1.d1", 1, 0);
