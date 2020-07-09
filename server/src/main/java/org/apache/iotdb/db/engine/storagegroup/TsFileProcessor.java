@@ -242,7 +242,8 @@ public class TsFileProcessor {
     try {
       if (workMemTable != null) {
         workMemTable
-            .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getTimestamp());
+            .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getStartTime(),
+                deletion.getEndTime());
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
       for (IMemTable memTable : flushingMemTables) {

@@ -312,10 +312,13 @@ Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <T
 * 删除记录语句
 
 ```
-DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* WHERE TIME LESSTHAN <TimeValue>
-Eg: DELETE FROM root.ln.wf01.wt01.temperature WHERE time < 2017-11-1T00:05:00+08:00
+DELETE FROM <PrefixPath> [COMMA <PrefixPath>]* [WHERE <WhereClause>]?
+WhereClause : <Condition> [(AND) <Condition>]*
+Condition  : <TimeExpr> [(AND) <TimeExpr>]*
+TimeExpr : TIME PrecedenceEqualOperator (<TimeValue> | <RelativeTime>)
+Eg: DELETE FROM root.ln.wf01.wt01.temperature WHERE time > 2016-01-05T00:15:00+08:00 and time < 2017-11-1T00:05:00+08:00
 Eg: DELETE FROM root.ln.wf01.wt01.status, root.ln.wf01.wt01.temperature WHERE time < NOW()
-Eg: DELETE FROM root.ln.wf01.wt01.* WHERE time < 1509466140000
+Eg: DELETE FROM root.ln.wf01.wt01.* WHERE time >= 1509466140000
 ```
 
 * 选择记录语句
