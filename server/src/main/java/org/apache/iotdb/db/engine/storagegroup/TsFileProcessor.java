@@ -586,6 +586,17 @@ public class TsFileProcessor {
             + VM_SUFFIX);
   }
 
+  private void deleteVmFiles(List<TsFileResource> vmMergeTsFiles,
+      List<RestorableTsFileIOWriter> vmMergeWriters) throws IOException {
+    for (int i = 0; i < vmMergeTsFiles.size(); i++) {
+      vmMergeTsFiles.get(i).close();
+      vmMergeWriters.get(i).close();
+      deleteVmFile(vmMergeTsFiles.get(i));
+    }
+    vmWriters.removeAll(vmMergeWriters);
+    vmTsFileResources.removeAll(vmMergeTsFiles);
+  }
+
   public static void deleteVmFile(TsFileResource seqFile) {
     seqFile.writeLock();
     try {
@@ -783,7 +794,8 @@ public class TsFileProcessor {
       if (!mergeWorking) {
         mergeWorking = true;
         VmMergeTaskPoolManager.getInstance()
-            .submit(new VmMergeTask(new ArrayList<>(vmTsFileResources), new ArrayList<>(vmWriters)));
+            .submit(
+                new VmMergeTask(new ArrayList<>(vmTsFileResources), new ArrayList<>(vmWriters)));
       }
     }
   }
@@ -974,11 +986,7 @@ public class TsFileProcessor {
         new VmLogger(tsFileResource.getFile().getParent(),
             tsFileResource.getFile().getName()),
         new HashSet<>(), sequence);
-    for (TsFileResource vmTsFileResource : currMergeVmFiles) {
-      deleteVmFile(vmTsFileResource);
-    }
-    vmWriters.removeAll(currMergeVmWriters);
-    vmTsFileResources.removeAll(currMergeVmFiles);
+    deleteVmFiles(currMergeVmFiles, currMergeVmWriters);
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(tsFileResource.getFile().getParent(),
             tsFileResource.getFile().getName() + VM_LOG_NAME);
@@ -1008,7 +1016,7 @@ public class TsFileProcessor {
         for (RestorableTsFileIOWriter vmWriter : vmMergeWriters) {
           Map<String, Map<String, List<ChunkMetadata>>> schemaMap = vmWriter
               .getMetadatasForQuery();
-          for(Entry<String, Map<String, List<ChunkMetadata>>> schemaMapEntry : schemaMap
+          for (Entry<String, Map<String, List<ChunkMetadata>>> schemaMapEntry : schemaMap
               .entrySet()) {
             String device = schemaMapEntry.getKey();
             for (Entry<String, List<ChunkMetadata>> entry : schemaMapEntry.getValue().entrySet()) {
@@ -1044,11 +1052,7 @@ public class TsFileProcessor {
           if (!tmpFile.renameTo(mergedFile)) {
             logger.error("Failed to rename {} to {}", newVmFile, mergedFile);
           }
-          for (TsFileResource vmTsFileResource : vmMergeTsFiles) {
-            deleteVmFile(vmTsFileResource);
-          }
-          vmWriters.removeAll(vmMergeWriters);
-          vmTsFileResources.removeAll(vmMergeTsFiles);
+          deleteVmFiles(vmMergeTsFiles, vmMergeWriters);
           if (!mergedFile.renameTo(newVmFile)) {
             logger.error("Failed to rename {} to {}", mergedFile, newVmFile);
           }
