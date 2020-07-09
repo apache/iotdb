@@ -563,10 +563,10 @@ public class IoTDBSessionIT {
 
     createTimeseries();
 
-    int result = asyncInsertRecordTimeout("root.sg1.d1", 0, 5000);
+    int result = asyncInsertRecordsTimeout("root.sg1.d1", 0, 1000, 5000);
     Assert.assertEquals(0, result);
 
-    result = asyncInsertRecordTimeout("root.sg1.d1", 1, 0);
+    result = asyncInsertRecordsTimeout("root.sg1.d1", 0, 1000, 0);
     Assert.assertEquals(-1, result);
   }
 
@@ -945,23 +945,39 @@ public class IoTDBSessionIT {
     }
   }
 
-  private int asyncInsertRecordTimeout(String deviceId, long time, long timeout)
+  private int asyncInsertRecordsTimeout(String deviceId, long startTime, long endTime, long timeout)
       throws ExecutionException, InterruptedException {
     List<String> measurements = new ArrayList<>();
-    List<TSDataType> types = new ArrayList<>();
     measurements.add("s1");
     measurements.add("s2");
     measurements.add("s3");
-    types.add(TSDataType.INT64);
-    types.add(TSDataType.INT64);
-    types.add(TSDataType.INT64);
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
 
-    List<Object> values = new ArrayList<>();
-    values.add(1L);
-    values.add(2L);
-    values.add(3L);
+
+    for (long time = startTime; time < endTime; time++) {
+      List<Object> values = new ArrayList<>();
+      List<TSDataType> types = new ArrayList<>();
+      values.add(1L);
+      values.add(2L);
+      values.add(3L);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+      types.add(TSDataType.INT64);
+
+      deviceIds.add(deviceId);
+      measurementsList.add(measurements);
+      valuesList.add(values);
+      typesList.add(types);
+      timestamps.add(time);
+    }
+
     CompletableFuture<Integer> future = session
-        .asyncInsertRecord(deviceId, time, measurements, types, values, timeout,null);
+        .asyncInsertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList, timeout,
+            null);
     return future.get();
   }
 
