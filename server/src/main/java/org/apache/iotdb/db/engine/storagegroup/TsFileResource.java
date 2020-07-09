@@ -335,7 +335,7 @@ public class TsFileResource {
     }
   }
 
-  public boolean fileExists() {
+  public boolean resourceFileExists() {
     return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
@@ -366,15 +366,15 @@ public class TsFileResource {
     return deviceToIndex.containsKey(deviceId);
   }
 
-  public File getFile() {
+  public File getTsFile() {
     return file;
   }
 
-  public String getPath() {
+  public String getTsFilePath() {
     return file.getPath();
   }
 
-  public long getFileSize() {
+  public long getTsFileSize() {
     return file.length();
   }
 

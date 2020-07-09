@@ -512,7 +512,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException {
-    getProcessor(newTsFileResource.getFile().getParentFile().getName())
+    getProcessor(newTsFileResource.getTsFile().getParentFile().getName())
         .loadNewTsFileForSync(newTsFileResource);
   }
 
