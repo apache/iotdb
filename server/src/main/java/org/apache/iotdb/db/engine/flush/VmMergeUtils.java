@@ -182,7 +182,11 @@ public class VmMergeUtils {
     return tsFileSequenceReaderMap.computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
         path -> {
           try {
-            return new TsFileSequenceReader(path);
+            if (vmWriter.getFile().exists()) {
+              return new TsFileSequenceReader(path);
+            } else {
+              return null;
+            }
           } catch (IOException e) {
             logger.error(
                 "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
