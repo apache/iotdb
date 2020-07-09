@@ -171,6 +171,9 @@ public class VmMergeUtils {
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
     }
+    if (vmLogger != null) {
+      vmLogger.close();
+    }
   }
 
   private static TsFileSequenceReader buildReaderFromVmWriter(RestorableTsFileIOWriter vmWriter,
