@@ -589,7 +589,6 @@ public class TsFileProcessor {
   private void deleteVmFiles(List<TsFileResource> vmMergeTsFiles,
       List<RestorableTsFileIOWriter> vmMergeWriters) throws IOException {
     for (int i = 0; i < vmMergeTsFiles.size(); i++) {
-      vmMergeTsFiles.get(i).close();
       vmMergeWriters.get(i).close();
       deleteVmFile(vmMergeTsFiles.get(i));
     }
@@ -634,11 +633,7 @@ public class TsFileProcessor {
             storageGroupName,
             new VmLogger(tsFileResource.getFile().getParent(), tsFileResource.getFile().getName()),
             deviceSet, sequence);
-        for (TsFileResource vmTsFileResource : vmTsFileResources) {
-          deleteVmFile(vmTsFileResource);
-        }
-        vmWriters.clear();
-        vmTsFileResources.clear();
+        deleteVmFiles(vmTsFileResources, vmWriters);
         if (logFile.exists()) {
           Files.delete(logFile.toPath());
         }
@@ -1036,19 +1031,20 @@ public class TsFileProcessor {
             .getMaxMergeChunkNumInTsFile()) {
           // merge vm to tsfile
           flushVmTimes = 0;
-          logger.info("[Flush] merge {} vms to TsFile", vmMergeWriters.size() + 1);
+          logger.info("[Flush] merge {} vms to TsFile", vmMergeWriters.size());
           flushAllVmToTsFile(vmMergeWriters, vmMergeTsFiles);
         } else if (config.getMaxVmNum() <= vmMergeTsFiles.size()) {
           // merge vm files
-          logger.info("[Flush] merge {} vms to vm", vmMergeTsFiles.size() + 1);
+          logger.info("[Flush] merge {} vms to vm", vmMergeTsFiles.size());
           // merge all vm files into a new vm file
           File tmpFile = createNewTmpFile();
           RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);
           VmMergeUtils.fullMerge(tmpWriter, vmMergeWriters,
               storageGroupName, null, new HashSet<>(), sequence);
+          tmpWriter.close();
           File newVmFile = createNewVMFile(tsFileResource);
-          File mergedFile = FSFactoryProducer.getFSFactory().getFile(newVmFile.getPath()
-              + MERGED_SUFFIX);
+          File mergedFile = FSFactoryProducer.getFSFactory()
+              .getFile(newVmFile.getPath() + MERGED_SUFFIX);
           if (!tmpFile.renameTo(mergedFile)) {
             logger.error("Failed to rename {} to {}", newVmFile, mergedFile);
           }
