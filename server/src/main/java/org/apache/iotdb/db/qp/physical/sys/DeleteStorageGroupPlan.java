@@ -22,6 +22,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -44,6 +45,15 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
   @Override
   public List<Path> getPaths() {
     return deletePathList;
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for (Path path : deletePathList) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
   }
 
   @Override

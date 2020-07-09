@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -63,7 +64,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     this.alias = alias;
     canBeSplit = false;
   }
-  
+
   public Path getPath() {
     return path;
   }
@@ -71,7 +72,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   public void setPath(Path path) {
     this.path = path;
   }
-  
+
   public TSDataType getDataType() {
     return dataType;
   }
@@ -95,7 +96,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   public void setEncoding(TSEncoding encoding) {
     this.encoding = encoding;
   }
-  
+
   public Map<String, String> getAttributes() {
     return attributes;
   }
@@ -133,10 +134,15 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
     return String.format("seriesPath: %s, resultDataType: %s, encoding: %s, compression: %s", path,
         dataType, encoding, compressor);
   }
-  
+
   @Override
   public List<Path> getPaths() {
     return Collections.singletonList(path);
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    return Collections.singletonList(path.getFullPath());
   }
 
   @Override

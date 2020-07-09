@@ -95,6 +95,15 @@ public class DeletePlan extends PhysicalPlan {
     return paths;
   }
 
+  @Override
+  public List<String> getPathsStrings() {
+    List<String> ret = new ArrayList<>();
+    for (Path path : paths) {
+      ret.add(path.getFullPath());
+    }
+    return ret;
+  }
+
   public void setPaths(List<Path> paths) {
     this.paths = paths;
   }

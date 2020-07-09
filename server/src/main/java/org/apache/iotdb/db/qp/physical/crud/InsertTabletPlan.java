@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -122,6 +123,22 @@ public class InsertTabletPlan extends InsertPlan {
       ret.add(new Path(deviceId, m));
     }
     paths = ret;
+    return ret;
+  }
+
+  @Override
+  public List<String> getPathsStrings() {
+    if (paths != null) {
+      List<String> ret = new ArrayList<>();
+      for (Path path : paths) {
+        ret.add(path.getFullPath());
+      }
+      return ret;
+    }
+    List<String> ret = new ArrayList<>();
+    for (String m : measurements) {
+      ret.add(deviceId + IoTDBConstant.PATH_SEPARATOR + m);
+    }
     return ret;
   }
 
