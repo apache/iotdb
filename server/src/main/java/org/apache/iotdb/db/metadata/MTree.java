@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata;
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
-import static org.apache.iotdb.db.query.executor.LastQueryExecutor.calculateLastPairForOneSeries;
+import static org.apache.iotdb.db.query.executor.LastQueryExecutor.calculateLastPairForOneSeriesLocally;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
@@ -60,6 +60,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -85,12 +86,6 @@ public class MTree implements Serializable {
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
 
   private MNode root;
-
-  /**
-   * The number of mlog lines that has been snapshot in mtree.snapshot
-   */
-  private int snapshotLineNumber;
-
   private static transient ThreadLocal<Integer> limit = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
@@ -98,12 +93,10 @@ public class MTree implements Serializable {
 
   MTree() {
     this.root = new MNode(null, IoTDBConstant.PATH_ROOT);
-    this.snapshotLineNumber = 0;
   }
 
-  private MTree(MNode root, int snapshotLineNumber) {
+  private MTree(MNode root) {
     this.root = root;
-    this.snapshotLineNumber = snapshotLineNumber;
   }
 
   /**
@@ -766,7 +759,7 @@ public class MTree implements Serializable {
       return node.getCachedLast().getTimestamp();
     } else {
       try {
-        last = calculateLastPairForOneSeries(new Path(node.getFullPath()),
+        last = calculateLastPairForOneSeriesLocally(new Path(node.getFullPath()),
             node.getSchema().getType(), new QueryContext(-1), Collections.emptySet());
         return last.getTimestamp();
       } catch (Exception e) {
@@ -887,6 +880,11 @@ public class MTree implements Serializable {
    * Get all paths from root to the given level.
    */
   List<String> getNodesList(String path, int nodeLevel) throws MetadataException {
+    return getNodesList(path, nodeLevel, null);
+  }
+
+  /** Get all paths from root to the given level */
+  List<String> getNodesList(String path, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     String[] nodes = MetaUtils.getNodeNames(path);
     if (!nodes[0].equals(root.getName())) {
       throw new IllegalPathException(path);
@@ -896,11 +894,14 @@ public class MTree implements Serializable {
     for (int i = 1; i < nodes.length; i++) {
       if (node.getChild(nodes[i]) != null) {
         node = node.getChild(nodes[i]);
+        if (node instanceof StorageGroupMNode && filter != null && !filter.satisfy(node.getFullPath())) {
+          return res;
+        }
       } else {
         throw new MetadataException(nodes[i - 1] + " does not have the child node " + nodes[i]);
       }
     }
-    findNodes(node, path, res, nodeLevel - (nodes.length - 1));
+    findNodes(node, path, res, nodeLevel - (nodes.length - 1), filter);
     return res;
   }
 
@@ -909,8 +910,9 @@ public class MTree implements Serializable {
    *
    * @param targetLevel Record the distance to the target level, 0 means the target level.
    */
-  private void findNodes(MNode node, String path, List<String> res, int targetLevel) {
-    if (node == null) {
+  private void findNodes(MNode node, String path, List<String> res, int targetLevel,
+      StorageGroupFilter filter) {
+    if (node == null || node instanceof StorageGroupMNode && filter != null && !filter.satisfy(node.getFullPath())) {
       return;
     }
     if (targetLevel == 0) {
@@ -918,26 +920,19 @@ public class MTree implements Serializable {
       return;
     }
     for (MNode child : node.getChildren().values()) {
-      findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1);
+      findNodes(child, path + PATH_SEPARATOR + child.toString(), res, targetLevel - 1, filter);
     }
   }
 
-  public int getSnapshotLineNumber() {
-    return snapshotLineNumber;
-  }
-
-  public void serializeTo(String snapshotPath, int lineNumber) throws IOException {
+  public void serializeTo(String snapshotPath) throws IOException {
     try (BufferedWriter bw = new BufferedWriter(
         new FileWriter(SystemFileFactory.INSTANCE.getFile(snapshotPath)))) {
-      bw.write(String.valueOf(lineNumber));
-      bw.newLine();
       root.serializeTo(bw);
     }
   }
 
   public static MTree deserializeFrom(File mtreeSnapshot) {
     try (BufferedReader br = new BufferedReader(new FileReader(mtreeSnapshot))) {
-      int snapshotLineNumber = Integer.parseInt(br.readLine());
       String s;
       Deque<MNode> nodeStack = new ArrayDeque<>();
       MNode node = null;
@@ -973,7 +968,7 @@ public class MTree implements Serializable {
           nodeStack.push(node);
         }
       }
-      return new MTree(node, snapshotLineNumber);
+      return new MTree(node);
     } catch (IOException e) {
       logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
       return new MTree();

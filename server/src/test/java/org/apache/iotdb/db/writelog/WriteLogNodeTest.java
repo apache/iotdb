@@ -26,11 +26,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.writelog.io.ILogReader;
@@ -70,11 +69,11 @@ public class WriteLogNodeTest {
 
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
 
-    InsertPlan bwInsertPlan = new InsertPlan(identifier, 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan(identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path(identifier + ".s1"));
 
     long[] times = new long[]{110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
@@ -103,7 +102,7 @@ public class WriteLogNodeTest {
     tabletPlan.setStart(0);
     tabletPlan.setEnd(4);
 
-    tabletPlan.markMeasurementInsertionFailed(1);
+    tabletPlan.markFailedMeasurementInsertion(1);
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
@@ -133,11 +132,11 @@ public class WriteLogNodeTest {
 
     WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
 
-    InsertPlan bwInsertPlan = new InsertPlan(identifier, 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan(identifier, 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
     logNode.notifyStartFlush();
@@ -170,11 +169,11 @@ public class WriteLogNodeTest {
 
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
-    InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice", 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan("root.logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
 
@@ -196,11 +195,11 @@ public class WriteLogNodeTest {
 
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice");
 
-    InsertPlan bwInsertPlan = new InsertPlan("logTestDevice", 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan("logTestDevice", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
@@ -221,7 +220,7 @@ public class WriteLogNodeTest {
     // this test uses a dummy insert log node to insert an over-sized log and assert exception caught
     WriteLogNode logNode = new ExclusiveWriteLogNode("root.logTestDevice.oversize");
 
-    InsertPlan bwInsertPlan = new InsertPlan("root.logTestDevice.oversize", 100,
+    InsertRowPlan bwInsertPlan = new InsertRowPlan("root.logTestDevice.oversize", 100,
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", new String(new char[65 * 1024 * 1024]), "false"});

@@ -294,4 +294,7 @@ public class MeasurementSchema implements Comparable<MeasurementSchema>, Seriali
     return sc.toString();
   }
 
+  public void setType(TSDataType type) {
+    this.type = type;
+  }
 }

@@ -29,7 +29,7 @@ fi
 MAIN_CLASS=org.apache.iotdb.cli.Cli
 
 
-CLASSPATH=""
+CLASSPATH="."
 for f in ${IOTDB_CLI_HOME}/lib/*.jar; do
   CLASSPATH=${CLASSPATH}":"$f
 done

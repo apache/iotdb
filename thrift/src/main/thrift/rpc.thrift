@@ -43,6 +43,7 @@ struct TSExecuteStatementResp {
 enum TSProtocolVersion {
   IOTDB_SERVICE_PROTOCOL_V1,
   IOTDB_SERVICE_PROTOCOL_V2,//V2 is the first version that we can check version compatibility
+  IOTDB_SERVICE_PROTOCOL_V3,//V3 is incompatible with V2
 }
 
 struct TSOpenSessionResp {
@@ -61,7 +62,7 @@ struct TSOpenSessionResp {
 // OpenSession()
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
-  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2
+  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: optional string username
   3: optional string password
   4: optional map<string, string> configuration
@@ -168,7 +169,14 @@ struct TSInsertRecordReq {
     3: required list<string> measurements
     4: required binary values
     5: required i64 timestamp
-    6: optional bool inferType
+}
+
+struct TSInsertStringRecordReq {
+    1: required i64 sessionId
+    2: required string deviceId
+    3: required list<string> measurements
+    4: required list<string> values
+    5: required i64 timestamp
 }
 
 struct TSInsertTabletReq {
@@ -197,13 +205,21 @@ struct TSInsertRecordsReq {
     3: required list<list<string>> measurementsList
     4: required list<binary> valuesList
     5: required list<i64> timestamps
-    6: optional bool inferType
+}
+
+struct TSInsertStringRecordsReq {
+    1: required i64 sessionId
+    2: required list<string> deviceIds
+    3: required list<list<string>> measurementsList
+    4: required list<list<string>> valuesList
+    5: required list<i64> timestamps
 }
 
 struct TSDeleteDataReq {
     1: required i64 sessionId
     2: required list<string> paths
-    3: required i64 timestamp
+    3: required i64 startTime
+    4: required i64 endTime
 }
 
 struct TSCreateTimeseriesReq {
@@ -291,11 +307,15 @@ service TSIService {
 
   TSStatus insertRecord(1:TSInsertRecordReq req);
 
+  TSStatus insertStringRecord(1:TSInsertStringRecordReq req);
+
   TSStatus insertTablet(1:TSInsertTabletReq req);
 
   TSStatus insertTablets(1:TSInsertTabletsReq req);
 
 	TSStatus insertRecords(1:TSInsertRecordsReq req);
+
+	TSStatus insertStringRecords(1:TSInsertStringRecordsReq req);
 
 	TSStatus testInsertTablet(1:TSInsertTabletReq req);
 
@@ -303,7 +323,11 @@ service TSIService {
 
   TSStatus testInsertRecord(1:TSInsertRecordReq req);
 
+  TSStatus testInsertStringRecord(1:TSInsertStringRecordReq req);
+
   TSStatus testInsertRecords(1:TSInsertRecordsReq req);
+
+  TSStatus testInsertStringRecords(1:TSInsertStringRecordsReq req);
 
 	TSStatus deleteData(1:TSDeleteDataReq req);
 

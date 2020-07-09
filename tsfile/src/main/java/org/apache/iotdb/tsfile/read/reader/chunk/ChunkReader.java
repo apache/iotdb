@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
@@ -55,9 +56,9 @@ public class ChunkReader implements IChunkReader {
   private boolean isFromOldTsFile = false;
 
   /**
-   * Data whose timestamp <= deletedAt should be considered deleted(not be returned).
+   * A list of deleted intervals.
    */
-  protected long deletedAt;
+  private List<TimeRange> deleteIntervalList;
 
   /**
    * constructor of ChunkReader.
@@ -68,7 +69,7 @@ public class ChunkReader implements IChunkReader {
   public ChunkReader(Chunk chunk, Filter filter) throws IOException {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
-    this.deletedAt = chunk.getDeletedAt();
+    this.deleteIntervalList = chunk.getDeleteIntervalList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
 
@@ -79,7 +80,7 @@ public class ChunkReader implements IChunkReader {
   public ChunkReader(Chunk chunk, Filter filter, boolean isFromOldFile) throws IOException {
     this.filter = filter;
     this.chunkDataBuffer = chunk.getData();
-    this.deletedAt = chunk.getDeletedAt();
+    this.deleteIntervalList = chunk.getDeleteIntervalList();
     chunkHeader = chunk.getHeader();
     this.unCompressor = IUnCompressor.getUnCompressor(chunkHeader.getCompressionType());
     this.isFromOldTsFile = isFromOldFile;
@@ -131,10 +132,15 @@ public class ChunkReader implements IChunkReader {
   }
 
   public boolean pageSatisfied(PageHeader pageHeader) {
-    if (pageHeader.getEndTime() <= deletedAt) {
-      return false;
-    } else if (pageHeader.getStartTime() <= deletedAt) {
-      pageHeader.setModified(true);
+    if (deleteIntervalList != null) {
+      for (TimeRange range : deleteIntervalList) {
+        if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
+          return false;
+        }
+        if (range.overlaps(new TimeRange(pageHeader.getStartTime(), pageHeader.getEndTime()))) {
+          pageHeader.setModified(true);
+        }
+      }
     }
     return filter == null || filter.satisfy(pageHeader.getStatistics());
   }
@@ -156,7 +162,7 @@ public class ChunkReader implements IChunkReader {
     ByteBuffer pageData = ByteBuffer.wrap(unCompressor.uncompress(compressedPageBody));
     PageReader reader = new PageReader(pageHeader, pageData, chunkHeader.getDataType(),
         valueDecoder, timeDecoder, filter);
-    reader.setDeletedAt(deletedAt);
+    reader.setDeleteIntervalList(deleteIntervalList);
     return reader;
   }
 

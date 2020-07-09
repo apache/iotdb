@@ -20,6 +20,8 @@ package org.apache.iotdb.tsfile.read.reader;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.encoding.common.EndianType;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.encoding.decoder.DeltaBinaryDecoder;
@@ -37,6 +39,7 @@ import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.encoding.encoder.SinglePrecisionEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.page.PageWriter;
@@ -195,6 +198,46 @@ public class PageReaderTest {
       }
     }
 
+    public void testDelete(TSDataType dataType) {
+      try {
+        pageWriter = new PageWriter();
+        pageWriter.setTimeEncoder(new DeltaBinaryEncoder.LongDeltaEncoder());
+        pageWriter.setValueEncoder(this.encoder);
+        pageWriter.initStatistics(dataType);
+        writeData();
+
+        ByteBuffer page = ByteBuffer.wrap(pageWriter.getUncompressedBytes().array());
+
+        PageReader pageReader = new PageReader(page, dataType, decoder,
+            new DeltaBinaryDecoder.LongDeltaDecoder(), null);
+
+        int index = 0;
+        List<TimeRange> deleteIntervals = new ArrayList<>();
+        deleteIntervals.add(new TimeRange(5, 10));
+        deleteIntervals.add(new TimeRange(20, 30));
+        deleteIntervals.add(new TimeRange(50, 70));
+        pageReader.setDeleteIntervalList(deleteIntervals);
+        BatchData data = pageReader.getAllSatisfiedPageData();
+        Assert.assertNotNull(data);
+
+        for (TimeRange range : pageReader.getDeleteIntervalList()) {
+          while (data.hasCurrent()) {
+            Assert.assertEquals(Long.valueOf(index), (Long) data.currentTime());
+            Assert.assertEquals(generateValueByIndex(index), data.currentValue());
+            data.next();
+            index++;
+            if (index == range.getMin()) {
+              index = (int) (range.getMax() + 1);
+              break;
+            }
+          }
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        Assert.fail("Fail when executing test: [" + name + "]");
+      }
+    }
+
     private void writeData() throws IOException {
       for (int i = 0; i < count; i++) {
         switch (dataType) {
@@ -224,4 +267,16 @@ public class PageReaderTest {
     public abstract Object generateValueByIndex(int i);
   }
 
+  @Test
+  public void testPageDelete() {
+    LoopWriteReadTest test = new LoopWriteReadTest("Test INT64",
+        new LongRleEncoder(EndianType.BIG_ENDIAN),
+        new LongRleDecoder(EndianType.BIG_ENDIAN), TSDataType.INT64, 100) {
+      @Override
+      public Object generateValueByIndex(int i) {
+        return Long.valueOf(Long.MAX_VALUE - i);
+      }
+    };
+    test.testDelete(TSDataType.INT64);
+  }
 }

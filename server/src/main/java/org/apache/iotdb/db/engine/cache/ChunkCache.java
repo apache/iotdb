@@ -85,7 +85,7 @@ public class ChunkCache {
   public Chunk get(ChunkMetadata chunkMetaData, TsFileSequenceReader reader) throws IOException {
     if (!CACHE_ENABLE) {
       Chunk chunk = reader.readMemChunk(chunkMetaData);
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
+      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
     }
 
     cacheRequestNum.incrementAndGet();
@@ -96,7 +96,7 @@ public class ChunkCache {
       if (chunk != null) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
+        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
       }
     } finally {
       lock.readLock().unlock();
@@ -108,12 +108,12 @@ public class ChunkCache {
       if (chunk != null) {
         cacheHitNum.incrementAndGet();
         printCacheLog(true);
-        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
+        return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
       }
       printCacheLog(false);
       chunk = reader.readMemChunk(chunkMetaData);
       lruCache.put(chunkMetaData, chunk);
-      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeletedAt());
+      return new Chunk(chunk.getHeader(), chunk.getData().duplicate(), chunk.getDeleteIntervalList());
     } catch (IOException e) {
       logger.error("something wrong happened while reading {}", reader.getFileName());
       throw e;

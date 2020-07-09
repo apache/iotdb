@@ -26,7 +26,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter;
 import org.apache.iotdb.db.exception.ConfigAdjusterException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 
 @Command(name = "calmem", description = "calculate minimum memory required for writing based on the number of storage groups and timeseries")
 public class MemEstToolCmd extends WrappedRunnable {
@@ -71,7 +71,7 @@ public class MemEstToolCmd extends WrappedRunnable {
       config.setTsFileSizeThreshold(tsFileSize);
       IoTDBConfigDynamicAdapter.getInstance().reset();
       IoTDBConfigDynamicAdapter.getInstance().setInitialized(true);
-      MManager.getInstance().clear();
+      IoTDB.metaManager.clear();
 
       long sgCnt = 1;
       long tsCnt = 0;
@@ -87,7 +87,7 @@ public class MemEstToolCmd extends WrappedRunnable {
             maxTsNumValid = Math.min(tsCnt, maxTsNum);
             maxTsNumValid = Math.max(maxTsNumValid, tsCnt / sgNum + 1);
           }
-          MManager.getInstance().setMaxSeriesNumberAmongStorageGroup(maxTsNumValid);
+          IoTDB.metaManager.setMaxSeriesNumberAmongStorageGroup(maxTsNumValid);
         }
 
       } catch (ConfigAdjusterException e) {

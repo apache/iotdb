@@ -38,8 +38,6 @@ architecture, high performance and rich feature set together with its deep integ
 Apache IoTDB (incubating) can meet the requirements of massive data storage, high-speed data ingestion and complex data
 analysis in the IoT industrial fields.
 
-Apache IoTDB (incubating) was initially developed by Prof. Wang's Team of School of Software at Tsinghua University.
-Now it is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Incubator.
 
 # Apache IoTDB Python Client API
 
@@ -51,7 +49,7 @@ You have to install thrift (>=0.13) before using the package.
 
 ## How to use (Example)
 
-You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/incubator-iotdb/blob/release%2F0.9.0/client-py/src/client_example.py)
+You can get an example of using the package to read and write data at here: [Example](https://github.com/apache/incubator-iotdb/blob/release%2F0.10.0/client-py/src/client_example.py)
 
 # DISCLAIMER
 

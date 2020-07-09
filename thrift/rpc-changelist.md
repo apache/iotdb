@@ -21,7 +21,8 @@
 
 # 0.10.x (version-2) -> 0.11.x (version-3)
 
-Last Updated on 2020-6-15 by Tian Jiang.
+Last Updated on 2020-07-08 by Wei Shao.
+
 
 ## 1. Delete Old
 
@@ -30,14 +31,21 @@ Last Updated on 2020-6-15 by Tian Jiang.
 | Remove TSBatchExecuteStatementResp            | Tian Jiang         |
 
 
-
 ## 2. Add New
+
+| Latest Changes                                               | Related Committers     |
+| ------------------------------------------------------------ | ---------------------- |
+| set the input/output as TFramedTransport      |  Tian Jiang        |
+
 
 ## 3. Update
 
 | Latest Changes                                               | Related Committers     |
 | ------------------------------------------------------------ | ---------------------- |
 | Add sub-status in TSStatus  | Tian Jiang  |
+| Change the result of executeBatchStatement  as   TSStatus    | Tian Jiang  |
+| Change TSDeleteDataReq, delete timestamp and add startTime and endTime   | Wei Shao   |
+
 
 
 # 0.9.x (version-1) -> 0.10.x (version-2)
@@ -62,6 +70,7 @@ Last Updated on 2020-5-25 by Kaifeng Xue.
 | Add struct TSInsertTabletsReq                            | Jialin Qiao|
 | Add method insertTablets                            | Jialin Qiao|
 | Add method testInsertTablets                            | Xiangdong Huang |
+| add new field `inferType` in TSInsertRecordReq  | Jialin Qiao      |
 
 ## 3. Update
 

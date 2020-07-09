@@ -87,8 +87,8 @@ public class MergeUpgradeTest {
     // prepare seqFiles
     for (int i = 0; i < seqFileNum; i++) {
       File seqfile = FSFactoryProducer.getFSFactory().getFile(TestConstant.BASE_OUTPUT_PATH.concat(
-              "seq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + i + IoTDBConstant.TSFILE_NAME_SEPARATOR
-              + i + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
+              "seq" + IoTDBConstant.FILE_NAME_SEPARATOR + i + IoTDBConstant.FILE_NAME_SEPARATOR
+              + i + IoTDBConstant.FILE_NAME_SEPARATOR + 0
               + ".tsfile"));
       TsFileResource seqTsFileResource = new TsFileResource(seqfile);
       seqResources.add(seqTsFileResource);
@@ -96,8 +96,8 @@ public class MergeUpgradeTest {
     }
     // prepare unseqFile
     File unseqfile = FSFactoryProducer.getFSFactory().getFile(TestConstant.BASE_OUTPUT_PATH.concat(
-            "unseq" + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0 + IoTDBConstant.TSFILE_NAME_SEPARATOR
-            + 0 + IoTDBConstant.TSFILE_NAME_SEPARATOR + 0
+            "unseq" + IoTDBConstant.FILE_NAME_SEPARATOR + 0 + IoTDBConstant.FILE_NAME_SEPARATOR
+            + 0 + IoTDBConstant.FILE_NAME_SEPARATOR + 0
             + ".tsfile"));
     TsFileResource unseqTsFileResource = new TsFileResource(unseqfile);
     unseqResources.add(unseqTsFileResource);

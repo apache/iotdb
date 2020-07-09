@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,24 +39,16 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-public class InsertTabletPlan extends PhysicalPlan {
+public class InsertTabletPlan extends InsertPlan {
 
   private static final String DATATYPE_UNSUPPORTED = "Data type %s is not supported.";
-
-  private String deviceId;
-  private String[] measurements;
-  private TSDataType[] dataTypes;
-  // only be set in insert
-  private MeasurementSchema[] schemas;
 
   private long[] times; // times should be sorted. It is done in the session API.
   private ByteBuffer timeBuffer;
 
   private Object[] columns;
   private ByteBuffer valueBuffer;
-  private Set<Integer> index;
   private int rowCount = 0;
   // cached values
   private Long maxTime = null;
@@ -66,26 +57,25 @@ public class InsertTabletPlan extends PhysicalPlan {
   private int start;
   private int end;
 
-  // record the failed measurements
-  private List<String> failedMeasurements;
 
   public InsertTabletPlan() {
-    super(false, OperatorType.BATCHINSERT);
+    super(OperatorType.BATCHINSERT);
   }
 
   public InsertTabletPlan(String deviceId, List<String> measurements) {
-    super(false, OperatorType.BATCHINSERT);
+    super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
-    setMeasurements(measurements);
+    this.measurements = measurements.toArray(new String[0]);
   }
+
   public InsertTabletPlan(String deviceId, String[] measurements) {
-    super(false, OperatorType.BATCHINSERT);
+    super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
-    setMeasurements(measurements);
+    this.measurements = measurements;
   }
 
   public InsertTabletPlan(String deviceId, String[] measurements, List<Integer> dataTypes) {
-    super(false, OperatorType.BATCHINSERT);
+    super(OperatorType.BATCHINSERT);
     this.deviceId = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);
@@ -105,14 +95,6 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   public void setEnd(int end) {
     this.end = end;
-  }
-
-  public Set<Integer> getIndex() {
-    return index;
-  }
-
-  public void setIndex(Set<Integer> index) {
-    this.index = index;
   }
 
   @Override
@@ -135,7 +117,8 @@ public class InsertTabletPlan extends PhysicalPlan {
 
     putString(stream, deviceId);
 
-    stream.writeInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    stream.writeInt(
+        measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
       if (m == null) {
         continue;
@@ -150,11 +133,11 @@ public class InsertTabletPlan extends PhysicalPlan {
       stream.writeShort(dataType.serialize());
     }
 
-    stream.writeInt(index.size());
+    stream.writeInt(end - start);
 
     if (timeBuffer == null) {
-      for(int loc : index){
-        stream.writeLong(times[loc]);
+      for (int i = start; i < end; i++) {
+        stream.writeLong(times[i]);
       }
     } else {
       stream.write(timeBuffer.array());
@@ -169,62 +152,6 @@ public class InsertTabletPlan extends PhysicalPlan {
     }
   }
 
-  private void serializeValues(DataOutputStream stream) throws IOException {
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] == null) {
-        continue;
-      }
-      serializeColumn(dataTypes[i], columns[i], stream, index);
-    }
-  }
-
-  private void serializeColumn(TSDataType dataType, Object column, DataOutputStream stream,
-      Set<Integer> index)
-      throws IOException {
-    switch (dataType) {
-      case INT32:
-        int[] intValues = (int[]) column;
-        for(int loc : index){
-          stream.writeInt(intValues[loc]);
-        }
-        break;
-      case INT64:
-        long[] longValues = (long[]) column;
-        for(int loc : index){
-          stream.writeLong(longValues[loc]);
-        }
-        break;
-      case FLOAT:
-        float[] floatValues = (float[]) column;
-        for(int loc : index){
-          stream.writeFloat(floatValues[loc]);
-        }
-        break;
-      case DOUBLE:
-        double[] doubleValues = (double[]) column;
-        for(int loc : index){
-          stream.writeDouble(doubleValues[loc]);
-        }
-        break;
-      case BOOLEAN:
-        boolean[] boolValues = (boolean[]) column;
-        for(int loc : index){
-          stream.write(BytesUtils.boolToByte(boolValues[loc]));
-        }
-        break;
-      case TEXT:
-        Binary[] binaryValues = (Binary[]) column;
-        for(int loc : index){
-          stream.writeInt(binaryValues[loc].getLength());
-          stream.write(binaryValues[loc].getValues());
-        }
-        break;
-      default:
-        throw new UnSupportedDataTypeException(
-            String.format(DATATYPE_UNSUPPORTED, dataType));
-    }
-  }
-
   @Override
   public void serialize(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
@@ -232,7 +159,8 @@ public class InsertTabletPlan extends PhysicalPlan {
 
     putString(buffer, deviceId);
 
-    buffer.putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+    buffer
+        .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
     for (String m : measurements) {
       if (m != null) {
         putString(buffer, m);
@@ -261,6 +189,12 @@ public class InsertTabletPlan extends PhysicalPlan {
     } else {
       buffer.put(valueBuffer.array());
       valueBuffer = null;
+    }
+  }
+
+  private void serializeValues(DataOutputStream outputStream) throws IOException {
+    for (int i = 0; i < measurements.length; i++) {
+      serializeColumn(dataTypes[i], columns[i], outputStream, start, end);
     }
   }
 
@@ -319,6 +253,52 @@ public class InsertTabletPlan extends PhysicalPlan {
     }
   }
 
+  private void serializeColumn(TSDataType dataType, Object column, DataOutputStream outputStream,
+      int start, int end) throws IOException {
+    switch (dataType) {
+      case INT32:
+        int[] intValues = (int[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeInt(intValues[j]);
+        }
+        break;
+      case INT64:
+        long[] longValues = (long[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeLong(longValues[j]);
+        }
+        break;
+      case FLOAT:
+        float[] floatValues = (float[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeFloat(floatValues[j]);
+        }
+        break;
+      case DOUBLE:
+        double[] doubleValues = (double[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeDouble(doubleValues[j]);
+        }
+        break;
+      case BOOLEAN:
+        boolean[] boolValues = (boolean[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeByte(BytesUtils.boolToByte(boolValues[j]));
+        }
+        break;
+      case TEXT:
+        Binary[] binaryValues = (Binary[]) column;
+        for (int j = start; j < end; j++) {
+          outputStream.writeInt(binaryValues[j].getLength());
+          outputStream.write(binaryValues[j].getValues());
+        }
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format(DATATYPE_UNSUPPORTED, dataType));
+    }
+  }
+
   public void setTimeBuffer(ByteBuffer timeBuffer) {
     this.timeBuffer = timeBuffer;
     this.timeBuffer.position(0);
@@ -352,49 +332,11 @@ public class InsertTabletPlan extends PhysicalPlan {
     columns = QueryDataSetUtils.readValuesFromBuffer(buffer, dataTypes, measurementSize, rows);
   }
 
-
-  public String getDeviceId() {
-    return deviceId;
-  }
-
-  public void setDeviceId(String deviceId) {
-    this.deviceId = deviceId;
-  }
-
-  public String[] getMeasurements() {
-    return measurements;
-  }
-
-  public void setMeasurements(List<String> measurements) {
-    this.measurements = new String[measurements.size()];
-    measurements.toArray(this.measurements);
-  }
-
-  public void setMeasurements(String[] measurements) {
-    this.measurements = measurements;
-  }
-
-  public TSDataType[] getDataTypes() {
-    return dataTypes;
-  }
-
-  public MeasurementSchema[] getSchemas() {
-    return schemas;
-  }
-
-  public void setSchemas(MeasurementSchema[] schemas) {
-    this.schemas = schemas;
-  }
-
   public void setDataTypes(List<Integer> dataTypes) {
     this.dataTypes = new TSDataType[dataTypes.size()];
     for (int i = 0; i < dataTypes.size(); i++) {
       this.dataTypes[i] = TSDataType.values()[dataTypes.get(i)];
     }
-  }
-
-  public void setDataTypes(TSDataType[] dataTypes) {
-    this.dataTypes = dataTypes;
   }
 
   public Object[] getColumns() {
@@ -488,25 +430,10 @@ public class InsertTabletPlan extends PhysicalPlan {
     this.rowCount = size;
   }
 
-  /**
-   * @param index failed measurement index
-   */
-  public void markMeasurementInsertionFailed(int index) {
-    if (failedMeasurements == null) {
-      failedMeasurements = new ArrayList<>();
-    }
-    failedMeasurements.add(measurements[index]);
-    measurements[index] = null;
-    dataTypes[index] = null;
+  @Override
+  public void markFailedMeasurementInsertion(int index) {
+    super.markFailedMeasurementInsertion(index);
     columns[index] = null;
-  }
-
-  public List<String> getFailedMeasurements() {
-    return failedMeasurements;
-  }
-
-  public int getFailedMeasurementNumber() {
-    return failedMeasurements == null ? 0 : failedMeasurements.size();
   }
 
 }
