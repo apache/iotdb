@@ -592,7 +592,7 @@ public class TsFileProcessor {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
       seqFile.setDeleted(true);
-      if (seqFile.fileExists()) {
+      if (seqFile.getFile().exists()) {
         Files.delete(seqFile.getFile().toPath());
       }
     } catch (Exception e) {
