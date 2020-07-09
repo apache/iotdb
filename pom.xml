@@ -133,7 +133,7 @@
         <!-- Exclude all generated code -->
         <sonar.exclusions>**/generated-sources</sonar.exclusions>
         <!-- By default, the argLine is empty-->
-        <argLine />
+        <argLine/>
     </properties>
     <!--
         if we claim dependencies in dependencyManagement, then we do not claim
@@ -1012,7 +1012,7 @@
                                 <id>enforce-version-convergence</id>
                                 <configuration>
                                     <rules>
-                                        <dependencyConvergence />
+                                        <dependencyConvergence/>
                                     </rules>
                                 </configuration>
                                 <goals>
@@ -1058,7 +1058,7 @@
                                         </requireJavaVersion>
                                         <!-- Disabled for now as it breaks the ability to build single modules -->
                                         <!--reactorModuleConvergence/-->
-                                        <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies" />
+                                        <banVulnerable implementation="org.sonatype.ossindex.maven.enforcer.BanVulnerableDependencies"/>
                                     </rules>
                                 </configuration>
                             </execution>
