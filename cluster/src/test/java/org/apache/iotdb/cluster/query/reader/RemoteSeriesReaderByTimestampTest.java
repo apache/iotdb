@@ -48,7 +48,7 @@ public class RemoteSeriesReaderByTimestampTest {
 
   private MetaGroupMember metaGroupMember = new MetaGroupMember() {
     @Override
-    public AsyncDataClient getDataClient(Node node) throws IOException {
+    public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
       return new AsyncDataClient(null, null, node, null) {
         @Override
         public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,

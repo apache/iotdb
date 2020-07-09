@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -80,7 +82,7 @@ public class DataSourceInfo {
       logger.debug("querying {} from {} of {}", request.path, node, partitionGroup.getHeader());
       try {
 
-        AsyncDataClient client = this.metaGroupMember.getDataClient(node);
+        AsyncDataClient client = this.metaGroupMember.getAsyncDataClient(node);
         Long newReaderId = applyForReaderId(client, byTimestamp, timestamp);
 
         if (newReaderId != null) {
@@ -145,8 +147,12 @@ public class DataSourceInfo {
     return this.curSource;
   }
 
-  public AsyncDataClient getCurClient() throws IOException {
-    return noClient ? null : metaGroupMember.getDataClient(this.curSource);
+  public AsyncDataClient getCurAsyncClient() throws IOException {
+    return noClient ? null : metaGroupMember.getAsyncDataClient(this.curSource);
+  }
+
+  public SyncDataClient getCurSyncClient() throws IOException {
+    return noClient ? null : metaGroupMember.getSyncDataClient(this.curSource);
   }
 
   public boolean isNoData() {
@@ -169,7 +175,8 @@ public class DataSourceInfo {
    * @throws IOException if all clients are unavailable.
    */
   boolean checkCurClient() throws IOException {
-    if (getCurClient() == null) {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() && getCurAsyncClient() == null ||
+     !ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() && getCurSyncClient() == null) {
       if (!isNoData()) {
         throw new IOException("no available client.");
       } else {
@@ -177,6 +184,7 @@ public class DataSourceInfo {
         return false;
       }
     }
+
     return true;
   }
 

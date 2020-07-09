@@ -44,6 +44,9 @@ public class ClusterConfig {
   @ClusterConsistent
   private int replicationNum = 2;
 
+  @ClusterConsistent
+  private boolean useAsyncServer = true;
+
   private int connectionTimeoutInMS = 20 * 1000;
   /**
    * This parameter controls when to actually delete snapshoted logs because we can't remove
@@ -234,5 +237,13 @@ public class ClusterConfig {
 
   public void setEnableAutoCreateSchema(boolean enableAutoCreateSchema) {
     this.enableAutoCreateSchema = enableAutoCreateSchema;
+  }
+
+  public boolean isUseAsyncServer() {
+    return useAsyncServer;
+  }
+
+  public void setUseAsyncServer(boolean useAsyncServer) {
+    this.useAsyncServer = useAsyncServer;
   }
 }

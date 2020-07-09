@@ -45,6 +45,8 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.NodeCharacter;
+import org.apache.iotdb.cluster.server.service.DataAsyncService;
+import org.apache.iotdb.cluster.server.service.MetaAsyncService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -93,12 +95,12 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public AsyncClient connectNode(Node node) {
+    public AsyncClient getAsyncClient(Node node) {
       try {
         return new TestAsyncMetaClient(null, null, node, null) {
           @Override
           public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
-            new Thread(() -> testMetaGroupMember.queryNodeStatus(resultHandler)).start();
+            new Thread(() -> new MetaAsyncService(testMetaGroupMember).queryNodeStatus(resultHandler)).start();
           }
         };
       } catch (IOException e) {
@@ -107,12 +109,12 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public AsyncDataClient getDataClient(Node node) throws IOException {
+    public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
       return new AsyncDataClient(null, null, node, null) {
         @Override
         public void getAllPaths(Node header, List<String> path,
             AsyncMethodCallback<List<String>> resultHandler) {
-          new Thread(() -> testDataGroupMember.getAllPaths(header, path, resultHandler)).start();
+          new Thread(() -> new DataAsyncService(testDataGroupMember).getAllPaths(header, path, resultHandler)).start();
         }
       };
     }
@@ -220,7 +222,7 @@ public class DataLogApplierTest extends IoTDBTest {
       throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, TException, InterruptedException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new Path(TestUtils.getTestSeries(0, 0))));
-    deletePlan.setDeleteTime(50);
+    deletePlan.setDeleteEndTime(50);
     applier.apply(new PhysicalPlanLog(deletePlan));
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(0, 0)), null);
     int cnt = 0;

@@ -156,12 +156,12 @@ public class MemberTest {
       }
 
       @Override
-      public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-        new Thread(() -> resultHandler.onComplete(Response.RESPONSE_AGREE)).start();
+      public long appendEntry(AppendEntryRequest request) {
+        return Response.RESPONSE_AGREE;
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncDataClient(node, dataGroupMemberMap);
         } catch (IOException e) {
@@ -217,7 +217,7 @@ public class MemberTest {
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncMetaClient(null, null, node, null) {
             @Override
@@ -231,7 +231,7 @@ public class MemberTest {
       }
 
       @Override
-      public AsyncDataClient getDataClient(Node node) throws IOException {
+      public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
         return new TestAsyncDataClient(node, dataGroupMemberMap);
       }
     };
@@ -254,12 +254,12 @@ public class MemberTest {
       }
 
       @Override
-      public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-        new Thread(() -> resultHandler.onComplete(Response.RESPONSE_AGREE)).start();
+      public long appendEntry(AppendEntryRequest request) {
+        return Response.RESPONSE_AGREE;
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncDataClient(node, dataGroupMemberMap);
         } catch (IOException e) {

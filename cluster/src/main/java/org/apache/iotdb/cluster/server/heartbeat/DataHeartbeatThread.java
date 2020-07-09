@@ -33,9 +33,15 @@ public class DataHeartbeatThread extends HeartbeatThread {
   }
 
   @Override
-  void sendHeartbeat(Node node, AsyncClient client) {
+  void sendHeartbeatSync(Node node) {
     request.setHeader(dataGroupMember.getHeader());
-    super.sendHeartbeat(node, client);
+    super.sendHeartbeatSync(node);
+  }
+
+  @Override
+  void sendHeartbeatAsync(Node node) {
+    request.setHeader(dataGroupMember.getHeader());
+    super.sendHeartbeatAsync(node);
   }
 
   /**

@@ -26,6 +26,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -85,10 +87,19 @@ public class QueryCoordinator {
     long currTime = System.currentTimeMillis();
     if (currTime - nodeStatus.getLastUpdateTime() > NODE_STATUS_UPDATE_INTERVAL_MS
         || nodeStatus.getStatus() == null) {
-      AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.connectNode(node);
+
       try {
         long startTime = System.nanoTime();
-        TNodeStatus status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
+        TNodeStatus status;
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncMetaClient asyncMetaClient = (AsyncMetaClient) metaGroupMember.getAsyncClient(node);
+          status = SyncClientAdaptor.queryNodeStatus(asyncMetaClient);
+        } else {
+          SyncMetaClient syncMetaClient = (SyncMetaClient) metaGroupMember.getSyncClient(node);
+          status = syncMetaClient.queryNodeStatus();
+          metaGroupMember.putBackSyncClient(syncMetaClient);
+        }
+
         if (status != null) {
           long responseTime = System.nanoTime() - startTime;
           nodeStatus.setStatus(status);

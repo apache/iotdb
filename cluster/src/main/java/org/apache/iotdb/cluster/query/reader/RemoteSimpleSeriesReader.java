@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.utils.SerializeUtils;
@@ -30,11 +35,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.NoSuchElementException;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * RemoteSimpleSeriesReader is a reader without value filter that reads points from a remote side.
@@ -97,32 +97,56 @@ public class RemoteSimpleSeriesReader implements IPointReader  {
       return;
     }
 
-    while (true) {
-      synchronized (fetchResult) {
-        fetchResult.set(null);
-        AsyncDataClient currClient = sourceInfo.getCurClient();
-        try {
-          currClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
-          fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
-        } catch (TException e) {
-          // try other nodes
-          if (!sourceInfo.switchNode(false, lastTimestamp)) {
-            cachedBatch = null;
-            return;
-          }
-          continue;
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Query {} interrupted", sourceInfo);
-          return;
-        }
-      }
-      cachedBatch = SerializeUtils.deserializeBatchData(fetchResult.get());
-      if (logger.isDebugEnabled()) {
-        logger.debug("Fetched a batch from {}, size:{}", sourceInfo.getCurrentNode(),
+    ByteBuffer result;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      result = fetchResultAsync();
+    } else {
+      result = fetchResultSync();
+    }
+
+    cachedBatch = SerializeUtils.deserializeBatchData(result);
+    if (logger.isDebugEnabled()) {
+      logger.debug("Fetched a batch from {}, size:{}", sourceInfo.getCurrentNode(),
           cachedBatch == null ? 0 : cachedBatch.length());
+    }
+  }
+
+  private ByteBuffer fetchResultAsync() throws IOException {
+    synchronized (fetchResult) {
+      fetchResult.set(null);
+      try {
+        sourceInfo.getCurAsyncClient().fetchSingleSeries(sourceInfo.getHeader(),
+            sourceInfo.getReaderId(), handler);
+        fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
+      } catch (TException e) {
+        //try other node
+        if (!sourceInfo.switchNode(false, lastTimestamp)) {
+          return null;
+        }
+        return fetchResultAsync();
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Query {} interrupted", sourceInfo);
+        return null;
       }
-      return;
+    }
+    return fetchResult.get();
+  }
+
+  private ByteBuffer fetchResultSync() throws IOException {
+    try {
+      SyncDataClient curSyncClient = sourceInfo.getCurSyncClient();
+      ByteBuffer buffer = curSyncClient
+          .fetchSingleSeries(sourceInfo.getHeader(),
+              sourceInfo.getReaderId());
+      curSyncClient.putBack();
+      return buffer;
+    } catch (TException e) {
+      //try other node
+      if (!sourceInfo.switchNode(false, lastTimestamp)) {
+        return null;
+      }
+      return fetchResultSync();
     }
   }
 

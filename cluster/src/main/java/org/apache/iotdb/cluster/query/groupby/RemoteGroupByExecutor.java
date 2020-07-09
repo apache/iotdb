@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -68,11 +70,18 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
   @Override
   public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
       throws IOException {
-    AsyncDataClient client = metaGroupMember.getDataClient(source);
 
     List<ByteBuffer> aggrBuffers;
     try {
-      aggrBuffers = SyncClientAdaptor.getGroupByResult(client, header, executorId, curStartTime, curEndTime);
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        AsyncDataClient client = metaGroupMember.getAsyncDataClient(source);
+        aggrBuffers = SyncClientAdaptor.getGroupByResult(client, header, executorId, curStartTime, curEndTime);
+      } else {
+        SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(source);
+        aggrBuffers = syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
+        metaGroupMember.putBackSyncClient(syncDataClient);
+      }
+
     } catch (TException e) {
       throw new IOException(e);
     } catch (InterruptedException e) {

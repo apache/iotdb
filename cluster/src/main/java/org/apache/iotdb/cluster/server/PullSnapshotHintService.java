@@ -28,6 +28,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.snapshot.PullSnapshotTaskDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
@@ -81,10 +83,9 @@ public class PullSnapshotHintService {
       PullSnapshotHint hint = iterator.next();
       for (Iterator<Node> iter = hint.receivers.iterator(); iter.hasNext(); ) {
         Node receiver = iter.next();
-        AsyncDataClient asyncDataClient = (AsyncDataClient) member.connectNode(receiver);
         try {
-          if (SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.header, hint.slots)) {
-            // remove the receiver if it has received the hint
+          boolean result = sendHint(receiver, hint);
+          if (result) {
             iter.remove();
           }
         } catch (TException e) {
@@ -99,6 +100,28 @@ public class PullSnapshotHintService {
         iterator.remove();
       }
     }
+  }
+
+  private boolean sendHint(Node receiver, PullSnapshotHint hint)
+      throws TException, InterruptedException {
+    boolean result;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      result = sendHintsAsync(receiver, hint);
+    } else {
+      result = sendHintSync(receiver, hint);
+    }
+    return result;
+  }
+
+  private boolean sendHintsAsync(Node receiver, PullSnapshotHint hint)
+      throws TException, InterruptedException {
+    AsyncDataClient asyncDataClient = (AsyncDataClient) member.getAsyncClient(receiver);
+    return SyncClientAdaptor.onSnapshotApplied(asyncDataClient, hint.header, hint.slots);
+  }
+
+  private boolean sendHintSync(Node receiver, PullSnapshotHint hint) throws TException {
+    SyncDataClient syncDataClient = (SyncDataClient) member.getSyncClient(receiver);
+    return syncDataClient.onSnapshotApplied(hint.header, hint.slots);
   }
 
   static class PullSnapshotHint {

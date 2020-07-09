@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.cluster.query;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -39,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -48,6 +51,7 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -270,9 +274,17 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        AsyncDataClient client = metaGroupMember.getDataClient(node);
-        Integer count = SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(),
-            pathsToQuery, level);
+        Integer count;
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          count = SyncClientAdaptor.getPathCount(client, partitionGroup.getHeader(),
+              pathsToQuery, level);
+        } else {
+          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+          metaGroupMember.putBackSyncClient(syncDataClient);
+        }
+
         logger.debug("{}: get path count of {} from {}, result {}", metaGroupMember.getName(),
             partitionGroup, node, count);
         if (count != null) {
@@ -366,8 +378,15 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<String> paths = null;
     for (Node node : group) {
       try {
-        AsyncDataClient client = metaGroupMember.getDataClient(node);
-        paths = SyncClientAdaptor.getNodeList(client, group.getHeader(), schemaPattern, level);
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          paths = SyncClientAdaptor.getNodeList(client, group.getHeader(), schemaPattern, level);
+        } else {
+          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern, level);
+          metaGroupMember.putBackSyncClient(syncDataClient);
+        }
+
         if (paths != null) {
           break;
         }
@@ -392,11 +411,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       futureList.add(pool.submit(() -> {
-        List<String> nextChildren = null;
+        Set<String> nextChildren = null;
         try {
           nextChildren = getNextChildren(group, path);
         } catch (CheckConsistencyException e) {
-          throw new RuntimeException(e.getMessage());
+          logger.error("Fail to get next children of {} from {}", path, group, e);
         }
         if (nextChildren != null) {
           resultSet.addAll(nextChildren);
@@ -427,7 +446,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return resultSet;
   }
 
-  private List<String> getNextChildren(PartitionGroup group, String path)
+  private Set<String> getNextChildren(PartitionGroup group, String path)
       throws CheckConsistencyException {
     if (group.contains(metaGroupMember.getThisNode())) {
       return getLocalNextChildren(group, path);
@@ -436,27 +455,34 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
   }
 
-  private List<String> getLocalNextChildren(PartitionGroup group, String path)
+  private Set<String> getLocalNextChildren(PartitionGroup group, String path)
       throws CheckConsistencyException {
     Node header = group.getHeader();
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
     try {
-      return new ArrayList<>(
-          MManager.getInstance().getChildNodePathInNextLevel(path));
+      return
+          MManager.getInstance().getChildNodePathInNextLevel(path);
     } catch (MetadataException e) {
       logger
           .error("Cannot not get next children of {} from {} locally", path, group);
-      return Collections.emptyList();
+      return Collections.emptySet();
     }
   }
 
-  private List<String> getRemoteNextChildren(PartitionGroup group, String path) {
-    List<String> nextChildren = null;
+  private Set<String> getRemoteNextChildren(PartitionGroup group, String path) {
+    Set<String> nextChildren = null;
     for (Node node : group) {
       try {
-        AsyncDataClient client = metaGroupMember.getDataClient(node);
-        nextChildren = SyncClientAdaptor.getNextChildren(client, group.getHeader(), path);
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+          nextChildren = SyncClientAdaptor.getNextChildren(client, group.getHeader(), path);
+        } else {
+          SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+          nextChildren = syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path);
+          metaGroupMember.putBackSyncClient(syncDataClient);
+        }
+
         if (nextChildren != null) {
           break;
         }
@@ -577,9 +603,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
-        AsyncDataClient client = metaGroupMember.getDataClient(node);
-        resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
-            plan);
+        resultBinary = showRemoteTimeseries(node, group, plan);
+
         if (resultBinary != null) {
           break;
         }
@@ -602,6 +627,26 @@ public class ClusterPlanExecutor extends PlanExecutor {
     } else {
       logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
     }
+  }
+
+  private ByteBuffer showRemoteTimeseries(Node node, PartitionGroup group, ShowTimeSeriesPlan plan)
+      throws IOException, TException, InterruptedException {
+    ByteBuffer resultBinary;
+
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client = metaGroupMember.getAsyncDataClient(node);
+      resultBinary = SyncClientAdaptor.getAllMeasurementSchema(client, group.getHeader(),
+          plan);
+    } else {
+      SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+      plan.serialize(dataOutputStream);
+      resultBinary = syncDataClient.getAllMeasurementSchema(group.getHeader(),
+          ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      metaGroupMember.putBackSyncClient(syncDataClient);
+    }
+    return resultBinary;
   }
 
   @Override
@@ -704,16 +749,16 @@ public class ClusterPlanExecutor extends PlanExecutor {
       return;
     }
     for (Path path : deletePlan.getPaths()) {
-      delete(path, deletePlan.getDeleteTime());
+      delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
     }
   }
 
   @Override
-  public void delete(Path path, long timestamp) throws QueryProcessException {
+  public void delete(Path path, long startTime, long endTime) throws QueryProcessException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
-      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
+      StorageEngine.getInstance().delete(deviceId, measurementId, startTime, endTime);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }

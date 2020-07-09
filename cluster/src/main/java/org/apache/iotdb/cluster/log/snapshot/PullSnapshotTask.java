@@ -24,19 +24,25 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.concurrent.Callable;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -85,14 +91,8 @@ public class PullSnapshotTask implements Callable<Void> {
           descriptor.getPreviousHolders().getHeader());
     }
 
-    AsyncDataClient client =
-        (AsyncDataClient) newMember.connectNode(node);
-    if (client == null) {
-      return false;
-    }
+    Map<Integer, Snapshot> result = pullSnapshot(node);
 
-    Map<Integer, Snapshot> result = SyncClientAdaptor.pullSnapshot(client, request,
-        descriptor.getSlots(), snapshotFactory);
     if (result != null) {
       // unlock slots that have no snapshots
       List<Integer> noSnapshotSlots = new ArrayList<>();
@@ -120,6 +120,33 @@ public class PullSnapshotTask implements Callable<Void> {
       }
     }
     return false;
+  }
+
+  private Map<Integer, Snapshot> pullSnapshot(Node node) throws TException, InterruptedException {
+    Map<Integer, Snapshot> result;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      AsyncDataClient client =
+          (AsyncDataClient) newMember.getAsyncClient(node);
+      if (client == null) {
+        return null;
+      }
+      result = SyncClientAdaptor.pullSnapshot(client, request,
+          descriptor.getSlots(), snapshotFactory);
+    } else {
+      SyncDataClient client = (SyncDataClient) newMember.getSyncClient(node);
+      if (client == null) {
+        return null;
+      }
+      PullSnapshotResp pullSnapshotResp = client.pullSnapshot(request);
+      result = new HashMap<>();
+      for (Entry<Integer, ByteBuffer> integerByteBufferEntry : pullSnapshotResp.snapshotBytes
+          .entrySet()) {
+        Snapshot snapshot = snapshotFactory.create();
+        snapshot.deserialize(integerByteBufferEntry.getValue());
+        result.put(integerByteBufferEntry.getKey(), snapshot);
+      }
+    }
+    return result;
   }
 
   @Override

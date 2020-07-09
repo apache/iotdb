@@ -310,6 +310,58 @@ public class IoTDBLastIT {
     }
   }
 
+  @Test
+  public void lastWithDeletionTest() throws SQLException, MetadataException {
+    String[] retArray =
+        new String[] {
+            "350,root.ln.wf01.wt04.temperature,31.2",
+            "200,root.ln.wf01.wt04.temperature,78.2"
+        };
+
+
+    try (Connection connection =
+        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt04");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.status WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
+      statement.execute("CREATE TIMESERIES root.ln.wf01.wt04.temperature WITH DATATYPE=DOUBLE, ENCODING=PLAIN");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(100,22.1)");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature, status) values(200, 78.2, true)");
+      statement.execute("INSERT INTO root.ln.wf01.wt04(timestamp,temperature) values(350,31.2)");
+      statement.execute("flush");
+
+      boolean hasResultSet = statement.execute(
+          "select last temperature from root.ln.wf01.wt04");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + ","
+                  + resultSet.getString(TIMESEIRES_STR) + ","
+                  + resultSet.getString(VALUE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(cnt, 1);
+      }
+
+      statement.execute("delete from root.ln.wf01.wt04.temperature where time > 200 and time < 400");
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR) + ","
+                  + resultSet.getString(TIMESEIRES_STR) + ","
+                  + resultSet.getString(VALUE_STR);
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+    }
+  }
+
   private void prepareData() {
     try (Connection connection = DriverManager
         .getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root",

@@ -149,10 +149,10 @@ public class SyncClientAdaptor {
     return response.get();
   }
 
-  public static List<String> getNextChildren(AsyncDataClient client, Node header, String path)
+  public static Set<String> getNextChildren(AsyncDataClient client, Node header, String path)
       throws TException, InterruptedException {
     GetChildNodeNextLevelPathHandler handler = new GetChildNodeNextLevelPathHandler();
-    AtomicReference<List<String>> response = new AtomicReference<>(null);
+    AtomicReference<Set<String>> response = new AtomicReference<>(null);
     handler.setResponse(response);
     handler.setContact(client.getNode());
     synchronized (response) {

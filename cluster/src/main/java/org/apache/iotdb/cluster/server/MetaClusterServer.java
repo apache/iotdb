@@ -20,27 +20,37 @@ package org.apache.iotdb.cluster.server;
 
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncProcessor;
+import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.Processor;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.server.service.MetaAsyncService;
+import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
+import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TServerSocket;
+import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 
 /**
@@ -48,17 +58,22 @@ import org.apache.thrift.transport.TTransportException;
  * data partition. Each node has one MetaClusterServer instance, the single-node IoTDB instance is
  * started-up at the same time.
  */
-public class MetaClusterServer extends RaftServer implements TSMetaService.AsyncIface {
+public class MetaClusterServer extends RaftServer implements TSMetaService.AsyncIface,
+    TSMetaService.Iface {
 
   // each node only contains one MetaGroupMember
   private MetaGroupMember member;
   private IoTDB ioTDB;
   // to register the ClusterMonitor that helps monitoring the cluster
   private RegisterManager registerManager = new RegisterManager();
+  private MetaAsyncService asyncService;
+  private MetaSyncService syncService;
 
   public MetaClusterServer() throws QueryProcessException {
     super();
     member = new MetaGroupMember(protocolFactory, thisNode);
+    asyncService = new MetaAsyncService(member);
+    syncService = new MetaSyncService(member);
   }
 
   /**
@@ -112,9 +127,14 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
    * @throws TTransportException
    */
   @Override
-  TNonblockingServerSocket getServerSocket() throws TTransportException {
-    return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
-        config.getLocalMetaPort()), getConnectionTimeoutInMS());
+  TServerTransport getServerSocket() throws TTransportException {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
+          config.getLocalMetaPort()), getConnectionTimeoutInMS());
+    } else {
+      return new TServerSocket(new InetSocketAddress(config.getLocalIP(),
+          config.getLocalMetaPort()));
+    }
   }
 
   @Override
@@ -128,9 +148,12 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   }
 
   @Override
-  AsyncProcessor getProcessor() {
-    // this one is from TSMetaIService
-    return new AsyncProcessor(this);
+  TProcessor getProcessor() {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      return new AsyncProcessor(this);
+    } else {
+      return new Processor<>(this);
+    }
   }
 
   // Request forwarding. There is only one MetaGroupMember each node, so all requests will be
@@ -138,59 +161,59 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
 
   @Override
   public void addNode(Node node, StartUpStatus startUpStatus, AsyncMethodCallback resultHandler) {
-    member.addNode(node, startUpStatus, resultHandler);
+    asyncService.addNode(node, startUpStatus, resultHandler);
   }
 
   @Override
   public void sendHeartbeat(HeartBeatRequest request, AsyncMethodCallback resultHandler) {
-    member.sendHeartbeat(request, resultHandler);
+    asyncService.sendHeartbeat(request, resultHandler);
   }
 
   @Override
   public void startElection(ElectionRequest electionRequest, AsyncMethodCallback resultHandler) {
-    member.startElection(electionRequest, resultHandler);
+    asyncService.startElection(electionRequest, resultHandler);
   }
 
   @Override
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback resultHandler) {
-    member.appendEntries(request, resultHandler);
+    asyncService.appendEntries(request, resultHandler);
   }
 
   @Override
   public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
-    member.appendEntry(request, resultHandler);
+    asyncService.appendEntry(request, resultHandler);
   }
 
   @Override
   public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    member.sendSnapshot(request, resultHandler);
+    asyncService.sendSnapshot(request, resultHandler);
   }
 
   @Override
   public void executeNonQueryPlan(ExecutNonQueryReq request,
       AsyncMethodCallback<TSStatus> resultHandler) {
-    member.executeNonQueryPlan(request, resultHandler);
+    asyncService.executeNonQueryPlan(request, resultHandler);
   }
 
   @Override
   public void requestCommitIndex(Node header, AsyncMethodCallback<Long> resultHandler) {
-    member.requestCommitIndex(header, resultHandler);
+    asyncService.requestCommitIndex(header, resultHandler);
   }
 
   @Override
   public void checkAlive(AsyncMethodCallback<Node> resultHandler) {
-    member.checkAlive(resultHandler);
+    asyncService.checkAlive(resultHandler);
   }
 
   @Override
   public void readFile(String filePath, long offset, int length,
       AsyncMethodCallback<ByteBuffer> resultHandler) {
-    member.readFile(filePath, offset, length, resultHandler);
+    asyncService.readFile(filePath, offset, length, resultHandler);
   }
 
   @Override
   public void queryNodeStatus(AsyncMethodCallback<TNodeStatus> resultHandler) {
-    member.queryNodeStatus(resultHandler);
+    asyncService.queryNodeStatus(resultHandler);
   }
 
   public MetaGroupMember getMember() {
@@ -200,22 +223,97 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   @Override
   public void checkStatus(StartUpStatus startUpStatus,
       AsyncMethodCallback<CheckStatusResponse> resultHandler) {
-    member.checkStatus(startUpStatus, resultHandler);
+    asyncService.checkStatus(startUpStatus, resultHandler);
   }
 
   @Override
   public void removeNode(Node node, AsyncMethodCallback<Long> resultHandler) {
-    member.removeNode(node, resultHandler);
+    asyncService.removeNode(node, resultHandler);
   }
 
   @Override
   public void exile(AsyncMethodCallback<Void> resultHandler) {
-    member.exile(resultHandler);
+    asyncService.exile(resultHandler);
   }
 
   @Override
   public void matchTerm(long index, long term, Node header,
       AsyncMethodCallback<Boolean> resultHandler) {
-    member.matchTerm(index, term, header, resultHandler);
+    asyncService.matchTerm(index, term, header, resultHandler);
+  }
+
+  @Override
+  public AddNodeResponse addNode(Node node, StartUpStatus startUpStatus) throws TException {
+    return syncService.addNode(node, startUpStatus);
+  }
+
+  @Override
+  public CheckStatusResponse checkStatus(StartUpStatus startUpStatus) {
+    return syncService.checkStatus(startUpStatus);
+  }
+
+  @Override
+  public long removeNode(Node node) throws TException {
+    return syncService.removeNode(node);
+  }
+
+  @Override
+  public void exile() {
+    syncService.exile();
+  }
+
+  @Override
+  public TNodeStatus queryNodeStatus() {
+    return syncService.queryNodeStatus();
+  }
+
+  @Override
+  public Node checkAlive() {
+    return syncService.checkAlive();
+  }
+
+  @Override
+  public HeartBeatResponse sendHeartbeat(HeartBeatRequest request) {
+    return syncService.sendHeartbeat(request);
+  }
+
+  @Override
+  public long startElection(ElectionRequest request) {
+    return syncService.startElection(request);
+  }
+
+  @Override
+  public long appendEntries(AppendEntriesRequest request) throws TException {
+    return syncService.appendEntries(request);
+  }
+
+  @Override
+  public long appendEntry(AppendEntryRequest request) throws TException {
+    return syncService.appendEntry(request);
+  }
+
+  @Override
+  public void sendSnapshot(SendSnapshotRequest request) throws TException {
+    syncService.sendSnapshot(request);
+  }
+
+  @Override
+  public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {
+    return syncService.executeNonQueryPlan(request);
+  }
+
+  @Override
+  public long requestCommitIndex(Node header) throws TException {
+    return syncService.requestCommitIndex(header);
+  }
+
+  @Override
+  public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
+    return syncService.readFile(filePath, offset, length);
+  }
+
+  @Override
+  public boolean matchTerm(long index, long term, Node header) {
+    return syncService.matchTerm(index, term, header);
   }
 }

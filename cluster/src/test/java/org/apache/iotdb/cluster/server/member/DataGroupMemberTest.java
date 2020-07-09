@@ -78,6 +78,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
+import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -178,7 +179,7 @@ public class DataGroupMemberTest extends MemberTest {
 
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncDataClient(node, dataGroupMemberMap) {
 
@@ -301,13 +302,13 @@ public class DataGroupMemberTest extends MemberTest {
     electionRequest.setDataLogLastTerm(100);
     electionRequest.setDataLogLastIndex(100);
     TestHandler handler = new TestHandler();
-    dataGroupMember.startElection(electionRequest, handler);
+    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(10, handler.getResponse());
 
     // a valid request with same term and voteFor is empty
     electionRequest.setTerm(10);
     handler = new TestHandler();
-    dataGroupMember.startElection(electionRequest, handler);
+    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
 
     dataGroupMember.setVoteFor(voteFor);
@@ -317,14 +318,14 @@ public class DataGroupMemberTest extends MemberTest {
     electionRequest.setTerm(10);
     electionRequest.setElector(elector);
     handler = new TestHandler();
-    dataGroupMember.startElection(electionRequest, handler);
+    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_REJECT, handler.getResponse());
 
     // a valid request with same term and voteFor is not empty and elector is same to voteFor
     electionRequest.setTerm(10);
     electionRequest.setElector(voteFor);
     handler = new TestHandler();
-    dataGroupMember.startElection(electionRequest, handler);
+    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
 
     // a request with larger term and stale meta log
@@ -333,7 +334,7 @@ public class DataGroupMemberTest extends MemberTest {
     electionRequest.setLastLogIndex(1);
     electionRequest.setLastLogTerm(1);
     handler = new TestHandler();
-    dataGroupMember.startElection(electionRequest, handler);
+    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_META_LOG_STALE, handler.getResponse());
     assertEquals(13, dataGroupMember.getTerm().get());
 
@@ -344,7 +345,7 @@ public class DataGroupMemberTest extends MemberTest {
     electionRequest.setLastLogTerm(100);
     electionRequest.setDataLogLastTerm(1);
     electionRequest.setDataLogLastIndex(1);
-    dataGroupMember.startElection(electionRequest, handler);
+    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_LOG_MISMATCH, handler.getResponse());
     assertEquals(14, dataGroupMember.getTerm().get());
 
@@ -352,7 +353,7 @@ public class DataGroupMemberTest extends MemberTest {
     electionRequest.setTerm(15);
     electionRequest.setDataLogLastTerm(100);
     electionRequest.setDataLogLastIndex(100);
-    dataGroupMember.startElection(electionRequest, handler);
+    new DataAsyncService(dataGroupMember).startElection(electionRequest, handler);
     assertEquals(Response.RESPONSE_AGREE, handler.getResponse());
     assertEquals(15, dataGroupMember.getTerm().get());
   }
@@ -374,7 +375,7 @@ public class DataGroupMemberTest extends MemberTest {
     SendSnapshotRequest request = new SendSnapshotRequest();
     request.setSnapshotBytes(serialize);
     AtomicBoolean callbackCalled = new AtomicBoolean(false);
-    dataGroupMember.sendSnapshot(request, new AsyncMethodCallback() {
+    new DataAsyncService(dataGroupMember).sendSnapshot(request, new AsyncMethodCallback() {
       @Override
       public void onComplete(Object o) {
         callbackCalled.set(true);
@@ -458,7 +459,7 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<Map<Integer, FileSnapshot>> reference = new AtomicReference<>();
     PullSnapshotHandler<FileSnapshot> handler = new PullSnapshotHandler<>(reference,
         TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot::new);
-    dataGroupMember.pullSnapshot(request, handler);
+    new DataAsyncService(dataGroupMember).pullSnapshot(request, handler);
     assertEquals(requiredSlots.size(), reference.get().size());
     for (Integer requiredSlot : requiredSlots) {
       assertEquals(snapshotMap.get(requiredSlot), reference.get().get(requiredSlot));
@@ -476,7 +477,7 @@ public class DataGroupMemberTest extends MemberTest {
     AtomicReference<Map<Integer, FileSnapshot>> reference = new AtomicReference<>();
     PullSnapshotHandler<FileSnapshot> handler = new PullSnapshotHandler<>(reference,
         TestUtils.getNode(1), request.getRequiredSlots(), FileSnapshot::new);
-    dataGroupMember.pullSnapshot(request, handler);
+    new DataAsyncService(dataGroupMember).pullSnapshot(request, handler);
     assertEquals(requiredSlots.size() - 1, reference.get().size());
     for (int i = 0; i < requiredSlots.size() - 1; i++) {
       Integer requiredSlot = requiredSlots.get(i);
@@ -537,7 +538,7 @@ public class DataGroupMemberTest extends MemberTest {
       AtomicReference<List<MeasurementSchema>> result = new AtomicReference<>();
       PullTimeseriesSchemaHandler handler = new PullTimeseriesSchemaHandler(TestUtils.getNode(1),
           request.getPrefixPaths(), result);
-      dataGroupMember.pullTimeSeriesSchema(request, handler);
+      new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
       for (int i = 0; i < 10; i++) {
         assertEquals(TestUtils.getTestMeasurementSchema(i), result.get().get(i));
       }
@@ -547,7 +548,7 @@ public class DataGroupMemberTest extends MemberTest {
       result.set(null);
       handler = new PullTimeseriesSchemaHandler(TestUtils.getNode(1),
           request.getPrefixPaths(), result);
-      dataGroupMember.pullTimeSeriesSchema(request, handler);
+      new DataAsyncService(dataGroupMember).pullTimeSeriesSchema(request, handler);
       for (int i = 0; i < 10; i++) {
         assertEquals(TestUtils.getTestMeasurementSchema(i), result.get().get(i));
       }
@@ -591,14 +592,14 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    dataGroupMember.querySingleSeries(request, handler);
+    new DataAsyncService(dataGroupMember).querySingleSeries(request, handler);
     long readerId = result.get();
     assertEquals(1, readerId);
 
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
-    dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
+    new DataAsyncService(dataGroupMember).fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 10; i++) {
@@ -609,7 +610,7 @@ public class DataGroupMemberTest extends MemberTest {
     }
     assertFalse(batchData.hasCurrent());
 
-    dataGroupMember.endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
+    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
   }
 
@@ -647,14 +648,14 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    dataGroupMember.querySingleSeries(request, handler);
+    new DataAsyncService(dataGroupMember).querySingleSeries(request, handler);
     long readerId = result.get();
     assertEquals(1, readerId);
 
     AtomicReference<ByteBuffer> dataResult = new AtomicReference<>();
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
-    dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
+    new DataAsyncService(dataGroupMember).fetchSingleSeries(TestUtils.getNode(0), readerId, dataHandler);
     ByteBuffer dataBuffer = dataResult.get();
     BatchData batchData = SerializeUtils.deserializeBatchData(dataBuffer);
     for (int i = 5; i < 9; i++) {
@@ -665,7 +666,7 @@ public class DataGroupMemberTest extends MemberTest {
     }
     assertFalse(batchData.hasCurrent());
 
-    dataGroupMember.endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
+    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
   }
 
@@ -703,7 +704,7 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    dataGroupMember.querySingleSeriesByTimestamp(request, handler);
+    new DataAsyncService(dataGroupMember).querySingleSeriesByTimestamp(request, handler);
     long readerId = result.get();
     assertEquals(1, readerId);
 
@@ -712,13 +713,13 @@ public class DataGroupMemberTest extends MemberTest {
         dataResult);
 
     for (int i = 5; i < 10; i++) {
-      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+      new DataAsyncService(dataGroupMember).fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
           dataHandler);
       Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
 
-    dataGroupMember.endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
+    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
   }
 
@@ -756,7 +757,7 @@ public class DataGroupMemberTest extends MemberTest {
 
     AtomicReference<Long> result = new AtomicReference<>();
     GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-    dataGroupMember.querySingleSeriesByTimestamp(request, handler);
+    new DataAsyncService(dataGroupMember).querySingleSeriesByTimestamp(request, handler);
     long readerId = result.get();
     assertEquals(1, readerId);
 
@@ -764,13 +765,13 @@ public class DataGroupMemberTest extends MemberTest {
     GenericHandler<ByteBuffer> dataHandler = new GenericHandler<>(TestUtils.getNode(0),
         dataResult);
     for (int i = 5; i < 9; i++) {
-      dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
+      new DataAsyncService(dataGroupMember).fetchSingleSeriesByTimestamp(TestUtils.getNode(0), readerId, i,
           dataHandler);
       Object value = SerializeUtils.deserializeObject(dataResult.get());
       assertEquals(i * 1.0, (Double) value, 0.00001);
     }
 
-    dataGroupMember.endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
+    new DataAsyncService(dataGroupMember).endQuery(TestUtils.getNode(0), TestUtils.getNode(1), 0,
         new GenericHandler<>(TestUtils.getNode(0), null));
   }
 
@@ -780,7 +781,7 @@ public class DataGroupMemberTest extends MemberTest {
     String path = TestUtils.getTestSg(0);
     AtomicReference<List<String>> pathResult = new AtomicReference<>();
     GenericHandler<List<String>> handler = new GenericHandler<>(TestUtils.getNode(0), pathResult);
-    dataGroupMember.getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
+    new DataAsyncService(dataGroupMember).getAllPaths(TestUtils.getNode(0), Collections.singletonList(path), handler);
     List<String> result = pathResult.get();
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
@@ -792,7 +793,7 @@ public class DataGroupMemberTest extends MemberTest {
   public void testFetchWithoutQuery() {
     System.out.println("Start testFetchWithoutQuery()");
     AtomicReference<Exception> result = new AtomicReference<>();
-    dataGroupMember.fetchSingleSeriesByTimestamp(TestUtils.getNode(0), 0, 0,
+    new DataAsyncService(dataGroupMember).fetchSingleSeriesByTimestamp(TestUtils.getNode(0), 0, 0,
         new AsyncMethodCallback<ByteBuffer>() {
           @Override
           public void onComplete(ByteBuffer buffer) {
@@ -807,7 +808,7 @@ public class DataGroupMemberTest extends MemberTest {
     assertTrue(exception instanceof ReaderNotFoundException);
     assertEquals("The requested reader 0 is not found", exception.getMessage());
 
-    dataGroupMember.fetchSingleSeries(TestUtils.getNode(0), 0,
+    new DataAsyncService(dataGroupMember).fetchSingleSeries(TestUtils.getNode(0), 0,
         new AsyncMethodCallback<ByteBuffer>() {
           @Override
           public void onComplete(ByteBuffer buffer) {
@@ -935,14 +936,14 @@ public class DataGroupMemberTest extends MemberTest {
     try {
       resultRef = new AtomicReference<>();
       handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
-      dataGroupMember.getGroupByExecutor(request, handler);
+      new DataAsyncService(dataGroupMember).getGroupByExecutor(request, handler);
       executorId = resultRef.get();
       assertEquals(1L, (long) executorId);
 
       // fetch result
       aggrResultRef = new AtomicReference<>();
       aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-      dataGroupMember.getGroupByResult(TestUtils.getNode(10), executorId, 0, 20, aggrResultHandler);
+      new DataAsyncService(dataGroupMember).getGroupByResult(TestUtils.getNode(10), executorId, 0, 20, aggrResultHandler);
 
       byteBuffers = aggrResultRef.get();
       assertNotNull(byteBuffers);
@@ -963,14 +964,14 @@ public class DataGroupMemberTest extends MemberTest {
       resultRef = new AtomicReference<>();
       handler = new GenericHandler<>(TestUtils.getNode(0), resultRef);
       request.timeFilterBytes.position(0);
-      dataGroupMember.getGroupByExecutor(request, handler);
+      new DataAsyncService(dataGroupMember).getGroupByExecutor(request, handler);
       executorId = resultRef.get();
       assertEquals(-1L, (long) executorId);
 
       // fetch result
       aggrResultRef = new AtomicReference<>();
       aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-      dataGroupMember.getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
+      new DataAsyncService(dataGroupMember).getGroupByResult(TestUtils.getNode(30), executorId, 0, 20, aggrResultHandler);
 
       byteBuffers = aggrResultRef.get();
       assertNull(byteBuffers);

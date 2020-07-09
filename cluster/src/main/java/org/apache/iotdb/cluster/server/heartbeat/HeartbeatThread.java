@@ -24,10 +24,13 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
@@ -148,10 +151,10 @@ public class HeartbeatThread implements Runnable {
           return;
         }
 
-        AsyncClient client = localMember.connectNode(node);
-        if (client != null) {
-          // connecting to the local node results in a null
-          sendHeartbeat(node, client);
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          sendHeartbeatAsync(node);
+        } else {
+          sendHeartbeatSync(node);
         }
       }
     }
@@ -161,14 +164,48 @@ public class HeartbeatThread implements Runnable {
    * Send a heartbeat to "node" through "client".
    *
    * @param node
-   * @param client
    */
-  void sendHeartbeat(Node node, AsyncClient client) {
-    try {
-      logger.debug("{}: Sending heartbeat to {}", memberName, node);
-      client.sendHeartbeat(request, new HeartbeatHandler(localMember, node));
-    } catch (Exception e) {
-      logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
+  void sendHeartbeatAsync(Node node) {
+    AsyncClient client = localMember.getAsyncClient(node);
+    if (client != null) {
+      // connecting to the local node results in a null
+      try {
+        logger.debug("{}: Sending heartbeat to {}", memberName, node);
+        client.sendHeartbeat(request, new HeartbeatHandler(localMember, node));
+      } catch (Exception e) {
+        logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
+      }
+    }
+  }
+
+  void sendHeartbeatSync(Node node) {
+    Client client = localMember.getSyncClient(node);
+    HeartbeatHandler heartbeatHandler = new HeartbeatHandler(localMember, node);
+    HeartBeatRequest req = new HeartBeatRequest();
+    req.setCommitLogTerm(request.commitLogTerm);
+    req.setCommitLogIndex(request.commitLogIndex);
+    req.setRegenerateIdentifier(request.regenerateIdentifier);
+    req.setRequireIdentifier(request.requireIdentifier);
+    req.setTerm(request.term);
+    req.setLeader(localMember.getThisNode());
+    if (request.isSetHeader()) {
+      req.setHeader(request.header);
+    }
+    if (request.isSetPartitionTableBytes()) {
+      req.setPartitionTableBytes(request.getPartitionTableBytes());
+    }
+    if (client != null) {
+      localMember.getAsyncThreadPool().submit(() -> {
+        try {
+          logger.debug("{}: Sending heartbeat to {}", memberName, node);
+          HeartBeatResponse heartBeatResponse = client.sendHeartbeat(request);
+          heartbeatHandler.onComplete(heartBeatResponse);
+        } catch (Exception e) {
+          logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
+        } finally {
+          localMember.putBackSyncClient(client);
+        }
+      });
     }
   }
 
@@ -278,18 +315,43 @@ public class HeartbeatThread implements Runnable {
           continue;
         }
 
-        AsyncClient client = localMember.connectNode(node);
-        if (client != null) {
-          logger.info("{}: Requesting a vote from {}", memberName, node);
-          ElectionHandler handler = new ElectionHandler(localMember, node, nextTerm, quorum,
-              electionTerminated, electionValid);
-          try {
-            client.startElection(request, handler);
-          } catch (Exception e) {
-            logger.error("{}: Cannot request a vote from {}", memberName, node, e);
-          }
+        ElectionHandler handler = new ElectionHandler(localMember, node, nextTerm, quorum,
+            electionTerminated, electionValid);
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+         requestVoteAsync(node, handler, request);
+        } else {
+          requestVoteSync(node, handler, request);
         }
       }
+    }
+  }
+
+  private void requestVoteAsync(Node node, ElectionHandler handler, ElectionRequest request) {
+    AsyncClient client = localMember.getAsyncClient(node);
+    if (client != null) {
+      logger.info("{}: Requesting a vote from {}", memberName, node);
+      try {
+        client.startElection(request, handler);
+      } catch (Exception e) {
+        logger.error("{}: Cannot request a vote from {}", memberName, node, e);
+      }
+    }
+  }
+
+  private void requestVoteSync(Node node, ElectionHandler handler, ElectionRequest request) {
+    Client client = localMember.getSyncClient(node);
+    if (client != null) {
+      logger.info("{}: Requesting a vote from {}", memberName, node);
+      localMember.getAsyncThreadPool().submit(() -> {
+        try {
+          long result = client.startElection(request);
+          handler.onComplete(result);
+        } catch (Exception e) {
+          handler.onError(e);
+        } finally {
+          localMember.putBackSyncClient(client);
+        }
+      });
     }
   }
 }

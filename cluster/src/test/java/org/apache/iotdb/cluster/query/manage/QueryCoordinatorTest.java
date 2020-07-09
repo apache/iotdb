@@ -62,7 +62,7 @@ public class QueryCoordinatorTest {
 
     MetaGroupMember metaGroupMember = new MetaGroupMember() {
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         try {
           return new TestAsyncMetaClient(new Factory(),  null, node, null) {
             @Override

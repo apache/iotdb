@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntriesRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.LogCatchUpHandler;
@@ -79,12 +80,6 @@ public class LogCatchUpTask implements Callable<Boolean> {
   void doLogCatchUp() throws TException, InterruptedException, LeaderUnknownException {
 
     AppendEntryRequest request = new AppendEntryRequest();
-    AtomicBoolean appendSucceed = new AtomicBoolean(false);
-
-    LogCatchUpHandler handler = new LogCatchUpHandler();
-    handler.setAppendSucceed(appendSucceed);
-    handler.setRaftMember(raftMember);
-    handler.setFollower(node);
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
@@ -111,32 +106,63 @@ public class LogCatchUpTask implements Callable<Boolean> {
         request.setPrevLogTerm(logs.get(i - 1).getCurrLogTerm());
       }
 
-      handler.setLog(log);
-      request.setEntry(log.serialize());
-      logger.debug("{}: Catching up {} with log {}", raftMember.getName(), node, log);
-
-      synchronized (appendSucceed) {
-        appendSucceed.set(false);
-        AsyncClient client = raftMember.connectNode(node);
-        if (client == null) {
-          return;
-        }
-        client.appendEntry(request, handler);
-        raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        appendSucceed.wait(RaftServer.getConnectionTimeoutInMS());
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        abort = !appendEntryAsync(log, request);
+      } else {
+        abort = !appendEntrySync(log, request);
       }
-      abort = !appendSucceed.get();
+    }
+  }
+
+  private boolean appendEntryAsync(Log log, AppendEntryRequest request)
+      throws TException, InterruptedException {
+    AtomicBoolean appendSucceed = new AtomicBoolean(false);
+    LogCatchUpHandler handler = new LogCatchUpHandler();
+    handler.setAppendSucceed(appendSucceed);
+    handler.setRaftMember(raftMember);
+    handler.setFollower(node);
+    handler.setLog(log);
+    request.setEntry(log.serialize());
+
+    synchronized (appendSucceed) {
+      appendSucceed.set(false);
+      AsyncClient client = raftMember.getAsyncClient(node);
+      if (client == null) {
+        return false;
+      }
+      client.appendEntry(request, handler);
+      raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+      appendSucceed.wait(RaftServer.getConnectionTimeoutInMS());
+    }
+    return appendSucceed.get();
+  }
+
+  private boolean appendEntrySync(Log log, AppendEntryRequest request) {
+    AtomicBoolean appendSucceed = new AtomicBoolean(false);
+
+    LogCatchUpHandler handler = new LogCatchUpHandler();
+    handler.setAppendSucceed(appendSucceed);
+    handler.setRaftMember(raftMember);
+    handler.setFollower(node);
+    handler.setLog(log);
+    request.setEntry(log.serialize());
+
+    Client client = raftMember.getSyncClient(node);
+    try {
+      long result = client.appendEntry(request);
+      handler.onComplete(result);
+      return appendSucceed.get();
+    } catch (TException e) {
+      handler.onError(e);
+      return false;
+    } finally {
+      raftMember.putBackSyncClient(client);
     }
   }
 
   void doLogCatchUpInBatch() throws TException, InterruptedException {
     AppendEntriesRequest request = new AppendEntriesRequest();
-    AtomicBoolean appendSucceed = new AtomicBoolean(false);
 
-    LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
-    handler.setAppendSucceed(appendSucceed);
-    handler.setRaftMember(raftMember);
-    handler.setFollower(node);
     if (raftMember.getHeader() != null) {
       request.setHeader(raftMember.getHeader());
     }
@@ -166,27 +192,66 @@ public class LogCatchUpTask implements Callable<Boolean> {
         request.setTerm(raftMember.getTerm().get());
       }
 
-      handler.setLogs(logList);
       request.setEntries(logList);
       // set index for raft
       request.setPrevLogIndex(logs.get(i).getCurrLogIndex() - 1);
       if (i != 0) {
         request.setPrevLogTerm(logs.get(i - 1).getCurrLogTerm());
       }
-      if (logger.isDebugEnabled()) {
-        logger.debug("{}: Catching up {} with log {}", raftMember.getName(), node, logList);
-      }
 
       // do append entries
-      synchronized (appendSucceed) {
-        appendSucceed.set(false);
-        AsyncClient client = raftMember.connectNode(node);
-
-        client.appendEntries(request, handler);
-        raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
-        appendSucceed.wait(SEND_LOGS_WAIT_MS);
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        abort = !appendEntriesAsync(logList, request);
+      } else {
+        abort = !appendEntriesSync(logList, request);
       }
-      abort = !appendSucceed.get();
+    }
+  }
+
+  private boolean appendEntriesAsync(List<ByteBuffer> logList, AppendEntriesRequest request)
+      throws TException, InterruptedException {
+    AtomicBoolean appendSucceed = new AtomicBoolean(false);
+
+    LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
+    handler.setAppendSucceed(appendSucceed);
+    handler.setRaftMember(raftMember);
+    handler.setFollower(node);
+    handler.setLogs(logList);
+    synchronized (appendSucceed) {
+      appendSucceed.set(false);
+      AsyncClient client = raftMember.getAsyncClient(node);
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Catching up {} with {} logs", raftMember.getName(), node, logList.size());
+      }
+      client.appendEntries(request, handler);
+      raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
+      appendSucceed.wait(SEND_LOGS_WAIT_MS);
+    }
+    return appendSucceed.get();
+  }
+
+  private boolean appendEntriesSync(List<ByteBuffer> logList, AppendEntriesRequest request) {
+    AtomicBoolean appendSucceed = new AtomicBoolean(false);
+
+    LogCatchUpInBatchHandler handler = new LogCatchUpInBatchHandler();
+    handler.setAppendSucceed(appendSucceed);
+    handler.setRaftMember(raftMember);
+    handler.setFollower(node);
+    handler.setLogs(logList);
+
+    Client client = raftMember.getSyncClient(node);
+    try {
+      if (logger.isDebugEnabled()) {
+        logger.debug("{}: Catching up {} with {} logs", raftMember.getName(), node, logList.size());
+      }
+      long result = client.appendEntries(request);
+      handler.onComplete(result);
+      return appendSucceed.get();
+    } catch (TException e) {
+      handler.onError(e);
+      return false;
+    } finally {
+      raftMember.putBackSyncClient(client);
     }
   }
 

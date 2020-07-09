@@ -37,6 +37,7 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 public abstract class AbstractMemTable implements IMemTable {
@@ -203,38 +204,40 @@ public abstract class AbstractMemTable implements IMemTable {
     if (!checkPath(deviceId, measurement)) {
       return null;
     }
-    long undeletedTime = findUndeletedTime(deviceId, measurement, timeLowerBound);
+    List<TimeRange> deletionList = constructDeletionList(deviceId, measurement, timeLowerBound);
     IWritableMemChunk memChunk = memTableMap.get(deviceId).get(measurement);
     TVList chunkCopy = memChunk.getTVList().clone();
 
-    chunkCopy.setTimeOffset(undeletedTime);
+    chunkCopy.setDeletionList(deletionList);
     return new ReadOnlyMemChunk(measurement, dataType, encoding, chunkCopy, props, getVersion());
   }
 
-
-  private long findUndeletedTime(String deviceId, String measurement, long timeLowerBound) {
-    long undeletedTime = Long.MIN_VALUE;
+  private List<TimeRange> constructDeletionList(String deviceId, String measurement,
+      long timeLowerBound) {
+    List<TimeRange> deletionList = new ArrayList<>();
+    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : modifications) {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
         if (deletion.getDevice().equals(deviceId) && deletion.getMeasurement().equals(measurement)
-            && deletion.getTimestamp() > undeletedTime) {
-          undeletedTime = deletion.getTimestamp();
+            && deletion.getEndTime() > timeLowerBound) {
+          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
         }
       }
     }
-    return Math.max(undeletedTime + 1, timeLowerBound);
+    return TimeRange.sortAndMerge(deletionList);
   }
 
   @Override
-  public void delete(String deviceId, String measurementId, long timestamp) {
+  public void delete(String deviceId, String measurementId, long startTimestamp, long endTimestamp) {
     Map<String, IWritableMemChunk> deviceMap = memTableMap.get(deviceId);
     if (deviceMap != null) {
       IWritableMemChunk chunk = deviceMap.get(measurementId);
       if (chunk == null) {
         return;
       }
-      int deletedPointsNumber = chunk.delete(timestamp);
+      int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
       totalPointsNum -= deletedPointsNumber;
     }
   }

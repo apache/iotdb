@@ -546,6 +546,9 @@ public class ReadWriteIOUtils {
    */
   public static String readString(InputStream inputStream) throws IOException {
     int strLength = readInt(inputStream);
+    if (strLength <= 0) {
+      return null;
+    }
     byte[] bytes = new byte[strLength];
     int readLen = inputStream.read(bytes, 0, strLength);
     if (readLen != strLength) {

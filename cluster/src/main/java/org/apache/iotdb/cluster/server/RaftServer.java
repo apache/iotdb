@@ -29,18 +29,19 @@ import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncProcessor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.thrift.TProcessor;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.server.THsHaServer;
 import org.apache.thrift.server.THsHaServer.Args;
 import org.apache.thrift.server.TServer;
+import org.apache.thrift.server.TThreadPoolServer;
 import org.apache.thrift.transport.TFastFramedTransport;
-import org.apache.thrift.transport.TNonblockingServerSocket;
 import org.apache.thrift.transport.TNonblockingServerTransport;
+import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,7 +50,7 @@ import org.slf4j.LoggerFactory;
  * RaftServer works as a broker (network and protocol layer) that sends the requests to the proper
  * RaftMembers to process.
  */
-public abstract class RaftServer implements RaftService.AsyncIface {
+public abstract class RaftServer implements RaftService.AsyncIface, RaftService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftServer.class);
   private static int connectionTimeoutInMS =
@@ -61,7 +62,7 @@ public abstract class RaftServer implements RaftService.AsyncIface {
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the socket poolServer will listen to
-  private TNonblockingServerTransport socket;
+  private TServerTransport socket;
   // RPC processing server
   private TServer poolServer;
   Node thisNode;
@@ -146,14 +147,14 @@ public abstract class RaftServer implements RaftService.AsyncIface {
    * @return An AsyncProcessor that contains the extended interfaces of a non-abstract subclass of
    * RaftService (DataService or MetaService).
    */
-  abstract AsyncProcessor getProcessor();
+  abstract TProcessor getProcessor();
 
   /**
    * @return A socket that will be used to establish a thrift server to listen to RPC requests.
    * DataServer and MetaServer use different port, so this is to be determined.
    * @throws TTransportException
    */
-  abstract TNonblockingServerSocket getServerSocket() throws TTransportException;
+  abstract TServerTransport getServerSocket() throws TTransportException;
 
   /**
    * Each thrift RPC request will be processed in a separate thread and this will return the name
@@ -172,12 +173,10 @@ public abstract class RaftServer implements RaftService.AsyncIface {
    */
   abstract String getServerClientName();
 
-  private void establishServer() throws TTransportException {
-    logger.info("Cluster node {} begins to set up", thisNode);
-
+  private TServer getAsyncServer() throws TTransportException {
     socket = getServerSocket();
     Args poolArgs =
-        new THsHaServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
+        new THsHaServer.Args((TNonblockingServerTransport) socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
             .minWorkerThreads(1);
 
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
@@ -198,7 +197,45 @@ public abstract class RaftServer implements RaftService.AsyncIface {
         IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
 
     // run the thrift server in a separate thread so that the main thread is not blocked
-    poolServer = new THsHaServer(poolArgs);
+    return new THsHaServer(poolArgs);
+  }
+
+  private TServer getSyncServer() throws TTransportException {
+    socket = getServerSocket();
+    TThreadPoolServer.Args poolArgs =
+        new TThreadPoolServer.Args(socket).maxWorkerThreads(config.getMaxConcurrentClientNum())
+            .minWorkerThreads(1);
+
+    poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
+        poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
+        new SynchronousQueue<>(), new ThreadFactory() {
+      private AtomicLong threadIndex = new AtomicLong(0);
+
+      @Override
+      public Thread newThread(Runnable r) {
+        return new Thread(r, getClientThreadPrefix() + threadIndex.incrementAndGet());
+      }
+    }));
+    poolArgs.processor(getProcessor());
+    poolArgs.protocolFactory(protocolFactory);
+    // async service requires FramedTransport
+    poolArgs.transportFactory(new TFastFramedTransport.Factory(
+        IoTDBDescriptor.getInstance().getConfig().getThriftInitBufferSize(),
+        IoTDBDescriptor.getInstance().getConfig().getThriftMaxFrameSize()));
+
+    // run the thrift server in a separate thread so that the main thread is not blocked
+    return new TThreadPoolServer(poolArgs);
+  }
+
+  private void establishServer() throws TTransportException {
+    logger.info("Cluster node {} begins to set up", thisNode);
+
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      poolServer = getAsyncServer();
+    } else {
+      poolServer = getSyncServer();
+    }
+
     clientService = Executors.newSingleThreadExecutor(r -> new Thread(r, getServerClientName()));
     clientService.submit(() -> poolServer.serve());
 

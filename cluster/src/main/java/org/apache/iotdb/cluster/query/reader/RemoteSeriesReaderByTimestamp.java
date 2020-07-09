@@ -22,6 +22,8 @@ package org.apache.iotdb.cluster.query.reader;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
@@ -49,26 +51,52 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       return null;
     }
 
-    while (true) {
-      synchronized (fetchResult) {
-        fetchResult.set(null);
-        try {
-          sourceInfo.getCurClient().fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
-              sourceInfo.getReaderId(), timestamp, handler);
-          fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
-        } catch (TException e) {
-          //try other node
-          if (!sourceInfo.switchNode(true, timestamp)) {
-            return null;
-          }
-          continue;
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Query {} interrupted", sourceInfo);
+    ByteBuffer result;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      result = fetchResultAsync(timestamp);
+    } else {
+      result = fetchResultSync(timestamp);
+    }
+
+    return SerializeUtils.deserializeObject(result);
+  }
+
+  private ByteBuffer fetchResultAsync(long timestamp) throws IOException {
+    synchronized (fetchResult) {
+      fetchResult.set(null);
+      try {
+        sourceInfo.getCurAsyncClient().fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
+            sourceInfo.getReaderId(), timestamp, handler);
+        fetchResult.wait(RaftServer.getConnectionTimeoutInMS());
+      } catch (TException e) {
+        //try other node
+        if (!sourceInfo.switchNode(true, timestamp)) {
           return null;
         }
+        return fetchResultAsync(timestamp);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Query {} interrupted", sourceInfo);
+        return null;
       }
-      return SerializeUtils.deserializeObject(fetchResult.get());
+    }
+    return fetchResult.get();
+  }
+
+  private ByteBuffer fetchResultSync(long timestamp) throws IOException {
+    try {
+      SyncDataClient curSyncClient = sourceInfo.getCurSyncClient();
+      ByteBuffer buffer = curSyncClient
+          .fetchSingleSeriesByTimestamp(sourceInfo.getHeader(),
+              sourceInfo.getReaderId(), timestamp);
+      curSyncClient.putBack();
+      return buffer;
+    } catch (TException e) {
+      //try other node
+      if (!sourceInfo.switchNode(true, timestamp)) {
+        return null;
+      }
+      return fetchResultSync(timestamp);
     }
   }
 }

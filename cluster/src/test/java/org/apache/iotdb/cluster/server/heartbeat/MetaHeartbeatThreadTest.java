@@ -151,7 +151,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
       }
 
       @Override
-      public AsyncClient connectNode(Node node) {
+      public AsyncClient getAsyncClient(Node node) {
         return getClient(node);
       }
 

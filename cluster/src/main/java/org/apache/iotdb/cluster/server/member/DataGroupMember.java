@@ -48,10 +48,12 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncClientPool;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient.FactorySync;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
@@ -86,13 +88,11 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.PullSnapshotHintService;
 import org.apache.iotdb.cluster.server.Response;
-import org.apache.iotdb.cluster.server.handlers.forwarder.GenericForwardHandler;
 import org.apache.iotdb.cluster.server.heartbeat.DataHeartbeatThread;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
@@ -141,13 +141,12 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.thrift.TException;
-import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataGroupMember extends RaftMember implements TSDataService.AsyncIface {
+public class DataGroupMember extends RaftMember {
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
   /**
@@ -197,7 +196,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new AsyncClientPool(new FactoryAsync(factory)));
+        new AsyncClientPool(new FactoryAsync(factory)), new SyncClientPool(new FactorySync(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
@@ -411,22 +410,16 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * PartitionedSnapshot with FileSnapshot inside.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback resultHandler) {
+  public void sendSnapshot(SendSnapshotRequest request) throws SnapshotApplicationException {
     logger.debug("{}: received a snapshot", name);
     PartitionedSnapshot snapshot = new PartitionedSnapshot<>(FileSnapshot::new);
-    try {
-      snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
-      if (logger.isDebugEnabled()) {
-        logger.debug("{} received a snapshot {}", name, snapshot);
-      }
-      applyPartitionedSnapshot(snapshot);
-      resultHandler.onComplete(null);
-    } catch (Exception e) {
-      resultHandler.onError(e);
+
+    snapshot.deserialize(ByteBuffer.wrap(request.getSnapshotBytes()));
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} received a snapshot {}", name, snapshot);
     }
+    applyPartitionedSnapshot(snapshot);
   }
 
   /**
@@ -724,16 +717,17 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws IOException
    */
   private boolean pullRemoteFile(String remotePath, Node node, File dest) throws IOException {
-    AsyncDataClient client = (AsyncDataClient) connectNode(node);
-    if (client == null) {
-      return false;
-    }
 
     int pullFileRetry = 5;
     for (int i = 0; i < pullFileRetry; i++) {
       try (BufferedOutputStream bufferedOutputStream =
           new BufferedOutputStream(new FileOutputStream(dest))) {
-        downloadFile(client, remotePath, bufferedOutputStream);
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          downloadFileAsync(node, remotePath, bufferedOutputStream);
+        } else {
+          downloadFileSync(node, remotePath, bufferedOutputStream);
+        }
+
         if (logger.isInfoEnabled()) {
           logger.info("{}: remote file {} is pulled at {}, length: {}", name, remotePath, dest,
               dest.length());
@@ -763,8 +757,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return false;
   }
 
-  private void downloadFile(AsyncDataClient client, String remotePath, OutputStream dest)
+  private void downloadFileAsync(Node node, String remotePath, OutputStream dest)
       throws IOException, TException, InterruptedException {
+    AsyncDataClient client = (AsyncDataClient) getAsyncClient(node);
+    if (client == null) {
+      throw new IOException("No available client for " + node.toString());
+    }
+
     int offset = 0;
     // TODO-Cluster: use elaborate downloading techniques
     int fetchSize = 64 * 1024;
@@ -785,17 +784,46 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     dest.flush();
   }
 
+  private void downloadFileSync(Node node, String remotePath, OutputStream dest)
+      throws IOException, TException {
+    SyncDataClient client = (SyncDataClient) getSyncClient(node);
+    if (client == null) {
+      throw new IOException("No available client for " + node.toString());
+    }
+
+    int offset = 0;
+    // TODO-Cluster: use elaborate downloading techniques
+    int fetchSize = 64 * 1024;
+
+    try {
+      while (true) {
+        ByteBuffer buffer = client.readFile(remotePath, offset, fetchSize);
+        if (buffer == null || buffer.limit() - buffer.position() == 0) {
+          break;
+        }
+
+        // notice: the buffer returned by thrift is a slice of a larger buffer which contains
+        // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
+        // not the size of the downloaded chunk
+        dest.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
+            buffer.limit() - buffer.position());
+        offset += buffer.limit() - buffer.position();
+      }
+    } finally {
+      putBackSyncClient(client);
+    }
+    dest.flush();
+  }
+
   /**
    * Send the requested snapshots to the applier node.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void pullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
+  public PullSnapshotResp pullSnapshot(PullSnapshotRequest request) throws IOException {
+    waitLeader();
     if (character != NodeCharacter.LEADER && !readOnly) {
-      forwardPullSnapshot(request, resultHandler);
-      return;
+      return null;
     }
     // if the requester pulls the snapshots because the header of the group is removed, then the
     // member should no longer receive new data
@@ -832,11 +860,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     synchronized (logManager) {
       PullSnapshotResp resp = new PullSnapshotResp();
       Map<Integer, ByteBuffer> resultMap = new HashMap<>();
-      try {
-        logManager.takeSnapshot();
-      } catch (IOException e) {
-        resultHandler.onError(e);
-      }
+      logManager.takeSnapshot();
 
       PartitionedSnapshot allSnapshot = (PartitionedSnapshot) logManager.getSnapshot();
       for (int requiredSlot : requiredSlots) {
@@ -847,28 +871,11 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       }
       resp.setSnapshotBytes(resultMap);
       logger.debug("{}: Sending {} snapshots to the requester", name, resultMap.size());
-      resultHandler.onComplete(resp);
+      return resp;
     }
   }
 
-  private void forwardPullSnapshot(PullSnapshotRequest request, AsyncMethodCallback resultHandler) {
-    // if this node has been set readOnly, then it must have been synchronized with the leader
-    // otherwise forward the request to the leader
-    if (leader != null) {
-      logger.debug("{} forwarding a pull snapshot request to the leader {}", name, leader);
-      AsyncDataClient client = (AsyncDataClient) connectNode(leader);
-      try {
-        client.pullSnapshot(request, new GenericForwardHandler<>(resultHandler));
-      } catch (TException e) {
-        resultHandler.onError(e);
-      }
-    } else {
-      waitLeader();
-      if (leader == null) {
-        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
-      }
-    }
-  }
+
 
   /**
    * Pull snapshots from the previous holders after newNode joins the cluster.
@@ -1057,31 +1064,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * paths.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void pullTimeSeriesSchema(PullSchemaRequest request,
-      AsyncMethodCallback<PullSchemaResp> resultHandler) {
+  public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request)
+      throws CheckConsistencyException {
     // try to synchronize with the leader first in case that some schema logs are accepted but
     // not committed yet
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      // if this node cannot synchronize with the leader with in a given time, forward the
-      // request to the leader
-      waitLeader();
-      AsyncDataClient client = (AsyncDataClient) connectNode(leader);
-      if (client == null) {
-        resultHandler.onError(new LeaderUnknownException(getAllNodes()));
-        return;
-      }
-      try {
-        client.pullTimeSeriesSchema(request, resultHandler);
-      } catch (TException e1) {
-        resultHandler.onError(e1);
-      }
-      return;
-    }
+    syncLeaderWithConsistencyCheck();
 
     // collect local timeseries schemas and send to the requester
     // the measurements in them are the full paths.
@@ -1108,7 +1096,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       // unreachable for we are using a ByteArrayOutputStream
     }
     resp.setSchemaBytes(byteArrayOutputStream.toByteArray());
-    resultHandler.onComplete(resp);
+    return resp;
   }
 
   /**
@@ -1230,19 +1218,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * be returned.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void querySingleSeries(SingleSeriesQueryRequest request,
-      AsyncMethodCallback<Long> resultHandler) {
+  public long querySingleSeries(SingleSeriesQueryRequest request)
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
     logger.debug("{}: {} is querying {}, queryId: {}", name, request.getRequester(),
         request.getPath(), request.getQueryId());
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      resultHandler.onError(e);
-      return;
-    }
+    syncLeaderWithConsistencyCheck();
 
     Path path = new Path(request.getPath());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
@@ -1261,29 +1242,26 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
-    try {
-      IBatchReader batchReader = getSeriesBatchReader(path, deviceMeasurements, dataType,
-          timeFilter,
-          valueFilter, queryContext);
+    IBatchReader batchReader = getSeriesBatchReader(path, deviceMeasurements, dataType,
+        timeFilter,
+        valueFilter, queryContext);
 
-      // if the reader contains no data, send a special id of -1 to prevent the requester from
-      // meaninglessly fetching data
-      if (batchReader != null && batchReader.hasNextBatch()) {
-        long readerId = getQueryManager().registerReader(batchReader);
-        queryContext.registerLocalReader(readerId);
-        logger.debug("{}: Build a reader of {} for {}#{}, readerId: {}", name, path,
-            request.getRequester(), request.getQueryId(), readerId);
-        resultHandler.onComplete(readerId);
-      } else {
-        logger.debug("{}: There is no data of {} for {}#{}", name, path,
-            request.getRequester(), request.getQueryId());
-        resultHandler.onComplete(-1L);
-        if (batchReader != null) {
-          batchReader.close();
-        }
+    // if the reader contains no data, send a special id of -1 to prevent the requester from
+    // meaninglessly fetching data
+    if (batchReader != null && batchReader.hasNextBatch()) {
+      long readerId = getQueryManager().registerReader(batchReader);
+      queryContext.registerLocalReader(readerId);
+      logger.debug("{}: Build a reader of {} for {}#{}, readerId: {}", name, path,
+          request.getRequester(), request.getQueryId(), readerId);
+      return readerId;
+    } else {
+      logger.debug("{}: There is no data of {} for {}#{}", name, path,
+          request.getRequester(), request.getQueryId());
+
+      if (batchReader != null) {
+        batchReader.close();
       }
-    } catch (IOException | StorageEngineException | QueryProcessException e) {
-      resultHandler.onError(e);
+      return -1;
     }
   }
 
@@ -1293,20 +1271,13 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * be returned.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void querySingleSeriesByTimestamp(SingleSeriesQueryRequest request,
-      AsyncMethodCallback<Long> resultHandler) {
+  public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException {
     logger
         .debug("{}: {} is querying {} by timestamp, queryId: {}", name, request.getRequester(),
             request.getPath(), request.getQueryId());
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      resultHandler.onError(e);
-      return;
-    }
+    syncLeaderWithConsistencyCheck();
 
     Path path = new Path(request.getPath());
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
@@ -1316,24 +1287,20 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         request.getQueryId());
     logger.debug("{}: local queryId for {}#{} is {}", name, request.getQueryId(),
         request.getPath(), queryContext.getQueryId());
-    try {
-      IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, deviceMeasurements,
-          dataType,
-          queryContext);
-      if (readerByTimestamp != null) {
-        long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
-        queryContext.registerLocalReader(readerId);
+    IReaderByTimestamp readerByTimestamp = getReaderByTimestamp(path, deviceMeasurements,
+        dataType,
+        queryContext);
+    if (readerByTimestamp != null) {
+      long readerId = getQueryManager().registerReaderByTime(readerByTimestamp);
+      queryContext.registerLocalReader(readerId);
 
-        logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
-            request.getRequester(), readerId);
-        resultHandler.onComplete(readerId);
-      } else {
-        logger.debug("{}: There is no data {} for {}#{}", name, path,
-            request.getRequester(), request.getQueryId());
-        resultHandler.onComplete(-1L);
-      }
-    } catch (StorageEngineException | QueryProcessException e) {
-      resultHandler.onError(e);
+      logger.debug("{}: Build a readerByTimestamp of {} for {}, readerId: {}", name, path,
+          request.getRequester(), readerId);
+      return readerId;
+    } else {
+      logger.debug("{}: There is no data {} for {}#{}", name, path,
+          request.getRequester(), request.getQueryId());
+      return -1;
     }
   }
 
@@ -1341,128 +1308,87 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * Find the QueryContext related a query of "queryId" in "requester" and release all resources of
    * the context.
    *
-   * @param header
    * @param requester
    * @param queryId
-   * @param resultHandler
    */
-  @Override
-  public void endQuery(Node header, Node requester, long queryId,
-      AsyncMethodCallback<Void> resultHandler) {
-    try {
-      getQueryManager().endQuery(requester, queryId);
-      resultHandler.onComplete(null);
-    } catch (StorageEngineException e) {
-      resultHandler.onError(e);
-    }
+  public void endQuery(Node requester, long queryId) throws StorageEngineException {
+    getQueryManager().endQuery(requester, queryId);
   }
 
   /**
    * Return the data of the reader whose id is "readerId", using timestamps in "timeBuffer".
    *
-   * @param header
    * @param readerId
    * @param time
-   * @param resultHandler
    */
-  @Override
-  public void fetchSingleSeriesByTimestamp(Node header, long readerId, long time,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public ByteBuffer fetchSingleSeriesByTimestamp(long readerId, long time) throws ReaderNotFoundException, IOException {
     IReaderByTimestamp reader = getQueryManager().getReaderByTimestamp(readerId);
     if (reader == null) {
-      resultHandler.onError(new ReaderNotFoundException(readerId));
-      return;
+      throw new ReaderNotFoundException(readerId);
     }
-    try {
-      Object value = reader.getValueInTimestamp(time);
-      if (value != null) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    Object value = reader.getValueInTimestamp(time);
+    if (value != null) {
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-        SerializeUtils.serializeObject(value, dataOutputStream);
-        resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      } else {
-        resultHandler.onComplete(ByteBuffer.allocate(0));
-      }
-    } catch (IOException e) {
-      resultHandler.onError(e);
+      SerializeUtils.serializeObject(value, dataOutputStream);
+      return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    } else {
+      return ByteBuffer.allocate(0);
     }
   }
 
   /**
    * Fetch a batch from the reader whose id is "readerId".
    *
-   * @param header
    * @param readerId
-   * @param resultHandler
    */
-  @Override
-  public void fetchSingleSeries(Node header, long readerId,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public ByteBuffer fetchSingleSeries(long readerId)
+      throws ReaderNotFoundException, IOException {
     IBatchReader reader = getQueryManager().getReader(readerId);
     if (reader == null) {
-      resultHandler.onError(new ReaderNotFoundException(readerId));
-      return;
+      throw new ReaderNotFoundException(readerId);
     }
-    try {
-      if (reader.hasNextBatch()) {
-        BatchData batchData = reader.nextBatch();
 
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    if (reader.hasNextBatch()) {
+      BatchData batchData = reader.nextBatch();
 
-        SerializeUtils.serializeBatchData(batchData, dataOutputStream);
-        logger.debug("{}: Send results of reader {}, size:{}", name, readerId,
-            batchData.length());
-        resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-      } else {
-        resultHandler.onComplete(ByteBuffer.allocate(0));
-      }
-    } catch (IOException e) {
-      resultHandler.onError(e);
+      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+      SerializeUtils.serializeBatchData(batchData, dataOutputStream);
+      logger.debug("{}: Send results of reader {}, size:{}", name, readerId,
+          batchData.length());
+      return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    } else {
+      return ByteBuffer.allocate(0);
     }
   }
 
   /**
    * Get the local paths that match any path in "paths". The result is not deduplicated.
    *
-   * @param header
    * @param paths         paths potentially contain wildcards
-   * @param resultHandler
    */
-  @Override
-  public void getAllPaths(Node header, List<String> paths,
-      AsyncMethodCallback<List<String>> resultHandler) {
-    try {
-      List<String> ret = new ArrayList<>();
-      for (String path : paths) {
-        ret.addAll(MManager.getInstance().getAllTimeseriesName(path));
-      }
-      resultHandler.onComplete(ret);
-    } catch (MetadataException e) {
-      resultHandler.onError(e);
+  public List<String> getAllPaths(List<String> paths) throws MetadataException {
+    List<String> ret = new ArrayList<>();
+    for (String path : paths) {
+      ret.addAll(MManager.getInstance().getAllTimeseriesName(path));
     }
+    return ret;
   }
 
   /**
    * Get the local devices that match any path in "paths". The result is deduplicated.
    *
-   * @param header
    * @param paths         paths potentially contain wildcards
-   * @param resultHandler
    */
-  @Override
-  public void getAllDevices(Node header, List<String> paths,
-      AsyncMethodCallback<Set<String>> resultHandler) {
-    try {
-      Set<String> results = new HashSet<>();
-      for (String path : paths) {
-        results.addAll(MManager.getInstance().getDevices(path));
-      }
-      resultHandler.onComplete(results);
-    } catch (MetadataException e) {
-      resultHandler.onError(e);
+  public Set<String> getAllDevices(List<String> paths) throws MetadataException {
+    Set<String> results = new HashSet<>();
+    for (String path : paths) {
+      results.addAll(MManager.getInstance().getDevices(path));
     }
+    return results;
   }
 
   /**
@@ -1553,86 +1479,52 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * Get the nodes of a prefix "path" at "nodeLevel". The method currently requires strong
    * consistency.
    *
-   * @param header
    * @param path
    * @param nodeLevel
-   * @param resultHandler
    */
-  @Override
-  public void getNodeList(Node header, String path, int nodeLevel,
-      AsyncMethodCallback<List<String>> resultHandler) {
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      resultHandler.onError(e);
-      return;
-    }
+  public List<String> getNodeList(String path, int nodeLevel)
+      throws CheckConsistencyException, MetadataException {
+    syncLeaderWithConsistencyCheck();
 
-    try {
-      resultHandler.onComplete(MManager.getInstance().getNodesList(path, nodeLevel));
-    } catch (MetadataException e) {
-      resultHandler.onError(e);
-    }
+    return MManager.getInstance().getNodesList(path, nodeLevel);
   }
 
-  @Override
-  public void getChildNodePathInNextLevel(Node header, String path,
-      AsyncMethodCallback<Set<String>> resultHandler) {
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      resultHandler.onError(e);
-      return;
-    }
+  public Set<String> getChildNodePathInNextLevel(String path)
+      throws CheckConsistencyException, MetadataException {
+    syncLeaderWithConsistencyCheck();
 
-    try {
-      resultHandler.onComplete(MManager.getInstance().getChildNodePathInNextLevel(path));
-    } catch (MetadataException e) {
-      resultHandler.onError(e);
-    }
+    return MManager.getInstance().getChildNodePathInNextLevel(path);
   }
 
-  @Override
-  public void getAllMeasurementSchema(Node header, ByteBuffer planBuffer,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      resultHandler.onError(e);
-      return;
+  public ByteBuffer getAllMeasurementSchema(ByteBuffer planBuffer)
+      throws CheckConsistencyException, IOException, MetadataException {
+    syncLeaderWithConsistencyCheck();
+
+    ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
+    List<ShowTimeSeriesResult> allTimeseriesSchema;
+    if (plan.getKey() != null && plan.getValue() != null) {
+      allTimeseriesSchema = MManager.getInstance().getAllTimeseriesSchema(plan);
+    } else {
+      allTimeseriesSchema = MManager.getInstance().showTimeseries(plan);
     }
 
-    try {
-      ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
-      List<ShowTimeSeriesResult> allTimeseriesSchema;
-      if (plan.getKey() != null && plan.getValue() != null) {
-        allTimeseriesSchema = MManager.getInstance().getAllTimeseriesSchema(plan);
-      } else {
-        allTimeseriesSchema = MManager.getInstance().showTimeseries(plan);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
+      dataOutputStream.writeInt(allTimeseriesSchema.size());
+      for (ShowTimeSeriesResult result : allTimeseriesSchema) {
+        result.serialize(outputStream);
       }
-
-      ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-      try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {
-        dataOutputStream.writeInt(allTimeseriesSchema.size());
-        for (ShowTimeSeriesResult result : allTimeseriesSchema) {
-          result.serialize(outputStream);
-        }
-      }
-      resultHandler.onComplete(ByteBuffer.wrap(outputStream.toByteArray()));
-    } catch (Exception e) {
-      resultHandler.onError(e);
     }
+    return ByteBuffer.wrap(outputStream.toByteArray());
   }
 
   /**
    * Execute aggregations over the given path and return the results to the requester.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void getAggrResult(GetAggrResultRequest request,
-      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+  public List<ByteBuffer> getAggrResult(GetAggrResultRequest request)
+      throws StorageEngineException, QueryProcessException, IOException {
     logger.debug("{}: {} is querying {} by aggregation, queryId: {}", name,
         request.getRequestor(),
         request.getPath(), request.getQueryId());
@@ -1650,14 +1542,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     // do the aggregations locally
     List<AggregateResult> results;
-    try {
-      results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter,
-          queryContext);
-      logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
-    } catch (StorageEngineException | IOException | QueryProcessException e) {
-      resultHandler.onError(e);
-      return;
-    }
+    results = getAggrResult(aggregations, deviceMeasurements, dataType, path, timeFilter,
+        queryContext);
+    logger.trace("{}: aggregation results {}, queryId: {}", name, results, request.getQueryId());
 
     // serialize and send the results
     List<ByteBuffer> resultBuffers = new ArrayList<>();
@@ -1671,24 +1558,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
       resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
       byteArrayOutputStream.reset();
     }
-    resultHandler.onComplete(resultBuffers);
+    return resultBuffers;
   }
 
   /**
    * Check if the given measurements are registered or not
    *
-   * @param header
    * @param timeseriesList
-   * @param resultHandler
    */
-  @Override
-  public void getUnregisteredTimeseries(Node header, List<String> timeseriesList,
-      AsyncMethodCallback<List<String>> resultHandler) {
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      resultHandler.onError(new StorageEngineException(e));
-    }
+  public List<String> getUnregisteredTimeseries(List<String> timeseriesList)
+      throws CheckConsistencyException {
+    syncLeaderWithConsistencyCheck();
+
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
@@ -1701,7 +1582,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         result.add(seriesPath);
       }
     }
-    resultHandler.onComplete(result);
+    return result;
   }
 
   /**
@@ -1792,11 +1673,9 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * back to the requester.
    *
    * @param request
-   * @param resultHandler
    */
-  @Override
-  public void getGroupByExecutor(GroupByRequest
-      request, AsyncMethodCallback<Long> resultHandler) {
+  public long getGroupByExecutor(GroupByRequest request)
+      throws QueryProcessException, StorageEngineException {
     Path path = new Path(request.getPath());
     List<Integer> aggregationTypeOrdinals = request.getAggregationTypeOrdinals();
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
@@ -1811,22 +1690,18 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
 
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), queryId);
-    try {
-      LocalGroupByExecutor executor = getGroupByExecutor(path, deviceMeasurements, dataType,
-          timeFilter, aggregationTypeOrdinals, queryContext);
-      if (!executor.isEmpty()) {
-        long executorId = queryManager.registerGroupByExecutor(executor);
-        logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
-            request.getRequestor(), executor);
-        queryContext.registerLocalGroupByExecutor(executorId);
-        resultHandler.onComplete(executorId);
-      } else {
-        logger.debug("{}: There is no data {} for {}#{}", name, path,
-            request.getRequestor(), request.getQueryId());
-        resultHandler.onComplete(-1L);
-      }
-    } catch (StorageEngineException | QueryProcessException e) {
-      resultHandler.onError(e);
+    LocalGroupByExecutor executor = getGroupByExecutor(path, deviceMeasurements, dataType,
+        timeFilter, aggregationTypeOrdinals, queryContext);
+    if (!executor.isEmpty()) {
+      long executorId = queryManager.registerGroupByExecutor(executor);
+      logger.debug("{}: Build a GroupByExecutor of {} for {}, executorId: {}", name, path,
+          request.getRequestor(), executor);
+      queryContext.registerLocalGroupByExecutor(executorId);
+      return executorId;
+    } else {
+      logger.debug("{}: There is no data {} for {}#{}", name, path,
+          request.getRequestor(), request.getQueryId());
+      return -1;
     }
   }
 
@@ -1834,44 +1709,35 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * Fetch the aggregation results between [startTime, endTime] of the executor whose id is
    * "executorId". This method currently requires strong consistency.
    *
-   * @param header
    * @param executorId
    * @param startTime
    * @param endTime
-   * @param resultHandler
    */
-  @Override
-  public void getGroupByResult(Node header, long executorId, long startTime, long endTime,
-      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+  public List<ByteBuffer> getGroupByResult(long executorId, long startTime, long endTime)
+      throws ReaderNotFoundException, IOException, QueryProcessException {
     GroupByExecutor executor = getQueryManager().getGroupByExecutor(executorId);
     if (executor == null) {
-      resultHandler.onError(new ReaderNotFoundException(executorId));
-      return;
+      throw new ReaderNotFoundException(executorId);
     }
-    try {
-      List<AggregateResult> results = executor.calcResult(startTime, endTime);
-      List<ByteBuffer> resultBuffers = new ArrayList<>();
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      for (AggregateResult result : results) {
-        result.serializeTo(byteArrayOutputStream);
-        resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-        byteArrayOutputStream.reset();
-      }
-      logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
-          resultBuffers.size());
-      resultHandler.onComplete(resultBuffers);
-    } catch (IOException | QueryProcessException e) {
-      resultHandler.onError(e);
+    List<AggregateResult> results = executor.calcResult(startTime, endTime);
+    List<ByteBuffer> resultBuffers = new ArrayList<>();
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    for (AggregateResult result : results) {
+      result.serializeTo(byteArrayOutputStream);
+      resultBuffers.add(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      byteArrayOutputStream.reset();
     }
+    logger.debug("{}: Send results of group by executor {}, size:{}", name, executor,
+        resultBuffers.size());
+    return resultBuffers;
   }
 
   public SlotManager getSlotManager() {
     return slotManager;
   }
 
-  @Override
-  public void previousFill(PreviousFillRequest request,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public ByteBuffer previousFill(PreviousFillRequest request)
+      throws QueryProcessException, StorageEngineException, IOException {
     Path path = new Path(request.getPath());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     long queryId = request.getQueryId();
@@ -1881,16 +1747,12 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
     RemoteQueryContext queryContext = queryManager.getQueryContext(requester, queryId);
 
-    try {
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-      TimeValuePair timeValuePair = localPreviousFill(path, dataType, queryTime, beforeRange,
-          deviceMeasurements, queryContext);
-      SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
-      resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-    } catch (QueryProcessException | StorageEngineException | IOException e) {
-      resultHandler.onError(e);
-    }
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    TimeValuePair timeValuePair = localPreviousFill(path, dataType, queryTime, beforeRange,
+        deviceMeasurements, queryContext);
+    SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
   /**
@@ -1908,8 +1770,7 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
    * @throws IOException
    */
   public TimeValuePair localPreviousFill(Path path, TSDataType dataType, long queryTime,
-      long beforeRange,
-      Set<String> deviceMeasurements, QueryContext context)
+      long beforeRange, Set<String> deviceMeasurements, QueryContext context)
       throws QueryProcessException, StorageEngineException, IOException {
     try {
       syncLeaderWithConsistencyCheck();
@@ -1922,65 +1783,40 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
     return previousFill.getFillResult();
   }
 
-  @Override
-  public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      resultHandler.onError(e);
-      return;
-    }
+  public ByteBuffer last(LastQueryRequest request)
+      throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException {
+    syncLeaderWithConsistencyCheck();
 
     RemoteQueryContext queryContext = queryManager
         .getQueryContext(request.getRequestor(), request.getQueryId());
-    try {
-      Path path = new Path(request.getPath());
-      ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
-      TimeValuePair timeValuePair = LastQueryExecutor
-          .calculateLastPairForOneSeriesLocally(path,
-              TSDataType.values()[request.getDataTypeOrdinal()], queryContext,
-              request.getDeviceMeasurements());
-      ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-      DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-      SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
-      resultHandler.onComplete(ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-    } catch (IOException | QueryProcessException | StorageEngineException e) {
-      resultHandler.onError(e);
-    }
+    Path path = new Path(request.getPath());
+    ClusterQueryUtils.checkPathExistence(path, metaGroupMember);
+    TimeValuePair timeValuePair = LastQueryExecutor
+        .calculateLastPairForOneSeriesLocally(path,
+            TSDataType.values()[request.getDataTypeOrdinal()], queryContext,
+            request.getDeviceMeasurements());
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    SerializeUtils.serializeTVPair(timeValuePair, dataOutputStream);
+    return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
   }
 
-  @Override
-  public void getPathCount(Node header, List<String> pathsToQuery, int level,
-      AsyncMethodCallback<Integer> resultHandler) {
-    try {
-      syncLeaderWithConsistencyCheck();
-    } catch (CheckConsistencyException e) {
-      resultHandler.onError(e);
-      return;
-    }
+  public int getPathCount(List<String> pathsToQuery, int level)
+      throws CheckConsistencyException, MetadataException {
+    syncLeaderWithConsistencyCheck();
 
     int count = 0;
     for (String s : pathsToQuery) {
       if (level == -1) {
-        try {
-          count += MManager.getInstance().getAllTimeseriesCount(s);
-        } catch (MetadataException e) {
-          resultHandler.onError(e);
-        }
+        count += MManager.getInstance().getAllTimeseriesCount(s);
       } else {
-        try {
-          count += MManager.getInstance().getNodesCountInGivenLevel(s, level);
-        } catch (MetadataException e) {
-          resultHandler.onError(e);
-        }
+        count += MManager.getInstance().getNodesCountInGivenLevel(s, level);
       }
     }
-    resultHandler.onComplete(count);
+    return count;
   }
 
-  @Override
-  public void onSnapshotApplied(Node header, List<Integer> slots,
-      AsyncMethodCallback<Boolean> resultHandler) {
+  public boolean onSnapshotApplied(List<Integer> slots) {
     List<Integer> removableSlots = new ArrayList<>();
     for (Integer slot : slots) {
       int sentReplicaNum = slotManager.sentOneReplication(slot);
@@ -1988,8 +1824,8 @@ public class DataGroupMember extends RaftMember implements TSDataService.AsyncIf
         removableSlots.add(slot);
       }
     }
-    resultHandler.onComplete(true);
     removeLocalData(removableSlots);
+    return true;
   }
 
   public void registerPullSnapshotHint(PullSnapshotTaskDescriptor descriptor) {
