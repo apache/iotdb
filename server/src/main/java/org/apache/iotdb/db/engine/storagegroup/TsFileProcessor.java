@@ -172,7 +172,7 @@ public class TsFileProcessor {
     this.closeTsFileCallback = closeUnsealedTsFileProcessor;
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
     this.sequence = sequence;
-    logger.info("reopen a tsfile processor {}", tsFileResource.getFile());
+    logger.info("reopen a tsfile processor {}", tsFileResource.getTsFile());
   }
 
   /**
@@ -194,7 +194,7 @@ public class TsFileProcessor {
         getLogNode().write(insertRowPlan);
       } catch (Exception e) {
         throw new WriteProcessException(String.format("%s: %s write WAL failed",
-            storageGroupName, tsFileResource.getFile().getAbsolutePath()), e);
+            storageGroupName, tsFileResource.getTsFile().getAbsolutePath()), e);
       }
     }
 
@@ -263,7 +263,7 @@ public class TsFileProcessor {
   public void deleteDataInMemory(Deletion deletion) {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
-      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getFile().getName());
+      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
       if (workMemTable != null) {
@@ -279,7 +279,7 @@ public class TsFileProcessor {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
         logger.debug(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
-            tsFileResource.getFile().getName());
+            tsFileResource.getTsFile().getName());
       }
     }
   }
@@ -296,14 +296,14 @@ public class TsFileProcessor {
 
     if (workMemTable.memSize() >= getMemtableSizeThresholdBasedOnSeriesNum()) {
       logger.info("The memtable size {} of tsfile {} reaches the threshold",
-          workMemTable.memSize(), tsFileResource.getFile().getAbsolutePath());
+          workMemTable.memSize(), tsFileResource.getTsFile().getAbsolutePath());
       return true;
     }
 
     if (workMemTable.reachTotalPointNumThreshold()) {
       logger.info("The avg series points num {} of tsfile {} reaches the threshold",
           workMemTable.getTotalPointsNum() / workMemTable.getSeriesNumber(),
-          tsFileResource.getFile().getAbsolutePath());
+          tsFileResource.getTsFile().getAbsolutePath());
       return true;
     }
 
@@ -333,14 +333,14 @@ public class TsFileProcessor {
     if (config.isEnableVm() && flushVmTimes >= config.getMaxMergeChunkNumInTsFile() - 1) {
       return true;
     }
-    long fileSize = tsFileResource.getFileSize();
+    long fileSize = tsFileResource.getTsFileSize();
     for (TsFileResource vmFile : vmTsFileResources) {
-      fileSize += vmFile.getFileSize();
+      fileSize += vmFile.getTsFileSize();
     }
     long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig()
         .getTsFileSizeThreshold();
     if (fileSize >= fileSizeThreshold) {
-      logger.info("{} fileSize {} >= fileSizeThreshold {}", tsFileResource.getPath(),
+      logger.info("{} fileSize {} >= fileSizeThreshold {}", tsFileResource.getTsFilePath(),
           fileSize, fileSizeThreshold);
     }
     return fileSize >= fileSizeThreshold;
@@ -348,7 +348,7 @@ public class TsFileProcessor {
 
   void syncClose() {
     logger.info("Sync close file: {}, will firstly async close it",
-        tsFileResource.getFile().getAbsolutePath());
+        tsFileResource.getTsFile().getAbsolutePath());
     if (shouldClose) {
       return;
     }
@@ -361,7 +361,7 @@ public class TsFileProcessor {
           if (System.currentTimeMillis() - startTime > 60_000) {
             logger.warn(
                 "{} has spent {}s for waiting flushing one memtable; {} left (first: {}). FlushingManager info: {}",
-                this.tsFileResource.getFile().getAbsolutePath(),
+                this.tsFileResource.getTsFile().getAbsolutePath(),
                 (System.currentTimeMillis() - startTime) / 1000,
                 flushingMemTables.size(),
                 flushingMemTables.getFirst(),
@@ -372,18 +372,18 @@ public class TsFileProcessor {
         }
       } catch (InterruptedException e) {
         logger.error("{}: {} wait close interrupted", storageGroupName,
-            tsFileResource.getFile().getName(), e);
+            tsFileResource.getTsFile().getName(), e);
         Thread.currentThread().interrupt();
       }
     }
-    logger.info("File {} is closed synchronously", tsFileResource.getFile().getAbsolutePath());
+    logger.info("File {} is closed synchronously", tsFileResource.getTsFile().getAbsolutePath());
   }
 
 
   void asyncClose() {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
-      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getFile().getName());
+      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
 
@@ -391,12 +391,12 @@ public class TsFileProcessor {
         if (workMemTable != null) {
           logger.info(
               "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile size: {}",
-              storageGroupName, tsFileResource.getFile().getAbsolutePath(), workMemTable.memSize(),
-              tsFileResource.getFileSize());
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), workMemTable.memSize(),
+              tsFileResource.getTsFileSize());
         } else {
           logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
-              storageGroupName, tsFileResource.getFile().getAbsolutePath(),
-              tsFileResource.getFileSize());
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
+              tsFileResource.getTsFileSize());
         }
       }
 
@@ -423,13 +423,13 @@ public class TsFileProcessor {
         tsFileResource.setCloseFlag();
       } catch (Exception e) {
         logger.error("{}: {} async close failed, because", storageGroupName,
-            tsFileResource.getFile().getName(), e);
+            tsFileResource.getTsFile().getName(), e);
       }
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
         logger.debug(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
-            tsFileResource.getFile().getName());
+            tsFileResource.getTsFile().getName());
       }
     }
   }
@@ -442,20 +442,20 @@ public class TsFileProcessor {
     IMemTable tmpMemTable;
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
-      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getFile().getName());
+      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
       tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
       if (logger.isDebugEnabled() && tmpMemTable.isSignalMemTable()) {
         logger.debug("{}: {} add a signal memtable into flushing memtable list when sync flush",
-            storageGroupName, tsFileResource.getFile().getName());
+            storageGroupName, tsFileResource.getTsFile().getName());
       }
       addAMemtableIntoFlushingList(tmpMemTable);
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
         logger.error(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
-            tsFileResource.getFile().getName());
+            tsFileResource.getTsFile().getName());
       }
     }
 
@@ -467,13 +467,13 @@ public class TsFileProcessor {
 
           if ((System.currentTimeMillis() - startWait) > 60_000) {
             logger.warn("has waited for synced flushing a memtable in {} for 60 seconds.",
-                this.tsFileResource.getFile().getAbsolutePath());
+                this.tsFileResource.getTsFile().getAbsolutePath());
             startWait = System.currentTimeMillis();
           }
         }
       } catch (InterruptedException e) {
         logger.error("{}: {} wait flush finished meets error", storageGroupName,
-            tsFileResource.getFile().getName(), e);
+            tsFileResource.getTsFile().getName(), e);
         Thread.currentThread().interrupt();
       }
     }
@@ -485,7 +485,7 @@ public class TsFileProcessor {
   public void asyncFlush() {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
-      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getFile().getName());
+      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
       if (workMemTable == null) {
@@ -494,12 +494,12 @@ public class TsFileProcessor {
       addAMemtableIntoFlushingList(workMemTable);
     } catch (Exception e) {
       logger.error("{}: {} add a memtable into flushing listfailed", storageGroupName,
-          tsFileResource.getFile().getName(), e);
+          tsFileResource.getTsFile().getName(), e);
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
         logger.debug(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
-            tsFileResource.getFile().getName());
+            tsFileResource.getTsFile().getName());
       }
     }
   }
@@ -513,14 +513,14 @@ public class TsFileProcessor {
     if (!tobeFlushed.isSignalMemTable() &&
         (!updateLatestFlushTimeCallback.call(this) || tobeFlushed.memSize() == 0)) {
       logger.warn("This normal memtable is empty, skip it in flush. {}: {} Memetable info: {}",
-          storageGroupName, tsFileResource.getFile().getName(), tobeFlushed.getMemTableMap());
+          storageGroupName, tsFileResource.getTsFile().getName(), tobeFlushed.getMemTableMap());
       return;
     }
     flushingMemTables.addLast(tobeFlushed);
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{}: {} Memtable (signal = {}) is added into the flushing Memtable, queue size = {}",
-          storageGroupName, tsFileResource.getFile().getName(),
+          storageGroupName, tsFileResource.getTsFile().getName(),
           tobeFlushed.isSignalMemTable(), flushingMemTables.size());
     }
     long cur = versionController.nextVersion();
@@ -543,7 +543,7 @@ public class TsFileProcessor {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
       logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName,
-          tsFileResource.getFile().getName());
+          tsFileResource.getTsFile().getName());
     }
     try {
       writer.makeMetadataVisible();
@@ -553,11 +553,11 @@ public class TsFileProcessor {
       if (!flushingMemTables.remove(memTable)) {
         logger.warn(
             "{}: {} put the memtable (signal={}) out of flushingMemtables but it is not in the queue.",
-            storageGroupName, tsFileResource.getFile().getName(), memTable.isSignalMemTable());
+            storageGroupName, tsFileResource.getTsFile().getName(), memTable.isSignalMemTable());
       } else if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: {} memtable (signal={}) is removed from the queue. {} left.", storageGroupName,
-            tsFileResource.getFile().getName(),
+            tsFileResource.getTsFile().getName(),
             memTable.isSignalMemTable(), flushingMemTables.size());
       }
       memTable.release();
@@ -565,23 +565,23 @@ public class TsFileProcessor {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} flush finished, remove a memtable from flushing list, "
                 + "flushing memtable list size: {}", storageGroupName,
-            tsFileResource.getFile().getName(), flushingMemTables.size());
+            tsFileResource.getTsFile().getName(), flushingMemTables.size());
       }
     } catch (Exception e) {
-      logger.error("{}: {}", storageGroupName, tsFileResource.getFile().getName(), e);
+      logger.error("{}: {}", storageGroupName, tsFileResource.getTsFile().getName(), e);
     } finally {
       flushQueryLock.writeLock().unlock();
       if (logger.isDebugEnabled()) {
         logger.debug(FLUSH_QUERY_WRITE_RELEASE, storageGroupName,
-            tsFileResource.getFile().getName());
+            tsFileResource.getTsFile().getName());
       }
     }
   }
 
   public static File createNewVMFile(TsFileResource tsFileResource) {
-    File parent = tsFileResource.getFile().getParentFile();
+    File parent = tsFileResource.getTsFile().getParentFile();
     return FSFactoryProducer.getFSFactory().getFile(parent,
-        tsFileResource.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
+        tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
             .currentTimeMillis()
             + VM_SUFFIX);
   }
@@ -590,10 +590,10 @@ public class TsFileProcessor {
     seqFile.writeLock();
     try {
       ChunkMetadataCache.getInstance().remove(seqFile);
-      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getPath());
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
-      if (seqFile.getFile().exists()) {
-        Files.delete(seqFile.getFile().toPath());
+      if (seqFile.getTsFile().exists()) {
+        Files.delete(seqFile.getTsFile().toPath());
       }
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
@@ -608,8 +608,8 @@ public class TsFileProcessor {
   public void recover() {
     try {
       File logFile = FSFactoryProducer.getFSFactory()
-          .getFile(tsFileResource.getFile().getParent(),
-              tsFileResource.getFile().getName() + VM_LOG_NAME);
+          .getFile(tsFileResource.getTsFile().getParent(),
+              tsFileResource.getTsFile().getName() + VM_LOG_NAME);
       Set<String> deviceSet = new HashSet<>();
       Pair<Set<String>, Long> result = new Pair<>(deviceSet, 0L);
       if (logFile.exists()) {
@@ -621,7 +621,7 @@ public class TsFileProcessor {
         writer.getIOWriterOut().truncate(result.right - 1);
         VmMergeUtils.fullMerge(writer, vmWriters,
             storageGroupName,
-            new VmLogger(tsFileResource.getFile().getParent(), tsFileResource.getFile().getName()),
+            new VmLogger(tsFileResource.getTsFile().getParent(), tsFileResource.getTsFile().getName()),
             deviceSet, sequence);
         for (TsFileResource vmTsFileResource : vmTsFileResources) {
           deleteVmFile(vmTsFileResource);
@@ -655,7 +655,7 @@ public class TsFileProcessor {
     memTableToFlush = flushingMemTables.getFirst();
     if (logger.isInfoEnabled()) {
       logger.info("{}: {} starts to flush a memtable in a flush thread", storageGroupName,
-          tsFileResource.getFile().getName());
+          tsFileResource.getTsFile().getName());
     }
     // signal memtable only may appear when calling asyncClose()
     if (!memTableToFlush.isSignalMemTable()) {
@@ -677,15 +677,15 @@ public class TsFileProcessor {
         flushTask.syncFlushMemTable();
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
-            storageGroupName, tsFileResource.getFile().getName(), e);
+            storageGroupName, tsFileResource.getTsFile().getName(), e);
         IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           logger.error("{}: {} IOTask meets error, truncate the corrupted data", storageGroupName,
-              tsFileResource.getFile().getName(), e);
+              tsFileResource.getTsFile().getName(), e);
           writer.reset();
         } catch (IOException e1) {
           logger.error("{}: {} Truncate corrupted data meets error", storageGroupName,
-              tsFileResource.getFile().getName(), e1);
+              tsFileResource.getTsFile().getName(), e1);
         }
         Thread.currentThread().interrupt();
       }
@@ -696,7 +696,7 @@ public class TsFileProcessor {
     }
     if (logger.isDebugEnabled()) {
       logger.debug("{}: {} try get lock to release a memtable (signal={})", storageGroupName,
-          tsFileResource.getFile().getName(), memTableToFlush.isSignalMemTable());
+          tsFileResource.getTsFile().getName(), memTableToFlush.isSignalMemTable());
     }
     // for sync flush
     synchronized (memTableToFlush) {
@@ -704,7 +704,7 @@ public class TsFileProcessor {
       memTableToFlush.notifyAll();
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} released a memtable (signal={}), flushingMemtables size ={}",
-            storageGroupName, tsFileResource.getFile().getName(),
+            storageGroupName, tsFileResource.getTsFile().getName(),
             memTableToFlush.isSignalMemTable(), flushingMemTables.size());
       }
     }
@@ -720,7 +720,7 @@ public class TsFileProcessor {
             TimeUnit.MILLISECONDS.sleep(10);
           } catch (@SuppressWarnings("squid:S2142") InterruptedException e) {
             logger.error("{}: {}, closing task is interrupted.",
-                storageGroupName, tsFileResource.getFile().getName(), e);
+                storageGroupName, tsFileResource.getTsFile().getName(), e);
             // generally it is because the thread pool is shutdown so the task should be aborted
             break;
           }
@@ -745,12 +745,12 @@ public class TsFileProcessor {
           CompressionRatio.getInstance().updateRatio(compressionRatio);
         } catch (IOException e) {
           logger.error("{}: {} update compression ratio failed", storageGroupName,
-              tsFileResource.getFile().getName(), e);
+              tsFileResource.getTsFile().getName(), e);
         }
         if (logger.isDebugEnabled()) {
           logger
               .debug("{}: {} flushingMemtables is empty and will close the file", storageGroupName,
-                  tsFileResource.getFile().getName());
+                  tsFileResource.getTsFile().getName());
         }
         endFile();
         if (logger.isDebugEnabled()) {
@@ -759,21 +759,21 @@ public class TsFileProcessor {
         }
       } catch (Exception e) {
         logger.error("{} meet error when flush FileMetadata to {}, change system mode to read-only",
-            storageGroupName, tsFileResource.getFile().getAbsolutePath(), e);
+            storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), e);
         IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
         try {
           writer.reset();
         } catch (IOException e1) {
           logger.error("{}: {} truncate corrupted data meets error", storageGroupName,
-              tsFileResource.getFile().getName(), e1);
+              tsFileResource.getTsFile().getName(), e1);
         }
         logger.error("{}: {} marking or ending file meet error", storageGroupName,
-            tsFileResource.getFile().getName(), e);
+            tsFileResource.getTsFile().getName(), e);
       }
       // for sync close
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} try to get flushingMemtables lock.", storageGroupName,
-            tsFileResource.getFile().getName());
+            tsFileResource.getTsFile().getName());
       }
       synchronized (flushingMemTables) {
         flushingMemTables.notifyAll();
@@ -802,7 +802,7 @@ public class TsFileProcessor {
       long closeEndTime = System.currentTimeMillis();
       logger.info("Storage group {} close the file {}, TsFile size is {}, "
               + "time consumption of flushing metadata is {}ms",
-          storageGroupName, tsFileResource.getFile().getAbsoluteFile(),
+          storageGroupName, tsFileResource.getTsFile().getAbsoluteFile(),
           writer.getFile().length(),
           closeEndTime - closeStartTime);
     }
@@ -822,7 +822,7 @@ public class TsFileProcessor {
   WriteLogNode getLogNode() {
     if (logNode == null) {
       logNode = MultiFileLogNodeManager.getInstance()
-          .getNode(storageGroupName + "-" + tsFileResource.getFile().getName());
+          .getNode(storageGroupName + "-" + tsFileResource.getTsFile().getName());
     }
     return logNode;
   }
@@ -832,7 +832,7 @@ public class TsFileProcessor {
       //when closing resource file, its corresponding mod file is also closed.
       tsFileResource.close();
       MultiFileLogNodeManager.getInstance()
-          .deleteNode(storageGroupName + "-" + tsFileResource.getFile().getName());
+          .deleteNode(storageGroupName + "-" + tsFileResource.getTsFile().getName());
     } catch (IOException e) {
       throw new TsFileProcessorException(e);
     }
@@ -870,7 +870,7 @@ public class TsFileProcessor {
       QueryContext context) {
     if (logger.isDebugEnabled()) {
       logger.debug("{}: {} get flushQueryLock read lock", storageGroupName,
-          tsFileResource.getFile().getName());
+          tsFileResource.getTsFile().getName());
     }
     flushQueryLock.readLock().lock();
     try {
@@ -932,12 +932,12 @@ public class TsFileProcessor {
       return new Pair<>(readOnlyMemChunks, rightResult);
     } catch (Exception e) {
       logger.error("{}: {} get ReadOnlyMemChunk has error", storageGroupName,
-          tsFileResource.getFile().getName(), e);
+          tsFileResource.getTsFile().getName(), e);
     } finally {
       flushQueryLock.readLock().unlock();
       if (logger.isDebugEnabled()) {
         logger.debug("{}: {} release flushQueryLock read lock", storageGroupName,
-            tsFileResource.getFile().getName());
+            tsFileResource.getTsFile().getName());
       }
     }
     return null;
@@ -971,8 +971,8 @@ public class TsFileProcessor {
       List<TsFileResource> currMergeVmFiles) throws IOException {
     VmMergeUtils.fullMerge(writer, currMergeVmWriters,
         storageGroupName,
-        new VmLogger(tsFileResource.getFile().getParent(),
-            tsFileResource.getFile().getName()),
+        new VmLogger(tsFileResource.getTsFile().getParent(),
+            tsFileResource.getTsFile().getName()),
         new HashSet<>(), sequence);
     for (TsFileResource vmTsFileResource : currMergeVmFiles) {
       deleteVmFile(vmTsFileResource);
@@ -980,8 +980,8 @@ public class TsFileProcessor {
     vmWriters.removeAll(currMergeVmWriters);
     vmTsFileResources.removeAll(currMergeVmFiles);
     File logFile = FSFactoryProducer.getFSFactory()
-        .getFile(tsFileResource.getFile().getParent(),
-            tsFileResource.getFile().getName() + VM_LOG_NAME);
+        .getFile(tsFileResource.getTsFile().getParent(),
+            tsFileResource.getTsFile().getName() + VM_LOG_NAME);
     if (logFile.exists()) {
       Files.delete(logFile.toPath());
     }

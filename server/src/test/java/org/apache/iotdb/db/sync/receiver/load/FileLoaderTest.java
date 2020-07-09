@@ -156,7 +156,7 @@ public class FileLoaderTest {
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       assertEquals(10, processor.getSequenceFileTreeSet().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
-        sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
+        sequenceLoadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -251,7 +251,7 @@ public class FileLoaderTest {
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       assertEquals(25, processor.getSequenceFileTreeSet().size());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
-        loadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
+        loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }
@@ -302,7 +302,7 @@ public class FileLoaderTest {
       StorageGroupProcessor processor = StorageEngine.getInstance().getProcessor(SG_NAME + i);
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {
-        loadedFileMap.get(SG_NAME + i).add(tsFileResource.getFile().getAbsolutePath());
+        loadedFileMap.get(SG_NAME + i).add(tsFileResource.getTsFile().getAbsolutePath());
       }
       assertTrue(processor.getUnSequenceFileList().isEmpty());
     }

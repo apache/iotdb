@@ -135,7 +135,7 @@ public class ChunkMetadataCacheTest {
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 
@@ -157,7 +157,7 @@ public class ChunkMetadataCacheTest {
     Assert.assertFalse(unseqResources.get(3).isClosed());
 
     List<ChunkMetadata> metaDataList = ChunkMetadataCache.getInstance()
-        .get(seqResources.get(0).getPath(), new Path(storageGroup, measurementId5));
+        .get(seqResources.get(0).getTsFilePath(), new Path(storageGroup, measurementId5));
     Assert.assertEquals(0, metaDataList.size());
   }
 

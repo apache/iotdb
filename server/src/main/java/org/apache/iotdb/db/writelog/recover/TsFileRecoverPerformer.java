@@ -77,7 +77,7 @@ public class TsFileRecoverPerformer {
   public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
       TsFileResource currentTsFileResource, boolean sequence, boolean isLastFile,
       List<TsFileResource> vmTsFileResources) {
-    this.filePath = currentTsFileResource.getPath();
+    this.filePath = currentTsFileResource.getTsFilePath();
     this.logNodePrefix = logNodePrefix;
     this.versionController = versionController;
     this.resource = currentTsFileResource;
@@ -100,7 +100,7 @@ public class TsFileRecoverPerformer {
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     List<File> vmFileList = new ArrayList<>();
     for (TsFileResource tsFileResource : vmTsFileResources) {
-      vmFileList.add(FSFactoryProducer.getFSFactory().getFile(tsFileResource.getPath()));
+      vmFileList.add(FSFactoryProducer.getFSFactory().getFile(tsFileResource.getTsFilePath()));
     }
     if (!file.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", filePath);
@@ -227,19 +227,19 @@ public class TsFileRecoverPerformer {
   }
 
   private void recoverResource(TsFileResource tsFileResource) throws IOException {
-    if (tsFileResource.fileExists()) {
+    if (tsFileResource.resourceFileExists()) {
       // .resource file exists, deserialize it
       recoverResourceFromFile(tsFileResource);
     } else {
       // .resource file does not exist, read file metadata and recover tsfile resource
       try (TsFileSequenceReader reader = new TsFileSequenceReader(
-          tsFileResource.getFile().getAbsolutePath())) {
+          tsFileResource.getTsFile().getAbsolutePath())) {
         FileLoaderUtils.updateTsFileResource(reader, tsFileResource);
       }
       // write .resource file
       long fileVersion =
           Long.parseLong(
-              tsFileResource.getFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
+              tsFileResource.getTsFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
       tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
       tsFileResource.serialize();
     }
@@ -250,7 +250,7 @@ public class TsFileRecoverPerformer {
       tsFileResource.deserialize();
     } catch (IOException e) {
       logger.warn("Cannot deserialize TsFileResource {}, construct it using "
-          + "TsFileSequenceReader", tsFileResource.getFile(), e);
+          + "TsFileSequenceReader", tsFileResource.getTsFile(), e);
       recoverResourceFromReader(tsFileResource);
     }
   }
@@ -258,7 +258,7 @@ public class TsFileRecoverPerformer {
 
   private void recoverResourceFromReader(TsFileResource tsFileResource) throws IOException {
     try (TsFileSequenceReader reader =
-        new TsFileSequenceReader(tsFileResource.getFile().getAbsolutePath(), true)) {
+        new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath(), true)) {
       for (Entry<String, List<TimeseriesMetadata>> entry : reader.getAllTimeseriesMetadata()
           .entrySet()) {
         for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
@@ -287,7 +287,7 @@ public class TsFileRecoverPerformer {
       }
     }
     long fileVersion = Long.parseLong(
-        tsFileResource.getFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
+        tsFileResource.getTsFile().getName().split(IoTDBConstant.FILE_NAME_SEPARATOR)[1]);
     tsFileResource.setHistoricalVersions(Collections.singleton(fileVersion));
   }
 
@@ -304,7 +304,7 @@ public class TsFileRecoverPerformer {
         // flush logs
         MemTableFlushTask tableFlushTask = new MemTableFlushTask(recoverMemTable,
             restorableTsFileIOWriter,
-            tsFileResource.getFile().getParentFile().getParentFile().getName());
+            tsFileResource.getTsFile().getParentFile().getParentFile().getName());
         tableFlushTask.syncFlushMemTable();
         res = true;
       }

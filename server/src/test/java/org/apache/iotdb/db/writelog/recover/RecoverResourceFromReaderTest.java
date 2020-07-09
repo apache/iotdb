@@ -173,7 +173,7 @@ public class RecoverResourceFromReaderTest {
   public void testResourceRecovery() throws StorageGroupProcessorException, IOException {
     // write a broken resourceFile
     File resourceFile = FSFactoryProducer.getFSFactory()
-        .getFile(resource.getFile() + TsFileResource.RESOURCE_SUFFIX);
+        .getFile(resource.getTsFile() + TsFileResource.RESOURCE_SUFFIX);
     FileUtils.deleteQuietly(resourceFile);
     try (OutputStream outputStream = FSFactoryProducer.getFSFactory()
         .getBufferedOutputStream(resourceFile.getPath())) {
@@ -183,7 +183,7 @@ public class RecoverResourceFromReaderTest {
     TsFileRecoverPerformer performer = new TsFileRecoverPerformer(logNodePrefix,
         versionController, resource, false, false, Collections.emptyList());
     ActiveTimeSeriesCounter.getInstance()
-        .init(resource.getFile().getParentFile().getParentFile().getName());
+        .init(resource.getTsFile().getParentFile().getParentFile().getName());
     performer.recover();
     assertEquals(1, (long) resource.getStartTime("root.sg.device99"));
     assertEquals(300, (long) resource.getEndTime("root.sg.device99"));

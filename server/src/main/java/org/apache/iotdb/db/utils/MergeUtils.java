@@ -81,10 +81,10 @@ public class MergeUtils {
       List<TsFileResource> unseqFiles) {
     long totalSize = 0;
     for (TsFileResource tsFileResource : seqFiles) {
-      totalSize += tsFileResource.getFileSize();
+      totalSize += tsFileResource.getTsFileSize();
     }
     for (TsFileResource tsFileResource : unseqFiles) {
-      totalSize += tsFileResource.getFileSize();
+      totalSize += tsFileResource.getTsFileSize();
     }
     return totalSize;
   }
@@ -147,7 +147,7 @@ public class MergeUtils {
   }
 
   public static long getFileMetaSize(TsFileResource seqFile, TsFileSequenceReader sequenceReader) {
-    return seqFile.getFileSize() - sequenceReader.getFileMetadataPos();
+    return seqFile.getTsFileSize() - sequenceReader.getFileMetadataPos();
   }
 
   /**

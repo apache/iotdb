@@ -213,7 +213,7 @@ public class ChunkMetadataCache {
   public void remove(TsFileResource resource) {
     lock.writeLock().lock();
     if (resource != null) {
-      lruCache.entrySet().removeIf(e -> e.getKey().getString().startsWith(resource.getPath()));
+      lruCache.entrySet().removeIf(e -> e.getKey().getString().startsWith(resource.getTsFilePath()));
     }
     lock.writeLock().unlock();
   }
