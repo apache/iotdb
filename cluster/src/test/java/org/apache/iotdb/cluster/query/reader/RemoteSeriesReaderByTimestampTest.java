@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -37,6 +38,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import static org.junit.Assert.*;
@@ -45,6 +48,18 @@ public class RemoteSeriesReaderByTimestampTest {
 
   private BatchData batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
   private Set<Node> failedNodes = new ConcurrentSkipListSet<>();
+  private boolean prevUseAsyncServer;
+
+  @Before
+  public void setUp() {
+    prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
+  }
+
+  @After
+  public void tearDown() {
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
+  }
 
   private MetaGroupMember metaGroupMember = new MetaGroupMember() {
     @Override

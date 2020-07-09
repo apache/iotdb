@@ -64,9 +64,9 @@ public class AsyncMetaClient extends AsyncClient {
 
     private static TAsyncClientManager[] managers;
     static {
+      managers =
+          new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
       if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-        managers =
-            new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
         for (int i = 0; i < managers.length; i++) {
           try {
             managers[i] = new TAsyncClientManager();

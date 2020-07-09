@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -44,6 +45,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,9 +57,12 @@ public class RemoteSimpleSeriesReaderTest {
   private boolean batchUsed;
   private MetaGroupMember metaGroupMember;
   private Set<Node> failedNodes = new ConcurrentSkipListSet<>();
+  private boolean prevUseAsyncServer;
 
   @Before
   public void setUp() {
+    prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember() {
@@ -100,6 +105,10 @@ public class RemoteSimpleSeriesReaderTest {
     };
   }
 
+  @After
+  public void tearDown() throws Exception {
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
+  }
 
   @Test
   public void testSingle() throws IOException {

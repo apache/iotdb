@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -32,7 +33,6 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -46,21 +46,23 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.thrift.TException;
 import org.junit.After;
 import org.junit.Before;
 
 /**
  * IoTDBTests are tests that need a IoTDB daemon to support the tests.
  */
-public class IoTDBTest {
+public abstract class IoTDBTest {
 
   private static IoTDB daemon = IoTDB.getInstance();
   private PlanExecutor planExecutor;
   private boolean prevEnableAutoSchema;
+  private boolean prevUseAsyncServer;
 
   @Before
   public void setUp() throws StartupException, QueryProcessException {
+    prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     prevEnableAutoSchema = IoTDBDescriptor.getInstance().getConfig().isAutoCreateSchemaEnabled();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     EnvironmentUtils.closeStatMonitor();
@@ -76,6 +78,7 @@ public class IoTDBTest {
     daemon.stop();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(prevEnableAutoSchema);
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
   private void prepareSchema() {
@@ -140,7 +143,7 @@ public class IoTDBTest {
   }
 
   protected QueryDataSet query(List<String> pathStrs, IExpression expression)
-      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException, TException, InterruptedException {
+      throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException, IOException, MetadataException {
     QueryContext context = new QueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
     queryPlan.setExpression(expression);

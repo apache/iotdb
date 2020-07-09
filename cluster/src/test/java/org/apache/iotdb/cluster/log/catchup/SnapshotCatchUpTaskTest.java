@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestSnapshot;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
@@ -54,6 +55,7 @@ public class SnapshotCatchUpTaskTest {
   private Snapshot receivedSnapshot;
   private Node header = new Node();
   private boolean testLeadershipFlag;
+  private boolean prevUseAsyncServer;
 
   private RaftMember sender = new TestMetaGroupMember() {
     @Override
@@ -92,6 +94,8 @@ public class SnapshotCatchUpTaskTest {
 
   @Before
   public void setUp() {
+    prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     testLeadershipFlag = false;
     receivedSnapshot = null;
     receivedLogs.clear();
@@ -101,6 +105,7 @@ public class SnapshotCatchUpTaskTest {
   public void tearDown() throws Exception {
     sender.stop();
     EnvironmentUtils.cleanAllDir();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
   @Test

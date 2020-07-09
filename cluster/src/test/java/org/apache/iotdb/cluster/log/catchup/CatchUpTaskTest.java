@@ -53,6 +53,7 @@ public class CatchUpTaskTest {
   private long leaderCommit;
   private Node header = new Node();
   private boolean testLeadershipFlag;
+  private boolean prevUseAsyncServer;
 
 
 
@@ -130,6 +131,8 @@ public class CatchUpTaskTest {
 
   @Before
   public void setUp() {
+    prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     testLeadershipFlag = false;
     receivedSnapshot = null;
     receivedLogs = new ArrayList<>();
@@ -143,6 +146,7 @@ public class CatchUpTaskTest {
   public void tearDown() throws Exception {
     sender.stop();
     EnvironmentUtils.cleanAllDir();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
   @Test

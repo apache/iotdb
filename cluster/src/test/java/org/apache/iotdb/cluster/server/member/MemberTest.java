@@ -79,10 +79,13 @@ public class MemberTest {
 
   private List<String> prevUrls;
   private long prevLeaderWait;
+  private boolean prevUseAsyncServer;
 
 
   @Before
   public void setUp() throws Exception {
+    prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     testThreadPool = Executors.newFixedThreadPool(4);
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     RaftMember.setWaitLeaderTimeMs(10);
@@ -141,6 +144,7 @@ public class MemberTest {
     new File(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME).delete();
     RaftMember.setWaitLeaderTimeMs(prevLeaderWait);
     testThreadPool.shutdownNow();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
   DataGroupMember getDataGroupMember(Node node) {

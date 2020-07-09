@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.common.TestClient;
 import org.apache.iotdb.cluster.common.TestLogManager;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.manage.serializable.SyncLogDequeSerializer;
@@ -58,6 +59,7 @@ public class HeartbeatThreadTest {
 
   Set<Integer> receivedNodes = new ConcurrentSkipListSet<>();
   PartitionGroup partitionGroup;
+  private boolean prevUseAsyncServer;
 
   RaftMember getMember() {
     return new TestMetaGroupMember() {
@@ -127,6 +129,8 @@ public class HeartbeatThreadTest {
 
   @Before
   public void setUp() throws Exception {
+    prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     logManager = new TestLogManager(1);
     member = getMember();
 
@@ -157,6 +161,7 @@ public class HeartbeatThreadTest {
       file.delete();
     }
     dir.delete();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
   @Test

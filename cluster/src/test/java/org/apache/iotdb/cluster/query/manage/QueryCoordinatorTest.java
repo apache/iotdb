@@ -30,12 +30,14 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -44,9 +46,12 @@ public class QueryCoordinatorTest {
   private Map<Node, NodeStatus> nodeStatusMap;
   private Map<Node, Long> nodeLatencyMap;
   private QueryCoordinator coordinator = QueryCoordinator.getINSTANCE();
+  private boolean prevUseAsyncServer;
 
   @Before
   public void setUp() {
+    prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
     nodeStatusMap = new HashMap<>();
     nodeLatencyMap = new HashMap<>();
     for (int i = 0; i < 5; i++) {
@@ -84,6 +89,11 @@ public class QueryCoordinatorTest {
       }
     };
     coordinator.setMetaGroupMember(metaGroupMember);
+  }
+
+  @After
+  public void tearDown() {
+    ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
   @Test
