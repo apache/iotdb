@@ -742,11 +742,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  public void delete(Path path, long timestamp) throws QueryProcessException {
+  public void delete(Path path, long startTime, long endTime) throws QueryProcessException {
     String deviceId = path.getDevice();
     String measurementId = path.getMeasurement();
     try {
-      StorageEngine.getInstance().delete(deviceId, measurementId, timestamp);
+      StorageEngine.getInstance().delete(deviceId, measurementId, startTime, endTime);
     } catch (StorageEngineException e) {
       throw new QueryProcessException(e);
     }

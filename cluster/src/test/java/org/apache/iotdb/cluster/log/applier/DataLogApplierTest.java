@@ -222,7 +222,7 @@ public class DataLogApplierTest extends IoTDBTest {
       throws QueryProcessException, MetadataException, QueryFilterOptimizationException, StorageEngineException, IOException, TException, InterruptedException {
     DeletePlan deletePlan = new DeletePlan();
     deletePlan.setPaths(Collections.singletonList(new Path(TestUtils.getTestSeries(0, 0))));
-    deletePlan.setDeleteTime(50);
+    deletePlan.setDeleteEndTime(50);
     applier.apply(new PhysicalPlanLog(deletePlan));
     QueryDataSet dataSet = query(Collections.singletonList(TestUtils.getTestSeries(0, 0)), null);
     int cnt = 0;

@@ -66,13 +66,15 @@ public class AsyncDataClient extends AsyncClient {
 
     private static TAsyncClientManager[] managers;
     static {
-      managers =
-          new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
-      for (int i = 0; i < managers.length; i++) {
-        try {
-          managers[i] = new TAsyncClientManager();
-        } catch (IOException e) {
-          logger.error("Cannot create client manager for factory", e);
+      if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+        managers =
+            new TAsyncClientManager[ClusterDescriptor.getInstance().getConfig().getSelectorNumOfClientPool()];
+        for (int i = 0; i < managers.length; i++) {
+          try {
+            managers[i] = new TAsyncClientManager();
+          } catch (IOException e) {
+            logger.error("Cannot create client manager for factory", e);
+          }
         }
       }
     }
