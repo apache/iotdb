@@ -21,21 +21,29 @@ package org.apache.iotdb.db.query.dataset;
 
 import static org.apache.iotdb.db.utils.QueryUtils.transferShowTimeSeriesResultToRecordList;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ShowTimeseriesDataSet extends QueryDataSet {
+
+  private static final Logger logger = LoggerFactory.getLogger(ShowTimeseriesDataSet.class);
+
 
   private final ShowTimeSeriesPlan plan;
   private List<RowRecord> result = new ArrayList<>();
   private int index = 0;
-  public boolean hasLimit;
+
+  public boolean hasLimit = true;
 
   public ShowTimeseriesDataSet(List<Path> paths, List<TSDataType> dataTypes,
       ShowTimeSeriesPlan showTimeSeriesPlan) {
@@ -44,18 +52,18 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
   }
 
   @Override
-  protected boolean hasNextWithoutConstraint() {
-    if (index == result.size()) {
+  protected boolean hasNextWithoutConstraint() throws IOException {
+    if (index == result.size() && !hasLimit) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
         List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
             .showTimeseries(plan);
         result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults);
-        if (!hasLimit) {
-          index = 0;
-        }
-      } catch (Exception e) {
-        e.printStackTrace();
+        index = 0;
+      } catch (MetadataException e) {
+        logger.error("Something wrong happened while showing {}", paths.stream().map(
+            Path::getFullPath).reduce((a, b) -> a + "," + b), e);
+        throw new IOException(e.getCause());
       }
     }
     return index < result.size();
