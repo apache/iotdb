@@ -19,13 +19,6 @@
 
 package org.apache.iotdb.cluster.server.handlers.caller;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.common.TestException;
 import org.apache.iotdb.cluster.common.TestLog;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
@@ -36,6 +29,12 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.junit.Assert.*;
 
 public class AppendNodeEntryHandlerTest {
 
@@ -63,7 +62,7 @@ public class AppendNodeEntryHandlerTest {
         handler.setReceiverTerm(receiverTerm);
         handler.setReceiver(TestUtils.getNode(i));
         handler.setPeer(peer);
-        long resp = i < 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
+        long resp = i >= 5 ? Response.RESPONSE_AGREE : Response.RESPONSE_LOG_MISMATCH;
         new Thread(() -> handler.onComplete(resp)).start();
       }
       quorum.wait();

@@ -1467,7 +1467,7 @@ public class StorageGroupProcessor {
       long endTime) throws WriteProcessException {
     MNode node = null;
     try {
-      MManager manager = MManager.getInstance();
+      MManager manager = IoTDB.metaManager;
       node = manager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
 
       MNode measurementNode = manager.getChild(node, measurementId);
