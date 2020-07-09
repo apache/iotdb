@@ -18,17 +18,10 @@
  */
 package org.apache.iotdb.db.metadata;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.LeafMNode;
 import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -38,6 +31,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static org.junit.Assert.*;
 
 public class MManagerImproveTest {
 
@@ -50,7 +49,7 @@ public class MManagerImproveTest {
   @Before
   public void setUp() throws Exception {
     EnvironmentUtils.envSetUp();
-    mManager = MManager.getInstance();
+    mManager = IoTDB.metaManager;
     mManager.setStorageGroup("root.t1.v2");
 
     for (int j = 0; j < DEVICE_NUM; j++) {
@@ -66,7 +65,7 @@ public class MManagerImproveTest {
 
   @Test
   public void checkSetUp() {
-    mManager = MManager.getInstance();
+    mManager = IoTDB.metaManager;
 
     assertTrue(mManager.isPathExist("root.t1.v2.d3.s5"));
     assertFalse(mManager.isPathExist("root.t1.v2.d9.s" + TIMESERIES_NUM));
@@ -75,7 +74,7 @@ public class MManagerImproveTest {
 
   @Test
   public void analyseTimeCost() throws MetadataException {
-    mManager = MManager.getInstance();
+    mManager = IoTDB.metaManager;
 
     long startTime, endTime;
     long string_combine, path_exist, list_init, check_filelevel, get_seriestype;
@@ -136,20 +135,20 @@ public class MManagerImproveTest {
       node = mManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
       for (String s : measurementList) {
         assertTrue(node.hasChild(s));
-        LeafMNode measurementNode = (LeafMNode) node.getChild(s);
+        MeasurementMNode measurementNode = (MeasurementMNode) node.getChild(s);
         TSDataType dataType = measurementNode.getSchema().getType();
         assertEquals(TSDataType.TEXT, dataType);
       }
     } finally {
       if (node != null) {
-        ((InternalMNode) node).readUnlock();
+        node.readUnlock();
       }
     }
   }
 
   @Test
   public void improveTest() throws MetadataException {
-    mManager = MManager.getInstance();
+    mManager = IoTDB.metaManager;
 
     String[] deviceIdList = new String[DEVICE_NUM];
     for (int i = 0; i < DEVICE_NUM; i++) {

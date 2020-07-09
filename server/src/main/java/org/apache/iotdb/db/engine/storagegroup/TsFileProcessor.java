@@ -48,8 +48,8 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.engine.version.VersionController;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTablePool;
 import org.apache.iotdb.db.utils.QueryUtils;
@@ -150,22 +150,22 @@ public class TsFileProcessor {
   }
 
   /**
-   * insert data in an InsertPlan into the workingMemtable.
+   * insert data in an InsertRowPlan into the workingMemtable.
    *
-   * @param insertPlan physical plan of insertion
+   * @param insertRowPlan physical plan of insertion
    */
-  public void insert(InsertPlan insertPlan) throws WriteProcessException {
+  public void insert(InsertRowPlan insertRowPlan) throws WriteProcessException {
 
     if (workMemTable == null) {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
-    // insert insertPlan to the work memtable
-    workMemTable.insert(insertPlan);
+    // insert insertRowPlan to the work memtable
+    workMemTable.insert(insertRowPlan);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
-        getLogNode().write(insertPlan);
+        getLogNode().write(insertRowPlan);
       } catch (Exception e) {
         throw new WriteProcessException(String.format("%s: %s write WAL failed",
             storageGroupName, tsFileResource.getFile().getAbsolutePath()), e);
@@ -173,11 +173,11 @@ public class TsFileProcessor {
     }
 
     // update start time of this memtable
-    tsFileResource.updateStartTime(insertPlan.getDeviceId(), insertPlan.getTime());
+    tsFileResource.updateStartTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
     //for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     //for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
-      tsFileResource.updateEndTime(insertPlan.getDeviceId(), insertPlan.getTime());
+      tsFileResource.updateEndTime(insertRowPlan.getDeviceId(), insertRowPlan.getTime());
     }
   }
 
@@ -197,7 +197,7 @@ public class TsFileProcessor {
       workMemTable = MemTablePool.getInstance().getAvailableMemTable(this);
     }
 
-    // insert insertPlan to the work memtable
+    // insert insertRowPlan to the work memtable
     try {
       workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
@@ -242,7 +242,8 @@ public class TsFileProcessor {
     try {
       if (workMemTable != null) {
         workMemTable
-            .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getTimestamp());
+            .delete(deletion.getDevice(), deletion.getMeasurement(), deletion.getStartTime(),
+                deletion.getEndTime());
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
       for (IMemTable memTable : flushingMemTables) {
@@ -778,5 +779,17 @@ public class TsFileProcessor {
 
   public void setTimeRangeId(long timeRangeId) {
     this.timeRangeId = timeRangeId;
+  }
+
+  public void putMemTableBackAndClose() throws TsFileProcessorException {
+    if (workMemTable != null) {
+      workMemTable.release();
+      MemTablePool.getInstance().putBack(workMemTable, storageGroupName);
+    }
+    try {
+      writer.close();
+    } catch (IOException e) {
+      throw new TsFileProcessorException(e);
+    }
   }
 }

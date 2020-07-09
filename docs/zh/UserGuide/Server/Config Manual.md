@@ -219,12 +219,21 @@
 
 * enable\_partial\_insert
 
-|Name| enable\_partial\_insert |
+|名字| enable\_partial\_insert |
 |:---:|:---|
-|Description| 在一次insert请求中，如果部分测点写入失败，是否继续写入其他测点|
-|Type| Bool |
-|Default| true |
-|Effective|重启服务器生效|
+|描述| 在一次insert请求中，如果部分测点写入失败，是否继续写入其他测点|
+|类型| Bool |
+|默认值| true |
+|改后生效方式|重启服务器生效|
+
+* mtree\_snapshot\_interval
+
+|名字| mtree\_snapshot\_interval |
+|:---:|:---|
+|描述| 创建 MTree snapshot 时至少累积的 mlog 日志行数。单位为日志行数|
+|类型| Int32 |
+|默认值| 100000 |
+|改后生效方式|重启服务器生效|
 
 * fetch\_size
 
@@ -525,6 +534,64 @@
 |描述| openID 服务器地址 （当OpenIdAuthorizer被启用时必须设定）|
 |类型| String （一个http地址） |
 |默认值| 无 |
+|改后生效方式|重启服务器生效|
+
+
+## 数据类型自动推断
+
+
+* enable\_auto\_create\_schema
+
+|名字| enable\_auto\_create\_schema |
+|:---:|:---|
+|描述| 当写入的序列不存在时，是否自动创建序列到Schema|
+|取值| true or false |
+|默认值|true |
+|改后生效方式|重启服务器生效|
+
+* default\_storage\_group\_level
+
+|名字| default\_storage\_group\_level |
+|:---:|:---|
+|描述| 当写入的数据不存在且自动创建序列时，若需要创建相应的存储组，将序列路径的哪一层当做存储组. 例如, 如果我们接到一个新序列 root.sg0.d1.s2, 并且level=1， 那么root.sg0被视为存储组（因为root是level 0 层）|
+|取值| 整数 |
+|默认值|1 |
+|改后生效方式|重启服务器生效|
+
+* boolean\_string\_infer\_type
+
+|名字| boolean\_string\_infer\_type |
+|:---:|:---|
+|描述|  "true" 或者 "false" 被视为什么数据|
+|取值| BOOLEAN 或者 TEXT |
+|默认值|BOOLEAN |
+|改后生效方式|重启服务器生效|
+
+* integer\_string\_infer\_type
+
+|名字| integer\_string\_infer\_type |
+|:---:|:---|
+|描述| 整数型数据被推断成什么 |
+|取值| INT32, INT64, FLOAT, DOUBLE, TEXT |
+|默认值|FLOAT |
+|改后生效方式|重启服务器生效|
+
+* nan\_string\_infer\_type
+
+|名字| nan\_string\_infer\_type |
+|:---:|:---|
+|描述| NaN 字符串被推断为什么|
+|取值| DOUBLE, FLOAT or TEXT |
+|默认值|FLOAT |
+|改后生效方式|重启服务器生效|
+
+* floating\_string\_infer\_type
+
+|名字| floating\_string\_infer\_type |
+|:---:|:---|
+|描述| "6.7"等浮点数被推断为什么|
+|取值| DOUBLE, FLOAT or TEXT |
+|默认值|FLOAT |
 |改后生效方式|重启服务器生效|
 
 

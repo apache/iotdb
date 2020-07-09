@@ -19,14 +19,12 @@
 
 package org.apache.iotdb.db.engine.version;
 
+import java.io.File;
+import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 
 /**
  * SimpleFileVersionController uses a local file and its file name to store the version.
@@ -63,7 +61,6 @@ public class SimpleFileVersionController implements VersionController {
     this.directoryPath = directoryPath + File.separator + UPGRADE_DIR;
     restore();
   }
-
 
   public static long getSaveInterval() {
     return saveInterval;
@@ -145,7 +142,9 @@ public class SimpleFileVersionController implements VersionController {
     } else {
       versionFile = SystemFileFactory.INSTANCE.getFile(directory, FILE_PREFIX + "0");
       prevVersion = 0;
-      new FileOutputStream(versionFile).close();
+      if (!versionFile.createNewFile()) {
+        logger.warn("Cannot create new version file {}", versionFile);
+      }
     }
     // prevent overlapping in case of failure
     currVersion = prevVersion + saveInterval;

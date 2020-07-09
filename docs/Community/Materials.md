@@ -92,6 +92,18 @@
 
 <iframe src="//www.slideshare.net/slideshow/embed_code/key/MZBHJIVnVxff8" width="640" height="480" frameborder="0"  allowfullscreen> </iframe>
 
+* <span id = "IoTDBQuickStart"> IoTDB 基本使用. </span>
+
+<iframe src="//www.slideshare.net/JialinQiao/iotdb-quick-start" width="640" height="480" frameborder="0"  allowfullscreen> </iframe>
+
+* <span id = "IoTDBOps"> IoTDB 部署运维及常见问题. </span>
+
+<iframe src="//www.slideshare.net/JialinQiao/iotdb-ops" width="640" height="480" frameborder="0"  allowfullscreen> </iframe>
+
+* <span id = "IoTDBOptimizeAndCaseStudy"> IoTDB 性能优化及案例分享. </span>
+
+<iframe src="//www.slideshare.net/JialinQiao/iotdb-optimizeandcasestudy" width="640" height="480" frameborder="0"  allowfullscreen> </iframe>
+
 * [IoTDB v0.8.0 Query Process Implementation](https://h5.dingtalk.com/group-live-share/index.htm?encCid=b9f2eba34c2a3e9b8f06fbdaf65337e2&liveUuid=48161db6-d588-4251-a28a-1f929afee3ff#/), Reporter: Lei Rui
 
 

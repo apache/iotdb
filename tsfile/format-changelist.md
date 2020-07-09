@@ -20,7 +20,7 @@
 -->
 
 
-# version-1 -> version-2
+# 0.9.x (version-1) -> 0.10.x (version-2)
 
 Last Updated on 2019-11-28 by Jialin Qiao.
 
@@ -33,7 +33,7 @@ Last Updated on 2019-11-28 by Jialin Qiao.
 | 1047 | [IOTDB-593] Add metaOffset in TsFileMetadata                 | qiaojialin      | Add metaOffset in TsFileMetadata |
 | 1100 | [IOTDB-605] Add more levels of index in TsFileMetadata       | sunzesong       | Update the structure of deviceMetadata to a tree-level indexed TsFileMetadata |
 
-# 0.8.0 (version-0) -> version-1
+# 0.8.0 -> 0.9.x (version-1)
 
 Last Updated on 2019-10-27 by Lei Rui.
 

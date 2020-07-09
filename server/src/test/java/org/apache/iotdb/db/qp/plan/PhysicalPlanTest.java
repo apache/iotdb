@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.db.qp.plan;
 
+
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -50,8 +51,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 import static org.junit.Assert.*;
 
@@ -61,21 +61,25 @@ public class PhysicalPlanTest {
 
   @Before
   public void before() throws MetadataException {
-    MManager.getInstance().init();
-    MManager.getInstance().setStorageGroup("root.vehicle");
-    MManager.getInstance().createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
-    MManager.getInstance().createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
-        CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager.init();
+    IoTDB.metaManager.setStorageGroup("root.vehicle");
+    IoTDB.metaManager
+        .createTimeseries("root.vehicle.d1.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries("root.vehicle.d2.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries("root.vehicle.d3.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
+    IoTDB.metaManager
+        .createTimeseries("root.vehicle.d4.s1", TSDataType.FLOAT, TSEncoding.PLAIN,
+            CompressionType.UNCOMPRESSED, null);
   }
 
   @After
   public void clean() throws IOException {
-    MManager.getInstance().clear();
+    IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
   }
 
@@ -84,7 +88,9 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=INT32,encoding=RLE";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+    assertEquals(
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        plan.toString());
   }
 
   @Test
@@ -92,7 +98,9 @@ public class PhysicalPlanTest {
     String metadata = "create timeseries root.vehicle.d1.s2 with datatype=int32,encoding=rle";
     Planner processor = new Planner();
     CreateTimeSeriesPlan plan = (CreateTimeSeriesPlan) processor.parseSQLToPhysicalPlan(metadata);
-    assertEquals("seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY", plan.toString());
+    assertEquals(
+        "seriesPath: root.vehicle.d1.s2, resultDataType: INT32, encoding: RLE, compression: SNAPPY",
+        plan.toString());
   }
 
   @Test
@@ -817,9 +825,54 @@ public class PhysicalPlanTest {
   }
 
   @Test
+  public void testDelete1() throws QueryProcessException {
+    Path path = new Path("root.vehicle.d1", "s1");
+    List<Path> pathList = new ArrayList<>(Collections.singletonList(path));
+    String sqlStr = "delete FROM root.vehicle.d1.s1 WHERE time < 5000";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(OperatorType.DELETE, plan.getOperatorType());
+    assertEquals(pathList, plan.getPaths());
+  }
+
+  @Test
+  public void testDelete2() throws QueryProcessException {
+    Path path1 = new Path("root.vehicle.d1", "s1");
+    Path path2 = new Path("root.vehicle.d1", "s2");
+    List<Path> pathList = new ArrayList<>(Arrays.asList(path1, path2));
+    String sqlStr = "delete FROM root.vehicle.d1.s1,root.vehicle.d1.s2 WHERE time < 5000";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(OperatorType.DELETE, plan.getOperatorType());
+    assertEquals(pathList, plan.getPaths());
+  }
+
+  @Test
+  public void testDelete3() throws QueryProcessException {
+    Path path1 = new Path("root.vehicle.d1", "s1");
+    Path path2 = new Path("root.vehicle.d2", "s3");
+    List<Path> pathList = new ArrayList<>(Arrays.asList(path1, path2));
+    String sqlStr = "delete FROM root.vehicle.d1.s1,root.vehicle.d2.s3 WHERE time < 5000";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr);
+    assertEquals(OperatorType.DELETE, plan.getOperatorType());
+    assertEquals(pathList, plan.getPaths());
+  }
+
+  @Test
   public void testSpecialCharacters() throws QueryProcessException {
-    String sqlStr1 = "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE.81+12.+2.s/io.in[jack] with datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    String sqlStr1 = "create timeseries root.3e-3.-1.1/2.SNAPPY.RLE.81+12.+2.s/io.in[jack] with "
+        + "datatype=FLOAT, encoding=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)"
+        + " attributes(attr1=v1, attr2=v2)";
     PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(sqlStr1);
     Assert.assertEquals(OperatorType.CREATE_TIMESERIES, plan1.getOperatorType());
+  }
+
+  @Test
+  public void testTimeRangeDelete() throws QueryProcessException {
+    String sqlStr1 = "DELETE FROM root.vehicle.d1 where time >= 1 and time <= 2";
+
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(sqlStr1);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals(plan.getPaths(), Arrays.asList(new Path("root.vehicle.d1")));
+    Assert.assertEquals(((DeletePlan) plan).getDeleteStartTime(), 1);
+    Assert.assertEquals(((DeletePlan) plan).getDeleteEndTime(), 2);
   }
 }

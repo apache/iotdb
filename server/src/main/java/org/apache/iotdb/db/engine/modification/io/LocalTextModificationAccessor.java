@@ -124,28 +124,36 @@ public class LocalTextModificationAccessor implements ModificationReader, Modifi
   private static String encodeDeletion(Deletion del) {
     return del.getType().toString() + SEPARATOR + del.getPathString()
         + SEPARATOR + del.getVersionNum() + SEPARATOR
-        + del.getTimestamp();
+        + del.getStartTime() + SEPARATOR + del.getEndTime();
   }
 
   private static Deletion decodeDeletion(String[] fields) throws IOException {
-    if (fields.length != 4) {
+    if (fields.length != 5 && fields.length != 4) {
       throw new IOException("Incorrect deletion fields number: " + fields.length);
     }
 
     String path = fields[1];
     long versionNum;
-    long timestamp;
+    long startTimestamp = Long.MIN_VALUE;
+    long endTimestamp;
     try {
       versionNum = Long.parseLong(fields[2]);
     } catch (NumberFormatException e) {
       throw new IOException("Invalid version number: " + fields[2]);
     }
+
     try {
-      timestamp = Long.parseLong(fields[3]);
+      if (fields.length == 4) {
+        endTimestamp = Long.parseLong(fields[3]);
+
+      } else {
+        startTimestamp = Long.parseLong(fields[3]);
+        endTimestamp = Long.parseLong(fields[4]);
+      }
     } catch (NumberFormatException e) {
-      throw new IOException("Invalid timestamp: " + fields[3]);
+      throw new IOException("Invalid timestamp: " + e.getMessage());
     }
 
-    return new Deletion(new Path(path), versionNum, timestamp);
+    return new Deletion(new Path(path), versionNum, startTimestamp, endTimestamp);
   }
 }

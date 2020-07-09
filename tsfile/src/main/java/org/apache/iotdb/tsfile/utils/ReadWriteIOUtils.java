@@ -103,17 +103,17 @@ public class ReadWriteIOUtils {
   }
 
   /**
-   * write if the object not equals null. Eg, object eauals null, then write false.
+   * write if the object equals null. Eg, object equals null, then write true.
    */
-  public static int writeIsNotNull(Object object, OutputStream outputStream) throws IOException {
-    return write(object != null, outputStream);
+  public static int writeIsNull(Object object, OutputStream outputStream) throws IOException {
+    return write(object == null, outputStream);
   }
 
   /**
-   * write if the object not equals null. Eg, object eauals null, then write false.
+   * write if the object equals null. Eg, object equals null, then write true.
    */
-  public static int writeIsNotNull(Object object, ByteBuffer buffer) {
-    return write(object != null, buffer);
+  public static int writeIsNull(Object object, ByteBuffer buffer) {
+    return write(object == null, buffer);
   }
 
   /**
@@ -133,16 +133,16 @@ public class ReadWriteIOUtils {
   public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
     int length = 0;
     byte[] bytes;
-    stream.write(map.size());
+    stream.writeInt(map.size());
     length += 4;
     for (Entry<String, String> entry : map.entrySet()) {
       bytes = entry.getKey().getBytes();
-      stream.write(bytes.length);
+      stream.writeInt(bytes.length);
       length += 4;
       stream.write(bytes);
       length += bytes.length;
       bytes = entry.getValue().getBytes();
-      stream.write(bytes.length);
+      stream.writeInt(bytes.length);
       length += 4;
       stream.write(bytes);
       length += bytes.length;
@@ -344,6 +344,9 @@ public class ReadWriteIOUtils {
    * @return the length of string represented by byte[].
    */
   public static int write(String s, ByteBuffer buffer) {
+    if (s == null) {
+      return write(-1, buffer);
+    }
     int len = 0;
     byte[] bytes = s.getBytes();
     len += write(bytes.length, buffer);
@@ -362,6 +365,15 @@ public class ReadWriteIOUtils {
     outputStream.write(bytes);
     len += bytes.length;
     return len;
+  }
+
+  /**
+   * write byteBuffer.array to outputStream without capacity.
+   */
+  public static int writeWithoutSize(ByteBuffer byteBuffer, OutputStream outputStream) throws IOException {
+    byte[] bytes = byteBuffer.array();
+    outputStream.write(bytes);
+    return bytes.length;
   }
 
   /**
@@ -554,6 +566,9 @@ public class ReadWriteIOUtils {
    */
   public static String readString(ByteBuffer buffer) {
     int strLength = readInt(buffer);
+    if (strLength < 0) {
+      return null;
+    }
     byte[] bytes = new byte[strLength];
     buffer.get(bytes, 0, strLength);
     return new String(bytes, 0, strLength);
