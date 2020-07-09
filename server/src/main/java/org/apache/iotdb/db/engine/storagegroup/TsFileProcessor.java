@@ -263,7 +263,8 @@ public class TsFileProcessor {
   public void deleteDataInMemory(Deletion deletion) {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
-      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
+      logger
+          .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
       if (workMemTable != null) {
@@ -383,7 +384,8 @@ public class TsFileProcessor {
   void asyncClose() {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
-      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
+      logger
+          .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
 
@@ -391,7 +393,8 @@ public class TsFileProcessor {
         if (workMemTable != null) {
           logger.info(
               "{}: flush a working memtable in async close tsfile {}, memtable size: {}, tsfile size: {}",
-              storageGroupName, tsFileResource.getTsFile().getAbsolutePath(), workMemTable.memSize(),
+              storageGroupName, tsFileResource.getTsFile().getAbsolutePath(),
+              workMemTable.memSize(),
               tsFileResource.getTsFileSize());
         } else {
           logger.info("{}: flush a NotifyFlushMemTable in async close tsfile {}, tsfile size: {}",
@@ -442,7 +445,8 @@ public class TsFileProcessor {
     IMemTable tmpMemTable;
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
-      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
+      logger
+          .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
       tmpMemTable = workMemTable == null ? new NotifyFlushMemTable() : workMemTable;
@@ -485,7 +489,8 @@ public class TsFileProcessor {
   public void asyncFlush() {
     flushQueryLock.writeLock().lock();
     if (logger.isDebugEnabled()) {
-      logger.debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
+      logger
+          .debug(FLUSH_QUERY_WRITE_LOCKED, storageGroupName, tsFileResource.getTsFile().getName());
     }
     try {
       if (workMemTable == null) {
@@ -602,7 +607,7 @@ public class TsFileProcessor {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
-      if (seqFile.getTsFile().exists()) {
+      if (seqFile.getTsFile().exists() && seqFile.getTsFile().canWrite()) {
         Files.delete(seqFile.getTsFile().toPath());
       }
     } catch (Exception e) {
@@ -631,7 +636,8 @@ public class TsFileProcessor {
         writer.getIOWriterOut().truncate(result.right - 1);
         VmMergeUtils.fullMerge(writer, vmWriters,
             storageGroupName,
-            new VmLogger(tsFileResource.getTsFile().getParent(), tsFileResource.getTsFile().getName()),
+            new VmLogger(tsFileResource.getTsFile().getParent(),
+                tsFileResource.getTsFile().getName()),
             deviceSet, sequence);
         deleteVmFiles(vmTsFileResources, vmWriters);
         if (logFile.exists()) {
