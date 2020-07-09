@@ -20,7 +20,6 @@
 package org.apache.iotdb.cluster.server.heartbeat;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,17 +34,7 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     this.localMetaMember = metaMember;
   }
 
-  /**
-   * Send a heartbeat to "node" through "client". If the node's identifier is unknown, set the
-   * requireIdentifierFlag. If the last identifier it has sent conflicts with another, further set
-   * the regenerateIdentifierFlag. Also send the partition table to the node if the table is
-   * required.
-   *
-   * @param node
-   * @param client
-   */
-  @Override
-  void sendHeartbeat(Node node, AsyncClient client) {
+  private void presendHeartbeat(Node node) {
     // if the node's identifier is not clear, require it
     request.setRequireIdentifier(!node.isSetNodeIdentifier());
     synchronized (localMetaMember.getIdConflictNodes()) {
@@ -63,9 +52,20 @@ public class MetaHeartbeatThread extends HeartbeatThread {
       // we can remove it now
       localMetaMember.removeBlindNode(node);
     }
+  }
 
-    // the actual sending goes here
-    super.sendHeartbeat(node, client);
+  @Override
+  void sendHeartbeatSync(Node node) {
+    presendHeartbeat(node);
+    super.sendHeartbeatSync(node);
+    // erase the sent partition table so it will not be sent in the next heartbeat
+    request.unsetPartitionTableBytes();
+  }
+
+  @Override
+  void sendHeartbeatAsync(Node node) {
+    presendHeartbeat(node);
+    super.sendHeartbeatAsync(node);
     // erase the sent partition table so it will not be sent in the next heartbeat
     request.unsetPartitionTableBytes();
   }

@@ -22,15 +22,18 @@ package org.apache.iotdb.cluster.log.catchup;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.handlers.caller.SnapshotCatchUpHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.sync.sender.transfer.SyncClient;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,14 +54,10 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     this.snapshot = snapshot;
   }
 
-  @SuppressWarnings("java:S2274") // enable timeout
+
   private void doSnapshotCatchUp()
       throws TException, InterruptedException, LeaderUnknownException {
-    AsyncClient client = raftMember.getAsyncClient(node);
-    if (client == null) {
-      abort = true;
-      return;
-    }
+
 
     SendSnapshotRequest request = new SendSnapshotRequest();
     if (raftMember.getHeader() != null) {
@@ -66,8 +65,6 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     }
     request.setSnapshotBytes(snapshot.serialize());
 
-    AtomicBoolean succeed = new AtomicBoolean(false);
-    SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeed, node, snapshot);
     synchronized (raftMember.getTerm()) {
       // make sure this node is still a leader
       if (raftMember.getCharacter() != NodeCharacter.LEADER) {
@@ -75,13 +72,40 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
       }
     }
 
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      abort = !sendSnapshotAsync(request);
+    } else {
+      abort = !sendSnapshotSync(request);
+    }
+  }
+
+  @SuppressWarnings("java:S2274") // enable timeout
+  private boolean sendSnapshotAsync(SendSnapshotRequest request)
+      throws TException, InterruptedException {
+    AtomicBoolean succeed = new AtomicBoolean(false);
+    SnapshotCatchUpHandler handler = new SnapshotCatchUpHandler(succeed, node, snapshot);
+    AsyncClient client = raftMember.getAsyncClient(node);
+    if (client == null) {
+      abort = true;
+      return false;
+    }
+
     synchronized (succeed) {
       client.sendSnapshot(request, handler);
       raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
       succeed.wait(SEND_SNAPSHOT_WAIT_MS);
     }
+    return succeed.get();
+  }
 
-    abort = !succeed.get();
+  private boolean sendSnapshotSync(SendSnapshotRequest request) throws TException {
+    Client client = raftMember.getSyncClient(node);
+    try {
+      client.sendSnapshot(request);
+      return true;
+    } finally {
+      raftMember.putBackSyncClient(client);
+    }
   }
 
   @Override

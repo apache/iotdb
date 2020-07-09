@@ -45,7 +45,7 @@ public class DatasourceInfoTest {
   public void setUp() {
     metaGroupMember = new TestMetaGroupMember() {
       @Override
-      public AsyncDataClient getDataClient(Node node) throws IOException {
+      public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
         return new AsyncDataClient(null, null, TestUtils.getNode(0), null) {
           @Override
           public void querySingleSeries(SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {

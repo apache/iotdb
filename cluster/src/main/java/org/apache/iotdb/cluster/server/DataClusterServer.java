@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.NoHeaderNodeException;
 import org.apache.iotdb.cluster.exception.NotInSameGroupException;
@@ -43,28 +44,37 @@ import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
 import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
 import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.rpc.thrift.TSDataService.AsyncProcessor;
+import org.apache.iotdb.cluster.rpc.thrift.TSDataService.Processor;
 import org.apache.iotdb.cluster.server.NodeReport.DataMemberReport;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
+import org.apache.iotdb.cluster.server.service.DataSyncService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.thrift.TException;
+import org.apache.thrift.TProcessor;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.transport.TNonblockingServerSocket;
+import org.apache.thrift.transport.TServerSocket;
+import org.apache.thrift.transport.TServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DataClusterServer extends RaftServer implements TSDataService.AsyncIface {
+public class DataClusterServer extends RaftServer implements TSDataService.AsyncIface,
+    TSDataService.Iface {
 
   private static final Logger logger = LoggerFactory.getLogger(DataClusterServer.class);
 
@@ -72,6 +82,7 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   // it is currently at service
   private Map<Node, DataGroupMember> headerGroupMap = new ConcurrentHashMap<>();
   private Map<Node, DataAsyncService> asyncServiceMap = new ConcurrentHashMap<>();
+  private Map<Node, DataSyncService> syncServiceMap = new ConcurrentHashMap<>();
   // key: the header of a data group, value: the member representing this node in this group but
   // it is out of service because another node has joined the group and expelled this node, or
   // the node itself is removed, but it is still stored to provide snapshot for other nodes
@@ -118,6 +129,13 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
     return asyncServiceMap.computeIfAbsent(header, h -> {
       DataGroupMember dataMember = getDataMember(h, resultHandler, request);
       return dataMember != null ? new DataAsyncService(dataMember) : null;
+    });
+  }
+
+  public DataSyncService getDataSyncService(Node header) {
+    return syncServiceMap.computeIfAbsent(header, h -> {
+      DataGroupMember dataMember = getDataMember(h, null, null);
+      return dataMember != null ? new DataSyncService(dataMember) : null;
     });
   }
 
@@ -415,14 +433,23 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
   }
 
   @Override
-  AsyncProcessor getProcessor() {
-    return new AsyncProcessor(this);
+  TProcessor getProcessor() {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      return new AsyncProcessor(this);
+    } else {
+      return new Processor<>(this);
+    }
   }
 
   @Override
-  TNonblockingServerSocket getServerSocket() throws TTransportException {
-    return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
-        thisNode.getDataPort()), getConnectionTimeoutInMS());
+  TServerTransport getServerSocket() throws TTransportException {
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      return new TNonblockingServerSocket(new InetSocketAddress(config.getLocalIP(),
+          thisNode.getDataPort()), getConnectionTimeoutInMS());
+    } else {
+      return new TServerSocket(new InetSocketAddress(config.getLocalIP(),
+          thisNode.getDataPort()));
+    }
   }
 
   @Override
@@ -613,5 +640,153 @@ public class DataClusterServer extends RaftServer implements TSDataService.Async
       AsyncMethodCallback<Boolean> resultHandler) {
     DataAsyncService service = getDataAsyncService(header, resultHandler, "Snapshot applied");
     service.onSnapshotApplied(header, slots, resultHandler);
+  }
+
+  @Override
+  public long querySingleSeries(SingleSeriesQueryRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).querySingleSeries(request);
+  }
+
+  @Override
+  public ByteBuffer fetchSingleSeries(Node header, long readerId) throws TException {
+    return getDataSyncService(header).fetchSingleSeries(header, readerId);
+  }
+
+  @Override
+  public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).querySingleSeriesByTimestamp(request);
+  }
+
+  @Override
+  public ByteBuffer fetchSingleSeriesByTimestamp(Node header, long readerId, long timestamp)
+      throws TException {
+    return getDataSyncService(header).fetchSingleSeriesByTimestamp(header, readerId, timestamp);
+  }
+
+  @Override
+  public void endQuery(Node header, Node thisNode, long queryId) throws TException {
+    getDataSyncService(header).endQuery(header, thisNode, queryId);
+  }
+
+  @Override
+  public List<String> getAllPaths(Node header, List<String> path) throws TException {
+    return getDataSyncService(header).getAllPaths(header, path);
+  }
+
+  @Override
+  public Set<String> getAllDevices(Node header, List<String> path) throws TException {
+    return getDataSyncService(header).getAllDevices(header, path);
+  }
+
+  @Override
+  public List<String> getNodeList(Node header, String path, int nodeLevel) throws TException {
+    return getDataSyncService(header).getNodeList(header, path, nodeLevel);
+  }
+
+  @Override
+  public Set<String> getChildNodePathInNextLevel(Node header, String path) throws TException {
+    return getDataSyncService(header).getChildNodePathInNextLevel(header, path);
+  }
+
+  @Override
+  public ByteBuffer getAllMeasurementSchema(Node header, ByteBuffer planBinary) throws TException {
+    return getDataSyncService(header).getAllMeasurementSchema(header, planBinary);
+  }
+
+  @Override
+  public List<ByteBuffer> getAggrResult(GetAggrResultRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).getAggrResult(request);
+  }
+
+  @Override
+  public List<String> getUnregisteredTimeseries(Node header, List<String> timeseriesList)
+      throws TException {
+    return getDataSyncService(header).getUnregisteredTimeseries(header, timeseriesList);
+  }
+
+  @Override
+  public PullSnapshotResp pullSnapshot(PullSnapshotRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).pullSnapshot(request);
+  }
+
+  @Override
+  public long getGroupByExecutor(GroupByRequest request) throws TException {
+    return getDataSyncService(request.header).getGroupByExecutor(request);
+  }
+
+  @Override
+  public List<ByteBuffer> getGroupByResult(Node header, long executorId, long startTime,
+      long endTime) throws TException {
+    return getDataSyncService(header).getGroupByResult(header, executorId, startTime, endTime);
+  }
+
+  @Override
+  public PullSchemaResp pullTimeSeriesSchema(PullSchemaRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).pullTimeSeriesSchema(request);
+  }
+
+  @Override
+  public ByteBuffer previousFill(PreviousFillRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).previousFill(request);
+  }
+
+  @Override
+  public ByteBuffer last(LastQueryRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).last(request);
+  }
+
+  @Override
+  public int getPathCount(Node header, List<String> pathsToQuery, int level) throws TException {
+    return getDataSyncService(header).getPathCount(header, pathsToQuery, level);
+  }
+
+  @Override
+  public boolean onSnapshotApplied(Node header, List<Integer> slots) {
+    return getDataSyncService(header).onSnapshotApplied(header, slots);
+  }
+
+  @Override
+  public HeartBeatResponse sendHeartbeat(HeartBeatRequest request) {
+    return getDataSyncService(request.getHeader()).sendHeartbeat(request);
+  }
+
+  @Override
+  public long startElection(ElectionRequest request) {
+    return getDataSyncService(request.getHeader()).startElection(request);
+  }
+
+  @Override
+  public long appendEntries(AppendEntriesRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).appendEntries(request);
+  }
+
+  @Override
+  public long appendEntry(AppendEntryRequest request) throws TException {
+    return getDataSyncService(request.getHeader()).appendEntry(request);
+  }
+
+  @Override
+  public void sendSnapshot(SendSnapshotRequest request) throws TException {
+    getDataSyncService(request.getHeader()).sendSnapshot(request);
+  }
+
+  @Override
+  public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {
+    return getDataSyncService(request.getHeader()).executeNonQueryPlan(request);
+  }
+
+  @Override
+  public long requestCommitIndex(Node header) throws TException {
+    return getDataSyncService(header).requestCommitIndex(header);
+  }
+
+  @Override
+  public ByteBuffer readFile(String filePath, long offset, int length) throws TException {
+    return getDataSyncService(thisNode).readFile(filePath, offset, length);
+  }
+
+  @Override
+  public boolean matchTerm(long index, long term, Node header) {
+    return getDataSyncService(header).matchTerm(index, term, header);
   }
 }

@@ -48,6 +48,9 @@ import org.apache.iotdb.cluster.client.async.AsyncDataClient.FactoryAsync;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncClientPool;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient.FactorySync;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -193,7 +196,7 @@ public class DataGroupMember extends RaftMember {
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, Node thisNode,
       MetaGroupMember metaGroupMember) {
     super("Data(" + nodes.getHeader().getIp() + ":" + nodes.getHeader().getMetaPort() + ")",
-        new AsyncClientPool(new FactoryAsync(factory)));
+        new AsyncClientPool(new FactoryAsync(factory)), new SyncClientPool(new FactorySync(factory)));
     this.thisNode = thisNode;
     this.metaGroupMember = metaGroupMember;
     allNodes = nodes;
@@ -714,16 +717,17 @@ public class DataGroupMember extends RaftMember {
    * @throws IOException
    */
   private boolean pullRemoteFile(String remotePath, Node node, File dest) throws IOException {
-    AsyncDataClient client = (AsyncDataClient) getAsyncClient(node);
-    if (client == null) {
-      return false;
-    }
 
     int pullFileRetry = 5;
     for (int i = 0; i < pullFileRetry; i++) {
       try (BufferedOutputStream bufferedOutputStream =
           new BufferedOutputStream(new FileOutputStream(dest))) {
-        downloadFile(client, remotePath, bufferedOutputStream);
+        if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+          downloadFileAsync(node, remotePath, bufferedOutputStream);
+        } else {
+          downloadFileSync(node, remotePath, bufferedOutputStream);
+        }
+
         if (logger.isInfoEnabled()) {
           logger.info("{}: remote file {} is pulled at {}, length: {}", name, remotePath, dest,
               dest.length());
@@ -753,8 +757,13 @@ public class DataGroupMember extends RaftMember {
     return false;
   }
 
-  private void downloadFile(AsyncDataClient client, String remotePath, OutputStream dest)
+  private void downloadFileAsync(Node node, String remotePath, OutputStream dest)
       throws IOException, TException, InterruptedException {
+    AsyncDataClient client = (AsyncDataClient) getAsyncClient(node);
+    if (client == null) {
+      throw new IOException("No available client for " + node.toString());
+    }
+
     int offset = 0;
     // TODO-Cluster: use elaborate downloading techniques
     int fetchSize = 64 * 1024;
@@ -771,6 +780,37 @@ public class DataGroupMember extends RaftMember {
       dest.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
           buffer.limit() - buffer.position());
       offset += buffer.limit() - buffer.position();
+    }
+    dest.flush();
+  }
+
+  private void downloadFileSync(Node node, String remotePath, OutputStream dest)
+      throws IOException, TException {
+    SyncDataClient client = (SyncDataClient) getSyncClient(node);
+    if (client == null) {
+      throw new IOException("No available client for " + node.toString());
+    }
+
+    int offset = 0;
+    // TODO-Cluster: use elaborate downloading techniques
+    int fetchSize = 64 * 1024;
+
+    try {
+      while (true) {
+        ByteBuffer buffer = client.readFile(remotePath, offset, fetchSize);
+        if (buffer == null || buffer.limit() - buffer.position() == 0) {
+          break;
+        }
+
+        // notice: the buffer returned by thrift is a slice of a larger buffer which contains
+        // the whole response, so buffer.position() is not 0 initially and buffer.limit() is
+        // not the size of the downloaded chunk
+        dest.write(buffer.array(), buffer.position() + buffer.arrayOffset(),
+            buffer.limit() - buffer.position());
+        offset += buffer.limit() - buffer.position();
+      }
+    } finally {
+      putBackSyncClient(client);
     }
     dest.flush();
   }

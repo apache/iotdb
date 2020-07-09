@@ -109,7 +109,7 @@ public class DataLogApplierTest extends IoTDBTest {
     }
 
     @Override
-    public AsyncDataClient getDataClient(Node node) throws IOException {
+    public AsyncDataClient getAsyncDataClient(Node node) throws IOException {
       return new AsyncDataClient(null, null, node, null) {
         @Override
         public void getAllPaths(Node header, List<String> path,

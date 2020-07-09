@@ -20,6 +20,8 @@
 package org.apache.iotdb.cluster.server.member;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -37,6 +39,8 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,6 +50,9 @@ import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncClientPool;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -65,6 +72,7 @@ import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
 import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -135,17 +143,22 @@ public abstract class RaftMember {
   // the pool that provides reusable clients to connect to other RaftMembers. It will be initialized
   // according to the implementation of the subclasses
   private AsyncClientPool asyncClientPool;
+  private SyncClientPool syncClientPool;
   // when the commit progress is updated by a heart beat, this object is notified so that we may
   // know if this node is synchronized with the leader
   private Object syncLock = new Object();
   private ExecutorService appendLogThreadPool;
 
+  // a thread pool that is used to convert serial operations into paralleled ones
+  private ExecutorService asyncThreadPool;
+
   public RaftMember() {
   }
 
-  RaftMember(String name, AsyncClientPool pool) {
+  RaftMember(String name, AsyncClientPool asyncPool, SyncClientPool syncPool) {
     this.name = name;
-    this.asyncClientPool = pool;
+    this.asyncClientPool = asyncPool;
+    this.syncClientPool = syncPool;
   }
 
   /**
@@ -176,6 +189,9 @@ public abstract class RaftMember {
             name + "-HeartbeatThread@" + System.currentTimeMillis()));
     catchUpService = Executors.newCachedThreadPool();
     appendLogThreadPool = Executors.newCachedThreadPool();
+    asyncThreadPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
+        0L, TimeUnit.MILLISECONDS,
+        new LinkedBlockingQueue<Runnable>());
     logger.info("{} started", name);
   }
 
@@ -206,6 +222,15 @@ public abstract class RaftMember {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for heartBeatService and catchUpService "
           + "to end", e);
+    }
+    if (asyncThreadPool != null) {
+      asyncThreadPool.shutdownNow();
+      try {
+        asyncThreadPool.awaitTermination(10, TimeUnit.SECONDS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.error("Unexpected interruption when waiting for asyncThreadPool to end", e);
+      }
     }
     catchUpService = null;
     heartBeatService = null;
@@ -621,6 +646,16 @@ public abstract class RaftMember {
       return;
     }
 
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      sendLogAsync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
+    } else {
+      sendLogSync(log, voteCounter, node, leaderShipStale, newLeaderTerm, request, peer);
+    }
+  }
+
+  private void sendLogAsync(Log log, AtomicInteger voteCounter, Node node,
+      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
+      Peer peer) {
     AsyncClient client = getAsyncClient(node);
     if (client != null) {
       AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
@@ -636,6 +671,31 @@ public abstract class RaftMember {
         logger.debug("{} sending a log to {}: {}", name, node, log);
       } catch (Exception e) {
         logger.warn("{} cannot append log to node {}", name, node, e);
+      }
+    }
+  }
+
+  private void sendLogSync(Log log, AtomicInteger voteCounter, Node node,
+      AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, AppendEntryRequest request,
+      Peer peer) {
+    Client client = getSyncClient(node);
+    if (client != null) {
+      AppendNodeEntryHandler handler = new AppendNodeEntryHandler();
+      handler.setReceiver(node);
+      handler.setVoteCounter(voteCounter);
+      handler.setLeaderShipStale(leaderShipStale);
+      handler.setLog(log);
+      handler.setMember(this);
+      handler.setPeer(peer);
+      handler.setReceiverTerm(newLeaderTerm);
+      try {
+        logger.debug("{} sending a log to {}: {}", name, node, log);
+        long result = client.appendEntry(request);
+        handler.onComplete(result);
+      } catch (Exception e) {
+        handler.onError(e);
+      } finally {
+        putBackSyncClient(client);
       }
     }
   }
@@ -659,6 +719,23 @@ public abstract class RaftMember {
     } catch (IOException e) {
       logger.warn("{} cannot connect to node {}", name, node, e);
     }
+    return client;
+  }
+
+  /**
+   * NOTICE: client.putBack() must be called after use.
+   * @param node
+   * @return
+   */
+  public Client getSyncClient(Node node) {
+    if (node == null) {
+      return null;
+    }
+
+    Client client;
+    do {
+      client = syncClientPool.getClient(node);
+    } while (client == null);
     return client;
   }
 
@@ -743,6 +820,14 @@ public abstract class RaftMember {
 
   public Map<Node, Long> getLastCatchUpResponseTime() {
     return lastCatchUpResponseTime;
+  }
+
+  public void putBackSyncClient(Client client) {
+    if (client instanceof SyncDataClient) {
+      ((SyncDataClient) client).putBack();
+    } else {
+      ((SyncMetaClient) client).putBack();
+    }
   }
 
   /**
@@ -879,13 +964,7 @@ public abstract class RaftMember {
       }
     }
 
-    AsyncClient client = getAsyncClient(follower);
-    if (client != null) {
-      catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this));
-    } else {
-      lastCatchUpResponseTime.remove(follower);
-      logger.warn("{}: Catch-up failed: node {} is currently unavailable", name, follower);
-    }
+    catchUpService.submit(new CatchUpTask(follower, peerMap.get(follower), this));
   }
 
   public String getName() {
@@ -915,25 +994,23 @@ public abstract class RaftMember {
     }
     logger.debug("{}: Forward {} to node {}", name, plan, node);
 
-    AsyncClient client = getAsyncClient(node);
-    if (client != null) {
-      return forwardPlan(plan, client, node, header);
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      return forwardPlanAsync(plan, node, header);
+    } else {
+      return forwardPlanSync(plan, node, header);
     }
-    logger.warn("{}: Forward {} to {} timed out", name, plan, node);
-    return StatusUtils.TIME_OUT;
   }
 
   /**
    * Forward a non-query plan to "receiver" using "client".
    *
    * @param plan     a non-query plan
-   * @param client
    * @param receiver
    * @param header   to determine which DataGroupMember of "receiver" will process the request.
    * @return a TSStatus indicating if the forwarding is successful.
    */
-  TSStatus forwardPlan(PhysicalPlan plan, AsyncClient client, Node receiver, Node header) {
-
+  TSStatus forwardPlanAsync(PhysicalPlan plan, Node receiver, Node header) {
+    AsyncClient client = getAsyncClient(receiver);
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
@@ -951,6 +1028,35 @@ public abstract class RaftMember {
       Thread.currentThread().interrupt();
       logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
       return StatusUtils.TIME_OUT;
+    }
+  }
+
+  TSStatus forwardPlanSync(PhysicalPlan plan, Node receiver, Node header) {
+    Client client = getSyncClient(receiver);
+    try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
+      plan.serialize(dataOutputStream);
+
+      ExecutNonQueryReq req = new ExecutNonQueryReq();
+      req.setPlanBytes(byteArrayOutputStream.toByteArray());
+      if (header != null) {
+        req.setHeader(header);
+      }
+
+      TSStatus tsStatus = client.executeNonQueryPlan(req);
+      if (tsStatus == null) {
+        tsStatus = StatusUtils.TIME_OUT;
+        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+      }
+      return tsStatus;
+    } catch (IOException | TException e) {
+      TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
+      status.setMessage(e.getMessage());
+      logger
+          .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+      return status;
+    } finally {
+      putBackSyncClient(client);
     }
   }
 
@@ -1110,20 +1216,15 @@ public abstract class RaftMember {
     logger.debug("{}: try synchronizing with the leader {}", name, leader);
     long startTime = System.currentTimeMillis();
     long waitedTime = 0;
-    AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
+
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
-      AsyncClient client = getAsyncClient(leader);
-      if (client == null) {
-        // cannot connect to the leader
-        logger.warn("{}: No leader is found when synchronizing", name);
-        return false;
-      }
       try {
-        synchronized (commitIdResult) {
-          client.requestCommitIndex(getHeader(), new GenericHandler<>(leader, commitIdResult));
-          commitIdResult.wait(RaftServer.getSyncLeaderMaxWaitMs());
+
+        long leaderCommitId = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() ?
+            requestCommitIdAsync() : requestCommitIdSync();
+        if (leaderCommitId == Long.MAX_VALUE) {
+          return false;
         }
-        long leaderCommitId = commitIdResult.get();
         long localCommitId = logManager.getCommitLogIndex();
         logger.debug("{}: synchronizing commitIndex {}/{}", name, localCommitId, leaderCommitId);
         if (leaderCommitId <= localCommitId) {
@@ -1153,6 +1254,33 @@ public abstract class RaftMember {
     }
     logger.warn("{}: Failed to synchronize with the leader after {}ms", name, waitedTime);
     return false;
+  }
+
+  private long requestCommitIdAsync() throws TException, InterruptedException {
+    AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
+    AsyncClient client = getAsyncClient(leader);
+    if (client == null) {
+      // cannot connect to the leader
+      logger.warn("{}: No leader is found when synchronizing", name);
+      return commitIdResult.get();
+    }
+    synchronized (commitIdResult) {
+      client.requestCommitIndex(getHeader(), new GenericHandler<>(leader, commitIdResult));
+      commitIdResult.wait(RaftServer.getSyncLeaderMaxWaitMs());
+    }
+    return commitIdResult.get();
+  }
+
+  private long requestCommitIdSync() throws TException {
+    Client client = getSyncClient(leader);
+    if (client == null) {
+      // cannot connect to the leader
+      logger.warn("{}: No leader is found when synchronizing", name);
+      return Long.MAX_VALUE;
+    }
+    long commitIndex = client.requestCommitIndex(getHeader());
+    putBackSyncClient(client);
+    return commitIndex;
   }
 
   /**
@@ -1295,5 +1423,9 @@ public abstract class RaftMember {
   @TestOnly
   public void setAppendLogThreadPool(ExecutorService appendLogThreadPool) {
     this.appendLogThreadPool = appendLogThreadPool;
+  }
+
+  public ExecutorService getAsyncThreadPool() {
+    return asyncThreadPool;
   }
 }

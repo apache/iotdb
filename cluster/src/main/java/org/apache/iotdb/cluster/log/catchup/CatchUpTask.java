@@ -23,11 +23,13 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.LeaderUnknownException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.Peer;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -127,9 +129,17 @@ public class CatchUpTask implements Runnable {
       prevLogTerm = logs.get(index - 1).getCurrLogTerm();
     }
 
-    RaftService.AsyncClient client = raftMember.getAsyncClient(node);
-    boolean matched = SyncClientAdaptor
-        .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
+    boolean matched;
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+      RaftService.AsyncClient client = raftMember.getAsyncClient(node);
+      matched = SyncClientAdaptor
+          .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
+    } else {
+      Client client = raftMember.getSyncClient(node);
+      matched = client.matchTerm(prevLogIndex, prevLogTerm, raftMember.getHeader());
+      raftMember.putBackSyncClient(client);
+    }
+
     raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());
     logger.debug("{} check {}'s matchIndex {} with log [{}]", raftMember.getName(), node,
         matched ? "succeed" : "failed", log);

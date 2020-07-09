@@ -32,8 +32,11 @@ import java.util.concurrent.Future;
 import javax.activation.UnsupportedDataTypeException;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
+import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
@@ -118,24 +121,22 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
 
     @Override
     public TimeValuePair call() throws Exception {
-      return calculateSeriesLast(group, seriesPath, dataType, queryContext,
-          deviceMeasurements);
+      return calculateSeriesLast(group, seriesPath, queryContext);
     }
 
-    private TimeValuePair calculateSeriesLast(PartitionGroup group, Path seriesPath,
-        TSDataType dataType, QueryContext context, Set<String> deviceMeasurements)
+    private TimeValuePair calculateSeriesLast(PartitionGroup group, Path seriesPath
+        , QueryContext context)
         throws QueryProcessException, StorageEngineException, IOException {
       if (group.contains(metaGroupMember.getThisNode())) {
         ClusterQueryUtils.checkPathExistence(seriesPath, metaGroupMember);
-        return calculateSeriesLastLocally(group, seriesPath, dataType, context, deviceMeasurements);
+        return calculateSeriesLastLocally(group, seriesPath, context);
       } else {
-        return calculateSeriesLastRemotely(group, seriesPath, dataType, context,
-            deviceMeasurements);
+        return calculateSeriesLastRemotely(group, seriesPath, context);
       }
     }
 
     private TimeValuePair calculateSeriesLastLocally(PartitionGroup group, Path seriesPath,
-        TSDataType dataType, QueryContext context, Set<String> deviceMeasurements)
+        QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
       DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
       try {
@@ -143,23 +144,24 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       } catch (CheckConsistencyException e) {
         throw new QueryProcessException(e.getMessage());
       }
-      return calculateLastPairForOneSeriesLocally(seriesPath, dataType, context,
-          deviceMeasurements);
+      return calculateLastPairForOneSeriesLocally(seriesPath, dataType, context, deviceMeasurements);
     }
 
     private TimeValuePair calculateSeriesLastRemotely(PartitionGroup group, Path seriesPath,
-        TSDataType dataType, QueryContext context, Set<String> deviceMeasurements) {
+        QueryContext context) {
       for (Node node : group) {
-        AsyncDataClient asyncDataClient;
+
         try {
-          asyncDataClient = metaGroupMember.getDataClient(node);
-        } catch (IOException e) {
-          continue;
-        }
-        try {
-          ByteBuffer buffer = SyncClientAdaptor
-              .last(asyncDataClient, seriesPath, dataType, context, deviceMeasurements,
-                  group.getHeader());
+          ByteBuffer buffer;
+          if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
+            buffer = lastAsync(node, context);
+          } else {
+            buffer = lastSync(node, context);
+          }
+          if (buffer == null) {
+            continue;
+          }
+
           TimeValuePair timeValuePair = SerializeUtils.deserializeTVPair(buffer);
           return timeValuePair != null ? timeValuePair : new TimeValuePair(Long.MIN_VALUE, null);
         } catch (TException | UnsupportedDataTypeException e) {
@@ -172,6 +174,34 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         }
       }
       return new TimeValuePair(Long.MIN_VALUE, null);
+    }
+
+    private ByteBuffer lastAsync(Node node, QueryContext context)
+        throws TException, InterruptedException {
+      ByteBuffer buffer;
+      AsyncDataClient asyncDataClient;
+      try {
+        asyncDataClient = metaGroupMember.getAsyncDataClient(node);
+      } catch (IOException e) {
+        return null;
+      }
+      buffer = SyncClientAdaptor
+          .last(asyncDataClient, seriesPath, dataType, context, deviceMeasurements,
+              group.getHeader());
+      return buffer;
+    }
+
+    private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
+      try {
+        SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+        ByteBuffer result = syncDataClient
+            .last(new LastQueryRequest(seriesPath.getFullPath(), dataType.ordinal(),
+                context.getQueryId(), deviceMeasurements, group.getHeader(), syncDataClient.getNode()));
+        metaGroupMember.putBackSyncClient(syncDataClient);
+        return result;
+      } catch (IOException e) {
+        return null;
+      }
     }
   }
 }
