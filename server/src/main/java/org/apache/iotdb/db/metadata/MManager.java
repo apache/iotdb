@@ -823,7 +823,7 @@ public class MManager {
     }
   }
 
-  public List<ShowTimeSeriesResult> getAllTimeseriesSchema(ShowTimeSeriesPlan plan)
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();
     try {
@@ -917,12 +917,22 @@ public class MManager {
     return true;
   }
 
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+      throws MetadataException {
+    // show timeseries with index
+    if (plan.getKey() != null && plan.getValue() != null) {
+      return showTimeseriesWithIndex(plan);
+    } else {
+      return showTimeseriesWithoutIndex(plan);
+    }
+  }
+
   /**
    * Get the result of ShowTimeseriesPlan
    *
    * @param plan show time series query plan
    */
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();
     List<String[]> ans;
