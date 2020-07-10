@@ -79,7 +79,7 @@ public class LogCatchUpInBatchHandler implements AsyncMethodCallback<Long> {
     synchronized (appendSucceed) {
       appendSucceed.notifyAll();
     }
-    logger.warn("{}: Catch-up fails when sending log, which size is {}", memberName, logs.size(),
+    logger.warn("{}: Catch-up fails when sending log, whose size is {}", memberName, logs.size(),
         exception);
   }
 

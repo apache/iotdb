@@ -20,6 +20,7 @@
 package org.apache.iotdb.cluster.server.service;
 
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
@@ -40,9 +41,12 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class BaseSyncService implements RaftService.Iface {
 
+  private static final Logger logger = LoggerFactory.getLogger(BaseSyncService.class);
   RaftMember member;
   String name;
 
@@ -74,6 +78,10 @@ public abstract class BaseSyncService implements RaftService.Iface {
   public long appendEntries(AppendEntriesRequest request) throws TException {
     try {
       return member.appendEntries(request);
+    } catch (BufferUnderflowException e) {
+      logger.error("Underflown buffers {} of logs from {}", request.getEntries(),
+          request.getPrevLogIndex() + 1);
+      throw new TException(e);
     } catch (Exception e) {
       throw new TException(e);
     }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
+import java.net.SocketTimeoutException;
 import java.util.Collection;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -36,6 +37,7 @@ import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.ElectionHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.HeartbeatHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -202,6 +204,10 @@ public class HeartbeatThread implements Runnable {
           logger.debug("{}: Sending heartbeat to {}", memberName, node);
           HeartBeatResponse heartBeatResponse = client.sendHeartbeat(req);
           heartbeatHandler.onComplete(heartBeatResponse);
+        } catch (TTransportException e) {
+          logger.warn("{}: Cannot send heart beat to node {} due to network", memberName,
+              node, e);
+          client.getInputProtocol().getTransport().close();
         } catch (Exception e) {
           logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
         } finally {

@@ -249,6 +249,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       return appendSucceed.get();
     } catch (TException e) {
       handler.onError(e);
+      logger.warn("Failed logs: {}, first index", logList, request.prevLogIndex + 1);
       return false;
     } finally {
       raftMember.putBackSyncClient(client);

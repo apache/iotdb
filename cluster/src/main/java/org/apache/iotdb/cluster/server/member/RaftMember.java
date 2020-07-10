@@ -693,6 +693,9 @@ public abstract class RaftMember {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long result = client.appendEntry(request);
         handler.onComplete(result);
+      } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
+        handler.onError(e);
       } catch (Exception e) {
         handler.onError(e);
       } finally {
