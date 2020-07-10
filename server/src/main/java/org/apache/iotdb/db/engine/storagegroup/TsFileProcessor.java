@@ -597,9 +597,7 @@ public class TsFileProcessor {
         tsFileResource.getTsFile().getName());
     for (int i = 0; i < vmMergeTsFiles.size(); i++) {
       vmMergeWriters.get(i).close();
-      logger.info("{} vm file open a writer", vmMergeWriters.get(i).getName());
-      logger.info("{}: {} vm merge starts to delete file", storageGroupName,
-          tsFileResource.getTsFile().getName());
+      logger.info("{} vm file open a writer", vmMergeWriters.get(i).getFile().getName());
       deleteVmFile(vmMergeTsFiles.get(i));
     }
     vmWriters.removeAll(vmMergeWriters);
