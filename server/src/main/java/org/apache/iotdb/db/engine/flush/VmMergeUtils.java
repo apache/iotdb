@@ -107,7 +107,9 @@ public class VmMergeUtils {
                   TimeValuePair timeValuePair = iPointReader.nextTimeValuePair();
                   timeValuePairMap.put(timeValuePair.getTimestamp(), timeValuePair);
                 }
+                iPointReader.close();
               }
+              chunkReader.close();
             }
           }
           IChunkWriter chunkWriter = new ChunkWriterImpl(entry.getValue());

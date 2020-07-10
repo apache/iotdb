@@ -353,7 +353,6 @@ public class TsFileIOWriter {
    * Testing.
    */
   public void close() throws IOException {
-    System.out.println(file.getName() + " close writer");
     canWrite = false;
     out.close();
   }
