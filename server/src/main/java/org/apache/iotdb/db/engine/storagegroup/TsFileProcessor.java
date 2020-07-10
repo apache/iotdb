@@ -136,6 +136,7 @@ public class TsFileProcessor {
   private volatile boolean mergeWorking = false;
 
   private final ReadWriteLock vmMergeLock = new ReentrantReadWriteLock();
+  private final ReadWriteLock vmFileCreateLock = new ReentrantReadWriteLock();
 
   TsFileProcessor(String storageGroupName, File tsfile, List<File> vmFiles,
       VersionController versionController,
@@ -586,12 +587,23 @@ public class TsFileProcessor {
     }
   }
 
-  public static File createNewVMFile(TsFileResource tsFileResource) {
-    File parent = tsFileResource.getTsFile().getParentFile();
-    return FSFactoryProducer.getFSFactory().getFile(parent,
-        tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
-            .currentTimeMillis()
-            + VM_SUFFIX);
+  public File createNewVMFile(TsFileResource tsFileResource) {
+    vmFileCreateLock.writeLock().lock();
+    try {
+      TimeUnit.MILLISECONDS.sleep(1);
+      File parent = tsFileResource.getTsFile().getParentFile();
+      File newVmFile = FSFactoryProducer.getFSFactory().getFile(parent,
+          tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
+              .currentTimeMillis()
+              + VM_SUFFIX);
+      return newVmFile;
+    } catch (InterruptedException e) {
+      logger.error("{}: {}, closing task is interrupted.",
+          storageGroupName, tsFileResource.getTsFile().getName(), e);
+      return null;
+    } finally {
+      vmFileCreateLock.writeLock().unlock();
+    }
   }
 
   private void deleteVmFiles(List<TsFileResource> vmMergeTsFiles,
@@ -614,6 +626,7 @@ public class TsFileProcessor {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
       if (seqFile.getTsFile().exists()) {
+        System.out.println(seqFile.getTsFile().getName() + " delete");
         Files.delete(seqFile.getTsFile().toPath());
       }
     } catch (Exception e) {
@@ -1107,12 +1120,23 @@ public class TsFileProcessor {
     }
 
     private File createNewTmpFile() {
-      File parent = writer.getFile().getParentFile();
-      return FSFactoryProducer.getFSFactory().getFile(parent,
-          writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
-              .currentTimeMillis()
-              + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
-              + PATH_UPGRADE);
+      vmFileCreateLock.writeLock().lock();
+      try {
+        TimeUnit.MILLISECONDS.sleep(1);
+        File parent = writer.getFile().getParentFile();
+        File newTmpFile = FSFactoryProducer.getFSFactory().getFile(parent,
+            writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
+                .currentTimeMillis()
+                + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
+                + PATH_UPGRADE);
+        return newTmpFile;
+      } catch (InterruptedException e) {
+        logger.error("{}: {}, closing task is interrupted.",
+            storageGroupName, tsFileResource.getTsFile().getName(), e);
+        return null;
+      } finally {
+        vmFileCreateLock.writeLock().unlock();
+      }
     }
   }
 }
