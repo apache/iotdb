@@ -215,9 +215,9 @@ public class TsFileProcessor {
    * the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param start            start index of rows to be inserted in insertTabletPlan
-   * @param end              end index of rows to be inserted in insertTabletPlan
-   * @param results          result array
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end,
       TSStatus[] results) throws WriteProcessException {
@@ -600,7 +600,7 @@ public class TsFileProcessor {
         tsFileResource.getTsFile().getName());
     for (int i = 0; i < vmMergeTsFiles.size(); i++) {
       vmMergeWriters.get(i).close();
-      logger.info("{} vm file open a writer", vmMergeWriters.get(i).getFile().getName());
+      logger.info("{} vm file close a writer", vmMergeWriters.get(i).getFile().getName());
       deleteVmFile(vmMergeTsFiles.get(i));
     }
     vmWriters.removeAll(vmMergeWriters);
@@ -613,7 +613,7 @@ public class TsFileProcessor {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
-      if (seqFile.getTsFile().exists() && seqFile.getTsFile().canWrite()) {
+      if (seqFile.getTsFile().exists()) {
         Files.delete(seqFile.getTsFile().toPath());
       }
     } catch (Exception e) {
@@ -879,10 +879,10 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId      device id
+   * @param deviceId device id
    * @param measurementId measurements id
-   * @param dataType      data type
-   * @param encoding      encoding
+   * @param dataType data type
+   * @param encoding encoding
    */
   public void query(String deviceId, String measurementId, TSDataType dataType, TSEncoding encoding,
       Map<String, String> props, QueryContext context,
@@ -1029,7 +1029,7 @@ public class TsFileProcessor {
     public void run() {
       long startTimeMillis = System.currentTimeMillis();
       try {
-        logger.info("{}: {} start to run vm merge task", storageGroupName,
+        logger.info("{}: {} start to filter vm merge condition", storageGroupName,
             tsFileResource.getTsFile().getName());
         long vmPointNum = 0;
         // all flush to target file
@@ -1092,6 +1092,9 @@ public class TsFileProcessor {
           } finally {
             vmMergeLock.writeLock().unlock();
           }
+        } else {
+          logger.info("{}: {} no vm merge condition", storageGroupName,
+              tsFileResource.getTsFile().getName());
         }
       } catch (Exception e) {
         logger.error("Error occurred in Vm Merge thread", e);
