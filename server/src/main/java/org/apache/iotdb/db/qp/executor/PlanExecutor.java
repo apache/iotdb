@@ -916,6 +916,7 @@ public class PlanExecutor implements IPlanExecutor {
 
       insertPlan.setMeasurements(measurementList);
       insertPlan.setSchemasAndTransferType(schemas);
+      insertPlan.setDeviceMNode(node);
       StorageEngine.getInstance().insert(insertPlan);
       if (insertPlan.getFailedMeasurements() != null) {
         throw new StorageEngineException(
@@ -1055,6 +1056,7 @@ public class PlanExecutor implements IPlanExecutor {
         measurementList[i] = measurementNode.getName();
       }
       insertTabletPlan.setSchemas(schemas);
+      insertTabletPlan.setDeviceMNode(node);
       return StorageEngine.getInstance().insertTablet(insertTabletPlan);
     } catch (StorageEngineException | MetadataException e) {
       throw new QueryProcessException(e);

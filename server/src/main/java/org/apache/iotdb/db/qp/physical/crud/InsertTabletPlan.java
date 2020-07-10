@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -55,6 +56,8 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   private long[] times; // times should be sorted. It is done in the session API.
   private ByteBuffer timeBuffer;
+
+  private MNode deviceMNode;
 
   private Object[] columns;
   private ByteBuffer valueBuffer;
@@ -354,6 +357,14 @@ public class InsertTabletPlan extends PhysicalPlan {
 
   public void setMeasurements(String[] measurements) {
     this.measurements = measurements;
+  }
+
+  public MNode getDeviceMNode() {
+    return deviceMNode;
+  }
+
+  public void setDeviceMNode(MNode deviceMNode) {
+    this.deviceMNode = deviceMNode;
   }
 
   public TSDataType[] getDataTypes() {
