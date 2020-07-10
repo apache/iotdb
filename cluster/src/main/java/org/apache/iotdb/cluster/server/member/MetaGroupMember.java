@@ -19,51 +19,6 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.utils.ClusterUtils.STARTUP_CHECK_THREAD_POOL_SIZE;
-import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME;
-import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_UNIT;
-import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -76,13 +31,7 @@ import org.apache.iotdb.cluster.client.sync.SyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.exception.AddSelfException;
-import org.apache.iotdb.cluster.exception.CheckConsistencyException;
-import org.apache.iotdb.cluster.exception.LogExecutionException;
-import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
-import org.apache.iotdb.cluster.exception.QueryTimeOutException;
-import org.apache.iotdb.cluster.exception.RequestTimeOutException;
-import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
+import org.apache.iotdb.cluster.exception.*;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.applier.MetaLogApplier;
@@ -90,49 +39,18 @@ import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
 import org.apache.iotdb.cluster.log.manage.MetaSingleSnapshotLogManager;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
-import org.apache.iotdb.cluster.partition.NodeAdditionResult;
-import org.apache.iotdb.cluster.partition.NodeRemovalResult;
-import org.apache.iotdb.cluster.partition.PartitionGroup;
-import org.apache.iotdb.cluster.partition.PartitionTable;
-import org.apache.iotdb.cluster.partition.SlotPartitionTable;
+import org.apache.iotdb.cluster.partition.*;
 import org.apache.iotdb.cluster.query.ClusterPlanRouter;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.fill.PreviousFillArguments;
 import org.apache.iotdb.cluster.query.groupby.RemoteGroupByExecutor;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.query.reader.DataSourceInfo;
-import org.apache.iotdb.cluster.query.reader.EmptyReader;
-import org.apache.iotdb.cluster.query.reader.ManagedMergeReader;
-import org.apache.iotdb.cluster.query.reader.MergedReaderByTime;
-import org.apache.iotdb.cluster.query.reader.RemoteSeriesReaderByTimestamp;
-import org.apache.iotdb.cluster.query.reader.RemoteSimpleSeriesReader;
-import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
-import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
-import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
-import org.apache.iotdb.cluster.rpc.thrift.GetAggrResultRequest;
-import org.apache.iotdb.cluster.rpc.thrift.GroupByRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
-import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.PreviousFillRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
-import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.query.reader.*;
+import org.apache.iotdb.cluster.rpc.thrift.*;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
-import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
-import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
-import org.apache.iotdb.cluster.rpc.thrift.TSMetaService;
 import org.apache.iotdb.cluster.rpc.thrift.TSMetaService.AsyncClient;
-import org.apache.iotdb.cluster.server.ClientServer;
-import org.apache.iotdb.cluster.server.DataClusterServer;
-import org.apache.iotdb.cluster.server.HardLinkCleaner;
-import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.NodeReport;
+import org.apache.iotdb.cluster.server.*;
 import org.apache.iotdb.cluster.server.NodeReport.MetaMemberReport;
-import org.apache.iotdb.cluster.server.RaftServer;
-import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendGroupEntryHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.NodeStatusHandler;
@@ -155,7 +73,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -173,6 +90,7 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -198,6 +116,21 @@ import org.apache.thrift.protocol.TProtocolFactory;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.apache.iotdb.cluster.utils.ClusterUtils.*;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
 
 public class MetaGroupMember extends RaftMember {
 
@@ -1250,8 +1183,8 @@ public class MetaGroupMember extends RaftMember {
     synchronized (logManager) {
       // 0. first delete all storage groups
       try {
-        MManager.getInstance()
-            .deleteStorageGroups(MManager.getInstance().getAllStorageGroupNames());
+        IoTDB.metaManager
+            .deleteStorageGroups(IoTDB.metaManager.getAllStorageGroupNames());
       } catch (MetadataException e) {
         logger.error("{}: first delete all local storage groups failed, errMessage:{}",
             name,
@@ -1261,7 +1194,7 @@ public class MetaGroupMember extends RaftMember {
       // 2.  register all storage groups
       for (Map.Entry<String, Long> entry : snapshot.getStorageGroupTTLMap().entrySet()) {
         try {
-          MManager.getInstance().setStorageGroup(entry.getKey());
+          IoTDB.metaManager.setStorageGroup(entry.getKey());
         } catch (MetadataException e) {
           logger.error("{}: Cannot add storage group {} in snapshot, errMessage:{}", name,
               entry.getKey(),
@@ -1270,7 +1203,7 @@ public class MetaGroupMember extends RaftMember {
 
         // 3. register ttl in the snapshot
         try {
-          MManager.getInstance().setTTL(entry.getKey(), entry.getValue());
+          IoTDB.metaManager.setTTL(entry.getKey(), entry.getValue());
           StorageEngine.getInstance().setTTL(entry.getKey(), entry.getValue());
         } catch (MetadataException | StorageEngineException | IOException e) {
           logger
@@ -1935,7 +1868,7 @@ public class MetaGroupMember extends RaftMember {
           "Pull timeseries of " + prefixPaths).syncLeader();
       int preSize = results.size();
       for (String prefixPath : prefixPaths) {
-        MManager.getInstance().collectSeries(prefixPath, results);
+        IoTDB.metaManager.collectSeries(prefixPath, results);
       }
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from local", name,
@@ -2079,8 +2012,6 @@ public class MetaGroupMember extends RaftMember {
       if (dataType == null) {
         MeasurementSchema schema = schemas.get(i);
         columnType.add(schema.getType());
-        MManager.getInstance().cacheSchema(paths.get(i).getDevice() +
-            IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
       } else {
         columnType.add(dataType);
       }
@@ -2135,8 +2066,6 @@ public class MetaGroupMember extends RaftMember {
         } else {
           columnType.add(aggregationType);
         }
-        MManager.getInstance().cacheSchema(schema.getMeasurementId(), schema);
-        measurementType.add(schema.getType());
       }
       return new Pair<>(columnType, measurementType);
     }
@@ -2478,7 +2407,7 @@ public class MetaGroupMember extends RaftMember {
       // compute the related data groups of all intervals
       // TODO-Cluster#690: change to a broadcast when the computation is too expensive
       try {
-        String storageGroupName = MManager.getInstance()
+        String storageGroupName = IoTDB.metaManager
             .getStorageGroupName(path.getFullPath());
         Set<Node> groupHeaders = new HashSet<>();
         for (int i = 0; i < intervals.getIntervalSize(); i++) {
@@ -2621,7 +2550,7 @@ public class MetaGroupMember extends RaftMember {
     // added, e.g:
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
+    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(originPath);
     logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
     List<String> ret = getMatchedPaths(sgPathMap);
     logger.debug("The paths of path {} are {}", originPath, ret);
@@ -2684,7 +2613,7 @@ public class MetaGroupMember extends RaftMember {
     // added, e.g:
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(originPath);
+    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(originPath);
     logger.debug("The storage groups of path {} are {}", originPath, sgPathMap.keySet());
     Set<String> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
@@ -2714,7 +2643,7 @@ public class MetaGroupMember extends RaftMember {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        List<String> allTimeseriesName = MManager.getInstance().getAllTimeseriesName(pathUnderSG);
+        List<String> allTimeseriesName = IoTDB.metaManager.getAllTimeseriesName(pathUnderSG);
         logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
             allTimeseriesName);
         result.addAll(allTimeseriesName);
@@ -2798,7 +2727,7 @@ public class MetaGroupMember extends RaftMember {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         getLocalDataMember(partitionGroup.getHeader()).syncLeader();
-        Set<String> allDevices = MManager.getInstance().getDevices(pathUnderSG);
+        Set<String> allDevices = IoTDB.metaManager.getDevices(pathUnderSG);
         logger.debug("{}: get matched paths of {} locally, result {}", name, partitionGroup,
             allDevices);
         result.addAll(allDevices);
@@ -2861,13 +2790,13 @@ public class MetaGroupMember extends RaftMember {
   public List<String> getAllStorageGroupNames() {
     // make sure this node knows all storage groups
     syncLeader();
-    return MManager.getInstance().getAllStorageGroupNames();
+    return IoTDB.metaManager.getAllStorageGroupNames();
   }
 
   public List<StorageGroupMNode> getAllStorageGroupNodes() {
     // make sure this node knows all storage groups
     syncLeader();
-    return MManager.getInstance().getAllStorageGroupNodes();
+    return IoTDB.metaManager.getAllStorageGroupNodes();
   }
 
   @SuppressWarnings("java:S2274")
@@ -3132,7 +3061,7 @@ public class MetaGroupMember extends RaftMember {
    *                      is only used in logs for tracing
    * @return
    */
-  protected DataGroupMember getLocalDataMember(Node header,
+  public DataGroupMember getLocalDataMember(Node header,
       AsyncMethodCallback resultHandler, Object request) {
     return dataClusterServer.getDataMember(header, resultHandler, request);
   }

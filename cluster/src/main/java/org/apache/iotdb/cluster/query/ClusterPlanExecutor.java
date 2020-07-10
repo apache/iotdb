@@ -59,7 +59,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -76,6 +76,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.query.executor.IQueryRouter;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -83,6 +84,13 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClusterPlanExecutor extends PlanExecutor {
 
@@ -144,7 +152,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // added, e.g:
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(path);
+    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     int ret = 0;
     try {
@@ -169,7 +177,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // added, e.g:
     // "root.*" will be translated into:
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
-    Map<String, String> sgPathMap = MManager.getInstance().determineStorageGroup(path);
+    Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     int ret = 0;
     try {
@@ -260,9 +268,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private int getLocalPathCount(String path, int level) throws MetadataException {
     int localResult;
     if (level == -1) {
-      localResult = MManager.getInstance().getAllTimeseriesCount(path);
+      localResult = IoTDB.metaManager.getAllTimeseriesCount(path);
     } else {
-      localResult = MManager.getInstance().getNodesCountInGivenLevel(path, level);
+      localResult = IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
     }
     return localResult;
   }
@@ -364,7 +372,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
     try {
-      return MManager.getInstance().getNodesList(schemaPattern, level,
+      return IoTDB.metaManager.getNodesList(schemaPattern, level,
           new SlotSgFilter(metaGroupMember.getPartitionTable().getNodeSlots(header)));
     } catch (MetadataException e) {
       logger
@@ -461,8 +469,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
     try {
-      return
-          MManager.getInstance().getChildNodePathInNextLevel(path);
+      return IoTDB.metaManager.getChildNodePathInNextLevel(path);
     } catch (MetadataException e) {
       logger
           .error("Cannot not get next children of {} from {} locally", path, group);
@@ -586,9 +593,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       List<ShowTimeSeriesResult> localResult;
       if (plan.getKey() != null && plan.getValue() != null) {
-        localResult = MManager.getInstance().getAllTimeseriesSchema(plan);
+        localResult = IoTDB.metaManager.getAllTimeseriesSchema(plan);
       } else {
-        localResult = MManager.getInstance().showTimeseries(plan);
+        localResult = IoTDB.metaManager.showTimeseries(plan);
       }
       resultSet.addAll(localResult);
       logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
@@ -671,7 +678,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     MNode node = null;
     boolean allSeriesExists = true;
     try {
-      node = MManager.getInstance().getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+      node = IoTDB.metaManager.getDeviceNodeWithAutoCreateAndReadLock(deviceId);
     } catch (PathNotExistException e) {
       allSeriesExists = false;
     }
@@ -701,8 +708,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     List<MeasurementSchema> schemas = metaGroupMember.pullTimeSeriesSchemas(schemasToPull);
     for (MeasurementSchema schema : schemas) {
-      MManager.getInstance()
-          .cacheSchema(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), schema);
+      IoTDB.metaManager
+          .cacheMeta(deviceId + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(), new MeasurementMeta(schema));
     }
     logger.debug("Pulled {}/{} schemas from remote", schemas.size(), measurementList.length);
   }

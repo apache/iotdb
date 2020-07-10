@@ -95,6 +95,7 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -497,7 +498,7 @@ public class DataGroupMemberTest extends MemberTest {
             timeseriesSchema.getCompressor(), timeseriesSchema.getProps(),
             Collections.emptyMap(), Collections.emptyMap(), null);
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
-    assertTrue(MManager.getInstance().isPathExist(timeseriesSchema.getFullPath()));
+    assertTrue(IoTDB.metaManager.isPathExist(timeseriesSchema.getFullPath()));
   }
 
   @Test
@@ -515,7 +516,7 @@ public class DataGroupMemberTest extends MemberTest {
             timeseriesSchema.getCompressor(), timeseriesSchema.getProps(),
             Collections.emptyMap(), Collections.emptyMap(), null);
     assertEquals(200, dataGroupMember.executeNonQuery(createTimeSeriesPlan).code);
-    assertTrue(MManager.getInstance().isPathExist(timeseriesSchema.getFullPath()));
+    assertTrue(IoTDB.metaManager.isPathExist(timeseriesSchema.getFullPath()));
 
     testThreadPool.shutdownNow();
   }

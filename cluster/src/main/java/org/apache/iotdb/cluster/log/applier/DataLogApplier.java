@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,11 +92,11 @@ public class DataLogApplier extends BaseApplier {
     try {
       if (plan instanceof InsertRowPlan) {
         InsertRowPlan insertPlan = (InsertRowPlan) plan;
-        sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
+        sg = IoTDB.metaManager.getStorageGroupName(insertPlan.getDeviceId());
         time = insertPlan.getTime();
       } else {
         InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
-        sg = MManager.getInstance().getStorageGroupName(insertTabletPlan.getDeviceId());
+        sg = IoTDB.metaManager.getStorageGroupName(insertTabletPlan.getDeviceId());
         time = insertTabletPlan.getMinTime();
       }
     } catch (StorageGroupNotSetException e) {
@@ -108,11 +109,11 @@ public class DataLogApplier extends BaseApplier {
       }
       if (plan instanceof InsertRowPlan) {
         InsertRowPlan insertPlan = (InsertRowPlan) plan;
-        sg = MManager.getInstance().getStorageGroupName(insertPlan.getDeviceId());
+        sg = IoTDB.metaManager.getStorageGroupName(insertPlan.getDeviceId());
         time = insertPlan.getTime();
       } else {
         InsertTabletPlan insertTabletPlan = (InsertTabletPlan) plan;
-        sg = MManager.getInstance().getStorageGroupName(insertTabletPlan.getDeviceId());
+        sg = IoTDB.metaManager.getStorageGroupName(insertTabletPlan.getDeviceId());
         time = insertTabletPlan.getMinTime();
       }
     }

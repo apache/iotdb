@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -155,7 +154,7 @@ public abstract class IoTDBTest {
     queryPlan.setPaths(paths);
     List<TSDataType> dataTypes = new ArrayList<>();
     for (Path path : paths) {
-      dataTypes.add(MManager.getInstance().getSeriesType(path.getFullPath()));
+      dataTypes.add(IoTDB.metaManager.getSeriesType(path.getFullPath()));
     }
     queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDataTypes(dataTypes);

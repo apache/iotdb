@@ -31,6 +31,7 @@ import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.service.IoTDB;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +53,7 @@ public class MetaSingleSnapshotLogManager extends RaftLogManager {
 
   @Override
   public void takeSnapshot() {
-    storageGroupTTLMap = MManager.getInstance().getStorageGroupsTTL();
+    storageGroupTTLMap = IoTDB.metaManager.getStorageGroupsTTL();
     try {
       IAuthorizer authorizer = BasicAuthorizer.getInstance();
       userMap = authorizer.getAllUsers();

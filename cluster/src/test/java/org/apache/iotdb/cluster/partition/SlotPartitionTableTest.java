@@ -77,6 +77,7 @@ import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -109,7 +110,7 @@ public class SlotPartitionTableTest {
     prevPartitionInterval = StorageEngine.getTimePartitionInterval();
     StorageEngine.setEnablePartition(true);
 
-    MManager.getInstance().init();
+    IoTDB.metaManager.init();
     StorageEngine.setTimePartitionInterval(7 * 24 * 3600 * 1000L);
     nodes = new ArrayList<>();
     IntStream.range(0, 20).forEach(i -> nodes.add(getNode(i)));
