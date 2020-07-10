@@ -690,9 +690,6 @@ public class TsFileProcessor {
         curWriter.mark();
         flushTask = new MemTableFlushTask(memTableToFlush, curWriter, storageGroupName);
         flushTask.syncFlushMemTable();
-        if (config.isEnableVm()) {
-          curWriter.endFile();
-        }
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
             storageGroupName, tsFileResource.getTsFile().getName(), e);
