@@ -59,7 +59,7 @@ public class TracingManager {
   }
 
   public void writeQueryInfo(long queryId, String statement, int pathsNum) throws IOException {
-    StringBuilder builder = new StringBuilder("-----------------------------\n");
+    StringBuilder builder = new StringBuilder();
     builder.append("Query Id: ").append(queryId)
         .append(" - Query Statement: ").append(statement)
         .append("\nQuery Id: ").append(queryId)
@@ -73,7 +73,7 @@ public class TracingManager {
 
   // for align by device query
   public void writeQueryInfo(long queryId, String statement) throws IOException {
-    StringBuilder builder = new StringBuilder("-----------------------------\n");
+    StringBuilder builder = new StringBuilder();
     builder.append("Query Id: ").append(queryId)
         .append(" - Query Statement: ").append(statement)
         .append("\nQuery Id: ").append(queryId)
