@@ -94,8 +94,7 @@ public class TsFileProcessorEnableVmTest {
 
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
-    Assert.assertEquals(1, tsfileResourcesForQuery.size());
-    Assert.assertEquals(0, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
+    assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 1000000; i++) {
       TSRecord record = new TSRecord(i, deviceId);
@@ -129,8 +128,8 @@ public class TsFileProcessorEnableVmTest {
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
 
-    assertEquals(2, tsfileResourcesForQuery.size());
-    assertEquals(1, tsfileResourcesForQuery.get(1).getChunkMetadataList().size());
+    assertEquals(1, tsfileResourcesForQuery.size());
+    assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
     processor.syncClose();
   }
 
@@ -146,9 +145,7 @@ public class TsFileProcessorEnableVmTest {
 
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
-    assertEquals(1, tsfileResourcesForQuery.size());
-    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertTrue(tsfileResourcesForQuery.get(0).getChunkMetadataList().isEmpty());
+    assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);

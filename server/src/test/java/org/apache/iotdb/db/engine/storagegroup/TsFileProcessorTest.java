@@ -95,9 +95,7 @@ public class TsFileProcessorTest {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
-    assertEquals(1, tsfileResourcesForQuery.size());
-    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertTrue(tsfileResourcesForQuery.get(0).getChunkMetadataList().isEmpty());
+    assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
@@ -148,9 +146,7 @@ public class TsFileProcessorTest {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
-    assertEquals(1, tsfileResourcesForQuery.size());
-    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertTrue(tsfileResourcesForQuery.get(0).getChunkMetadataList().isEmpty());
+    assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);
@@ -228,9 +224,7 @@ public class TsFileProcessorTest {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
-    assertEquals(1, tsfileResourcesForQuery.size());
-    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertTrue(tsfileResourcesForQuery.get(0).getChunkMetadataList().isEmpty());
+    assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int flushId = 0; flushId < 10; flushId++) {
       for (int i = 1; i <= 10; i++) {
@@ -267,9 +261,7 @@ public class TsFileProcessorTest {
 
     processor.query(deviceId, measurementId, dataType, encoding, props, context,
         tsfileResourcesForQuery);
-    assertEquals(1, tsfileResourcesForQuery.size());
-    assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertTrue(tsfileResourcesForQuery.get(0).getChunkMetadataList().isEmpty());
+    assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, deviceId);

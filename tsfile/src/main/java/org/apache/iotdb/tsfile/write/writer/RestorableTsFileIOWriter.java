@@ -43,7 +43,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * a restorable tsfile.
+ * This writer is for opening and recover a TsFile
+ *
+ * (1) If the TsFile is closed normally, hasCrashed()=false and canWrite()=false
+ *
+ * (2) Otherwise, the writer generates metadata for already flushed Chunks and truncate crashed data.
+ * The hasCrashed()=true and canWrite()=true
+ *
+ * Notice!!!
+ * If you want to query this file through the generated metadata, remember to call the makeMetadataVisible()
+ *
  */
 public class RestorableTsFileIOWriter extends TsFileIOWriter {
 
