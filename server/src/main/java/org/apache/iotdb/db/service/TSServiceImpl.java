@@ -142,6 +142,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
+  private static final int FETCH_SIZE = 10000;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
@@ -552,6 +553,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     long queryId = -1;
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
+
+      // In case users forget to set this field in query, use the default value
+      if (fetchSize == 0) {
+        fetchSize = FETCH_SIZE;
+      }
 
       if (plan instanceof ShowTimeSeriesPlan) {
         //If the user does not pass the limit, then set limit = fetchSize and haslimit=false,else set haslimit = true
