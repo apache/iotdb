@@ -73,7 +73,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
   public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
     try {
       resultHandler.onComplete(member.appendEntries(request));
-    } catch (UnknownLogTypeException e) {
+    } catch (Exception e) {
       resultHandler.onError(e);
     }
   }

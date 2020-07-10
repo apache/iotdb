@@ -112,7 +112,15 @@ public class SyncClientPool {
     //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
     Deque<Client> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
     synchronized (this) {
-      clientStack.push(client);
+      if (client.getInputProtocol().getTransport().isOpen()) {
+        clientStack.push(client);
+      } else {
+        try {
+          clientStack.push(syncClientFactory.getSyncClient(node, this));
+        } catch (TTransportException e) {
+          logger.error("Cannot open transport for client", e);
+        }
+      }
       this.notifyAll();
     }
   }

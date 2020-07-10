@@ -47,7 +47,7 @@ public class SyncDataClient extends Client {
   }
 
   public void putBack() {
-    if (pool != null && getInputProtocol().getTransport().isOpen()) {
+    if (pool != null) {
       pool.putClient(node, this);
     } else {
       getInputProtocol().getTransport().close();

@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -1050,10 +1051,16 @@ public abstract class RaftMember {
       }
       return tsStatus;
     } catch (IOException | TException e) {
-      TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
-      status.setMessage(e.getMessage());
-      logger
-          .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+      TSStatus status;
+      if (e.getCause() instanceof SocketTimeoutException) {
+        status = StatusUtils.TIME_OUT;
+        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+      } else {
+        status = StatusUtils.INTERNAL_ERROR.deepCopy();
+        status.setMessage(e.getMessage());
+        logger
+            .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+      }
       return status;
     } finally {
       putBackSyncClient(client);

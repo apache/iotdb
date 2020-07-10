@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.log.catchup;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.ConcurrentModificationException;
 import java.util.List;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -83,6 +84,8 @@ public class CatchUpTask implements Runnable {
                 + "local first index: {}",
             raftMember.getName(), logs.size(), lo, hi, node, localFirstIndex);
       }
+    } catch (ConcurrentModificationException e) {
+      // ignore
     } catch (Exception e) {
       logger.error("Unexpected error in logManager's getEntries during matchIndexCheck", e);
     }

@@ -320,7 +320,7 @@ public class HeartbeatThread implements Runnable {
         ElectionHandler handler = new ElectionHandler(localMember, node, nextTerm, quorum,
             electionTerminated, electionValid);
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-         requestVoteAsync(node, handler, request);
+          requestVoteAsync(node, handler, request);
         } else {
           requestVoteSync(node, handler, request);
         }

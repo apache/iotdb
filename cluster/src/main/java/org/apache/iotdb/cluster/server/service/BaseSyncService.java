@@ -74,7 +74,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
   public long appendEntries(AppendEntriesRequest request) throws TException {
     try {
       return member.appendEntries(request);
-    } catch (UnknownLogTypeException e) {
+    } catch (Exception e) {
       throw new TException(e);
     }
   }

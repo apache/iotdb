@@ -238,7 +238,7 @@ public class CMManager extends MManager {
     MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurementList.length];
     cacheLock.readLock().lock();
     for (int i = 0; i < measurementList.length; i++) {
-      MeasurementMeta measurementMeta = null;
+      MeasurementMeta measurementMeta;
       try {
         measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementList[i]);
         if (measurementMeta == null) {
@@ -279,7 +279,7 @@ public class CMManager extends MManager {
         return measurementMeta.getMeasurementSchema();
       }
     } catch (IOException ex) {
-      ex.printStackTrace();
+      // ignore
     } finally {
       cacheLock.readLock().unlock();
     }
@@ -295,7 +295,7 @@ public class CMManager extends MManager {
         return measurementMeta.getMeasurementSchema();
       }
     } catch (IOException ex) {
-      ex.printStackTrace();
+      // ignore
     } finally {
       cacheLock.readLock().unlock();
     }

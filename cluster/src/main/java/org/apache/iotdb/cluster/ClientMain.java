@@ -40,6 +40,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -251,7 +252,7 @@ public class ClientMain {
     TTransport transport = new TFastFramedTransport(new TSocket(ip, port));
     transport.open();
     TProtocol protocol =
-        ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled() ?
+        IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable() ?
             new TCompactProtocol(transport) : new TBinaryProtocol(transport);
     return factory.getClient(protocol);
   }
@@ -285,7 +286,7 @@ public class ClientMain {
       logger.info("{ {} }", query);
     }
     TSExecuteStatementResp resp = client
-        .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId));
+        .executeQueryStatement(new TSExecuteStatementReq(sessionId, query, statementId).setFetchSize(1000));
     if (resp.status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
       failedQueries.put(query, resp.status);
       return;

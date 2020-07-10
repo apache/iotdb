@@ -27,6 +27,7 @@ import java.util.List;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -56,7 +57,7 @@ public class ShowTimeseriesDataSet extends QueryDataSet {
     if (index == result.size() && !hasLimit) {
       plan.setOffset(plan.getOffset() + plan.getLimit());
       try {
-        List<ShowTimeSeriesResult> showTimeSeriesResults = MManager.getInstance()
+        List<ShowTimeSeriesResult> showTimeSeriesResults = IoTDB.metaManager
             .showTimeseries(plan);
         result = transferShowTimeSeriesResultToRecordList(showTimeSeriesResults);
         index = 0;
