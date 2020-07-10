@@ -40,12 +40,10 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
@@ -109,18 +107,19 @@ public class StorageGroupProcessorTest {
     processor.delete(deviceId, measurementId, 0, 15L);
 
     List<TsFileResource> unLockList = new ArrayList<>();
-    Pair<List<ReadOnlyMemChunk>, List<List<ChunkMetadata>>> pair = null;
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessor()) {
-      pair = tsfileProcessor
+      tsfileProcessor
           .query(deviceId, measurementId, TSDataType.INT32, TSEncoding.RLE, Collections.emptyMap(),
-              new QueryContext());
+              new QueryContext(), tsfileResourcesForQuery);
       unLockList.add(tsfileProcessor.getTsFileResource());
       unLockList.addAll(tsfileProcessor.getVmTsFileResources());
       break;
     }
 
-    List<ReadOnlyMemChunk> memChunks = pair.left;
-
+    Assert.assertEquals(1, tsfileResourcesForQuery.size());
+    Assert.assertEquals(0, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
+    List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     long time = 16;
     for (ReadOnlyMemChunk memChunk : memChunks) {
       IPointReader iterator = memChunk.getPointReader();
@@ -131,8 +130,6 @@ public class StorageGroupProcessorTest {
     }
 
     unLockList.forEach(TsFileResource::readUnlock);
-
-    Assert.assertEquals(0, pair.right.get(0).size());
   }
 
   @Test
