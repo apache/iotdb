@@ -21,9 +21,25 @@ package org.apache.iotdb.cluster.utils;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.cluster.common.TestUtils;
+import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
+import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.LogParser;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TTransport;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
 
 public class SerializeUtilTest {
@@ -36,5 +52,43 @@ public class SerializeUtilTest {
       Node fromStr = SerializeUtils.stringToNode(nodeStr);
       assertEquals(node, fromStr);
     }
+  }
+
+  @Test
+  public void testInsertTabletPlanLog() throws UnknownLogTypeException {
+    long[] times = new long[]{110L, 111L, 112L, 113L};
+    List<Integer> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.DOUBLE.ordinal());
+    dataTypes.add(TSDataType.INT64.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.BOOLEAN.ordinal());
+    Object[] columns = new Object[4];
+    columns[0] = new double[4];
+    columns[1] = new long[4];
+    columns[2] = new Binary[4];
+    columns[3] = new boolean[4];
+
+    for (int r = 0; r < 4; r++) {
+      ((double[]) columns[0])[r] = 1.0;
+      ((long[]) columns[1])[r] = 1;
+      ((Binary[]) columns[2])[r] = new Binary("hh" + r);
+      ((boolean[]) columns[3])[r] = false;
+    }
+
+    InsertTabletPlan tabletPlan = new InsertTabletPlan("root.test",
+        new String[]{"s1", "s2", "s3", "s4"}, dataTypes);
+    tabletPlan.setTimes(times);
+    tabletPlan.setColumns(columns);
+    tabletPlan.setRowCount(times.length);
+    tabletPlan.setStart(0);
+    tabletPlan.setEnd(4);
+
+    Log log = new PhysicalPlanLog(tabletPlan);
+    log.setCurrLogTerm(1);
+    log.setCurrLogIndex(2);
+
+    ByteBuffer buffer = log.serialize();
+    Log parsed = LogParser.getINSTANCE().parse(buffer);
+    assertEquals(log, parsed);
   }
 }

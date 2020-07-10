@@ -27,6 +27,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketTimeoutException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -442,7 +443,14 @@ public abstract class RaftMember {
     long response;
     List<Log> logs = new ArrayList<>();
     for (ByteBuffer buffer : request.getEntries()) {
-      Log log = LogParser.getINSTANCE().parse(buffer);
+      buffer.mark();
+      Log log = null;
+      try {
+        log = LogParser.getINSTANCE().parse(buffer);
+      } catch (BufferUnderflowException e) {
+        buffer.reset();
+        throw e;
+      }
       logs.add(log);
     }
 

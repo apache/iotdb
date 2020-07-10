@@ -22,7 +22,9 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -502,4 +504,32 @@ public class InsertTabletPlan extends InsertPlan {
     columns[index] = null;
   }
 
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    InsertTabletPlan that = (InsertTabletPlan) o;
+
+    return rowCount == that.rowCount &&
+        Arrays.equals(times, that.times) &&
+        Objects.equals(timeBuffer, that.timeBuffer) &&
+        Objects.equals(valueBuffer, that.valueBuffer) &&
+        Objects.equals(maxTime, that.maxTime) &&
+        Objects.equals(minTime, that.minTime) &&
+        Objects.equals(paths, that.paths) &&
+        Objects.equals(range, that.range);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects
+        .hash(timeBuffer, valueBuffer, rowCount, maxTime, minTime, paths,
+            range);
+    result = 31 * result + Arrays.hashCode(times);
+    return result;
+  }
 }

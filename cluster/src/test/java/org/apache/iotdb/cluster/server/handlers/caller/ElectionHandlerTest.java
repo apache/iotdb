@@ -50,12 +50,13 @@ public class ElectionHandlerTest {
   public void testAgreement() throws InterruptedException {
     AtomicBoolean terminated = new AtomicBoolean(false);
     AtomicBoolean electionValid = new AtomicBoolean(false);
+    AtomicInteger failingVoteCounter = new AtomicInteger(5);
     long electorTerm = 10;
     AtomicInteger quorum = new AtomicInteger(5);
     synchronized (member.getTerm()) {
       for (int i = 0; i < 5; i++) {
         ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
-            quorum, terminated, electionValid);
+            quorum, terminated, electionValid, failingVoteCounter);
         new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
       }
       member.getTerm().wait();
@@ -73,12 +74,12 @@ public class ElectionHandlerTest {
     AtomicInteger quorum = new AtomicInteger(5);
     for (int i = 0; i < 3; i++) {
       ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
-          quorum, terminated, electionValid);
+          quorum, terminated, electionValid, new AtomicInteger(5));
       handler.onComplete(Response.RESPONSE_AGREE);
     }
     for (int i = 6; i < 10; i++) {
       ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
-          quorum, terminated, electionValid);
+          quorum, terminated, electionValid, new AtomicInteger(5));
       handler.onComplete(electorTerm - 3);
     }
     assertFalse(electionValid.get());
@@ -93,12 +94,12 @@ public class ElectionHandlerTest {
     synchronized (member.getTerm()) {
       for (int i = 0; i < 3; i++) {
         ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
-            quorum, terminated, electionValid);
+            quorum, terminated, electionValid, new AtomicInteger(5));
         new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
       }
       for (int i = 3; i < 6; i++) {
         ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(i), electorTerm,
-            quorum, terminated, electionValid);
+            quorum, terminated, electionValid, new AtomicInteger(5));
         new Thread(() -> handler.onComplete(electorTerm + 3)).start();
       }
       member.getTerm().wait();
@@ -116,7 +117,7 @@ public class ElectionHandlerTest {
     AtomicInteger quorum = new AtomicInteger(5);
 
     ElectionHandler handler = new ElectionHandler(member, TestUtils.getNode(0), electorTerm,
-        quorum, terminated, electionValid);
+        quorum, terminated, electionValid, new AtomicInteger(5));
     handler.onError(new TestException());
 
     assertEquals(5, quorum.get());
