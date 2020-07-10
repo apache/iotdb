@@ -29,6 +29,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -56,6 +57,8 @@ public class InsertPlan extends PhysicalPlan {
   private Object[] values;
   private TSDataType[] types;
   private MeasurementSchema[] schemas;
+
+  private MNode deviceMNode;
 
   // if inferType is false, use the type of values directly
   // if inferType is true, values is String[], and infer types from them
@@ -360,6 +363,14 @@ public class InsertPlan extends PhysicalPlan {
 
   public int getFailedMeasurementNumber() {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
+  }
+
+  public MNode getDeviceMNode() {
+    return deviceMNode;
+  }
+
+  public void setDeviceMNode(MNode deviceMNode) {
+    this.deviceMNode = deviceMNode;
   }
 
   public TSDataType[] getTypes() {
