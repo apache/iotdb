@@ -170,6 +170,7 @@ public class VmMergeUtils {
 
     for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
       reader.close();
+      logger.info("{} vm file close a reader", reader.getFileName());
     }
   }
 
@@ -179,6 +180,7 @@ public class VmMergeUtils {
     return tsFileSequenceReaderMap.computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
         path -> {
           try {
+            logger.info("{} vm file create a reader", path);
             return new TsFileSequenceReader(path);
           } catch (IOException e) {
             logger.error(
