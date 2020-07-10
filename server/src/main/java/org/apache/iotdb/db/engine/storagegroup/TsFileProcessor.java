@@ -591,13 +591,28 @@ public class TsFileProcessor {
             + VM_SUFFIX);
   }
 
+  private void deleteVmFiles(List<TsFileResource> vmMergeTsFiles,
+      List<RestorableTsFileIOWriter> vmMergeWriters) throws IOException {
+    logger.info("{}: {} vm merge starts to delete file", storageGroupName,
+        tsFileResource.getTsFile().getName());
+    for (int i = 0; i < vmMergeTsFiles.size(); i++) {
+      vmMergeWriters.get(i).close();
+      logger.info("{} vm file open a writer", vmMergeWriters.get(i).getName());
+      logger.info("{}: {} vm merge starts to delete file", storageGroupName,
+          tsFileResource.getTsFile().getName());
+      deleteVmFile(vmMergeTsFiles.get(i));
+    }
+    vmWriters.removeAll(vmMergeWriters);
+    vmTsFileResources.removeAll(vmMergeTsFiles);
+  }
+
   public static void deleteVmFile(TsFileResource seqFile) {
     seqFile.writeLock();
     try {
       ChunkMetadataCache.getInstance().remove(seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
-      if (seqFile.getTsFile().exists()) {
+      if (seqFile.getTsFile().exists() && seqFile.getTsFile().canWrite()) {
         Files.delete(seqFile.getTsFile().toPath());
       }
     } catch (Exception e) {
@@ -629,11 +644,7 @@ public class TsFileProcessor {
             new VmLogger(tsFileResource.getTsFile().getParent(),
                 tsFileResource.getTsFile().getName()),
             deviceSet, sequence);
-        for (TsFileResource vmTsFileResource : vmTsFileResources) {
-          deleteVmFile(vmTsFileResource);
-        }
-        vmWriters.clear();
-        vmTsFileResources.clear();
+        deleteVmFiles(vmTsFileResources, vmWriters);
         if (logFile.exists()) {
           Files.delete(logFile.toPath());
         }
@@ -681,6 +692,9 @@ public class TsFileProcessor {
         curWriter.mark();
         flushTask = new MemTableFlushTask(memTableToFlush, curWriter, storageGroupName);
         flushTask.syncFlushMemTable();
+        if (config.isEnableVm()) {
+          curWriter.endFile();
+        }
       } catch (Exception e) {
         logger.error("{}: {} meet error when flushing a memtable, change system mode to read-only",
             storageGroupName, tsFileResource.getTsFile().getName(), e);
@@ -794,8 +808,7 @@ public class TsFileProcessor {
             .submit(
                 new VmMergeTask(new ArrayList<>(vmTsFileResources), new ArrayList<>(vmWriters)));
       } else {
-        logger.info("{}: {} last vm merge task is working, skip current merge", storageGroupName,
-            tsFileResource.getTsFile().getName());
+        logger.info("{}: {} last vm merge task is working, skip current merge", storageGroupName);
       }
     }
   }
@@ -986,11 +999,7 @@ public class TsFileProcessor {
         new VmLogger(tsFileResource.getTsFile().getParent(),
             tsFileResource.getTsFile().getName()),
         new HashSet<>(), sequence);
-    for (TsFileResource vmTsFileResource : currMergeVmFiles) {
-      deleteVmFile(vmTsFileResource);
-    }
-    vmWriters.removeAll(currMergeVmWriters);
-    vmTsFileResources.removeAll(currMergeVmFiles);
+    deleteVmFiles(currMergeVmFiles, currMergeVmWriters);
     File logFile = FSFactoryProducer.getFSFactory()
         .getFile(tsFileResource.getTsFile().getParent(),
             tsFileResource.getTsFile().getName() + VM_LOG_NAME);
@@ -1057,27 +1066,20 @@ public class TsFileProcessor {
           RestorableTsFileIOWriter tmpWriter = new RestorableTsFileIOWriter(tmpFile);
           VmMergeUtils.fullMerge(tmpWriter, vmMergeWriters,
               storageGroupName, null, new HashSet<>(), sequence);
+          tmpWriter.close();
           File newVmFile = createNewVMFile(tsFileResource);
-          File mergedFile = FSFactoryProducer.getFSFactory().getFile(newVmFile.getPath()
-              + MERGED_SUFFIX);
+          File mergedFile = FSFactoryProducer.getFSFactory()
+              .getFile(newVmFile.getPath() + MERGED_SUFFIX);
           if (!tmpFile.renameTo(mergedFile)) {
             logger.error("Failed to rename {} to {}", newVmFile, mergedFile);
           }
-          logger.info("{}: {} vm merge starts to delete file", storageGroupName,
-              tsFileResource.getTsFile().getName());
-          for (TsFileResource vmTsFileResource : vmMergeTsFiles) {
-            deleteVmFile(vmTsFileResource);
-          }
-          vmWriters.removeAll(vmMergeWriters);
-          vmTsFileResources.removeAll(vmMergeTsFiles);
-          logger.info("{}: {} vm merge end file", storageGroupName,
-              tsFileResource.getTsFile().getName());
+          deleteVmFiles(vmMergeTsFiles, vmMergeWriters);
           if (!mergedFile.renameTo(newVmFile)) {
             logger.error("Failed to rename {} to {}", mergedFile, newVmFile);
           }
           vmTsFileResources.add(0, new TsFileResource(newVmFile));
           vmWriters.add(0, new RestorableTsFileIOWriter(newVmFile));
-          logger.info("{} vm file close a writer", newVmFile.getName());
+          logger.info("{} vm file open a writer", newVmFile.getName());
         }
       } catch (Exception e) {
         logger.error("Error occurred in Vm Merge thread", e);

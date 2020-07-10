@@ -172,6 +172,9 @@ public class VmMergeUtils {
       reader.close();
       logger.info("{} vm file close a reader", reader.getFileName());
     }
+    if (vmLogger != null) {
+      vmLogger.close();
+    }
   }
 
   private static TsFileSequenceReader buildReaderFromVmWriter(RestorableTsFileIOWriter vmWriter,
@@ -180,8 +183,13 @@ public class VmMergeUtils {
     return tsFileSequenceReaderMap.computeIfAbsent(vmWriter.getFile().getAbsolutePath(),
         path -> {
           try {
-            logger.info("{} vm file create a reader", path);
-            return new TsFileSequenceReader(path);
+            if (vmWriter.getFile().exists()) {
+              logger.info("{} vm file create a reader", path);
+              return new TsFileSequenceReader(path);
+            } else {
+              logger.info("{} vm file does not exist", path);
+              return null;
+            }
           } catch (IOException e) {
             logger.error(
                 "Storage group {} tsfile {}, flush recover meets error. reader create failed.",
