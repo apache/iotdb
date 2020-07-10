@@ -133,8 +133,15 @@ public abstract class BaseSyncService implements RaftService.Iface {
       // forward the plan to the leader
       Client client = member.getSyncClient(member.getLeader());
       if (client != null) {
-        TSStatus status = client.executeNonQueryPlan(request);
-        putBackSyncClient(client);
+        TSStatus status;
+        try {
+          status = client.executeNonQueryPlan(request);
+        } catch (TException e) {
+          client.getInputProtocol().getTransport().close();
+          throw e;
+        } finally {
+          putBackSyncClient(client);
+        }
         return status;
       } else {
         return StatusUtils.NO_LEADER;

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.net.SocketTimeoutException;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
@@ -1792,11 +1793,24 @@ public class MetaGroupMember extends RaftMember {
         logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
       }
       return tsStatus;
-    } catch (IOException | TException e) {
+    } catch (IOException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
       status.setMessage(e.getMessage());
       logger
           .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+      return status;
+    } catch (TException e) {
+      TSStatus status;
+      if (e.getCause() instanceof SocketTimeoutException) {
+        status = StatusUtils.TIME_OUT;
+        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+      } else {
+        status = StatusUtils.INTERNAL_ERROR.deepCopy();
+        status.setMessage(e.getMessage());
+        logger
+            .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+      }
+      client.getInputProtocol().getTransport().close();
       return status;
     } finally {
       putBackSyncClient(client);

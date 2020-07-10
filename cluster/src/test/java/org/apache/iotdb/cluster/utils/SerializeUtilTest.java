@@ -23,6 +23,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +56,7 @@ public class SerializeUtilTest {
   }
 
   @Test
-  public void testInsertTabletPlanLog() throws UnknownLogTypeException {
+  public void testInsertTabletPlanLog() throws UnknownLogTypeException, IOException {
     long[] times = new long[]{110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
@@ -87,8 +88,18 @@ public class SerializeUtilTest {
     log.setCurrLogTerm(1);
     log.setCurrLogIndex(2);
 
-    ByteBuffer buffer = log.serialize();
-    Log parsed = LogParser.getINSTANCE().parse(buffer);
+    ByteBuffer serialized = log.serialize();
+
+    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+    tabletPlan.serialize(dataOutputStream);
+    ByteBuffer bufferA = ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+    ByteBuffer bufferB = ByteBuffer.allocate(bufferA.limit());
+    tabletPlan.serialize(bufferB);
+    bufferB.flip();
+    assertEquals(bufferA, bufferB);
+
+    Log parsed = LogParser.getINSTANCE().parse(serialized);
     assertEquals(log, parsed);
   }
 }

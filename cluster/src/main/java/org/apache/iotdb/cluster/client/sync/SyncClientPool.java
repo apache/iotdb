@@ -84,7 +84,7 @@ public class SyncClientPool {
     while (clientStack.isEmpty()) {
       try {
         this.wait(WAIT_CLIENT_TIMEOUT_MS);
-        if (System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
+        if (clientStack.isEmpty() && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
           logger.warn("Cannot get an available client after {}ms, create a new one",
               WAIT_CLIENT_TIMEOUT_MS);
           nodeClientNumMap.put(node, nodeClientNum + 1);
