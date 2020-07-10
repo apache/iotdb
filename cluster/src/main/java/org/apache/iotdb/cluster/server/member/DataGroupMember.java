@@ -1502,11 +1502,7 @@ public class DataGroupMember extends RaftMember {
 
     ShowTimeSeriesPlan plan = (ShowTimeSeriesPlan) PhysicalPlan.Factory.create(planBuffer);
     List<ShowTimeSeriesResult> allTimeseriesSchema;
-    if (plan.getKey() != null && plan.getValue() != null) {
-      allTimeseriesSchema = IoTDB.metaManager.getAllTimeseriesSchema(plan);
-    } else {
-      allTimeseriesSchema = IoTDB.metaManager.showTimeseries(plan);
-    }
+    allTimeseriesSchema = IoTDB.metaManager.showTimeseries(plan);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {

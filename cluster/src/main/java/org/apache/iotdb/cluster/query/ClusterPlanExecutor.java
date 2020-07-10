@@ -506,12 +506,6 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
-      throws MetadataException {
-    return showTimeseries(plan);
-  }
-
-  @Override
   protected List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
       throws MetadataException {
     ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
@@ -538,7 +532,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         try {
           showTimeseries(group, plan, resultSet);
         } catch (CheckConsistencyException e) {
-          throw new RuntimeException(e.getMessage());
+          logger.error("Cannot get show timeseries result of {} from {}", plan, group);
         }
       }));
     }
@@ -591,12 +585,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(header);
     localDataMember.syncLeaderWithConsistencyCheck();
     try {
-      List<ShowTimeSeriesResult> localResult;
-      if (plan.getKey() != null && plan.getValue() != null) {
-        localResult = IoTDB.metaManager.getAllTimeseriesSchema(plan);
-      } else {
-        localResult = IoTDB.metaManager.showTimeseries(plan);
-      }
+      List<ShowTimeSeriesResult> localResult = IoTDB.metaManager.showTimeseries(plan);
       resultSet.addAll(localResult);
       logger.debug("Fetched {} schemas of {} from {}", localResult.size(), plan.getPath(), group);
     } catch (MetadataException e) {
