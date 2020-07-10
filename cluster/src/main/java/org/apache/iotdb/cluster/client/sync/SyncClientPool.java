@@ -67,6 +67,7 @@ public class SyncClientPool {
             return syncClientFactory.getSyncClient(node, this);
           } catch (TTransportException e) {
             logger.debug("Cannot open transport for client", e);
+            nodeClientNumMap.put(node, nodeClientNum - 1);
             return null;
           }
         }
@@ -91,6 +92,7 @@ public class SyncClientPool {
             return syncClientFactory.getSyncClient(node, this);
           } catch (TTransportException e) {
             logger.error("Cannot open transport for client", e);
+            nodeClientNumMap.put(node, nodeClientNum - 1);
             return null;
           }
         }

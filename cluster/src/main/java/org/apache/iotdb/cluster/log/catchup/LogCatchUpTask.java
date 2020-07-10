@@ -153,6 +153,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       handler.onComplete(result);
       return appendSucceed.get();
     } catch (TException e) {
+      client.getInputProtocol().getTransport().close();
       handler.onError(e);
       return false;
     } finally {
@@ -249,7 +250,7 @@ public class LogCatchUpTask implements Callable<Boolean> {
       return appendSucceed.get();
     } catch (TException e) {
       handler.onError(e);
-      logger.warn("Failed logs: {}, first index", logList, request.prevLogIndex + 1);
+      logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
       return false;
     } finally {
       raftMember.putBackSyncClient(client);

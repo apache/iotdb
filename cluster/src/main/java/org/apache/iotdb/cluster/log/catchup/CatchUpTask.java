@@ -139,8 +139,14 @@ public class CatchUpTask implements Runnable {
           .matchTerm(client, node, prevLogIndex, prevLogTerm, raftMember.getHeader());
     } else {
       Client client = raftMember.getSyncClient(node);
-      matched = client.matchTerm(prevLogIndex, prevLogTerm, raftMember.getHeader());
-      raftMember.putBackSyncClient(client);
+      try {
+        matched = client.matchTerm(prevLogIndex, prevLogTerm, raftMember.getHeader());
+      } catch (TException e) {
+        client.getInputProtocol().getTransport().close();
+        throw e;
+      } finally {
+        raftMember.putBackSyncClient(client);
+      }
     }
 
     raftMember.getLastCatchUpResponseTime().put(node, System.currentTimeMillis());

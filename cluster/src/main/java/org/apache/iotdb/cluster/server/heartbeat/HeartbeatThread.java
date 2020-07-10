@@ -265,6 +265,7 @@ public class HeartbeatThread implements Runnable {
       AtomicBoolean electionValid = new AtomicBoolean(false);
       // a decreasing vote counter
       AtomicInteger quorum = new AtomicInteger(quorumNum);
+      AtomicInteger failingVoteCounter = new AtomicInteger(quorumNum);
 
       electionRequest.setTerm(nextTerm);
       electionRequest.setElector(localMember.getThisNode());
@@ -276,7 +277,7 @@ public class HeartbeatThread implements Runnable {
       }
 
       requestVote(localMember.getAllNodes(), electionRequest, nextTerm, quorum,
-          electionTerminated, electionValid);
+          electionTerminated, electionValid, failingVoteCounter);
       // erase the log index so it can be updated in the next heartbeat
       electionRequest.unsetLastLogIndex();
 
@@ -315,7 +316,8 @@ public class HeartbeatThread implements Runnable {
    */
   @SuppressWarnings("java:S2445")
   private void requestVote(Collection<Node> nodes, ElectionRequest request, long nextTerm,
-      AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid) {
+      AtomicInteger quorum, AtomicBoolean electionTerminated, AtomicBoolean electionValid,
+      AtomicInteger failingVoteCounter) {
     synchronized (nodes) {
       // avoid concurrent modification
       for (Node node : nodes) {
@@ -324,7 +326,7 @@ public class HeartbeatThread implements Runnable {
         }
 
         ElectionHandler handler = new ElectionHandler(localMember, node, nextTerm, quorum,
-            electionTerminated, electionValid);
+            electionTerminated, electionValid, failingVoteCounter);
         if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
           requestVoteAsync(node, handler, request);
         } else {

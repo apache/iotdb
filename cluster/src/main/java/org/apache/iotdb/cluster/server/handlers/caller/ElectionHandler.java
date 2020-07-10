@@ -43,20 +43,22 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   private String memberName;
   private Node voter;
   private long currTerm;
-  private AtomicInteger quorum;
+  private AtomicInteger requiredVoteNum;
   private AtomicBoolean terminated;
   // when set to true, the elector wins the election
   private AtomicBoolean electionValid;
+  private AtomicInteger failingVoteCounter;
 
-  public ElectionHandler(RaftMember raftMember, Node voter, long currTerm, AtomicInteger quorum,
-      AtomicBoolean terminated, AtomicBoolean electionValid) {
+  public ElectionHandler(RaftMember raftMember, Node voter, long currTerm, AtomicInteger requiredVoteNum,
+      AtomicBoolean terminated, AtomicBoolean electionValid, AtomicInteger falingVoteCounter) {
     this.raftMember = raftMember;
     this.voter = voter;
     this.currTerm = currTerm;
-    this.quorum = quorum;
+    this.requiredVoteNum = requiredVoteNum;
     this.terminated = terminated;
     this.electionValid = electionValid;
     this.memberName = raftMember.getName();
+    this.failingVoteCounter = falingVoteCounter;
   }
 
   @Override
@@ -72,7 +74,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
       }
 
       if (voterResp == RESPONSE_AGREE) {
-        long remaining = quorum.decrementAndGet();
+        long remaining = requiredVoteNum.decrementAndGet();
         logger.info("{}: Received a grant vote from {}, remaining votes to succeed: {}",
             memberName, voter, remaining);
         if (remaining == 0) {
@@ -88,6 +90,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         if (voterResp < currTerm) {
           // the rejection from a node with a smaller term means the log of this node falls behind
           logger.info("{}: Election {} rejected: code {}", memberName, currTerm, voterResp);
+          onFail();
         } else {
           // the election is rejected by a node with a bigger term, update current term to it
           logger
@@ -108,6 +111,17 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
       logger.warn("{}: Cannot connect to {}: {}", memberName, voter, exception.getMessage());
     } else {
       logger.warn("{}: A voter {} encountered an error:", memberName, voter, exception);
+    }
+    onFail();
+  }
+
+  private void onFail() {
+    int failingVoteRemaining = failingVoteCounter.decrementAndGet();
+    if (failingVoteRemaining <= 0) {
+      synchronized (raftMember.getTerm()) {
+        // wake up heartbeat thread to start the next election
+        raftMember.getTerm().notifyAll();
+      }
     }
   }
 }
