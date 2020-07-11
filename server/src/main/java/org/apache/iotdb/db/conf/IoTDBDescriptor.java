@@ -191,9 +191,16 @@ public class IoTDBDescriptor {
 
       loadWALProps(properties);
 
-      String systemDir = FilePathUtils.regularizePath(properties.getProperty("system_dir"));
-      if(systemDir == null)
-        systemDir = FilePathUtils.regularizePath(properties.getProperty("base_dir", conf.getSystemDir()));
+      String systemDir = properties.getProperty("system_dir");
+      if(systemDir == null) {
+        systemDir = properties.getProperty("base_dir");
+        if(systemDir != null){
+          systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
+        }
+        else {
+          systemDir = conf.getSystemDir();
+        }
+      }
       conf.setSystemDir(systemDir);
 
       conf.setSchemaDir(
