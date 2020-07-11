@@ -784,11 +784,9 @@ public class StorageGroupProcessor {
       if (plan.getColumns()[i] == null) {
         continue;
       }
-      if (node != null) {
-        // Update cached last value with high priority
-        ((MeasurementMNode) node.getChild(measurementList[i]))
-            .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
-      }
+      // Update cached last value with high priority
+      ((MeasurementMNode) node.getChild(measurementList[i]))
+          .updateCachedLast(plan.composeLastTimeValuePair(i), true, latestFlushedTime);
     }
   }
 
@@ -831,10 +829,8 @@ public class StorageGroupProcessor {
         continue;
       }
       // Update cached last value with high priority
-      if (node != null) {
-        ((MeasurementMNode) node.getChild(measurementList[i])).
-            updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
-      }
+      ((MeasurementMNode) node.getChild(measurementList[i])).
+          updateCachedLast(plan.composeTimeValuePair(i), true, latestFlushedTime);
     }
   }
 
