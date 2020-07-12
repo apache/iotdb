@@ -356,7 +356,6 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-
   /**
    * Apply the addition of a new node. Register its identifier, add it to the node list and
    * partition table, serialize the partition table and update the DataGroupMembers.
@@ -653,7 +652,6 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-
   /**
    * @return Whether all nodes' identifier is known.
    */
@@ -682,7 +680,7 @@ public class MetaGroupMember extends RaftMember {
   /**
    * Process the join cluster request of "node". Only proceed when the partition table is ready.
    *
-   * @param node          cannot be the local node
+   * @param node cannot be the local node
    */
   public AddNodeResponse addNode(Node node, StartUpStatus startUpStatus)
       throws AddSelfException, LogExecutionException {
@@ -978,7 +976,8 @@ public class MetaGroupMember extends RaftMember {
             groupRemainings[nodeIndex]--;
           }
         } else {
-          askRemoteGroupVote(node, groupRemainings, i, leaderShipStale, log, newLeaderTerm, request);
+          askRemoteGroupVote(node, groupRemainings, i, leaderShipStale, log, newLeaderTerm,
+              request);
         }
       }
 
@@ -1355,13 +1354,13 @@ public class MetaGroupMember extends RaftMember {
   DeleteTimeSeriesPlan getDeleteTimeseriesPlanWithFullPaths(DeleteTimeSeriesPlan plan)
       throws PathNotExistException {
     Pair<List<String>, List<String>> getMatchedPathsRet = getMatchedPaths(plan.getPathsStrings());
-    List<String> fullPathsStrings =  getMatchedPathsRet.left;
+    List<String> fullPathsStrings = getMatchedPathsRet.left;
     List<String> nonExistPathsStrings = getMatchedPathsRet.right;
     if (!nonExistPathsStrings.isEmpty()) {
       throw new PathNotExistException(new ArrayList<>(nonExistPathsStrings));
     }
     List<Path> fullPaths = new ArrayList<>();
-    for(String pathStr : fullPathsStrings){
+    for (String pathStr : fullPathsStrings) {
       fullPaths.add(new Path(pathStr));
     }
     plan.setPaths(fullPaths);
@@ -1454,7 +1453,7 @@ public class MetaGroupMember extends RaftMember {
               setStorageGroupResult.getCode(), storageGroupName)
       );
     }
-    if(plan instanceof InsertPlan){
+    if (plan instanceof InsertPlan) {
       // try to create timeseries
       boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
       if (!isAutoCreateTimeseriesSuccess) {
@@ -1492,8 +1491,8 @@ public class MetaGroupMember extends RaftMember {
         && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
       // try to create timeseries
-      if(((InsertPlan)plan).getFailedMeasurements() != null){
-        ((InsertPlan)plan).transform();
+      if (((InsertPlan) plan).getFailedMeasurements() != null) {
+        ((InsertPlan) plan).transform();
       }
       boolean hasCreate = autoCreateTimeseries((InsertPlan) plan);
       if (hasCreate) {
@@ -1933,7 +1932,8 @@ public class MetaGroupMember extends RaftMember {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
             name,
-            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1, node,
+            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1,
+            node,
             request.getHeader());
       }
       results.addAll(schemas);
@@ -2880,16 +2880,16 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-
   /**
    * Process the request of removing a node from the cluster. Reject the request if partition table
    * is unavailable or the node is not the MetaLeader and it does not know who the leader is.
    * Otherwise (being the MetaLeader), the request will be processed locally and broadcast to every
    * node.
    *
-   * @param node          the node to be removed.
+   * @param node the node to be removed.
    */
-  public long removeNode(Node node) throws PartitionTableUnavailableException, LogExecutionException {
+  public long removeNode(Node node)
+      throws PartitionTableUnavailableException, LogExecutionException {
     if (partitionTable == null) {
       logger.info("Cannot add node now because the partition table is not set");
       throw new PartitionTableUnavailableException(thisNode);
@@ -2901,13 +2901,12 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-
   /**
    * Process a node removal request locally and broadcast it to the whole cluster. The removal will
    * be rejected if number of nodes will fall below half of the replication number after this
    * operation.
    *
-   * @param node          the node to be removed.
+   * @param node the node to be removed.
    * @return Long.MIN_VALUE if further forwarding is required, or the execution result
    */
   private long processRemoveNodeLocally(Node node)

@@ -115,17 +115,17 @@ public abstract class InsertPlan extends PhysicalPlan {
     }
     measurements = failedMeasurements.toArray(new String[0]);
     failedMeasurements = null;
-    if(dataTypes != null){
+    if (dataTypes != null) {
       TSDataType[] temp = dataTypes.clone();
       dataTypes = new TSDataType[failedIndices.size()];
-      for(int i = 0; i < failedIndices.size(); i++){
+      for (int i = 0; i < failedIndices.size(); i++) {
         dataTypes[i] = temp[failedIndices.get(i)];
       }
     }
-    if(schemas != null){
+    if (schemas != null) {
       MeasurementSchema[] temp = schemas.clone();
       schemas = new MeasurementSchema[failedIndices.size()];
-      for(int i = 0; i < failedIndices.size(); i++){
+      for (int i = 0; i < failedIndices.size(); i++) {
         schemas[i] = temp[failedIndices.get(i)];
       }
     }
