@@ -85,6 +85,42 @@ Modification file: org.apache.iotdb.db.engine.modification.ModificationFile
 
 Deletion operation: org.apache.iotdb.db.engine.modification.Modification
 
+Deletion interval: org.apache.iotdb.tsfile.read.common.TimeRange
+
+### Modification File
+Data deletion in IoTDB is accomplished by writing Modification files for related TsFiles.
+
+In IoTDB version 0.11.0, the deletion format in Modification file has been changed. Now each line contains a start time and end time representing a delete range for a timeseries path. 
+For Modification files generated in past version of IoTDB with only a "deleteAt" timestamp, they could still be recognized, interpreting the "deleteAt" field as end time.
+
+### TimeRange  
+Correspondingly, TimeRange is the medium that deletions exist within memory.
+
+All deletion TimeRanges are both left-close and right-close intervals. We use Long.MIN_VALUE and Long.MAX_VALUE to refer to infinity and negative infinity timestamp.
+
+### Query chunks with delete intervals
+When querying a TVList, the TimeRanges are sorted and merged before a TVList tries to access them. 
+For example, we have [1,10], [5,12], [15,20], [16,21] in the original list, then they will be preprocessed to [1,12] and [15,21].
+For cases when there are a large number of deletion operations, it would be helpful to exclude deleted data.
+
+More specifically, since the TVList stores ordered timestamp data, using a sorted TimeRange list is easy to filter out deleted data.
+We use a cursor to mark which TimeRange in the list is currently in use. Intervals before the current one are no longer needed to be traversed.
+```
+private boolean isPointDeleted(long timestamp) {
+  while (deletionList != null && deleteCursor < deletionList.size()) {
+    if (deletionList.get(deleteCursor).contains(timestamp)) {
+      return true;
+    } else if (deletionList.get(deleteCursor).getMax() < timestamp) {
+      deleteCursor++;
+    } else {
+      return false;
+    }
+  }
+  return false;
+}
+```
+
+
 ### Query with Modifications
 
 For any TsFile data units, their metadata structures including TimeseriesMetadata, ChunkMetadata and PageHeader use a `modified` flag to indicate whether this data unit is modified or not.
