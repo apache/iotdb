@@ -1454,9 +1454,9 @@ public class MetaGroupMember extends RaftMember {
               setStorageGroupResult.getCode(), storageGroupName)
       );
     }
-    if(plan instanceof InsertRowPlan){
+    if(plan instanceof InsertPlan){
       // try to create timeseries
-      boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertRowPlan) plan);
+      boolean isAutoCreateTimeseriesSuccess = autoCreateTimeseries((InsertPlan) plan);
       if (!isAutoCreateTimeseriesSuccess) {
         throw new MetadataException(
             "Failed to create timeseries from InsertPlan automatically."
@@ -1473,10 +1473,10 @@ public class MetaGroupMember extends RaftMember {
    * @return
    */
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
-    InsertRowPlan backup = null;
-    if (plan instanceof InsertRowPlan) {
-      backup = (InsertRowPlan) ((InsertRowPlan) plan).clone();
-    }
+//    InsertRowPlan backup = null;
+//    if (plan instanceof InsertRowPlan) {
+//      backup = (InsertRowPlan) ((InsertRowPlan) plan).clone();
+//    }
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     if (planGroupMap.size() == 1) {
@@ -1492,9 +1492,12 @@ public class MetaGroupMember extends RaftMember {
         && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
       // try to create timeseries
-      boolean hasCreate = autoCreateTimeseries(backup);
+      if(((InsertPlan)plan).getFailedMeasurements() != null){
+        ((InsertPlan)plan).transform();
+      }
+      boolean hasCreate = autoCreateTimeseries((InsertPlan) plan);
       if (hasCreate) {
-        status = forwardPlan(planGroupMap, backup);
+        status = forwardPlan(planGroupMap, plan);
       } else {
         logger.error("{}, Cannot auto create timeseries.", thisNode);
       }
@@ -1629,7 +1632,7 @@ public class MetaGroupMember extends RaftMember {
    * @param insertPlan, some of the timeseries in it are not created yet
    * @return true of all uncreated timeseries are created
    */
-  boolean autoCreateTimeseries(InsertRowPlan insertPlan) {
+  boolean autoCreateTimeseries(InsertPlan insertPlan) {
     List<String> seriesList = new ArrayList<>();
     String deviceId = insertPlan.getDeviceId();
     String storageGroupName;
@@ -1651,7 +1654,9 @@ public class MetaGroupMember extends RaftMember {
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
       TSDataType dataType = TypeInferenceUtils
-          .getPredictedDataType(insertPlan.getValues()[index], true);
+          .getPredictedDataType(insertPlan instanceof InsertTabletPlan
+              ? ((Object[]) ((InsertTabletPlan) insertPlan).getColumns()[index])[0]
+              : ((InsertRowPlan) insertPlan).getValues()[index], true);
       TSEncoding encoding = getDefaultEncoding(dataType);
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
       CreateTimeSeriesPlan createTimeSeriesPlan = new CreateTimeSeriesPlan(new Path(seriesPath),
