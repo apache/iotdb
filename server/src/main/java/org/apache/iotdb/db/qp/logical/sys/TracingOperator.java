@@ -16,10 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+<<<<<<< Updated upstream:server/src/main/java/org/apache/iotdb/db/qp/logical/sys/TracingOperator.java
 package org.apache.iotdb.db.qp.logical.sys;
+=======
+package org.apache.iotdb.db.exception.index;
+>>>>>>> Stashed changes:server/src/main/java/org/apache/iotdb/db/exception/index/UnSupportedIndexTypeException.java
 
 import org.apache.iotdb.db.qp.logical.RootOperator;
 
+<<<<<<< Updated upstream:server/src/main/java/org/apache/iotdb/db/qp/logical/sys/TracingOperator.java
 public class TracingOperator extends RootOperator {
 
   private boolean isTracingon;
@@ -32,5 +37,14 @@ public class TracingOperator extends RootOperator {
 
   public boolean isTracingon() {
     return isTracingon;
+=======
+public class UnSupportedIndexTypeException extends IndexException {
+
+  private static final long serialVersionUID = 4967425512171623007L;
+
+  public UnSupportedIndexTypeException(String indexType) {
+    super(String.format("Unsupported index type: [%s]", indexType),
+        TSStatusCode.UNSUPPORTED_INDEX_TYPE_ERROR.getStatusCode());
+>>>>>>> Stashed changes:server/src/main/java/org/apache/iotdb/db/exception/index/UnSupportedIndexTypeException.java
   }
 }

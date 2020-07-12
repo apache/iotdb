@@ -347,10 +347,6 @@ public class SeriesReader {
        */
       if (!cachedPageReaders.isEmpty()) {
         firstPageReader = cachedPageReaders.poll();
-        long endTime = firstPageReader.getEndTime();
-        unpackAllOverlappedTsFilesToTimeSeriesMetadata(endTime);
-        unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(endTime, false);
-        unpackAllOverlappedChunkMetadataToCachedPageReaders(endTime, false);
       }
     }
 
