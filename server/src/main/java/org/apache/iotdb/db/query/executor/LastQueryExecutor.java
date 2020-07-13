@@ -194,7 +194,7 @@ public class LastQueryExecutor {
 
     // Update cached last value with low priority
     IoTDB.metaManager.updateLastCache(seriesPath.getFullPath(),
-      resultPair, false, Long.MIN_VALUE);
+      resultPair, false, Long.MIN_VALUE, node);
     return resultPair;
   }
 

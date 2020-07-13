@@ -785,8 +785,12 @@ public class StorageGroupProcessor {
         continue;
       }
       // Update cached last value with high priority
+      MeasurementMNode tmpMeasurementNode = null;
+      if (node != null) {
+        tmpMeasurementNode = (MeasurementMNode) node.getChild(measurementList[i]);
+      }
       IoTDB.metaManager.updateLastCache(node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurementList[i],
-        plan.composeLastTimeValuePair(i), true, latestFlushedTime, (MeasurementMNode) node);
+        plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
     }
   }
 
@@ -829,8 +833,12 @@ public class StorageGroupProcessor {
         continue;
       }
       // Update cached last value with high priority
+      MeasurementMNode tmpMeasurementNode = null;
+      if (node != null) {
+        tmpMeasurementNode = (MeasurementMNode) node.getChild(measurementList[i]);
+      }
       IoTDB.metaManager.updateLastCache(node.getFullPath() + IoTDBConstant.PATH_SEPARATOR + measurementList[i],
-          plan.composeTimeValuePair(i), true, latestFlushedTime, (MeasurementMNode) node);
+          plan.composeTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
     }
   }
 
