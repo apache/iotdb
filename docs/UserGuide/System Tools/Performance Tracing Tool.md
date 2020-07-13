@@ -20,7 +20,7 @@
 -->
 # Performance Tracing Tool
 
-Iotdb supports the use of `TRACING` statements to enable and disable performance tracing of query statements, which is disabled by default. Users can use performance tracking tool to analyze potential performance problems in some queries. By default, the log files for performance tracing are stored in the directory `./data/tracing`.
+IoTDB supports the use of `TRACING` statements to enable and disable performance tracing of query statements, which is disabled by default. Users can use performance tracking tool to analyze potential performance problems in some queries. By default, the log files for performance tracing are stored in the directory `./data/tracing`.
 
 Turn on Tracing：
 

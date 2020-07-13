@@ -954,7 +954,7 @@ This example will delete the first 3 time partitions of storage group root.sg1.
 ```
 The partitionId can be found in data folders or converted using `timestamp / partitionInterval`.
 
-## 性能追踪
+## Performance Tracing
 
 IoTDB supports tracking the execution of query statements by using `TRACING` statements. The number of tsfile files and chunks accessed by the query etc are output through the log file. The default output location is in `./data/tracing`. The performance tracing function is turned off by default. Users can use the TRACING ON/OFF command to turn this function on/off.
 
