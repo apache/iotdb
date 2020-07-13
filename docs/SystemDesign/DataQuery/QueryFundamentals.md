@@ -126,8 +126,7 @@ private boolean isPointDeleted(long timestamp) {
 For any TsFile data units, their metadata structures including TimeseriesMetadata, ChunkMetadata and PageHeader use a `modified` flag to indicate whether this data unit is modified or not.
 Upon setting this `modified` flag to "true", the integrity of this data unit is supposed to be damaged and some statistics turns invalid. 
 
-
-![](https://user-images.githubusercontent.com/7240743/78339324-deca5d80-75c6-11ea-8fa8-dbd94232b756.png)
+![](https://user-images.githubusercontent.com/59866276/87266560-27fc4880-c4f8-11ea-9c8f-6794a9c599cb.jpg)
 
 Modifications affects timeseries reading process in the 5 levels mentioned before:
 * TsFileResource -> TimeseriesMetadata
@@ -146,9 +145,7 @@ FileLoaderUtils.loadChunkMetadataList()
 ```
 
 E.g., the got ChunkMetadatas are:
-
-![](https://user-images.githubusercontent.com/7240743/78339335-e427a800-75c6-11ea-815f-16dc5b6ebfa3.png)
-
+![](https://user-images.githubusercontent.com/59866276/87266976-0b144500-c4f9-11ea-95b3-15d60d2b7416.jpg)
 * ChunkMetadata -> List\<IPageReader\>
 
 ```

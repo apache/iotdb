@@ -108,7 +108,7 @@ private boolean isPointDeleted(long timestamp) {
 对于任意的 TimeseriesMetadata,ChunkMetadata和PageHeader都有相应的modified标记，表示当前的数据块是否存在更改。由于数据删除都是从一个时间节点删除该时间前面的数据，因此如果存在数据删除会导致数据块统计信息中的startTime失效。因此在使用统计信息中的startTime之前必须检查数据块是否包含modification。对于 TimeseriesMetadata，如果删除时间点等于endTime也会导致统计信息中的endTime失效。
 
 
-![](https://user-images.githubusercontent.com/7240743/78339324-deca5d80-75c6-11ea-8fa8-dbd94232b756.png)
+![](https://user-images.githubusercontent.com/59866276/87266560-27fc4880-c4f8-11ea-9c8f-6794a9c599cb.jpg)
 
 如上图所示，数据修改会对前面提到的TsFile层级数据读取产生影响
 * TsFileResource -> TimeseriesMetadata
@@ -127,7 +127,7 @@ FileLoaderUtils.loadChunkMetadataList()
 
 对于以上示例，读取到的 ChunkMetadataList 为
 
-![](https://user-images.githubusercontent.com/7240743/78339335-e427a800-75c6-11ea-815f-16dc5b6ebfa3.png)
+![](https://user-images.githubusercontent.com/59866276/87266976-0b144500-c4f9-11ea-95b3-15d60d2b7416.jpg)
 
 * ChunkMetadata -> List\<IPageReader\>
 
