@@ -468,7 +468,8 @@ var config = {
 							['System Tools/Log Visualizer','Log Visualizer'],
 							['System Tools/Query History Visualization Tool','Query History Visualization Tool'],
 							['System Tools/Monitor and Log Tools','Monitor and Log Tools'],
-							['System Tools/Load External Tsfile','Load External Tsfile']
+							['System Tools/Load External Tsfile','Load External Tsfile'],
+							['System Tools/Performance Tracing Tool','Performance Tracing Tool']
 						]
 					},
 					{
@@ -990,7 +991,8 @@ var config = {
 							['System Tools/Log Visualizer','日志可视化工具'],
 							['System Tools/Query History Visualization Tool','查询历史可视化工具'],
 							['System Tools/Monitor and Log Tools','监控与日志工具'],
-							['System Tools/Load External Tsfile','加载外部tsfile文件']
+							['System Tools/Load External Tsfile','加载外部tsfile文件'],
+							['System Tools/Performance Tracing Tool','性能追踪工具']
 						]
 					},
 					{
