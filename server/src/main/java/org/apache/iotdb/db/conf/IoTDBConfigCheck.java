@@ -217,9 +217,9 @@ public class IoTDBConfigCheck {
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
       }
-      // rename system.properties.tmp to system.properties
-      FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
     }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
 
@@ -248,9 +248,9 @@ public class IoTDBConfigCheck {
       if (propertiesFile.exists()) {
         Files.delete(propertiesFile.toPath());
       }
-      // rename system.properties.tmp to system.properties
-      FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
     }
+    // rename system.properties.tmp to system.properties
+    FileUtils.moveFile(tmpPropertiesFile, propertiesFile);
   }
 
   /**
