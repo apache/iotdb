@@ -72,7 +72,7 @@ public interface IUnCompressor {
    * @param byteArray to be uncompressed bytes
    * @return bytes after uncompressed
    */
-  public abstract byte[] uncompress(byte[] byteArray);
+  public abstract byte[] uncompress(byte[] byteArray) throws IOException;
 
   /**
    * uncompress the byte array.
@@ -216,7 +216,7 @@ public interface IUnCompressor {
      * uncompressed size
      */
     @Override
-    public byte[] uncompress(byte[] bytes) {
+    public byte[] uncompress(byte[] bytes) throws IOException {
       if (bytes == null) {
         return new byte[0];
       }
@@ -226,8 +226,8 @@ public interface IUnCompressor {
       } catch (RuntimeException e) {
         logger.error(
             "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte", e);
+        throw new IOException(e);
       }
-      return new byte[0];
     }
 
     @Override
@@ -244,7 +244,7 @@ public interface IUnCompressor {
     }
 
     @Override
-    public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) {
+    public int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
       if (compressed == null || !compressed.hasRemaining()) {
         return 0;
       }
@@ -255,8 +255,8 @@ public interface IUnCompressor {
       } catch (RuntimeException e) {
         logger.error(
             "tsfile-compression LZ4UnCompressor: errors occurs when uncompress input byte", e);
+        throw new IOException(e);
       }
-      return 0;
     }
 
     @Override
