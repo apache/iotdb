@@ -106,6 +106,10 @@ public abstract class RaftMember {
 
   private static long waitLeaderTimeMs = 60 * 1000L;
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
+  static final String MSG_FORWARD_TIMEOUT = "{}: Forward {} to {} time out";
+  static final String MSG_FORWARD_ERROR = "{}: encountered an error when forwarding {} to"
+      + " {}";
+  private static final String MSG_NO_LEADER_IN_SYNC = "{}: No leader is found when synchronizing";
 
   ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
   // the name of the member, to distinguish several members from the logs
@@ -193,7 +197,7 @@ public abstract class RaftMember {
     appendLogThreadPool = Executors.newCachedThreadPool();
     asyncThreadPool = new ThreadPoolExecutor(Runtime.getRuntime().availableProcessors(), 100,
         0L, TimeUnit.MILLISECONDS,
-        new LinkedBlockingQueue<Runnable>());
+        new LinkedBlockingQueue<>());
     logger.info("{} started", name);
   }
 
@@ -444,7 +448,7 @@ public abstract class RaftMember {
     List<Log> logs = new ArrayList<>();
     for (ByteBuffer buffer : request.getEntries()) {
       buffer.mark();
-      Log log = null;
+      Log log;
       try {
         log = LogParser.getINSTANCE().parse(buffer);
       } catch (BufferUnderflowException e) {
@@ -1027,14 +1031,14 @@ public abstract class RaftMember {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
-        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       }
       return tsStatus;
     } catch (IOException | TException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
       status.setMessage(e.getMessage());
       logger
-          .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return status;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -1058,25 +1062,25 @@ public abstract class RaftMember {
       TSStatus tsStatus = client.executeNonQueryPlan(req);
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
-        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       }
       return tsStatus;
     } catch (IOException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
       status.setMessage(e.getMessage());
       logger
-          .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return status;
     } catch (TException e) {
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;
-        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       } else {
         status = StatusUtils.INTERNAL_ERROR.deepCopy();
         status.setMessage(e.getMessage());
         logger
-            .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+            .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       }
       client.getInputProtocol().getTransport().close();
       return status;
@@ -1232,19 +1236,21 @@ public abstract class RaftMember {
     waitLeader();
     if (leader == null) {
       // the leader has not been elected, we must assume the node falls behind
-      logger.warn("{}: No leader is found when synchronizing", name);
+      logger.warn(MSG_NO_LEADER_IN_SYNC, name);
       return false;
     }
     if (character == NodeCharacter.LEADER) {
       return true;
     }
     logger.debug("{}: try synchronizing with the leader {}", name, leader);
+    return waitUntilCatchUp();
+  }
+
+  private boolean waitUntilCatchUp() {
     long startTime = System.currentTimeMillis();
     long waitedTime = 0;
-
     while (waitedTime < RaftServer.getSyncLeaderMaxWaitMs()) {
       try {
-
         long leaderCommitId = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer() ?
             requestCommitIdAsync() : requestCommitIdSync();
         if (leaderCommitId == Long.MAX_VALUE) {
@@ -1281,12 +1287,13 @@ public abstract class RaftMember {
     return false;
   }
 
+  @SuppressWarnings("java:S2274") // enable timeout
   private long requestCommitIdAsync() throws TException, InterruptedException {
     AtomicReference<Long> commitIdResult = new AtomicReference<>(Long.MAX_VALUE);
     AsyncClient client = getAsyncClient(leader);
     if (client == null) {
       // cannot connect to the leader
-      logger.warn("{}: No leader is found when synchronizing", name);
+      logger.warn(MSG_NO_LEADER_IN_SYNC, name);
       return commitIdResult.get();
     }
     synchronized (commitIdResult) {
@@ -1300,7 +1307,7 @@ public abstract class RaftMember {
     Client client = getSyncClient(leader);
     if (client == null) {
       // cannot connect to the leader
-      logger.warn("{}: No leader is found when synchronizing", name);
+      logger.warn(MSG_NO_LEADER_IN_SYNC, name);
       return Long.MAX_VALUE;
     }
     long commitIndex = client.requestCommitIndex(getHeader());

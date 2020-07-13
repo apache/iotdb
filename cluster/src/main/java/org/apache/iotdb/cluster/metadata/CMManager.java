@@ -19,8 +19,10 @@
 
 package org.apache.iotdb.cluster.metadata;
 
+import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MeasurementMeta;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -40,27 +42,17 @@ public class CMManager extends MManager {
 
   private static final Logger logger = LoggerFactory.getLogger(CMManager.class);
 
-  private ReentrantReadWriteLock cacheLock = new ReentrantReadWriteLock();;
+  private ReentrantReadWriteLock cacheLock = new ReentrantReadWriteLock();
   // only cache the series who is writing, we need not to cache series who is reading
   // because the read is slow, so pull from remote is little cost comparing to the disk io
-  private LRUCache<String, MeasurementMeta> mRemoteMetaCache;
+  private RemoteMetaCache mRemoteMetaCache;
   private MetaPuller metaPuller;
 
   protected CMManager() {
     super();
     metaPuller = MetaPuller.getInstance();
     int remoteCacheSize = config.getmRemoteSchemaCacheSize();
-    mRemoteMetaCache = new LRUCache<String, MeasurementMeta>(remoteCacheSize) {
-      @Override
-      protected MeasurementMeta loadObjectByKey(String key) throws IOException {
-        return null;
-      }
-
-      @Override
-      public synchronized void removeItem(String key) {
-        cache.keySet().removeIf(s -> s.startsWith(key));
-      }
-    };
+    mRemoteMetaCache = new RemoteMetaCache(remoteCacheSize);
   }
 
   private static class MManagerHolder {
@@ -100,20 +92,33 @@ public class CMManager extends MManager {
 
   @Override
   public TSDataType getSeriesType(String path) throws MetadataException {
+    // try remote cache first
     try {
       cacheLock.readLock().lock();
       MeasurementMeta measurementMeta = mRemoteMetaCache.get(path);
       if (measurementMeta != null) {
         return measurementMeta.getMeasurementSchema().getType();
       }
-    } catch (IOException e) {
-      //do nothing
     } finally {
       cacheLock.readLock().unlock();
     }
-    // TODO the caller pull schema from remote now
-    // may we should pull here
-    return super.getSeriesType(path);
+
+    // try local MTree
+    TSDataType seriesType;
+    try {
+      seriesType = super.getSeriesType(path);
+    } catch (PathNotExistException e) {
+      // pull from remote node
+      List<MeasurementSchema> schemas = metaPuller
+          .pullTimeSeriesSchemas(Collections.singletonList(path));
+      if (!schemas.isEmpty()) {
+        cacheMeta(path, new MeasurementMeta(schemas.get(0)));
+        return schemas.get(0).getType();
+      } else {
+        throw e;
+      }
+    }
+    return seriesType;
   }
 
   /**
@@ -132,24 +137,8 @@ public class CMManager extends MManager {
       // some measurements not exist in local
       // try cache
       MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurements.length];
-      boolean allSeriesExists = true;
-      cacheLock.readLock().lock();
-      for (int i = 0; i < measurements.length; i++) {
-        try {
-          MeasurementMeta measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR + measurements[i]);
-          if (measurementMeta == null) {
-            allSeriesExists = false;
-            break;
-          }
-          measurementSchemas[i] = measurementMeta.getMeasurementSchema();
-        } catch (IOException ex) {
-          // not all cached, pull from remote
-          allSeriesExists = false;
-          break;
-        }
-      }
-      cacheLock.readLock().unlock();
-      if (allSeriesExists) {
+      int failedMeasurementIndex = getSchemasLocally(deviceId, measurements, measurementSchemas);
+      if (failedMeasurementIndex == -1) {
         return measurementSchemas;
       }
 
@@ -157,29 +146,35 @@ public class CMManager extends MManager {
       pullSeriesSchemas(deviceId, measurements);
 
       // try again
-      int failedMeasurementIndex = -1;
-      cacheLock.readLock().lock();
-      for (int i = 0; i < measurements.length; i++) {
-        try {
-          MeasurementMeta measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR  + measurements[i]);
-          if (measurementMeta == null) {
-            failedMeasurementIndex = i;
-            break;
-          }
-          measurementSchemas[i] = measurementMeta.getMeasurementSchema();
-        } catch (IOException ex) {
-          failedMeasurementIndex = i;
-          break;
-        }
-      }
-      cacheLock.readLock().unlock();
-
+      failedMeasurementIndex = getSchemasLocally(deviceId, measurements, measurementSchemas);
       if (failedMeasurementIndex != -1) {
         throw new MetadataException(deviceId + IoTDBConstant.PATH_SEPARATOR
           + measurements[failedMeasurementIndex] + " is not found");
       }
       return measurementSchemas;
     }
+  }
+
+  /**
+   *
+   * @return -1 if all schemas are found, or the first index of the non-exist schema
+   */
+  private int getSchemasLocally(String deviceId, String[] measurements, MeasurementSchema[] measurementSchemas) {
+    int failedMeasurementIndex = -1;
+    cacheLock.readLock().lock();
+    try {
+      for (int i = 0; i < measurements.length && failedMeasurementIndex == -1; i++) {
+        MeasurementMeta measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR  + measurements[i]);
+        if (measurementMeta == null) {
+          failedMeasurementIndex = i;
+        } else {
+          measurementSchemas[i] = measurementMeta.getMeasurementSchema();
+        }
+      }
+    } finally {
+      cacheLock.readLock().unlock();
+    }
+    return failedMeasurementIndex;
   }
 
   private void pullSeriesSchemas(String deviceId, String[] measurementList)
@@ -210,8 +205,6 @@ public class CMManager extends MManager {
       if (measurementMeta != null) {
         measurementMeta.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
       }
-    } catch (IOException e) {
-      // not found
     } finally {
       cacheLock.writeLock().unlock();
     }
@@ -221,42 +214,23 @@ public class CMManager extends MManager {
 
   @Override
   public TimeValuePair getLastCache(String seriesPath) {
-    try {
-      MeasurementMeta measurementMeta = mRemoteMetaCache.get(seriesPath);
-      if (measurementMeta != null) {
-        return measurementMeta.getTimeValuePair();
-      }
-    } catch (IOException e) {
-      // do nothing
+    MeasurementMeta measurementMeta = mRemoteMetaCache.get(seriesPath);
+    if (measurementMeta != null) {
+      return measurementMeta.getTimeValuePair();
     }
+
     return super.getLastCache(seriesPath);
   }
 
   @Override
   public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(String deviceId, String[] measurementList, InsertPlan plan) throws MetadataException {
-    boolean allSeriesExists = true;
     MeasurementSchema[] measurementSchemas = new MeasurementSchema[measurementList.length];
-    cacheLock.readLock().lock();
-    for (int i = 0; i < measurementList.length; i++) {
-      MeasurementMeta measurementMeta;
-      try {
-        measurementMeta = mRemoteMetaCache.get(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementList[i]);
-        if (measurementMeta == null) {
-          allSeriesExists = false;
-          break;
-        }
-        measurementSchemas[i] = measurementMeta.getMeasurementSchema();
-      } catch (IOException e) {
-        // ignore
-        allSeriesExists = false;
-        break;
-      }
-    }
-    cacheLock.readLock().unlock();
-    if (allSeriesExists) {
+    int nonExistSchemaIndex = getSchemasLocally(deviceId, measurementList, measurementSchemas);
+    if (nonExistSchemaIndex == -1) {
       return measurementSchemas;
     }
-    // TODO Here we may create the timeseries which does not owned by us
+    // auto-create schema in IoTDBConfig is always disabled in the cluster version, and we have
+    // another config in ClusterConfig to do this
     return super.getSeriesSchemasAndReadLockDevice(deviceId, measurementList, plan);
   }
 
@@ -267,7 +241,7 @@ public class CMManager extends MManager {
       if (measurementSchema != null) {
         return measurementSchema;
       }
-    } catch (MetadataException e) {
+    } catch (PathNotExistException e) {
       // not found in local
     }
 
@@ -278,8 +252,6 @@ public class CMManager extends MManager {
       if (measurementMeta != null) {
         return measurementMeta.getMeasurementSchema();
       }
-    } catch (IOException ex) {
-      // ignore
     } finally {
       cacheLock.readLock().unlock();
     }
@@ -294,11 +266,36 @@ public class CMManager extends MManager {
       if (measurementMeta != null) {
         return measurementMeta.getMeasurementSchema();
       }
-    } catch (IOException ex) {
-      // ignore
     } finally {
       cacheLock.readLock().unlock();
     }
     return super.getSeriesSchema(device, measurement);
+  }
+
+  private static class RemoteMetaCache extends LRUCache<String, MeasurementMeta> {
+
+    public RemoteMetaCache(int cacheSize) {
+      super(cacheSize);
+    }
+
+    @Override
+    protected MeasurementMeta loadObjectByKey(String key) {
+      return null;
+    }
+
+    @Override
+    public synchronized void removeItem(String key) {
+      cache.keySet().removeIf(s -> s.startsWith(key));
+    }
+
+    @Override
+    public synchronized MeasurementMeta get(String key) {
+      try {
+        return super.get(key);
+      } catch (IOException e) {
+        // not happening
+        return null;
+      }
+    }
   }
 }

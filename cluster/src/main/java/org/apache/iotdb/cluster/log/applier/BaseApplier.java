@@ -96,18 +96,7 @@ abstract class BaseApplier implements LogApplier {
           logger.debug("Timeseries is not found locally[{}], try pulling it from another group: {}",
               metaGroupMember.getName(), e.getCause().getMessage());
         }
-        try {
-          String path = plan.getDeviceId();
-          List<MeasurementSchema> schemas = metaGroupMember
-              .pullTimeSeriesSchemas(Collections.singletonList(path));
-          for (MeasurementSchema schema : schemas) {
-            registerMeasurement(
-                path + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
-                schema);
-          }
-        } catch (MetadataException e1) {
-          throw new QueryProcessException(e1);
-        }
+        pullTimeseriesSchema(plan);
         getQueryExecutor().processNonQuery(plan);
       } else if (causedByStorageGroupNotSet) {
         try {
@@ -119,6 +108,21 @@ abstract class BaseApplier implements LogApplier {
       } else {
         throw e;
       }
+    }
+  }
+
+  private void pullTimeseriesSchema(InsertPlan plan) throws QueryProcessException {
+    try {
+      String path = plan.getDeviceId();
+      List<MeasurementSchema> schemas = metaGroupMember
+          .pullTimeSeriesSchemas(Collections.singletonList(path));
+      for (MeasurementSchema schema : schemas) {
+        registerMeasurement(
+            path + IoTDBConstant.PATH_SEPARATOR + schema.getMeasurementId(),
+            schema);
+      }
+    } catch (MetadataException e1) {
+      throw new QueryProcessException(e1);
     }
   }
 

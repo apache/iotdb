@@ -47,7 +47,7 @@ public class IoTDBDescriptor {
   private IoTDBConfig conf = new IoTDBConfig();
   private static CommandLine commandLine;
 
-  private IoTDBDescriptor() {
+  protected IoTDBDescriptor() {
     loadProps();
   }
 

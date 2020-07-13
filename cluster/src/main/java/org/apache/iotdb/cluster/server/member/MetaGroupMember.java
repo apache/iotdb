@@ -1759,14 +1759,14 @@ public class MetaGroupMember extends RaftMember {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
-        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       }
       return tsStatus;
     } catch (IOException | TException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
       status.setMessage(e.getMessage());
       logger
-          .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return status;
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -1790,25 +1790,25 @@ public class MetaGroupMember extends RaftMember {
       TSStatus tsStatus = client.executeNonQueryPlan(req);
       if (tsStatus == null) {
         tsStatus = StatusUtils.TIME_OUT;
-        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       }
       return tsStatus;
     } catch (IOException e) {
       TSStatus status = StatusUtils.INTERNAL_ERROR.deepCopy();
       status.setMessage(e.getMessage());
       logger
-          .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+          .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return status;
     } catch (TException e) {
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
         status = StatusUtils.TIME_OUT;
-        logger.warn("{}: Forward {} to {} time out", name, plan, receiver);
+        logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       } else {
         status = StatusUtils.INTERNAL_ERROR.deepCopy();
         status.setMessage(e.getMessage());
         logger
-            .error("{}: encountered an error when forwarding {} to {}", name, plan, receiver, e);
+            .error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       }
       client.getInputProtocol().getTransport().close();
       return status;
@@ -3108,7 +3108,7 @@ public class MetaGroupMember extends RaftMember {
    * @return
    * @throws IOException
    */
-  public SyncDataClient getSyncDataClient(Node node) throws IOException {
+  public SyncDataClient getSyncDataClient(Node node) {
     return (SyncDataClient) getDataSyncClientPool().getClient(node);
   }
 
@@ -3388,13 +3388,7 @@ public class MetaGroupMember extends RaftMember {
   private ByteBuffer remoteSyncPreviousFill(Node node, PreviousFillRequest request,
       PreviousFillArguments arguments) {
     ByteBuffer byteBuffer = null;
-    SyncDataClient syncDataClient;
-    try {
-      syncDataClient = getSyncDataClient(node);
-    } catch (IOException e) {
-      logger.warn("{}: Cannot connect to {} during previous fill", name, node);
-      return null;
-    }
+    SyncDataClient syncDataClient = getSyncDataClient(node);
 
     try {
       byteBuffer = syncDataClient.previousFill(request);

@@ -63,13 +63,7 @@ public class SyncClientPool {
           return waitForClient(clientStack, node, nodeClientNum);
         } else {
           nodeClientNumMap.put(node, nodeClientNum + 1);
-          try {
-            return syncClientFactory.getSyncClient(node, this);
-          } catch (TTransportException e) {
-            logger.debug("Cannot open transport for client", e);
-            nodeClientNumMap.put(node, nodeClientNum);
-            return null;
-          }
+          return createClient(node, nodeClientNum);
         }
       } else {
         return clientStack.pop();
@@ -88,13 +82,7 @@ public class SyncClientPool {
           logger.warn("Cannot get an available client after {}ms, create a new one",
               WAIT_CLIENT_TIMEOUT_MS);
           nodeClientNumMap.put(node, nodeClientNum + 1);
-          try {
-            return syncClientFactory.getSyncClient(node, this);
-          } catch (TTransportException e) {
-            logger.error("Cannot open transport for client", e);
-            nodeClientNumMap.put(node, nodeClientNum);
-            return null;
-          }
+          return createClient(node, nodeClientNum);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -121,9 +109,20 @@ public class SyncClientPool {
           clientStack.push(syncClientFactory.getSyncClient(node, this));
         } catch (TTransportException e) {
           logger.error("Cannot open transport for client", e);
+          nodeClientNumMap.computeIfPresent(node, (n, oldValue) -> oldValue - 1);
         }
       }
       this.notifyAll();
+    }
+  }
+
+  private Client createClient(Node node, int nodeClientNum) {
+    try {
+      return syncClientFactory.getSyncClient(node, this);
+    } catch (TTransportException e) {
+      logger.error("Cannot open transport for client", e);
+      nodeClientNumMap.put(node, nodeClientNum);
+      return null;
     }
   }
 }

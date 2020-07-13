@@ -164,7 +164,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     meta.setCommitLogTerm(entry.getCurrLogTerm());
     meta.setLastLogIndex(entry.getCurrLogIndex());
     meta.setLastLogTerm(entry.getCurrLogTerm());
-    append(entries, meta);
+    appendInternal(entries);
   }
 
   @Override
@@ -325,7 +325,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return logFile;
   }
 
-  public void append(Log log, LogManagerMeta meta) {
+  public void append(Log log) {
     ByteBuffer data = log.serialize();
     int totalSize = 0;
     // write into disk
@@ -345,7 +345,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
   }
 
-  public void append(List<Log> logs, LogManagerMeta meta) {
+  public void appendInternal(List<Log> logs) {
     int bufferSize = 0;
     List<ByteBuffer> bufferList = new ArrayList<>(logs.size());
     lock.writeLock().lock();
@@ -522,7 +522,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     return log;
   }
 
-  public LogManagerMeta recoverMeta() {
+  public void recoverMeta() {
     if (meta == null) {
       if (metaFile.exists() && metaFile.length() > 0) {
         if (logger.isInfoEnabled()) {
@@ -554,7 +554,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
                 + " {}], state: {}",
             meta, firstLogPosition, removedLogSize, minAvailableVersion, maxAvailableVersion,
             state);
-    return meta;
   }
 
   public void serializeMeta(LogManagerMeta meta) {

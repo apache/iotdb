@@ -131,7 +131,7 @@ public class DataLogApplierTest extends IoTDBTest {
   @Override
   @Before
   public void setUp() throws org.apache.iotdb.db.exception.StartupException, QueryProcessException {
-    IoTDB.metaManager = CMManager.getInstance();
+    IoTDB.setMetaManager(CMManager.getInstance());
     MetaPuller.getInstance().init(testMetaGroupMember);
     super.setUp();
     MetaPuller.getInstance().init(testMetaGroupMember);

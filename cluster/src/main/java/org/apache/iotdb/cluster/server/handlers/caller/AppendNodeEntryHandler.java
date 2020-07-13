@@ -51,7 +51,9 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
   private AtomicBoolean leaderShipStale;
   private Node receiver;
   private Peer peer;
-  private int failedCnt;
+  // initialized as the quorum size, and decrease by 1 each time when we receive a rejection or
+  // an exception, upon decreased to zero, the request will be early-aborted
+  private int failedDecreasingCounter;
 
   @Override
   public void onComplete(Long response) {
@@ -90,6 +92,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
         if (resp == RESPONSE_LOG_MISMATCH) {
           setPeerNotCatchUp();
         }
+        onFail();
       }
       // rejected because the receiver's logs are stale or the receiver has no cluster info, just
       // wait for the heartbeat to handle
@@ -105,6 +108,17 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
     } else {
       logger.warn("{}: Cannot append log {} to {}", member.getName(), log, receiver, exception);
     }
+    onFail();
+  }
+
+  private void onFail() {
+    synchronized (voteCounter) {
+      failedDecreasingCounter--;
+      if (failedDecreasingCounter <= 0) {
+        // quorum members have failed, there is no need to wait for others
+        voteCounter.notifyAll();
+      }
+    }
   }
 
   public void setLog(Log log) {
@@ -117,6 +131,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<Long> {
 
   public void setVoteCounter(AtomicInteger voteCounter) {
     this.voteCounter = voteCounter;
+    this.failedDecreasingCounter = voteCounter.get();
   }
 
   public void setLeaderShipStale(AtomicBoolean leaderShipStale) {

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.server.heartbeat;
 
-import java.net.SocketTimeoutException;
 import java.util.Collection;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
