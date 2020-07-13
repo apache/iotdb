@@ -177,8 +177,10 @@ public class IoTDBConfigCheck {
     }
 
     // no tmp file, read properties from system.properties
-    try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
-      properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
+    try (FileInputStream inputStream = new FileInputStream(propertiesFile);
+        InputStreamReader inputStreamReader = new InputStreamReader(
+            inputStream, TSFileConfig.STRING_CHARSET)) {
+      properties.load(inputStreamReader);
     }
     // need to upgrade from 0.9 to 0.10
     if (!properties.containsKey(IOTDB_VERSION_STRING)) {
