@@ -148,7 +148,8 @@ public class IoTDBConfigCheck {
   public void checkConfig() throws IOException {
     propertiesFile = SystemFileFactory.INSTANCE
         .getFile(IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME);
-    tmpPropertiesFile = new File(propertiesFile.getAbsoluteFile() + ".tmp");
+    tmpPropertiesFile = SystemFileFactory.INSTANCE
+        .getFile(IoTDBConfigCheck.SCHEMA_DIR + File.separator + PROPERTIES_FILE_NAME + ".tmp");
 
     // system init first time, no need to check, write system.properties and return
     if (!propertiesFile.exists() && !tmpPropertiesFile.exists()) {
@@ -175,21 +176,21 @@ public class IoTDBConfigCheck {
       return;
     } else if (propertiesFile.exists() && tmpPropertiesFile.exists()) {
       // both files exist, remove tmp file
-      FileUtils.forceDeleteOnExit(tmpPropertiesFile);
+      FileUtils.forceDelete(tmpPropertiesFile);
       logger.info("remove {}", tmpPropertiesFile);
     }
 
     // no tmp file, read properties from system.properties
     try (FileInputStream inputStream = new FileInputStream(propertiesFile)) {
       properties.load(new InputStreamReader(inputStream, TSFileConfig.STRING_CHARSET));
-      // need to upgrade from 0.9 to 0.10
-      if (!properties.containsKey(IOTDB_VERSION_STRING)) {
-        checkUnClosedTsFileV1();
-        MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
-        upgradePropertiesFile();
-      }
-      checkProperties();
     }
+    // need to upgrade from 0.9 to 0.10
+    if (!properties.containsKey(IOTDB_VERSION_STRING)) {
+      checkUnClosedTsFileV1();
+      MLogWriter.upgradeMLog(SCHEMA_DIR, MetadataConstant.METADATA_LOG);
+      upgradePropertiesFile();
+    }
+    checkProperties();
   }
 
   /**
