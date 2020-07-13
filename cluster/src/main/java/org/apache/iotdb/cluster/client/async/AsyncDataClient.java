@@ -55,11 +55,16 @@ public class AsyncDataClient extends AsyncClient {
   @Override
   public void onComplete() {
     super.onComplete();
-    pool.putClient(node, this);
+    // return itself to the pool if the job is done
+    if (pool != null) {
+      pool.putClient(node, this);
+    }
   }
 
-  public boolean isReady() {
-    return ___currentMethod == null;
+  @Override
+  public void onError(Exception e){
+    super.onError(e);
+    pool.removeClientForNodeClientNumMap(node);
   }
 
   public static class FactoryAsync implements AsyncClientFactory {
@@ -101,5 +106,9 @@ public class AsyncDataClient extends AsyncClient {
 
   public Node getNode() {
     return node;
+  }
+
+  public boolean isReady() {
+    return ___currentMethod == null;
   }
 }

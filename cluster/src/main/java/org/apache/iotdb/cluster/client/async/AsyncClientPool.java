@@ -47,6 +47,7 @@ public class AsyncClientPool {
 
   /**
    * Get a client of the given node from the cache if one is available, or create a new one.
+   *
    * @param node
    * @return
    * @throws IOException
@@ -77,7 +78,8 @@ public class AsyncClientPool {
     while (clientStack.isEmpty()) {
       try {
         this.wait(WAIT_CLIENT_TIMEOUT_MS);
-        if (clientStack.isEmpty() && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
+        if (clientStack.isEmpty()
+            && System.currentTimeMillis() - waitStart >= WAIT_CLIENT_TIMEOUT_MS) {
           logger.warn("Cannot get an available client after {}ms, create a new one",
               WAIT_CLIENT_TIMEOUT_MS);
           nodeClientNumMap.put(node, nodeClientNum + 1);
@@ -94,6 +96,7 @@ public class AsyncClientPool {
 
   /**
    * Return a client of a node to the pool. Closed client should not be returned.
+   *
    * @param node
    * @param client
    */
@@ -103,6 +106,12 @@ public class AsyncClientPool {
     synchronized (this) {
       clientStack.push(client);
       this.notifyAll();
+    }
+  }
+
+  public void removeClientForNodeClientNumMap(Node node) {
+    synchronized (this) {
+      nodeClientNumMap.computeIfPresent(node, (k, v) -> v - 1);
     }
   }
 }
