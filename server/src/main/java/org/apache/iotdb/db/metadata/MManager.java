@@ -79,7 +79,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -855,7 +854,7 @@ public class MManager {
     }
   }
 
-  public List<ShowTimeSeriesResult> getAllTimeseriesSchema(ShowTimeSeriesPlan plan)
+  private List<ShowTimeSeriesResult> showTimeseriesWithIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();
     try {
@@ -949,12 +948,22 @@ public class MManager {
     return true;
   }
 
+  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+      throws MetadataException {
+    // show timeseries with index
+    if (plan.getKey() != null && plan.getValue() != null) {
+      return showTimeseriesWithIndex(plan);
+    } else {
+      return showTimeseriesWithoutIndex(plan);
+    }
+  }
+
   /**
    * Get the result of ShowTimeseriesPlan
    *
    * @param plan show time series query plan
    */
-  public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan)
+  private List<ShowTimeSeriesResult> showTimeseriesWithoutIndex(ShowTimeSeriesPlan plan)
       throws MetadataException {
     lock.readLock().lock();
     List<String[]> ans;
@@ -1960,6 +1969,9 @@ public class MManager {
         }
       }
     }
+
+    plan.setDeviceMNode(deviceNode);
+
     return schemas;
   }
 

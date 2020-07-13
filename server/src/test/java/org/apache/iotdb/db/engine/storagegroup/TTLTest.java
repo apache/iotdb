@@ -32,9 +32,12 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
@@ -52,6 +55,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.junit.After;
@@ -74,6 +78,8 @@ public class TTLTest {
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
 
+  private MNode deviceMNode = null;
+
   @Before
   public void setUp()
       throws MetadataException, IOException, StartupException, StorageGroupProcessorException {
@@ -81,6 +87,8 @@ public class TTLTest {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.envSetUp();
     createSchemas();
+    deviceMNode = new MNode(null, sg1);
+    deviceMNode.addChild(s1, new MeasurementMNode(null, null, null, null));
   }
 
   @After
@@ -88,6 +96,11 @@ public class TTLTest {
     storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+  }
+
+  private void insertToStorageGroupProcessor(InsertRowPlan insertPlan) throws WriteProcessException {
+    insertPlan.setDeviceMNode(deviceMNode);
+    storageGroupProcessor.insert(insertPlan);
   }
 
   private void createSchemas()
@@ -134,7 +147,7 @@ public class TTLTest {
         new MeasurementSchema[]{new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN)});
 
     // ok without ttl
-    storageGroupProcessor.insert(plan);
+    insertToStorageGroupProcessor(plan);
 
     storageGroupProcessor.setDataTTL(1000);
     // with ttl
@@ -164,7 +177,7 @@ public class TTLTest {
     // sequence data
     for (int i = 1000; i < 2000; i++) {
       plan.setTime(initTime - 2000 + i);
-      storageGroupProcessor.insert(plan);
+      insertToStorageGroupProcessor(plan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
@@ -172,7 +185,7 @@ public class TTLTest {
     // unsequence data
     for (int i = 0; i < 1000; i++) {
       plan.setTime(initTime - 2000 + i);
-      storageGroupProcessor.insert(plan);
+      insertToStorageGroupProcessor(plan);
       if ((i + 1) % 300 == 0) {
         storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }

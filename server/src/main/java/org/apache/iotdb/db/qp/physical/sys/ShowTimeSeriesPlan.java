@@ -36,6 +36,8 @@ public class ShowTimeSeriesPlan extends ShowPlan {
   // if is true, the result will be sorted according to the inserting frequency of the timeseries
   private boolean orderByHeat;
 
+  private boolean hasLimit;
+
   public ShowTimeSeriesPlan(Path path) {
     super(ShowContentType.TIMESERIES);
     this.path = path;
@@ -77,8 +79,16 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     return limit;
   }
 
+  public void setLimit(int limit) {
+    this.limit = limit;
+  }
+
   public int getOffset() {
     return offset;
+  }
+
+  public void setOffset(int offset) {
+    this.offset = offset;
   }
 
   public boolean isOrderByHeat() {
@@ -87,6 +97,14 @@ public class ShowTimeSeriesPlan extends ShowPlan {
 
   public void setOrderByHeat(boolean orderByHeat) {
     this.orderByHeat = orderByHeat;
+  }
+
+  public boolean hasLimit() {
+    return hasLimit;
+  }
+
+  public void setHasLimit(boolean hasLimit) {
+    this.hasLimit = hasLimit;
   }
 
   @Override
@@ -113,13 +131,5 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     limit = buffer.getInt();
     limit = buffer.getInt();
     orderByHeat = buffer.get() == 1;
-  }
-
-  public void setLimit(int limit) {
-    this.limit = limit;
-  }
-
-  public void setOffset(int offset) {
-    this.offset = offset;
   }
 }
