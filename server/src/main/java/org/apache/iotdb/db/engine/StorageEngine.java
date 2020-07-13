@@ -300,8 +300,6 @@ public class StorageEngine implements IService {
 
   /**
    * insert a InsertTabletPlan to a storage group
-   *
-   * @return result of each row
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
       throws StorageEngineException, BatchInsertionException {
@@ -314,11 +312,7 @@ public class StorageEngine implements IService {
     }
 
     // TODO monitor: update statistics
-    try {
-      storageGroupProcessor.insertTablet(insertTabletPlan);
-    } catch (WriteProcessException e) {
-      throw new StorageEngineException(e);
-    }
+    storageGroupProcessor.insertTablet(insertTabletPlan);
   }
 
   /**
