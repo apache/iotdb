@@ -785,10 +785,12 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   @Override
   public void enterDeleteStorageGroup(DeleteStorageGroupContext ctx) {
     super.enterDeleteStorageGroup(ctx);
-    List<String> deletePaths = new ArrayList<>();
+    List<Path> deletePaths = new ArrayList<>();
     List<FullPathContext> fullPaths = ctx.fullPath();
     for (FullPathContext fullPath : fullPaths) {
-      deletePaths.add(fullPath.getText());
+      Path path = new Path();
+      path.setFullPath(fullPath.getText());
+      deletePaths.add(path);
     }
     DeleteStorageGroupOperator deleteStorageGroupOperator = new DeleteStorageGroupOperator(
         SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
