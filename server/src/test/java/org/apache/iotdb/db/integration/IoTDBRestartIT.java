@@ -53,6 +53,7 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail();
     }
 
@@ -66,6 +67,7 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail();
     }
 
@@ -113,6 +115,7 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail();
     }
 
@@ -173,6 +176,7 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail();
     }
 
@@ -187,6 +191,7 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail();
     }
 
@@ -233,6 +238,7 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail();
     }
 
@@ -247,6 +253,7 @@ public class IoTDBRestartIT {
     try {
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
+      e.printStackTrace();
       Assert.fail();
     }
 
