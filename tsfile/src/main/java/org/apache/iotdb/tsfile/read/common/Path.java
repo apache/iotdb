@@ -19,6 +19,8 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
@@ -35,6 +37,7 @@ public class Path implements Serializable, Comparable<Path> {
   private String alias = null;
   private String device = null;
   private String fullPath;
+  private List<String> nodes;
   private static final String illegalPathArgument = "Path parameter is null";
 
   public Path(StringContainer pathSc) {
@@ -52,11 +55,8 @@ public class Path implements Serializable, Comparable<Path> {
     init(pathSc);
   }
 
-  public Path(String[] pathSc) {
-    if (pathSc == null) {
-      throw new IllegalArgumentException(illegalPathArgument);
-    }
-    init(new StringContainer(pathSc, TsFileConstant.PATH_SEPARATOR).toString());
+  public Path(List<String> nodes) {
+    this.nodes = nodes;
   }
 
   /**
@@ -134,6 +134,14 @@ public class Path implements Serializable, Comparable<Path> {
     return new Path(sc);
   }
 
+  public static Path addNotes(Path src, Path tail) {
+    if (tail.nodes.isEmpty()) {
+      return src;
+    }
+    src.nodes.addAll(tail.nodes);
+    return src;
+  }
+
   /**
    * add {@code prefix} as the prefix of {@code src}.
    *
@@ -158,6 +166,10 @@ public class Path implements Serializable, Comparable<Path> {
   }
 
   public String getAlias() { return alias; }
+
+  public List<String> getNodes() {
+    return nodes;
+  }
 
   public void setAlias(String alias) { this.alias = alias; }
 

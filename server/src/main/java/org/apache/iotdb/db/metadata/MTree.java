@@ -562,6 +562,27 @@ public class MTree implements Serializable {
     return paths;
   }
 
+
+  /**
+   * Get all timeseries paths under the given path
+   *
+   * @param nodes a node list
+   */
+  List<Path> getAllTimeseriesPath(List<String> nodes) throws MetadataException {
+    Path prePath = new Path(nodes);
+    ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(prePath);
+    List<String[]> res = getAllMeasurementSchemaByNodes(plan);
+    List<Path> paths = new ArrayList<>();
+    for (String[] p : res) {
+      Path path = new Path(p[0]);
+      if (prePath.getMeasurement().equals(p[1])) {
+        path.setAlias(p[1]);
+      }
+      paths.add(path);
+    }
+    return paths;
+  }
+
   /**
    * Get the count of timeseries under the given prefix path.
    *
@@ -686,6 +707,36 @@ public class MTree implements Serializable {
     } else {
       res = new LinkedList<>();
       findPath(root, nodes, 1, "", res, false, false);
+    }
+    // avoid memory leaks
+    limit.remove();
+    offset.remove();
+    curOffset.remove();
+    count.remove();
+    return res;
+  }
+
+  /**
+   * Get all time series schema under the given nodes
+   *
+   * <p>result: [name, alias, storage group, dataType, encoding, compression, offset]
+   */
+  List<String[]> getAllMeasurementSchemaByNodes(ShowTimeSeriesPlan plan) throws MetadataException {
+    List<String[]> res;
+    List<String> nodes = plan.getPath().getNodes();
+    if (nodes.size() == 0 || !nodes.get(0).equals(root.getName())) {
+      throw new IllegalPathException(plan.getPath().getFullPath());
+    }
+    limit.set(plan.getLimit());
+    offset.set(plan.getOffset());
+    curOffset.set(-1);
+    count.set(0);
+    if (offset.get() != 0 || limit.get() != 0) {
+      res = new LinkedList<>();
+      findPath(root, nodes.toArray(new String[0]), 1, "", res, true, false);
+    } else {
+      res = new LinkedList<>();
+      findPath(root, nodes.toArray(new String[0]), 1, "", res, false, false);
     }
     // avoid memory leaks
     limit.remove();

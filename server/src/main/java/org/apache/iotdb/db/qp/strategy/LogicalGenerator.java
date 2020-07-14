@@ -1115,8 +1115,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     for (NodeNameWithoutStarContext nodeNameWithoutStar : nodeNamesWithoutStar) {
       path.add(nodeNameWithoutStar.getText());
     }
-    return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+    return new Path(path);
   }
 
   @Override
@@ -1296,8 +1295,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     for (NodeNameContext nodeName : nodeNames) {
       path.add(nodeName.getText());
     }
-    return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+    return new Path(path);
   }
 
   /**
@@ -1491,8 +1489,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     for (NodeNameContext nodeName : nodeNames) {
       path.add(nodeName.getText());
     }
-    return new Path(
-        new StringContainer(path.toArray(new String[0]), TsFileConstant.PATH_SEPARATOR));
+    return new Path(path);
   }
 
   /**

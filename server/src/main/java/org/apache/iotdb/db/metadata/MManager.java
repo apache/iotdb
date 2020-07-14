@@ -808,6 +808,20 @@ public class MManager {
   }
 
   /**
+   * use nodes to get All Timeseries
+   * @param nodes a node list
+   */
+
+  public List<Path> getAllTimeseriesPath(List<String> nodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesPath(nodes);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * To calculate the count of timeseries for given prefix path.
    */
   public int getAllTimeseriesCount(String prefixPath) throws MetadataException {

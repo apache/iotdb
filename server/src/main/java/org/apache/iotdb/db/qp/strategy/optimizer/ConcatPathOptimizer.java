@@ -164,7 +164,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // selectPath cannot start with ROOT, which is guaranteed by TSParser
       Path selectPath = suffixPaths.get(i);
       for (Path fromPath : fromPaths) {
-        allPaths.add(Path.addPrefixPath(selectPath, fromPath));
+        allPaths.add(Path.addNotes(selectPath, fromPath));
         extendListSafely(originAggregations, i, afterConcatAggregations);
       }
     }
@@ -225,7 +225,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return operator;
     }
     List<Path> concatPaths = new ArrayList<>();
-    fromPaths.forEach(fromPath -> concatPaths.add(Path.addPrefixPath(filterPath, fromPath)));
+    fromPaths.forEach(fromPath -> concatPaths.add(Path.addNotes(filterPath, fromPath)));
     List<Path> noStarPaths = removeStarsInPathWithUnique(concatPaths);
     filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
@@ -276,7 +276,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     HashSet<String> pathSet = new HashSet<>();
     try {
       for (Path path : paths) {
-        List<Path> all = removeWildcard(path.getFullPath());
+        List<Path> all = removeWildcard(path.getNodes());
         for (Path subPath : all) {
           if (!pathSet.contains(subPath.getFullPath())) {
             pathSet.add(subPath.getFullPath());
@@ -296,7 +296,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<String> newAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       try {
-        List<Path> actualPaths = removeWildcard(paths.get(i).getFullPath());
+        List<Path> actualPaths = removeWildcard(paths.get(i).getNodes());
         for (Path actualPath : actualPaths) {
           retPaths.add(actualPath);
           if (afterConcatAggregations != null && !afterConcatAggregations.isEmpty()) {
@@ -311,7 +311,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     selectOperator.setAggregations(newAggregations);
   }
 
-  protected List<Path> removeWildcard(String path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesPath(path);
+  protected List<Path> removeWildcard(List<String> nodes) throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesPath(nodes);
   }
 }
