@@ -1538,10 +1538,6 @@ public class MetaGroupMember extends RaftMember {
    * @return
    */
   TSStatus forwardPlan(Map<PhysicalPlan, PartitionGroup> planGroupMap, PhysicalPlan plan) {
-//    InsertRowPlan backup = null;
-//    if (plan instanceof InsertRowPlan) {
-//      backup = (InsertRowPlan) ((InsertRowPlan) plan).clone();
-//    }
     // the error codes from the groups that cannot execute the plan
     TSStatus status;
     if (planGroupMap.size() == 1) {
