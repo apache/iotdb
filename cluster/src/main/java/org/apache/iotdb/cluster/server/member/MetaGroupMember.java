@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import java.lang.reflect.Array;
 import java.net.SocketTimeoutException;
 import org.apache.iotdb.cluster.ClusterFileFlushPolicy;
 import org.apache.iotdb.cluster.client.async.AsyncClientPool;
@@ -1487,7 +1488,7 @@ public class MetaGroupMember extends RaftMember {
         status = forwardToMultipleGroup(planGroupMap);
       }
     }
-    if (plan instanceof InsertRowPlan
+    if (plan instanceof InsertPlan
         && status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
       // try to create timeseries
@@ -1652,9 +1653,10 @@ public class MetaGroupMember extends RaftMember {
     List<String> unregisteredSeriesList = getUnregisteredSeriesList(seriesList, partitionGroup);
     for (String seriesPath : unregisteredSeriesList) {
       int index = seriesList.indexOf(seriesPath);
-      TSDataType dataType = TypeInferenceUtils
-          .getPredictedDataType(insertPlan instanceof InsertTabletPlan
-              ? ((Object[]) ((InsertTabletPlan) insertPlan).getColumns()[index])[0]
+      TSDataType dataType = insertPlan.getDataTypes() != null
+          ? insertPlan.getDataTypes()[index]
+          : TypeInferenceUtils.getPredictedDataType(insertPlan instanceof InsertTabletPlan
+              ? Array.get(((InsertTabletPlan) insertPlan).getColumns()[index], 0)
               : ((InsertRowPlan) insertPlan).getValues()[index], true);
       TSEncoding encoding = getDefaultEncoding(dataType);
       CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();

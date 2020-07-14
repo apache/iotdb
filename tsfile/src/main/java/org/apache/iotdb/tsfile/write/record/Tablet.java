@@ -74,10 +74,10 @@ public class Tablet {
    * constructor (all Tablet should be the same size).
    *
    * @param deviceId   the name of the device specified to be written in
-   * @param timeseries the list of measurement schemas for creating the tablet
+   * @param schemas the list of measurement schemas for creating the tablet
    */
-  public Tablet(String deviceId, List<MeasurementSchema> timeseries) {
-    this(deviceId, timeseries, DEFAULT_SIZE);
+  public Tablet(String deviceId, List<MeasurementSchema> schemas) {
+    this(deviceId, schemas, DEFAULT_SIZE);
   }
 
   /**
