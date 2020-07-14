@@ -19,12 +19,8 @@
 
 package org.apache.iotdb.db.qp.physical.crud;
 
-import io.jsonwebtoken.lang.Collections;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -97,7 +93,7 @@ public abstract class InsertPlan extends PhysicalPlan {
    * @param index failed measurement index
    */
   public void markFailedMeasurementInsertion(int index, Exception e) {
-    if(measurements[index] == null){
+    if (measurements[index] == null) {
       return;
     }
     if (failedMeasurements == null) {
