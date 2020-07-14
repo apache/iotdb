@@ -581,15 +581,15 @@ public class StorageGroupProcessor {
       fileResource.setClosed(false);
       String tsfilePrefix = f.getPath()
           .substring(0, f.getPath().lastIndexOf(TSFILE_SUFFIX)) + TSFILE_SUFFIX;
-      String vmVersionStr = f.getPath()
+      String vmLevelStr = f.getPath()
           .substring(f.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1).replaceAll(VM_SUFFIX, "");
-      int vmVersion = Integer.parseInt(vmVersionStr);
+      int vmLevel = Integer.parseInt(vmLevelStr);
       List<List<TsFileResource>> tsFileList = vmTsFileResourceMap
           .computeIfAbsent(tsfilePrefix, k -> new ArrayList<>());
-      while (tsFileList.size() <= vmVersion) {
+      while (tsFileList.size() <= vmLevel) {
         tsFileList.add(new ArrayList<>());
       }
-      tsFileList.get(vmVersion).add(fileResource);
+      tsFileList.get(vmLevel).add(fileResource);
     }
     vmTsFileResourceMap.values()
         .forEach(tsFileResources -> tsFileResources
