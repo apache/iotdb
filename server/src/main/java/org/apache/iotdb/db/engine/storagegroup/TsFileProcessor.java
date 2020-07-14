@@ -609,9 +609,9 @@ public class TsFileProcessor {
       TimeUnit.MILLISECONDS.sleep(1);
       File parent = tsFileResource.getTsFile().getParentFile();
       File newVmFile = FSFactoryProducer.getFSFactory().getFile(parent,
-          tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
-              .currentTimeMillis() + IoTDBConstant.FILE_NAME_SEPARATOR + level
-              + VM_SUFFIX);
+          tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + level
+              + IoTDBConstant.FILE_NAME_SEPARATOR + System
+              .currentTimeMillis() + VM_SUFFIX);
       return newVmFile;
     } catch (InterruptedException e) {
       logger.error("{}: {}, closing task is interrupted.",
@@ -838,17 +838,18 @@ public class TsFileProcessor {
         mergeWorking = true;
         logger.info("{}: {} submit a vm merge task", storageGroupName,
             tsFileResource.getTsFile().getName());
-        List<List<TsFileResource>> currVmTsFileResources = new ArrayList<>();
+        // fork current vm tsfile and writer, then commit then to vm merge
+        List<List<TsFileResource>> copiedVmTsFileResources = new ArrayList<>();
         for (List<TsFileResource> subVmTsFileResources : vmTsFileResources) {
-          currVmTsFileResources.add(new ArrayList<>(subVmTsFileResources));
+          copiedVmTsFileResources.add(new ArrayList<>(subVmTsFileResources));
         }
-        List<List<RestorableTsFileIOWriter>> currVmWriters = new ArrayList<>();
+        List<List<RestorableTsFileIOWriter>> copiedVmWriters = new ArrayList<>();
         for (List<RestorableTsFileIOWriter> subVmWriters : vmWriters) {
-          currVmWriters.add(new ArrayList<>(subVmWriters));
+          copiedVmWriters.add(new ArrayList<>(subVmWriters));
         }
         VmMergeTaskPoolManager.getInstance()
             .submit(
-                new VmMergeTask(currVmTsFileResources, currVmWriters));
+                new VmMergeTask(copiedVmTsFileResources, copiedVmWriters));
       } else {
         logger.info("{}: {} last vm merge task is working, skip current merge", storageGroupName,
             tsFileResource.getTsFile().getName());
@@ -1151,7 +1152,7 @@ public class TsFileProcessor {
                 tmpWriter.makeMetadataVisible();
                 vmWriters.get(i + 1).add(tmpWriter);
                 vmMergeWriters.get(i + 1).add(tmpWriter);
-                logger.info("{} vm file open a writer", newVmFile.getName());
+                logger.debug("{} vm file open a writer", newVmFile.getName());
               } finally {
                 vmMergeLock.writeLock().unlock();
               }

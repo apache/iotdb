@@ -582,7 +582,8 @@ public class StorageGroupProcessor {
       String tsfilePrefix = f.getPath()
           .substring(0, f.getPath().lastIndexOf(TSFILE_SUFFIX)) + TSFILE_SUFFIX;
       String vmLevelStr = f.getPath()
-          .substring(f.getPath().lastIndexOf(FILE_NAME_SEPARATOR) + 1).replaceAll(VM_SUFFIX, "");
+          .substring(f.getPath().lastIndexOf(TSFILE_SUFFIX)).replaceAll(TSFILE_SUFFIX, "")
+          .split(IoTDBConstant.FILE_NAME_SEPARATOR)[0];
       int vmLevel = Integer.parseInt(vmLevelStr);
       List<List<TsFileResource>> tsFileList = vmTsFileResourceMap
           .computeIfAbsent(tsfilePrefix, k -> new ArrayList<>());
@@ -732,6 +733,7 @@ public class StorageGroupProcessor {
 
   /**
    * Insert a tablet (rows belonging to the same devices) into this storage group.
+   *
    * @throws BatchInsertionException if some of the rows failed to be inserted
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchInsertionException {
