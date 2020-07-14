@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.utils.ClusterNode;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,8 +38,8 @@ public class SyncClientPool {
       SyncClientPool.class);
   private static final long WAIT_CLIENT_TIMEOUT_MS = 5 * 1000L;
   private int maxConnectionForEachNode;
-  private Map<Node, Deque<Client>> clientCaches = new ConcurrentHashMap<>();
-  private Map<Node, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
+  private Map<ClusterNode, Deque<Client>> clientCaches = new ConcurrentHashMap<>();
+  private Map<ClusterNode, Integer> nodeClientNumMap = new ConcurrentHashMap<>();
   private SyncClientFactory syncClientFactory;
 
   public SyncClientPool(SyncClientFactory syncClientFactory) {
@@ -54,16 +55,17 @@ public class SyncClientPool {
    * @throws IOException
    */
   public Client getClient(Node node) {
+    ClusterNode clusterNode = new ClusterNode(node);
     //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-    Deque<Client> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
+    Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
     synchronized (this) {
       if (clientStack.isEmpty()) {
-        int nodeClientNum = nodeClientNumMap.getOrDefault(node, 0);
+        int nodeClientNum = nodeClientNumMap.getOrDefault(clusterNode, 0);
         if (nodeClientNum >= maxConnectionForEachNode) {
-          return waitForClient(clientStack, node, nodeClientNum);
+          return waitForClient(clientStack, clusterNode, nodeClientNum);
         } else {
-          nodeClientNumMap.put(node, nodeClientNum + 1);
-          return createClient(node, nodeClientNum);
+          nodeClientNumMap.put(clusterNode, nodeClientNum + 1);
+          return createClient(clusterNode, nodeClientNum);
         }
       } else {
         return clientStack.pop();
@@ -72,7 +74,7 @@ public class SyncClientPool {
   }
 
   @SuppressWarnings("java:S2273") // synchronized outside
-  private Client waitForClient(Deque<Client> clientStack, Node node, int nodeClientNum) {
+  private Client waitForClient(Deque<Client> clientStack, ClusterNode node, int nodeClientNum) {
     // wait for an available client
     long waitStart = System.currentTimeMillis();
     while (clientStack.isEmpty()) {
@@ -99,8 +101,9 @@ public class SyncClientPool {
    * @param client
    */
   public void putClient(Node node, Client client) {
+    ClusterNode clusterNode = new ClusterNode(node);
     //As clientCaches is ConcurrentHashMap, computeIfAbsent is thread safety.
-    Deque<Client> clientStack = clientCaches.computeIfAbsent(node, n -> new ArrayDeque<>());
+    Deque<Client> clientStack = clientCaches.computeIfAbsent(clusterNode, n -> new ArrayDeque<>());
     synchronized (this) {
       if (client.getInputProtocol().getTransport().isOpen()) {
         clientStack.push(client);
@@ -109,14 +112,14 @@ public class SyncClientPool {
           clientStack.push(syncClientFactory.getSyncClient(node, this));
         } catch (TTransportException e) {
           logger.error("Cannot open transport for client", e);
-          nodeClientNumMap.computeIfPresent(node, (n, oldValue) -> oldValue - 1);
+          nodeClientNumMap.computeIfPresent(clusterNode, (n, oldValue) -> oldValue - 1);
         }
       }
       this.notifyAll();
     }
   }
 
-  private Client createClient(Node node, int nodeClientNum) {
+  private Client createClient(ClusterNode node, int nodeClientNum) {
     try {
       return syncClientFactory.getSyncClient(node, this);
     } catch (TTransportException e) {
