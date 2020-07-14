@@ -191,10 +191,17 @@ public class IoTDBDescriptor {
 
       loadWALProps(properties);
 
-      conf.setBaseDir(properties.getProperty("base_dir", conf.getBaseDir()));
-
-      conf.setSystemDir(
-          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.SYSTEM_FOLDER_NAME);
+      String systemDir = properties.getProperty("system_dir");
+      if(systemDir == null) {
+        systemDir = properties.getProperty("base_dir");
+        if(systemDir != null){
+          systemDir = FilePathUtils.regularizePath(systemDir) + IoTDBConstant.SYSTEM_FOLDER_NAME;
+        }
+        else {
+          systemDir = conf.getSystemDir();
+        }
+      }
+      conf.setSystemDir(systemDir);
 
       conf.setSchemaDir(
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SCHEMA_FOLDER_NAME);
@@ -203,15 +210,15 @@ public class IoTDBDescriptor {
           FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.SYNC_FOLDER_NAME);
 
       conf.setTracingDir(FilePathUtils
-          .regularizePath(conf.getBaseDir() + IoTDBConstant.TRACING_FOLDER_NAME));
+          .regularizePath(conf.getSystemDir() + IoTDBConstant.TRACING_FOLDER_NAME));
 
       conf.setQueryDir(
-          FilePathUtils.regularizePath(conf.getBaseDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
+          FilePathUtils.regularizePath(conf.getSystemDir()) + IoTDBConstant.QUERY_FOLDER_NAME);
 
       conf.setDataDirs(properties.getProperty("data_dirs", conf.getDataDirs()[0])
           .split(","));
 
-      conf.setWalFolder(properties.getProperty("wal_dir", conf.getWalFolder()));
+      conf.setWalDir(properties.getProperty("wal_dir", conf.getWalDir()));
 
       int walBufferSize = Integer.parseInt(properties.getProperty("wal_buffer_size",
           Integer.toString(conf.getWalBufferSize())));

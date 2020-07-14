@@ -73,7 +73,7 @@ public class WriteLogNodeTest {
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path(identifier + ".s1"));
 
     long[] times = new long[]{110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
@@ -111,7 +111,7 @@ public class WriteLogNodeTest {
     logNode.close();
 
     File walFile = new File(
-        config.getWalFolder() + File.separator + identifier + File.separator + "wal1");
+        config.getWalDir() + File.separator + identifier + File.separator + "wal1");
     assertTrue(walFile.exists());
 
     ILogReader reader = logNode.getLogReader();
@@ -136,7 +136,7 @@ public class WriteLogNodeTest {
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path(identifier + ".s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path(identifier + ".s1"));
 
     logNode.write(bwInsertPlan);
     logNode.notifyStartFlush();
@@ -173,12 +173,12 @@ public class WriteLogNodeTest {
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
 
     File walFile = new File(
-        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
+        config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertTrue(!walFile.exists());
 
     logNode.write(deletePlan);
@@ -199,7 +199,7 @@ public class WriteLogNodeTest {
         new String[]{"s1", "s2", "s3", "s4"},
         new TSDataType[]{TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN},
         new String[]{"1.0", "15", "str", "false"});
-    DeletePlan deletePlan = new DeletePlan(50, new Path("root.logTestDevice.s1"));
+    DeletePlan deletePlan = new DeletePlan(Long.MIN_VALUE, 50, new Path("root.logTestDevice.s1"));
 
     logNode.write(bwInsertPlan);
     logNode.write(deletePlan);
@@ -207,7 +207,7 @@ public class WriteLogNodeTest {
     logNode.forceSync();
 
     File walFile = new File(
-        config.getWalFolder() + File.separator + "root.logTestDevice" + File.separator + "wal1");
+        config.getWalDir() + File.separator + "root.logTestDevice" + File.separator + "wal1");
     assertTrue(walFile.exists());
 
     assertTrue(new File(logNode.getLogDirectory()).exists());

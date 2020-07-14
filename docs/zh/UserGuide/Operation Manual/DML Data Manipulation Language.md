@@ -829,7 +829,7 @@ SQL语句将不会执行，并且相应的错误提示如下：
 
 ### 数据删除
 
-用户使用[DELETE语句](../Operation%20Manual/SQL%20Reference.html)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带\*路径对某时间之前的数据进行删除（当前版本暂不支持删除某一闭时间区间范围内的数据）。
+用户使用[DELETE语句](../Operation%20Manual/SQL%20Reference.html)可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带\*路径对某一个时间区间内的数据进行删除。
 
 在JAVA编程环境中，您可以使用JDBC API单条或批量执行DELETE语句。
 
@@ -841,6 +841,29 @@ wf02子站的wt02设备在2017-11-01 16:26:00之前的供电状态出现多段�
 
 ```
 delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
+```
+
+如果我们仅仅想要删除2017年内的在2017-11-01 16:26:00之前的数据，可以使用以下SQL:
+```
+delete from root.ln.wf02.wt02.status where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
+```
+
+IoTDB 支持删除一个时间序列任何一个时间范围内的所有时序点，用户可以使用以下SQL语句指定需要删除的时间范围：
+```
+delete from root.ln.wf02.wt02.status where time < 10
+delete from root.ln.wf02.wt02.status where time <= 10
+delete from root.ln.wf02.wt02.status where time < 20 and time > 10
+delete from root.ln.wf02.wt02.status where time <= 20 and time >= 10
+delete from root.ln.wf02.wt02.status where time > 20
+delete from root.ln.wf02.wt02.status where time >= 20
+delete from root.ln.wf02.wt02.status where time = 20
+```
+
+需要注意，当前的删除语句不支持where子句后的时间范围为多个由OR连接成的时间区间。如下删除语句将会解析出错：
+```
+delete from root.ln.wf02.wt02.status where time > 4 or time < 0
+Msg: 303: Check metadata error: For delete statement, where clause can only contain atomic
+expressions like : time > XXX, time <= XXX, or two atomic expressions connected by 'AND'
 ```
 
 #### 多传感器时间序列值删除    

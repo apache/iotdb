@@ -22,11 +22,11 @@ package org.apache.iotdb.tsfile.compress;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-
-import org.xerial.snappy.Snappy;
-
+import net.jpountz.lz4.LZ4Compressor;
+import net.jpountz.lz4.LZ4Factory;
 import org.apache.iotdb.tsfile.exception.compress.CompressionTypeNotSupportedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.xerial.snappy.Snappy;
 
 /**
  * compress data according to type in schema.
@@ -52,6 +52,8 @@ public interface ICompressor extends Serializable {
         return new NoCompressor();
       case SNAPPY:
         return new SnappyCompressor();
+      case LZ4:
+        return new IOTDBLZ4Compressor();
       default:
         throw new CompressionTypeNotSupportedException(name.toString());
     }
@@ -138,6 +140,45 @@ public interface ICompressor extends Serializable {
     @Override
     public CompressionType getType() {
       return CompressionType.SNAPPY;
+    }
+  }
+
+  class IOTDBLZ4Compressor implements ICompressor {
+    private LZ4Compressor compressor;
+
+    public IOTDBLZ4Compressor(){
+      super();
+      LZ4Factory factory = LZ4Factory.fastestInstance();
+      compressor = factory.fastCompressor();
+    }
+
+    @Override
+    public byte[] compress(byte[] data) throws IOException {
+      if (data == null) {
+        return new byte[0];
+      }
+      return compressor.compress(data);
+    }
+
+    @Override
+    public int compress(byte[] data, int offset, int length, byte[] compressed) throws IOException {
+      return compressor.compress(data, offset, length, compressed, 0);
+    }
+
+    @Override
+    public int compress(ByteBuffer data, ByteBuffer compressed) throws IOException {
+      compressor.compress(data, compressed);
+      return data.limit();
+    }
+
+    @Override
+    public int getMaxBytesForCompression(int uncompressedDataSize) {
+      return compressor.maxCompressedLength(uncompressedDataSize);
+    }
+
+    @Override
+    public CompressionType getType() {
+      return CompressionType.LZ4;
     }
   }
 }

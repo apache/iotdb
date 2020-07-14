@@ -74,6 +74,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.TracingManager;
@@ -87,7 +88,35 @@ import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.ServerProperties;
+import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
+import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
+import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
+import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
+import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
+import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
+import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
+import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -113,6 +142,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   private static final int MAX_SIZE =
       IoTDBDescriptor.getInstance().getConfig().getQueryCacheSizeInMetric();
   private static final int DELETE_SIZE = 20;
+  private static final int FETCH_SIZE = 10000;
   private static final String ERROR_PARSING_SQL =
       "meet error while parsing SQL to physical plan: {}";
   private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
@@ -513,7 +543,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   }
 
   /**
-   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByPlan, some
+   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, some
    *             AuthorPlan
    */
   private TSExecuteStatementResp internalExecuteQueryStatement(String statement,
@@ -524,6 +554,20 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     try {
       TSExecuteStatementResp resp = getQueryResp(plan, username); // column headers
 
+      // In case users forget to set this field in query, use the default value
+      if (fetchSize == 0) {
+        fetchSize = FETCH_SIZE;
+      }
+
+      if (plan instanceof ShowTimeSeriesPlan) {
+        //If the user does not pass the limit, then set limit = fetchSize and haslimit=false,else set haslimit = true
+        if (((ShowTimeSeriesPlan) plan).getLimit() == 0) {
+          ((ShowTimeSeriesPlan) plan).setLimit(fetchSize);
+          ((ShowTimeSeriesPlan) plan).setHasLimit(false);
+        } else {
+          ((ShowTimeSeriesPlan) plan).setHasLimit(true);
+        }
+      }
       if (plan instanceof QueryPlan && !((QueryPlan) plan).isAlignByTime()) {
         if (plan.getOperatorType() == OperatorType.AGGREGATION) {
           throw new QueryProcessException("Aggregation doesn't support disable align clause.");
@@ -961,7 +1005,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return new TSExecuteStatementResp(status);
     }
 
-    status = executePlan(plan);
+    status = executeNonQueryPlan(plan);
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(status);
     long queryId = generateQueryId(false);
     resp.setQueryId(queryId);
@@ -1093,7 +1137,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (status != null) {
           statusList.add(status);
         } else {
-          statusList.add(executePlan(plan));
+          statusList.add(executeNonQueryPlan(plan));
         }
       } catch (Exception e) {
         logger.error("meet error when insert in batch", e);
@@ -1131,7 +1175,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         if (status != null) {
           statusList.add(status);
         } else {
-          statusList.add(executePlan(plan));
+          statusList.add(executeNonQueryPlan(plan));
         }
       } catch (Exception e) {
         logger.error("meet error when insert in batch", e);
@@ -1202,7 +1246,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (status != null) {
         return status;
       }
-      return executePlan(plan);
+      return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when insert", e);
     }
@@ -1232,7 +1276,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       if (status != null) {
         return status;
       }
-      return executePlan(plan);
+      return executeNonQueryPlan(plan);
     } catch (Exception e) {
       logger.error("meet error when insert", e);
     }
@@ -1247,7 +1291,8 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     }
 
     DeletePlan plan = new DeletePlan();
-    plan.setDeleteTime(req.getTimestamp());
+    plan.setDeleteStartTime(req.getStartTime());
+    plan.setDeleteEndTime(req.getEndTime());
     List<Path> paths = new ArrayList<>();
     for (String path : req.getPaths()) {
       paths.add(new Path(path));
@@ -1258,7 +1303,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return new TSStatus(status);
     }
-    return new TSStatus(executePlan(plan));
+    return new TSStatus(executeNonQueryPlan(plan));
   }
 
   @Override
@@ -1283,7 +1328,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         return status;
       }
 
-      return executePlan(insertTabletPlan);
+      return executeNonQueryPlan(insertTabletPlan);
     } catch (Exception e) {
       logger.error("{}: error occurs when executing statements", IoTDBConstant.GLOBAL_DB_NAME, e);
       return RpcUtils
@@ -1321,7 +1366,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
           continue;
         }
 
-        statusList.add(executePlan(insertTabletPlan));
+        statusList.add(executeNonQueryPlan(insertTabletPlan));
       }
       return RpcUtils.getStatus(statusList);
     } catch (Exception e) {
@@ -1350,7 +1395,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return new TSStatus(status);
     }
-    return new TSStatus(executePlan(plan));
+    return new TSStatus(executeNonQueryPlan(plan));
   }
 
   @Override
@@ -1368,7 +1413,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return new TSStatus(status);
     }
-    return new TSStatus(executePlan(plan));
+    return new TSStatus(executeNonQueryPlan(plan));
   }
 
   @Override
@@ -1392,7 +1437,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return status;
     }
-    return executePlan(plan);
+    return executeNonQueryPlan(plan);
   }
 
   @Override
@@ -1427,7 +1472,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         continue;
       }
 
-      statusList.add(executePlan(plan));
+      statusList.add(executeNonQueryPlan(plan));
     }
 
     boolean isAllSuccessful = true;
@@ -1464,7 +1509,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (status != null) {
       return status;
     }
-    return executePlan(plan);
+    return executeNonQueryPlan(plan);
   }
 
   @Override
@@ -1492,7 +1537,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     return null;
   }
 
-  protected TSStatus executePlan(PhysicalPlan plan) {
+  protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     boolean execRet;
     try {
       execRet = executeNonQuery(plan);

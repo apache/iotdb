@@ -173,6 +173,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 
 /**
@@ -1340,8 +1341,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     switch (operatorType) {
       case SQLConstant.TOK_DELETE:
         deleteDataOp.setFilterOperator(whereOp.getChildren().get(0));
-        long deleteTime = parseDeleteTimeFilter(deleteDataOp);
-        deleteDataOp.setTime(deleteTime);
+        Pair<Long, Long> timeInterval = parseDeleteTimeInterval(deleteDataOp);
+        deleteDataOp.setStartTime(timeInterval.left);
+        deleteDataOp.setEndTime(timeInterval.right);
         break;
       case SQLConstant.TOK_QUERY:
         queryOp.setFilterOperator(whereOp.getChildren().get(0));
@@ -1545,18 +1547,57 @@ public class LogicalGenerator extends SqlBaseBaseListener {
    *
    * @param operator delete logical plan
    */
-  private long parseDeleteTimeFilter(DeleteDataOperator operator) {
+  private Pair<Long, Long> parseDeleteTimeInterval(DeleteDataOperator operator) {
     FilterOperator filterOperator = operator.getFilterOperator();
-    if (filterOperator.getTokenIntType() != SQLConstant.LESSTHAN
-        && filterOperator.getTokenIntType() != SQLConstant.LESSTHANOREQUALTO) {
+    if (!filterOperator.isLeaf() && filterOperator.getTokenIntType() != SQLConstant.KW_AND) {
       throw new SQLParserException(
-          "For delete command, where clause must be like : time < XXX or time <= XXX");
+          "For delete statement, where clause can only contain atomic expressions like : "
+              + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'");
     }
+
+    if (filterOperator.isLeaf()) {
+      return calcOperatorInterval(filterOperator);
+    }
+
+    List<FilterOperator> children = filterOperator.getChildren();
+    FilterOperator lOperator = children.get(0);
+    FilterOperator rOperator = children.get(1);
+    if (!lOperator.isLeaf() || !rOperator.isLeaf()) {
+      throw new SQLParserException(
+          "For delete statement, where clause can only contain atomic expressions like : "
+              + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'");
+    }
+
+    Pair<Long, Long> leftOpInterval = calcOperatorInterval(lOperator);
+    Pair<Long, Long> rightOpInterval = calcOperatorInterval(rOperator);
+    Pair<Long, Long> parsedInterval = new Pair<>(
+        Math.max(leftOpInterval.left, rightOpInterval.left),
+        Math.min(leftOpInterval.right, rightOpInterval.right));
+    if (parsedInterval.left > parsedInterval.right) {
+      throw new SQLParserException(
+          "Invalid delete range: [" + parsedInterval.left + ", " + parsedInterval.right + "]");
+    }
+    return parsedInterval;
+  }
+
+  private Pair<Long, Long> calcOperatorInterval(FilterOperator filterOperator) {
     long time = Long.parseLong(((BasicFunctionOperator) filterOperator).getValue());
-    if (filterOperator.getTokenIntType() == SQLConstant.LESSTHAN) {
-      time = time - 1;
+    switch (filterOperator.getTokenIntType()) {
+      case SQLConstant.LESSTHAN:
+        return new Pair<>(Long.MIN_VALUE, time - 1);
+      case SQLConstant.LESSTHANOREQUALTO:
+        return new Pair<>(Long.MIN_VALUE, time);
+      case SQLConstant.GREATERTHAN:
+        return new Pair<>(time + 1, Long.MAX_VALUE);
+      case SQLConstant.GREATERTHANOREQUALTO:
+        return new Pair<>(time, Long.MAX_VALUE);
+      case SQLConstant.EQUAL:
+        return new Pair<>(time, time);
+      default:
+        throw new SQLParserException(
+            "For delete statement, where clause can only contain atomic expressions like : "
+                + "time > XXX, time <= XXX, or two atomic expressions connected by 'AND'");
     }
-    return time;
   }
 
   @Override

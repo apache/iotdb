@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.PathException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -275,7 +274,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataException, PathException {
+  public void testMaximalSeriesNumberAmongStorageGroup() throws MetadataException {
     MManager manager = IoTDB.metaManager;
     assertEquals(0, manager.getMaximalSeriesNumberAmongStorageGroups());
     manager.setStorageGroup("root.laptop");

@@ -726,14 +726,27 @@ public class Session {
    * delete data <= time in multiple timeseries
    *
    * @param paths data in which time series to delete
-   * @param time  data with time stamp less than or equal to time will be deleted
+   * @param endTime data with time stamp less than or equal to time will be deleted
    */
-  public void deleteData(List<String> paths, long time)
+  public void deleteData(List<String> paths, long endTime)
+      throws IoTDBConnectionException, StatementExecutionException {
+    deleteData(paths, Long.MIN_VALUE, endTime);
+  }
+
+  /**
+   * delete data >= startTime and data <= endTime in multiple timeseries
+   *
+   * @param paths   data in which time series to delete
+   * @param startTime delete range start time
+   * @param endTime delete range end time
+   */
+  public void deleteData(List<String> paths, long startTime, long endTime)
       throws IoTDBConnectionException, StatementExecutionException {
     TSDeleteDataReq request = new TSDeleteDataReq();
     request.setSessionId(sessionId);
     request.setPaths(paths);
-    request.setTimestamp(time);
+    request.setStartTime(startTime);
+    request.setEndTime(endTime);
 
     try {
       RpcUtils.verifySuccess(client.deleteData(request));

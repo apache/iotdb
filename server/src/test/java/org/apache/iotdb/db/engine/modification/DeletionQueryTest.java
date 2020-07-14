@@ -23,6 +23,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.mnode.MNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.executor.QueryRouter;
@@ -55,6 +57,7 @@ public class DeletionQueryTest {
   private TSDataType dataType = TSDataType.DOUBLE;
   private TSEncoding encoding = TSEncoding.PLAIN;
   private QueryRouter router = new QueryRouter();
+  private MNode deviceMNode = null;
 
   static {
     for (int i = 0; i < 10; i++) {
@@ -65,9 +68,10 @@ public class DeletionQueryTest {
   @Before
   public void setup() throws MetadataException {
     EnvironmentUtils.envSetUp();
-
+    deviceMNode = new MNode(null, processorName);
     IoTDB.metaManager.setStorageGroup(processorName);
     for (int i = 0; i < 10; i++) {
+      deviceMNode.addChild(measurements[i], new MeasurementMNode(null, null, null, null));
       IoTDB.metaManager.createTimeseries(processorName + "." + measurements[i], dataType,
           encoding, TSFileDescriptor.getInstance().getConfig().getCompressor(), Collections.emptyMap());
     }
@@ -76,6 +80,12 @@ public class DeletionQueryTest {
   @After
   public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
+  }
+
+  private void insertToStorageEngine(TSRecord record) throws StorageEngineException {
+    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
+    insertRowPlan.setDeviceMNode(deviceMNode);
+    StorageEngine.getInstance().insert(insertRowPlan);
   }
 
   @Test
@@ -87,13 +97,13 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
@@ -125,13 +135,13 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
@@ -165,7 +175,7 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -175,13 +185,13 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
@@ -214,7 +224,7 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -224,13 +234,13 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 40);
-    StorageEngine.getInstance().delete(processorName, measurements[3], 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 40);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 30);
 
     List<Path> pathList = new ArrayList<>();
     pathList.add(new Path(processorName, measurements[3]));
@@ -263,13 +273,13 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -278,13 +288,13 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 250);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 250);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 230);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 250);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 250);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 250);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 230);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 230, 250);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
@@ -293,13 +303,13 @@ public class DeletionQueryTest {
       for (int j = 0; j < 10; j++) {
         record.addTuple(new DoubleDataPoint(measurements[j], i * 1.0));
       }
-      StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      insertToStorageEngine(record);
     }
 
-    StorageEngine.getInstance().delete(processorName, measurements[3], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[4], 50);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 30);
-    StorageEngine.getInstance().delete(processorName, measurements[5], 50);
+    StorageEngine.getInstance().delete(processorName, measurements[3], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[4], 0, 50);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 0, 30);
+    StorageEngine.getInstance().delete(processorName, measurements[5], 30, 50);
 
     StorageEngine.getInstance().syncCloseAllProcessor();
 
