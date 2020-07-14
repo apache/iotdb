@@ -866,10 +866,10 @@ public class MTree implements Serializable {
     count.set(0);
     if (offset.get() != 0 || limit.get() != 0) {
       res = new LinkedList<>();
-      findPath(root, nodes.toArray(new String[0]), 1, "", res, true, false);
+      findPath(root, nodes.toArray(new String[0]), 1, res, true, false);
     } else {
       res = new LinkedList<>();
-      findPath(root, nodes.toArray(new String[0]), 1, "", res, false, false);
+      findPath(root, nodes.toArray(new String[0]), 1, res, false, false);
     }
     // avoid memory leaks
     limit.remove();
