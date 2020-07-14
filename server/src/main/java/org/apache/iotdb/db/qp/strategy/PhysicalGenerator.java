@@ -177,7 +177,7 @@ public class PhysicalGenerator {
               "For Insert command, cannot specified more than one seriesPath: " + paths);
         }
 
-        return new InsertRowPlan(paths.get(0).getNodes(), insert.getTime(),
+        return new InsertRowPlan(paths.get(0).getNodes(), paths.get(0).getDevice(), insert.getTime(),
             insert.getMeasurementList(), insert.getValueList());
       case MERGE:
         if (operator.getTokenIntType() == SQLConstant.TOK_FULL_MERGE) {

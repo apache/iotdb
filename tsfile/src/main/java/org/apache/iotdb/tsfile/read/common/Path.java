@@ -134,7 +134,7 @@ public class Path implements Serializable, Comparable<Path> {
     return new Path(sc);
   }
 
-  public static Path addNotes(Path src, Path tail) {
+  public static Path addNodes(Path src, Path tail) {
     if (tail.nodes.isEmpty()) {
       return src;
     }

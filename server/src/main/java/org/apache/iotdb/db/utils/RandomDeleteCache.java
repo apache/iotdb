@@ -21,7 +21,6 @@ package org.apache.iotdb.db.utils;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.iotdb.tsfile.common.cache.Cache;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
 
 public abstract class RandomDeleteCache<K, V> implements Cache<K, V> {
 
