@@ -101,7 +101,7 @@ public class GroupByLevelDataSetTest {
   }
 
   @Test
-  public void testGroupByLevel() throws Exception {
+  public void testCountGroupByLevel() throws Exception {
     QueryPlan queryPlan = (QueryPlan) processor
       .parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=1");
     QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
@@ -154,15 +154,38 @@ public class GroupByLevelDataSetTest {
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
+  }
 
-    // not count
-    try {
-      queryPlan = (QueryPlan) processor
-        .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by level=6");
-      dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-      fail();
-    } catch (Exception e) {
-      assertEquals("group by level only support count now.", e.getMessage());
-    }
+  @Test
+  public void testSumGroupByLevel() throws Exception {
+    QueryPlan queryPlan = (QueryPlan) processor
+      .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by level=1");
+    QueryDataSet dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t6228.0", dataSet.next().toString());
+
+    queryPlan = (QueryPlan) processor
+      .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by level=0");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t6228.0", dataSet.next().toString());
+
+    queryPlan = (QueryPlan) processor
+      .parseSQLToPhysicalPlan("select sum(s0) from root.test.* group by level=6");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t6228.0", dataSet.next().toString());
+
+    // multi paths
+    queryPlan = (QueryPlan) processor
+      .parseSQLToPhysicalPlan("select sum(s0) from root.test.*,root.vehicle.* group by level=1");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t6228.0\t3021.0", dataSet.next().toString());
+
   }
 }
