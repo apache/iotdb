@@ -51,6 +51,7 @@ public class InsertRowPlan extends InsertPlan {
 
   private long time;
   private Object[] values;
+  private List<String> deviceNodes;
 
   // if isNeedInferType is true, the values must be String[], so we could infer types from them
   // if values is object[], we could use the raw type of them, and we should set this to false
@@ -111,20 +112,22 @@ public class InsertRowPlan extends InsertPlan {
     }
   }
 
-  public InsertRowPlan(String deviceId, long insertTime, String[] measurementList,
+  public InsertRowPlan(List<String> deviceNodes, String deviceId, long insertTime, String[] measurementList,
       TSDataType[] dataTypes, Object[] insertValues) {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
+    this.deviceNodes = deviceNodes;
     this.deviceId = deviceId;
     this.measurements = measurementList;
     this.dataTypes = dataTypes;
     this.values = insertValues;
   }
 
-  public InsertRowPlan(String deviceId, long insertTime, String[] measurementList,
+  public InsertRowPlan(List<String> deviceNodes, String deviceId, long insertTime, String[] measurementList,
       String[] insertValues) {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
+    this.deviceNodes = deviceNodes;
     this.deviceId = deviceId;
     this.measurements = measurementList;
     this.dataTypes = new TSDataType[measurements.length];

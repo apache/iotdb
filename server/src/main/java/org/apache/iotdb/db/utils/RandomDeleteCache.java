@@ -28,20 +28,21 @@ public abstract class RandomDeleteCache<K, V> implements Cache<K, V> {
   private int cacheSize;
   private Map<K, V> cache;
 
-  public RandomDeleteCache(int cacheSize) {
+  protected RandomDeleteCache(int cacheSize) {
     this.cacheSize = cacheSize;
     this.cache = new ConcurrentHashMap<>();
   }
 
   @Override
-  public V get(K key) throws CacheException {
-    V v = cache.get(key);
-    if (v == null) {
+  public V get(K key) {
+    return cache.get(key);
+  }
+
+  public void put(K key, V value) {
+    cache.put(key, value);
+    if(cache.get(key) == null) {
       randomRemoveObjectIfCacheIsFull();
-      cache.put(key, loadObjectByKey(key));
-      v = cache.get(key);
     }
-    return v;
   }
 
   private void randomRemoveObjectIfCacheIsFull() {
@@ -57,8 +58,6 @@ public abstract class RandomDeleteCache<K, V> implements Cache<K, V> {
     K key = cache.keySet().iterator().next();
     cache.remove(key);
   }
-
-  public abstract V loadObjectByKey(K key) throws CacheException;
 
   public void removeObject(K key) {
     cache.remove(key);

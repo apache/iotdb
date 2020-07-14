@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata;
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_WILDCARD;
 
 import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -60,6 +61,10 @@ public class MetaUtils {
     return idx >= nodes.length ? PATH_WILDCARD : nodes[idx];
   }
 
+  public static List<String> getDeviceNodeNames(String path) {
+    return Arrays.asList(path.split(PATH_SEPARATOR));
+  }
+
   /**
    * Get storage group name when creating schema automatically is enable
    *
@@ -79,4 +84,23 @@ public class MetaUtils {
     }
     return storageGroupName.toString();
   }
+
+  /**
+   * Get storage group name when creating schema automatically is enable
+   *
+   * e.g., nodes = [root, a, b, c] and level = 1, return [root, a]
+   *
+   * @param nodeNames nodeNames
+   * @param level level
+   */
+  public static List<String> getStorageGroupNodesByLevel(List<String> nodeNames, int level) throws MetadataException {
+    if (nodeNames.size() <= level || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
+      throw new IllegalPathException(nodeNames.toString());
+    }
+    for(int i = level + 1; nodeNames.size() > level; i--) {
+      nodeNames.remove(i);
+    }
+    return nodeNames;
+  }
+
 }
