@@ -191,6 +191,9 @@ public class InsertRowPlan extends InsertPlan {
 
   @Override
   public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
     super.markFailedMeasurementInsertion(index, e);
     if (failedValues == null) {
       failedValues = new ArrayList<>();
@@ -391,7 +394,8 @@ public class InsertRowPlan extends InsertPlan {
     putString(buffer, deviceId);
 
     buffer
-        .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+        .putInt(
+            measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
     for (String measurement : measurements) {
       if (measurement != null) {
@@ -456,7 +460,8 @@ public class InsertRowPlan extends InsertPlan {
     System.arraycopy(this.values, 0, valuesClone, 0, valuesClone.length);
     TSDataType[] typesClone = new TSDataType[this.dataTypes.length];
     System.arraycopy(this.dataTypes, 0, typesClone, 0, typesClone.length);
-    return new InsertRowPlan(deviceIdClone, timeClone, measurementsClone, typesClone, valuesClone);
+    return new InsertRowPlan(deviceIdClone, timeClone, measurementsClone, typesClone,
+        valuesClone);
   }
 
   @Override

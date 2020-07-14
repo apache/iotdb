@@ -502,6 +502,9 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void markFailedMeasurementInsertion(int index, Exception e) {
+    if (measurements[index] == null) {
+      return;
+    }
     super.markFailedMeasurementInsertion(index, e);
     if (failedColumns == null) {
       failedColumns = new ArrayList<>();
