@@ -751,6 +751,14 @@ public abstract class RaftMember {
     Client client;
     do {
       client = syncClientPool.getClient(node);
+      if (client == null) {
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          return null;
+        }
+      }
     } while (client == null);
     return client;
   }
