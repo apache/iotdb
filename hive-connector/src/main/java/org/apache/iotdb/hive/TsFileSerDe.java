@@ -85,8 +85,10 @@ public class TsFileSerDe extends AbstractSerDe {
       throw new TsFileSerDeException("len(columnNames) != len(columnTypes)");
     }
 
-    conf.set(READ_DELTAOBJECTS, deviceId);
-    conf.set(READ_MEASUREMENTID, columnNames.get(1));
+    if (conf != null) {
+      conf.set(READ_DELTAOBJECTS, deviceId);
+      conf.set(READ_MEASUREMENTID, columnNames.get(1));
+    }
 
     oi = createObjectInspector();
   }
