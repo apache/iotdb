@@ -1776,18 +1776,17 @@ public class MManager {
         MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
         node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
       } catch (MetadataException e) {
-        logger.warn("the {} is not exist", seriesPath);
+        logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
       }
     }
   }
 
   public TimeValuePair getLastCache(String seriesPath) {
    try {
-     MeasurementMNode node = null;
-     node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+     MeasurementMNode node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
      return node.getCachedLast();
   } catch (MetadataException e) {
-     // do nothing
+     logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
   }
   return null;
 }
