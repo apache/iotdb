@@ -209,7 +209,7 @@ public class IoTDBConfig {
   /**
    * Wal directory.
    */
-  private String walFolder = baseDir + File.separator + "wal";
+  private String walDir = baseDir + File.separator + "wal";
 
   /**
    * Maximum MemTable number in MemTable pool.
@@ -711,12 +711,11 @@ public class IoTDBConfig {
    * if the folders are relative paths, add IOTDB_HOME as the path prefix
    */
   private void formulateFolders() {
-    baseDir = addHomeDir(baseDir);
     systemDir = addHomeDir(systemDir);
     schemaDir = addHomeDir(schemaDir);
     syncDir = addHomeDir(syncDir);
-    walFolder = addHomeDir(walFolder);
     tracingDir = addHomeDir(tracingDir);
+    walDir = addHomeDir(walDir);
 
     if (TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs().equals(FSType.HDFS)) {
       String hdfsDir = getHdfsDir();
@@ -905,12 +904,12 @@ public class IoTDBConfig {
     this.queryDir = queryDir;
   }
 
-  public String getWalFolder() {
-    return walFolder;
+  public String getWalDir() {
+    return walDir;
   }
 
-  void setWalFolder(String walFolder) {
-    this.walFolder = walFolder;
+  void setWalDir(String walDir) {
+    this.walDir = walDir;
   }
 
   public String getMultiDirStrategyClassName() {
@@ -1039,14 +1038,6 @@ public class IoTDBConfig {
 
   void setLanguageVersion(String languageVersion) {
     this.languageVersion = languageVersion;
-  }
-
-  public String getBaseDir() {
-    return baseDir;
-  }
-
-  void setBaseDir(String baseDir) {
-    this.baseDir = baseDir;
   }
 
   public String getIpWhiteList() {

@@ -629,8 +629,8 @@ var config = {
 					text: '开发',
 					items: [
 					  { text: '如何投票', link: '/zh/Development/VoteRelease'},
-					  { text: '如何提交代码', link: '/Development/HowToCommit'},
-					  { text: '成为Committer', link: '/Development/Committer'},
+					  { text: '如何提交代码', link: '/zh/Development/HowToCommit'},
+					  { text: '成为Committer', link: '/zh/Development/Committer'},
 					  { text: '项目开发指南', link: '/zh/Development/ContributeGuide'},
 					  { text: 'TsFile的更改列表', link: '/zh/Development/format-changelist'},
 					  { text: 'RPC变更清单', link: '/zh/Development/rpc-changelist'},

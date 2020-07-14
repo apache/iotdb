@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,6 +33,9 @@ abstract public class InsertPlan extends PhysicalPlan {
   protected String[] measurements;
   protected TSDataType[] dataTypes;
   protected MeasurementSchema[] schemas;
+
+  // for updating last cache
+  private MNode deviceMNode;
 
   // record the failed measurements
   protected List<String> failedMeasurements;
@@ -79,6 +83,14 @@ abstract public class InsertPlan extends PhysicalPlan {
 
   public int getFailedMeasurementNumber() {
     return failedMeasurements == null ? 0 : failedMeasurements.size();
+  }
+
+  public MNode getDeviceMNode() {
+    return deviceMNode;
+  }
+
+  public void setDeviceMNode(MNode deviceMNode) {
+    this.deviceMNode = deviceMNode;
   }
 
   /**
