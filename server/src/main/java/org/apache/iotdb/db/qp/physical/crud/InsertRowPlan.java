@@ -394,8 +394,7 @@ public class InsertRowPlan extends InsertPlan {
     putString(buffer, deviceId);
 
     buffer
-        .putInt(
-            measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
+        .putInt(measurements.length - (failedMeasurements == null ? 0 : failedMeasurements.size()));
 
     for (String measurement : measurements) {
       if (measurement != null) {

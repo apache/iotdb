@@ -27,11 +27,14 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 /**
  * A tablet data of one device, the tablet contains multiple measurements of this device that share
  * the same time column.
- * <p>
+ *
  * for example:  device root.sg1.d1
- * <p>
- * time, m1, m2, m3 1,  1,  2,  3 2,  1,  2,  3 3,  1,  2,  3
- * <p>
+ *
+ * time, m1, m2, m3
+ *    1,  1,  2,  3
+ *    2,  1,  2,  3
+ *    3,  1,  2,  3
+ *
  * Notice: The tablet should not have empty cell
  */
 public class Tablet {

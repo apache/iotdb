@@ -1994,10 +1994,8 @@ public class MetaGroupMember extends RaftMember {
     if (schemas != null) {
       if (logger.isDebugEnabled()) {
         logger.debug("{}: Pulled {} timeseries schemas of {} and other {} paths from {} of {}",
-            name,
-            schemas.size(), request.getPrefixPaths().get(0), request.getPrefixPaths().size() - 1,
-            node,
-            request.getHeader());
+            name, schemas.size(), request.getPrefixPaths().get(0),
+            request.getPrefixPaths().size() - 1, node, request.getHeader());
       }
       results.addAll(schemas);
       return true;
