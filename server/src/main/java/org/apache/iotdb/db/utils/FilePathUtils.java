@@ -19,10 +19,11 @@
 package org.apache.iotdb.db.utils;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.MetaUtils;
@@ -65,9 +66,9 @@ public class FilePathUtils {
    * @param pathIndex
    * @return
    */
-  public static Map<String, Long> getPathByLevel(AggregationPlan plan, Map<Integer, String> pathIndex) {
+  public static Set<String> getPathByLevel(AggregationPlan plan, Map<Integer, String> pathIndex) {
     // pathGroupByLevel -> count
-    Map<String, Long> finalPaths = new TreeMap<>();
+    Set<String> finalPaths = new TreeSet<>();
 
     List<Path> rawPaths = plan.getPaths();
     int level = plan.getLevel();
@@ -89,7 +90,7 @@ public class FilePathUtils {
         }
         key = path.toString();
       }
-      finalPaths.putIfAbsent(key, 0L);
+      finalPaths.add(key);
       if (pathIndex != null) {
         pathIndex.put(i++, key);
       }
@@ -151,52 +152,72 @@ public class FilePathUtils {
    * @return
    */
   public static RowRecord mergeRecordByPath(RowRecord newRecord,
-                                      Map<String, Long> finalPaths,
-                                      Map<Integer, String> pathIndex,
-                                      TSDataType type) {
+      Set<String> finalPaths, Map<Integer, String> pathIndex,
+      TSDataType type) {
     if (newRecord.getFields().size() < finalPaths.size()) {
       return null;
     }
 
-    Map<String, Object> finalPathMap = new HashMap<>();
+    Map<String, Object> finalPathMap = new TreeMap<>();
     // reset final paths
-    initFinalPathMap(finalPathMap, finalPaths, type);
+    initFinalPathMap(finalPathMap, finalPaths, type, 0);
 
     RowRecord tmpRecord = new RowRecord(newRecord.getTimestamp());
 
     for (int i = 0; i < newRecord.getFields().size(); i++) {
       if (newRecord.getFields().get(i) != null) {
-        finalPathMap.put(pathIndex.get(i), getValue(type, newRecord.getFields().get(i), finalPathMap.get(pathIndex.get(i))));
+        finalPathMap.put(pathIndex.get(i), getSum(type, newRecord.getFields().get(i), 
+            finalPathMap.get(pathIndex.get(i))));
       }
     }
 
     for (Map.Entry<String, Object> entry : finalPathMap.entrySet()) {
       tmpRecord.addField(Field.getField(entry.getValue(), type));
     }
-
     return tmpRecord;
   }
 
-  private static void initFinalPathMap(Map<String, Object> finalPathMap, Map<String, Long> finalPaths, TSDataType type) {
-    switch (type) {
-      case INT64 :
-        for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-          finalPathMap.put(entry.getKey(), 0L);
-        }
-        break;
-      case DOUBLE :
-        for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-          finalPathMap.put(entry.getKey(), 0D);
-        }
-        break;
-      default :
-        for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-          finalPathMap.put(entry.getKey(), 0L);
-        }
+  private static void initFinalPathMap(Map<String, Object> finalPathMap,
+      Set<String> finalPaths, TSDataType type, int initValue) {
+    for (String path : finalPaths) {
+      switch (type) {
+        case INT32 :
+          finalPathMap.put(path, initValue);
+          break;
+        case INT64 :
+          if (initValue == 0) {
+            finalPathMap.put(path, 0L);
+          } else if (initValue > 0) {
+            finalPathMap.put(path, Long.MAX_VALUE);
+          } else {
+            finalPathMap.put(path, Long.MIN_VALUE);
+          }
+          break;
+        case FLOAT :
+          if (initValue == 0) {
+            finalPathMap.put(path, 0F);
+          } else if (initValue > 0) {
+            finalPathMap.put(path, Float.MAX_VALUE);
+          } else {
+            finalPathMap.put(path, Float.MIN_VALUE);
+          }
+          break;
+        case DOUBLE :
+          if (initValue == 0) {
+            finalPathMap.put(path, 0D);
+          } else if (initValue > 0) {
+            finalPathMap.put(path, Double.MAX_VALUE);
+          } else {
+            finalPathMap.put(path, Double.MIN_VALUE);
+          }
+          break;
+        default :
+          finalPathMap.put(path, 0L);
+      }
     }
   }
 
-  private static Object getValue(TSDataType type, Field field, Object before) {
+  private static Object getSum(TSDataType type, Field field, Object before) {
     switch (type) {
       case INT64 :
         return ((Long) before) + field.getLongV(); 
@@ -205,6 +226,47 @@ public class FilePathUtils {
       default :
         return ((Long) before) + field.getLongV(); 
     }
+  }
+
+  private static Object getMaxOrMin(TSDataType type, Field field, Object before, boolean isMax) {
+    switch (type) {
+      case INT64 :
+        return isMax ? Math.max(((Long) before), field.getLongV())
+            : Math.min(((Long) before), field.getLongV());
+      case INT32 :
+        return isMax ? Math.max(((Integer) before), field.getIntV())
+            : Math.min(((Integer) before), field.getIntV());
+      case DOUBLE :
+        return isMax ? Math.max(((Double) before), field.getDoubleV())
+            : Math.min(((Double) before), field.getDoubleV());
+      case FLOAT :
+        return isMax ? Math.max(((Float) before), field.getFloatV())
+            : Math.min(((Float) before), field.getFloatV());
+      default :
+        return isMax ? Math.max(((Long) before), field.getLongV())
+            : Math.min(((Long) before), field.getLongV());
+    }
+  }
+
+  public static RowRecord mergeMaxOrMinByPath(RowRecord newRecord, TSDataType type,
+      Set<String> finalPaths, Map<Integer, String> pathIndex, boolean isMax) {
+    if (newRecord.getFields().size() < finalPaths.size()) {
+      return null;
+    }
+    Map<String, Object> finalPathMap = new TreeMap<>();
+    // reset final paths
+    initFinalPathMap(finalPathMap, finalPaths, type, isMax ? Integer.MIN_VALUE : Integer.MAX_VALUE);
+    for (int i = 0; i < newRecord.getFields().size(); i++) {
+      if (newRecord.getFields().get(i) != null) {
+        finalPathMap.put(pathIndex.get(i), getMaxOrMin(type, newRecord.getFields().get(i), 
+            finalPathMap.get(pathIndex.get(i)), isMax));
+      }
+    }
+    RowRecord tmpRecord = new RowRecord(newRecord.getTimestamp());
+    for (Map.Entry<String, Object> entry : finalPathMap.entrySet()) {
+      tmpRecord.addField(Field.getField(entry.getValue(), type));
+    }
+    return tmpRecord;
   }
 
   public static RowRecord avgRecordByPath(RowRecord newRecord, Map<String, Float> finalPaths,
@@ -239,8 +301,17 @@ public class FilePathUtils {
     switch (aggregation) {
       case "count" :
         return TSDataType.INT64;
+      case "avg" :
       case "sum" :
         return TSDataType.DOUBLE;
+      case "first_value" :
+      case "last_value" :
+      case "max_value" :
+      case "min_value" :
+        return plan.getDeduplicatedDataTypes().get(0);
+      case "max_time" :
+      case "min_time" :
+        return TSDataType.INT64;
       default :
         return TSDataType.INT64;
     }

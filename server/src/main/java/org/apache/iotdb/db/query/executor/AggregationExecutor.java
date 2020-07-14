@@ -318,42 +318,79 @@ public class AggregationExecutor {
    * using aggregate result data list construct QueryDataSet.
    *
    * @param aggregateResultList aggregate result list
+   * @throws QueryProcessException 
    */
-  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList, AggregationPlan plan) {
+  private QueryDataSet constructDataSet(List<AggregateResult> aggregateResultList, AggregationPlan plan) 
+      throws QueryProcessException {
     RowRecord record = new RowRecord(0);
     for (AggregateResult resultData : aggregateResultList) {
       TSDataType dataType = resultData.getResultDataType();
       record.addField(resultData.getResult(), dataType);
     }
-
-    String aggregation = plan.getAggregations().get(0);
     SingleDataSet dataSet = null;
     if (plan.getLevel() >= 0) {
-      // current only support count operation
+      if (plan.getAggregations().size() > 1) {
+        //throw new QueryProcessException("Group by level doesn't support multiple aggregations");
+      }
+      // TODO: Check data type here
+      
+      String aggregation = plan.getAggregations().get(0);
+      
       Map<Integer, String> pathIndex = new HashMap<>();
       List<Path> paths = new ArrayList<>();
       List<TSDataType> dataTypes = new ArrayList<>();
       RowRecord curRecord = null;
+      Set<String> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
       switch (aggregation) {
         case "count":
-          Map<String, Long> finalPaths = FilePathUtils.getPathByLevel(plan, pathIndex);
           curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex, TSDataType.INT64);
           for (int i = 0; i < finalPaths.size(); i++) {
             dataTypes.add(TSDataType.INT64);
           }
           break;
         case "sum":
-          Map<String, Long> finalPathsSum = FilePathUtils.getPathByLevel(plan, pathIndex);
-          curRecord = FilePathUtils.mergeRecordByPath(record, finalPathsSum, pathIndex, TSDataType.DOUBLE);
-          for (int i = 0; i < finalPathsSum.size(); i++) {
+          // Check datatype
+          curRecord = FilePathUtils.mergeRecordByPath(record, finalPaths, pathIndex, TSDataType.DOUBLE);
+          for (int i = 0; i < finalPaths.size(); i++) {
             dataTypes.add(TSDataType.DOUBLE);
           }
           break;
         case "avg":
+          // Check datatype
           Map<String, Float> finalPathsAvg = FilePathUtils.getPathByLevelAvg(plan, pathIndex);
           curRecord = FilePathUtils.avgRecordByPath(record, finalPathsAvg, pathIndex);
           for (int i = 0; i < finalPathsAvg.size(); i++) {
-            dataTypes.add(TSDataType.FLOAT);
+            dataTypes.add(TSDataType.DOUBLE);
+          }
+          break;
+        case "max_time":
+          curRecord = FilePathUtils.mergeMaxOrMinByPath(record, TSDataType.INT64, finalPaths, 
+              pathIndex, true);
+          for (int i = 0; i < finalPaths.size(); i++) {
+            dataTypes.add(TSDataType.INT64);
+          }
+          break;
+        case "min_time":
+          curRecord = FilePathUtils.mergeMaxOrMinByPath(record, TSDataType.INT64, finalPaths,
+              pathIndex, false);
+          for (int i = 0; i < finalPaths.size(); i++) {
+            dataTypes.add(TSDataType.INT64);
+          }
+          break;
+        case "max_value":
+          // Check datatype
+          curRecord = FilePathUtils.mergeMaxOrMinByPath(record, plan.getDeduplicatedDataTypes().get(0), 
+              finalPaths, pathIndex, true);
+          for (int i = 0; i < finalPaths.size(); i++) {
+            dataTypes.add(plan.getDeduplicatedDataTypes().get(0));
+          }
+          break;
+        case "min_value":
+          // Check datatype
+          curRecord = FilePathUtils.mergeMaxOrMinByPath(record, plan.getDeduplicatedDataTypes().get(0), 
+              finalPaths, pathIndex, false);
+          for (int i = 0; i < finalPaths.size(); i++) {
+            dataTypes.add(plan.getDeduplicatedDataTypes().get(0));
           }
           break;
         default:

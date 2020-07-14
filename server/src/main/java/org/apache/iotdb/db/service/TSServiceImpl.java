@@ -738,12 +738,11 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       // Last Query should return different respond instead of the static one
       // because the query dataset and query id is different although the header of last query is same.
       return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
-      Map<String, Long> finalPaths = FilePathUtils
-          .getPathByLevel(((AggregationPlan) plan).getDeduplicatedPaths(),
-              ((AggregationPlan) plan).getLevel(), null);
-      for (Map.Entry<String, Long> entry : finalPaths.entrySet()) {
-        respColumns.add(((AggregationPlan) plan).getAggregations().get(0) + "(" + entry.getKey() + ")");
+    } else if (plan instanceof AggregationPlan && ((AggregationPlan)plan).getLevel() >= 0) {
+      Set<String> finalPaths = FilePathUtils.getPathByLevel((AggregationPlan) plan, null);
+      TSDataType type = FilePathUtils.getTSDataType((AggregationPlan) plan);
+      for (String path : finalPaths) {
+        respColumns.add(((AggregationPlan) plan).getAggregations().get(0) + "(" + path + ")");
         columnsTypes.add(type.toString());
       }
     } else {
