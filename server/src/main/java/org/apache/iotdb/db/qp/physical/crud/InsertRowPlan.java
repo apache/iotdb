@@ -465,8 +465,8 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public InsertPlan transform() {
-    if (super.transform() == null) {
+  public InsertPlan getPlanFromFailed() {
+    if (super.getPlanFromFailed() == null) {
       return null;
     }
     values = failedValues.toArray(new Object[0]);

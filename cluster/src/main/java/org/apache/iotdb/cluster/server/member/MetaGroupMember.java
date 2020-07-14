@@ -1554,7 +1554,7 @@ public class MetaGroupMember extends RaftMember {
         && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
       // try to create timeseries
       if (((InsertPlan) plan).getFailedMeasurements() != null) {
-        ((InsertPlan) plan).transform();
+        ((InsertPlan) plan).getPlanFromFailed();
       }
       boolean hasCreate = autoCreateTimeseries((InsertPlan) plan);
       if (hasCreate) {

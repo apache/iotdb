@@ -108,7 +108,7 @@ public abstract class InsertPlan extends PhysicalPlan {
     dataTypes[index] = null;
   }
 
-  public InsertPlan transform() {
+  public InsertPlan getPlanFromFailed() {
     if (failedMeasurements == null) {
       return null;
     }

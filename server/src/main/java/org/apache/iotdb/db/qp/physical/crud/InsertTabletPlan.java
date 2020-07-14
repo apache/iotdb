@@ -515,8 +515,8 @@ public class InsertTabletPlan extends InsertPlan {
 
 
   @Override
-  public InsertPlan transform() {
-    if (super.transform() == null) {
+  public InsertPlan getPlanFromFailed() {
+    if (super.getPlanFromFailed() == null) {
       return null;
     }
     // TODO anything else?
