@@ -718,8 +718,6 @@ public class TsFileProcessor {
           File newVmFile = createNewVMFile(tsFileResource, 0);
           if (vmWriters.size() <= 0) {
             vmWriters.add(new ArrayList<>());
-          }
-          if (vmTsFileResources.size() <= 0) {
             vmTsFileResources.add(new ArrayList<>());
           }
           vmTsFileResources.get(0).add(new TsFileResource(newVmFile));
