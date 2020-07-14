@@ -53,27 +53,31 @@ IoTDB的主要特点如下:
 
 ## 目录
 
-- 快速开始
- - 环境准备
- - 安装
-    - 从源码构建
-       - 配置
- - 开始
-    - 启动 IoTDB
-    - 使用 IoTDB
-       - 使用 Cli 命令行
-       - 基本的 IoTDB 命令
-    - 停止 IoTDB
- - 只编译 server
- - 只编译 cli
- - 使用 import-csv.sh
-    - 创建元数据
-    - 从 csv 文件导入数据的示例
-    - 运行 import shell
-    - 错误的数据文件
- - 使用 export-csv.sh
-    - 运行 export shell
-    - 执行查询
+- [IoTDB](#iotdb)
+- [简介](#简介)
+- [主要特点](#主要特点)
+  - [目录](#目录)
+- [快速开始](#快速开始)
+  - [环境准备](#环境准备)
+  - [安装](#安装)
+    - [从源码构建](#从源码构建)
+      - [配置](#配置)
+  - [开始](#开始)
+    - [启动 IoTDB](#启动-iotdb)
+    - [使用 IoTDB](#使用-iotdb)
+      - [使用 Cli 命令行](#使用-cli-命令行)
+      - [基本的 IoTDB 命令](#基本的-iotdb-命令)
+    - [停止 IoTDB](#停止-iotdb)
+  - [只编译 server](#只编译-server)
+  - [只编译 cli](#只编译-cli)
+  - [使用 import-csv.sh](#使用-import-csvsh)
+    - [创建元数据](#创建元数据)
+    - [从 csv 文件导入数据的示例](#从-csv-文件导入数据的示例)
+    - [运行 import shell](#运行-import-shell)
+    - [错误的数据文件](#错误的数据文件)
+  - [使用 export-csv.sh](#使用-export-csvsh)
+    - [运行 export shell](#运行-export-shell)
+    - [执行查询](#执行查询)
 
 <!-- /TOC -->
 
@@ -122,7 +126,7 @@ git checkout release/x.x.x
 
 执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-incubating-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
-> 注意:"service-rpc/target/generated-sources/thrift" 和 "server/target/generated-sources/antlr4" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。
+> 注意:"thrift/target/generated-sources/thrift" 和 "antlr/target/generated-sources/antlr4" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。
 
 ### 配置
 

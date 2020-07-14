@@ -32,7 +32,7 @@ Last查询对每个指定的时间序列执行`calculateLastPairForOneSeries`方
 我们在需要查询的时间序列所对应的MNode结构中添加Last数据缓存。`calculateLastPairForOneSeries`方法对于某个时间序列的Last查询，首先尝试读取MNode中的缓存数据。
 ```
 try {
-  node = MManager.getInstance().getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
+  node = IoTDB.metaManager.getDeviceNodeWithAutoCreateStorageGroup(seriesPath.toString());
 } catch (MetadataException e) {
   throw new QueryProcessException(e);
 }

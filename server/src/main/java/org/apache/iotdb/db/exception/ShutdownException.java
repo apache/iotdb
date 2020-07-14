@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,23 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.exception.query;
+package org.apache.iotdb.db.exception;
 
 import org.apache.iotdb.rpc.TSStatusCode;
 
-public class PathException extends QueryProcessException {
+public class ShutdownException extends IoTDBException {
 
-  private static final long serialVersionUID = 2141197032898163234L;
 
-  public PathException() {
-    super("Timeseries is null", TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message) {
-    super(message, TSStatusCode.PATH_ERROR.getStatusCode());
-  }
-
-  public PathException(String message, int errorCode) {
+  public ShutdownException(String message, int errorCode) {
     super(message, errorCode);
+  }
+
+  public ShutdownException(Throwable cause) {
+    super(cause.getMessage(), TSStatusCode.SHUT_DOWN_ERROR.getStatusCode());
+  }
+
+  public ShutdownException(String message, Throwable cause, int errorCode) {
+    super(message, cause, errorCode);
+  }
+
+  public ShutdownException(Throwable cause, int errorCode) {
+    super(cause, errorCode);
   }
 }

@@ -116,6 +116,76 @@ public class TimeRangeTest {
   }
 
   @Test
+  public void overlap1() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(4, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("( 4 : 5 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap2() {
+    TimeRange r1 = new TimeRange(1, 4);
+    r1.setRightClose(false);
+    TimeRange r2 = new TimeRange(3, 6);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 )", r1.toString());
+    assertEquals("( 3 : 6 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  /*
+   * [1,3] does not intersect with [5,6].
+   */
+  public void overlap3() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(5, 8);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("[ 5 : 8 ]", r2.toString());
+    assertFalse(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap4() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(2, 5);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("[ 2 : 5 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap5() {
+    TimeRange r1 = new TimeRange(1, 4);
+    TimeRange r2 = new TimeRange(3, 5);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 4 ]", r1.toString());
+    assertEquals("( 3 : 5 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void overlap6() {
+    TimeRange r1 = new TimeRange(1, 5);
+    r1.setRightClose(false);
+    TimeRange r2 = new TimeRange(2, 6);
+    r2.setLeftClose(false);
+    assertEquals("[ 1 : 5 )", r1.toString());
+    assertEquals("( 2 : 6 ]", r2.toString());
+    assertTrue(r1.overlaps(r2));
+  }
+
+  @Test
+  public void equalTest() {
+    TimeRange r1 = new TimeRange(5, 8);
+    TimeRange r2 = new TimeRange(5, 8);
+    assertTrue(r1.equals(r2));
+  }
+
+  @Test
   public void mergeTest() {
     ArrayList<TimeRange> unionCandidates = new ArrayList<>();
     unionCandidates.add(new TimeRange(0L, 10L));

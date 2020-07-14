@@ -56,7 +56,7 @@ import org.slf4j.LoggerFactory;
 public class IoTDBConnection implements Connection {
 
   private static final Logger logger = LoggerFactory.getLogger(IoTDBConnection.class);
-  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V2;
+  private static final TSProtocolVersion protocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
   private TSIService.Iface client = null;
   private long sessionId = -1;
   private IoTDBConnectionParams params;
