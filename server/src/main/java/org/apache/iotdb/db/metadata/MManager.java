@@ -1938,13 +1938,13 @@ public class MManager {
    * Attention!!!  Only support insertPlan
    * @throws MetadataException
    */
-  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(String deviceId,
+  public MeasurementSchema[] getSeriesSchemasAndReadLockDevice(String deviceId, List<String> nodes,
       String[] measurementList, InsertPlan plan) throws MetadataException {
     MeasurementSchema[] schemas = new MeasurementSchema[measurementList.length];
 
     MNode deviceNode;
     // 1. get device node
-    deviceNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId);
+    deviceNode = getDeviceNodeWithAutoCreateAndReadLock(deviceId, nodes);
 
     // 2. get schema of each measurement
     for (int i = 0; i < measurementList.length; i++) {
@@ -1957,12 +1957,10 @@ public class MManager {
               "Current deviceId[%s] does not contain measurement:%s", deviceId, measurementList[i]));
           }
 
-          // create it
-          Path path = new Path(deviceId, measurementList[i]);
           TSDataType dataType = getTypeInLoc(plan, i);
 
           createTimeseries(
-            path.getFullPath(),
+            deviceNode.getFullPath() + measurementList[i],
             dataType,
             getDefaultEncoding(dataType),
             TSFileDescriptor.getInstance().getConfig().getCompressor(),

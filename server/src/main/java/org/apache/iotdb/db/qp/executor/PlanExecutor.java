@@ -850,7 +850,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected MeasurementSchema[] getSeriesSchemas(InsertPlan insertPlan)
     throws MetadataException {
-    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getMeasurements(), insertPlan);
+    return mManager.getSeriesSchemasAndReadLockDevice(insertPlan.getDeviceId(), insertPlan.getDeviceNodes(), insertPlan.getMeasurements(), insertPlan);
   }
 
   @Override

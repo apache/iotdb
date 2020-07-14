@@ -52,7 +52,6 @@ public class InsertRowPlan extends InsertPlan {
 
   private long time;
   private Object[] values;
-  private List<String> deviceNodes;
 
   // if isNeedInferType is true, the values must be String[], so we could infer types from them
   // if values is object[], we could use the raw type of them, and we should set this to false
