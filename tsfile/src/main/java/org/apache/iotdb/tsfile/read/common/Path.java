@@ -19,7 +19,6 @@
 package org.apache.iotdb.tsfile.read.common;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.utils.StringContainer;

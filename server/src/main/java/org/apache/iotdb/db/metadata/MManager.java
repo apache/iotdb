@@ -601,6 +601,34 @@ public class MManager {
   }
 
   /**
+   * Set storage group of the given path to MTree. Check
+   *
+   * @param nodes nodes
+   */
+  public void setStorageGroup(List<String> nodes) throws MetadataException {
+    lock.writeLock().lock();
+    try {
+      MNode node = mtree.setStorageGroup(nodes);
+      IoTDBConfigDynamicAdapter.getInstance().addOrDeleteStorageGroup(1);
+
+      if (config.isEnableParameterAdapter()) {
+        ActiveTimeSeriesCounter.getInstance().init(node.getFullPath());
+        seriesNumberInStorageGroups.put(node.getFullPath(), 0);
+      }
+      if (!isRecovering) {
+        logWriter.setStorageGroup(node.getFullPath());
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    } catch (ConfigAdjusterException e) {
+      mtree.deleteStorageGroup(nodes);
+      throw new MetadataException(e);
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  /**
    * Delete storage groups of given paths from MTree. Log format: "delete_storage_group,sg1,sg2,sg3"
    *
    * @param storageGroups list of paths to be deleted. Format: root.node

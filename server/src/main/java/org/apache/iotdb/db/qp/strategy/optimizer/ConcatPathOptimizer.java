@@ -164,7 +164,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       // selectPath cannot start with ROOT, which is guaranteed by TSParser
       Path selectPath = suffixPaths.get(i);
       for (Path fromPath : fromPaths) {
-        allPaths.add(Path.addNodes(selectPath, fromPath));
+        allPaths.add(Path.addNodes(fromPath, selectPath));
         extendListSafely(originAggregations, i, afterConcatAggregations);
       }
     }
@@ -225,7 +225,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return operator;
     }
     List<Path> concatPaths = new ArrayList<>();
-    fromPaths.forEach(fromPath -> concatPaths.add(Path.addNodes(filterPath, fromPath)));
+    fromPaths.forEach(fromPath -> concatPaths.add(Path.addNodes(fromPath, filterPath)));
     List<Path> noStarPaths = removeStarsInPathWithUnique(concatPaths);
     filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {

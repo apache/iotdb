@@ -242,8 +242,9 @@ public class MTree implements Serializable {
    *
    * @param nodeNames nodeNames
    */
-  void setStorageGroup(List<String> nodeNames) throws MetadataException {
+  MNode setStorageGroup(List<String> nodeNames) throws MetadataException {
     MNode cur = root;
+    StorageGroupMNode storageGroupMNode = null;
     if (nodeNames.size() <= 1 || !nodeNames.get(0).equals(root.getName())) {
       throw new IllegalPathException(nodeNames.toString());
     }
@@ -264,11 +265,12 @@ public class MTree implements Serializable {
       // node b has child sg
       throw new StorageGroupAlreadySetException(nodeNames.toString());
     } else {
-      StorageGroupMNode storageGroupMNode =
+      storageGroupMNode =
           new StorageGroupMNode(
               cur, nodeNames.get(i), IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
       cur.addChild(nodeNames.get(i), storageGroupMNode);
     }
+    return storageGroupMNode;
   }
 
   /**

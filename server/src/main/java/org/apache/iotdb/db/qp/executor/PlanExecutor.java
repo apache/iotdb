@@ -1033,7 +1033,7 @@ public class PlanExecutor implements IPlanExecutor {
       throws QueryProcessException {
     Path path = setStorageGroupPlan.getPath();
     try {
-      mManager.setStorageGroup(path.getFullPath());
+      mManager.setStorageGroup(path.getNodes());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
