@@ -54,10 +54,6 @@ public class Path implements Serializable, Comparable<Path> {
     init(pathSc);
   }
 
-  public Path() {
-
-  }
-
   public Path(List<String> nodes) {
     this.nodes = nodes;
   }
@@ -154,10 +150,6 @@ public class Path implements Serializable, Comparable<Path> {
    */
   public static Path addPrefixPath(Path src, Path prefix) {
     return addPrefixPath(src, prefix.fullPath);
-  }
-
-  public void setFullPath(String fullPath) {
-    this.fullPath = fullPath;
   }
 
   public String getFullPath() {
