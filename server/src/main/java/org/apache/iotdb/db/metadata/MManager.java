@@ -1138,11 +1138,7 @@ public class MManager {
       node = mNodeCache.get(path);
       if (node == null) {
         node = mtree.getNodeByNodesWithStorageGroupCheck(nodes);
-        if (path == null) {
-          mNodeCache.put(node.getFullPath(), node);
-        } else {
-          mNodeCache.put(path, node);
-        }
+        mNodeCache.put(path, node);
       }
       return node;
     } catch (Exception e) {
