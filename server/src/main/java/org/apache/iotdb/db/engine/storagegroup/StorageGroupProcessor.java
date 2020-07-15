@@ -561,7 +561,7 @@ public class StorageGroupProcessor {
               int vmLevel = getVmLevel(mergedFile);
               for (File shouldRemove : fsFactory
                   .listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX)) {
-                if (getVmLevel(shouldRemove) == vmLevel) {
+                if (getVmLevel(shouldRemove) == vmLevel - 1) {
                   Files.delete(shouldRemove.toPath());
                 }
               }
