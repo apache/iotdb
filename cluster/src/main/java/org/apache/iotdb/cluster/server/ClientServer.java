@@ -50,6 +50,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -142,7 +143,8 @@ public class ClientServer extends TSServiceImpl {
     // nonblocking server
     TThreadPoolServer.Args poolArgs =
         new TThreadPoolServer.Args(serverTransport).maxWorkerThreads(ClusterDescriptor
-            .getInstance().getConfig().getMaxConcurrentClientNum()).minWorkerThreads(1);
+            .getInstance().getConfig().getMaxConcurrentClientNum())
+            .minWorkerThreads(CommonUtils.getCpuCores());
     poolArgs.executorService(new ThreadPoolExecutor(poolArgs.minWorkerThreads,
         poolArgs.maxWorkerThreads, poolArgs.stopTimeoutVal, poolArgs.stopTimeoutUnit,
         new SynchronousQueue<>(), new ThreadFactory() {

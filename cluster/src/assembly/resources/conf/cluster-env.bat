@@ -64,5 +64,18 @@ IF "%BIT_VERSION%" == "64-Bit" (
 	set IOTDB_HEAP_OPTS=-Xmx512M -Xms512M
 )
 
+@REM IMPORTANT, avoid long gc which can stop the world, and cause timed out error.
+set IOTDB_HEAP_OPTS=%IOTDB_JMX_OPTS% -XX:MaxGCPauseMillis=5000
+
 :end_config_setting
+@REM set gc log.
+IF "%1" equ "printgc" (
+	IF "%JAVA_VERSION%" == "8" (
+	    md %IOTDB_HOME%\logs
+		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Xloggc:"%IOTDB_HOME%\logs\gc.log" -XX:+PrintGCDateStamps -XX:+PrintGCDetails  -XX:+PrintGCApplicationStoppedTime -XX:+PrintPromotionFailure -XX:+UseGCLogFileRotation -XX:NumberOfGCLogFiles=10 -XX:GCLogFileSize=10M
+	) ELSE (
+		md %IOTDB_HOME%\logs
+		set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS%  -Xlog:gc=info,heap*=trace,age*=debug,safepoint=info,promotion*=trace:file="%IOTDB_HOME%\logs\gc.log":time,uptime,pid,tid,level:filecount=10,filesize=10485760
+	)
+)
 echo If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat).
