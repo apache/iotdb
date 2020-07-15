@@ -78,10 +78,12 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.AddSelfException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.QueryTimeOutException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
+import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogApplier;
@@ -333,12 +335,8 @@ public class MetaGroupMember extends RaftMember {
     StorageEngine.getInstance().setFileFlushPolicy(new ClusterFileFlushPolicy(this));
     reportThread = Executors.newSingleThreadScheduledExecutor(n -> new Thread(n,
         "NodeReportThread"));
-    reportThread.scheduleAtFixedRate(() -> logger.info(genNodeReport().toString()),
-        REPORT_INTERVAL_SEC, REPORT_INTERVAL_SEC, TimeUnit.SECONDS);
     hardLinkCleanerThread = Executors.newSingleThreadScheduledExecutor(n -> new Thread(n,
         "HardLinkCleaner"));
-    hardLinkCleanerThread.scheduleAtFixedRate(new HardLinkCleaner(),
-        CLEAN_HARDLINK_INTERVAL_SEC, CLEAN_HARDLINK_INTERVAL_SEC, TimeUnit.SECONDS);
   }
 
   /**
@@ -452,11 +450,15 @@ public class MetaGroupMember extends RaftMember {
    * This node itself is a seed node, and it is going to build the initial cluster with other seed
    * nodes. This method is to skip the one-by-one addition to establish a large cluster quickly.
    */
-  public void buildCluster() {
-    checkSeedNodes();
-    // just establish the heartbeat thread and it will do the remaining
+  public void buildCluster() throws ConfigInconsistentException, StartUpCheckFailureException {
+    checkSeedNodesStatus();
     loadPartitionTable();
+    // just establish the heartbeat thread and it will do the remaining
     heartBeatService.submit(new MetaHeartbeatThread(this));
+    reportThread.scheduleAtFixedRate(() -> logger.info(genNodeReport().toString()),
+        REPORT_INTERVAL_SEC, REPORT_INTERVAL_SEC, TimeUnit.SECONDS);
+    hardLinkCleanerThread.scheduleAtFixedRate(new HardLinkCleaner(),
+        CLEAN_HARDLINK_INTERVAL_SEC, CLEAN_HARDLINK_INTERVAL_SEC, TimeUnit.SECONDS);
   }
 
   /**
@@ -504,7 +506,7 @@ public class MetaGroupMember extends RaftMember {
   }
 
 
-  private StartUpStatus getNewStartUpStatus() {
+  public StartUpStatus getNewStartUpStatus() {
     StartUpStatus newStartUpStatus = new StartUpStatus();
     newStartUpStatus
         .setPartitionInterval(IoTDBDescriptor.getInstance().getConfig().getPartitionInterval());
@@ -898,7 +900,8 @@ public class MetaGroupMember extends RaftMember {
    * Check if the seed nodes are consistent with other nodes. Only used when establishing the
    * initial cluster.
    */
-  private void checkSeedNodes() {
+  private void checkSeedNodesStatus()
+      throws ConfigInconsistentException, StartUpCheckFailureException {
     boolean canEstablishCluster = false;
     long startTime = System.currentTimeMillis();
     AtomicInteger consistentNum = new AtomicInteger(1);
@@ -906,27 +909,39 @@ public class MetaGroupMember extends RaftMember {
     while (!canEstablishCluster) {
       consistentNum.set(1);
       inconsistentNum.set(0);
-      checkSeedNodesOnce(consistentNum, inconsistentNum);
-
+      checkSeedNodesStatusOnce(consistentNum, inconsistentNum);
       canEstablishCluster = analyseStartUpCheckResult(consistentNum.get(), inconsistentNum.get(),
-          getAllNodes().size(), System.currentTimeMillis() - startTime);
+          getAllNodes().size());
+      // If reach the start up time threshold, shut down.
+      // Otherwise, wait for a while, start the loop again.
+      if (System.currentTimeMillis() - startTime
+          > ClusterUtils.START_UP_TIME_THRESHOLD * 20 * 1000) {
+        throw new StartUpCheckFailureException();
+      } else {
+        try {
+          Thread.sleep(ClusterUtils.START_UP_CHECK_TIME_INTERVAL * 1000);
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          logger.error("Unexpected interruption when waiting for next start up check", e);
+        }
+      }
     }
   }
 
-  private void checkSeedNodesOnce(AtomicInteger consistentNum, AtomicInteger inconsistentNum) {
+  private void checkSeedNodesStatusOnce(AtomicInteger consistentNum,
+      AtomicInteger inconsistentNum) {
     ExecutorService pool = new ScheduledThreadPoolExecutor(STARTUP_CHECK_THREAD_POOL_SIZE);
     for (Node seedNode : getAllNodes()) {
       Node thisNode = getThisNode();
-      if (seedNode.getIp().equals(thisNode.ip)
-          && seedNode.getMetaPort() != thisNode.getMetaPort()) {
+      if (seedNode.equals(thisNode)) {
         continue;
       }
-
       pool.submit(() -> {
             CheckStatusResponse response = checkStatus(seedNode);
             if (response != null) {
               // check the response
-              ClusterUtils.examineCheckStatusResponse(response, consistentNum, inconsistentNum);
+              ClusterUtils
+                  .examineCheckStatusResponse(response, consistentNum, inconsistentNum, seedNode);
             } else {
               logger.warn(
                   "Start up exception. Cannot connect to node {}. Try again in next turn.",
@@ -937,7 +952,9 @@ public class MetaGroupMember extends RaftMember {
     }
     pool.shutdown();
     try {
-      pool.awaitTermination(WAIT_START_UP_CHECK_TIME, WAIT_START_UP_CHECK_TIME_UNIT);
+      if (!pool.awaitTermination(WAIT_START_UP_CHECK_TIME, WAIT_START_UP_CHECK_TIME_UNIT)) {
+        pool.shutdownNow();
+      }
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Unexpected interruption when waiting for start up checks", e);

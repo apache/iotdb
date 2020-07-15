@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.exception;
 
-public class ConfigInconsistentException extends RuntimeException {
+public class ConfigInconsistentException extends Exception {
 
   public ConfigInconsistentException() {
     super("The configuration of this node is inconsistent with the cluster. See previous logs for "

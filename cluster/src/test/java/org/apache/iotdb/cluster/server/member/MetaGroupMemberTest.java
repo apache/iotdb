@@ -19,19 +19,64 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.server.NodeCharacter.ELECTOR;
+import static org.apache.iotdb.cluster.server.NodeCharacter.FOLLOWER;
+import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
+import static org.awaitility.Awaitility.await;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.common.*;
+import org.apache.iotdb.cluster.common.TestAsyncDataClient;
+import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
+import org.apache.iotdb.cluster.common.TestPartitionedLogManager;
+import org.apache.iotdb.cluster.common.TestSnapshot;
+import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
+import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.snapshot.MetaSimpleSnapshot;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
-import org.apache.iotdb.cluster.rpc.thrift.*;
+import org.apache.iotdb.cluster.rpc.thrift.AddNodeResponse;
+import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
+import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
+import org.apache.iotdb.cluster.rpc.thrift.ElectionRequest;
+import org.apache.iotdb.cluster.rpc.thrift.ExecutNonQueryReq;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatRequest;
+import org.apache.iotdb.cluster.rpc.thrift.HeartBeatResponse;
+import org.apache.iotdb.cluster.rpc.thrift.Node;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
+import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
+import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.DataClusterServer;
 import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.cluster.server.RaftServer;
@@ -75,22 +120,6 @@ import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
-import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.iotdb.cluster.server.NodeCharacter.*;
-import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.*;
 
 public class MetaGroupMemberTest extends MemberTest {
 
@@ -193,7 +222,7 @@ public class MetaGroupMemberTest extends MemberTest {
           }
         } else {
           dataOutputStream.writeInt(1);
-          TestUtils.getTestMeasurementSchema( 0).serializeTo(dataOutputStream);
+          TestUtils.getTestMeasurementSchema(0).serializeTo(dataOutputStream);
         }
       }
     } catch (IOException e) {
@@ -221,7 +250,7 @@ public class MetaGroupMemberTest extends MemberTest {
 
       @Override
       public DataGroupMember getLocalDataMember(Node header, AsyncMethodCallback resultHandler,
-                                                Object request) {
+          Object request) {
         return getDataGroupMember(header);
       }
 
@@ -385,7 +414,8 @@ public class MetaGroupMemberTest extends MemberTest {
     for (int i = 0; i < 10; i++) {
       insertPlan.setTime(i);
       insertPlan.setValues(new Object[]{String.valueOf(i)});
-      insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+      insertPlan.setSchemasAndTransferType(
+          new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
       PlanExecutor planExecutor = new PlanExecutor();
       planExecutor.processNonQuery(insertPlan);
     }
@@ -462,6 +492,7 @@ public class MetaGroupMemberTest extends MemberTest {
         fail("The member takes too long to be the leader");
       }
       assertEquals(LEADER, testMetaMember.getCharacter());
+    } catch (ConfigInconsistentException | StartUpCheckFailureException e) {
     } finally {
       testMetaMember.stop();
     }
@@ -565,7 +596,7 @@ public class MetaGroupMemberTest extends MemberTest {
     AtomicReference<Void> reference = new AtomicReference<>();
     new MetaAsyncService(testMetaMember).sendSnapshot(request,
         new GenericHandler(TestUtils.getNode(0),
-        reference));
+            reference));
 
     // 6. check whether the snapshot applied or not
     Map<String, Long> localStorageGroupTTL = IoTDB.metaManager.getStorageGroupsTTL();
@@ -687,7 +718,8 @@ public class MetaGroupMemberTest extends MemberTest {
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
         insertPlan.setValues(new Object[]{String.valueOf(j)});
-        insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema( 0)});
+        insertPlan.setSchemasAndTransferType(
+            new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }
@@ -732,7 +764,8 @@ public class MetaGroupMemberTest extends MemberTest {
       for (int j = 0; j < 10; j++) {
         insertPlan.setTime(j);
         insertPlan.setValues(new Object[]{String.valueOf(j)});
-        insertPlan.setSchemasAndTransferType(new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
+        insertPlan.setSchemasAndTransferType(
+            new MeasurementSchema[]{TestUtils.getTestMeasurementSchema(0)});
         planExecutor.processNonQuery(insertPlan);
       }
     }
@@ -860,14 +893,16 @@ public class MetaGroupMemberTest extends MemberTest {
       testMetaMember.setPartitionTable(null);
       AtomicReference<AddNodeResponse> result = new AtomicReference<>();
       GenericHandler<AddNodeResponse> handler = new GenericHandler<>(TestUtils.getNode(0), result);
-      new MetaAsyncService(testMetaMember).addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
+      new MetaAsyncService(testMetaMember)
+          .addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
       AddNodeResponse response = result.get();
       assertEquals(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE, response.getRespNum());
 
       // cannot add itself
       result.set(null);
       testMetaMember.setPartitionTable(partitionTable);
-      new MetaAsyncService(testMetaMember).addNode(TestUtils.getNode(0), TestUtils.getStartUpStatus(), handler);
+      new MetaAsyncService(testMetaMember)
+          .addNode(TestUtils.getNode(0), TestUtils.getStartUpStatus(), handler);
       assertNull(result.get());
 
       // process the request as a leader
@@ -875,7 +910,8 @@ public class MetaGroupMemberTest extends MemberTest {
       testMetaMember.onElectionWins();
       result.set(null);
       testMetaMember.setPartitionTable(partitionTable);
-      new MetaAsyncService(testMetaMember).addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
+      new MetaAsyncService(testMetaMember)
+          .addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertEquals(Response.RESPONSE_AGREE, response.getRespNum());
       assertEquals(partitionTable.serialize(), response.partitionTableBytes);
@@ -884,7 +920,8 @@ public class MetaGroupMemberTest extends MemberTest {
       testMetaMember.setCharacter(LEADER);
       result.set(null);
       testMetaMember.setPartitionTable(partitionTable);
-      new MetaAsyncService(testMetaMember).addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
+      new MetaAsyncService(testMetaMember)
+          .addNode(TestUtils.getNode(10), TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertEquals(Response.RESPONSE_AGREE, response.getRespNum());
       assertEquals(partitionTable.serialize(), response.partitionTableBytes);
@@ -894,7 +931,8 @@ public class MetaGroupMemberTest extends MemberTest {
       testMetaMember.setLeader(TestUtils.getNode(1));
       result.set(null);
       testMetaMember.setPartitionTable(partitionTable);
-      new MetaAsyncService(testMetaMember).addNode(TestUtils.getNode(11), TestUtils.getStartUpStatus(), handler);
+      new MetaAsyncService(testMetaMember)
+          .addNode(TestUtils.getNode(11), TestUtils.getStartUpStatus(), handler);
       while (result.get() == null) {
 
       }
@@ -962,7 +1000,8 @@ public class MetaGroupMemberTest extends MemberTest {
         await().atLeast(200, TimeUnit.MILLISECONDS);
         dummyResponse.set(Response.RESPONSE_AGREE);
       }).start();
-      new MetaAsyncService(testMetaMember).addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
+      new MetaAsyncService(testMetaMember)
+          .addNode(TestUtils.getNode(12), TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertEquals(Response.RESPONSE_AGREE, response.getRespNum());
 
@@ -971,7 +1010,8 @@ public class MetaGroupMemberTest extends MemberTest {
       testMetaMember.setCharacter(LEADER);
       result.set(null);
       testMetaMember.setPartitionTable(partitionTable);
-      new MetaAsyncService(testMetaMember).addNode(TestUtils.getNode(13), TestUtils.getStartUpStatus(), handler);
+      new MetaAsyncService(testMetaMember)
+          .addNode(TestUtils.getNode(13), TestUtils.getStartUpStatus(), handler);
       response = result.get();
       assertNull(response);
 
@@ -1060,17 +1100,18 @@ public class MetaGroupMemberTest extends MemberTest {
     AtomicBoolean passed = new AtomicBoolean(false);
     testMetaMember.setCharacter(LEADER);
     testMetaMember.setLeader(testMetaMember.getThisNode());
-    new MetaAsyncService(testMetaMember).removeNode(TestUtils.getNode(120), new AsyncMethodCallback<Long>() {
-      @Override
-      public void onComplete(Long aLong) {
-        passed.set(aLong.equals(Response.RESPONSE_REJECT));
-      }
+    new MetaAsyncService(testMetaMember)
+        .removeNode(TestUtils.getNode(120), new AsyncMethodCallback<Long>() {
+          @Override
+          public void onComplete(Long aLong) {
+            passed.set(aLong.equals(Response.RESPONSE_REJECT));
+          }
 
-      @Override
-      public void onError(Exception e) {
-        e.printStackTrace();
-      }
-    });
+          @Override
+          public void onError(Exception e) {
+            e.printStackTrace();
+          }
+        });
 
     assertTrue(passed.get());
   }

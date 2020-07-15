@@ -95,7 +95,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
 
   @Override
   public CheckStatusResponse checkStatus(StartUpStatus startUpStatus) {
-    return ClusterUtils.checkStatus(startUpStatus, metaGroupMember);
+    return ClusterUtils.checkStatus(startUpStatus, metaGroupMember.getStartUpStatus());
   }
 
   /**

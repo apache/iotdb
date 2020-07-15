@@ -25,6 +25,8 @@ import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
+import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
+import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
@@ -75,10 +77,15 @@ public class ClusterMain {
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
     logger.info("Running mode {}", mode);
     try {
-
       if (MODE_START.equals(mode)) {
         metaServer = new MetaClusterServer();
         ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+        // check the initial replicateNum and refuse to start when the replicateNum <= 0
+        if (config.getReplicationNum() <= 0) {
+          String message = String.format("ReplicateNum should be greater than 0 instead of %d.",
+              config.getReplicationNum());
+          throw new StartupException(metaServer.getMember().getName(), message);
+        }
         // check the initial cluster size and refuse to start when the size < quorum
         int quorum = config.getReplicationNum() / 2 + 1;
         if (config.getSeedNodeUrls().size() < quorum) {
@@ -100,7 +107,8 @@ public class ClusterMain {
       } else {
         logger.error("Unrecognized mode {}", mode);
       }
-    } catch (IOException | TTransportException | StartupException | QueryProcessException e) {
+    } catch (IOException | TTransportException | StartupException | QueryProcessException |
+        StartUpCheckFailureException | ConfigInconsistentException e) {
       logger.error("Fail to start meta server", e);
     }
   }
