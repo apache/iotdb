@@ -90,7 +90,7 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
   public void start() throws TTransportException, StartupException {
     super.start();
     ioTDB = new IoTDB();
-    ioTDB.metaManager = CMManager.getInstance();
+    IoTDB.setMetaManager(CMManager.getInstance());
     ioTDB.active();
     member.start();
     registerManager.register(ClusterMonitor.INSTANCE);

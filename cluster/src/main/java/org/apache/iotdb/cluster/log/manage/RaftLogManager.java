@@ -65,12 +65,6 @@ public class RaftLogManager {
    */
   private int maxNumberOfLogs = ClusterDescriptor.getInstance().getConfig().getMaxNumberOfLogs();
 
-  /**
-   * deletion check period of the submitted log
-   */
-  private int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
-      .getLogDeleteCheckIntervalSecond();
-
 
   public RaftLogManager(StableEntryManager stableEntryManager, LogApplier applier, String name) {
     this.logApplier = applier;
@@ -90,6 +84,11 @@ public class RaftLogManager {
     executorService = new ScheduledThreadPoolExecutor(1,
         new BasicThreadFactory.Builder().namingPattern("raft-log-delete-%d").daemon(true)
             .build());
+    /**
+     * deletion check period of the submitted log
+     */
+    int logDeleteCheckIntervalSecond = ClusterDescriptor.getInstance().getConfig()
+        .getLogDeleteCheckIntervalSecond();
     executorService
         .scheduleAtFixedRate(this::checkDeleteLog, logDeleteCheckIntervalSecond,
             logDeleteCheckIntervalSecond,
@@ -535,6 +534,7 @@ public class RaftLogManager {
 
   public void close() {
     getStableEntryManager().close();
+    executorService.shutdownNow();
   }
 
   public UnCommittedEntryManager getUnCommittedEntryManager() {

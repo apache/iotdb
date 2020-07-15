@@ -23,11 +23,15 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.server.service.MetaAsyncService;
+import org.apache.iotdb.cluster.rpc.thrift.StartUpStatus;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +50,49 @@ public class ClusterUtils {
 
   private ClusterUtils() {
     // util class
+  }
+
+  public static CheckStatusResponse checkStatus(StartUpStatus startUpStatus, MetaGroupMember metaGroupMember) {
+    long remotePartitionInterval = startUpStatus.getPartitionInterval();
+    int remoteHashSalt = startUpStatus.getHashSalt();
+    int remoteReplicationNum = startUpStatus.getReplicationNumber();
+    List<Node> remoteSeedNodeList = startUpStatus.getSeedNodeList();
+    long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig()
+        .getPartitionInterval();
+    int localHashSalt = ClusterConstant.HASH_SALT;
+    int localReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
+    boolean partitionIntervalEquals = true;
+    boolean hashSaltEquals = true;
+    boolean replicationNumEquals = true;
+    boolean seedNodeListEquals = true;
+
+    if (localPartitionInterval != remotePartitionInterval) {
+      partitionIntervalEquals = false;
+      logger.info("Remote partition interval conflicts with the leader's. Leader: {}, remote: {}",
+          localPartitionInterval, remotePartitionInterval);
+    }
+    if (localHashSalt != remoteHashSalt) {
+      hashSaltEquals = false;
+      logger.info("Remote hash salt conflicts with the leader's. Leader: {}, remote: {}",
+          localHashSalt, remoteHashSalt);
+    }
+    if (localReplicationNum != remoteReplicationNum) {
+      replicationNumEquals = false;
+      logger.info("Remote replication number conflicts with the leader's. Leader: {}, remote: {}",
+          localReplicationNum, remoteReplicationNum);
+    }
+    if (!ClusterUtils
+        .checkSeedNodes(false, (List<Node>) metaGroupMember.getAllNodes(), remoteSeedNodeList)) {
+      seedNodeListEquals = false;
+      if (logger.isInfoEnabled()) {
+        logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
+            Arrays.toString(metaGroupMember.getAllNodes().toArray(new Node[0])),
+            Arrays.toString(remoteSeedNodeList.toArray(new Node[0])));
+      }
+    }
+
+    return new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
+        replicationNumEquals, seedNodeListEquals);
   }
 
   public static boolean checkSeedNodes(boolean isClusterEstablished, List<Node> localSeedNodes,

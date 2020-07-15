@@ -192,16 +192,12 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     }
 
     private ByteBuffer lastSync(Node node, QueryContext context) throws TException {
-      try {
-        SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
-        ByteBuffer result = syncDataClient
-            .last(new LastQueryRequest(seriesPath.getFullPath(), dataType.ordinal(),
-                context.getQueryId(), deviceMeasurements, group.getHeader(), syncDataClient.getNode()));
-        metaGroupMember.putBackSyncClient(syncDataClient);
-        return result;
-      } catch (IOException e) {
-        return null;
-      }
+      SyncDataClient syncDataClient = metaGroupMember.getSyncDataClient(node);
+      ByteBuffer result = syncDataClient
+          .last(new LastQueryRequest(seriesPath.getFullPath(), dataType.ordinal(),
+              context.getQueryId(), deviceMeasurements, group.getHeader(), syncDataClient.getNode()));
+      metaGroupMember.putBackSyncClient(syncDataClient);
+      return result;
     }
   }
 }

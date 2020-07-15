@@ -27,6 +27,7 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import org.apache.commons.cli.CommandLine;
@@ -35,6 +36,7 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.iotdb.cluster.exception.BadSeedUrlFormatException;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.slf4j.Logger;
@@ -44,6 +46,12 @@ public class ClusterDescriptor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterDescriptor.class);
   private static final ClusterDescriptor INSTANCE = new ClusterDescriptor();
+
+  private static final String OPTION_META_PORT = "meta_port";
+  private static final String OPTION_DATA_PORT = "data_port";
+  private static final String OPTION_CLIENT_PORT = "client_port";
+  private static final String OPTION_SEED_NODES = "seed_nodes";
+
 
   private ClusterConfig config = new ClusterConfig();
   private static CommandLine commandLine;
@@ -83,19 +91,19 @@ public class ClusterDescriptor {
   public void replaceProps(String[] params) {
     Options options = new Options();
 
-    Option metaPort = new Option("meta_port", "meta_port", true, "port for metadata service");
+    Option metaPort = new Option(OPTION_META_PORT, OPTION_META_PORT, true, "port for metadata service");
     metaPort.setRequired(false);
     options.addOption(metaPort);
 
-    Option dataPort = new Option("data_port", "data_port", true, "port for data service");
+    Option dataPort = new Option(OPTION_DATA_PORT, OPTION_DATA_PORT, true, "port for data service");
     metaPort.setRequired(false);
     options.addOption(dataPort);
 
-    Option clientPort = new Option("client_port", "client_port", true, "port for client service");
+    Option clientPort = new Option(OPTION_CLIENT_PORT, OPTION_CLIENT_PORT, true, "port for client service");
     metaPort.setRequired(false);
     options.addOption(clientPort);
 
-    Option seedNodes = new Option("seed_nodes", "seed_nodes", true,
+    Option seedNodes = new Option(OPTION_SEED_NODES, OPTION_SEED_NODES, true,
         "comma-separated {IP/DOMAIN}:meta_port:data_port pairs");
     metaPort.setRequired(false);
     options.addOption(seedNodes);
@@ -103,32 +111,31 @@ public class ClusterDescriptor {
     boolean ok = parseCommandLine(options, params);
     if (!ok) {
       logger.error("replaces properties failed, use default conf params");
-      return;
     } else {
-      if (commandLine.hasOption("meta_port")) {
-        config.setLocalMetaPort(Integer.parseInt(commandLine.getOptionValue("meta_port")));
+      if (commandLine.hasOption(OPTION_META_PORT)) {
+        config.setLocalMetaPort(Integer.parseInt(commandLine.getOptionValue(OPTION_META_PORT)));
         logger.debug("replace local meta port with={}", config.getLocalMetaPort());
       }
 
-      if (commandLine.hasOption("data_port")) {
-        config.setLocalDataPort(Integer.parseInt(commandLine.getOptionValue("data_port")));
+      if (commandLine.hasOption(OPTION_DATA_PORT)) {
+        config.setLocalDataPort(Integer.parseInt(commandLine.getOptionValue(OPTION_DATA_PORT)));
         logger.debug("replace local data port with={}", config.getLocalDataPort());
       }
 
-      if (commandLine.hasOption("client_port")) {
-        config.setLocalClientPort(Integer.parseInt(commandLine.getOptionValue("client_port")));
+      if (commandLine.hasOption(OPTION_CLIENT_PORT)) {
+        config.setLocalClientPort(Integer.parseInt(commandLine.getOptionValue(OPTION_CLIENT_PORT)));
         logger.debug("replace local client port with={}", config.getLocalClientPort());
       }
 
-      if (commandLine.hasOption("seed_nodes")) {
-        String seedNodeUrls = commandLine.getOptionValue("seed_nodes");
+      if (commandLine.hasOption(OPTION_SEED_NODES)) {
+        String seedNodeUrls = commandLine.getOptionValue(OPTION_SEED_NODES);
         config.setSeedNodeUrls(getSeedUrlList(seedNodeUrls));
         logger.debug("replace seed nodes with={}", config.getSeedNodeUrls());
       }
     }
   }
 
-  public void replaceHostnameWithIp() throws Exception {
+  public void replaceHostnameWithIp() throws UnknownHostException, BadSeedUrlFormatException {
     boolean isInvalidLocalIp = InetAddresses.isInetAddress(config.getLocalIP());
     if (!isInvalidLocalIp) {
       String localIP = hostnameToIP(config.getLocalIP());
@@ -139,7 +146,7 @@ public class ClusterDescriptor {
     for (String seedUrl : config.getSeedNodeUrls()) {
       String[] splits = seedUrl.split(":");
       if (splits.length != 3) {
-        throw new Exception("seed url format error!");
+        throw new BadSeedUrlFormatException(seedUrl);
       }
       String seedIP = splits[0];
       boolean isInvalidSeedIp = InetAddresses.isInetAddress(seedIP);
@@ -155,12 +162,12 @@ public class ClusterDescriptor {
         config.getSeedNodeUrls());
   }
 
-  private boolean parseCommandLine(Options options, String[] params) {
+  private static boolean parseCommandLine(Options options, String[] params) {
     try {
       CommandLineParser parser = new DefaultParser();
       commandLine = parser.parse(options, params);
     } catch (ParseException e) {
-      logger.error("parse conf params failed, {}", e.toString());
+      logger.error("parse conf params failed", e);
       return false;
     }
     return true;
@@ -241,7 +248,7 @@ public class ClusterDescriptor {
 
   private List<String> getSeedUrlList(String seedUrls) {
     if (seedUrls == null) {
-      return null;
+      return Collections.emptyList();
     }
     List<String> urlList = new ArrayList<>();
     String[] split = seedUrls.split(",");
@@ -256,20 +263,27 @@ public class ClusterDescriptor {
   }
 
   public void loadHotModifiedProps() throws QueryProcessException {
+    Properties properties = getProperties();
+    if (properties != null) {
+      loadHotModifiedProps(properties);
+    }
+  }
+
+  private Properties getProperties() throws QueryProcessException {
     String url = getPropsUrl();
     if (url == null) {
-      return;
+      return null;
     }
+    Properties properties;
     try (InputStream inputStream = new FileInputStream(new File(url))) {
       logger.info("Start to reload config file {}", url);
-      Properties properties = new Properties();
+      properties = new Properties();
       properties.load(inputStream);
-      loadHotModifiedProps(properties);
     } catch (Exception e) {
-      logger.warn("Fail to reload config file {}", url, e);
       throw new QueryProcessException(
           String.format("Fail to reload config file %s because %s", url, e.getMessage()));
     }
+    return properties;
   }
 
   /**
@@ -279,8 +293,7 @@ public class ClusterDescriptor {
    * @param properties
    * @throws QueryProcessException
    */
-  public void loadHotModifiedProps(Properties properties)
-      throws QueryProcessException {
+  public void loadHotModifiedProps(Properties properties) {
 
     config.setMaxConcurrentClientNum(Integer.parseInt(properties
         .getProperty("MAX_CONCURRENT_CLIENT_NUM",

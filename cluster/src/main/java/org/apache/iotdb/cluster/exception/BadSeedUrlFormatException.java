@@ -16,19 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.cluster.exception;
 
-/**
- * Raised when check consistency failed, now only happens if there is a strong-consistency and
- * syncLeader failed
- */
-public class CheckConsistencyException extends Exception {
+public class BadSeedUrlFormatException extends Exception {
 
-  public CheckConsistencyException(String errMag) {
-    super(String.format("check consistency failed, error message=%s ", errMag));
+  public BadSeedUrlFormatException(String seedUrl) {
+    super(String.format("Seed url %s has bad format, which should be "
+        + "{IP/DomainName}:{metaPort}:{dataPort}", seedUrl));
   }
-
-  public static final CheckConsistencyException CHECK_STRONG_CONSISTENCY_EXCEPTION =
-      new CheckConsistencyException(
-      "strong consistency, sync with leader failed");
 }

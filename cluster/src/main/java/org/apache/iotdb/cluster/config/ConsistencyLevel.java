@@ -41,11 +41,11 @@ public enum ConsistencyLevel {
   WEAK_CONSISTENCY("weak"),
   ;
 
-  private String consistencyLevel;
+  private String consistencyLevelName;
   private static final Logger logger = LoggerFactory.getLogger(ConsistencyLevel.class);
 
-  ConsistencyLevel(String consistencyLevel) {
-    this.consistencyLevel = consistencyLevel;
+  ConsistencyLevel(String consistencyLevelName) {
+    this.consistencyLevelName = consistencyLevelName;
   }
 
   public static ConsistencyLevel getConsistencyLevel(String consistencyLevel) {
@@ -61,7 +61,7 @@ public enum ConsistencyLevel {
         return ConsistencyLevel.WEAK_CONSISTENCY;
       default:
         logger.warn("Unsupported consistency level={}, use default consistency level={}",
-            consistencyLevel, ConsistencyLevel.MID_CONSISTENCY.consistencyLevel);
+            consistencyLevel, ConsistencyLevel.MID_CONSISTENCY.consistencyLevelName);
         return ConsistencyLevel.MID_CONSISTENCY;
     }
   }

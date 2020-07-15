@@ -38,7 +38,6 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.jdbc.Config;
@@ -53,7 +52,6 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Client.Factory;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
@@ -396,28 +394,6 @@ public class ClientMain {
       }
     }
     logger.info(client.deleteTimeseries(sessionId, paths).toString());
-  }
-
-  private static int calculateStrLength(List<String> values) {
-    int res = 0;
-
-    for (String value : values) {
-      // types
-      res += Short.BYTES;
-      res += Integer.BYTES;
-      res += value.getBytes(TSFileConfig.STRING_CHARSET).length;
-    }
-
-    return res;
-  }
-
-  private static void putStrValues(List<String> values, ByteBuffer buffer) {
-    for (String value : values) {
-      ReadWriteIOUtils.write(TSDataType.TEXT, buffer);
-      byte[] bytes = value.getBytes(TSFileConfig.STRING_CHARSET);
-      ReadWriteIOUtils.write(bytes.length, buffer);
-      buffer.put(bytes);
-    }
   }
 
   private static void testBatch(String ip, int port) throws ClassNotFoundException, SQLException {

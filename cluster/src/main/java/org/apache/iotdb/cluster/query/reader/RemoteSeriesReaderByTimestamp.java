@@ -61,6 +61,7 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
     return SerializeUtils.deserializeObject(result);
   }
 
+  @SuppressWarnings("java:S2274") // enable timeout
   private ByteBuffer fetchResultAsync(long timestamp) throws IOException {
     synchronized (fetchResult) {
       fetchResult.set(null);

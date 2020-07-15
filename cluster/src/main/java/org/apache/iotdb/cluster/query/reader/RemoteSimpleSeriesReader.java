@@ -111,6 +111,7 @@ public class RemoteSimpleSeriesReader implements IPointReader  {
     }
   }
 
+  @SuppressWarnings("java:S2274") // enable timeout
   private ByteBuffer fetchResultAsync() throws IOException {
     synchronized (fetchResult) {
       fetchResult.set(null);

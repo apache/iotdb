@@ -44,7 +44,6 @@ import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SerializeUtils;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -19,16 +19,12 @@
 
 package org.apache.iotdb.cluster.utils;
 
+import java.util.Collections;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.read.common.Path;
-
-import java.util.Collections;
-
-import java.util.Collections;
-import java.util.List;
 
 public class ClusterQueryUtils {
 

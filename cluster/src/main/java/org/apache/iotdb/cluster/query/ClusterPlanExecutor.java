@@ -51,7 +51,6 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.nodetool.function.Partition;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -84,13 +83,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.*;
-import java.util.Map.Entry;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class ClusterPlanExecutor extends PlanExecutor {
 
@@ -154,7 +146,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
     Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret = 0;
+    int ret;
     try {
       ret = getPathCount(sgPathMap, -1);
     } catch (CheckConsistencyException e) {
@@ -179,7 +171,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // "root.group1" -> "root.group1.*", "root.group2" -> "root.group2.*" ...
     Map<String, String> sgPathMap = IoTDB.metaManager.determineStorageGroup(path);
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret = 0;
+    int ret;
     try {
       ret = getPathCount(sgPathMap, level);
     } catch (CheckConsistencyException e) {
@@ -323,24 +315,21 @@ public class ClusterPlanExecutor extends PlanExecutor {
     List<Future> futureList = new ArrayList<>();
     for (PartitionGroup group : metaGroupMember.getPartitionTable().getGlobalGroups()) {
       futureList.add(pool.submit(() -> {
-        List<String> paths = null;
-        try {
-          paths = getNodesList(group, schemaPattern, level);
-        } catch (CheckConsistencyException e) {
-          throw new RuntimeException(e);
-        }
+        List<String> paths;
+        paths = getNodesList(group, schemaPattern, level);
         if (paths != null) {
           nodeSet.addAll(paths);
         } else {
           logger.error("Fail to get node list of {}@{} from {}", schemaPattern, level, group);
         }
+        return null;
       }));
     }
     for (Future future : futureList) {
       try {
         future.get();
       } catch (InterruptedException e) {
-        logger.error("Interrupted when getting node lists, {}.", e);
+        logger.error("Interrupted when getting node lists");
         Thread.currentThread().interrupt();
       } catch (RuntimeException | ExecutionException e) {
         throw new MetadataException(e.getMessage());
@@ -555,6 +544,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
       Thread.currentThread().interrupt();
       logger.warn("Unexpected interruption when waiting for getTimeseriesSchemas to finish", e);
     }
+    List<ShowTimeSeriesResult> showTimeSeriesResults = applyShowTimeseriesLimitOffset(resultSet,
+        limit, offset);
+    logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
+    return showTimeSeriesResults;
+  }
+
+  private  List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet,
+      int limit, int offset) {
     List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
     Iterator<ShowTimeSeriesResult> iterator = resultSet.iterator();
     while (iterator.hasNext() && limit > 0) {
@@ -566,7 +563,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         showTimeSeriesResults.add(iterator.next());
       }
     }
-    logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
+
     return showTimeSeriesResults;
   }
 

@@ -60,6 +60,12 @@ public class AsyncMetaClient extends AsyncClient {
     }
   }
 
+  @Override
+  public void onError(Exception e){
+    super.onError(e);
+    pool.removeClientForNodeClientNumMap(node);
+  }
+
   public static class FactoryAsync implements AsyncClientFactory {
 
     private static TAsyncClientManager[] managers;
@@ -90,6 +96,13 @@ public class AsyncMetaClient extends AsyncClient {
       manager = manager == null ? new TAsyncClientManager() : manager;
       return new AsyncMetaClient(protocolFactory, manager, node, pool);
     }
+  }
+
+  @Override
+  public String toString() {
+    return "MetaClient{" +
+        "node=" + node +
+        '}';
   }
 
   public Node getNode() {

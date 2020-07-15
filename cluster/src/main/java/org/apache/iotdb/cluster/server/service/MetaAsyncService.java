@@ -105,47 +105,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   @Override
   public void checkStatus(StartUpStatus startUpStatus,
       AsyncMethodCallback<CheckStatusResponse> resultHandler) {
-    // check status of the new node
-    long remotePartitionInterval = startUpStatus.getPartitionInterval();
-    int remoteHashSalt = startUpStatus.getHashSalt();
-    int remoteReplicationNum = startUpStatus.getReplicationNumber();
-    List<Node> remoteSeedNodeList = startUpStatus.getSeedNodeList();
-    long localPartitionInterval = IoTDBDescriptor.getInstance().getConfig()
-        .getPartitionInterval();
-    int localHashSalt = ClusterConstant.HASH_SALT;
-    int localReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
-    boolean partitionIntervalEquals = true;
-    boolean hashSaltEquals = true;
-    boolean replicationNumEquals = true;
-    boolean seedNodeListEquals = true;
-
-    if (localPartitionInterval != remotePartitionInterval) {
-      partitionIntervalEquals = false;
-      logger.info("Remote partition interval conflicts with the leader's. Leader: {}, remote: {}",
-          localPartitionInterval, remotePartitionInterval);
-    }
-    if (localHashSalt != remoteHashSalt) {
-      hashSaltEquals = false;
-      logger.info("Remote hash salt conflicts with the leader's. Leader: {}, remote: {}",
-          localHashSalt, remoteHashSalt);
-    }
-    if (localReplicationNum != remoteReplicationNum) {
-      replicationNumEquals = false;
-      logger.info("Remote replication number conflicts with the leader's. Leader: {}, remote: {}",
-          localReplicationNum, remoteReplicationNum);
-    }
-    if (!ClusterUtils
-        .checkSeedNodes(false, (List<Node>) metaGroupMember.getAllNodes(), remoteSeedNodeList)) {
-      seedNodeListEquals = false;
-      if (logger.isInfoEnabled()) {
-        logger.info("Remote seed node list conflicts with the leader's. Leader: {}, remote: {}",
-            Arrays.toString(metaGroupMember.getAllNodes().toArray(new Node[0])),
-            Arrays.toString(remoteSeedNodeList.toArray(new Node[0])));
-      }
-    }
-
-    CheckStatusResponse response = new CheckStatusResponse(partitionIntervalEquals, hashSaltEquals,
-        replicationNumEquals, seedNodeListEquals);
+    CheckStatusResponse response = ClusterUtils.checkStatus(startUpStatus, metaGroupMember);
     resultHandler.onComplete(response);
   }
 
