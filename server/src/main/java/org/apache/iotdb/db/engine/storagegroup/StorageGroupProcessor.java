@@ -22,7 +22,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.merge.task.MergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.MERGED_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
@@ -553,7 +553,7 @@ public class StorageGroupProcessor {
         for (File partitionFolder : subFiles) {
           if (partitionFolder.isDirectory()) {
             for (File tmpFile : fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(),
-                PATH_UPGRADE)) {
+                TMP_SUFFIX)) {
               Files.delete(tmpFile.toPath());
             }
             for (File mergedFile : fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(),

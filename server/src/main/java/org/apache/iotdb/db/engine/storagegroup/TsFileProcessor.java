@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 import static org.apache.iotdb.db.conf.adapter.IoTDBConfigDynamicAdapter.MEMTABLE_NUM_FOR_EACH_PARTITION;
 import static org.apache.iotdb.db.engine.flush.VmLogger.VM_LOG_NAME;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.MERGED_SUFFIX;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_UPGRADE;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.VM_SUFFIX;
 
 import java.io.File;
@@ -683,7 +683,7 @@ public class TsFileProcessor {
         }
       } else {
         File[] tmpFiles = FSFactoryProducer.getFSFactory()
-            .listFilesBySuffix(writer.getFile().getParent(), PATH_UPGRADE);
+            .listFilesBySuffix(writer.getFile().getParent(), TMP_SUFFIX);
         if (tmpFiles.length > 0) {
           for (File file : tmpFiles) {
             Files.delete(file.toPath());
@@ -1178,7 +1178,7 @@ public class TsFileProcessor {
             writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
                 .currentTimeMillis()
                 + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
-                + PATH_UPGRADE);
+                + TMP_SUFFIX);
       } catch (InterruptedException e) {
         logger.error("{}: {}, closing task is interrupted.",
             storageGroupName, tsFileResource.getTsFile().getName(), e);
