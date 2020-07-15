@@ -791,25 +791,25 @@ public class StorageGroupProcessor {
   }
 
   private void tryToUpdateBatchInsertLastCache(InsertTabletPlan plan, Long latestFlushedTime) {
-    MNode node = null;
-    try {
-      MManager manager = IoTDB.metaManager;
-      node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
-      String[] measurementList = plan.getMeasurements();
-      for (int i = 0; i < measurementList.length; i++) {
-        if (plan.getColumns()[i] == null) {
-          continue;
-        }
-        // Update cached last value with high priority
-        Path tmpPath = new Path(plan.getDeviceId(), measurementList[i]);
-        manager.updateLastCache(tmpPath.getFullPath(),
-          plan.composeLastTimeValuePair(i), true, latestFlushedTime);
+    MNode node = plan.getDeviceMNode();
+    String[] measurementList = plan.getMeasurements();
+    for (int i = 0; i < measurementList.length; i++) {
+      if (plan.getColumns()[i] == null) {
+        continue;
       }
-    } catch (MetadataException e) {
-      // skip last cache update if the local MTree does not contain the schema
-    } finally {
+      // Update cached last value with high priority
+      MeasurementMNode tmpMeasurementNode = null;
       if (node != null) {
-        node.readUnlock();
+        tmpMeasurementNode = (MeasurementMNode) node.getChild(measurementList[i]);
+      }
+      if (tmpMeasurementNode != null) {
+        // just for performance, because in single node version, we do not need the full path of measurement
+        // so, we want to avoid concat the device and measurement string in single node version
+        IoTDB.metaManager.updateLastCache(node.getFullPath(),
+            plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
+      } else {
+        IoTDB.metaManager.updateLastCache(plan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + measurementList[i],
+            plan.composeLastTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
       }
     }
   }
@@ -845,27 +845,26 @@ public class StorageGroupProcessor {
     }
   }
 
-  private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime)
-      throws WriteProcessException {
-    MNode node = null;
-    try {
-      MManager manager = IoTDB.metaManager;
-      node = manager.getDeviceNodeWithAutoCreateAndReadLock(plan.getDeviceId());
-      String[] measurementList = plan.getMeasurements();
-      for (int i = 0; i < measurementList.length; i++) {
-        if (plan.getValues()[i] == null) {
-          continue;
-        }
-        Path tmpPath = new Path(plan.getDeviceId(), measurementList[i]);
-        // Update cached last value with high priority
-        manager.updateLastCache(tmpPath.getFullPath(),
-          plan.composeTimeValuePair(i), true, latestFlushedTime);
+  private void tryToUpdateInsertLastCache(InsertRowPlan plan, Long latestFlushedTime) {
+    MNode node = plan.getDeviceMNode();
+    String[] measurementList = plan.getMeasurements();
+    for (int i = 0; i < measurementList.length; i++) {
+      if (plan.getValues()[i] == null) {
+        continue;
       }
-    } catch (MetadataException e) {
-      // skip last cache update if the local MTree does not contain the schema
-    } finally {
+      // Update cached last value with high priority
+      MeasurementMNode tmpMeasurementNode = null;
       if (node != null) {
-        node.readUnlock();
+        tmpMeasurementNode = (MeasurementMNode) node.getChild(measurementList[i]);
+      }
+      if (tmpMeasurementNode != null) {
+        // just for performance, because in single node version, we do not need the full path of measurement
+        // so, we want to avoid concat the device and measurement string in single node version
+        IoTDB.metaManager.updateLastCache(node.getFullPath(),
+            plan.composeTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
+      } else {
+        IoTDB.metaManager.updateLastCache(plan.getDeviceId() + IoTDBConstant.PATH_SEPARATOR + measurementList[i],
+            plan.composeTimeValuePair(i), true, latestFlushedTime, tmpMeasurementNode);
       }
     }
   }

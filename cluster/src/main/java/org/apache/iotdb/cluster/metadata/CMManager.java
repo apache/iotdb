@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.MeasurementMeta;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.common.cache.LRUCache;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -198,7 +199,8 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
+  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime,
+      MeasurementMNode node) {
     cacheLock.writeLock().lock();
     try {
       MeasurementMeta measurementMeta = mRemoteMetaCache.get(seriesPath);
@@ -209,7 +211,8 @@ public class CMManager extends MManager {
       cacheLock.writeLock().unlock();
     }
     // maybe local also has the timeseries
-    super.updateLastCache(seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime);
+    super.updateLastCache(seriesPath, timeValuePair, highPriorityUpdate, latestFlushedTime,
+        node);
   }
 
   @Override

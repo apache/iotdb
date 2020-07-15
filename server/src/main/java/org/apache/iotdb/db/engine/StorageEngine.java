@@ -89,6 +89,8 @@ public class StorageEngine implements IService {
 
   private AtomicBoolean isAllSgReady = new AtomicBoolean(false);
 
+  private ExecutorService recoverAllSgThreadPool;
+
   static class InstanceHolder {
 
     private InstanceHolder() {
@@ -144,8 +146,9 @@ public class StorageEngine implements IService {
   }
 
   public void recover() {
-    ExecutorService executors = Executors.newSingleThreadExecutor();
-    executors.submit(this::recoverAllSgs);
+    recoverAllSgThreadPool = IoTDBThreadPoolFactory
+      .newSingleThreadExecutor("Begin-Recovery-Pool");
+    recoverAllSgThreadPool.submit(this::recoverAllSgs);
   }
 
   private void recoverAllSgs() {
@@ -218,6 +221,10 @@ public class StorageEngine implements IService {
     } catch (Exception e) {
       logger.error("An error occurred when checking TTL", e);
     }
+
+    if (isAllSgReady.get() && !recoverAllSgThreadPool.isShutdown()) {
+      recoverAllSgThreadPool.shutdownNow();
+    }
   }
 
   @Override
@@ -232,6 +239,9 @@ public class StorageEngine implements IService {
       }
     }
     recoveryThreadPool.shutdownNow();
+    if (!recoverAllSgThreadPool.isShutdown()) {
+      recoverAllSgThreadPool.shutdownNow();
+    }
     this.reset();
   }
 
