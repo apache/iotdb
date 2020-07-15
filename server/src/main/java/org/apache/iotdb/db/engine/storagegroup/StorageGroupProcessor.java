@@ -594,7 +594,7 @@ public class StorageGroupProcessor {
     }
     vmTsFileResourceMap.values()
         .forEach(tsFileResources -> tsFileResources
-            .forEach((subVmTsFileResources) -> subVmTsFileResources.sort(this::compareVMFileName)));
+            .forEach(subVmTsFileResources -> subVmTsFileResources.sort(this::compareVMFileName)));
     return vmTsFileResourceMap;
   }
 
@@ -632,7 +632,7 @@ public class StorageGroupProcessor {
         writer = pair.left;
         vmWriters = pair.right;
         vmWriters.forEach(
-            (subVmWriters) -> subVmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible));
+            subVmWriters -> subVmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible));
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(),
             e);
@@ -2243,7 +2243,6 @@ public class StorageGroupProcessor {
    * @param tsFileResource tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
-   * @UsedBy sync module, load external tsfile module.
    * @UsedBy sync module, load external tsfile module.
    */
   private boolean loadTsFileByType(LoadTsFileType type, File syncedTsFile,

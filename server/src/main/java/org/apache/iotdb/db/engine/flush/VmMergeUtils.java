@@ -136,10 +136,7 @@ public class VmMergeUtils {
     for (RestorableTsFileIOWriter vmWriter : vmWriters) {
       TsFileSequenceReader reader = buildReaderFromVmWriter(vmWriter,
           writer, tsFileSequenceReaderMap, storageGroup);
-      if (reader == null) {
-        continue;
-      }
-      if (!vmWriter.getMetadatasForQuery().containsKey(deviceId)) {
+      if (reader == null || !vmWriter.getMetadatasForQuery().containsKey(deviceId)) {
         continue;
       }
       List<ChunkMetadata> chunkMetadataList = vmWriter.getMetadatasForQuery()

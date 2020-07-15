@@ -608,14 +608,14 @@ public class TsFileProcessor {
     try {
       TimeUnit.MILLISECONDS.sleep(1);
       File parent = tsFileResource.getTsFile().getParentFile();
-      File newVmFile = FSFactoryProducer.getFSFactory().getFile(parent,
+      return FSFactoryProducer.getFSFactory().getFile(parent,
           tsFileResource.getTsFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + level
               + IoTDBConstant.FILE_NAME_SEPARATOR + System
               .currentTimeMillis() + VM_SUFFIX);
-      return newVmFile;
     } catch (InterruptedException e) {
       logger.error("{}: {}, closing task is interrupted.",
           storageGroupName, tsFileResource.getTsFile().getName(), e);
+      Thread.currentThread().interrupt();
       return null;
     } finally {
       vmFileCreateLock.writeLock().unlock();
@@ -716,7 +716,7 @@ public class TsFileProcessor {
         if (config.isEnableVm()) {
           logger.info("[Flush] flush a vm");
           File newVmFile = createNewVMFile(tsFileResource, 0);
-          if (vmWriters.size() <= 0) {
+          if (vmWriters.isEmpty()) {
             vmWriters.add(new ArrayList<>());
             vmTsFileResources.add(new ArrayList<>());
           }
@@ -1174,15 +1174,15 @@ public class TsFileProcessor {
       try {
         TimeUnit.MILLISECONDS.sleep(1);
         File parent = writer.getFile().getParentFile();
-        File newTmpFile = FSFactoryProducer.getFSFactory().getFile(parent,
+        return FSFactoryProducer.getFSFactory().getFile(parent,
             writer.getFile().getName() + IoTDBConstant.FILE_NAME_SEPARATOR + System
                 .currentTimeMillis()
                 + VM_SUFFIX + IoTDBConstant.PATH_SEPARATOR
                 + PATH_UPGRADE);
-        return newTmpFile;
       } catch (InterruptedException e) {
         logger.error("{}: {}, closing task is interrupted.",
             storageGroupName, tsFileResource.getTsFile().getName(), e);
+        Thread.currentThread().interrupt();
         return null;
       } finally {
         vmFileCreateLock.writeLock().unlock();
