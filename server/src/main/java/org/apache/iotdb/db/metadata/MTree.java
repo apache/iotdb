@@ -236,6 +236,29 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Add an interval path to MTree. This is only used for automatically creating schema
+   *
+   * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1
+   */
+  MNode getDeviceNodeWithAutoCreating(List<String> nodeNames, int sgLevel) throws MetadataException {
+    if (nodeNames.size() <= 1 || !nodeNames.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodeNames));
+    }
+    MNode cur = root;
+    for (int i = 1; i < nodeNames.size(); i++) {
+      if (!cur.hasChild(nodeNames.get(i))) {
+        if (i == sgLevel) {
+          cur.addChild(nodeNames.get(i), new StorageGroupMNode(cur, nodeNames.get(i),
+              IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
+        } else {
+          cur.addChild(nodeNames.get(i), new MNode(cur, nodeNames.get(i)));
+        }
+      }
+      cur = cur.getChild(nodeNames.get(i));
+    }
+    return cur;
+  }
+  /**
    * Check whether the given path exists.
    *
    * @param path a full path or a prefix path

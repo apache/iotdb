@@ -1146,13 +1146,13 @@ public class MManager {
         throw new PathNotExistException(path);
       }
       if (e.getCause() instanceof StorageGroupNotSetException) {
-        String storageGroupName = MetaUtils.getStorageGroupNameByLevel(path, sgLevel);
+        List<String> storageGroupName = MetaUtils.getStorageGroupNameNodesByLevel(nodes, sgLevel);
         setStorageGroup(storageGroupName);
-        node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+        node = mtree.getDeviceNodeWithAutoCreating(nodes, sgLevel);
         return node;
       }
       if (e.getCause() instanceof StorageGroupAlreadySetException) {
-        node = mtree.getDeviceNodeWithAutoCreating(path, sgLevel);
+        node = mtree.getDeviceNodeWithAutoCreating(nodes, sgLevel);
         return node;
       }
       return node;
