@@ -301,9 +301,9 @@ public class StorageGroupProcessor {
       List<TsFileResource> tmpUnseqTsFiles = unseqTsFilesPair.left;
       List<TsFileResource> oldUnseqTsFiles = unseqTsFilesPair.right;
       upgradeUnseqFileList.addAll(oldUnseqTsFiles);
-      Map<String, List<TsFileResource>> vmSeqFiles = getAllVms(
+      Map<String, List<List<TsFileResource>>> vmSeqFiles = getAllVms(
           DirectoryManager.getInstance().getAllSequenceFileFolders());
-      Map<String, List<TsFileResource>> vmUnseqFiles = getAllVms(
+      Map<String, List<List<TsFileResource>>> vmUnseqFiles = getAllVms(
           DirectoryManager.getInstance().getAllUnSequenceFileFolders());
 
       // split by partition so that we can find the last file of each partition and decide to
@@ -540,7 +540,8 @@ public class StorageGroupProcessor {
     return new Pair<>(ret, upgradeRet);
   }
 
-  private Map<String, List<TsFileResource>> getAllVms(List<String> folders) throws IOException {
+  private Map<String, List<List<TsFileResource>>> getAllVms(List<String> folders)
+      throws IOException {
     List<File> vmFiles = new ArrayList<>();
     for (String baseDir : folders) {
       File fileFolder = fsFactory.getFile(baseDir, storageGroupName);
@@ -574,16 +575,26 @@ public class StorageGroupProcessor {
       }
     }
 
-    Map<String, List<TsFileResource>> vmTsFileResourceMap = new HashMap<>();
+    Map<String, List<List<TsFileResource>>> vmTsFileResourceMap = new HashMap<>();
     for (File f : vmFiles) {
       TsFileResource fileResource = new TsFileResource(f);
       fileResource.setClosed(false);
       String tsfilePrefix = f.getPath()
-          .substring(0, f.getPath().lastIndexOf(FILE_NAME_SEPARATOR));
-      vmTsFileResourceMap.computeIfAbsent(tsfilePrefix, k -> new ArrayList<>()).add(fileResource);
+          .substring(0, f.getPath().lastIndexOf(TSFILE_SUFFIX)) + TSFILE_SUFFIX;
+      String vmLevelStr = f.getPath()
+          .substring(f.getPath().lastIndexOf(TSFILE_SUFFIX)).replaceAll(TSFILE_SUFFIX, "")
+          .split(IoTDBConstant.FILE_NAME_SEPARATOR)[0];
+      int vmLevel = Integer.parseInt(vmLevelStr);
+      List<List<TsFileResource>> tsFileList = vmTsFileResourceMap
+          .computeIfAbsent(tsfilePrefix, k -> new ArrayList<>());
+      while (tsFileList.size() <= vmLevel) {
+        tsFileList.add(new ArrayList<>());
+      }
+      tsFileList.get(vmLevel).add(fileResource);
     }
     vmTsFileResourceMap.values()
-        .forEach(tsFileResources -> tsFileResources.sort(this::compareVMFileName));
+        .forEach(tsFileResources -> tsFileResources
+            .forEach((subVmTsFileResources) -> subVmTsFileResources.sort(this::compareVMFileName)));
     return vmTsFileResourceMap;
   }
 
@@ -602,11 +613,11 @@ public class StorageGroupProcessor {
   }
 
   private void recoverTsFiles(List<TsFileResource> tsFiles,
-      Map<String, List<TsFileResource>> vmFiles, boolean isSeq) {
+      Map<String, List<List<TsFileResource>>> vmFiles, boolean isSeq) {
     for (int i = 0; i < tsFiles.size(); i++) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
-      List<TsFileResource> vmTsFileResources = vmFiles
+      List<List<TsFileResource>> vmTsFileResources = vmFiles
           .getOrDefault(tsFileResource.getTsFilePath(), new ArrayList<>());
       TsFileRecoverPerformer recoverPerformer = new TsFileRecoverPerformer(
           storageGroupName + FILE_NAME_SEPARATOR,
@@ -614,13 +625,14 @@ public class StorageGroupProcessor {
           i == tsFiles.size() - 1, vmTsFileResources);
 
       RestorableTsFileIOWriter writer;
-      List<RestorableTsFileIOWriter> vmWriters;
+      List<List<RestorableTsFileIOWriter>> vmWriters;
       try {
-        Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> pair = recoverPerformer
+        Pair<RestorableTsFileIOWriter, List<List<RestorableTsFileIOWriter>>> pair = recoverPerformer
             .recover();
         writer = pair.left;
         vmWriters = pair.right;
-        vmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible);
+        vmWriters.forEach(
+            (subVmWriters) -> subVmWriters.forEach(RestorableTsFileIOWriter::makeMetadataVisible));
       } catch (StorageGroupProcessorException e) {
         logger.warn("Skip TsFile: {} because of error in recover: ", tsFileResource.getTsFilePath(),
             e);
@@ -721,6 +733,7 @@ public class StorageGroupProcessor {
 
   /**
    * Insert a tablet (rows belonging to the same devices) into this storage group.
+   *
    * @throws BatchInsertionException if some of the rows failed to be inserted
    */
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchInsertionException {
@@ -821,11 +834,11 @@ public class StorageGroupProcessor {
    * inserted are in the range [start, end)
    *
    * @param insertTabletPlan insert a tablet of a device
-   * @param sequence         whether is sequence
-   * @param start            start index of rows to be inserted in insertTabletPlan
-   * @param end              end index of rows to be inserted in insertTabletPlan
-   * @param results          result array
-   * @param timePartitionId  time partition id
+   * @param sequence whether is sequence
+   * @param start start index of rows to be inserted in insertTabletPlan
+   * @param end end index of rows to be inserted in insertTabletPlan
+   * @param results result array
+   * @param timePartitionId time partition id
    * @return false if any failure occurs when inserting the tablet, true otherwise
    */
   private boolean insertTabletToTsFileProcessor(InsertTabletPlan insertTabletPlan,
@@ -951,10 +964,10 @@ public class StorageGroupProcessor {
   /**
    * get processor from hashmap, flush oldest processor if necessary
    *
-   * @param timeRangeId            time partition range
+   * @param timeRangeId time partition range
    * @param tsFileProcessorTreeMap tsFileProcessorTreeMap
-   * @param fileList               file list to add new processor
-   * @param sequence               whether is sequence or not
+   * @param fileList file list to add new processor
+   * @param sequence whether is sequence or not
    */
   private TsFileProcessor getOrCreateTsFileProcessorIntern(long timeRangeId,
       TreeMap<Long, TsFileProcessor> tsFileProcessorTreeMap,
@@ -1401,10 +1414,10 @@ public class StorageGroupProcessor {
    * Delete data whose timestamp <= 'timestamp' and belongs to the time series
    * deviceId.measurementId.
    *
-   * @param deviceId      the deviceId of the timeseries to be deleted.
+   * @param deviceId the deviceId of the timeseries to be deleted.
    * @param measurementId the measurementId of the timeseries to be deleted.
-   * @param startTime     the startTime of delete range.
-   * @param endTime       the endTime of delete range.
+   * @param startTime the startTime of delete range.
+   * @param endTime the endTime of delete range.
    */
   public void delete(String deviceId, String measurementId, long startTime, long endTime)
       throws IOException {
@@ -2160,9 +2173,9 @@ public class StorageGroupProcessor {
    * returns directly; otherwise, the time stamp is the mean of the timestamps of the two files, the
    * version number is the version number in the tsfile with a larger timestamp.
    *
-   * @param tsfileName  origin tsfile name
+   * @param tsfileName origin tsfile name
    * @param insertIndex the new file will be inserted between the files [insertIndex, insertIndex +
-   *                    1]
+   * 1]
    * @return appropriate filename
    */
   private String getFileNameForLoadingFile(String tsfileName, int insertIndex,
@@ -2226,8 +2239,8 @@ public class StorageGroupProcessor {
   /**
    * Execute the loading process by the type.
    *
-   * @param type            load type
-   * @param tsFileResource  tsfile resource to be loaded
+   * @param type load type
+   * @param tsFileResource tsfile resource to be loaded
    * @param filePartitionId the partition id of the new file
    * @return load the file successfully
    * @UsedBy sync module, load external tsfile module.

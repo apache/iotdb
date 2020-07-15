@@ -21,7 +21,6 @@ package org.apache.iotdb.db.writelog.recover;
 
 import static org.apache.iotdb.db.engine.flush.MemTableFlushTask.getFlushLogFile;
 import static org.apache.iotdb.db.engine.flush.VmLogger.isVMLoggerFileExist;
-import static org.apache.iotdb.db.engine.storagegroup.TsFileProcessor.createNewVMFile;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.RESOURCE_SUFFIX;
 
 import java.io.File;
@@ -68,7 +67,7 @@ public class TsFileRecoverPerformer {
   private boolean sequence;
   private boolean isLastFile;
 
-  private List<TsFileResource> vmTsFileResources;
+  private List<List<TsFileResource>> vmTsFileResources;
 
   /**
    * @param isLastFile whether this TsFile is the last file of its partition
@@ -76,7 +75,7 @@ public class TsFileRecoverPerformer {
    */
   public TsFileRecoverPerformer(String logNodePrefix, VersionController versionController,
       TsFileResource currentTsFileResource, boolean sequence, boolean isLastFile,
-      List<TsFileResource> vmTsFileResources) {
+      List<List<TsFileResource>> vmTsFileResources) {
     this.filePath = currentTsFileResource.getTsFilePath();
     this.logNodePrefix = logNodePrefix;
     this.versionController = versionController;
@@ -94,32 +93,41 @@ public class TsFileRecoverPerformer {
    * file and the vmfiles are not closed before crush, so these writers can be used to continue
    * writing
    */
-  public Pair<RestorableTsFileIOWriter, List<RestorableTsFileIOWriter>> recover()
+  public Pair<RestorableTsFileIOWriter, List<List<RestorableTsFileIOWriter>>> recover()
       throws StorageGroupProcessorException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
-    List<File> vmFileList = new ArrayList<>();
-    for (TsFileResource tsFileResource : vmTsFileResources) {
-      vmFileList.add(FSFactoryProducer.getFSFactory().getFile(tsFileResource.getTsFilePath()));
+    List<List<File>> vmFileList = new ArrayList<>();
+    for (List<TsFileResource> subTsFileResource : vmTsFileResources) {
+      List<File> subVmFileList = new ArrayList<>();
+      for (TsFileResource tsFileResource : subTsFileResource) {
+        subVmFileList.add(FSFactoryProducer.getFSFactory().getFile(tsFileResource.getTsFilePath()));
+      }
+      vmFileList.add(subVmFileList);
     }
     if (!file.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", filePath);
       return null;
     }
-    for (File vmFile : vmFileList) {
-      if (!vmFile.exists()) {
-        logger.error("VMFile {} is missing, will skip its recovery.", vmFile.getPath());
-        return null;
+    for (List<File> subVmFileList : vmFileList) {
+      for (File vmFile : subVmFileList) {
+        if (!vmFile.exists()) {
+          logger.error("VMFile {} is missing, will skip its recovery.", vmFile.getPath());
+          return null;
+        }
       }
     }
     // remove corrupted part of the TsFile
     RestorableTsFileIOWriter restorableTsFileIOWriter;
-    List<RestorableTsFileIOWriter> vmRestorableTsFileIOWriterList = new ArrayList<>();
+    List<List<RestorableTsFileIOWriter>> vmRestorableTsFileIOWriterList = new ArrayList<>();
     try {
       restorableTsFileIOWriter = new RestorableTsFileIOWriter(file);
       for (int i = 0; i < vmTsFileResources.size(); i++) {
-        file = vmFileList.get(i);
-        vmRestorableTsFileIOWriterList.add(new RestorableTsFileIOWriter(file));
+        vmRestorableTsFileIOWriterList.add(new ArrayList<>());
+        for (int j = 0; j < vmTsFileResources.get(i).size(); j++) {
+          file = vmFileList.get(i).get(j);
+          vmRestorableTsFileIOWriterList.get(i).add(new RestorableTsFileIOWriter(file));
+        }
       }
     } catch (NotCompatibleTsFileException e) {
       boolean result = file.delete();
@@ -131,10 +139,11 @@ public class TsFileRecoverPerformer {
 
     RestorableTsFileIOWriter lastRestorableTsFileIOWriter =
         vmTsFileResources.isEmpty() ? restorableTsFileIOWriter
-            : vmRestorableTsFileIOWriterList.get(vmRestorableTsFileIOWriterList.size() - 1);
+            : vmRestorableTsFileIOWriterList.get(0)
+                .get(vmRestorableTsFileIOWriterList.get(0).size() - 1);
 
     TsFileResource lastTsFileResource = vmTsFileResources.isEmpty() ? resource
-        : vmTsFileResources.get(vmTsFileResources.size() - 1);
+        : vmTsFileResources.get(0).get(vmTsFileResources.get(0).size() - 1);
 
     boolean isComplete =
         !lastRestorableTsFileIOWriter.hasCrashed() && !lastRestorableTsFileIOWriter.canWrite();
@@ -152,8 +161,10 @@ public class TsFileRecoverPerformer {
     } else {
       if (!vmTsFileResources.isEmpty()) {
         for (int i = 0; i < vmTsFileResources.size(); i++) {
-          recoverResourceFromWriter(vmRestorableTsFileIOWriterList.get(i),
-              vmTsFileResources.get(i));
+          for (int j = 0; j < vmTsFileResources.get(i).size(); j++) {
+            recoverResourceFromWriter(vmRestorableTsFileIOWriterList.get(i).get(j),
+                vmTsFileResources.get(i).get(j));
+          }
         }
         recoverResourceFromWriter(restorableTsFileIOWriter, resource);
         boolean vmFileNotCrashed = !getFlushLogFile(restorableTsFileIOWriter).exists();
@@ -165,12 +176,12 @@ public class TsFileRecoverPerformer {
             if (tsFileNotCrashed) {
 
               // if wal exists, we should open a new vmfile to replay it
-              File newVmFile = createNewVMFile(resource);
+              File newVmFile = resource.getProcessor().createNewVMFile(resource, 0);
               TsFileResource newVmTsFileResource = new TsFileResource(newVmFile);
               RestorableTsFileIOWriter newVMWriter = new RestorableTsFileIOWriter(newVmFile);
               if (redoLogs(newVMWriter, newVmTsFileResource)) {
-                vmTsFileResources.add(newVmTsFileResource);
-                vmRestorableTsFileIOWriterList.add(newVMWriter);
+                vmTsFileResources.get(0).add(newVmTsFileResource);
+                vmRestorableTsFileIOWriterList.get(0).add(newVMWriter);
               } else {
                 Files.delete(newVmFile.toPath());
               }
@@ -216,12 +227,14 @@ public class TsFileRecoverPerformer {
   }
 
   private void updateTsFileResource() {
-    for (TsFileResource tsFileResource : vmTsFileResources) {
-      for (Entry<String, Integer> entry : tsFileResource.getDeviceToIndexMap().entrySet()) {
-        String device = entry.getKey();
-        int index = entry.getValue();
-        resource.updateStartTime(device, tsFileResource.getStartTime(index));
-        resource.updateEndTime(device, tsFileResource.getEndTime(index));
+    for (List<TsFileResource> subTsFileResources : vmTsFileResources) {
+      for (TsFileResource tsFileResource : subTsFileResources) {
+        for (Entry<String, Integer> entry : tsFileResource.getDeviceToIndexMap().entrySet()) {
+          String device = entry.getKey();
+          int index = entry.getValue();
+          resource.updateStartTime(device, tsFileResource.getStartTime(index));
+          resource.updateEndTime(device, tsFileResource.getEndTime(index));
+        }
       }
     }
   }
