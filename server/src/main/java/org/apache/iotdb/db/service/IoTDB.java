@@ -125,13 +125,15 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(MQTTService.getInstance());
     }
 
-    logger.info("IoTDB is set up, now may some sgs are not ready, don't worry, the superman Dr. Huang will teach the sg to fix themselves.");
+    logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
 
     while (!StorageEngine.getInstance().isAllSgReady()) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
-        e.printStackTrace();
+        Thread.currentThread().interrupt();
+        logger.warn("IoTDB failed to set up for: {}", e.getMessage());
+        return;
       }
     }
 
@@ -139,7 +141,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UpgradeSevice.getINSTANCE());
     registerManager.register(MergeManager.getINSTANCE());
 
-    logger.info("Congratulation, IoTDB is set up successfully.");
+    logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
   private void deactivate() {

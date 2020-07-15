@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.metadata;
 
+
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -44,6 +45,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.ActiveTimeSeriesCounter;
@@ -79,7 +81,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -1762,37 +1763,6 @@ public class MManager {
   }
 
   /**
-   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
-   * cache the path to mRemoteSchemaCache
-   */
-  public void cacheMeta(String seriesPath, MeasurementMeta meta) {
-    // do nothing
-  }
-
-  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair,
-                              boolean highPriorityUpdate, Long latestFlushedTime) {
-    MeasurementMNode node = null;
-    try {
-      node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
-    } catch (MetadataException e) {
-      logger.warn("the {} is not exist", seriesPath);
-      return;
-    }
-    node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-  }
-
-  public TimeValuePair getLastCache(String seriesPath) {
-    try {
-      MeasurementMNode node = null;
-      node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
-      return node.getCachedLast();
-    } catch (MetadataException e) {
-      // do nothing
-    }
-    return null;
-  }
-
-  /**
    * StorageGroupFilter filters unsatisfied storage groups in metadata queries to speed up and
    * deduplicate.
    */
@@ -1801,6 +1771,39 @@ public class MManager {
 
     boolean satisfy(String storageGroup);
   }
+
+  /**
+   * if the path is in local mtree, nothing needed to do (because mtree is in the memory); Otherwise
+   * cache the path to mRemoteSchemaCache
+   */
+  public void cacheMeta(String path, MeasurementMeta meta) {
+    // do nothing
+  }
+
+  public void updateLastCache(String seriesPath, TimeValuePair timeValuePair,
+                              boolean highPriorityUpdate, Long latestFlushedTime,
+                              MeasurementMNode node) {
+    if (node != null) {
+      node.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+    } else {
+      try {
+        MeasurementMNode node1 = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+        node1.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
+      } catch (MetadataException e) {
+        logger.warn("failed to update last cache for the {}, err:{}", seriesPath, e.getMessage());
+      }
+    }
+  }
+
+  public TimeValuePair getLastCache(String seriesPath) {
+   try {
+     MeasurementMNode node = (MeasurementMNode) mtree.getNodeByPath(seriesPath);
+     return node.getCachedLast();
+  } catch (MetadataException e) {
+     logger.warn("failed to get last cache for the {}, err:{}", seriesPath, e.getMessage());
+  }
+  return null;
+}
 
   private void checkMTreeModified() {
     if (logWriter == null || logFile == null) {

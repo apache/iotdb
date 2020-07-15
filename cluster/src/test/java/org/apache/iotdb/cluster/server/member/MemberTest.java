@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.config.ConsistencyLevel;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
+import org.apache.iotdb.cluster.metadata.MetaPuller;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.SlotPartitionTable;
@@ -127,6 +128,7 @@ public class MemberTest {
     }
     planExecutor = new PlanExecutor();
     testMetaMember.setPartitionTable(partitionTable);
+    MetaPuller.getInstance().init(testMetaMember);
   }
 
   @After

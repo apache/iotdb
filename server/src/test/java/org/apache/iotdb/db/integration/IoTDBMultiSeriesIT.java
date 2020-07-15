@@ -69,6 +69,7 @@ public class IoTDBMultiSeriesIT {
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 1000);
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(100);
+    TSFileDescriptor.getInstance().getConfig().setCompressor("LZ4");
 
     EnvironmentUtils.envSetUp();
 
@@ -84,6 +85,7 @@ public class IoTDBMultiSeriesIT {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
+    TSFileDescriptor.getInstance().getConfig().setCompressor("SNAPPY");
   }
 
   private static void insertData()

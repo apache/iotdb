@@ -534,7 +534,10 @@ public class RaftLogManager {
 
   public void close() {
     getStableEntryManager().close();
-    executorService.shutdownNow();
+    if (executorService != null) {
+      executorService.shutdownNow();
+      executorService = null;
+    }
   }
 
   public UnCommittedEntryManager getUnCommittedEntryManager() {
