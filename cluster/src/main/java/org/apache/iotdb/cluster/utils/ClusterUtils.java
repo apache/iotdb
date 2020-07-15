@@ -40,7 +40,7 @@ public class ClusterUtils {
 
   public static final TimeUnit WAIT_START_UP_CHECK_TIME_UNIT = TimeUnit.SECONDS;
 
-  public static final long START_UP_TIME_THRESHOLD = 1; // minute
+  public static final long START_UP_TIME_THRESHOLD = 60 ; // second
 
   public static final long START_UP_CHECK_TIME_INTERVAL = 3; // second
 

@@ -20,7 +20,9 @@ package org.apache.iotdb.cluster;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.iotdb.cluster.client.async.AsyncMetaClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.config.ClusterConfig;
@@ -79,21 +81,7 @@ public class ClusterMain {
     try {
       if (MODE_START.equals(mode)) {
         metaServer = new MetaClusterServer();
-        ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
-        // check the initial replicateNum and refuse to start when the replicateNum <= 0
-        if (config.getReplicationNum() <= 0) {
-          String message = String.format("ReplicateNum should be greater than 0 instead of %d.",
-              config.getReplicationNum());
-          throw new StartupException(metaServer.getMember().getName(), message);
-        }
-        // check the initial cluster size and refuse to start when the size < quorum
-        int quorum = config.getReplicationNum() / 2 + 1;
-        if (config.getSeedNodeUrls().size() < quorum) {
-          String message = String.format("Seed number less than quorum, seed number: %s, quorum: "
-                  + "%s.",
-              config.getSeedNodeUrls().size(), quorum);
-          throw new StartupException(metaServer.getMember().getName(), message);
-        }
+        startServerCheck();
         metaServer.start();
         metaServer.buildCluster();
       } else if (MODE_ADD.equals(mode)) {
@@ -101,6 +89,7 @@ public class ClusterMain {
         metaServer.start();
         if (!metaServer.joinCluster()) {
           metaServer.stop();
+          logger.error("Fail to join cluster");
         }
       } else if (MODE_REMOVE.equals(mode)) {
         doRemoveNode(args);
@@ -109,7 +98,48 @@ public class ClusterMain {
       }
     } catch (IOException | TTransportException | StartupException | QueryProcessException |
         StartUpCheckFailureException | ConfigInconsistentException e) {
+      metaServer.stop();
       logger.error("Fail to start meta server", e);
+    }
+  }
+
+  private static void startServerCheck() throws StartupException {
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    // check the initial replicateNum and refuse to start when the replicateNum <= 0
+    if (config.getReplicationNum() <= 0) {
+      String message = String.format("ReplicateNum should be greater than 0 instead of %d.",
+          config.getReplicationNum());
+      throw new StartupException(metaServer.getMember().getName(), message);
+    }
+    // check the initial cluster size and refuse to start when the size < quorum
+    int quorum = config.getReplicationNum() / 2 + 1;
+    if (config.getSeedNodeUrls().size() < quorum) {
+      String message = String.format("Seed number less than quorum, seed number: %s, quorum: "
+              + "%s.",
+          config.getSeedNodeUrls().size(), quorum);
+      throw new StartupException(metaServer.getMember().getName(), message);
+    }
+    Set<Node> seedNodes = new HashSet<>();
+    for (String url : config.getSeedNodeUrls()) {
+      String[] splits = url.split(":");
+      Node node = new Node();
+      node.setIp(splits[0]).setMetaPort(Integer.parseInt(splits[1]))
+          .setDataPort(Integer.parseInt(splits[2]));
+      if (seedNodes.contains(node)) {
+        String message = String.format(
+            "SeedNodes must not repeat each other. SeedNodes: %s", config.getSeedNodeUrls());
+        throw new StartupException(metaServer.getMember().getName(), message);
+      }
+      seedNodes.add(node);
+    }
+    Node localNode = new Node();
+    localNode.setIp(config.getLocalIP()).setMetaPort(config.getLocalMetaPort())
+        .setDataPort(config.getLocalDataPort());
+    if (!seedNodes.contains(localNode)) {
+      String message = String.format(
+          "SeedNodes must contains local node in start-server mode. LocalNode: %s ,SeedNodes: %s",
+          localNode.toString(), config.getSeedNodeUrls());
+      throw new StartupException(metaServer.getMember().getName(), message);
     }
   }
 

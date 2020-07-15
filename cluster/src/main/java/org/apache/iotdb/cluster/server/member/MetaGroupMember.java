@@ -915,7 +915,7 @@ public class MetaGroupMember extends RaftMember {
       // If reach the start up time threshold, shut down.
       // Otherwise, wait for a while, start the loop again.
       if (System.currentTimeMillis() - startTime
-          > ClusterUtils.START_UP_TIME_THRESHOLD * 20 * 1000) {
+          > ClusterUtils.START_UP_TIME_THRESHOLD * 1000) {
         throw new StartUpCheckFailureException();
       } else {
         try {

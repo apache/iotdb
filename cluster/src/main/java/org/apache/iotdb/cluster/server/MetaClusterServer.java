@@ -103,6 +103,9 @@ public class MetaClusterServer extends RaftServer implements TSMetaService.Async
    */
   @Override
   public void stop() {
+    if (ioTDB == null) {
+      return;
+    }
     super.stop();
     ioTDB.stop();
     ioTDB = null;
