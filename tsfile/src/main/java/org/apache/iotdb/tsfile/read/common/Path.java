@@ -152,6 +152,14 @@ public class Path implements Serializable, Comparable<Path> {
     return addPrefixPath(src, prefix.fullPath);
   }
 
+  public void setDevice(String device) {
+    this.device = device;
+  }
+
+  public void setFullPath(String fullPath) {
+    this.fullPath = fullPath;
+  }
+
   public String getFullPath() {
     return fullPath;
   }

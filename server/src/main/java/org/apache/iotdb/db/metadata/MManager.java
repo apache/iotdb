@@ -367,14 +367,14 @@ public class MManager {
 
   public void createTimeseries(CreateTimeSeriesPlan plan, long offset) throws MetadataException {
     lock.writeLock().lock();
-    String path = plan.getPath().getFullPath();
+    List<String> nodes = plan.getPath().getNodes();
     try {
       /*
        * get the storage group with auto create schema
        */
       String storageGroupName;
       try {
-        storageGroupName = mtree.getStorageGroupName(path);
+        storageGroupName = mtree.getStorageGroupName(nodes);
       } catch (StorageGroupNotSetException e) {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw e;

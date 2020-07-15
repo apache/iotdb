@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 public class MetaUtils {
 
@@ -95,12 +96,27 @@ public class MetaUtils {
    */
   public static List<String> getStorageGroupNodesByLevel(List<String> nodeNames, int level) throws MetadataException {
     if (nodeNames.size() <= level || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
-      throw new IllegalPathException(nodeNames.toString());
+      throw new IllegalPathException(getPathByNodes(nodeNames));
     }
     for(int i = level + 1; nodeNames.size() > level; i--) {
       nodeNames.remove(i);
     }
     return nodeNames;
+  }
+
+  /**
+   * Combine a path by a string list
+   * e.g., nodes = [root, a, b, c], return root.a.b.c
+   */
+
+  public static String getPathByNodes(List <String> nodes) {
+    StringBuilder path = new StringBuilder();
+    path.append(nodes.get(0));
+    for(int i = 1; i < nodes.size(); i++) {
+      path.append(TsFileConstant.PATH_SEPARATOR);
+      path.append(nodes.get(0));
+    }
+    return path.toString();
   }
 
 }

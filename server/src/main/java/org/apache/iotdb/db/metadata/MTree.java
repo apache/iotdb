@@ -315,7 +315,7 @@ public class MTree implements Serializable {
   List<MeasurementMNode> deleteStorageGroup(List<String> nodes) throws MetadataException {
     MNode cur = getNodeByNodes(nodes);
     if (!(cur instanceof StorageGroupMNode)) {
-      throw new StorageGroupNotSetException(nodes.toString());
+      throw new StorageGroupNotSetException(cur.getFullPath());
     }
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
@@ -454,16 +454,16 @@ public class MTree implements Serializable {
   MNode getNodeByNodesWithStorageGroupCheck(List<String> nodes) throws MetadataException {
     boolean storageGroupChecked = false;
     if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
-      throw new IllegalPathException(nodes.toString());
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
     }
 
     MNode cur = root;
     for (int i = 1; i < nodes.size(); i++) {
       if (!cur.hasChild(nodes.get(i))) {
         if (!storageGroupChecked) {
-          throw new StorageGroupNotSetException(nodes.toString());
+          throw new StorageGroupNotSetException(MetaUtils.getPathByNodes(nodes));
         }
-        throw new PathNotExistException(nodes.toString());
+        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
       }
       cur = cur.getChild(nodes.get(i));
 
@@ -473,7 +473,7 @@ public class MTree implements Serializable {
     }
 
     if (!storageGroupChecked) {
-      throw new StorageGroupNotSetException(nodes.toString());
+      throw new StorageGroupNotSetException(MetaUtils.getPathByNodes(nodes));
     }
     return cur;
   }
@@ -498,7 +498,7 @@ public class MTree implements Serializable {
     if (node instanceof StorageGroupMNode) {
       return (StorageGroupMNode) node;
     } else {
-      throw new StorageGroupNotSetException(nodes.toString());
+      throw new StorageGroupNotSetException(MetaUtils.getPathByNodes(nodes));
     }
   }
 
@@ -529,12 +529,12 @@ public class MTree implements Serializable {
    */
   MNode getNodeByNodes(List<String> nodes) throws MetadataException {
     if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
-      throw new IllegalPathException(nodes.toString());
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodes));
     }
     MNode cur = root;
     for (int i = 1; i < nodes.size(); i++) {
       if (!cur.hasChild(nodes.get(i))) {
-        throw new PathNotExistException(nodes.toString());
+        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
       }
       cur = cur.getChild(nodes.get(i));
     }
@@ -643,6 +643,26 @@ public class MTree implements Serializable {
       }
     }
     throw new StorageGroupNotSetException(path);
+  }
+
+  /**
+   * Get storage group name by path
+   *
+   * <p>e.g., root.sg1 is storage group, path is root.sg1.d1, return root.sg1
+   *
+   * @return storage group in the given path
+   */
+  String getStorageGroupName(List<String> nodes) throws StorageGroupNotSetException { ;
+    MNode cur = root;
+    for (int i = 1; i < nodes.size(); i++) {
+      cur = cur.getChild(nodes.get(i));
+      if (cur instanceof StorageGroupMNode) {
+        return cur.getFullPath();
+      } else if (cur == null) {
+        throw new StorageGroupNotSetException(MetaUtils.getPathByNodes(nodes));
+      }
+    }
+    throw new StorageGroupNotSetException(MetaUtils.getPathByNodes(nodes));
   }
 
   /**

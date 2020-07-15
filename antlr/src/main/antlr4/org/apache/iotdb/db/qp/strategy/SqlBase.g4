@@ -29,11 +29,11 @@ statement
     : CREATE TIMESERIES fullPath alias? WITH attributeClauses #createTimeseries
     | DELETE TIMESERIES prefixPath (COMMA prefixPath)* #deleteTimeseries
     | ALTER TIMESERIES fullPath alterClause #alterTimeseries
-    | INSERT INTO fullPath insertColumnSpec VALUES insertValuesSpec #insertStatement
+    | INSERT INTO prefixPath insertColumnSpec VALUES insertValuesSpec #insertStatement
     | UPDATE prefixPath setClause whereClause? #updateStatement
     | DELETE FROM prefixPath (COMMA prefixPath)* (whereClause)? #deleteStatement
-    | SET STORAGE GROUP TO fullPath #setStorageGroup
-    | DELETE STORAGE GROUP fullPath (COMMA fullPath)* #deleteStorageGroup
+    | SET STORAGE GROUP TO prefixPath #setStorageGroup
+    | DELETE STORAGE GROUP prefixPath (COMMA prefixPath)* #deleteStorageGroup
     | SHOW METADATA #showMetadata // not support yet
     | DESCRIBE prefixPath #describePath // not support yet
     | CREATE INDEX ON fullPath USING function=ID indexWithClause? whereClause? #createIndex //not support yet
