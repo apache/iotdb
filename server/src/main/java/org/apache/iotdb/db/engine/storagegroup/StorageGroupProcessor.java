@@ -558,9 +558,12 @@ public class StorageGroupProcessor {
             }
             for (File mergedFile : fsFactory.listFilesBySuffix(partitionFolder.getAbsolutePath(),
                 MERGED_SUFFIX)) {
+              int vmLevel = getVmLevel(mergedFile);
               for (File shouldRemove : fsFactory
                   .listFilesBySuffix(partitionFolder.getAbsolutePath(), VM_SUFFIX)) {
-                Files.delete(shouldRemove.toPath());
+                if (getVmLevel(shouldRemove) == vmLevel) {
+                  Files.delete(shouldRemove.toPath());
+                }
               }
               File newVMFile = FSFactoryProducer.getFSFactory().getFile(mergedFile.getParent(),
                   mergedFile.getName().split(MERGED_SUFFIX)[0]);
@@ -581,10 +584,7 @@ public class StorageGroupProcessor {
       fileResource.setClosed(false);
       String tsfilePrefix = f.getPath()
           .substring(0, f.getPath().lastIndexOf(TSFILE_SUFFIX)) + TSFILE_SUFFIX;
-      String vmLevelStr = f.getPath()
-          .substring(f.getPath().lastIndexOf(TSFILE_SUFFIX)).replaceAll(TSFILE_SUFFIX, "")
-          .split(IoTDBConstant.FILE_NAME_SEPARATOR)[0];
-      int vmLevel = Integer.parseInt(vmLevelStr);
+      int vmLevel = getVmLevel(f);
       List<List<TsFileResource>> tsFileList = vmTsFileResourceMap
           .computeIfAbsent(tsfilePrefix, k -> new ArrayList<>());
       while (tsFileList.size() <= vmLevel) {
@@ -596,6 +596,13 @@ public class StorageGroupProcessor {
         .forEach(tsFileResources -> tsFileResources
             .forEach(subVmTsFileResources -> subVmTsFileResources.sort(this::compareVMFileName)));
     return vmTsFileResourceMap;
+  }
+
+  private int getVmLevel(File file) {
+    String vmLevelStr = file.getPath()
+        .substring(file.getPath().lastIndexOf(TSFILE_SUFFIX)).replaceAll(TSFILE_SUFFIX, "")
+        .split(IoTDBConstant.FILE_NAME_SEPARATOR)[0];
+    return Integer.parseInt(vmLevelStr);
   }
 
   private void continueFailedRenames(File fileFolder, String suffix) {
