@@ -101,12 +101,9 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(StatMonitor.getInstance());
     registerManager.register(Measurement.INSTANCE);
     registerManager.register(ManageDynamicParameters.getInstance());
-    registerManager.register(SyncServerManager.getInstance());
     registerManager.register(TVListAllocator.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     JMXService.registerMBean(getInstance(), mbeanName);
-    registerManager.register(UpgradeSevice.getINSTANCE());
-    registerManager.register(MergeManager.getINSTANCE());
     registerManager.register(StorageEngine.getInstance());
 
     // When registering statMonitor, we should start recovering some statistics
@@ -123,7 +120,23 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }
-    logger.info("IoTDB is set up.");
+
+    logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
+
+    while (!StorageEngine.getInstance().isAllSgReady()) {
+      try {
+        Thread.sleep(1000);
+      } catch (InterruptedException e) {
+        logger.warn("IoTDB failed to set up for:" + e.getMessage());
+        return;
+      }
+    }
+
+    registerManager.register(SyncServerManager.getInstance());
+    registerManager.register(UpgradeSevice.getINSTANCE());
+    registerManager.register(MergeManager.getINSTANCE());
+
+    logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
   }
 
   private void deactivate() {
