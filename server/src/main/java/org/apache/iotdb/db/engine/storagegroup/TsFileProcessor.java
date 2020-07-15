@@ -1130,7 +1130,7 @@ public class TsFileProcessor {
               File newVmFile = createNewVMFile(tsFileResource, i + 1);
               File mergedFile = FSFactoryProducer.getFSFactory()
                   .getFile(newVmFile.getPath() + MERGED_SUFFIX);
-              if (!tmpFile.renameTo(mergedFile)) {
+              if (tmpFile == null || !tmpFile.renameTo(mergedFile)) {
                 logger.error("Failed to rename {} to {}", newVmFile, mergedFile);
               }
               vmMergeLock.writeLock().lock();
