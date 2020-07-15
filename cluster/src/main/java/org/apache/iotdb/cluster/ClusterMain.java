@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.MetaClusterServer;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -121,10 +122,7 @@ public class ClusterMain {
     }
     Set<Node> seedNodes = new HashSet<>();
     for (String url : config.getSeedNodeUrls()) {
-      String[] splits = url.split(":");
-      Node node = new Node();
-      node.setIp(splits[0]).setMetaPort(Integer.parseInt(splits[1]))
-          .setDataPort(Integer.parseInt(splits[2]));
+      Node node = MetaGroupMember.generateNode(url);
       if (seedNodes.contains(node)) {
         String message = String.format(
             "SeedNodes must not repeat each other. SeedNodes: %s", config.getSeedNodeUrls());
@@ -213,11 +211,8 @@ public class ClusterMain {
     nodeToRemove.setIp(ip).setMetaPort(metaPort);
     // try sending the request to each seed node
     for (String url : config.getSeedNodeUrls()) {
-      String[] splits = url.split(":");
-      Node node = new Node();
-      node.setIp(splits[0]).setMetaPort(Integer.parseInt(splits[1]));
+      Node node = MetaGroupMember.generateNode(url);
       AsyncMetaClient client = new AsyncMetaClient(factory, new TAsyncClientManager(), node, null);
-
       try {
         logger.info("Start removing node {} with the help of node {}", nodeToRemove, node);
         Long response = SyncClientAdaptor.removeNode(client, nodeToRemove);

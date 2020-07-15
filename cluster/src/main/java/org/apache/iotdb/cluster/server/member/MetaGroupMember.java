@@ -19,9 +19,7 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import static org.apache.iotdb.cluster.utils.ClusterUtils.STARTUP_CHECK_THREAD_POOL_SIZE;
-import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME;
-import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_UNIT;
+import static org.apache.iotdb.cluster.utils.ClusterUtils.WAIT_START_UP_CHECK_TIME_SEC;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.analyseStartUpCheckResult;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
@@ -403,7 +401,7 @@ public class MetaGroupMember extends RaftMember {
     }
   }
 
-  protected Node generateNode(String nodeUrl) {
+  public static Node generateNode(String nodeUrl) {
     Node result = new Node();
     String[] split = nodeUrl.split(":");
     if (split.length != 3) {
@@ -914,12 +912,11 @@ public class MetaGroupMember extends RaftMember {
           getAllNodes().size());
       // If reach the start up time threshold, shut down.
       // Otherwise, wait for a while, start the loop again.
-      if (System.currentTimeMillis() - startTime
-          > ClusterUtils.START_UP_TIME_THRESHOLD * 1000) {
+      if (System.currentTimeMillis() - startTime > ClusterUtils.START_UP_TIME_THRESHOLD_MS) {
         throw new StartUpCheckFailureException();
       } else {
         try {
-          Thread.sleep(ClusterUtils.START_UP_CHECK_TIME_INTERVAL * 1000);
+          Thread.sleep(ClusterUtils.START_UP_CHECK_TIME_INTERVAL_MS);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.error("Unexpected interruption when waiting for next start up check", e);
@@ -930,7 +927,7 @@ public class MetaGroupMember extends RaftMember {
 
   private void checkSeedNodesStatusOnce(AtomicInteger consistentNum,
       AtomicInteger inconsistentNum) {
-    ExecutorService pool = new ScheduledThreadPoolExecutor(STARTUP_CHECK_THREAD_POOL_SIZE);
+    ExecutorService pool = new ScheduledThreadPoolExecutor(getAllNodes().size());
     for (Node seedNode : getAllNodes()) {
       Node thisNode = getThisNode();
       if (seedNode.equals(thisNode)) {
@@ -952,7 +949,7 @@ public class MetaGroupMember extends RaftMember {
     }
     pool.shutdown();
     try {
-      if (!pool.awaitTermination(WAIT_START_UP_CHECK_TIME, WAIT_START_UP_CHECK_TIME_UNIT)) {
+      if (!pool.awaitTermination(WAIT_START_UP_CHECK_TIME_SEC, TimeUnit.SECONDS)) {
         pool.shutdownNow();
       }
     } catch (InterruptedException e) {

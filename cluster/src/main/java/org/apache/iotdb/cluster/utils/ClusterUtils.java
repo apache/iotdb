@@ -21,7 +21,6 @@ package org.apache.iotdb.cluster.utils;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.rpc.thrift.CheckStatusResponse;
@@ -34,15 +33,11 @@ public class ClusterUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterUtils.class);
 
-  public static final int STARTUP_CHECK_THREAD_POOL_SIZE = 6;
+  public static final int WAIT_START_UP_CHECK_TIME_SEC = 5;
 
-  public static final int WAIT_START_UP_CHECK_TIME = 5;
+  public static final long START_UP_TIME_THRESHOLD_MS = 60 * 1000;
 
-  public static final TimeUnit WAIT_START_UP_CHECK_TIME_UNIT = TimeUnit.SECONDS;
-
-  public static final long START_UP_TIME_THRESHOLD = 60 ; // second
-
-  public static final long START_UP_CHECK_TIME_INTERVAL = 3; // second
+  public static final long START_UP_CHECK_TIME_INTERVAL_MS = 3 * 1000;
 
   private ClusterUtils() {
     // util class
