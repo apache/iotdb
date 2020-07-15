@@ -150,7 +150,7 @@ public class MManager {
 
   /**
    * we should not use this function in other place, but only in IoTDB class
-   * @return
+   * @return MManager instance
    */
   public static MManager getInstance() {
     return MManagerHolder.INSTANCE;
@@ -463,6 +463,56 @@ public class MManager {
   }
 
   /**
+   * Delete all timeseries under the given path, may cross different storage group
+   *
+   * @param prefixPathNodes path to be deleted, could be root or a prefix path or a full path
+   * @return The String is the deletion failed Timeseries
+   */
+  public String deleteTimeseries(List<String> prefixPathNodes) throws MetadataException {
+    lock.writeLock().lock();
+
+    if (isStorageGroup(prefixPathNodes)) {
+
+      if (config.isEnableParameterAdapter()) {
+        int size = seriesNumberInStorageGroups.get(MetaUtils.getPathByNodes(prefixPathNodes));
+        seriesNumberInStorageGroups.put(MetaUtils.getPathByNodes(prefixPathNodes), 0);
+        if (size == maxSeriesNumberAmongStorageGroup) {
+          seriesNumberInStorageGroups.values().stream()
+              .max(Integer::compareTo)
+              .ifPresent(val -> maxSeriesNumberAmongStorageGroup = val);
+        }
+      }
+
+      mNodeCache.clear();
+    }
+    try {
+      List<String> allTimeseries = mtree.getAllTimeseriesName(prefixPathNodes);
+      // Monitor storage group seriesPath is not allowed to be deleted
+      allTimeseries.removeIf(p -> p.startsWith(MonitorConstants.STAT_STORAGE_GROUP_PREFIX));
+
+      Set<String> failedNames = new HashSet<>();
+      for (String p : allTimeseries) {
+        try {
+          String emptyStorageGroup = deleteOneTimeseriesAndUpdateStatistics(p);
+          if (!isRecovering) {
+            if (emptyStorageGroup != null) {
+              StorageEngine.getInstance().deleteAllDataFilesInOneStorageGroup(emptyStorageGroup);
+            }
+            logWriter.deleteTimeseries(p);
+          }
+        } catch (DeleteFailedException e) {
+          failedNames.add(e.getName());
+        }
+      }
+      return String.join(",", failedNames);
+    } catch (IOException e) {
+      throw new MetadataException(e.getMessage());
+    } finally {
+      lock.writeLock().unlock();
+    }
+  }
+
+  /**
    * remove the node from the tag inverted index
    */
   private void removeFromTagInvertedIndex(MeasurementMNode node) throws IOException {
@@ -650,6 +700,22 @@ public class MManager {
       lock.readLock().unlock();
     }
   }
+
+  /**
+   * Check if the given path is storage group or not.
+   *
+   * @param nodes Format: [root, node]
+   * @apiNote :for cluster
+   */
+  boolean isStorageGroup(List<String> nodes) {
+    lock.readLock().lock();
+    try {
+      return mtree.isStorageGroup(nodes);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
 
   /**
    * Get series type for given seriesPath.
@@ -1290,15 +1356,15 @@ public class MManager {
    * @param alias newly added alias
    * @param tagsMap newly added tags map
    * @param attributesMap newly added attributes map
-   * @param fullPath timeseries
+   * @param nodes timeseries
    */
   public void upsertTagsAndAttributes(String alias, Map<String, String> tagsMap,
-      Map<String, String> attributesMap, String fullPath) throws MetadataException, IOException {
+      Map<String, String> attributesMap, List<String> nodes) throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByPath(fullPath);
+      MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath);
+        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // upsert alias
@@ -1313,7 +1379,7 @@ public class MManager {
         leafMNode.getParent().addAlias(alias, leafMNode);
         leafMNode.setAlias(alias);
         // persist to WAL
-        logWriter.changeAlias(fullPath, alias);
+        logWriter.changeAlias(MetaUtils.getPathByNodes(nodes), alias);
       }
 
       if (tagsMap == null && attributesMap == null) {
@@ -1322,7 +1388,7 @@ public class MManager {
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, attributesMap);
-        logWriter.changeOffset(fullPath, offset);
+        logWriter.changeOffset(MetaUtils.getPathByNodes(nodes), offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
         if (tagsMap != null) {
@@ -1393,21 +1459,21 @@ public class MManager {
    * add new attributes key-value for the timeseries
    *
    * @param attributesMap newly added attributes map
-   * @param fullPath timeseries
+   * @param nodes timeseries
    */
-  public void addAttributes(Map<String, String> attributesMap, String fullPath)
+  public void addAttributes(Map<String, String> attributesMap, List<String> nodes)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByPath(fullPath);
+      MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath);
+        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(Collections.emptyMap(), attributesMap);
-        logWriter.changeOffset(fullPath, offset);
+        logWriter.changeOffset(MetaUtils.getPathByNodes(nodes), offset);
         leafMNode.setOffset(offset);
         return;
       }
@@ -1420,7 +1486,7 @@ public class MManager {
         String value = entry.getValue();
         if (pair.right.containsKey(key)) {
           throw new MetadataException(
-              String.format("TimeSeries [%s] already has the attribute [%s].", fullPath, key));
+              String.format("TimeSeries [%s] already has the attribute [%s].", MetaUtils.getPathByNodes(nodes), key));
         }
         pair.right.put(key, value);
       }
@@ -1436,21 +1502,21 @@ public class MManager {
    * add new tags key-value for the timeseries
    *
    * @param tagsMap newly added tags map
-   * @param fullPath timeseries
+   * @param nodes timeseries
    */
-  public void addTags(Map<String, String> tagsMap, String fullPath)
+  public void addTags(Map<String, String> tagsMap, List<String> nodes)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByPath(fullPath);
+      MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath);
+        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, we need to add a new record in log
       if (leafMNode.getOffset() < 0) {
         long offset = tagLogFile.write(tagsMap, Collections.emptyMap());
-        logWriter.changeOffset(fullPath, offset);
+        logWriter.changeOffset(MetaUtils.getPathByNodes(nodes), offset);
         leafMNode.setOffset(offset);
         // update inverted Index map
         for (Entry<String, String> entry : tagsMap.entrySet()) {
@@ -1468,7 +1534,7 @@ public class MManager {
         String value = entry.getValue();
         if (pair.left.containsKey(key)) {
           throw new MetadataException(
-              String.format("TimeSeries [%s] already has the tag [%s].", fullPath, key));
+              String.format("TimeSeries [%s] already has the tag [%s].", MetaUtils.getPathByNodes(nodes), key));
         }
         pair.left.put(key, value);
       }
@@ -1489,15 +1555,15 @@ public class MManager {
    * drop tags or attributes of the timeseries
    *
    * @param keySet tags key or attributes key
-   * @param fullPath timeseries path
+   * @param nodes timeseries path
    */
-  public void dropTagsOrAttributes(Set<String> keySet, String fullPath)
+  public void dropTagsOrAttributes(Set<String> keySet, List<String> nodes)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByPath(fullPath);
+      MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath);
+        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       // no tag or attribute, just do nothing.
@@ -1560,20 +1626,20 @@ public class MManager {
    * set/change the values of tags or attributes
    *
    * @param alterMap the new tags or attributes key-value
-   * @param fullPath timeseries
+   * @param nodes timeseries
    */
-  public void setTagsOrAttributesValue(Map<String, String> alterMap, String fullPath)
+  public void setTagsOrAttributesValue(Map<String, String> alterMap, List<String> nodes)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByPath(fullPath);
+      MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath);
+        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have any tag/attribute.", fullPath));
+            String.format("TimeSeries [%s] does not have any tag/attribute.", MetaUtils.getPathByNodes(nodes)));
       }
 
       // tags, attributes
@@ -1595,7 +1661,7 @@ public class MManager {
           pair.right.put(key, value);
         } else {
           throw new MetadataException(
-              String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, key));
+              String.format("TimeSeries [%s] does not have tag/attribute [%s].", MetaUtils.getPathByNodes(nodes), key));
         }
       }
 
@@ -1639,20 +1705,20 @@ public class MManager {
    *
    * @param oldKey old key of tag or attribute
    * @param newKey new key of tag or attribute
-   * @param fullPath timeseries
+   * @param nodes timeseries
    */
-  public void renameTagOrAttributeKey(String oldKey, String newKey, String fullPath)
+  public void renameTagOrAttributeKey(String oldKey, String newKey, List<String> nodes)
       throws MetadataException, IOException {
     lock.writeLock().lock();
     try {
-      MNode mNode = mtree.getNodeByPath(fullPath);
+      MNode mNode = mtree.getNodeByNodes(nodes);
       if (!(mNode instanceof MeasurementMNode)) {
-        throw new PathNotExistException(fullPath);
+        throw new PathNotExistException(MetaUtils.getPathByNodes(nodes));
       }
       MeasurementMNode leafMNode = (MeasurementMNode) mNode;
       if (leafMNode.getOffset() < 0) {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have [%s] tag/attribute.", fullPath, oldKey));
+            String.format("TimeSeries [%s] does not have [%s] tag/attribute.", MetaUtils.getPathByNodes(nodes), oldKey));
       }
       // tags, attributes
       Pair<Map<String, String>, Map<String, String>> pair =
@@ -1662,7 +1728,7 @@ public class MManager {
       if (pair.left.containsKey(newKey) || pair.right.containsKey(newKey)) {
         throw new MetadataException(
             String.format(
-                "TimeSeries [%s] already has a tag/attribute named [%s].", fullPath, newKey));
+                "TimeSeries [%s] already has a tag/attribute named [%s].", MetaUtils.getPathByNodes(nodes), newKey));
       }
 
       // check tag map
@@ -1701,7 +1767,7 @@ public class MManager {
         tagLogFile.write(pair.left, pair.right, leafMNode.getOffset());
       } else {
         throw new MetadataException(
-            String.format("TimeSeries [%s] does not have tag/attribute [%s].", fullPath, oldKey));
+            String.format("TimeSeries [%s] does not have tag/attribute [%s].", MetaUtils.getPathByNodes(nodes), oldKey));
       }
     } finally {
       lock.writeLock().unlock();

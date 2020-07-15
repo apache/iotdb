@@ -37,7 +37,6 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_USER;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
-import com.sun.xml.internal.ws.util.MetadataUtil;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -75,7 +74,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -129,7 +127,6 @@ import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -142,7 +139,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.EmptyDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.slf4j.Logger;
@@ -980,7 +976,7 @@ public class PlanExecutor implements IPlanExecutor {
       deleteDataOfTimeSeries(deletePathList);
       List<String> failedNames = new LinkedList<>();
       for (Path path : deletePathList) {
-        String failedTimeseries = mManager.deleteTimeseries(path.toString());
+        String failedTimeseries = mManager.deleteTimeseries(path.getNodes());
         if (!failedTimeseries.isEmpty()) {
           failedNames.add(failedTimeseries);
         }
@@ -1003,24 +999,24 @@ public class PlanExecutor implements IPlanExecutor {
         case RENAME:
           String beforeName = alterMap.keySet().iterator().next();
           String currentName = alterMap.get(beforeName);
-          mManager.renameTagOrAttributeKey(beforeName, currentName, path.getFullPath());
+          mManager.renameTagOrAttributeKey(beforeName, currentName, path.getNodes());
           break;
         case SET:
-          mManager.setTagsOrAttributesValue(alterMap, path.getFullPath());
+          mManager.setTagsOrAttributesValue(alterMap, path.getNodes());
           break;
         case DROP:
-          mManager.dropTagsOrAttributes(alterMap.keySet(), path.getFullPath());
+          mManager.dropTagsOrAttributes(alterMap.keySet(), path.getNodes());
           break;
         case ADD_TAGS:
-          mManager.addTags(alterMap, path.getFullPath());
+          mManager.addTags(alterMap, path.getNodes());
           break;
         case ADD_ATTRIBUTES:
-          mManager.addAttributes(alterMap, path.getFullPath());
+          mManager.addAttributes(alterMap, path.getNodes());
           break;
         case UPSERT:
           mManager.upsertTagsAndAttributes(alterTimeSeriesPlan.getAlias(),
               alterTimeSeriesPlan.getTagsMap(), alterTimeSeriesPlan.getAttributesMap(),
-              path.getFullPath());
+              path.getNodes());
           break;
       }
     } catch (MetadataException e) {

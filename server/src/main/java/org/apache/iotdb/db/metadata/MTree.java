@@ -159,7 +159,7 @@ public class MTree implements Serializable {
    * Create a timeseries with a full path from root to leaf node Before creating a timeseries, the
    * storage group should be set first, throw exception otherwise
    *
-   * @param path       timeseries path
+   * @param nodeNames       timeseries path
    * @param dataType   data type
    * @param encoding   encoding
    * @param compressor compressor
@@ -424,6 +424,32 @@ public class MTree implements Serializable {
       i++;
     }
     cur = cur.getChild(nodeNames[i]);
+    return cur instanceof StorageGroupMNode;
+  }
+
+  /**
+   * Check whether path is storage group or not
+   *
+   * <p>e.g., path = root.a.b.sg. if nor a and b is StorageGroupMNode and sg is a StorageGroupMNode
+   * path is a storage group
+   *
+   * @param nodeNames path
+   * @apiNote :for cluster
+   */
+  boolean isStorageGroup(List<String> nodeNames) {
+    if (nodeNames.size() <= 1 || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
+      return false;
+    }
+    MNode cur = root;
+    int i = 1;
+    while (i < nodeNames.size() - 1) {
+      cur = cur.getChild(nodeNames.get(i));
+      if (cur == null || cur instanceof StorageGroupMNode) {
+        return false;
+      }
+      i++;
+    }
+    cur = cur.getChild(nodeNames.get(i));
     return cur instanceof StorageGroupMNode;
   }
 
@@ -753,6 +779,21 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Get all timeseries under the given path
+   *
+   * @param prefixPathNodes a prefix path or a full path, may contain '*'.
+   */
+  List<String> getAllTimeseriesName(List<String> prefixPathNodes) throws MetadataException {
+    ShowTimeSeriesPlan plan = new ShowTimeSeriesPlan(new Path(prefixPathNodes));
+    List<String[]> res = getAllMeasurementSchemaByNodes(plan);
+    List<String> paths = new ArrayList<>();
+    for (String[] p : res) {
+      paths.add(p[0]);
+    }
+    return paths;
+  }
+
+  /**
    * Get all timeseries paths under the given path
    *
    * @param prefixPath a prefix path or a full path, may contain '*'.
@@ -934,7 +975,7 @@ public class MTree implements Serializable {
   List<String[]> getAllMeasurementSchemaByNodes(ShowTimeSeriesPlan plan) throws MetadataException {
     List<String[]> res;
     List<String> nodes = plan.getPath().getNodes();
-    if (nodes.size() == 0 || !nodes.get(0).equals(root.getName())) {
+    if (nodes.isEmpty() || !nodes.get(0).equals(root.getName())) {
       throw new IllegalPathException(plan.getPath().getFullPath());
     }
     limit.set(plan.getLimit());
