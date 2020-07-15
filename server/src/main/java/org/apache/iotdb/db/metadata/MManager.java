@@ -41,7 +41,6 @@ import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -141,8 +140,6 @@ public class MManager {
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache = new RandomDeleteCache<String, MNode>(cacheSize) {};
-
-    int remoteCacheSize = config.getmRemoteSchemaCacheSize();
 
     timedCreateMTreeSnapshotThread = Executors.newSingleThreadScheduledExecutor(r -> new Thread(r,
         "timedCreateMTreeSnapshotThread"));
@@ -342,16 +339,16 @@ public class MManager {
       /*
        * get the storage group with auto create schema
        */
-      String storageGroupName;
+      String storageGroupName = null;
       try {
         storageGroupName = mtree.getStorageGroupName(nodes);
       } catch (StorageGroupNotSetException e) {
         if (!config.isAutoCreateSchemaEnabled()) {
           throw e;
         }
-        storageGroupName =
-            MetaUtils.getStorageGroupNameByLevel(path, config.getDefaultStorageGroupLevel());
-        setStorageGroup(storageGroupName);
+        List<String> storageGroupNameNodes =
+            MetaUtils.getStorageGroupNameNodesByLevel(nodes, config.getDefaultStorageGroupLevel());
+        setStorageGroup(storageGroupNameNodes);
       }
 
       // check memory
@@ -359,7 +356,7 @@ public class MManager {
 
       // create time series in MTree
       MeasurementMNode leafMNode = mtree
-          .createTimeseries(path, plan.getDataType(), plan.getEncoding(), plan.getCompressor(),
+          .createTimeseries(nodes, plan.getDataType(), plan.getEncoding(), plan.getCompressor(),
               plan.getProps(), plan.getAlias());
 
       // update tag index

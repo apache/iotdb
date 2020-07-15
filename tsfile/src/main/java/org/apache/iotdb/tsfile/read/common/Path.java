@@ -39,6 +39,8 @@ public class Path implements Serializable, Comparable<Path> {
   private List<String> nodes;
   private static final String illegalPathArgument = "Path parameter is null";
 
+  public Path() {}
+
   public Path(StringContainer pathSc) {
     if (pathSc == null) {
       throw new IllegalArgumentException("input pathSc is null!");

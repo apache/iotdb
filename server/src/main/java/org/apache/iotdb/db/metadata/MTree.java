@@ -156,6 +156,61 @@ public class MTree implements Serializable {
   }
 
   /**
+   * Create a timeseries with a full path from root to leaf node Before creating a timeseries, the
+   * storage group should be set first, throw exception otherwise
+   *
+   * @param path       timeseries path
+   * @param dataType   data type
+   * @param encoding   encoding
+   * @param compressor compressor
+   * @param props      props
+   * @param alias      alias of measurement
+   */
+  MeasurementMNode createTimeseries(
+      List<String> nodeNames,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor,
+      Map<String, String> props,
+      String alias)
+      throws MetadataException {
+    if (nodeNames.size() <= 2 || !nodeNames.get(0).equals(root.getName())) {
+      throw new IllegalPathException(MetaUtils.getPathByNodes(nodeNames));
+    }
+    MNode cur = root;
+    boolean hasSetStorageGroup = false;
+    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
+    for (int i = 1; i < nodeNames.size() - 1; i++) {
+      String nodeName = nodeNames.get(i);
+      if (cur instanceof StorageGroupMNode) {
+        hasSetStorageGroup = true;
+      }
+      if (!cur.hasChild(nodeName)) {
+        if (!hasSetStorageGroup) {
+          throw new StorageGroupNotSetException("Storage group should be created first");
+        }
+        cur.addChild(nodeName, new MNode(cur, nodeName));
+      }
+      cur = cur.getChild(nodeName);
+    }
+    String leafName = nodeNames.get(nodeNames.size() - 1);
+    if (cur.hasChild(leafName)) {
+      throw new PathAlreadyExistException(MetaUtils.getPathByNodes(nodeNames));
+    }
+    if (alias != null && cur.hasChild(alias)) {
+      throw new AliasAlreadyExistException(MetaUtils.getPathByNodes(nodeNames), alias);
+    }
+    MeasurementMNode leaf = new MeasurementMNode(cur, leafName, alias, dataType, encoding,
+        compressor, props);
+    cur.addChild(leafName, leaf);
+    // link alias to LeafMNode
+    if (alias != null) {
+      cur.addAlias(alias, leaf);
+    }
+    return leaf;
+  }
+
+  /**
    * Add an interval path to MTree. This is only used for automatically creating schema
    *
    * <p>e.g., get root.sg.d1, get or create all internal nodes and return the node of d1

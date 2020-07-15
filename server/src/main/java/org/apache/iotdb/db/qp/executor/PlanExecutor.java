@@ -1046,11 +1046,11 @@ public class PlanExecutor implements IPlanExecutor {
 
   protected boolean deleteStorageGroups(DeleteStorageGroupPlan deleteStorageGroupPlan)
       throws QueryProcessException {
-    List<List<String>> deletePathList = new ArrayList<>();
+    List<String> deletePathList = new ArrayList<>();
     try {
       for (Path storageGroupPath : deleteStorageGroupPlan.getPaths()) {
-        StorageEngine.getInstance().deleteStorageGroup(MetaUtils.getPathByNodes(storageGroupPath.getNodes()));
-        deletePathList.add(storageGroupPath.getNodes());
+        StorageEngine.getInstance().deleteStorageGroup(storageGroupPath.getFullPath());
+        deletePathList.add(storageGroupPath.getFullPath());
       }
       mManager.deleteStorageGroups(deletePathList);
     } catch (MetadataException e) {

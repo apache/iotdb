@@ -786,9 +786,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterDeleteStorageGroup(DeleteStorageGroupContext ctx) {
     super.enterDeleteStorageGroup(ctx);
     List<Path> deletePaths = new ArrayList<>();
-    List<PrefixPathContext> paths = ctx.prefixPath();
-    for (PrefixPathContext path : paths) {
-      deletePaths.add(parsePrefixPath(path));
+    List<PrefixPathContext> prefixPaths = ctx.prefixPath();
+    for (PrefixPathContext prefixPath : prefixPaths) {
+      Path path = new Path();
+      path.setFullPath(prefixPath.getText());
+      deletePaths.add(path);
     }
     DeleteStorageGroupOperator deleteStorageGroupOperator = new DeleteStorageGroupOperator(
         SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);

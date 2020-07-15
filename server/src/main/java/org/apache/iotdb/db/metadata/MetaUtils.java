@@ -94,7 +94,7 @@ public class MetaUtils {
    * @param nodeNames nodeNames
    * @param level level
    */
-  public static List<String> getStorageGroupNodesByLevel(List<String> nodeNames, int level) throws MetadataException {
+  public static List<String> getStorageGroupNameNodesByLevel(List<String> nodeNames, int level) throws MetadataException {
     if (nodeNames.size() <= level || !nodeNames.get(0).equals(IoTDBConstant.PATH_ROOT)) {
       throw new IllegalPathException(getPathByNodes(nodeNames));
     }
