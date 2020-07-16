@@ -304,10 +304,7 @@ public class PlanExecutor implements IPlanExecutor {
         return new EmptyDataSet();
       } else if (queryPlan instanceof GroupByFillPlan) {
         GroupByFillPlan groupByFillPlan = (GroupByFillPlan) queryPlan;
-        queryDataSet = queryRouter.groupByFill(groupByFillPlan, context);
-        queryDataSet.setRowLimit(queryPlan.getRowLimit());
-        queryDataSet.setRowOffset(queryPlan.getRowOffset());
-        return queryDataSet;
+        return  queryRouter.groupByFill(groupByFillPlan, context);
       } else if (queryPlan instanceof GroupByPlan) {
         GroupByPlan groupByPlan = (GroupByPlan) queryPlan;
         queryDataSet = queryRouter.groupBy(groupByPlan, context);
