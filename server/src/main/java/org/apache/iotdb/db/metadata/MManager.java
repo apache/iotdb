@@ -809,6 +809,22 @@ public class MManager {
   }
 
   /**
+   * Get storage group name by path
+   *
+   * <p>e.g., root.sg1 is a storage group and path = root.sg1.d1, return root.sg1
+   *
+   * @return storage group in the given path
+   */
+  public String getStorageGroupName(List<String> nodes) throws StorageGroupNotSetException {
+    lock.readLock().lock();
+    try {
+      return mtree.getStorageGroupName(nodes);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
    * Get all storage group names
    */
   public List<String> getAllStorageGroupNames() {
@@ -843,6 +859,22 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.getAllTimeseriesName(prefixPath);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Return all paths for given path if the path is abstract. Or return the path itself. Regular
+   * expression in this method is formed by the amalgamation of seriesPath and the character '*'.
+   *
+   * @param prefixPathNodes can be a prefix or a full path. if the wildcard is not at the tail, then each
+   * wildcard can only match one level, otherwise it can match to the tail.
+   */
+  public List<List<String>> getAllTimeseriesName(List<String> prefixPathNodes) throws MetadataException {
+    lock.readLock().lock();
+    try {
+      return mtree.getAllTimeseriesNameNodes(prefixPathNodes);
     } finally {
       lock.readLock().unlock();
     }
@@ -1092,6 +1124,20 @@ public class MManager {
     lock.readLock().lock();
     try {
       return mtree.isPathExist(path);
+    } finally {
+      lock.readLock().unlock();
+    }
+  }
+
+  /**
+   * Check whether the path exists.
+   *
+   * @param nodes nodes of a full path or a prefix path
+   */
+  public boolean isPathExist(List<String> nodes) {
+    lock.readLock().lock();
+    try {
+      return mtree.isPathExist(nodes);
     } finally {
       lock.readLock().unlock();
     }

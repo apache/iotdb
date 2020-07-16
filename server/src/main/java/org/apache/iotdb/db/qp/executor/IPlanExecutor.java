@@ -20,6 +20,7 @@ package org.apache.iotdb.db.qp.executor;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.List;
 import org.apache.iotdb.db.exception.BatchInsertionException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -77,11 +78,11 @@ public interface IPlanExecutor {
   /**
    * execute delete command and return whether the operator is successful.
    *
-   * @param path       : delete series seriesPath
+   * @param path       : nodes of delete series seriesPath
    * @param startTime start time in delete command
    * @param endTime end time in delete command
    */
-  void delete(Path path, long startTime, long endTime) throws QueryProcessException;
+  void delete(List<String> path, long startTime, long endTime) throws QueryProcessException;
 
   /**
    * execute insert command and return whether the operator is successful.

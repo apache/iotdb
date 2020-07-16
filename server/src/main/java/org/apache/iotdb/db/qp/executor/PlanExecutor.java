@@ -74,6 +74,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.MetaUtils;
 import org.apache.iotdb.db.metadata.mnode.MNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -426,8 +427,8 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
   }
 
-  protected List<String> getPathsName(String path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesName(path);
+  protected List<List<String>> getPathsName(List<String> nodes) throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesName(nodes);
   }
 
   protected List<String> getNodesList(String schemaPattern, int level) throws MetadataException {
@@ -655,15 +656,15 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void delete(DeletePlan deletePlan) throws QueryProcessException {
     try {
-      Set<String> existingPaths = new HashSet<>();
+      Set<List<String>> existingPaths = new HashSet<>();
       for (Path p : deletePlan.getPaths()) {
-        existingPaths.addAll(getPathsName(p.getFullPath()));
+        existingPaths.addAll(getPathsName(p.getNodes()));
       }
       if (existingPaths.isEmpty()) {
         throw new QueryProcessException("TimeSeries does not exist and its data cannot be deleted");
       }
-      for (String path : existingPaths) {
-        delete(new Path(path), deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
+      for (List<String> path : existingPaths) {
+        delete(path, deletePlan.getDeleteStartTime(), deletePlan.getDeleteEndTime());
       }
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
@@ -833,16 +834,16 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   @Override
-  public void delete(Path path, long startTime, long endTime) throws QueryProcessException {
-    String deviceId = path.getDevice();
-    String measurementId = path.getMeasurement();
+  public void delete(List<String> path, long startTime, long endTime) throws QueryProcessException {
+    String measurementId = path.get(path.size()-1);
     try {
-      if (!mManager.isPathExist(path.getFullPath())) {
+      if (!mManager.isPathExist(path)) {
         throw new QueryProcessException(
-            String.format("Time series %s does not exist.", path.getFullPath()));
+            String.format("Time series %s does not exist.", MetaUtils.getPathByNodes(path)));
       }
-      mManager.getStorageGroupName(path.getFullPath());
-      StorageEngine.getInstance().delete(deviceId, measurementId, startTime, endTime);
+      mManager.getStorageGroupName(path);
+      path.remove(path.size()-1);
+      StorageEngine.getInstance().delete(MetaUtils.getPathByNodes(path), measurementId, startTime, endTime);
     } catch (MetadataException | StorageEngineException e) {
       throw new QueryProcessException(e);
     }
