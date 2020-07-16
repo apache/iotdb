@@ -452,6 +452,10 @@ public class MetaGroupMember extends RaftMember {
     checkSeedNodesStatus();
     loadPartitionTable();
     // just establish the heartbeat thread and it will do the remaining
+    threadTaskInit();
+  }
+
+  private void threadTaskInit() {
     heartBeatService.submit(new MetaHeartbeatThread(this));
     reportThread.scheduleAtFixedRate(() -> logger.info(genNodeReport().toString()),
         REPORT_INTERVAL_SEC, REPORT_INTERVAL_SEC, TimeUnit.SECONDS);
@@ -484,7 +488,7 @@ public class MetaGroupMember extends RaftMember {
           logger.info("Joined a cluster, starting the heartbeat thread");
           setCharacter(NodeCharacter.FOLLOWER);
           setLastHeartbeatReceivedTime(System.currentTimeMillis());
-          heartBeatService.submit(new MetaHeartbeatThread(this));
+          threadTaskInit();
           return true;
         }
         // wait 5s to start the next try
@@ -558,15 +562,15 @@ public class MetaGroupMember extends RaftMember {
       setNodeIdentifier(genNodeIdentifier());
     } else if (resp.getRespNum() == Response.RESPONSE_NEW_NODE_PARAMETER_CONFLICT) {
       CheckStatusResponse checkStatusResponse = resp.getCheckStatusResponse();
-      String parameters = "";
-      parameters +=
-          checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval";
-      parameters += checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt";
-      parameters += checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number";
+      StringBuilder parameters = new StringBuilder();
+      parameters.append(checkStatusResponse.isPartitionalIntervalEquals() ? "" : ", partition interval");
+      parameters.append(checkStatusResponse.isHashSaltEquals() ? "" : ", hash salt");
+      parameters.append(checkStatusResponse.isReplicationNumEquals() ? "" : ", replication number");
+      parameters.append(checkStatusResponse.isSeedNodeEquals() ? "" : ", seedNodes");
       if (logger.isInfoEnabled()) {
         logger.info(
             "The start up configuration {} conflicts the cluster. Please reset the configurations. ",
-            parameters.substring(1));
+            parameters.toString().substring(1));
       }
     } else {
       logger
@@ -927,7 +931,7 @@ public class MetaGroupMember extends RaftMember {
 
   private void checkSeedNodesStatusOnce(AtomicInteger consistentNum,
       AtomicInteger inconsistentNum) {
-    ExecutorService pool = new ScheduledThreadPoolExecutor(getAllNodes().size());
+    ExecutorService pool = new ScheduledThreadPoolExecutor(getAllNodes().size() - 1);
     for (Node seedNode : getAllNodes()) {
       Node thisNode = getThisNode();
       if (seedNode.equals(thisNode)) {
