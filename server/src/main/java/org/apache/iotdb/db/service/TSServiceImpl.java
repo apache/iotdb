@@ -1390,7 +1390,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return status;
     }
 
-    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(storageGroup));
+    SetStorageGroupPlan plan = new SetStorageGroupPlan(new Path(splitPathWithoutQuote(storageGroup)));
     status = checkAuthority(plan, sessionId);
     if (status != null) {
       return new TSStatus(status);
@@ -1429,7 +1429,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return status;
     }
 
-    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.path),
+    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(splitPathWithoutQuote(req.path)),
         TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
         CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
         req.measurementAlias);
@@ -1450,7 +1450,7 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
         req.getPaths().size(), req.getPaths().get(0));
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {
-      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.getPaths().get(i)),
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(splitPathWithoutQuote(req.getPaths().get(i))),
           TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
           CompressionType.values()[req.compressors.get(i)],
           req.propsList == null ? null : req.propsList.get(i),
@@ -1560,6 +1560,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     if (!PATH_PATTERN.matcher(path).matches()) {
       logger.warn("Illegal path: {}", path);
       return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, path + " path is illegal");
+    } else if (path.contains("\"")){
+      logger.warn("Illegal path with double quotes: {}", path);
+      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, "illegal path with double quotes: " + path);
     } else {
       return null;
     }
@@ -1577,5 +1580,18 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
   protected List<TSDataType> getSeriesTypesByString(List<String> paths, String aggregation)
       throws MetadataException {
     return SchemaUtils.getSeriesTypesByString(paths, aggregation);
+  }
+
+  private List<String> splitPathWithoutQuote(String path) {
+    List<String> results = new ArrayList<>();
+    int startIndex = 0;
+    int endIndex = path.indexOf('.', 0);
+    while(endIndex != -1) {
+      results.add(path.substring(startIndex, endIndex));
+      startIndex = endIndex + 1;
+      endIndex = path.indexOf('.', startIndex);
+    }
+    results.add(path.substring(startIndex));
+    return results;
   }
 }
