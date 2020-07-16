@@ -110,8 +110,7 @@ public class JobFileManager {
    * must not return null.
    */
   void addFilePathToMap(long jobId, TsFileResource tsFile, boolean isClosed) {
-    Map<Long, Set<TsFileResource>> pathMap = isClosed ? unsealedFilePathsMap :
-        sealedFilePathsMap;
+    Map<Long, Set<TsFileResource>> pathMap = isClosed ? sealedFilePathsMap : unsealedFilePathsMap;
     //TODO this is not an atomic operation, is there concurrent problem?
     if (!pathMap.get(jobId).contains(tsFile)) {
       pathMap.get(jobId).add(tsFile);
