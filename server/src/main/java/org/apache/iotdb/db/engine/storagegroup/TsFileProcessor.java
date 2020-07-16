@@ -673,12 +673,8 @@ public class TsFileProcessor {
         File targetFile = logAnalyzer.getTargetFile();
         boolean isMergeFinished = logAnalyzer.isMergeFinished();
         if (targetFile == null) {
-          if (logFile.exists()) {
-            Files.delete(logFile.toPath());
-          }
           return;
         }
-        //
         if (targetFile.getName().endsWith(TSFILE_SUFFIX)) {
           if (!isMergeFinished) {
             VmMergeUtils.fullMerge(writer, vmWriters,
