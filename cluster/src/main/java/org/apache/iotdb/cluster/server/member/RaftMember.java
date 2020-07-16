@@ -1169,9 +1169,7 @@ public abstract class RaftMember {
       switch (result) {
         case OK:
           logger.debug("{}: log {} is accepted", name, log);
-          synchronized (logManager) {
-            logManager.commitTo(log.getCurrLogIndex(), false);
-          }
+          commitLog(log);
           return true;
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
@@ -1184,6 +1182,29 @@ public abstract class RaftMember {
           // abort the appending, the new leader will fix the local logs by catch-up
         default:
           return false;
+      }
+    }
+  }
+
+  @SuppressWarnings("java:S2445")
+  private void commitLog(Log log) throws LogExecutionException {
+    synchronized (logManager) {
+      logManager.commitTo(log.getCurrLogIndex(), false);
+    }
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
+      synchronized (log) {
+        while (!log.isApplied()) {
+          // wait until the log is applied
+          try {
+            log.wait();
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new LogExecutionException(e);
+          }
+        }
+      }
+      if (log.getException() != null) {
+        throw new LogExecutionException(log.getException());
       }
     }
   }

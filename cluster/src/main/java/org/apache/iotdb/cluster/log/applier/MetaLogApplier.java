@@ -47,18 +47,22 @@ public class MetaLogApplier extends BaseApplier {
   @Override
   public void apply(Log log)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    logger.debug("MetaMember [{}] start applying Log {}", metaGroupMember.getName(), log);
-    if (log instanceof AddNodeLog) {
-      AddNodeLog addNodeLog = (AddNodeLog) log;
-      Node newNode = addNodeLog.getNewNode();
-      member.applyAddNode(newNode);
-    } else if (log instanceof PhysicalPlanLog) {
-      applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
-    } else if (log instanceof RemoveNodeLog) {
-      RemoveNodeLog removeNodeLog = ((RemoveNodeLog) log);
-      member.applyRemoveNode(removeNodeLog.getRemovedNode());
-    } else {
-      logger.error("Unsupported log: {} {}", log.getClass().getName(), log);
+    try {
+      logger.debug("MetaMember [{}] start applying Log {}", metaGroupMember.getName(), log);
+      if (log instanceof AddNodeLog) {
+        AddNodeLog addNodeLog = (AddNodeLog) log;
+        Node newNode = addNodeLog.getNewNode();
+        member.applyAddNode(newNode);
+      } else if (log instanceof PhysicalPlanLog) {
+        applyPhysicalPlan(((PhysicalPlanLog) log).getPlan());
+      } else if (log instanceof RemoveNodeLog) {
+        RemoveNodeLog removeNodeLog = ((RemoveNodeLog) log);
+        member.applyRemoveNode(removeNodeLog.getRemovedNode());
+      } else {
+        logger.error("Unsupported log: {} {}", log.getClass().getName(), log);
+      }
+    } finally {
+      log.setApplied(true);
     }
   }
 }

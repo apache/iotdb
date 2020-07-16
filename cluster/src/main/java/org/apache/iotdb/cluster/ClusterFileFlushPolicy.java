@@ -19,6 +19,10 @@
 
 package org.apache.iotdb.cluster;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -30,11 +34,18 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterFileFlushPolicy.class);
 
+  private ExecutorService closePartitionExecutor;
   private MetaGroupMember metaGroupMember;
 
   public ClusterFileFlushPolicy(
       MetaGroupMember metaGroupMember) {
     this.metaGroupMember = metaGroupMember;
+    this.closePartitionExecutor = new ThreadPoolExecutor(16, 1024, 0, TimeUnit.SECONDS,
+        new LinkedBlockingDeque<>(), r -> {
+          Thread thread = new Thread(r);
+          thread.setName("ClusterFileFlushPolicy-" + thread.getId());
+          return thread;
+        });
   }
 
   @Override
@@ -46,13 +57,11 @@ public class ClusterFileFlushPolicy implements TsFileFlushPolicy {
 
     if (processor.shouldClose()) {
       // find the related DataGroupMember and close the processor through it
-      if (!metaGroupMember.closePartition(storageGroupProcessor.getStorageGroupName(),
-          processor.getTimeRangeId(), isSeq)) {
-        // the corresponding DataGroupMember is not a leader, just do a flush
-        processor.asyncFlush();
-      }
-    } else {
-      processor.asyncFlush();
+      // we execute it in another thread to avoid deadlocks
+      closePartitionExecutor.submit(() -> metaGroupMember.closePartition(storageGroupProcessor.getStorageGroupName(),
+          processor.getTimeRangeId(), isSeq));
     }
+    // flush the memtable anyway to avoid the insertion trigger the policy again
+    processor.asyncFlush();
   }
 }

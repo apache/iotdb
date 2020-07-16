@@ -32,6 +32,11 @@ public abstract class Log {
   private long currLogIndex;
   private long currLogTerm;
 
+  // for async application
+  private volatile boolean applied;
+  @SuppressWarnings("java:S3077")
+  private volatile Exception exception;
+
   public abstract ByteBuffer serialize();
 
   public abstract void deserialize(ByteBuffer buffer);
@@ -73,5 +78,24 @@ public abstract class Log {
   @Override
   public int hashCode() {
     return Objects.hash(currLogIndex, currLogTerm);
+  }
+
+  public boolean isApplied() {
+    return applied;
+  }
+
+  public void setApplied(boolean applied) {
+    synchronized (this) {
+      this.applied = applied;
+      this.notifyAll();
+    }
+  }
+
+  public Exception getException() {
+    return exception;
+  }
+
+  public void setException(Exception exception) {
+    this.exception = exception;
   }
 }
