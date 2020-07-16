@@ -66,7 +66,7 @@ public class GroupByTimeDataSet extends QueryDataSet {
     }
     while (dataSet != null && dataSet.hasNextWithoutConstraint()) {
       RowRecord curRecord = FilePathUtils
-          .mergeRecordByPath(dataSet.nextWithoutConstraint(), finalPaths, pathIndex, dataTypes.get(0));
+          .mergeRecordByPath(dataSet.nextWithoutConstraint(), finalPaths, pathIndex, TSDataType.INT64);
       if (curRecord != null) {
         records.add(curRecord);
       }

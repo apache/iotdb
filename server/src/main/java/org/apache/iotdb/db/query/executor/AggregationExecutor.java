@@ -357,11 +357,6 @@ public class AggregationExecutor {
           break;
         case "avg":
           // Check datatype
-          Map<String, Float> finalPathsAvg = FilePathUtils.getPathByLevelAvg(plan, pathIndex);
-          curRecord = FilePathUtils.avgRecordByPath(record, finalPathsAvg, pathIndex);
-          for (int i = 0; i < finalPathsAvg.size(); i++) {
-            dataTypes.add(TSDataType.DOUBLE);
-          }
           break;
         case "max_time":
           curRecord = FilePathUtils.mergeMaxOrMinByPath(record, TSDataType.INT64, finalPaths, 
