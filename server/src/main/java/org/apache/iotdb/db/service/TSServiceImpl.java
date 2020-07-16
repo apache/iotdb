@@ -18,7 +18,8 @@
  */
 package org.apache.iotdb.db.service;
 
-import static org.apache.iotdb.db.conf.IoTDBConfig.NODE_PATTERN;
+import static org.apache.iotdb.db.conf.IoTDBConfig.NODE_PATTERN1;
+import static org.apache.iotdb.db.conf.IoTDBConfig.NODE_PATTERN2;
 import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
@@ -1661,7 +1662,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     int index = 0;
     if (nodes.get(index).equals(IoTDBConstant.PATH_ROOT)) {
       for (index = 1; index < nodes.size(); index++) {
-        if (!NODE_PATTERN.matcher(nodes.get(index)).matches()) {
+        if (!NODE_PATTERN1.matcher(nodes.get(index)).matches()) {
+            if (index == nodes.size() - 1 && NODE_PATTERN2.matcher(nodes.get(index)).matches()) {
+              continue;
+            }
             break;
         }
       }
