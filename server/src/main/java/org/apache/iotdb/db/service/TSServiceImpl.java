@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.service;
 
+import static org.apache.iotdb.db.conf.IoTDBConfig.NODE_PATTERN;
 import static org.apache.iotdb.db.conf.IoTDBConfig.PATH_PATTERN;
 import static org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType.TIMESERIES;
 
@@ -93,7 +94,9 @@ import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesWithNodesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
+import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesWithNodesReq;
 import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
@@ -1423,7 +1426,9 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
 
-    auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
+    if (auditLogger.isDebugEnabled()) {
+      auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getPath());
+    }
     TSStatus status = checkPathValidity(req.path);
     if (status != null) {
       return status;
@@ -1446,8 +1451,10 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
       return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
     }
-    auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
-        req.getPaths().size(), req.getPaths().get(0));
+    if (auditLogger.isDebugEnabled()) {
+      auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
+          req.getPaths().size(), req.getPaths().get(0));
+    }
     List<TSStatus> statusList = new ArrayList<>(req.paths.size());
     for (int i = 0; i < req.paths.size(); i++) {
       CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(splitPathWithoutQuote(req.getPaths().get(i))),
@@ -1490,6 +1497,88 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
       return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
     } else {
       logger.debug("Create multiple timeseries failed!");
+      return RpcUtils.getStatus(statusList);
+    }
+  }
+
+  @Override
+  public TSStatus createTimeseriesWithNodes(TSCreateTimeseriesWithNodesReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+
+    if (auditLogger.isDebugEnabled()) {
+      auditLogger.debug("Session-{} create timeseries {}", currSessionId.get(), req.getNodes().toString());
+    }
+    TSStatus status = checkPathValidityWithNodes(req.nodes);
+    if (status != null) {
+      return status;
+    }
+
+    CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.nodes),
+        TSDataType.values()[req.dataType], TSEncoding.values()[req.encoding],
+        CompressionType.values()[req.compressor], req.props, req.tags, req.attributes,
+        req.measurementAlias);
+    status = checkAuthority(plan, req.getSessionId());
+    if (status != null) {
+      return status;
+    }
+    return executeNonQueryPlan(plan);
+  }
+
+  @Override
+  public TSStatus createMultiTimeseriesWithNodes(TSCreateMultiTimeseriesWithNodesReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      logger.info(INFO_NOT_LOGIN, IoTDBConstant.GLOBAL_DB_NAME);
+      return RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR);
+    }
+    if (auditLogger.isDebugEnabled()) {
+      auditLogger.debug("Session-{} create {} timeseries, the first is {}", currSessionId.get(),
+          req.nodesList.size(), req.nodesList.get(0));
+    }
+    List<TSStatus> statusList = new ArrayList<>(req.nodesList.size());
+    for (int i = 0; i < req.nodesList.size(); i++) {
+      CreateTimeSeriesPlan plan = new CreateTimeSeriesPlan(new Path(req.nodesList.get(i)),
+          TSDataType.values()[req.dataTypes.get(i)], TSEncoding.values()[req.encodings.get(i)],
+          CompressionType.values()[req.compressors.get(i)],
+          req.propsList == null ? null : req.propsList.get(i),
+          req.tagsList == null ? null : req.tagsList.get(i),
+          req.attributesList == null ? null : req.attributesList.get(i),
+          req.measurementAliasList == null ? null : req.measurementAliasList.get(i));
+
+      TSStatus status = checkPathValidityWithNodes(req.nodesList.get(i));
+      if (status != null) {
+        // path naming is not valid
+        statusList.add(status);
+        continue;
+      }
+
+      status = checkAuthority(plan, req.getSessionId());
+      if (status != null) {
+        // not authorized
+        statusList.add(status);
+        continue;
+      }
+
+      statusList.add(executeNonQueryPlan(plan));
+    }
+
+    boolean isAllSuccessful = true;
+    for (TSStatus tsStatus : statusList) {
+      if (tsStatus.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+        isAllSuccessful = false;
+        break;
+      }
+    }
+
+    if (isAllSuccessful) {
+      if (logger.isDebugEnabled()) {
+        logger.debug("Create multiple timeseries with nodes successfully");
+      }
+      return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
+    } else {
+      logger.debug("Create multiple timeseries with nodes failed!");
       return RpcUtils.getStatus(statusList);
     }
   }
@@ -1563,6 +1652,23 @@ public class TSServiceImpl implements TSIService.Iface, ServerContext {
     } else if (path.contains("\"")){
       logger.warn("Illegal path with double quotes: {}", path);
       return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, "illegal path with double quotes: " + path);
+    } else {
+      return null;
+    }
+  }
+
+  private TSStatus checkPathValidityWithNodes(List<String> nodes) {
+    int index = 0;
+    if (nodes.get(index).equals(IoTDBConstant.PATH_ROOT)) {
+      for (index = 1; index < nodes.size(); index++) {
+        if (!NODE_PATTERN.matcher(nodes.get(index)).matches()) {
+            break;
+        }
+      }
+    }
+    if (index < nodes.size()) {
+      logger.warn("Illegal path: {}", nodes.toString());
+      return RpcUtils.getStatus(TSStatusCode.PATH_ILLEGAL, nodes.toString() + " path is illegal");
     } else {
       return null;
     }
