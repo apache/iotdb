@@ -58,7 +58,9 @@ import org.apache.iotdb.cluster.exception.LogExecutionException;
 import org.apache.iotdb.cluster.exception.PullFileException;
 import org.apache.iotdb.cluster.exception.ReaderNotFoundException;
 import org.apache.iotdb.cluster.exception.SnapshotApplicationException;
+import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.Snapshot;
+import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.manage.FilePartitionedSnapshotLogManager;
@@ -202,8 +204,12 @@ public class DataGroupMember extends RaftMember {
     allNodes = nodes;
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir());
-    logManager = new FilePartitionedSnapshotLogManager(new DataLogApplier(metaGroupMember,
-        this), metaGroupMember.getPartitionTable(), allNodes.get(0), thisNode);
+    LogApplier applier = new DataLogApplier(metaGroupMember, this);
+    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncApplier()) {
+      applier = new AsyncDataLogApplier(applier);
+    }
+    logManager = new FilePartitionedSnapshotLogManager(applier, metaGroupMember.getPartitionTable(),
+        allNodes.get(0), thisNode);
     initPeerMap();
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();

@@ -47,6 +47,8 @@ public class ClusterConfig {
   @ClusterConsistent
   private boolean useAsyncServer = true;
 
+  private boolean useAsyncApplier = false;
+
   private int connectionTimeoutInMS = 20 * 1000;
   /**
    * This parameter controls when to actually delete snapshoted logs because we can't remove
@@ -255,5 +257,13 @@ public class ClusterConfig {
 
   public void setEnableRaftLogPersistence(boolean enableRaftLogPersistence) {
     this.enableRaftLogPersistence = enableRaftLogPersistence;
+  }
+
+  public boolean isUseAsyncApplier() {
+    return useAsyncApplier;
+  }
+
+  public void setUseAsyncApplier(boolean useAsyncApplier) {
+    this.useAsyncApplier = useAsyncApplier;
   }
 }

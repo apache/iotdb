@@ -235,10 +235,14 @@ public class MetaGroupMember extends RaftMember {
    * @param isSeq
    * @return true if the member is a leader and the partition is closed, false otherwise
    */
-  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
+  public void closePartition(String storageGroupName, long partitionId, boolean isSeq) {
     Node header = partitionTable.routeToHeaderByTime(storageGroupName,
         partitionId * StorageEngine.getTimePartitionInterval());
-    return getLocalDataMember(header).closePartition(storageGroupName, partitionId, isSeq);
+    DataGroupMember localDataMember = getLocalDataMember(header);
+    if (localDataMember.getCharacter() != NodeCharacter.LEADER) {
+      return;
+    }
+    localDataMember.closePartition(storageGroupName, partitionId, isSeq);
   }
 
   public DataClusterServer getDataClusterServer() {
