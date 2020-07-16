@@ -98,12 +98,8 @@ public abstract class AbstractCli {
   static int maxTimeLength = ISO_DATETIME_LEN;
   static int maxValueLength = 15;
   static String TIMESTAMP_PRECISION = "ms";
-<<<<<<< HEAD:client/src/main/java/org/apache/iotdb/client/AbstractClient.java
-  static int lineCount = 0;
-=======
   private static int lineCount = 0;
   private static final String SUCCESS_MESSAGE = "The statement is executed successfully.";
->>>>>>> 7f95b1aea75205b0f460a14fcbd2464f12a2f075:cli/src/main/java/org/apache/iotdb/cli/AbstractCli.java
 
   private static boolean isReachEnd = false;
 
@@ -546,43 +542,11 @@ public abstract class AbstractCli {
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
     long startTime = System.currentTimeMillis();
-    ResultSet resultSet;
-    ZoneId zoneId;
     try (Statement statement = connection.createStatement()) {
-      zoneId = ZoneId.of(connection.getTimeZone());
+      ZoneId zoneId = ZoneId.of(connection.getTimeZone());
       statement.setFetchSize(fetchSize);
       boolean hasResultSet = statement.execute(cmd.trim());
       if (hasResultSet) {
-<<<<<<< HEAD:client/src/main/java/org/apache/iotdb/client/AbstractClient.java
-        resultSet = statement.getResultSet();
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        int columnLength = resultSetMetaData.getColumnCount();
-        List<Integer> maxSizeList = new ArrayList<>(columnLength);
-        List<List<String>> lists = cacheResult(resultSet, maxSizeList, columnLength,
-                resultSetMetaData, zoneId);
-        output(lists, maxSizeList);
-        long costTime = System.currentTimeMillis() - startTime;
-        println(String.format("It costs %.3fs", costTime / 1000.0));
-        while(!isReachEnd){
-          println(String.format("Reach the max_display_num = %s. Press ENTER to show more, input 'q' to quit.", maxPrintRowCount));
-          BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-          try{
-            if(br.readLine().equals("")){
-              maxSizeList = new ArrayList<>(columnLength);
-              lists = cacheResult(resultSet, maxSizeList, columnLength,
-                      resultSetMetaData, zoneId);
-              output(lists, maxSizeList);
-            }
-            else {
-              break;
-            }
-          }
-          catch(IOException e){
-            e.printStackTrace();
-          }
-        }
-        resetArgs();
-=======
         // print the result
         try (ResultSet resultSet = statement.getResultSet()) {
           ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
@@ -614,7 +578,6 @@ public abstract class AbstractCli {
         }
       } else {
         println("Msg: " + SUCCESS_MESSAGE);
->>>>>>> 7f95b1aea75205b0f460a14fcbd2464f12a2f075:cli/src/main/java/org/apache/iotdb/cli/AbstractCli.java
       }
     } catch (Exception e) {
       println("Msg: " + e.getMessage());
@@ -635,15 +598,7 @@ public abstract class AbstractCli {
    * @throws SQLException throw exception
    */
   private static List<List<String>> cacheResult(ResultSet resultSet, List<Integer> maxSizeList,
-<<<<<<< HEAD:client/src/main/java/org/apache/iotdb/client/AbstractClient.java
-                                                int columnCount, ResultSetMetaData resultSetMetaData,
-                                                ZoneId zoneId)
-          throws SQLException {
-
-    boolean printTimestamp = !((IoTDBQueryResultSet) resultSet).isIgnoreTimeStamp();
-=======
       int columnCount, ResultSetMetaData resultSetMetaData, ZoneId zoneId) throws SQLException {
->>>>>>> 7f95b1aea75205b0f460a14fcbd2464f12a2f075:cli/src/main/java/org/apache/iotdb/cli/AbstractCli.java
     List<List<String>> lists = new ArrayList<>(columnCount);
     if (resultSet instanceof IoTDBJDBCResultSet) {
       for (int i = 1; i <= columnCount; i++) {
@@ -665,18 +620,6 @@ public abstract class AbstractCli {
       }
     }
     int j = 0;
-<<<<<<< HEAD:client/src/main/java/org/apache/iotdb/client/AbstractClient.java
-    if(cursorBeforeFirst){
-      resultSet.next();
-      cursorBeforeFirst = false;
-    }
-    while (j < maxPrintRowCount && !isReachEnd) {
-      for(int i = 1; i <= columnCount; i++) {
-        String tmp;
-        if(printTimestamp && i == 1) {
-          tmp = formatDatetime(resultSet.getLong(TIMESTAMP_STR), zoneId);
-        } else {
-=======
     if (cursorBeforeFirst) {
       isReachEnd = !resultSet.next();
       cursorBeforeFirst = false;
@@ -707,7 +650,6 @@ public abstract class AbstractCli {
       while (j < maxPrintRowCount && !isReachEnd) {
         for (int i = 1; i <= columnCount; i++) {
           String tmp;
->>>>>>> 7f95b1aea75205b0f460a14fcbd2464f12a2f075:cli/src/main/java/org/apache/iotdb/cli/AbstractCli.java
           tmp = resultSet.getString(i);
           if (tmp == null) {
             tmp = NULL;
@@ -723,15 +665,8 @@ public abstract class AbstractCli {
         j++;
         isReachEnd = !resultSet.next();
       }
-<<<<<<< HEAD:client/src/main/java/org/apache/iotdb/client/AbstractClient.java
-      j++;
-      isReachEnd = !resultSet.next();
-    }
-    return lists;
-=======
       return lists;
     }
->>>>>>> 7f95b1aea75205b0f460a14fcbd2464f12a2f075:cli/src/main/java/org/apache/iotdb/cli/AbstractCli.java
   }
 
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
@@ -742,28 +677,12 @@ public abstract class AbstractCli {
       printRow(lists, i, maxSizeList);
     }
     printBlockLine(maxSizeList);
-<<<<<<< HEAD:client/src/main/java/org/apache/iotdb/client/AbstractClient.java
-    if(isReachEnd) {
-      lineCount += lists.get(0).size()-1;
-      printCount(lineCount);
-=======
     if (isReachEnd) {
       lineCount += lists.get(0).size() - 1;
       printCount(lineCount);
     } else {
       lineCount += maxPrintRowCount;
->>>>>>> 7f95b1aea75205b0f460a14fcbd2464f12a2f075:cli/src/main/java/org/apache/iotdb/cli/AbstractCli.java
     }
-    else {
-      lineCount += maxPrintRowCount;
-    }
-
-  }
-
-  private static void resetArgs() {
-    lineCount = 0;
-    cursorBeforeFirst = true;
-    isReachEnd = false;
   }
 
   private static void resetArgs() {
