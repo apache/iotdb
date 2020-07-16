@@ -776,7 +776,7 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     super.enterSetStorageGroup(ctx);
     SetStorageGroupOperator setStorageGroupOperator = new SetStorageGroupOperator(
         SQLConstant.TOK_METADATA_SET_FILE_LEVEL);
-    Path path = parseFullPath(ctx.fullPath());
+    Path path = parsePrefixPath(ctx.prefixPath());
     setStorageGroupOperator.setPath(path);
     initializedOperator = setStorageGroupOperator;
     operatorType = SQLConstant.TOK_METADATA_SET_FILE_LEVEL;
@@ -786,9 +786,11 @@ public class LogicalGenerator extends SqlBaseBaseListener {
   public void enterDeleteStorageGroup(DeleteStorageGroupContext ctx) {
     super.enterDeleteStorageGroup(ctx);
     List<Path> deletePaths = new ArrayList<>();
-    List<FullPathContext> fullPaths = ctx.fullPath();
-    for (FullPathContext fullPath : fullPaths) {
-      deletePaths.add(parseFullPath(fullPath));
+    List<PrefixPathContext> prefixPaths = ctx.prefixPath();
+    for (PrefixPathContext prefixPath : prefixPaths) {
+      Path path = new Path();
+      path.setFullPath(prefixPath.getText());
+      deletePaths.add(path);
     }
     DeleteStorageGroupOperator deleteStorageGroupOperator = new DeleteStorageGroupOperator(
         SQLConstant.TOK_METADATA_DELETE_FILE_LEVEL);
@@ -1199,7 +1201,9 @@ public class LogicalGenerator extends SqlBaseBaseListener {
     insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
     selectOp = new SelectOperator(SQLConstant.TOK_SELECT);
     operatorType = SQLConstant.TOK_INSERT;
-    selectOp.addSelectPath(parseFullPath(ctx.fullPath()));
+    Path path = parsePrefixPath(ctx.prefixPath());
+    path.setDevice(ctx.prefixPath().getText());
+    selectOp.addSelectPath(path);
     insertOp.setSelectOperator(selectOp);
   }
 

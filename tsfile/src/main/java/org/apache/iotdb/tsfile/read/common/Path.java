@@ -39,6 +39,8 @@ public class Path implements Serializable, Comparable<Path> {
   private List<String> nodes;
   private static final String illegalPathArgument = "Path parameter is null";
 
+  public Path() {}
+
   public Path(StringContainer pathSc) {
     if (pathSc == null) {
       throw new IllegalArgumentException("input pathSc is null!");
@@ -150,6 +152,14 @@ public class Path implements Serializable, Comparable<Path> {
    */
   public static Path addPrefixPath(Path src, Path prefix) {
     return addPrefixPath(src, prefix.fullPath);
+  }
+
+  public void setDevice(String device) {
+    this.device = device;
+  }
+
+  public void setFullPath(String fullPath) {
+    this.fullPath = fullPath;
   }
 
   public String getFullPath() {
